@@ -353,7 +353,9 @@
     "photo": "Photo",
     "entity": "Entité",
     "priority": "Priorité",
-    "downloadPDF": "Télécharger le résumé PDF"
+    "downloadPDF": "Télécharger le résumé PDF",
+    "summary": "Résumé",
+    "moreInPDF": "+{{count}} champs de plus dans le PDF"
   },
   "errors": {
     "network": "Erreur de connexion. Vérifiez votre internet.",

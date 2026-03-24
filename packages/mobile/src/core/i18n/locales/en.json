@@ -353,7 +353,9 @@
     "photo": "Photo",
     "entity": "Entity",
     "priority": "Priority",
-    "downloadPDF": "Download PDF summary"
+    "downloadPDF": "Download PDF summary",
+    "summary": "Summary",
+    "moreInPDF": "+{{count}} more fields in PDF"
   },
   "errors": {
     "network": "Connection error. Check your internet.",

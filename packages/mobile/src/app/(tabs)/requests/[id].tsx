@@ -1,17 +1,16 @@
 /**
- * Request Detail Screen — Native Android Design
+ * Request Detail Screen — Native Android v2
  *
- * Compact, flat layout optimized for mobile:
- * - Hero header: avatar photo + title + status + progress bar
- * - Quick info row: entity + appointment
- * - Flat data sections with dividers (no cards)
- * - Documents as flat list
- * - Payment summary inline
- * - PDF download button prominent
- * - NO activity/notifications (agent-facing, not citizen mobile)
+ * Minimal, scannable layout:
+ * - Hero: avatar + title + status + progress
+ * - Payment card (prominent if exists)
+ * - Quick info: entity + appointment
+ * - Essential summary: max 5 fields (rest in PDF)
+ * - Documents
+ * - PDF download sticky button
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -37,7 +36,7 @@ import { useAppTheme } from '@core/theme';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import { useRequestDetailView } from '@modules/service-requests';
 import { RequestStatusBadge } from '@modules/service-requests/components/request-status-badge';
-import { DataSections } from '@modules/service-requests/components/data-sections';
+import type { DataSection } from '@modules/service-requests';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +54,50 @@ function getDocIcon(name: string): string {
   return 'file-document-outline';
 }
 
+/**
+ * Extract only essential fields from data sections.
+ * On mobile we show max 5-6 key fields. The rest is in the PDF.
+ */
+function extractEssentialFields(
+  sections: DataSection[],
+): Array<{ label: string; value: string }> {
+  const essentialKeys = [
+    'nombre', 'apellido', 'nom', 'name',
+    'numero', 'dip', 'dni', 'nif', 'pasaporte',
+    'tipo', 'type', 'motivo',
+    'fecha_nacimiento', 'date_naissance', 'nacionalidad',
+    'sexo', 'genero',
+  ];
+
+  const result: Array<{ label: string; value: string }> = [];
+
+  for (const section of sections) {
+    for (const field of section.fields) {
+      if (!field.value) continue;
+      const lowerLabel = field.label.toLowerCase().replace(/\s/g, '_');
+      const isEssential = essentialKeys.some((k) => lowerLabel.includes(k));
+      if (isEssential && result.length < 6) {
+        result.push({ label: field.label, value: field.value });
+      }
+    }
+  }
+
+  // If we found fewer than 3, just take the first fields from the first section
+  if (result.length < 3) {
+    for (const section of sections) {
+      for (const field of section.fields) {
+        if (!field.value && result.length >= 3) continue;
+        if (field.value && !result.find((r) => r.label === field.label)) {
+          result.push({ label: field.label, value: field.value });
+          if (result.length >= 5) return result;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
@@ -68,7 +111,11 @@ export default function RequestDetailScreen() {
   const { data, isLoading, isError } = useRequestDetailView(id ?? '');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
-  // --- Loading ---
+  const essentialFields = useMemo(
+    () => (data ? extractEssentialFields(data.data_sections) : []),
+    [data],
+  );
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: colors.background }]} edges={['top']}>
@@ -77,7 +124,6 @@ export default function RequestDetailScreen() {
     );
   }
 
-  // --- Error ---
   if (isError || !data) {
     return (
       <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: colors.background }]} edges={['top']}>
@@ -89,8 +135,8 @@ export default function RequestDetailScreen() {
   }
 
   const {
-    request, stepper_phases, current_phase_index, data_sections,
-    photo_url, tariff, appointment, documents, workflow_name_es,
+    request, stepper_phases, current_phase_index, photo_url,
+    tariff, appointment, documents, workflow_name_es,
     solicitud_type_display, payment_status, payment_reference, receipt_number,
   } = data;
 
@@ -98,6 +144,7 @@ export default function RequestDetailScreen() {
     ? (current_phase_index + 1) / stepper_phases.length
     : 0;
   const currentPhaseName = stepper_phases[current_phase_index]?.title_es ?? '';
+  const totalSections = data.data_sections.reduce((sum, s) => sum + s.fields.length, 0);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -109,12 +156,11 @@ export default function RequestDetailScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
 
-        {/* ═══ HERO: Photo avatar + Title + Status + Progress ═══ */}
+        {/* ═══ HERO ═══ */}
         <View style={[styles.hero, { padding: spacing.md, backgroundColor: colors.surface }]}>
           <View style={styles.heroRow}>
-            {/* Photo avatar (tap to fullscreen) */}
             {photo_url ? (
               <Pressable onPress={() => setPhotoModalVisible(true)}>
                 <Image source={{ uri: photo_url }} style={styles.avatar} />
@@ -124,14 +170,12 @@ export default function RequestDetailScreen() {
                 <MaterialCommunityIcons name="file-document" size={28} color={colors.primary} />
               </View>
             )}
-
             <View style={styles.heroText}>
               <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '700' }} numberOfLines={2}>
                 {workflow_name_es}
               </Text>
               <Text variant="bodySmall" style={{ color: colors.outline }}>
-                {request.reference}
-                {solicitud_type_display ? ` · ${solicitud_type_display}` : ''}
+                {request.reference}{solicitud_type_display ? ` · ${solicitud_type_display}` : ''}
               </Text>
               <View style={{ marginTop: 4 }}>
                 <RequestStatusBadge status={request.status} />
@@ -139,13 +183,10 @@ export default function RequestDetailScreen() {
             </View>
           </View>
 
-          {/* Progress bar */}
           {stepper_phases.length > 0 && (
             <View style={{ marginTop: 12 }}>
               <View style={styles.progressHeader}>
-                <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-                  {currentPhaseName}
-                </Text>
+                <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>{currentPhaseName}</Text>
                 <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600' }}>
                   {current_phase_index + 1}/{stepper_phases.length}
                 </Text>
@@ -155,10 +196,62 @@ export default function RequestDetailScreen() {
           )}
         </View>
 
-        {/* ═══ QUICK INFO ROW ═══ */}
+        {/* ═══ PAYMENT (prominent, left-aligned) ═══ */}
+        {payment_status && (
+          <>
+            <Divider />
+            <View style={[styles.paymentBlock, { padding: spacing.md, backgroundColor: colors.surface }]}>
+              <View style={styles.paymentHeader}>
+                <MaterialCommunityIcons name="credit-card-check-outline" size={20} color={colors.primary} />
+                <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 8 }}>
+                  {t('requests.payment')}
+                </Text>
+              </View>
+
+              <View style={{ marginTop: 8, gap: 6 }}>
+                {/* Amount + Status */}
+                <View style={styles.payRow}>
+                  <Text variant="headlineSmall" style={{ color: colors.primary, fontWeight: '700' }}>
+                    {tariff ? formatCurrency(tariff.total_amount, tariff.currency) : ''}
+                  </Text>
+                  <RequestStatusBadge status={payment_status} compact />
+                </View>
+
+                {/* Method + Reference */}
+                {payment_reference && (
+                  <View style={styles.payDetail}>
+                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.paymentReference')}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface }} numberOfLines={1}>{payment_reference}</Text>
+                  </View>
+                )}
+
+                {/* Receipt */}
+                {receipt_number && (
+                  <View style={styles.payDetail}>
+                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.receiptNumber')}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600' }}>{receipt_number}</Text>
+                  </View>
+                )}
+
+                {/* Tariff breakdown (compact) */}
+                {tariff && tariff.supplements.length > 0 && (
+                  <View style={[styles.payDetail, { marginTop: 4 }]}>
+                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.baseAmount')}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                      {formatCurrency(tariff.base_amount, tariff.currency)}
+                      {tariff.supplements.map((s, i) => ` + ${formatCurrency(s.amount, tariff.currency)}`).join('')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ═══ QUICK INFO ═══ */}
         <View style={[styles.quickInfo, { paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surfaceVariant }]}>
           {request.entity_code && (
-            <View style={styles.quickInfoItem}>
+            <View style={styles.quickItem}>
               <MaterialCommunityIcons name="domain" size={16} color={colors.onSurfaceVariant} />
               <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
                 {humanizeCode(request.entity_code)}
@@ -166,27 +259,45 @@ export default function RequestDetailScreen() {
             </View>
           )}
           {appointment && (
-            <View style={styles.quickInfoItem}>
-              <MaterialCommunityIcons name="calendar" size={16} color={colors.primary} />
-              <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
-                {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
-              </Text>
-            </View>
-          )}
-          {appointment?.location && (
-            <View style={styles.quickInfoItem}>
-              <MaterialCommunityIcons name="map-marker" size={16} color={colors.onSurfaceVariant} />
-              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
-                {appointment.location}
-              </Text>
-            </View>
+            <>
+              <View style={styles.quickItem}>
+                <MaterialCommunityIcons name="calendar" size={16} color={colors.primary} />
+                <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
+                  {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
+                </Text>
+              </View>
+              {appointment.location && (
+                <View style={styles.quickItem}>
+                  <MaterialCommunityIcons name="map-marker" size={16} color={colors.onSurfaceVariant} />
+                  <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>{appointment.location}</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 
-        {/* ═══ DATA SECTIONS (flat, no cards) ═══ */}
-        {data_sections.length > 0 && (
+        {/* ═══ ESSENTIAL SUMMARY (max 5-6 fields) ═══ */}
+        {essentialFields.length > 0 && (
           <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
-            <DataSections sections={data_sections} />
+            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
+              {t('detail.summary')}
+            </Text>
+            {essentialFields.map((field, i) => (
+              <View key={i}>
+                {i > 0 && <Divider style={{ marginVertical: 1 }} />}
+                <View style={styles.fieldRow}>
+                  <Text variant="bodySmall" style={{ color: colors.outline, flex: 1 }}>{field.label}</Text>
+                  <Text variant="bodyMedium" style={{ color: colors.onSurface, flex: 1.5, textAlign: 'right', fontWeight: '500' }} numberOfLines={1}>
+                    {field.value}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {totalSections > essentialFields.length && (
+              <Text variant="labelSmall" style={{ color: colors.outline, marginTop: 6, fontStyle: 'italic' }}>
+                {t('detail.moreInPDF', { count: totalSections - essentialFields.length })}
+              </Text>
+            )}
           </View>
         )}
 
@@ -199,10 +310,7 @@ export default function RequestDetailScreen() {
             {documents.map((doc, i) => (
               <View key={doc.id}>
                 {i > 0 && <Divider />}
-                <Pressable
-                  style={styles.docRow}
-                  android_ripple={{ color: colors.primaryContainer }}
-                >
+                <Pressable style={styles.docRow} android_ripple={{ color: colors.primaryContainer }}>
                   <MaterialCommunityIcons
                     name={getDocIcon(doc.document_name) as keyof typeof MaterialCommunityIcons.glyphMap}
                     size={20}
@@ -223,64 +331,14 @@ export default function RequestDetailScreen() {
           </View>
         )}
 
-        {/* ═══ TARIFF ═══ */}
-        {tariff && (
-          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
-            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
-              {t('requests.tariff')}
-            </Text>
-            <View style={styles.tariffRow}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>{t('requests.baseAmount')}</Text>
-              <Text variant="bodyMedium" style={{ color: colors.onSurface }}>{formatCurrency(tariff.base_amount, tariff.currency)}</Text>
-            </View>
-            {tariff.supplements.map((s, i) => (
-              <View key={`s-${i}`} style={styles.tariffRow}>
-                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>{s.label || t('requests.supplement')}</Text>
-                <Text variant="bodySmall" style={{ color: colors.onSurface }}>{formatCurrency(s.amount, tariff.currency)}</Text>
-              </View>
-            ))}
-            <Divider style={{ marginVertical: 6 }} />
-            <View style={styles.tariffRow}>
-              <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '700' }}>{t('requests.totalAmount')}</Text>
-              <Text variant="titleSmall" style={{ color: colors.primary, fontWeight: '700' }}>{formatCurrency(tariff.total_amount, tariff.currency)}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* ═══ PAYMENT SUMMARY (inline, not card) ═══ */}
-        {payment_status && (
-          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
-            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
-              {t('requests.payment')}
-            </Text>
-            <View style={styles.paymentSummary}>
-              <View style={{ flex: 1 }}>
-                <RequestStatusBadge status={payment_status} compact />
-                {payment_reference && (
-                  <Text variant="bodySmall" style={{ color: colors.outline, marginTop: 4 }} numberOfLines={1}>
-                    {payment_reference}
-                  </Text>
-                )}
-              </View>
-              {receipt_number && (
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>{t('requests.receiptNumber')}</Text>
-                  <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600' }}>{receipt_number}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
       </ScrollView>
 
-      {/* ═══ STICKY BOTTOM: Download PDF ═══ */}
+      {/* ═══ STICKY BOTTOM ═══ */}
       <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
         <Button
           mode="contained"
           icon="file-pdf-box"
-          onPress={() => {
-            // TODO P3: Download citizen summary PDF via /service-requests/{id}/citizen-summary
-          }}
+          onPress={() => { /* TODO P3: download PDF */ }}
           style={{ flex: 1, borderRadius: borderRadius.sm }}
           contentStyle={{ paddingVertical: 4 }}
         >
@@ -288,18 +346,12 @@ export default function RequestDetailScreen() {
         </Button>
       </View>
 
-      {/* ═══ PHOTO FULLSCREEN MODAL ═══ */}
+      {/* ═══ PHOTO MODAL ═══ */}
       {photo_url && (
         <Modal visible={photoModalVisible} transparent animationType="fade" onRequestClose={() => setPhotoModalVisible(false)}>
           <Pressable style={styles.modalOverlay} onPress={() => setPhotoModalVisible(false)}>
             <Image source={{ uri: photo_url }} style={styles.modalPhoto} resizeMode="contain" />
-            <IconButton
-              icon="close"
-              iconColor="#fff"
-              size={28}
-              style={styles.modalClose}
-              onPress={() => setPhotoModalVisible(false)}
-            />
+            <IconButton icon="close" iconColor="#fff" size={28} style={styles.modalClose} onPress={() => setPhotoModalVisible(false)} />
           </Pressable>
         </Modal>
       )}
@@ -318,11 +370,14 @@ const styles = StyleSheet.create({
   heroText: { flex: 1 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   progressBar: { height: 6, borderRadius: 3 },
+  paymentBlock: {},
+  paymentHeader: { flexDirection: 'row', alignItems: 'center' },
+  payRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  payDetail: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quickInfo: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  quickInfoItem: { flexDirection: 'row', alignItems: 'center' },
+  quickItem: { flexDirection: 'row', alignItems: 'center' },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  tariffRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, borderTopWidth: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
   modalPhoto: { width: '90%', height: '70%' },
