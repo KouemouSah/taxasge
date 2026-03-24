@@ -70,7 +70,7 @@ export default function RequestsListScreen() {
     () => ({
       status: selectedStatus === 'all' ? undefined : selectedStatus,
       search: debouncedSearch || undefined,
-      page_size: 20,
+      page_size: 10,
     }),
     [selectedStatus, debouncedSearch],
   );

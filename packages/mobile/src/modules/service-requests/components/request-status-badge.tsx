@@ -110,7 +110,12 @@ export function RequestStatusBadge({ status }: RequestStatusBadgeProps) {
   const { t } = useTranslation();
 
   const style = resolveBadgeStyle(status, colors);
-  const label = t(`requests.status.${status.toLowerCase()}`);
+  const i18nKey = `requests.status.${status.toLowerCase()}`;
+  const translated = t(i18nKey);
+  // If i18n key not found (returns the key itself), humanize the status
+  const label = translated === i18nKey
+    ? status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+    : translated;
 
   return (
     <Chip
@@ -139,6 +144,7 @@ const styles = StyleSheet.create({
   chip: {
     alignSelf: 'flex-start',
     height: 26,
+    maxWidth: 140,
   },
   text: {
     fontSize: 11,

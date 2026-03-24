@@ -161,7 +161,12 @@
       "approved": "Approuvée",
       "rejected": "Rejetée",
       "completed": "Terminée",
-      "cancelled": "Annulée"
+      "cancelled": "Annulée",
+      "payment_pending": "Paiement en attente",
+      "paid": "Payée",
+      "expired": "Expirée",
+      "pending_documents": "Docs en attente",
+      "validated": "Validée"
     },
     "wizard": {
       "selection": "Sélection",

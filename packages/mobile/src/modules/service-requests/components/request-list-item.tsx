@@ -14,6 +14,14 @@ import { formatRelativeTime, formatCurrency } from '@core/utils/format';
 import type { ServiceRequestListItem } from '../types/requests.types';
 import { RequestStatusBadge } from './request-status-badge';
 
+/** Convert WORKFLOW_CODE to readable label: PASAPORTE_DETERIORO → Pasaporte Deterioro */
+function humanizeWorkflowCode(code: string): string {
+  return code
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -53,7 +61,7 @@ export function RequestListItem({ item, onPress }: RequestListItemProps) {
               style={[styles.title, { color: colors.onSurface }]}
               numberOfLines={1}
             >
-              {item.workflow_label || item.workflow_code}
+              {item.workflow_label || humanizeWorkflowCode(item.workflow_code)}
             </Text>
             <Text
               variant="bodySmall"
