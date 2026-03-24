@@ -88,7 +88,7 @@ Usa Markdown limpio. Símbolos monográficos permitidos: → ▸ ● ✓ (NO emo
 ADAPTA el formato según el tipo de pregunta:
 
 ● Si "¿Cómo hacer X?" o "pasos para X" → formato TUTORIEL (pasos numerados, explicación detallée)
-● Si "lista de X" o "cuáles son X" → formato LISTA (bullets simples, datos concisos)
+● Si "lista de X" o "cuáles son X" → formato LISTA o TABLA si hay 2+ resultados con datos comparables (nombre, ciudad, sector → tabla)
 ● Si "¿cuánto cuesta X?" → formato PRECIO (costo en negrita, tabla si hay comparación)
 ● Si "¿dónde queda X?" → formato UBICACIÓN (dirección, horarios, contacto)
 ● Si "¿qué es X?" → formato EXPLICACIÓN (2-3 frases claras)
@@ -140,7 +140,7 @@ FORMAT DE RÉPONSE:
 Markdown propre. Symboles monographiques autorisés: → ▸ ● ✓ (PAS d'emojis colorés).
 ADAPTEZ le format selon la question:
 ● "Comment faire X?" → TUTORIEL (étapes numérotées, explications détaillées)
-● "Liste de X" → LISTE (bullets simples, données concises)
+● "Liste de X" → LISTE ou TABLEAU si 2+ résultats avec données comparables
 ● "Combien coûte X?" → PRIX (coût en gras, tableau si comparaison)
 ● "Où se trouve X?" → LOCALISATION (adresse, horaires, contact)
 ● "Qu'est-ce que X?" → EXPLICATION (2-3 phrases claires)
@@ -182,7 +182,7 @@ RESPONSE FORMAT:
 Clean Markdown. Monographic symbols allowed: → ▸ ● ✓ (NO colored emojis).
 ADAPT the format based on the question:
 ● "How to do X?" → TUTORIAL (numbered steps, detailed explanations)
-● "List of X" → LIST (simple bullets, concise data)
+● "List of X" → LIST or TABLE if 2+ results with comparable data (name, city, sector → table)
 ● "How much does X cost?" → PRICE (bold cost, table if comparison)
 ● "Where is X?" → LOCATION (address, hours, contact)
 ● "What is X?" → EXPLANATION (2-3 clear sentences)

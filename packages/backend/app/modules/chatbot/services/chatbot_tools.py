@@ -237,12 +237,15 @@ async def search_companies(db, **kwargs) -> dict:
         LIMIT ${idx}
     """, *params)
 
+    companies = [
+        {k: str(v) if v is not None else None for k, v in dict(r).items()}
+        for r in rows
+    ]
+
     return {
-        "companies": [
-            {k: str(v) if v is not None else None for k, v in dict(r).items()}
-            for r in rows
-        ],
-        "count": len(rows),
+        "companies": companies,
+        "count": len(companies),
+        "display_hint": "tabla" if len(companies) >= 2 else "lista",
     }
 
 
