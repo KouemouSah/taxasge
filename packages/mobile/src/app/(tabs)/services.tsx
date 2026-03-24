@@ -260,52 +260,58 @@ export default function ServicesScreen() {
           renderItem={renderSearchItem}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
-            <View>
-              {/* Back + count */}
-              <View style={styles.searchResultsHeader}>
-                <Pressable onPress={handleClearSearch} style={styles.backBtn}>
-                  <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
-                </Pressable>
-                <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
-                  {innerSearch
-                    ? `${sortedResults.length} / ${results.total}`
-                    : t('services.results', { count: results.total })}
-                </Text>
-              </View>
-
-              {/* Inner search + sort (ministry mode) */}
+            <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
+              {/* Ministry name bar with back arrow */}
               {isMinistryFilter && (
-                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-                  <View style={styles.innerControls}>
-                    <TextInput
-                      placeholder={t('services.searchWithin')}
-                      value={innerSearch}
-                      onChangeText={handleInnerSearch}
-                      mode="outlined"
-                      dense
-                      style={styles.innerSearchInput}
-                      outlineStyle={{ borderRadius: 8 }}
-                      left={<TextInput.Icon icon="magnify" size={18} />}
-                      right={innerSearch ? <TextInput.Icon icon="close" size={16} onPress={() => handleInnerSearch('')} /> : undefined}
-                    />
-                    <View style={styles.sortBtns}>
-                      <Pressable
-                        onPress={() => setResultSort(resultSort === 'alpha' ? 'default' : 'alpha')}
-                        style={[styles.sortBtn, resultSort === 'alpha' && { backgroundColor: colors.primaryContainer }]}
-                      >
-                        <MaterialCommunityIcons name="sort-alphabetical-ascending" size={16} color={resultSort === 'alpha' ? colors.primary : colors.outline} />
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setResultSort(resultSort === 'price_asc' ? 'price_desc' : 'price_asc')}
-                        style={[styles.sortBtn, (resultSort === 'price_asc' || resultSort === 'price_desc') && { backgroundColor: colors.primaryContainer }]}
-                      >
-                        <MaterialCommunityIcons
-                          name={resultSort === 'price_desc' ? 'sort-numeric-descending' : 'sort-numeric-ascending'}
-                          size={16}
-                          color={(resultSort === 'price_asc' || resultSort === 'price_desc') ? colors.primary : colors.outline}
-                        />
-                      </Pressable>
-                    </View>
+                <Pressable onPress={handleClearSearch} style={styles.ministryBar}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+                  <Text style={styles.ministryBarText} numberOfLines={1}>
+                    {searchText}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Non-ministry: simple back + count */}
+              {!isMinistryFilter && (
+                <Pressable onPress={handleClearSearch} style={styles.ministryBar}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+                  <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
+                    {t('services.results', { count: results.total })}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Inner search + sort */}
+              {isMinistryFilter && (
+                <View style={[styles.innerControls, { marginTop: 6 }]}>
+                  <TextInput
+                    placeholder={`${results.total} services — ${t('services.searchWithin')}`}
+                    value={innerSearch}
+                    onChangeText={handleInnerSearch}
+                    mode="outlined"
+                    dense
+                    style={styles.innerSearchInput}
+                    outlineStyle={{ borderRadius: 8, borderColor: '#E0E0E0' }}
+                    left={<TextInput.Icon icon="magnify" size={16} />}
+                    right={innerSearch ? <TextInput.Icon icon="close" size={14} onPress={() => handleInnerSearch('')} /> : undefined}
+                  />
+                  <View style={styles.sortBtns}>
+                    <Pressable
+                      onPress={() => setResultSort(resultSort === 'alpha' ? 'default' : 'alpha')}
+                      style={[styles.sortBtn, resultSort === 'alpha' && { backgroundColor: colors.primaryContainer }]}
+                    >
+                      <MaterialCommunityIcons name="sort-alphabetical-ascending" size={16} color={resultSort === 'alpha' ? colors.primary : colors.outline} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setResultSort(resultSort === 'price_asc' ? 'price_desc' : 'price_asc')}
+                      style={[styles.sortBtn, (resultSort === 'price_asc' || resultSort === 'price_desc') && { backgroundColor: colors.primaryContainer }]}
+                    >
+                      <MaterialCommunityIcons
+                        name={resultSort === 'price_desc' ? 'sort-numeric-descending' : 'sort-numeric-ascending'}
+                        size={16}
+                        color={(resultSort === 'price_asc' || resultSort === 'price_desc') ? colors.primary : colors.outline}
+                      />
+                    </Pressable>
                   </View>
                 </View>
               )}
@@ -484,9 +490,9 @@ const styles = StyleSheet.create({
   viewToggle: { flexDirection: 'row', gap: 4 },
   toggleBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
-  // Search results header
-  searchResultsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  backBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  // Ministry bar (back + name)
+  ministryBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+  ministryBarText: { fontSize: 12, fontWeight: '600', color: '#616161', flex: 1 },
   innerControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   innerSearchInput: { flex: 1, backgroundColor: '#F5F5F5', fontSize: 13, height: 36 },
   sortBtns: { flexDirection: 'row', gap: 4 },
