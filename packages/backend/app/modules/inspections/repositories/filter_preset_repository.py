@@ -46,7 +46,7 @@ class FilterPresetRepository:
             user_id,
             data["preset_name"],
             table_key,
-            data.get("filters", "{}"),
+            __import__("json").dumps(data.get("filters", {})),
             data.get("column_visibility"),
             data.get("sort_config"),
             data.get("is_default", False),
@@ -165,11 +165,17 @@ class FilterPresetRepository:
     # ============================================================
 
     @staticmethod
-    async def delete(conn, preset_id: UUID) -> bool:
-        """Delete a preset. Returns True if a row was actually deleted."""
-        result = await conn.execute("""
-            DELETE FROM supervisor_filter_presets
-            WHERE id = $1
-        """, preset_id)
+    async def delete(conn, preset_id: UUID, user_id: UUID = None) -> bool:
+        """Delete a preset. Defense-in-depth: user_id scoped if provided."""
+        if user_id:
+            result = await conn.execute("""
+                DELETE FROM supervisor_filter_presets
+                WHERE id = $1 AND user_id = $2
+            """, preset_id, user_id)
+        else:
+            result = await conn.execute("""
+                DELETE FROM supervisor_filter_presets
+                WHERE id = $1
+            """, preset_id)
         # asyncpg returns "DELETE N" where N is the number of rows deleted
         return result == "DELETE 1"

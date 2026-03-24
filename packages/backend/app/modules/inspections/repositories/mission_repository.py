@@ -94,19 +94,19 @@ class MissionRepository:
             SELECT fm.id, fm.mission_date, fm.title, fm.status,
                    e.code AS entity_code,
                    el.location_name AS location_name,
-                   (SELECT COUNT(*)
-                    FROM field_mission_agents fma
-                    WHERE fma.mission_id = fm.id) AS agents_count,
-                   (SELECT COALESCE(SUM(fma2.actual_inspections), 0)
-                    FROM field_mission_agents fma2
-                    WHERE fma2.mission_id = fm.id) AS inspections_done,
-                   (SELECT COALESCE(SUM(fma3.target_inspections), 0)
-                    FROM field_mission_agents fma3
-                    WHERE fma3.mission_id = fm.id) AS inspections_target,
+                   COALESCE(agg.agents_count, 0) AS agents_count,
+                   COALESCE(agg.inspections_done, 0) AS inspections_done,
+                   COALESCE(agg.inspections_target, 0) AS inspections_target,
                    fm.created_at
             FROM field_missions fm
             JOIN entities e ON e.id = fm.entity_id
             JOIN entity_locations el ON el.id = fm.entity_location_id
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::int AS agents_count,
+                       COALESCE(SUM(actual_inspections), 0)::int AS inspections_done,
+                       COALESCE(SUM(target_inspections), 0)::int AS inspections_target
+                FROM field_mission_agents WHERE mission_id = fm.id
+            ) agg ON true
             WHERE {where}
             ORDER BY fm.mission_date DESC
             LIMIT ${idx} OFFSET ${idx + 1}
@@ -223,7 +223,7 @@ class MissionRepository:
             SELECT fma.*,
                    u.full_name AS agent_name,
                    ap.working_days,
-                   ap.availability_status,
+                   CASE WHEN ap.is_active THEN 'available' ELSE 'unavailable' END AS availability_status,
                    CASE
                        WHEN fma.target_inspections > 0
                        THEN fma.actual_inspections * 100.0 / fma.target_inspections
@@ -243,61 +243,53 @@ class MissionRepository:
 
     @staticmethod
     async def suggest_zones(conn, entity_id: UUID, limit: int = 10) -> List[Dict]:
-        """Suggest zones based on inspection coverage and pending obligations."""
+        """Suggest zones based on inspection coverage and pending obligations.
+
+        Uses 2 CTEs:
+        1. last_inspected: MAX(inspection_date) per zone for this entity
+        2. zone_obligations: COUNT pending/overdue obligations per zone
+        Priority score = (pending_count * days_since_last / 30) — higher = more urgent.
+        """
         rows = await conn.fetch("""
-            WITH zone_inspections AS (
-                SELECT
-                    cz.id AS zone_id,
-                    cz.zone_code,
-                    cz.name_es AS zone_name,
-                    cz.zone_tier AS zone_tier,
-                    MAX(fi.inspection_date) AS last_inspection_date
-                FROM commerce_zones cz
-                LEFT JOIN field_inspections fi
-                    ON fi.id IN (
-                        SELECT fi2.id FROM field_inspections fi2
-                        JOIN commercial_licenses cl ON cl.id = fi2.license_id
-                        WHERE cl.zone_id = cz.id
-                          AND fi2.entity_id = $1
-                          AND fi2.status != 'cancelled'
-                    )
-                GROUP BY cz.id, cz.zone_code, cz.name_es, cz.zone_tier
+            WITH last_inspected AS (
+                SELECT cl.zone_id,
+                       MAX(fi.inspection_date) AS last_inspection_date
+                FROM field_inspections fi
+                JOIN commercial_licenses cl ON cl.id = fi.license_id
+                WHERE fi.entity_id = $1 AND fi.status != 'cancelled'
+                GROUP BY cl.zone_id
             ),
             zone_obligations AS (
-                SELECT
-                    cl.zone_id,
-                    COUNT(*) AS pending_count
+                SELECT cl.zone_id,
+                       COUNT(*)::int AS pending_count
                 FROM license_obligations lo
                 JOIN commercial_licenses cl ON cl.id = lo.license_id
                 WHERE lo.status IN ('pending', 'overdue')
                 GROUP BY cl.zone_id
             )
             SELECT
-                zi.zone_id,
-                zi.zone_code,
-                zi.zone_name,
-                zi.zone_tier,
+                cz.id AS zone_id,
+                cz.zone_code,
+                cz.name_es AS zone_name,
+                cz.zone_tier AS zone_tier,
                 CASE
-                    WHEN zi.last_inspection_date IS NULL THEN NULL
-                    ELSE (CURRENT_DATE - zi.last_inspection_date)
+                    WHEN li.last_inspection_date IS NULL THEN NULL
+                    ELSE (CURRENT_DATE - li.last_inspection_date)::int
                 END AS days_since_last_inspection,
                 COALESCE(zo.pending_count, 0) AS pending_obligations_count,
                 CASE
-                    WHEN zi.last_inspection_date IS NULL THEN 'high'
-                    WHEN (CURRENT_DATE - zi.last_inspection_date) > 30 THEN 'high'
-                    WHEN (CURRENT_DATE - zi.last_inspection_date) > 14 THEN 'medium'
+                    WHEN li.last_inspection_date IS NULL THEN 'high'
+                    WHEN (CURRENT_DATE - li.last_inspection_date) > 30 THEN 'high'
+                    WHEN (CURRENT_DATE - li.last_inspection_date) > 14 THEN 'medium'
                     ELSE 'low'
                 END AS suggested_priority
-            FROM zone_inspections zi
-            LEFT JOIN zone_obligations zo ON zo.zone_id = zi.zone_id
+            FROM commerce_zones cz
+            LEFT JOIN last_inspected li ON li.zone_id = cz.id
+            LEFT JOIN zone_obligations zo ON zo.zone_id = cz.id
             ORDER BY
                 (COALESCE(zo.pending_count, 0) *
-                 COALESCE(
-                     CASE
-                         WHEN zi.last_inspection_date IS NULL THEN 9999
-                         ELSE (CURRENT_DATE - zi.last_inspection_date)
-                     END, 9999
-                 ) / 30.0) DESC
+                 COALESCE(CURRENT_DATE - li.last_inspection_date, 9999)
+                 / 30.0) DESC
             LIMIT $2
         """, entity_id, limit)
         return [dict(r) for r in rows]
@@ -329,7 +321,7 @@ class MissionRepository:
                     LIMIT 1
                 ) AS current_mission,
                 ap.working_days,
-                COALESCE(ap.availability_status, 'available') AS availability_status
+                CASE WHEN ap.is_active THEN 'available' ELSE 'unavailable' END AS availability_status
             FROM agent_profiles ap
             JOIN users u ON u.id = ap.user_id
             WHERE ap.entity_id = $1

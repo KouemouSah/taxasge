@@ -220,6 +220,20 @@ class AnalyticsService:
         if len(ids) != 2:
             raise ValueError("Exactly 2 IDs are required for comparison")
 
+        # A01/IDOR: For agent comparison, verify both agents belong to this entity
+        if compare_type == "agents":
+            for agent_id_str in ids:
+                try:
+                    aid = UUID(agent_id_str)
+                except ValueError:
+                    raise ValueError(f"Invalid agent UUID: {agent_id_str}")
+                agent_check = await conn.fetchrow(
+                    "SELECT entity_id FROM agent_profiles WHERE user_id = $1 AND is_active = true",
+                    aid,
+                )
+                if not agent_check or agent_check["entity_id"] != ctx["entity_id"]:
+                    raise ValueError("Agent not found or belongs to another entity")
+
         items = await AnalyticsRepository.get_comparison(
             conn, ctx["entity_id"], compare_type, ids, dt_from, dt_to,
         )

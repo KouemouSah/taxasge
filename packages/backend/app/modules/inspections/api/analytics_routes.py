@@ -3,6 +3,7 @@
 Prefix: /api/v1/inspections/analytics
 
 6 endpoints for supervisor analytics (agent performance, zones, trends, compare, priority).
+Rate-limited: 20 requests/minute per user (A04: expensive aggregation queries).
 """
 
 import logging
@@ -51,6 +52,14 @@ async def get_agent_performance(
     _: None = Depends(permission_required("inspection.view_analytics")),
 ):
     """Get agent performance list with metrics (supervisor-only)."""
+    # A04: Rate limit expensive analytics queries
+    from app.core.cache import check_rate_limit
+    allowed, _ = await check_rate_limit(
+        current_user.id, "/inspections/analytics", limit=20, window_seconds=60,
+    )
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded for analytics")
+
     try:
         result = await AnalyticsService.get_agent_performance(
             db, UUID(current_user.id), date_from, date_to, page, page_size,

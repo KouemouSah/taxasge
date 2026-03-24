@@ -66,6 +66,10 @@ class InspectionExportService:
         params: list = [entity_id]
         idx = 2
 
+        # Exclude cancelled unless explicitly requested
+        if not filters.get("status"):
+            conditions.append("fi.status != 'cancelled'")
+
         # --- Date range ---
         if filters.get("date_from"):
             conditions.append(f"fi.inspection_date >= ${idx}")
@@ -238,6 +242,7 @@ class InspectionExportService:
             WHERE fi.entity_id = $1
               AND fi.inspection_date >= $2
               AND fi.inspection_date <= $3
+              AND fi.status != 'cancelled'
             GROUP BY u.id, u.full_name
             ORDER BY total_inspections DESC
         """, entity_id, date_from, date_to)

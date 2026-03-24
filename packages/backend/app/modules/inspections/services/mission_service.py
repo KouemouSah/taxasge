@@ -251,7 +251,7 @@ class MissionService:
         # Check max agents from system_rules
         max_agents_rule = await conn.fetchval("""
             SELECT rule_value FROM system_rules
-            WHERE rule_key = 'FIELD_MISSION_MAX_AGENTS' AND is_active = true
+            WHERE rule_code = 'FIELD_MISSION_MAX_AGENTS' AND is_active = true
         """)
         max_agents = int(max_agents_rule) if max_agents_rule else 20
 

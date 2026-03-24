@@ -94,7 +94,8 @@ class AnalyticsRepository:
         """Detailed performance for a single agent with sub-breakdowns.
 
         Returns aggregate stats + recent inspections + zone breakdown + weekly trend.
-        Uses asyncio.gather for parallel sub-queries.
+        Executed sequentially on the same connection (asyncpg does not support
+        concurrent queries on a single connection).
         """
         # Main aggregate (same CTE as get_agent_performance but single agent)
         async def _get_aggregate():
@@ -187,12 +188,12 @@ class AnalyticsRepository:
             """, agent_id, entity_id, date_from, date_to)
             return [dict(r) for r in rows]
 
-        aggregate, recent, zone_breakdown, weekly_trend = await asyncio.gather(
-            _get_aggregate(),
-            _get_recent(),
-            _get_zone_breakdown(),
-            _get_weekly_trend(),
-        )
+        # Sequential execution — asyncpg does not support concurrent queries
+        # on a single connection (would raise InterfaceError)
+        aggregate = await _get_aggregate()
+        recent = await _get_recent()
+        zone_breakdown = await _get_zone_breakdown()
+        weekly_trend = await _get_weekly_trend()
 
         if not aggregate:
             return {

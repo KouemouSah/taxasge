@@ -86,4 +86,4 @@ class FilterPresetService:
         if preset["user_id"] != user_id:
             raise PermissionError("Cannot delete another user's preset")
 
-        return await FilterPresetRepository.delete(conn, preset_id)
+        return await FilterPresetRepository.delete(conn, preset_id, user_id=user_id)
