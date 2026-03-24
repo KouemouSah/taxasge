@@ -11,7 +11,7 @@
 
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { StyleSheet, View, FlatList } from 'react-native';
-import { Text, Searchbar, Chip, FAB, ActivityIndicator } from 'react-native-paper';
+import { Text, Searchbar, Chip, FAB, ActivityIndicator, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -239,6 +239,7 @@ export default function RequestsListScreen() {
         data={requests}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        ItemSeparatorComponent={Divider}
         contentContainerStyle={[
           styles.listContent,
           requests.length === 0 && styles.listEmpty,
