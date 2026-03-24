@@ -177,7 +177,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       )}
 
       {/* Message Bubble */}
-      <div className={`max-w-[75%] group relative`}>
+      <div className={`${isUser ? 'max-w-[75%]' : 'max-w-[90%]'} group relative`}>
         <div
           className={`rounded-lg p-3 ${
             isUser

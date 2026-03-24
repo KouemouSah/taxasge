@@ -76,8 +76,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyPress={handleKeyPress}
           placeholder={placeholder || t('inputPlaceholder')}
           disabled={isDisabled}
-          className="min-h-[44px] max-h-[120px] resize-none pr-16"
-          rows={1}
+          className="min-h-[52px] max-h-[200px] resize-none pr-16 text-sm"
+          rows={2}
         />
         <div
           className={`absolute bottom-2 right-2 text-xs ${

@@ -227,7 +227,7 @@ export const FloatingChatbot = () => {
                     </div>
                   )}
                   <div
-                    className={`max-w-[75%] rounded-lg p-3 ${
+                    className={`${message.role === "user" ? "max-w-[75%]" : "max-w-[90%]"} rounded-lg p-3 ${
                       message.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-foreground"
