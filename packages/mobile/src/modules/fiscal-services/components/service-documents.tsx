@@ -26,7 +26,8 @@ const DOC_TYPE_ICONS: Record<string, React.ComponentProps<typeof MaterialCommuni
 
 const DEFAULT_DOC_ICON: React.ComponentProps<typeof MaterialCommunityIcons>['name'] = 'file-document';
 
-function getDocIcon(docType: string): React.ComponentProps<typeof MaterialCommunityIcons>['name'] {
+function getDocIcon(docType: string | undefined): React.ComponentProps<typeof MaterialCommunityIcons>['name'] {
+  if (!docType) return DEFAULT_DOC_ICON;
   const lower = docType.toLowerCase();
   return DOC_TYPE_ICONS[lower] ?? DEFAULT_DOC_ICON;
 }
@@ -101,7 +102,7 @@ export function ServiceDocuments({ documents }: ServiceDocumentsProps) {
               </Text>
 
               {/* Accepted formats */}
-              {doc.accepted_formats.length > 0 && (
+              {doc.accepted_formats && doc.accepted_formats.length > 0 && (
                 <Text
                   variant="labelSmall"
                   style={{ color: colors.onSurfaceVariant, marginTop: 2 }}
