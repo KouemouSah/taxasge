@@ -8,6 +8,7 @@
 import { StyleSheet, View } from 'react-native';
 import { Card, Text, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
 import { formatCurrency } from '@core/utils/format';
@@ -30,6 +31,7 @@ interface ServiceCardProps {
 
 export function ServiceCard({ service, onPress }: ServiceCardProps) {
   const { colors, spacing, borderRadius } = useAppTheme();
+  const { t } = useTranslation();
 
   const isFree = service.expedition_price === 0 && service.renewal_price === 0;
 
@@ -86,7 +88,7 @@ export function ServiceCard({ service, onPress }: ServiceCardProps) {
               style={[styles.freeChip, { backgroundColor: colors.primaryContainer }]}
               textStyle={{ color: colors.onPrimaryContainer, fontSize: 11 }}
             >
-              Gratuito
+              {t('services.freeService')}
             </Chip>
           ) : (
             <Text

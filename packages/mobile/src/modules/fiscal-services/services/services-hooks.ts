@@ -62,6 +62,7 @@ export function useServiceSearch(debounceMs = 300) {
   const [filters, setFilters] = useState<ServiceSearchFilters>({});
   const [results, setResults] = useState<ServiceSearchResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = useCallback(
@@ -88,8 +89,11 @@ export function useServiceSearch(debounceMs = 300) {
             page: merged.page ?? 1,
           });
           setResults(data);
-        } catch {
-          // Keep previous results on error
+        } catch (error) {
+          if (__DEV__) {
+            console.warn('[ServiceSearch] Search failed:', error);
+          }
+          setSearchError(error instanceof Error ? error.message : 'Search failed');
         } finally {
           setIsSearching(false);
         }
@@ -108,5 +112,5 @@ export function useServiceSearch(debounceMs = 300) {
     };
   }, []);
 
-  return { query, search, results, isSearching, filters, updateFilters };
+  return { query, search, results, isSearching, searchError, filters, updateFilters };
 }

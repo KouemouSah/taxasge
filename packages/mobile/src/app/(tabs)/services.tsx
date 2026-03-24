@@ -251,8 +251,8 @@ export default function ServicesScreen() {
               variant="labelMedium"
               style={{ color: colors.onSurfaceVariant, marginHorizontal: spacing.md, marginBottom: spacing.sm }}
             >
-              {results.total_results} resultado{results.total_results !== 1 ? 's' : ''}
-              {results.execution_time_ms > 0 ? ` (${results.execution_time_ms}ms)` : ''}
+              {t('services.results', { count: results.total_results })}
+              {results.execution_time_ms > 0 ? ` ${t('services.searchTime', { time: results.execution_time_ms })}` : ''}
             </Text>
           }
         />
