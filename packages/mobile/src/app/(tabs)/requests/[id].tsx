@@ -152,6 +152,35 @@ export default function RequestDetailScreen() {
     }
   }, [id, t]);
 
+  const handleDownloadDocument = useCallback(async (fileUrl: string | undefined, fileName: string) => {
+    if (!fileUrl) {
+      setSnackbar(t('common.error'));
+      return;
+    }
+    try {
+      const ext = fileName.split('.').pop() ?? 'pdf';
+      const fileUri = `${cacheDirectory}${fileName}`;
+      const download = await downloadAsync(fileUrl, fileUri);
+
+      if (download.status === 200) {
+        const canShare = await isAvailableAsync();
+        if (canShare) {
+          const mimeType = ext === 'pdf' ? 'application/pdf'
+            : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+            : ext === 'png' ? 'image/png'
+            : 'application/octet-stream';
+          await shareAsync(download.uri, { mimeType, dialogTitle: fileName });
+        } else {
+          setSnackbar(t('detail.pdfSaved'));
+        }
+      } else {
+        setSnackbar(t('common.error'));
+      }
+    } catch {
+      setSnackbar(t('common.error'));
+    }
+  }, [t]);
+
   const essentialFields = useMemo(
     () => (data ? extractEssentialFields(data.data_sections) : []),
     [data],
@@ -361,7 +390,11 @@ export default function RequestDetailScreen() {
             {documents.map((doc, i) => (
               <View key={doc.id}>
                 {i > 0 && <Divider />}
-                <Pressable style={styles.docRow} android_ripple={{ color: colors.primaryContainer }}>
+                <Pressable
+                  style={styles.docRow}
+                  android_ripple={{ color: colors.primaryContainer }}
+                  onPress={() => handleDownloadDocument(doc.file_url, doc.file_name)}
+                >
                   <MaterialCommunityIcons
                     name={getDocIcon(doc.document_name) as keyof typeof MaterialCommunityIcons.glyphMap}
                     size={20}
