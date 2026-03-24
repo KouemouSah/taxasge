@@ -261,29 +261,19 @@ export default function ServicesScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
-              {/* Ministry name bar with back arrow */}
-              {isMinistryFilter && (
-                <Pressable onPress={handleClearSearch} style={styles.ministryBar}>
-                  <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
-                  <Text style={styles.ministryBarText} numberOfLines={1}>
-                    {searchText}
-                  </Text>
-                </Pressable>
-              )}
-
               {/* Non-ministry: simple back + count */}
               {!isMinistryFilter && (
-                <Pressable onPress={handleClearSearch} style={styles.ministryBar}>
+                <Pressable onPress={handleClearSearch} style={styles.backRow}>
                   <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
-                  <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
+                  <Text variant="labelMedium" style={{ color: colors.outline, flex: 1, marginLeft: 8 }}>
                     {t('services.results', { count: results.total })}
                   </Text>
                 </Pressable>
               )}
 
-              {/* Inner search + sort */}
+              {/* Inner search + sort (ministry mode) */}
               {isMinistryFilter && (
-                <View style={[styles.innerControls, { marginTop: 6 }]}>
+                <View style={styles.innerControls}>
                   <TextInput
                     placeholder={`${results.total} services — ${t('services.searchWithin')}`}
                     value={innerSearch}
@@ -344,14 +334,28 @@ export default function ServicesScreen() {
         <Text variant="headlineSmall" style={{ color: colors.onBackground, fontWeight: '700', marginBottom: 8 }}>
           {t('services.title')}
         </Text>
-        <Searchbar
-          placeholder={t('services.searchPlaceholder')}
-          onChangeText={handleSearchChange}
-          value={searchText}
-          style={[styles.searchBar, { backgroundColor: colors.surfaceVariant }]}
-          inputStyle={{ color: colors.onSurface }}
-          iconColor={colors.onSurfaceVariant}
-        />
+        {isMinistryFilter ? (
+          /* Ministry mode: back arrow + ministry name in search bar area */
+          <Pressable
+            onPress={handleClearSearch}
+            style={[styles.ministrySearchBar, { backgroundColor: colors.surfaceVariant }]}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+            <Text style={styles.ministrySearchText} numberOfLines={1}>
+              {searchText}
+            </Text>
+            <MaterialCommunityIcons name="close" size={18} color={colors.outline} />
+          </Pressable>
+        ) : (
+          <Searchbar
+            placeholder={t('services.searchPlaceholder')}
+            onChangeText={handleSearchChange}
+            value={searchText}
+            style={[styles.searchBar, { backgroundColor: colors.surfaceVariant }]}
+            inputStyle={{ color: colors.onSurface }}
+            iconColor={colors.onSurfaceVariant}
+          />
+        )}
       </View>
 
       {isSearchMode ? (
@@ -490,9 +494,11 @@ const styles = StyleSheet.create({
   viewToggle: { flexDirection: 'row', gap: 4 },
   toggleBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
-  // Ministry bar (back + name)
-  ministryBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  ministryBarText: { fontSize: 12, fontWeight: '600', color: '#616161', flex: 1 },
+  // Ministry search bar (replaces Searchbar when in ministry mode)
+  ministrySearchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, gap: 10 },
+  ministrySearchText: { fontSize: 12, fontWeight: '600', color: '#424242', flex: 1 },
+  // Back row for non-ministry search
+  backRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   innerControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   innerSearchInput: { flex: 1, backgroundColor: '#F5F5F5', fontSize: 13, height: 36 },
   sortBtns: { flexDirection: 'row', gap: 4 },
