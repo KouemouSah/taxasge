@@ -25,11 +25,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   Globe,
-  Search,
+  ScrollText,
   Landmark,
   Building2,
   Layers,
-  Calculator,
   LogIn,
   PanelLeftClose,
   PanelLeftOpen,
@@ -57,11 +56,10 @@ interface ChatSidebarProps {
 
 const NAV_ITEMS = [
   { key: 'home', href: '/', icon: Globe },
-  { key: 'services', href: '/services', icon: Search },
-  { key: 'ministries', href: '/ministere', icon: Landmark },
+  { key: 'licenses', href: '/licencias-comerciales', icon: ScrollText },
   { key: 'companies', href: '/annuaire', icon: Building2 },
-  { key: 'guide', href: '/categories', icon: Layers },
-  { key: 'calculator', href: '/calculateur', icon: Calculator },
+  { key: 'ministries', href: '/ministere', icon: Landmark },
+  { key: 'guide', href: '/guide', icon: Layers },
 ];
 
 const ICON_PROPS = { className: 'w-[18px] h-[18px] shrink-0', strokeWidth: 1.5 } as const;

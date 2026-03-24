@@ -67,8 +67,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }
 
   return (
-    <div className={className ? `p-4 flex gap-2 ${className}` : 'p-4 border-t flex gap-2 bg-background'}>
-      <div className="flex-1 relative">
+    <div className={className ? `p-3 ${className}` : 'p-4 border-t bg-background'}>
+      <div className="relative">
         <Textarea
           ref={textareaRef}
           value={message}
@@ -76,29 +76,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyPress={handleKeyPress}
           placeholder={placeholder || t('inputPlaceholder')}
           disabled={isDisabled}
-          className="min-h-[52px] max-h-[200px] resize-none pr-16 text-sm"
+          className={`min-h-[52px] max-h-[200px] resize-none pr-24 text-sm ${className ? 'border-0 shadow-none focus-visible:ring-0 bg-transparent' : ''}`}
           rows={2}
         />
-        <div
-          className={`absolute bottom-2 right-2 text-xs ${
-            isOverLimit ? 'text-destructive' : 'text-muted-foreground'
-          }`}
-        >
-          {charCount}/{maxLength}
+        {/* Controls inside textarea — bottom right */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          <span
+            className={`text-xs ${
+              isOverLimit ? 'text-destructive' : 'text-muted-foreground/50'
+            }`}
+          >
+            {charCount}/{maxLength}
+          </span>
+          <Button
+            onClick={handleSend}
+            disabled={isDisabled || !message.trim() || isOverLimit}
+            size="icon"
+            className="h-8 w-8 rounded-lg flex-shrink-0"
+          >
+            {isLoading || isStreaming ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
-      <Button
-        onClick={handleSend}
-        disabled={isDisabled || !message.trim() || isOverLimit}
-        size="icon"
-        className="flex-shrink-0"
-      >
-        {isLoading || isStreaming ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
-      </Button>
     </div>
   )
 }
