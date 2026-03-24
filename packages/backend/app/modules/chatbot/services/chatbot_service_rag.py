@@ -269,6 +269,19 @@ class ChatbotServiceRAG:
                     try:
                         result = await fn_impl(db, **fn_args)
                         tools_used.append(fn_name)
+
+                        # Check for empty results → suggest platform_info as fallback
+                        is_empty = (
+                            isinstance(result, dict)
+                            and result.get("count", 1) == 0
+                            and not result.get("error")
+                        )
+                        if is_empty:
+                            result["suggestion"] = (
+                                "No se encontraron resultados. "
+                                "Intenta con otros filtros o consulta get_platform_info."
+                            )
+
                         logger.info(f"Tool {fn_name}({fn_args}) → {len(str(result))} chars")
                         function_results_data.append({
                             "name": fn_name,
@@ -277,10 +290,14 @@ class ChatbotServiceRAG:
                         })
                     except Exception as tool_err:
                         logger.error(f"Tool {fn_name} error: {tool_err}")
+                        # Error recovery: provide helpful context instead of raw error
                         function_results_data.append({
                             "name": fn_name,
                             "args": fn_args,
-                            "result": {"error": str(tool_err)},
+                            "result": {
+                                "error": str(tool_err),
+                                "recovery_hint": "Esta herramienta falló. Intenta responder con el contexto disponible o sugiere preguntas alternativas al usuario.",
+                            },
                         })
 
                 # Send tool results back to Gemini (round 2+)
