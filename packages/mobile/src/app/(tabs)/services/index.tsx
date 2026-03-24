@@ -134,7 +134,7 @@ export default function ServicesScreen() {
   }, [search, currentMinistryId]);
 
   const handleServicePress = useCallback((id: number) => {
-    router.push(`/service/${id}`);
+    router.push(`/(tabs)/services/${id}` as never);
   }, [router]);
 
   // ---------------------------------------------------------------------------

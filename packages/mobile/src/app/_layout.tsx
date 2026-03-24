@@ -68,7 +68,6 @@ function RootNavigator() {
         options={{ presentation: 'fullScreenModal' }}
       />
       <Stack.Screen name="settings" />
-      <Stack.Screen name="service/[id]" />
       <Stack.Screen name="support" />
       <Stack.Screen name="calculator/index" />
       <Stack.Screen name="calculator/history" />
