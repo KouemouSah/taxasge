@@ -116,7 +116,15 @@
       "support": "Support"
     },
     "noRequests": "You don't have any requests yet",
-    "startFirstRequest": "Start your first service request"
+    "startFirstRequest": "Start your first service request",
+    "tabs": {
+      "requests": "Requests",
+      "payments": "Payments",
+      "notifications": "Alerts"
+    },
+    "emptyRequests": "No recent requests",
+    "emptyPayments": "No recent payments",
+    "actionRequired": "Action required"
   },
   "services": {
     "title": "Services",
@@ -127,7 +135,19 @@
     "documents": "Required documents",
     "procedures": "Procedures",
     "tariff": "Tariff",
-    "startRequest": "Start request"
+    "startRequest": "Start request",
+    "allServices": "All services",
+    "price": "Price",
+    "expedition": "Issuance",
+    "renewal": "Renewal",
+    "freeService": "Free",
+    "processingTime": "Processing time",
+    "processingDays": "{{count}} days",
+    "relatedServices": "Related services",
+    "legalReference": "Legal basis",
+    "noDescription": "No description available",
+    "results": "{{count}} results",
+    "searchTime": "in {{time}}ms"
   },
   "requests": {
     "title": "My Requests",
@@ -154,7 +174,11 @@
     "uploadDocument": "Upload document",
     "takePhoto": "Take photo",
     "chooseFile": "Choose file",
-    "noDocuments": "No documents uploaded"
+    "noDocuments": "No documents uploaded",
+    "reference": "Reference",
+    "amount": "Amount",
+    "noResults": "No requests",
+    "filterBy": "Filter by"
   },
   "chat": {
     "title": "AI Assistant",
@@ -290,6 +314,23 @@
     "title": "Notifications",
     "empty": "You have no notifications",
     "markRead": "Mark as read"
+  },
+  "detail": {
+    "documents": "Documents",
+    "downloadDocument": "Download",
+    "tariff": "Tariff",
+    "baseAmount": "Base amount",
+    "supplements": "Supplements",
+    "penalties": "Penalties",
+    "total": "Total",
+    "payment": "Payment",
+    "paymentReference": "Payment ref.",
+    "receiptNumber": "Receipt no.",
+    "appointment": "Appointment",
+    "notifications": "Activity",
+    "photo": "Photo",
+    "entity": "Entity",
+    "priority": "Priority"
   },
   "errors": {
     "network": "Connection error. Check your internet.",

@@ -1,151 +1,322 @@
 /**
- * Services Tab — Placeholder
+ * Services Tab — Fiscal Services Catalog
  *
- * Service catalog browser showing:
- * - Search bar
- * - Ministry cards grid
- * - "See all services" button
+ * Browse mode (default): horizontal popular services list + ministry grid.
+ * Search mode (activated by typing): debounced search results with facets.
  *
- * TODO: Wire up to GET /fiscal-services/ and GET /ministries/
+ * Press ministry -> filter search by ministry_id.
+ * Press service -> navigate to /service/{id}.
  */
 
-import { useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
-import { Text, Searchbar, Card, Button } from 'react-native-paper';
+import { useCallback, useRef, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Pressable,
+  type ListRenderItemInfo,
+} from 'react-native';
+import { Text, Searchbar, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import {
+  useMinistries,
+  usePopularServices,
+  useServiceSearch,
+} from '@modules/fiscal-services';
+import type {
+  MinistryItem,
+  FiscalServiceItem,
+  ServiceSearchResult,
+} from '@modules/fiscal-services';
 
-/** Placeholder ministry data for UI structure */
-const MOCK_MINISTRIES = [
-  { id: '1', name: 'CNEDOGE', icon: 'passport' as const, serviceCount: 12 },
-  { id: '2', name: 'DGT', icon: 'car' as const, serviceCount: 8 },
-  { id: '3', name: 'ONRC', icon: 'file-sign' as const, serviceCount: 15 },
-  { id: '4', name: 'ITVE', icon: 'car-cog' as const, serviceCount: 5 },
-  { id: '5', name: 'Hacienda', icon: 'cash-register' as const, serviceCount: 20 },
-  { id: '6', name: 'Seguridad', icon: 'shield-account' as const, serviceCount: 10 },
-];
+import { ServiceCard, type ServiceCardItem } from '@modules/fiscal-services/components/service-card';
+import { MinistryCard } from '@modules/fiscal-services/components/ministry-card';
+import { EmptyState } from '@components/ui/empty-state';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Convert a FiscalServiceItem (from popular endpoint) into ServiceCardItem shape. */
+function toServiceCardItem(s: FiscalServiceItem): ServiceCardItem {
+  return {
+    id: s.id,
+    name: s.name_es,
+    description: s.description_es,
+    expedition_price: s.tasa_expedicion ?? 0,
+    renewal_price: s.tasa_renovacion ?? 0,
+    ministry: s.ministry_name,
+    category: s.category_name,
+    service_type: s.service_type,
+  };
+}
+
+/** Convert a ServiceSearchResult into ServiceCardItem shape. */
+function searchToCardItem(s: ServiceSearchResult): ServiceCardItem {
+  return {
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    expedition_price: s.expedition_price,
+    renewal_price: s.renewal_price,
+    ministry: s.ministry,
+    category: s.category,
+    service_type: s.service_type,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 export default function ServicesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // Data hooks
+  const { data: ministries, isLoading: ministriesLoading } = useMinistries('es');
+  const { data: popularServices, isLoading: popularLoading } = usePopularServices(10);
+  const { query, search, results, isSearching } = useServiceSearch(300);
 
-  const filteredMinistries = MOCK_MINISTRIES.filter((m) =>
-    m.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  // Track whether user is in search mode
+  const [searchText, setSearchText] = useState('');
+  const searchBarRef = useRef<{ blur: () => void }>(null);
+
+  const isSearchMode = searchText.length > 0 || results != null;
+
+  // Handlers
+  const handleSearchChange = useCallback(
+    (text: string) => {
+      setSearchText(text);
+      search(text);
+    },
+    [search],
   );
+
+  const handleClearSearch = useCallback(() => {
+    setSearchText('');
+    search('');
+  }, [search]);
+
+  const handleMinistryPress = useCallback(
+    (ministry: MinistryItem) => {
+      // Enter search mode filtered by this ministry
+      setSearchText(ministry.name_es);
+      search(ministry.name_es, { ministry_id: ministry.id });
+    },
+    [search],
+  );
+
+  const handleServicePress = useCallback(
+    (id: number) => {
+      router.push(`/service/${id}`);
+    },
+    [router],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render helpers
+  // ---------------------------------------------------------------------------
+
+  const renderPopularItem = useCallback(
+    ({ item }: ListRenderItemInfo<FiscalServiceItem>) => (
+      <View style={{ marginRight: spacing.sm }}>
+        <ServiceCard
+          service={toServiceCardItem(item)}
+          onPress={() => handleServicePress(item.id)}
+        />
+      </View>
+    ),
+    [spacing.sm, handleServicePress],
+  );
+
+  const renderSearchItem = useCallback(
+    ({ item }: ListRenderItemInfo<ServiceSearchResult>) => (
+      <View style={{ marginBottom: spacing.sm, marginHorizontal: spacing.md }}>
+        <ServiceCard
+          service={searchToCardItem(item)}
+          onPress={() => handleServicePress(item.id)}
+        />
+      </View>
+    ),
+    [spacing.sm, spacing.md, handleServicePress],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Browse mode content (popular + ministries)
+  // ---------------------------------------------------------------------------
+
+  const renderBrowseContent = () => (
+    <FlatList
+      data={[]}
+      renderItem={null}
+      ListHeaderComponent={
+        <>
+          {/* Popular services section */}
+          <View style={{ marginBottom: spacing.lg }}>
+            <Text
+              variant="titleMedium"
+              style={[styles.sectionTitle, { color: colors.onBackground, marginBottom: spacing.sm, marginHorizontal: spacing.md }]}
+            >
+              {t('services.popular', { defaultValue: 'Servicios populares' })}
+            </Text>
+
+            {popularLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.lg }} />
+            ) : popularServices && popularServices.length > 0 ? (
+              <FlatList
+                data={popularServices}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderPopularItem}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: spacing.md }}
+              />
+            ) : (
+              <Text
+                variant="bodySmall"
+                style={{ color: colors.outline, textAlign: 'center', paddingVertical: spacing.md }}
+              >
+                {t('services.noPopular', { defaultValue: 'No hay servicios populares' })}
+              </Text>
+            )}
+          </View>
+
+          {/* Ministries section header */}
+          <Text
+            variant="titleMedium"
+            style={[
+              styles.sectionTitle,
+              { color: colors.onBackground, marginBottom: spacing.sm, marginHorizontal: spacing.md },
+            ]}
+          >
+            {t('services.allMinistries', { defaultValue: 'Ministerios' })}
+          </Text>
+
+          {/* Ministry grid */}
+          {ministriesLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.lg }} />
+          ) : ministries && ministries.length > 0 ? (
+            <View style={[styles.grid, { gap: spacing.sm, paddingHorizontal: spacing.md }]}>
+              {ministries.map((ministry) => (
+                <View key={ministry.id} style={styles.gridItem}>
+                  <MinistryCard
+                    ministry={ministry}
+                    onPress={() => handleMinistryPress(ministry)}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text
+              variant="bodySmall"
+              style={{ color: colors.outline, textAlign: 'center', paddingVertical: spacing.md }}
+            >
+              {t('services.noMinistries', { defaultValue: 'No hay ministerios disponibles' })}
+            </Text>
+          )}
+        </>
+      }
+      contentContainerStyle={{ paddingBottom: spacing.xxl }}
+    />
+  );
+
+  // ---------------------------------------------------------------------------
+  // Search mode content
+  // ---------------------------------------------------------------------------
+
+  const renderSearchContent = () => {
+    if (isSearching) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      );
+    }
+
+    if (results && results.results.length > 0) {
+      return (
+        <FlatList
+          data={results.results}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderSearchItem}
+          contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
+          ListHeaderComponent={
+            <Text
+              variant="labelMedium"
+              style={{ color: colors.onSurfaceVariant, marginHorizontal: spacing.md, marginBottom: spacing.sm }}
+            >
+              {results.total_results} resultado{results.total_results !== 1 ? 's' : ''}
+              {results.execution_time_ms > 0 ? ` (${results.execution_time_ms}ms)` : ''}
+            </Text>
+          }
+        />
+      );
+    }
+
+    if (results && results.results.length === 0) {
+      return (
+        <EmptyState
+          icon="magnify-close"
+          title={t('services.noResults', { defaultValue: 'Sin resultados' })}
+          description={t('services.noResultsDesc', {
+            defaultValue: 'No se encontraron servicios para tu busqueda. Intenta con otros terminos.',
+          })}
+          actionLabel={t('common.clear', { defaultValue: 'Limpiar' })}
+          onAction={handleClearSearch}
+        />
+      );
+    }
+
+    // Search mode but no results yet (user just started typing)
+    return null;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Main render
+  // ---------------------------------------------------------------------------
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={['top']}
     >
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { padding: spacing.md }]}
-      >
-        {/* Header */}
+      {/* Header */}
+      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
         <Text
           variant="headlineSmall"
           style={[styles.title, { color: colors.onBackground, marginBottom: spacing.md }]}
         >
-          {t('services.title')}
+          {t('services.title', { defaultValue: 'Servicios' })}
         </Text>
 
         {/* Search bar */}
         <Searchbar
-          placeholder={t('services.searchPlaceholder')}
-          onChangeText={setSearchQuery}
-          value={searchQuery}
+          placeholder={t('services.searchPlaceholder', { defaultValue: 'Buscar servicios...' })}
+          onChangeText={handleSearchChange}
+          value={searchText}
           style={[
             styles.searchBar,
             {
               backgroundColor: colors.surfaceVariant,
               borderRadius: borderRadius.md,
-              marginBottom: spacing.lg,
+              marginBottom: spacing.md,
             },
           ]}
           inputStyle={{ color: colors.onSurface }}
           iconColor={colors.onSurfaceVariant}
           placeholderTextColor={colors.outline}
+          onClearIconPress={handleClearSearch}
         />
+      </View>
 
-        {/* Categories section */}
-        <Text
-          variant="titleMedium"
-          style={[styles.sectionTitle, { color: colors.onBackground, marginBottom: spacing.sm }]}
-        >
-          {t('services.allMinistries')}
-        </Text>
-
-        {/* Ministry grid */}
-        <View style={[styles.grid, { gap: spacing.sm }]}>
-          {filteredMinistries.map((ministry) => (
-            <Card
-              key={ministry.id}
-              style={[
-                styles.ministryCard,
-                {
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-              onPress={() => router.push(`/service/${ministry.id}`)}
-            >
-              <Card.Content style={[styles.cardContent, { padding: spacing.md }]}>
-                <View
-                  style={[
-                    styles.iconCircle,
-                    {
-                      backgroundColor: colors.primaryContainer,
-                      borderRadius: borderRadius.full,
-                      width: 48,
-                      height: 48,
-                      marginBottom: spacing.sm,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={ministry.icon}
-                    size={24}
-                    color={colors.primary}
-                  />
-                </View>
-                <Text
-                  variant="titleSmall"
-                  style={{ color: colors.onSurface }}
-                  numberOfLines={1}
-                >
-                  {ministry.name}
-                </Text>
-                <Text
-                  variant="labelSmall"
-                  style={{ color: colors.onSurfaceVariant }}
-                >
-                  {ministry.serviceCount} {t('services.title').toLowerCase()}
-                </Text>
-              </Card.Content>
-            </Card>
-          ))}
-        </View>
-
-        {/* See all */}
-        <Button
-          mode="outlined"
-          onPress={() => {
-            // TODO: Navigate to full services catalog
-          }}
-          style={{ marginTop: spacing.lg }}
-          icon="arrow-right"
-          contentStyle={styles.seeAllContent}
-        >
-          {t('common.seeAll')}
-        </Button>
-      </ScrollView>
+      {/* Content: browse or search */}
+      {isSearchMode ? renderSearchContent() : renderBrowseContent()}
     </SafeAreaView>
   );
 }
@@ -153,9 +324,6 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   title: {
     fontWeight: '700',
@@ -170,18 +338,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  ministryCard: {
+  gridItem: {
     width: '48%',
-    minWidth: 150,
+    minWidth: 140,
   },
-  cardContent: {
-    alignItems: 'center',
-  },
-  iconCircle: {
+  centered: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  seeAllContent: {
-    flexDirection: 'row-reverse',
   },
 });

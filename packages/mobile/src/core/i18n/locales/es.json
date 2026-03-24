@@ -116,7 +116,15 @@
       "support": "Soporte"
     },
     "noRequests": "Aún no tienes solicitudes",
-    "startFirstRequest": "Inicia tu primera solicitud de servicio"
+    "startFirstRequest": "Inicia tu primera solicitud de servicio",
+    "tabs": {
+      "requests": "Solicitudes",
+      "payments": "Pagos",
+      "notifications": "Alertas"
+    },
+    "emptyRequests": "No hay solicitudes recientes",
+    "emptyPayments": "No hay pagos recientes",
+    "actionRequired": "Acción requerida"
   },
   "services": {
     "title": "Servicios",
@@ -127,7 +135,19 @@
     "documents": "Documentos requeridos",
     "procedures": "Procedimientos",
     "tariff": "Tarifa",
-    "startRequest": "Iniciar solicitud"
+    "startRequest": "Iniciar solicitud",
+    "allServices": "Todos los servicios",
+    "price": "Precio",
+    "expedition": "Expedición",
+    "renewal": "Renovación",
+    "freeService": "Gratuito",
+    "processingTime": "Tiempo de trámite",
+    "processingDays": "{{count}} días",
+    "relatedServices": "Servicios relacionados",
+    "legalReference": "Base legal",
+    "noDescription": "Sin descripción disponible",
+    "results": "{{count}} resultados",
+    "searchTime": "en {{time}}ms"
   },
   "requests": {
     "title": "Mis Solicitudes",
@@ -154,7 +174,11 @@
     "uploadDocument": "Subir documento",
     "takePhoto": "Tomar foto",
     "chooseFile": "Seleccionar archivo",
-    "noDocuments": "Sin documentos subidos"
+    "noDocuments": "Sin documentos subidos",
+    "reference": "Referencia",
+    "amount": "Monto",
+    "noResults": "Sin solicitudes",
+    "filterBy": "Filtrar por"
   },
   "chat": {
     "title": "Asistente IA",
@@ -290,6 +314,23 @@
     "title": "Notificaciones",
     "empty": "No tienes notificaciones",
     "markRead": "Marcar como leída"
+  },
+  "detail": {
+    "documents": "Documentos",
+    "downloadDocument": "Descargar",
+    "tariff": "Tarifa",
+    "baseAmount": "Monto base",
+    "supplements": "Suplementos",
+    "penalties": "Penalidades",
+    "total": "Total",
+    "payment": "Pago",
+    "paymentReference": "Ref. pago",
+    "receiptNumber": "Nº recibo",
+    "appointment": "Cita",
+    "notifications": "Actividad",
+    "photo": "Foto",
+    "entity": "Entidad",
+    "priority": "Prioridad"
   },
   "errors": {
     "network": "Error de conexión. Verifica tu internet.",

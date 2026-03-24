@@ -116,7 +116,15 @@
       "support": "Support"
     },
     "noRequests": "Vous n'avez pas encore de demandes",
-    "startFirstRequest": "Lancez votre première demande de service"
+    "startFirstRequest": "Lancez votre première demande de service",
+    "tabs": {
+      "requests": "Demandes",
+      "payments": "Paiements",
+      "notifications": "Alertes"
+    },
+    "emptyRequests": "Aucune demande récente",
+    "emptyPayments": "Aucun paiement récent",
+    "actionRequired": "Action requise"
   },
   "services": {
     "title": "Services",
@@ -127,7 +135,19 @@
     "documents": "Documents requis",
     "procedures": "Procédures",
     "tariff": "Tarif",
-    "startRequest": "Lancer la demande"
+    "startRequest": "Lancer la demande",
+    "allServices": "Tous les services",
+    "price": "Prix",
+    "expedition": "Expédition",
+    "renewal": "Renouvellement",
+    "freeService": "Gratuit",
+    "processingTime": "Délai de traitement",
+    "processingDays": "{{count}} jours",
+    "relatedServices": "Services associés",
+    "legalReference": "Base légale",
+    "noDescription": "Aucune description disponible",
+    "results": "{{count}} résultats",
+    "searchTime": "en {{time}}ms"
   },
   "requests": {
     "title": "Mes demandes",
@@ -154,7 +174,11 @@
     "uploadDocument": "Télécharger un document",
     "takePhoto": "Prendre une photo",
     "chooseFile": "Choisir un fichier",
-    "noDocuments": "Aucun document téléchargé"
+    "noDocuments": "Aucun document téléchargé",
+    "reference": "Référence",
+    "amount": "Montant",
+    "noResults": "Aucune demande",
+    "filterBy": "Filtrer par"
   },
   "chat": {
     "title": "Assistant IA",
@@ -290,6 +314,23 @@
     "title": "Notifications",
     "empty": "Vous n'avez pas de notifications",
     "markRead": "Marquer comme lue"
+  },
+  "detail": {
+    "documents": "Documents",
+    "downloadDocument": "Télécharger",
+    "tariff": "Tarif",
+    "baseAmount": "Montant de base",
+    "supplements": "Suppléments",
+    "penalties": "Pénalités",
+    "total": "Total",
+    "payment": "Paiement",
+    "paymentReference": "Réf. paiement",
+    "receiptNumber": "Nº reçu",
+    "appointment": "Rendez-vous",
+    "notifications": "Activité",
+    "photo": "Photo",
+    "entity": "Entité",
+    "priority": "Priorité"
   },
   "errors": {
     "network": "Erreur de connexion. Vérifiez votre internet.",
