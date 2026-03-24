@@ -311,7 +311,7 @@ async def get_office_locations(db, **kwargs) -> dict:
     idx = 1
 
     if entity_code:
-        conditions.append(f"(el.entity_code ILIKE '%' || ${idx} || '%' OR e.name_es ILIKE '%' || ${idx} || '%')")
+        conditions.append(f"(el.entity_code ILIKE '%' || ${idx} || '%' OR e.name ILIKE '%' || ${idx} || '%')")
         params.append(entity_code)
         idx += 1
 
@@ -326,7 +326,7 @@ async def get_office_locations(db, **kwargs) -> dict:
         SELECT el.entity_code, el.location_name, el.city, el.region,
                el.location_address, el.phone, el.email,
                el.operating_hours,
-               e.name_es AS entity_name,
+               e.name AS entity_name,
                ci.name AS city_name
         FROM entity_locations el
         LEFT JOIN entities e ON e.code = el.entity_code
@@ -345,18 +345,19 @@ async def get_office_locations(db, **kwargs) -> dict:
 
 
 async def get_workflow_guide(db, **kwargs) -> dict:
-    """Get a complete guide for an administrative procedure (workflow)."""
+    """Get a complete tutorial-style guide for an administrative procedure."""
     workflow_code = kwargs.get("workflow_code", "")
     workflow_name = kwargs.get("workflow_name", "")
 
     if not workflow_code and not workflow_name:
-        # List available workflows
+        # List all available workflows grouped by category
         rows = await db.fetch("""
             SELECT w.code, w.name_es, w.description_es, w.category,
-                   w.is_active
+                   w.requires_appointment, w.requires_agent_validation,
+                   w.sla_hours, w.max_processing_days
             FROM workflows w
-            WHERE w.is_active = true AND w.parent_workflow_id IS NULL
-            ORDER BY w.name_es
+            WHERE w.is_active = true AND w.parent_workflow_code IS NULL
+            ORDER BY w.category, w.name_es
         """)
         return {
             "available_workflows": [
@@ -364,28 +365,48 @@ async def get_workflow_guide(db, **kwargs) -> dict:
                 for r in rows
             ],
             "count": len(rows),
-            "hint": "Use workflow_code to get detailed guide for a specific workflow",
+            "hint": "Usa workflow_code para obtener la guía detallada de un trámite específico",
         }
 
-    # Find workflow
+    # Find workflow — search by code or name
     if workflow_code:
         wf = await db.fetchrow("""
-            SELECT w.id, w.code, w.name_es, w.description_es, w.category
+            SELECT w.code, w.name_es, w.description_es, w.category,
+                   w.requires_appointment, w.requires_agent_validation,
+                   w.sla_hours, w.max_processing_days,
+                   w.appointment_delay_days, w.appointment_entity_code
             FROM workflows w WHERE w.code = $1
         """, workflow_code)
     else:
         wf = await db.fetchrow("""
-            SELECT w.id, w.code, w.name_es, w.description_es, w.category
-            FROM workflows w WHERE w.name_es ILIKE '%' || $1 || '%' AND w.is_active = true
+            SELECT w.code, w.name_es, w.description_es, w.category,
+                   w.requires_appointment, w.requires_agent_validation,
+                   w.sla_hours, w.max_processing_days,
+                   w.appointment_delay_days, w.appointment_entity_code
+            FROM workflows w
+            WHERE w.name_es ILIKE '%' || $1 || '%' AND w.is_active = true
             LIMIT 1
         """, workflow_name)
 
     if not wf:
-        return {"error": f"Workflow not found: {workflow_code or workflow_name}"}
+        return {"error": f"Trámite no encontrado: {workflow_code or workflow_name}"}
 
     result = {k: str(v) if v is not None else None for k, v in dict(wf).items()}
 
-    # Get required documents
+    # Sub-workflows (e.g., PASAPORTE → NUEVO, RENOVACION, PERDIDA, ROBO)
+    sub_workflows = await db.fetch("""
+        SELECT code, name_es, description_es
+        FROM workflows
+        WHERE parent_workflow_code = $1 AND is_active = true
+        ORDER BY display_order, name_es
+    """, wf["code"])
+    if sub_workflows:
+        result["sub_types"] = [
+            {k: str(v) if v is not None else None for k, v in dict(s).items()}
+            for s in sub_workflows
+        ]
+
+    # Required documents with instructions
     docs = await db.fetch("""
         SELECT wdr.document_code, wdr.document_name_es, wdr.is_required,
                wdr.condition_type, wdr.instructions_es
@@ -398,7 +419,7 @@ async def get_workflow_guide(db, **kwargs) -> dict:
         for d in docs
     ]
 
-    # Get tariffs
+    # Tariffs with details
     tariffs = await db.fetch("""
         SELECT wt.solicitud_type, wt.tariff_type, wt.amount,
                wt.currency, wt.legal_reference
@@ -411,9 +432,23 @@ async def get_workflow_guide(db, **kwargs) -> dict:
         for t in tariffs
     ]
 
-    # Get entities that handle this workflow
+    # Also get tariffs for sub-workflows
+    if sub_workflows:
+        sub_codes = [s["code"] for s in sub_workflows]
+        sub_tariffs = await db.fetch("""
+            SELECT wt.workflow_code, wt.solicitud_type, wt.amount, wt.currency
+            FROM workflow_tariffs wt
+            WHERE wt.workflow_code = ANY($1) AND wt.is_active = true
+            ORDER BY wt.workflow_code
+        """, sub_codes)
+        result["sub_type_tariffs"] = [
+            {k: str(v) if v is not None else None for k, v in dict(t).items()}
+            for t in sub_tariffs
+        ]
+
+    # Entities that handle this workflow
     entities = await db.fetch("""
-        SELECT e.code, e.name_es, e.entity_type
+        SELECT e.code, e.name, e.entity_type
         FROM entities e
         WHERE e.workflow_codes @> $1::jsonb AND e.is_active = true
     """, f'["{wf["code"]}"]')
@@ -421,6 +456,95 @@ async def get_workflow_guide(db, **kwargs) -> dict:
         {k: str(v) if v is not None else None for k, v in dict(e).items()}
         for e in entities
     ]
+
+    # Office locations for handling entities
+    if entities:
+        entity_codes = [e["code"] for e in entities]
+        locations = await db.fetch("""
+            SELECT el.entity_code, el.location_name, el.city, el.region,
+                   el.location_address, el.phone, el.operating_hours
+            FROM entity_locations el
+            WHERE el.entity_code = ANY($1) AND el.is_active = true
+            ORDER BY el.entity_code, el.city
+        """, entity_codes)
+        result["office_locations"] = [
+            {k: str(v) if v is not None else None for k, v in dict(l).items()}
+            for l in locations
+        ]
+
+    # Build tutorial steps — clear, simple, for anyone
+    step_num = 1
+    tutorial = []
+
+    tutorial.append(
+        f"{step_num}. **Accede a la plataforma Facil** → Entra en facil.gq, "
+        f"crea una cuenta si no tienes, e inicia sesión"
+    )
+    step_num += 1
+
+    tutorial.append(
+        f"{step_num}. **Selecciona el trámite** → Busca '{wf['name_es']}' "
+        f"en el catálogo de servicios"
+    )
+    step_num += 1
+
+    doc_count = len(docs)
+    if doc_count > 0:
+        doc_names = ", ".join(d["document_name_es"] for d in docs[:3] if d.get("document_name_es"))
+        extra = f" y {doc_count - 3} más" if doc_count > 3 else ""
+        tutorial.append(
+            f"{step_num}. **Prepara tus documentos** → Necesitas {doc_count} documentos: "
+            f"{doc_names}{extra}. Escanéalos o toma fotos claras"
+        )
+        step_num += 1
+
+    tutorial.append(
+        f"{step_num}. **Sube los documentos** → Adjunta los archivos escaneados "
+        f"en la plataforma, uno por uno"
+    )
+    step_num += 1
+
+    if wf["requires_appointment"]:
+        delay = wf.get("appointment_delay_days") or 3
+        tutorial.append(
+            f"{step_num}. **Reserva tu cita** → Elige una fecha disponible "
+            f"(a partir de {delay} días desde hoy) y un horario"
+        )
+        step_num += 1
+
+    tariff_amount = tariffs[0]["amount"] if tariffs else "0"
+    tariff_currency = tariffs[0]["currency"] if tariffs else "XAF"
+    tutorial.append(
+        f"{step_num}. **Realiza el pago** → Paga **{tariff_amount} {tariff_currency}** "
+        f"por BANGE Mobile Money, tarjeta, transferencia o efectivo en ventanilla"
+    )
+    step_num += 1
+
+    if wf["requires_appointment"]:
+        tutorial.append(
+            f"{step_num}. **Acude a tu cita** → Lleva los documentos ORIGINALES "
+            f"el día y hora reservados"
+        )
+        step_num += 1
+
+    if wf["requires_agent_validation"]:
+        sla = wf.get("sla_hours") or 48
+        tutorial.append(
+            f"{step_num}. **Espera la revisión** → Un agente verificará tu solicitud "
+            f"en un plazo máximo de {sla} horas"
+        )
+        step_num += 1
+
+    tutorial.append(
+        f"{step_num}. **Recoge tu documento** → Recibirás una notificación "
+        f"cuando esté listo. Acude a la oficina indicada con tu DIP"
+    )
+
+    processing = wf.get("max_processing_days")
+    if processing:
+        tutorial.append(f"\n**Tiempo total estimado:** {processing} días hábiles")
+
+    result["tutorial_steps"] = tutorial
 
     return result
 
