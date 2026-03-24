@@ -42,9 +42,7 @@ async def search_fiscal_services(db, **kwargs) -> dict:
     ministry = kwargs.get("ministry", "")
     limit = min(int(kwargs.get("limit", 10)), 20)
 
-    if not query and not category and not ministry:
-        return {"error": "Provide at least one search parameter: query, category, or ministry"}
-
+    # No guard — allow listing popular services without filters
     conditions = ["fs.status = 'active'"]
     params = []
     idx = 1
@@ -672,19 +670,19 @@ if VERTEX_AVAILABLE:
         ),
         FunctionDeclaration(
             name="search_companies",
-            description="Buscar en el directorio de empresas registradas en Guinea Ecuatorial. Usar cuando el usuario pregunta sobre empresas, directorio empresarial, NIF, o actividad comercial.",
+            description="Buscar en el directorio de empresas registradas en Guinea Ecuatorial. SIEMPRE llamar esta función cuando el usuario mencione empresas, directorio empresarial, NIF, o actividad comercial. Si no se especifica filtro, llamar SIN parámetros para listar las empresas registradas.",
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Nombre de empresa, NIF, o número de registro"},
-                    "zone": {"type": "string", "description": "Zona comercial (ej: 'Malabo', 'Bata', 'Continental')"},
-                    "sector": {"type": "string", "description": "Sector de actividad (ej: 'Comercio', 'Construcción')"},
+                    "query": {"type": "string", "description": "Opcional: nombre de empresa, NIF, o número de registro. Dejar vacío para listar todas."},
+                    "zone": {"type": "string", "description": "Opcional: zona comercial (ej: 'Malabo', 'Bata')"},
+                    "sector": {"type": "string", "description": "Opcional: sector de actividad (ej: 'Comercio')"},
                 },
             },
         ),
         FunctionDeclaration(
             name="get_ministry_directory",
-            description="Obtener información sobre los ministerios del gobierno de Guinea Ecuatorial: sectores, cantidad de servicios, contacto. Usar cuando el usuario pregunta sobre ministerios, organización gubernamental, o qué ministerio gestiona qué.",
+            description="Obtener información sobre los ministerios del gobierno de Guinea Ecuatorial. SIEMPRE llamar cuando el usuario mencione ministerios, gobierno, o organización gubernamental. Sin parámetros = listar todos los ministerios.",
             parameters={
                 "type": "object",
                 "properties": {
@@ -694,7 +692,7 @@ if VERTEX_AVAILABLE:
         ),
         FunctionDeclaration(
             name="get_office_locations",
-            description="Obtener direcciones, horarios y contacto de las oficinas gubernamentales. Usar cuando el usuario pregunta dónde realizar un trámite, horarios de atención, o ubicación de oficinas.",
+            description="Obtener direcciones, horarios y contacto de oficinas gubernamentales. SIEMPRE llamar cuando el usuario pregunte dónde, horarios, ubicación, o dirección de oficinas. Sin parámetros = listar todas.",
             parameters={
                 "type": "object",
                 "properties": {
@@ -705,7 +703,7 @@ if VERTEX_AVAILABLE:
         ),
         FunctionDeclaration(
             name="get_workflow_guide",
-            description="Obtener guía completa de un trámite administrativo: documentos, tarifas, entidades responsables. Usar cuando el usuario pregunta cómo hacer un trámite, qué necesita, o los pasos a seguir.",
+            description="Obtener guía tutorial completa de un trámite administrativo. SIEMPRE llamar cuando el usuario pregunte cómo hacer un trámite, pasos, documentos necesarios, o procedimiento. Sin parámetros = listar todos los trámites disponibles.",
             parameters={
                 "type": "object",
                 "properties": {
@@ -716,7 +714,7 @@ if VERTEX_AVAILABLE:
         ),
         FunctionDeclaration(
             name="get_service_categories",
-            description="Explorar el catálogo de servicios por categoría. Usar cuando el usuario quiere saber qué servicios hay disponibles, explorar por sector, o entender la organización del catálogo.",
+            description="Explorar el catálogo de servicios por categoría. SIEMPRE llamar cuando el usuario pregunte qué servicios hay, categorías, o quiera explorar el catálogo. Sin parámetros = listar todas las categorías.",
             parameters={
                 "type": "object",
                 "properties": {
