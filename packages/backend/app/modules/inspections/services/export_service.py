@@ -518,6 +518,19 @@ def _generate_verification_qr(doc_type: str, doc_id: str) -> str:
 # Private helper — HTML template for PDF
 # ================================================================
 
+def _load_logo_base64() -> str:
+    """Load Facil logo as base64 (same paths as InspectionPdfService)."""
+    from pathlib import Path
+    for path in [
+        Path(__file__).parent.parent.parent / "service_requests" / "templates" / "logo.png",
+        Path(__file__).parent.parent.parent.parent / "service_requests" / "templates" / "logo.png",
+        Path(__file__).parent.parent.parent.parent.parent.parent / "packages" / "web" / "public" / "logo.png",
+    ]:
+        if path.exists():
+            return base64.b64encode(path.read_bytes()).decode()
+    return ""
+
+
 def _build_inspections_pdf_html(
     entity_code: str,
     date_range: str,
@@ -572,77 +585,21 @@ def _build_inspections_pdf_html(
 
     conformity_rate = f"{conforme * 100 / total:.1f}" if total > 0 else "0.0"
     generated_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    logo_b64 = _load_logo_base64()
 
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            @page {{ size: A4 landscape; margin: 1.5cm 1.2cm 2cm 1.2cm; }}
-            body {{ font-family: Arial, sans-serif; font-size: 9pt; color: #222; line-height: 1.4; }}
-            .header {{ text-align: center; border-bottom: 2px solid #2d5a03; padding-bottom: 8px; margin-bottom: 12px; }}
-            .republic {{ font-size: 8pt; color: #666; margin-bottom: 4px; }}
-            .header h1 {{ font-size: 14pt; color: #3a7a0a; margin: 4px 0; }}
-            .header h2 {{ font-size: 10pt; color: #555; margin: 2px 0; font-weight: normal; }}
-            .section {{ margin-bottom: 10px; }}
-            .section-title {{ font-size: 10pt; font-weight: bold; color: #3a7a0a; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-bottom: 6px; }}
-            table {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
-            th, td {{ padding: 4px 6px; text-align: left; font-size: 8pt; }}
-            th {{ background: #f0f0f0; font-weight: bold; border-bottom: 1px solid #999; }}
-            td {{ border-bottom: 1px solid #ddd; }}
-            .label {{ color: #666; font-size: 8pt; }}
-            .value {{ font-weight: bold; }}
-            .amount-red {{ color: #dc3545; font-weight: bold; }}
-            .amount-green {{ color: #28a745; font-weight: bold; }}
-            .summary-table {{ width: auto; margin-bottom: 12px; }}
-            .summary-table td {{ border: none; padding: 4px 14px 4px 0; }}
-            .summary-label {{ color: #666; font-size: 7pt; text-transform: uppercase; }}
-            .summary-value {{ font-size: 12pt; font-weight: bold; }}
-            .stamp {{ border: 2px solid #3a7a0a; padding: 6px; text-align: center; margin-top: 10px; font-size: 8pt; }}
-            .footer {{ position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #ddd; padding-top: 4px; }}
-        </style>
-    </head>
-    <body>
-        <!-- Header — same design as inspection_report.html -->
-        <div class="header">
-            <div class="republic">REP&Uacute;BLICA DE GUINEA ECUATORIAL</div>
-            <h1>RAPPORT D'INSPECTIONS &mdash; {html_escape(entity_code)}</h1>
-            <h2>Contrôle Terrain &mdash; Obligations Fiscales &mdash; {html_escape(date_range)}</h2>
-        </div>
-
-        <!-- Summary KPIs -->
+    # Empty state message
+    if total == 0:
+        data_section = """
         <div class="section">
-            <div class="section-title">R&Eacute;SUM&Eacute;</div>
-            <table class="summary-table">
-                <tr>
-                    <td>
-                        <span class="summary-label">Total Inspections</span><br/>
-                        <span class="summary-value">{total}</span>
-                    </td>
-                    <td>
-                        <span class="summary-label">Conformes</span><br/>
-                        <span class="summary-value amount-green">{conforme}</span>
-                    </td>
-                    <td>
-                        <span class="summary-label">Non Conformes</span><br/>
-                        <span class="summary-value amount-red">{non_conforme}</span>
-                    </td>
-                    <td>
-                        <span class="summary-label">Taux Conformit&eacute;</span><br/>
-                        <span class="summary-value">{conformity_rate}%</span>
-                    </td>
-                    <td>
-                        <span class="summary-label">Montant Collect&eacute;</span><br/>
-                        <span class="summary-value" style="color:#3a7a0a;">{total_collected:,.0f} XAF</span>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Data table -->
+            <div class="section-title">DETALLE DE INSPECCIONES</div>
+            <p style="text-align:center; color:#666; padding:20px 0;">
+                No se encontraron inspecciones para el per&iacute;odo y filtros seleccionados.
+            </p>
+        </div>"""
+    else:
+        data_section = f"""
         <div class="section">
-            <div class="section-title">D&Eacute;TAIL DES INSPECTIONS ({total} enregistrements)</div>
+            <div class="section-title">DETALLE DE INSPECCIONES ({total} registros)</div>
             <table>
                 <thead>
                     <tr>
@@ -664,34 +621,118 @@ def _build_inspections_pdf_html(
                     {table_rows}
                 </tbody>
             </table>
-        </div>
+        </div>"""
 
-        <!-- Supervisor Signature — same pattern as inspection_report.html agent_signature -->
-        {"" if not supervisor_signature_base64 else f'''
+    # Supervisor signature section
+    sig_section = ""
+    if supervisor_signature_base64:
+        sig_section = f"""
         <div class="section">
             <div class="section-title">FIRMA DEL SUPERVISOR</div>
             <img src="data:image/png;base64,{supervisor_signature_base64}"
                  style="max-width:200px; max-height:80px; border-bottom:1px solid #999;">
             <div class="label">{html_escape(supervisor_name)} &mdash; {generated_at}</div>
-        </div>
-        '''}
+        </div>"""
 
-        <!-- QR + Stamp — same layout as inspection_report.html -->
+    # QR cell at LEFT (uses <table> layout — xhtml2pdf doesn't support display:inline-block)
+    qr_cell = ""
+    if qr_base64:
+        qr_cell = f"""
+            <td style="width:80px; text-align:left; vertical-align:top; border:none; padding-right:10px;">
+                <img src="data:image/png;base64,{qr_base64}" width="70" height="70">
+            </td>"""
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @page {{ size: A4 landscape; margin: 1.5cm 1.2cm 2cm 1.2cm; }}
+            body {{ font-family: Arial, sans-serif; font-size: 9pt; color: #222; line-height: 1.4; }}
+            .header {{ text-align: center; border-bottom: 2px solid #2d5a03; padding-bottom: 8px; margin-bottom: 12px; }}
+            .republic {{ font-size: 8pt; color: #666; margin-bottom: 4px; }}
+            .header img {{ height: 50px; }}
+            .header h1 {{ font-size: 14pt; color: #3a7a0a; margin: 4px 0; }}
+            .header h2 {{ font-size: 10pt; color: #555; margin: 2px 0; font-weight: normal; }}
+            .section {{ margin-bottom: 10px; }}
+            .section-title {{ font-size: 10pt; font-weight: bold; color: #3a7a0a; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-bottom: 6px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
+            th, td {{ padding: 4px 6px; text-align: left; font-size: 8pt; }}
+            th {{ background: #f0f0f0; font-weight: bold; border-bottom: 1px solid #999; }}
+            td {{ border-bottom: 1px solid #ddd; }}
+            .label {{ color: #666; font-size: 8pt; }}
+            .value {{ font-weight: bold; }}
+            .amount-red {{ color: #dc3545; font-weight: bold; }}
+            .amount-green {{ color: #28a745; font-weight: bold; }}
+            .summary-table {{ width: auto; margin-bottom: 12px; }}
+            .summary-table td {{ border: none; padding: 4px 14px 4px 0; }}
+            .summary-label {{ color: #666; font-size: 7pt; text-transform: uppercase; }}
+            .summary-value {{ font-size: 12pt; font-weight: bold; }}
+            .stamp {{ border: 2px solid #3a7a0a; padding: 6px; margin-top: 10px; font-size: 8pt; }}
+            .footer {{ position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #ddd; padding-top: 4px; }}
+        </style>
+    </head>
+    <body>
+        <!-- Header — same design as inspection_report.html -->
+        <div class="header">
+            <div class="republic">REP&Uacute;BLICA DE GUINEA ECUATORIAL</div>
+            {"" if not logo_b64 else f'<img src="data:image/png;base64,{logo_b64}" alt="Facil">'}
+            <h1>INFORME DE INSPECCIONES &mdash; {html_escape(entity_code)}</h1>
+            <h2>Control Terrain &mdash; Obligaciones Fiscales &mdash; {html_escape(date_range)}</h2>
+        </div>
+
+        <!-- Summary KPIs -->
+        <div class="section">
+            <div class="section-title">RESUMEN</div>
+            <table class="summary-table">
+                <tr>
+                    <td>
+                        <span class="summary-label">Total Inspecciones</span><br/>
+                        <span class="summary-value">{total}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Conformes</span><br/>
+                        <span class="summary-value amount-green">{conforme}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">No Conformes</span><br/>
+                        <span class="summary-value amount-red">{non_conforme}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Tasa Conformidad</span><br/>
+                        <span class="summary-value">{conformity_rate}%</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Monto Recaudado</span><br/>
+                        <span class="summary-value" style="color:#3a7a0a;">{total_collected:,.0f} XAF</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Data table or empty state -->
+        {data_section}
+
+        <!-- Supervisor Signature -->
+        {sig_section}
+
+        <!-- QR (left) + Stamp (right) — uses <table> layout for xhtml2pdf compat -->
         <div class="stamp">
-            <div style="display:inline-block; vertical-align:top; text-align:left; width:60%;">
-                <strong>SELLO DIGITAL</strong><br>
-                Ce document a &eacute;t&eacute; g&eacute;n&eacute;r&eacute; &eacute;lectroniquement par la plateforme Facil.<br>
-                <span class="label">{html_escape(entity_code)} &mdash; {generated_at}</span>
-            </div>
-            {"" if not qr_base64 else f'''
-            <div style="display:inline-block; vertical-align:top; width:30%; text-align:right;">
-                <img src="data:image/png;base64,{qr_base64}" style="width:70px;height:70px;">
-            </div>
-            '''}
+            <table style="width:100%; margin:0;">
+                <tr>
+                    {qr_cell}
+                    <td style="text-align:left; vertical-align:top; border:none;">
+                        <strong>SELLO DIGITAL</strong><br>
+                        Este documento ha sido generado electr&oacute;nicamente por la plataforma Facil.<br>
+                        <span class="label">{html_escape(entity_code)} &mdash; {generated_at}</span>
+                    </td>
+                </tr>
+            </table>
         </div>
 
         <div class="footer">
-            Facil &mdash; TaxasGE &mdash; G&eacute;n&eacute;r&eacute; le {generated_at}
+            Facil &mdash; Plataforma Digital de Guinea Ecuatorial &mdash; Generado el {generated_at} &mdash; P&aacute;gina <pdf:pagenumber> de <pdf:pagecount>
         </div>
     </body>
     </html>
