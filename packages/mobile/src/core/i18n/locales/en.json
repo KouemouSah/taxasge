@@ -355,7 +355,8 @@
     "priority": "Priority",
     "downloadPDF": "Download PDF summary",
     "summary": "Summary",
-    "moreInPDF": "+{{count}} more fields in PDF"
+    "moreInPDF": "+{{count}} more fields in PDF",
+    "pdfSaved": "PDF saved to downloads"
   },
   "errors": {
     "network": "Connection error. Check your internet.",

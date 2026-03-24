@@ -10,7 +10,7 @@
  * - PDF download sticky button
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,6 +18,7 @@ import {
   Image,
   Pressable,
   Modal,
+  Alert,
 } from 'react-native';
 import {
   Text,
@@ -26,7 +27,10 @@ import {
   ActivityIndicator,
   ProgressBar,
   IconButton,
+  Snackbar,
 } from 'react-native-paper';
+import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy';
+import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +38,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { formatCurrency, formatDate } from '@core/utils/format';
+import { appConfig } from '@core/config/app';
+import { getAccessToken } from '@core/auth/auth-storage';
+import { API_ENDPOINTS } from '@core/api/endpoints';
 import { useRequestDetailView } from '@modules/service-requests';
 import { RequestStatusBadge } from '@modules/service-requests/components/request-status-badge';
 import type { DataSection } from '@modules/service-requests';
@@ -110,6 +117,40 @@ export default function RequestDetailScreen() {
 
   const { data, isLoading, isError } = useRequestDetailView(id ?? '');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!id) return;
+    setIsDownloading(true);
+    try {
+      const token = await getAccessToken();
+      const url = `${appConfig.api.baseUrl}/api/${appConfig.api.version}${API_ENDPOINTS.serviceRequests.summaryPdf(id)}?language=es`;
+      const fileUri = `${cacheDirectory}solicitud-${id.slice(0, 8)}.pdf`;
+
+      const download = await downloadAsync(url, fileUri, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (download.status === 200) {
+        const canShare = await isAvailableAsync();
+        if (canShare) {
+          await shareAsync(download.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: t('detail.downloadPDF'),
+          });
+        } else {
+          setSnackbar(t('detail.pdfSaved'));
+        }
+      } else {
+        setSnackbar(t('common.error'));
+      }
+    } catch {
+      setSnackbar(t('common.error'));
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [id, t]);
 
   const essentialFields = useMemo(
     () => (data ? extractEssentialFields(data.data_sections) : []),
@@ -210,14 +251,20 @@ export default function RequestDetailScreen() {
                 <Text variant="bodySmall" style={{ color: colors.outline, marginHorizontal: 6 }}>|</Text>
                 <RequestStatusBadge status={payment_status} compact />
                 {request.updated_at && (
-                  <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 6 }}>
-                    {formatDate(request.updated_at, 'dd/MM/yyyy')}
-                  </Text>
+                  <>
+                    <Text variant="bodySmall" style={{ color: colors.outline, marginHorizontal: 6 }}>|</Text>
+                    <Text variant="labelSmall" style={{ color: colors.outline }}>
+                      {formatDate(request.updated_at, 'dd/MM/yyyy')}
+                    </Text>
+                  </>
                 )}
                 {tariff && (
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14, marginLeft: 6 }}>
-                    {formatCurrency(tariff.total_amount, tariff.currency)}
-                  </Text>
+                  <>
+                    <Text variant="bodySmall" style={{ color: colors.outline, marginHorizontal: 6 }}>|</Text>
+                    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>
+                      {formatCurrency(tariff.total_amount, tariff.currency)}
+                    </Text>
+                  </>
                 )}
               </View>
 
@@ -342,7 +389,9 @@ export default function RequestDetailScreen() {
         <Button
           mode="contained"
           icon="file-pdf-box"
-          onPress={() => { /* TODO P3: download PDF */ }}
+          onPress={handleDownloadPDF}
+          loading={isDownloading}
+          disabled={isDownloading}
           style={{ flex: 1, borderRadius: borderRadius.sm }}
           contentStyle={{ paddingVertical: 4 }}
         >
@@ -359,6 +408,10 @@ export default function RequestDetailScreen() {
           </Pressable>
         </Modal>
       )}
+
+      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
+        {snackbar ?? ''}
+      </Snackbar>
     </SafeAreaView>
   );
 }
