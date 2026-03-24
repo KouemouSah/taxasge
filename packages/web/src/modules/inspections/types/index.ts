@@ -444,3 +444,40 @@ export interface FieldPayment {
   inspection_date?: string
   created_at: string
 }
+
+// ============================================================
+// LIVE STATUS (Phase 8 — Real-Time View)
+// ============================================================
+
+export type AgentOnlineStatus = 'active' | 'idle' | 'offline'
+
+export interface AgentLiveStatus {
+  agent_id: string
+  agent_profile_id: string
+  agent_name: string
+  status: AgentOnlineStatus
+  last_activity_at?: string
+  minutes_since_activity?: number
+  inspections_today: number
+  cash_collected_today: number
+  current_inspection_id?: string
+  last_gps_latitude?: number
+  last_gps_longitude?: number
+}
+
+export interface LiveStatusCounters {
+  active_agents: number
+  idle_agents: number
+  offline_agents: number
+  total_agents: number
+  inspections_today: number
+  inspections_in_progress: number
+  cash_collected_today: number
+  cash_pending_reconciliation: number
+}
+
+export interface LiveStatusResponse {
+  agents: AgentLiveStatus[]
+  counters: LiveStatusCounters
+  cached_at?: string
+}

@@ -18,6 +18,7 @@ import type {
   PriorityZonesResponse,
   FilterPreset,
   FilterPresetListResponse,
+  LiveStatusResponse,
 } from '../types'
 
 export const inspectionApi = {
@@ -122,6 +123,9 @@ export const inspectionApi = {
 
   getSupervisorDashboard: () =>
     apiClient.get<SupervisorDashboard>('/inspections/supervisor/dashboard').then(r => r.data),
+
+  getLiveStatus: () =>
+    apiClient.get<LiveStatusResponse>('/inspections/supervisor/live-status').then(r => r.data),
 
   getReconciliation: (targetDate?: string) => {
     const sp = new URLSearchParams()

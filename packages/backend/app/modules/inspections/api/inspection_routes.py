@@ -380,6 +380,39 @@ async def get_supervisor_dashboard(
     return SupervisorDashboardResponse(**result)
 
 
+@router.get("/supervisor/live-status")
+async def get_live_agent_status(
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_entity")),
+):
+    """Real-time agent status for supervisor: active/idle/offline + live counters.
+
+    Cached in Redis for 30s. Rate limited to 30 req/min.
+    """
+    from app.core.cache import check_rate_limit
+    allowed, remaining = await check_rate_limit(
+        current_user.id, "live_status", 30, 60
+    )
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    try:
+        ctx = await InspectionService.resolve_inspector_context(
+            db, UUID(current_user.id)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not ctx["is_supervisor"]:
+        raise HTTPException(status_code=403, detail="Supervisor only")
+
+    result = await InspectionService.get_live_agent_status(
+        db, ctx["entity_id"]
+    )
+    return result
+
+
 @router.post("/cron/auto-approve-seals")
 async def cron_auto_approve_seals(
     db=Depends(get_database),

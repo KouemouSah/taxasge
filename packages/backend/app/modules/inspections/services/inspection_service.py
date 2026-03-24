@@ -751,3 +751,173 @@ class InspectionService:
             raise ValueError(f"License {license_id} not found")
 
         return result
+
+    # ============================================================
+    # LIVE STATUS (Phase 8 — Real-Time View)
+    # ============================================================
+
+    @staticmethod
+    async def get_live_agent_status(conn, entity_id) -> dict:
+        """Get real-time agent status for a supervisor's entity.
+
+        Single CTE query fetching:
+        - Agent profiles with last_activity_at
+        - Today's inspection stats per agent
+        - Current in-progress inspections
+        - Cash collection totals
+        - Entity-wide counters
+
+        Cached in Redis for 30s to prevent DB hammering from polling.
+        """
+        from app.core.cache import get_cache
+
+        cache = get_cache()
+        cache_key = f"live_status:entity:{entity_id}"
+
+        cached = await cache.get(cache_key)
+        if cached:
+            return cached
+
+        # Fetch configurable thresholds from system_rules
+        thresholds = await conn.fetch("""
+            SELECT rule_code, rule_value
+            FROM system_rules
+            WHERE rule_code IN ('AGENT_STATUS_IDLE_MINUTES', 'AGENT_STATUS_OFFLINE_MINUTES')
+              AND is_active = true
+        """)
+        idle_minutes = 120
+        offline_minutes = 240
+        for t in thresholds:
+            val = t["rule_value"]
+            # rule_value is JSONB — could be int or string
+            minutes = int(val) if isinstance(val, (int, float)) else int(str(val).strip('"'))
+            if t["rule_code"] == "AGENT_STATUS_IDLE_MINUTES":
+                idle_minutes = minutes
+            elif t["rule_code"] == "AGENT_STATUS_OFFLINE_MINUTES":
+                offline_minutes = minutes
+
+        # Single CTE query — O(agents) not O(inspections)
+        rows = await conn.fetch("""
+            WITH agent_base AS (
+                SELECT
+                    ap.id AS agent_profile_id,
+                    ap.user_id AS agent_id,
+                    u.full_name AS agent_name,
+                    ap.last_activity_at,
+                    EXTRACT(EPOCH FROM (NOW() - ap.last_activity_at)) / 60.0
+                        AS minutes_since_activity
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                WHERE ap.entity_id = $1
+                  AND ap.is_active = true
+            ),
+            today_stats AS (
+                SELECT
+                    fi.agent_id,
+                    COUNT(*) AS inspections_today,
+                    COALESCE(SUM(fi.payment_amount) FILTER (WHERE fi.payment_collected), 0)
+                        AS cash_collected_today
+                FROM field_inspections fi
+                WHERE fi.entity_id = $1
+                  AND fi.inspection_date = CURRENT_DATE
+                GROUP BY fi.agent_id
+            ),
+            in_progress AS (
+                SELECT
+                    fi.agent_id,
+                    fi.id AS inspection_id,
+                    fi.gps_latitude,
+                    fi.gps_longitude,
+                    ROW_NUMBER() OVER (PARTITION BY fi.agent_id ORDER BY fi.updated_at DESC)
+                        AS rn
+                FROM field_inspections fi
+                WHERE fi.entity_id = $1
+                  AND fi.status = 'in_progress'
+            )
+            SELECT
+                ab.agent_profile_id,
+                ab.agent_id,
+                ab.agent_name,
+                ab.last_activity_at,
+                ab.minutes_since_activity,
+                COALESCE(ts.inspections_today, 0) AS inspections_today,
+                COALESCE(ts.cash_collected_today, 0) AS cash_collected_today,
+                ip.inspection_id AS current_inspection_id,
+                ip.gps_latitude AS last_gps_latitude,
+                ip.gps_longitude AS last_gps_longitude
+            FROM agent_base ab
+            LEFT JOIN today_stats ts ON ts.agent_id = ab.agent_id
+            LEFT JOIN in_progress ip ON ip.agent_id = ab.agent_id AND ip.rn = 1
+            ORDER BY ab.minutes_since_activity ASC NULLS LAST
+        """, entity_id)
+
+        # Build agent statuses
+        agents = []
+        counters = {
+            "active_agents": 0,
+            "idle_agents": 0,
+            "offline_agents": 0,
+            "total_agents": 0,
+            "inspections_today": 0,
+            "inspections_in_progress": 0,
+            "cash_collected_today": 0,
+            "cash_pending_reconciliation": 0,
+        }
+
+        for r in rows:
+            mins = r["minutes_since_activity"]
+            if mins is not None and mins < idle_minutes:
+                status = "active"
+            elif mins is not None and mins < offline_minutes:
+                status = "idle"
+            else:
+                status = "offline"
+
+            agent = {
+                "agent_id": str(r["agent_id"]),
+                "agent_profile_id": str(r["agent_profile_id"]),
+                "agent_name": r["agent_name"],
+                "status": status,
+                "last_activity_at": r["last_activity_at"].isoformat() if r["last_activity_at"] else None,
+                "minutes_since_activity": int(mins) if mins is not None else None,
+                "inspections_today": r["inspections_today"],
+                "cash_collected_today": float(r["cash_collected_today"]),
+                "current_inspection_id": str(r["current_inspection_id"]) if r["current_inspection_id"] else None,
+                "last_gps_latitude": float(r["last_gps_latitude"]) if r["last_gps_latitude"] is not None else None,
+                "last_gps_longitude": float(r["last_gps_longitude"]) if r["last_gps_longitude"] is not None else None,
+            }
+            agents.append(agent)
+
+            counters["total_agents"] += 1
+            if status == "active":
+                counters["active_agents"] += 1
+            elif status == "idle":
+                counters["idle_agents"] += 1
+            else:
+                counters["offline_agents"] += 1
+            counters["inspections_today"] += r["inspections_today"]
+            counters["cash_collected_today"] += float(r["cash_collected_today"])
+            if r["current_inspection_id"]:
+                counters["inspections_in_progress"] += 1
+
+        # Get pending reconciliation amount
+        pending = await conn.fetchrow("""
+            SELECT COALESCE(SUM(total_amount), 0) AS pending
+            FROM service_payments
+            WHERE collection_type = 'field'
+              AND workflow_status = 'field_collected'
+              AND entity_code = (SELECT code FROM entities WHERE id = $1)
+        """, entity_id)
+        counters["cash_pending_reconciliation"] = float(pending["pending"]) if pending else 0
+
+        from datetime import datetime, timezone
+        result = {
+            "agents": agents,
+            "counters": counters,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Cache for 30s
+        await cache.set(cache_key, result, ttl=30)
+
+        return result

@@ -285,3 +285,41 @@ class LicenseVerificationResponse(BaseModel):
     previous_inspections: List[InspectionListItem] = []
     active_mise_en_demeure: Optional[Dict] = None
     seal_history: List[Dict] = []
+
+
+# ============================================================
+# Live Status (Phase 8 — Real-Time View)
+# ============================================================
+
+class AgentLiveStatus(BaseModel):
+    """Real-time status of a field agent."""
+    agent_id: UUID
+    agent_profile_id: UUID
+    agent_name: str
+    status: str  # 'active', 'idle', 'offline'
+    last_activity_at: Optional[datetime] = None
+    minutes_since_activity: Optional[int] = None
+    inspections_today: int = 0
+    cash_collected_today: Decimal = Decimal("0")
+    current_inspection_id: Optional[UUID] = None
+    last_gps_latitude: Optional[Decimal] = None
+    last_gps_longitude: Optional[Decimal] = None
+
+
+class LiveStatusCounters(BaseModel):
+    """Aggregate live counters for the entity."""
+    active_agents: int = 0
+    idle_agents: int = 0
+    offline_agents: int = 0
+    total_agents: int = 0
+    inspections_today: int = 0
+    inspections_in_progress: int = 0
+    cash_collected_today: Decimal = Decimal("0")
+    cash_pending_reconciliation: Decimal = Decimal("0")
+
+
+class LiveStatusResponse(BaseModel):
+    """Full real-time status response."""
+    agents: List[AgentLiveStatus] = []
+    counters: LiveStatusCounters = LiveStatusCounters()
+    cached_at: Optional[datetime] = None

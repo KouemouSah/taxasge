@@ -10527,6 +10527,25 @@
       "minutesShort": "min",
       "weeklyTrend": "Tendance hebdomadaire",
       "noZoneData": "Aucune donnée de zone."
+    },
+    "live": {
+      "title": "Statut en temps réel",
+      "active": "Actif",
+      "idle": "Inactif",
+      "offline": "Hors ligne",
+      "agents": "Agents",
+      "inspectionsToday": "Inspections aujourd'hui",
+      "inProgress": "En cours",
+      "cashCollected": "Cash collecté aujourd'hui",
+      "cashPending": "Cash en attente de reversement",
+      "lastActivity": "Dernière activité",
+      "minutesAgo": "il y a {min} min",
+      "hoursAgo": "il y a {hours}h",
+      "noActivity": "Aucune activité",
+      "currentInspection": "Inspection en cours",
+      "refreshing": "Actualisation...",
+      "lastUpdate": "Mis à jour : {time}",
+      "autoRefresh": "Auto-refresh toutes les 30s"
     }
   },
   "paymentResult": {

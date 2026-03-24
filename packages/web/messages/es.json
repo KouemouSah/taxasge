@@ -10416,6 +10416,25 @@
       "minutesShort": "min",
       "weeklyTrend": "Tendencia semanal",
       "noZoneData": "Aucune donnée de zone."
+    },
+    "live": {
+      "title": "Estado en tiempo real",
+      "active": "Activo",
+      "idle": "Inactivo",
+      "offline": "Desconectado",
+      "agents": "Agentes",
+      "inspectionsToday": "Inspecciones hoy",
+      "inProgress": "En curso",
+      "cashCollected": "Cash cobrado hoy",
+      "cashPending": "Cash pendiente reversement",
+      "lastActivity": "Última actividad",
+      "minutesAgo": "hace {min} min",
+      "hoursAgo": "hace {hours}h",
+      "noActivity": "Sin actividad",
+      "currentInspection": "Inspección en curso",
+      "refreshing": "Actualizando...",
+      "lastUpdate": "Actualizado: {time}",
+      "autoRefresh": "Auto-refresh cada 30s"
     }
   },
   "paymentResult": {

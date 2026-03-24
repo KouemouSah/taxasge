@@ -34,6 +34,7 @@ import { AgentPerformanceTable } from '@/modules/inspections/components/AgentPer
 import { ZoneAnalyticsTable } from '@/modules/inspections/components/ZoneAnalyticsTable'
 import { MissionCalendar } from '@/modules/inspections/components/MissionCalendar'
 import { MissionPlanPanel } from '@/modules/inspections/components/MissionPlanPanel'
+import { LiveStatusPanel } from '@/modules/inspections/components/LiveStatusPanel'
 import type {
   SupervisorDashboard, FieldPayment,
   AgentPerformanceResponse, ZoneAnalyticsResponse,
@@ -444,6 +445,9 @@ export default function SupervisorInspectionDashboard() {
               </Card>
             )}
           </div>
+
+          {/* Live agent status */}
+          <LiveStatusPanel />
 
           {/* Week summary */}
           <Card>
