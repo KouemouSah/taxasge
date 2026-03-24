@@ -437,14 +437,14 @@ def _build_inspections_pdf_html(
         duration = str(r["duration_minutes"]) if r["duration_minutes"] else "-"
         notes = (r["notes"] or "")[:80].replace("\n", " ")
 
-        # Result colour
+        # Result colour — aligned with inspection_report.html design system
         result_val = r["result"] or ""
         if result_val == "conforme":
-            result_style = "color: #16a34a; font-weight: bold;"
+            result_style = "color: #155724; font-weight: bold;"  # same as .conforme
         elif result_val == "non_conforme":
-            result_style = "color: #dc2626; font-weight: bold;"
+            result_style = "color: #b33a3a; font-weight: bold;"  # same as .non_conforme
         else:
-            result_style = ""
+            result_style = "color: #856404;"  # same as .pending
 
         table_rows += f"""
             <tr>
@@ -472,140 +472,100 @@ def _build_inspections_pdf_html(
     <head>
         <meta charset="utf-8">
         <style>
-            @page {{
-                size: A4 landscape;
-                margin: 1cm;
-            }}
-            body {{
-                font-family: Arial, sans-serif;
-                font-size: 8px;
-                line-height: 1.3;
-                color: #333;
-            }}
-            .header {{
-                text-align: center;
-                margin-bottom: 15px;
-                border-bottom: 2px solid #1e40af;
-                padding-bottom: 10px;
-            }}
-            .header h1 {{
-                color: #1e40af;
-                font-size: 14px;
-                margin: 0 0 3px 0;
-            }}
-            .header h2 {{
-                color: #3b82f6;
-                font-size: 10px;
-                margin: 0;
-                font-weight: normal;
-            }}
-            .summary {{
-                display: flex;
-                margin-bottom: 12px;
-            }}
-            .summary-box {{
-                background: #f1f5f9;
-                padding: 6px 10px;
-                border-radius: 4px;
-                margin-right: 8px;
-                text-align: center;
-            }}
-            .summary-box .label {{
-                font-size: 7px;
-                color: #64748b;
-                text-transform: uppercase;
-            }}
-            .summary-box .value {{
-                font-size: 12px;
-                font-weight: bold;
-                color: #1e293b;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 8px;
-            }}
-            th {{
-                background: #1e40af;
-                color: #fff;
-                padding: 4px 3px;
-                font-size: 7px;
-                text-align: left;
-                text-transform: uppercase;
-            }}
-            td {{
-                padding: 3px;
-                border-bottom: 1px solid #e2e8f0;
-                font-size: 7px;
-            }}
-            tr:nth-child(even) {{
-                background: #f8fafc;
-            }}
-            .footer {{
-                text-align: center;
-                margin-top: 15px;
-                padding-top: 8px;
-                border-top: 1px solid #e2e8f0;
-                color: #94a3b8;
-                font-size: 7px;
-            }}
+            @page {{ size: A4 landscape; margin: 1.5cm 1.2cm 2cm 1.2cm; }}
+            body {{ font-family: Arial, sans-serif; font-size: 9pt; color: #222; line-height: 1.4; }}
+            .header {{ text-align: center; border-bottom: 2px solid #2d5a03; padding-bottom: 8px; margin-bottom: 12px; }}
+            .republic {{ font-size: 8pt; color: #666; margin-bottom: 4px; }}
+            .header h1 {{ font-size: 14pt; color: #3a7a0a; margin: 4px 0; }}
+            .header h2 {{ font-size: 10pt; color: #555; margin: 2px 0; font-weight: normal; }}
+            .section {{ margin-bottom: 10px; }}
+            .section-title {{ font-size: 10pt; font-weight: bold; color: #3a7a0a; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-bottom: 6px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
+            th, td {{ padding: 4px 6px; text-align: left; font-size: 8pt; }}
+            th {{ background: #f0f0f0; font-weight: bold; border-bottom: 1px solid #999; }}
+            td {{ border-bottom: 1px solid #ddd; }}
+            .label {{ color: #666; font-size: 8pt; }}
+            .value {{ font-weight: bold; }}
+            .amount-red {{ color: #dc3545; font-weight: bold; }}
+            .amount-green {{ color: #28a745; font-weight: bold; }}
+            .summary-table {{ width: auto; margin-bottom: 12px; }}
+            .summary-table td {{ border: none; padding: 4px 14px 4px 0; }}
+            .summary-label {{ color: #666; font-size: 7pt; text-transform: uppercase; }}
+            .summary-value {{ font-size: 12pt; font-weight: bold; }}
+            .stamp {{ border: 2px solid #3a7a0a; padding: 6px; text-align: center; margin-top: 10px; font-size: 8pt; }}
+            .footer {{ position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #ddd; padding-top: 4px; }}
         </style>
     </head>
     <body>
+        <!-- Header — same design as inspection_report.html -->
         <div class="header">
-            <h1>Rapport d'Inspections &mdash; {html_escape(entity_code)}</h1>
-            <h2>{date_range}</h2>
+            <div class="republic">REP&Uacute;BLICA DE GUINEA ECUATORIAL</div>
+            <h1>RAPPORT D'INSPECTIONS &mdash; {html_escape(entity_code)}</h1>
+            <h2>Contrôle Terrain &mdash; Obligations Fiscales &mdash; {html_escape(date_range)}</h2>
         </div>
 
-        <table style="width:auto; margin-bottom:12px;">
-            <tr>
-                <td style="border:none; padding:4px 12px 4px 0;">
-                    <span style="color:#64748b; font-size:7px;">TOTAL</span><br/>
-                    <span style="font-size:12px; font-weight:bold;">{total}</span>
-                </td>
-                <td style="border:none; padding:4px 12px;">
-                    <span style="color:#64748b; font-size:7px;">CONFORME</span><br/>
-                    <span style="font-size:12px; font-weight:bold; color:#16a34a;">{conforme}</span>
-                </td>
-                <td style="border:none; padding:4px 12px;">
-                    <span style="color:#64748b; font-size:7px;">NON CONFORME</span><br/>
-                    <span style="font-size:12px; font-weight:bold; color:#dc2626;">{non_conforme}</span>
-                </td>
-                <td style="border:none; padding:4px 12px;">
-                    <span style="color:#64748b; font-size:7px;">TAUX CONFORM.</span><br/>
-                    <span style="font-size:12px; font-weight:bold;">{conformity_rate}%</span>
-                </td>
-                <td style="border:none; padding:4px 12px;">
-                    <span style="color:#64748b; font-size:7px;">MONTANT COLLECT&Eacute;</span><br/>
-                    <span style="font-size:12px; font-weight:bold; color:#1e40af;">{total_collected:,.0f} XAF</span>
-                </td>
-            </tr>
-        </table>
-
-        <table>
-            <thead>
+        <!-- Summary KPIs -->
+        <div class="section">
+            <div class="section-title">R&Eacute;SUM&Eacute;</div>
+            <table class="summary-table">
                 <tr>
-                    <th>Fecha</th>
-                    <th>Agente</th>
-                    <th>Empresa</th>
-                    <th>NIF</th>
-                    <th>Zona</th>
-                    <th>Resultado</th>
-                    <th>Estado</th>
-                    <th>Monto Cobrado</th>
-                    <th>MED</th>
-                    <th>Scell&eacute;</th>
-                    <th>Dur. (min)</th>
-                    <th>Notas</th>
+                    <td>
+                        <span class="summary-label">Total Inspections</span><br/>
+                        <span class="summary-value">{total}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Conformes</span><br/>
+                        <span class="summary-value amount-green">{conforme}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Non Conformes</span><br/>
+                        <span class="summary-value amount-red">{non_conforme}</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Taux Conformit&eacute;</span><br/>
+                        <span class="summary-value">{conformity_rate}%</span>
+                    </td>
+                    <td>
+                        <span class="summary-label">Montant Collect&eacute;</span><br/>
+                        <span class="summary-value" style="color:#3a7a0a;">{total_collected:,.0f} XAF</span>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                {table_rows}
-            </tbody>
-        </table>
+            </table>
+        </div>
+
+        <!-- Data table -->
+        <div class="section">
+            <div class="section-title">D&Eacute;TAIL DES INSPECTIONS ({total} enregistrements)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Agente</th>
+                        <th>Empresa</th>
+                        <th>NIF</th>
+                        <th>Zona</th>
+                        <th>Resultado</th>
+                        <th>Estado</th>
+                        <th style="text-align:right">Monto</th>
+                        <th>MED</th>
+                        <th>Scell&eacute;</th>
+                        <th style="text-align:right">Dur.</th>
+                        <th>Notas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Stamp — same as inspection_report.html -->
+        <div class="stamp">
+            Ce document a &eacute;t&eacute; g&eacute;n&eacute;r&eacute; &eacute;lectroniquement par la plateforme Facil.
+        </div>
 
         <div class="footer">
-            G&eacute;n&eacute;r&eacute; par TaxasGE &mdash; {generated_at}
+            Facil &mdash; TaxasGE &mdash; G&eacute;n&eacute;r&eacute; le {generated_at}
         </div>
     </body>
     </html>
