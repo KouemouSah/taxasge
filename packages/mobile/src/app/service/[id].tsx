@@ -81,34 +81,28 @@ export default function ServiceDetailScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
 
-        {/* ═══ INFO STRIP ═══ */}
-        <View style={[styles.infoStrip, { paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surfaceVariant }]}>
+        {/* ═══ INFO STRIP (green accent) ═══ */}
+        <View style={[styles.infoStrip, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>
           {service.ministry && (
             <View style={styles.infoItem}>
-              <MaterialCommunityIcons name="domain" size={14} color={colors.onSurfaceVariant} />
-              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }} numberOfLines={1}>
+              <MaterialCommunityIcons name="domain" size={14} color="#2E7D32" />
+              <Text variant="labelSmall" style={{ color: '#2E7D32', fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
                 {service.ministry.name}
               </Text>
             </View>
           )}
           {service.category && (
             <View style={styles.infoItem}>
-              <MaterialCommunityIcons name="tag" size={14} color={colors.onSurfaceVariant} />
-              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
+              <MaterialCommunityIcons name="tag" size={14} color="#2E7D32" />
+              <Text variant="labelSmall" style={{ color: '#2E7D32', marginLeft: 4 }}>
                 {service.category.name}
               </Text>
             </View>
           )}
-          <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="identifier" size={14} color={colors.outline} />
-            <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 4 }}>
-              {service.service_code}
-            </Text>
-          </View>
         </View>
 
-        {/* ═══ PRICE CARD (green accent) ═══ */}
-        <View style={[styles.priceCard, { marginHorizontal: spacing.md, marginTop: 12 }]}>
+        {/* ═══ PRICE ═══ */}
+        <View style={{ paddingHorizontal: spacing.md, paddingVertical: 10 }}>
           {isFree ? (
             <View style={styles.priceRow}>
               <MaterialCommunityIcons name="gift-outline" size={22} color={colors.primary} />
@@ -279,9 +273,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { justifyContent: 'center', alignItems: 'center' },
   topBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
-  infoStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  infoStrip: { gap: 4, backgroundColor: '#E8F5E9' },
   infoItem: { flexDirection: 'row', alignItems: 'center' },
-  priceCard: { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#0D6E3F' },
+  priceCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#0D6E3F' },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 2 },
   metaChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#C8E6C9', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
