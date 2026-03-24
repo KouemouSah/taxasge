@@ -161,8 +161,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     try {
       const { chatbotApi } = await import('../services/api')
       await chatbotApi.submitFeedback({
-        query: '', // Parent doesn't pass query — fire and forget
-        response: message.content.substring(0, 500),
+        conversationId: '',
         rating: type === 'up' ? 5 : 1,
         feedback: type === 'up' ? 'helpful' : 'not_helpful',
       })
