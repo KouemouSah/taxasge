@@ -84,6 +84,9 @@ export default function ServicesScreen() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [sortAlpha, setSortAlpha] = useState(false);
   const [isMinistryFilter, setIsMinistryFilter] = useState(false);
+  const [currentMinistryId, setCurrentMinistryId] = useState<number | null>(null);
+  const [innerSearch, setInnerSearch] = useState('');
+  const [resultSort, setResultSort] = useState<'default' | 'alpha' | 'price_asc' | 'price_desc'>('default');
   const isSearchMode = searchText.length > 0 || results != null;
 
   // Filter inactive + sort
@@ -98,23 +101,37 @@ export default function ServicesScreen() {
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
     setIsMinistryFilter(false);
-    // Reset ministry filter when user types (free text search)
+    setCurrentMinistryId(null);
+    setInnerSearch('');
+    setResultSort('default');
     search(text, { ministry_id: undefined });
   }, [search]);
 
   const handleClearSearch = useCallback(() => {
     setSearchText('');
     setIsMinistryFilter(false);
+    setCurrentMinistryId(null);
+    setInnerSearch('');
+    setResultSort('default');
     search('');
   }, [search]);
 
   const handleMinistryPress = useCallback((ministry: MinistryItem) => {
     setSearchText(ministry.name_es);
     setIsMinistryFilter(true);
-    // Search with ministry_id filter only — don't use name as text query
-    // (backend searches service names, not ministry names)
+    setCurrentMinistryId(ministry.id);
+    setInnerSearch('');
+    setResultSort('default');
     search('', { ministry_id: ministry.id });
   }, [search]);
+
+  /** Search within current ministry */
+  const handleInnerSearch = useCallback((text: string) => {
+    setInnerSearch(text);
+    if (currentMinistryId) {
+      search(text, { ministry_id: currentMinistryId });
+    }
+  }, [search, currentMinistryId]);
 
   const handleServicePress = useCallback((id: number) => {
     router.push(`/service/${id}`);
@@ -214,6 +231,23 @@ export default function ServicesScreen() {
   // Search mode content
   // ---------------------------------------------------------------------------
 
+  /** Sort results locally */
+  const sortedResults = useMemo(() => {
+    if (!results?.services) return [];
+    const list = [...results.services];
+    // Filter by inner search text
+    const filtered = innerSearch
+      ? list.filter((s) => s.name_es.toLowerCase().includes(innerSearch.toLowerCase()))
+      : list;
+    // Sort
+    switch (resultSort) {
+      case 'alpha': return filtered.sort((a, b) => a.name_es.localeCompare(b.name_es));
+      case 'price_asc': return filtered.sort((a, b) => (a.tasa_expedicion ?? 0) - (b.tasa_expedicion ?? 0));
+      case 'price_desc': return filtered.sort((a, b) => (b.tasa_expedicion ?? 0) - (a.tasa_expedicion ?? 0));
+      default: return filtered;
+    }
+  }, [results, innerSearch, resultSort]);
+
   const renderSearchContent = () => {
     if (isSearching) {
       return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -221,18 +255,56 @@ export default function ServicesScreen() {
     if (results && results.services.length > 0) {
       return (
         <FlatList
-          data={results.services}
+          data={sortedResults}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderSearchItem}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
-            <View style={styles.searchResultsHeader}>
-              <Pressable onPress={handleClearSearch} style={styles.backBtn}>
-                <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
-              </Pressable>
-              <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
-                {t('services.results', { count: results.total })}
-              </Text>
+            <View>
+              {/* Back + count */}
+              <View style={styles.searchResultsHeader}>
+                <Pressable onPress={handleClearSearch} style={styles.backBtn}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+                </Pressable>
+                <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
+                  {innerSearch
+                    ? `${sortedResults.length} / ${results.total}`
+                    : t('services.results', { count: results.total })}
+                </Text>
+              </View>
+
+              {/* Inner search + sort (ministry mode) */}
+              {isMinistryFilter && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                  <View style={styles.innerControls}>
+                    <Searchbar
+                      placeholder={t('services.searchWithin')}
+                      value={innerSearch}
+                      onChangeText={handleInnerSearch}
+                      style={styles.innerSearchBar}
+                      inputStyle={{ fontSize: 13 }}
+                    />
+                    <View style={styles.sortBtns}>
+                      <Pressable
+                        onPress={() => setResultSort(resultSort === 'alpha' ? 'default' : 'alpha')}
+                        style={[styles.sortBtn, resultSort === 'alpha' && { backgroundColor: colors.primaryContainer }]}
+                      >
+                        <MaterialCommunityIcons name="sort-alphabetical-ascending" size={16} color={resultSort === 'alpha' ? colors.primary : colors.outline} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setResultSort(resultSort === 'price_asc' ? 'price_desc' : 'price_asc')}
+                        style={[styles.sortBtn, (resultSort === 'price_asc' || resultSort === 'price_desc') && { backgroundColor: colors.primaryContainer }]}
+                      >
+                        <MaterialCommunityIcons
+                          name={resultSort === 'price_desc' ? 'sort-numeric-descending' : 'sort-numeric-ascending'}
+                          size={16}
+                          color={(resultSort === 'price_asc' || resultSort === 'price_desc') ? colors.primary : colors.outline}
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              )}
             </View>
           }
         />
@@ -411,6 +483,10 @@ const styles = StyleSheet.create({
   // Search results header
   searchResultsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   backBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  innerControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  innerSearchBar: { flex: 1, elevation: 0, borderRadius: 8, height: 36 },
+  sortBtns: { flexDirection: 'row', gap: 4 },
+  sortBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
   // Kanban grid
   kanbanGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
