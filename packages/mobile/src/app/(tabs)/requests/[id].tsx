@@ -227,13 +227,13 @@ export default function RequestDetailScreen() {
               <View style={{ marginTop: 8, gap: 4 }}>
                 {payment_reference && (
                   <View style={styles.refRow}>
-                    <Text variant="labelSmall" style={styles.refLabel}>{t('requests.paymentReference')}</Text>
+                    <Text variant="labelSmall" style={styles.refLabel}>{t('detail.paymentReference')}</Text>
                     <Text variant="bodySmall" style={{ color: colors.onSurface, flex: 1 }} numberOfLines={1}>{payment_reference}</Text>
                   </View>
                 )}
                 {receipt_number && (
                   <View style={styles.refRow}>
-                    <Text variant="labelSmall" style={styles.refLabel}>{t('requests.receiptNumber')}</Text>
+                    <Text variant="labelSmall" style={styles.refLabel}>{t('detail.receiptNumber')}</Text>
                     <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600', flex: 1 }}>{receipt_number}</Text>
                   </View>
                 )}
@@ -242,29 +242,35 @@ export default function RequestDetailScreen() {
           </>
         )}
 
-        {/* ═══ RENDEZ-VOUS (compact, 1 row with wrap) ═══ */}
-        {appointment && (
-          <>
-            <Divider />
-            <View style={[styles.appointmentBlock, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>
-              <View style={styles.appointmentRow}>
-                <MaterialCommunityIcons name="calendar-clock" size={18} color="#1565C0" />
-                <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '700', marginLeft: 6 }}>
-                  {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
-                </Text>
-                {appointment.location && (
-                  <>
-                    <Text style={{ color: '#90CAF9', marginHorizontal: 6 }}>|</Text>
-                    <MaterialCommunityIcons name="map-marker" size={14} color="#1565C0" />
-                    <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 2 }}>
-                      {appointment.location}
-                    </Text>
-                  </>
-                )}
+        {/* ═══ RENDEZ-VOUS (compact row, blue background) ═══ */}
+        {(appointment || request.cita_date) && (() => {
+          const rdvDate = appointment?.date ?? request.cita_date;
+          const rdvTime = appointment?.time ?? request.cita_time;
+          const rdvLocation = appointment?.location ?? request.cita_location;
+          return (
+            <>
+              <Divider />
+              <View style={[styles.appointmentBlock, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>
+                <View style={styles.appointmentRow}>
+                  <MaterialCommunityIcons name="calendar-clock" size={18} color="#1565C0" />
+                  <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '700', marginLeft: 6 }}>
+                    {rdvDate ? formatDate(rdvDate, 'dd/MM/yyyy') : ''}
+                    {rdvTime ? ` · ${rdvTime}` : ''}
+                  </Text>
+                  {rdvLocation && (
+                    <>
+                      <Text style={{ color: '#90CAF9', marginHorizontal: 6 }}>|</Text>
+                      <MaterialCommunityIcons name="map-marker" size={14} color="#1565C0" />
+                      <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 2 }}>
+                        {rdvLocation}
+                      </Text>
+                    </>
+                  )}
+                </View>
               </View>
-            </View>
-          </>
-        )}
+            </>
+          );
+        })()}
 
         {/* ═══ QUICK INFO (entity) ═══ */}
         {request.entity_code && (
@@ -372,7 +378,7 @@ const styles = StyleSheet.create({
   progressBar: { height: 6, borderRadius: 3 },
   payTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   refRow: { flexDirection: 'row', alignItems: 'baseline' },
-  refLabel: { color: '#757575', width: 145 },
+  refLabel: { color: '#757575', width: 100, marginRight: 8 },
   appointmentBlock: { backgroundColor: '#E3F2FD' },
   appointmentRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   entityRow: { flexDirection: 'row', alignItems: 'center' },
