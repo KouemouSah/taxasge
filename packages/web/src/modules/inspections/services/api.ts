@@ -6,6 +6,18 @@ import type {
   SupervisorDashboard,
   ReconciliationResponse,
   LicenseVerification,
+  Mission,
+  MissionListResponse,
+  ZoneSuggestion,
+  AgentAvailability,
+  AgentPerformanceResponse,
+  AgentDetailResponse,
+  ZoneAnalyticsResponse,
+  TrendResponse,
+  CompareResponse,
+  PriorityZonesResponse,
+  FilterPreset,
+  FilterPresetListResponse,
 } from '../types'
 
 export const inspectionApi = {
@@ -190,4 +202,155 @@ export const inspectionApi = {
     apiClient
       .get(`/inspections/${id}/download-seal?language=${language}`, { responseType: 'blob' })
       .then(r => r.data as Blob),
+
+  // ============================================================
+  // MISSIONS
+  // ============================================================
+
+  createMission: (data: { mission_date: string; entity_location_id?: string; title?: string; notes?: string; zone_ids?: string[] }) =>
+    apiClient.post<Mission>('/inspections/missions/', data).then(r => r.data),
+
+  listMissions: (params?: { date_from?: string; date_to?: string; status?: string; page?: number; page_size?: number }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    if (params?.status) sp.set('status', params.status)
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.page_size) sp.set('page_size', String(params.page_size))
+    const q = sp.toString()
+    return apiClient.get<MissionListResponse>(`/inspections/missions${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  getMission: (id: string) =>
+    apiClient.get<Mission>(`/inspections/missions/${id}`).then(r => r.data),
+
+  updateMission: (id: string, data: { title?: string; notes?: string; zone_ids?: string[]; status?: string }) =>
+    apiClient.put<Mission>(`/inspections/missions/${id}`, data).then(r => r.data),
+
+  assignAgents: (missionId: string, agents: Array<{ agent_id: string; agent_profile_id: string; assigned_zones?: string[]; target_inspections?: number; notes?: string }>) =>
+    apiClient.post(`/inspections/missions/${missionId}/agents`, { agents }).then(r => r.data),
+
+  removeAgent: (missionId: string, agentId: string) =>
+    apiClient.delete(`/inspections/missions/${missionId}/agents/${agentId}`),
+
+  completeMission: (id: string, notes?: string) =>
+    apiClient.post(`/inspections/missions/${id}/complete`, { notes }).then(r => r.data),
+
+  suggestZones: () =>
+    apiClient.get<ZoneSuggestion[]>('/inspections/missions/suggest-zones').then(r => r.data),
+
+  getAgentsAvailability: (missionDate: string) =>
+    apiClient.get<AgentAvailability[]>(`/inspections/missions/agents/availability?mission_date=${missionDate}`).then(r => r.data),
+
+  // ============================================================
+  // ANALYTICS
+  // ============================================================
+
+  getAgentPerformance: (params?: { date_from?: string; date_to?: string; page?: number; page_size?: number }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.page_size) sp.set('page_size', String(params.page_size))
+    const q = sp.toString()
+    return apiClient.get<AgentPerformanceResponse>(`/inspections/analytics/agents${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  getAgentDetail: (agentId: string, params?: { date_from?: string; date_to?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    const q = sp.toString()
+    return apiClient.get<AgentDetailResponse>(`/inspections/analytics/agents/${agentId}${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  getZoneAnalytics: (params?: { date_from?: string; date_to?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    const q = sp.toString()
+    return apiClient.get<ZoneAnalyticsResponse>(`/inspections/analytics/zones${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  getTrends: (params?: { date_from?: string; date_to?: string; granularity?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    if (params?.granularity) sp.set('granularity', params.granularity)
+    const q = sp.toString()
+    return apiClient.get<TrendResponse>(`/inspections/analytics/trends${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  getComparison: (params: { compare_type: string; id1: string; id2: string; date_from?: string; date_to?: string }) => {
+    const sp = new URLSearchParams()
+    sp.set('compare_type', params.compare_type)
+    sp.set('id1', params.id1)
+    sp.set('id2', params.id2)
+    if (params.date_from) sp.set('date_from', params.date_from)
+    if (params.date_to) sp.set('date_to', params.date_to)
+    return apiClient.get<CompareResponse>(`/inspections/analytics/compare?${sp.toString()}`).then(r => r.data)
+  },
+
+  getPriorityZones: (limit = 20) =>
+    apiClient.get<PriorityZonesResponse>(`/inspections/analytics/priority-zones?limit=${limit}`).then(r => r.data),
+
+  // ============================================================
+  // FILTER PRESETS
+  // ============================================================
+
+  createPreset: (data: { preset_name: string; table_key: string; filters: Record<string, unknown>; column_visibility?: Record<string, boolean>; sort_config?: { column: string; direction: string }; is_default?: boolean }) =>
+    apiClient.post<FilterPreset>('/inspections/filter-presets', data).then(r => r.data),
+
+  listPresets: (tableKey?: string) => {
+    const sp = new URLSearchParams()
+    if (tableKey) sp.set('table_key', tableKey)
+    const q = sp.toString()
+    return apiClient.get<FilterPresetListResponse>(`/inspections/filter-presets${q ? `?${q}` : ''}`).then(r => r.data)
+  },
+
+  updatePreset: (id: string, data: { preset_name?: string; filters?: Record<string, unknown>; column_visibility?: Record<string, boolean>; sort_config?: { column: string; direction: string }; is_default?: boolean }) =>
+    apiClient.put<FilterPreset>(`/inspections/filter-presets/${id}`, data).then(r => r.data),
+
+  deletePreset: (id: string) =>
+    apiClient.delete(`/inspections/filter-presets/${id}`),
+
+  // ============================================================
+  // EXPORT (CSV + PDF)
+  // ============================================================
+
+  exportCSV: (filters?: Record<string, string | boolean>) => {
+    const sp = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') sp.set(k, String(v))
+      })
+    }
+    const q = sp.toString()
+    return apiClient
+      .get(`/inspections/export/csv${q ? `?${q}` : ''}`, { responseType: 'blob' })
+      .then(r => r.data as Blob)
+  },
+
+  exportAgentsCSV: (params?: { date_from?: string; date_to?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.date_from) sp.set('date_from', params.date_from)
+    if (params?.date_to) sp.set('date_to', params.date_to)
+    const q = sp.toString()
+    return apiClient
+      .get(`/inspections/export/agents-csv${q ? `?${q}` : ''}`, { responseType: 'blob' })
+      .then(r => r.data as Blob)
+  },
+
+  exportPDF: (filters?: Record<string, string>) => {
+    const sp = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') sp.set(k, String(v))
+      })
+    }
+    const q = sp.toString()
+    return apiClient
+      .get(`/inspections/export/pdf${q ? `?${q}` : ''}`, { responseType: 'blob' })
+      .then(r => r.data as Blob)
+  },
 }

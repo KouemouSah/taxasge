@@ -33,7 +33,7 @@ class MissionAgentStatus(str, Enum):
 class MissionCreate(BaseModel):
     """Create a new field mission."""
     mission_date: date
-    entity_location_id: UUID
+    entity_location_id: Optional[UUID] = None  # Auto-resolved from supervisor profile if omitted
     title: Optional[str] = Field(None, max_length=200)
     notes: Optional[str] = Field(None, max_length=2000)
     zone_ids: Optional[List[UUID]] = None

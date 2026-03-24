@@ -57,6 +57,16 @@ class MissionService:
         if not has_perm:
             raise ValueError("Missing permission: inspection.manage_missions")
 
+        # Auto-resolve entity_location_id from supervisor profile if not provided
+        entity_location_id = data.get("entity_location_id")
+        if not entity_location_id:
+            entity_location_id = ctx.get("entity_location_id")
+            if not entity_location_id:
+                raise ValueError(
+                    "entity_location_id not provided and could not be resolved from profile"
+                )
+            data["entity_location_id"] = entity_location_id
+
         # Validate entity_location_id belongs to supervisor's entity
         location = await conn.fetchrow("""
             SELECT id, entity_id FROM entity_locations
