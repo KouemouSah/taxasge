@@ -201,7 +201,7 @@ export default function RequestDetailScreen() {
           <>
             <Divider />
             <View style={{ paddingHorizontal: spacing.md, paddingVertical: 12, backgroundColor: colors.surface }}>
-              {/* Line 1: icon + Paiement | badge | date */}
+              {/* Line 1: icon + Paiement | badge | date | amount */}
               <View style={styles.payTitleRow}>
                 <MaterialCommunityIcons name="credit-card-check-outline" size={18} color={colors.primary} />
                 <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 6 }}>
@@ -214,14 +214,12 @@ export default function RequestDetailScreen() {
                     {formatDate(request.updated_at, 'dd/MM/yyyy')}
                   </Text>
                 )}
+                {tariff && (
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14, marginLeft: 6 }}>
+                    {formatCurrency(tariff.total_amount, tariff.currency)}
+                  </Text>
+                )}
               </View>
-
-              {/* Line 2: Amount bold */}
-              {tariff && (
-                <Text variant="headlineSmall" style={{ color: colors.primary, fontWeight: '700', marginTop: 6 }}>
-                  {formatCurrency(tariff.total_amount, tariff.currency)}
-                </Text>
-              )}
 
               {/* Line 3-4: References left-aligned, label + value on same row */}
               <View style={{ marginTop: 8, gap: 4 }}>
