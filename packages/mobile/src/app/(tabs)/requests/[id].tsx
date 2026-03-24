@@ -228,13 +228,13 @@ export default function RequestDetailScreen() {
                 {payment_reference && (
                   <View style={styles.refRow}>
                     <Text variant="labelSmall" style={styles.refLabel}>{t('requests.paymentReference')}</Text>
-                    <Text variant="bodySmall" style={{ color: colors.onSurface, marginLeft: 8 }} numberOfLines={1}>{payment_reference}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface, flex: 1 }} numberOfLines={1}>{payment_reference}</Text>
                   </View>
                 )}
                 {receipt_number && (
                   <View style={styles.refRow}>
                     <Text variant="labelSmall" style={styles.refLabel}>{t('requests.receiptNumber')}</Text>
-                    <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 8 }}>{receipt_number}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600', flex: 1 }}>{receipt_number}</Text>
                   </View>
                 )}
               </View>
@@ -371,8 +371,8 @@ const styles = StyleSheet.create({
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   progressBar: { height: 6, borderRadius: 3 },
   payTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-  refRow: { flexDirection: 'row', alignItems: 'center' },
-  refLabel: { color: '#757575', minWidth: 120 },
+  refRow: { flexDirection: 'row', alignItems: 'baseline' },
+  refLabel: { color: '#757575', width: 145 },
   appointmentBlock: { backgroundColor: '#E3F2FD' },
   appointmentRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   entityRow: { flexDirection: 'row', alignItems: 'center' },
