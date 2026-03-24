@@ -159,7 +159,7 @@ export default function ServiceDetailScreen() {
           <>
             <View style={{ paddingHorizontal: spacing.md, paddingTop: 12, paddingBottom: 4 }}>
               <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 6 }}>
-                {t('requests.documents')} ({service.documents.length})
+                {t('requests.documents')}
               </Text>
               {service.documents.map((doc, i) => (
                 <View key={doc.id}>
@@ -182,7 +182,7 @@ export default function ServiceDetailScreen() {
           <>
             <View style={{ paddingHorizontal: spacing.md, paddingTop: 12, paddingBottom: 8 }}>
               <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 6 }}>
-                {t('services.procedures')} ({service.procedures_count})
+                {t('services.procedures')}
               </Text>
               {service.procedures.map((proc: ProcedureDetailItem) => (
                 <View key={proc.id} style={{ marginBottom: 8 }}>
