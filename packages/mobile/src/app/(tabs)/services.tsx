@@ -98,7 +98,8 @@ export default function ServicesScreen() {
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
     setIsMinistryFilter(false);
-    search(text);
+    // Reset ministry filter when user types (free text search)
+    search(text, { ministry_id: undefined });
   }, [search]);
 
   const handleClearSearch = useCallback(() => {
@@ -110,7 +111,9 @@ export default function ServicesScreen() {
   const handleMinistryPress = useCallback((ministry: MinistryItem) => {
     setSearchText(ministry.name_es);
     setIsMinistryFilter(true);
-    search(ministry.name_es, { ministry_id: ministry.id });
+    // Search with ministry_id filter only — don't use name as text query
+    // (backend searches service names, not ministry names)
+    search('', { ministry_id: ministry.id });
   }, [search]);
 
   const handleServicePress = useCallback((id: number) => {
@@ -174,34 +177,37 @@ export default function ServicesScreen() {
   // ---------------------------------------------------------------------------
 
   const renderSearchItem = useCallback(
-    ({ item }: ListRenderItemInfo<FiscalServiceItem>) => (
-      <>
+    ({ item, index }: ListRenderItemInfo<FiscalServiceItem>) => {
+      const isEven = index % 2 === 0;
+      return (
         <Pressable
-          style={styles.searchItem}
+          style={[
+            styles.searchItem,
+            { backgroundColor: isEven ? colors.background : `${colors.primary}08` },
+          ]}
           onPress={() => handleServicePress(item.id)}
           android_ripple={{ color: colors.primaryContainer }}
         >
           <View style={{ flex: 1 }}>
-            <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '600' }} numberOfLines={2}>
+            <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }} numberOfLines={2}>
               {item.name_es}
             </Text>
             {!isMinistryFilter && item.ministry_name && (
-              <Text variant="bodySmall" style={{ color: colors.outline }} numberOfLines={1}>
+              <Text variant="labelSmall" style={{ color: colors.outline }} numberOfLines={1}>
                 {item.ministry_name}
               </Text>
             )}
           </View>
-          <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+          <View style={styles.searchItemRight}>
             <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
               {(item.tasa_expedicion ?? 0) === 0 ? t('services.freeService') : formatCurrency(item.tasa_expedicion ?? 0)}
             </Text>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.outline} />
+            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.outline} />
           </View>
         </Pressable>
-        <Divider />
-      </>
-    ),
-    [colors, handleServicePress, t],
+      );
+    },
+    [colors, handleServicePress, isMinistryFilter, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -387,8 +393,14 @@ const styles = StyleSheet.create({
   searchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
+  },
+  searchItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+    gap: 4,
   },
 
   // Header with toggle
