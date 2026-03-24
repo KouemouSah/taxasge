@@ -281,6 +281,8 @@ class InspectionExportService:
         entity_id: UUID,
         filters: Dict,
         entity_code: str,
+        supervisor_name: str = "",
+        supervisor_signature: Optional[str] = None,
     ) -> bytes:
         """Export inspections as a formatted PDF report.
 
@@ -289,6 +291,9 @@ class InspectionExportService:
             entity_id: Entity scope
             filters: Same filter dict as export_inspections_csv
             entity_code: Entity code for the report header
+            supervisor_name: Name of the supervisor generating the report
+            supervisor_signature: Base64 data URL of supervisor's digital signature
+                (from their most recent field_inspection.agent_signature)
 
         Returns:
             PDF file bytes
@@ -410,6 +415,15 @@ class InspectionExportService:
             doc_id=report_fingerprint,
         )
 
+        # -- Extract supervisor signature base64 (same as InspectionPdfService) --
+        sig_base64 = ""
+        if supervisor_signature:
+            if supervisor_signature.startswith("data:"):
+                parts = supervisor_signature.split(",", 1)
+                sig_base64 = parts[1] if len(parts) == 2 else ""
+            else:
+                sig_base64 = supervisor_signature
+
         # -- Build HTML --
         html = _build_inspections_pdf_html(
             entity_code=entity_code,
@@ -420,6 +434,8 @@ class InspectionExportService:
             total_collected=total_collected,
             rows=rows,
             qr_base64=qr_base64,
+            supervisor_name=supervisor_name,
+            supervisor_signature_base64=sig_base64,
         )
 
         # -- Convert to PDF --
@@ -470,15 +486,10 @@ def _generate_verification_qr(doc_type: str, doc_id: str) -> str:
             secret.encode(), msg.encode(), hashlib.sha256
         ).hexdigest()[:16]
 
-        # Build verification URL
-        try:
-            from app.config import get_settings
-            settings = get_settings()
-            base_url = getattr(settings, "FRONTEND_URL", None) or getattr(
-                settings, "SITE_URL", "https://taxasge.emacsah.com"
-            )
-        except Exception:
-            base_url = "https://taxasge.emacsah.com"
+        # Build verification URL — NEVER hardcode base URL
+        from app.config import get_settings
+        settings = get_settings()
+        base_url = settings.FRONTEND_URL
 
         qr_url = f"{base_url}/verify/{doc_type}/{doc_id}?t={token}"
 
@@ -511,6 +522,8 @@ def _build_inspections_pdf_html(
     total_collected: float,
     rows: List,
     qr_base64: str = "",
+    supervisor_name: str = "",
+    supervisor_signature_base64: str = "",
 ) -> str:
     """Build the HTML string for the inspections PDF report."""
 
@@ -647,6 +660,16 @@ def _build_inspections_pdf_html(
                 </tbody>
             </table>
         </div>
+
+        <!-- Supervisor Signature — same pattern as inspection_report.html agent_signature -->
+        {"" if not supervisor_signature_base64 else f'''
+        <div class="section">
+            <div class="section-title">FIRMA DEL SUPERVISOR</div>
+            <img src="data:image/png;base64,{supervisor_signature_base64}"
+                 style="max-width:200px; max-height:80px; border-bottom:1px solid #999;">
+            <div class="label">{html_escape(supervisor_name)} &mdash; {generated_at}</div>
+        </div>
+        '''}
 
         <!-- QR + Stamp — same layout as inspection_report.html -->
         <div class="stamp">

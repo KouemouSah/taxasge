@@ -61,15 +61,16 @@ def _get_verification_secret() -> str:
 
 
 def _get_base_url() -> str:
-    """Fix H3: Get base URL from settings instead of hardcoding."""
-    try:
-        from app.config import get_settings
-        settings = get_settings()
-        return getattr(settings, "FRONTEND_URL", None) or getattr(
-            settings, "SITE_URL", "https://taxasge.emacsah.com"
-        )
-    except Exception:
-        return "https://taxasge.emacsah.com"
+    """Get base URL from Settings — NEVER hardcoded.
+
+    FRONTEND_URL is a required Pydantic Setting, loaded from:
+    1. Environment variable FRONTEND_URL
+    2. .env file
+    3. Pydantic default (set in config.py)
+    """
+    from app.config import get_settings
+    settings = get_settings()
+    return settings.FRONTEND_URL
 
 
 # ============================================================

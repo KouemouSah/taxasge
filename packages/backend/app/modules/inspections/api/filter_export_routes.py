@@ -236,9 +236,20 @@ async def export_inspections_pdf(
         "zone_code": zone_code, "result": result, "status": status,
     }.items() if v is not None}
 
+    # Retrieve supervisor's digital signature for PDF signing
+    # Uses the last captured signature from their field inspections
+    supervisor_name = current_user.full_name or ""
+    supervisor_sig = await db.fetchval("""
+        SELECT agent_signature FROM field_inspections
+        WHERE agent_id = $1 AND agent_signature IS NOT NULL
+        ORDER BY created_at DESC LIMIT 1
+    """, UUID(current_user.id))
+
     try:
         pdf_bytes = await InspectionExportService.export_inspections_pdf(
             db, ctx["entity_id"], filters, ctx["entity_code"],
+            supervisor_name=supervisor_name,
+            supervisor_signature=supervisor_sig,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
