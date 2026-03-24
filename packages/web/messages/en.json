@@ -10262,6 +10262,28 @@
       "nonConformes": "Non-compliant",
       "rate": "Rate",
       "collected": "Collected"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "priorityZones": "Priority zones",
+      "daysAgo": "{days}d",
+      "score": "Score",
+      "compare": "Compare",
+      "compareType": "Comparison type",
+      "compareAgents": "Agents",
+      "compareZones": "Zones",
+      "select1": "Select first",
+      "select2": "Select second",
+      "compareAction": "Compare",
+      "noCompareData": "Select 2 items to compare.",
+      "winner": "Best",
+      "agentDetail": "Agent detail",
+      "recentInspections": "Recent inspections",
+      "zoneCoverage": "Zone coverage",
+      "avgDuration": "Avg duration",
+      "minutesShort": "min",
+      "weeklyTrend": "Weekly trend",
+      "noZoneData": "No zone data."
     }
   },
   "paymentResult": {

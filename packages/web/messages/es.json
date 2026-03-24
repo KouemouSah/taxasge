@@ -10394,6 +10394,28 @@
       "nonConformes": "No Conformes",
       "rate": "Tasa",
       "collected": "Cobrado"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "priorityZones": "Zonas prioritarias",
+      "daysAgo": "{days}j",
+      "score": "Score",
+      "compare": "Comparar",
+      "compareType": "Tipo de comparación",
+      "compareAgents": "Agentes",
+      "compareZones": "Zonas",
+      "select1": "Seleccionar primero",
+      "select2": "Seleccionar segundo",
+      "compareAction": "Comparar",
+      "noCompareData": "Seleccione 2 elementos a comparar.",
+      "winner": "Mejor",
+      "agentDetail": "Detalle agente",
+      "recentInspections": "Inspecciones recientes",
+      "zoneCoverage": "Cobertura zonas",
+      "avgDuration": "Duración media",
+      "minutesShort": "min",
+      "weeklyTrend": "Tendencia semanal",
+      "noZoneData": "Aucune donnée de zone."
     }
   },
   "paymentResult": {
