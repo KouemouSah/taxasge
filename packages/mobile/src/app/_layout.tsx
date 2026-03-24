@@ -11,6 +11,7 @@
  */
 
 import { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,6 +23,12 @@ import { AuthProvider } from '@core/auth/auth-provider';
 import { useAuth } from '@core/hooks/use-auth';
 import { ErrorBoundary } from '@components/ui/error-boundary';
 import '@core/i18n';
+
+// Suppress known React 19 + New Architecture internal warnings
+// These are React internals, not actionable — https://github.com/facebook/react/issues/28839
+LogBox.ignoreLogs([
+  'Internal React error: Expected static flag was missing',
+]);
 
 // Keep splash screen visible while providers initialize
 SplashScreen.preventAutoHideAsync();
