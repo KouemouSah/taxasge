@@ -14,6 +14,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Menu,
   Globe,
@@ -74,8 +75,14 @@ export const ChatPage: React.FC = () => {
     [sendMessage]
   );
 
+  const router = useRouter();
+  const pathname = usePathname();
+
   const handleLanguageChange = (lang: 'es' | 'fr' | 'en') => {
     updateSettings({ language: lang });
+    // Navigate to the same page in the new locale
+    const newPath = pathname.replace(/^\/(es|fr|en)/, `/${lang}`);
+    router.push(newPath);
   };
 
   return (
