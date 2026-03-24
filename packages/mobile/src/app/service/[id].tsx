@@ -114,14 +114,17 @@ export default function ServiceDetailScreen() {
             <>
               <View style={styles.priceRow}>
                 <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.expedition')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>
                     {formatCurrency(service.pricing.expedition_price)}
                   </Text>
                   {service.processing_time_days != null && service.processing_time_days > 0 && (
-                    <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 8 }}>
-                      | {t('services.processingDays', { count: service.processing_time_days })}
-                    </Text>
+                    <View style={styles.metaChip}>
+                      <MaterialCommunityIcons name="clock-outline" size={12} color={colors.primary} />
+                      <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600', marginLeft: 3 }}>
+                        {t('services.processingDays', { count: service.processing_time_days })}
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>
