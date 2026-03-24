@@ -81,13 +81,18 @@ export default function ServicesScreen() {
   const { search, results, isSearching } = useServiceSearch(300);
 
   const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [sortAlpha, setSortAlpha] = useState(false);
   const isSearchMode = searchText.length > 0 || results != null;
 
-  // Filter out inactive ministries and test data
-  const activeMinistries = useMemo(
-    () => (ministries ?? []).filter((m) => m.is_active !== false),
-    [ministries],
-  );
+  // Filter inactive + sort
+  const activeMinistries = useMemo(() => {
+    const filtered = (ministries ?? []).filter((m) => m.is_active !== false);
+    if (sortAlpha) {
+      return [...filtered].sort((a, b) => a.name_es.localeCompare(b.name_es));
+    }
+    return filtered;
+  }, [ministries, sortAlpha]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
@@ -273,16 +278,64 @@ export default function ServicesScreen() {
             </View>
           )}
 
-          {/* Ministries flat list */}
+          {/* Organizations header with view toggle */}
           <View style={{ marginTop: 16, paddingHorizontal: spacing.md }}>
-            <Text variant="titleSmall" style={{ color: colors.onBackground, fontWeight: '600', marginBottom: 8 }}>
-              {t('services.allMinistries')} ({activeMinistries.length})
-            </Text>
+            <View style={styles.orgHeader}>
+              <Text variant="titleSmall" style={{ color: colors.onBackground, fontWeight: '600' }}>
+                {t('services.organizations')} ({activeMinistries.length})
+              </Text>
+              <View style={styles.viewToggle}>
+                <Pressable
+                  onPress={() => setSortAlpha(!sortAlpha)}
+                  style={[styles.toggleBtn, sortAlpha && { backgroundColor: colors.primaryContainer }]}
+                >
+                  <MaterialCommunityIcons name="sort-alphabetical-ascending" size={18} color={sortAlpha ? colors.primary : colors.outline} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setViewMode('list')}
+                  style={[styles.toggleBtn, viewMode === 'list' && { backgroundColor: colors.primaryContainer }]}
+                >
+                  <MaterialCommunityIcons name="format-list-bulleted" size={18} color={viewMode === 'list' ? colors.primary : colors.outline} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setViewMode('kanban')}
+                  style={[styles.toggleBtn, viewMode === 'kanban' && { backgroundColor: colors.primaryContainer }]}
+                >
+                  <MaterialCommunityIcons name="view-grid-outline" size={18} color={viewMode === 'kanban' ? colors.primary : colors.outline} />
+                </Pressable>
+              </View>
+            </View>
 
             {ministriesLoading ? (
               <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: 24 }} />
-            ) : (
+            ) : viewMode === 'list' ? (
               activeMinistries.map((m, i) => renderMinistryItem(m, i))
+            ) : (
+              /* Kanban grid view */
+              <View style={styles.kanbanGrid}>
+                {activeMinistries.map((m) => (
+                  <Pressable
+                    key={m.id}
+                    style={[styles.kanbanCard, { backgroundColor: colors.surface, borderColor: colors.outlineVariant }]}
+                    onPress={() => handleMinistryPress(m)}
+                    android_ripple={{ color: colors.primaryContainer }}
+                  >
+                    <View style={[styles.kanbanIcon, { backgroundColor: m.color ? `${m.color}20` : colors.primaryContainer }]}>
+                      <MaterialCommunityIcons
+                        name={getMinistryIcon(m.name_es) as keyof typeof MaterialCommunityIcons.glyphMap}
+                        size={22}
+                        color={m.color ?? colors.primary}
+                      />
+                    </View>
+                    <Text
+                      style={[styles.kanbanName, { color: colors.onSurface }]}
+                      numberOfLines={3}
+                    >
+                      {m.name_es}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -329,8 +382,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
-  // Legacy (unused but kept for grid reference)
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  gridItem: { width: '50%' },
-  sectionTitle: { fontWeight: '600' },
+  // Header with toggle
+  orgHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  viewToggle: { flexDirection: 'row', gap: 4 },
+  toggleBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+
+  // Kanban grid
+  kanbanGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  kanbanCard: { width: '47.5%', borderRadius: 8, borderWidth: 1, padding: 10, alignItems: 'center', minHeight: 80, justifyContent: 'center' },
+  kanbanIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  kanbanName: { fontSize: 10, fontWeight: '600', textAlign: 'center', lineHeight: 13 },
 });
