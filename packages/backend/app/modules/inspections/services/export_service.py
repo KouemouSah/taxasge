@@ -5,7 +5,10 @@ CSV uses io.StringIO + csv.writer with UTF-8 BOM for Excel compatibility.
 PDF uses xhtml2pdf (pisa) with inline HTML.
 """
 
+import base64
 import csv
+import hashlib
+import hmac as hmac_mod
 import io
 import logging
 from datetime import date, datetime
@@ -15,6 +18,14 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
+
+# QR code for document verification (graceful degradation)
+try:
+    import qrcode
+    from qrcode.constants import ERROR_CORRECT_H
+    QRCODE_AVAILABLE = True
+except ImportError:
+    QRCODE_AVAILABLE = False
 
 # xhtml2pdf for PDF generation (graceful degradation)
 try:
@@ -390,6 +401,15 @@ class InspectionExportService:
         else:
             date_range_label = "Todas las fechas"
 
+        # -- Generate QR verification code (same pattern as InspectionPdfService) --
+        report_fingerprint = hashlib.sha256(
+            f"export|{entity_id}|{date_range_label}|{total}".encode()
+        ).hexdigest()[:12]
+        qr_base64 = _generate_verification_qr(
+            doc_type="export_report",
+            doc_id=report_fingerprint,
+        )
+
         # -- Build HTML --
         html = _build_inspections_pdf_html(
             entity_code=entity_code,
@@ -399,6 +419,7 @@ class InspectionExportService:
             non_conforme=non_conforme,
             total_collected=total_collected,
             rows=rows,
+            qr_base64=qr_base64,
         )
 
         # -- Convert to PDF --
@@ -408,6 +429,73 @@ class InspectionExportService:
             dest=output,
         )
         return output.getvalue()
+
+
+# ================================================================
+# QR code verification — same HMAC pattern as InspectionPdfService
+# ================================================================
+
+def _get_verification_secret() -> str:
+    """Get HMAC secret — OWASP A02: No hardcoded fallback in production."""
+    try:
+        from app.core.secrets import get_secret
+        secret = get_secret("VERIFICATION_SECRET")
+        if secret:
+            return secret
+    except Exception:
+        pass
+    from app.config import get_settings
+    settings = get_settings()
+    env = getattr(settings, "ENVIRONMENT", "development")
+    if env == "production":
+        logger.error("VERIFICATION_SECRET not configured in production!")
+        raise RuntimeError("VERIFICATION_SECRET must be set in production")
+    return "dev-only-inspection-verify-not-for-production"
+
+
+def _generate_verification_qr(doc_type: str, doc_id: str) -> str:
+    """Generate QR code with HMAC-signed verification URL.
+
+    Same algorithm as InspectionPdfService._generate_verification_token
+    so both individual and batch reports are verifiable through the same
+    /verify endpoint family.
+    """
+    if not QRCODE_AVAILABLE:
+        return ""
+    try:
+        # HMAC token (same as inspection_pdf_service.py)
+        secret = _get_verification_secret()
+        msg = f"inspect-verify|{doc_type}|{doc_id}"
+        token = hmac_mod.new(
+            secret.encode(), msg.encode(), hashlib.sha256
+        ).hexdigest()[:16]
+
+        # Build verification URL
+        try:
+            from app.config import get_settings
+            settings = get_settings()
+            base_url = getattr(settings, "FRONTEND_URL", None) or getattr(
+                settings, "SITE_URL", "https://taxasge.emacsah.com"
+            )
+        except Exception:
+            base_url = "https://taxasge.emacsah.com"
+
+        qr_url = f"{base_url}/verify/{doc_type}/{doc_id}?t={token}"
+
+        # Generate QR image → base64
+        qr = qrcode.QRCode(
+            version=1, error_correction=ERROR_CORRECT_H,
+            box_size=5, border=2,
+        )
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode()
+    except Exception as e:
+        logger.warning(f"QR generation failed for export report: {e}")
+        return ""
 
 
 # ================================================================
@@ -422,6 +510,7 @@ def _build_inspections_pdf_html(
     non_conforme: int,
     total_collected: float,
     rows: List,
+    qr_base64: str = "",
 ) -> str:
     """Build the HTML string for the inspections PDF report."""
 
@@ -559,9 +648,18 @@ def _build_inspections_pdf_html(
             </table>
         </div>
 
-        <!-- Stamp — same as inspection_report.html -->
+        <!-- QR + Stamp — same layout as inspection_report.html -->
         <div class="stamp">
-            Ce document a &eacute;t&eacute; g&eacute;n&eacute;r&eacute; &eacute;lectroniquement par la plateforme Facil.
+            <div style="display:inline-block; vertical-align:top; text-align:left; width:60%;">
+                <strong>SELLO DIGITAL</strong><br>
+                Ce document a &eacute;t&eacute; g&eacute;n&eacute;r&eacute; &eacute;lectroniquement par la plateforme Facil.<br>
+                <span class="label">{html_escape(entity_code)} &mdash; {generated_at}</span>
+            </div>
+            {"" if not qr_base64 else f'''
+            <div style="display:inline-block; vertical-align:top; width:30%; text-align:right;">
+                <img src="data:image/png;base64,{qr_base64}" style="width:70px;height:70px;">
+            </div>
+            '''}
         </div>
 
         <div class="footer">
