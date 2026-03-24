@@ -83,6 +83,7 @@ export default function RequestsListScreen() {
     isLoading,
     isRefetching,
     refetch,
+    error,
   } = useRequests(filters);
 
   // Flatten pages into a single list
@@ -146,6 +147,18 @@ export default function RequestsListScreen() {
         </View>
       );
     }
+    if (error) {
+      const message = error instanceof Error ? error.message : t('errors.serverError');
+      return (
+        <EmptyState
+          icon="alert-circle-outline"
+          title={t('common.error')}
+          description={message}
+          actionLabel={t('common.retry')}
+          onAction={() => refetch()}
+        />
+      );
+    }
     return (
       <EmptyState
         icon="file-document-outline"
@@ -155,7 +168,7 @@ export default function RequestsListScreen() {
         onAction={() => router.push('/(tabs)/services')}
       />
     );
-  }, [isLoading, colors.primary, t, router]);
+  }, [isLoading, error, colors.primary, t, router, refetch]);
 
   // --- Render --------------------------------------------------------------
 
