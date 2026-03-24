@@ -16,13 +16,15 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Text, TextInput, IconButton, Surface, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+
+const CHATBOT_AVATAR = require('../../../assets/images/icon_facil.png');
 
 interface Message {
   id: string;
@@ -80,10 +82,10 @@ export default function ChatScreen() {
           },
         ]}
       >
-        <MaterialCommunityIcons
-          name="robot-outline"
-          size={28}
-          color={colors.primary}
+        <Image
+          source={CHATBOT_AVATAR}
+          style={styles.chatbotAvatar}
+          resizeMode="contain"
         />
         <Text
           variant="titleMedium"
@@ -108,33 +110,45 @@ export default function ChatScreen() {
             <View
               key={msg.id}
               style={[
-                styles.messageBubble,
-                msg.isBot
-                  ? {
-                      alignSelf: 'flex-start',
-                      backgroundColor: colors.surfaceVariant,
-                      borderRadius: borderRadius.md,
-                      borderTopLeftRadius: borderRadius.sm / 2,
-                    }
-                  : {
-                      alignSelf: 'flex-end',
-                      backgroundColor: colors.primaryContainer,
-                      borderRadius: borderRadius.md,
-                      borderTopRightRadius: borderRadius.sm / 2,
-                    },
-                { padding: spacing.md, marginBottom: spacing.sm, maxWidth: '80%' },
+                styles.messageRow,
+                { marginBottom: spacing.sm },
+                msg.isBot ? { alignSelf: 'flex-start' } : { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
               ]}
             >
-              <Text
-                variant="bodyMedium"
-                style={{
-                  color: msg.isBot
-                    ? colors.onSurfaceVariant
-                    : colors.onPrimaryContainer,
-                }}
+              {msg.isBot && (
+                <Image
+                  source={CHATBOT_AVATAR}
+                  style={[styles.bubbleAvatar, { marginRight: spacing.xs }]}
+                  resizeMode="contain"
+                />
+              )}
+              <View
+                style={[
+                  msg.isBot
+                    ? {
+                        backgroundColor: colors.surfaceVariant,
+                        borderRadius: borderRadius.md,
+                        borderTopLeftRadius: borderRadius.sm / 2,
+                      }
+                    : {
+                        backgroundColor: colors.primaryContainer,
+                        borderRadius: borderRadius.md,
+                        borderTopRightRadius: borderRadius.sm / 2,
+                      },
+                  { padding: spacing.md, maxWidth: '75%' },
+                ]}
               >
-                {msg.text}
-              </Text>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: msg.isBot
+                      ? colors.onSurfaceVariant
+                      : colors.onPrimaryContainer,
+                  }}
+                >
+                  {msg.text}
+                </Text>
+              </View>
             </View>
           ))}
 
@@ -203,6 +217,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
   },
+  chatbotAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   headerTitle: {
     fontWeight: '600',
   },
@@ -212,7 +231,15 @@ const styles = StyleSheet.create({
   messagesContent: {
     flexGrow: 1,
   },
-  messageBubble: {},
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  bubbleAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
   suggestionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
