@@ -347,10 +347,9 @@ async def get_office_locations(db, **kwargs) -> dict:
 
 async def get_workflow_guide(db, **kwargs) -> dict:
     """Get a complete tutorial-style guide for an administrative procedure."""
-    workflow_code = kwargs.get("workflow_code", "")
-    workflow_name = kwargs.get("workflow_name", "")
+    workflow_name = kwargs.get("workflow_name", "") or kwargs.get("workflow_code", "")
 
-    if not workflow_code and not workflow_name:
+    if not workflow_name:
         # List all available workflows grouped by category
         rows = await db.fetch("""
             SELECT w.code, w.name_es, w.description_es, w.category,
@@ -369,36 +368,21 @@ async def get_workflow_guide(db, **kwargs) -> dict:
             "hint": "Usa workflow_code para obtener la guía detallada de un trámite específico",
         }
 
-    # Find workflow — search by code, then fuzzy code, then name
-    search_term = workflow_code or workflow_name
-    wf = None
-
-    if workflow_code:
-        # Try exact code first
-        wf = await db.fetchrow("""
-            SELECT w.code, w.name_es, w.description_es, w.category,
-                   w.requires_appointment, w.requires_agent_validation,
-                   w.sla_hours, w.max_processing_days,
-                   w.appointment_delay_days, w.appointment_entity_code
-            FROM workflows w WHERE w.code = $1 AND w.is_active = true
-        """, workflow_code)
-
-    if not wf:
-        # Fuzzy search: code LIKE or name ILIKE (catches PASAPORTE → PASAPORTE_NUEVO)
-        wf = await db.fetchrow("""
-            SELECT w.code, w.name_es, w.description_es, w.category,
-                   w.requires_appointment, w.requires_agent_validation,
-                   w.sla_hours, w.max_processing_days,
-                   w.appointment_delay_days, w.appointment_entity_code
-            FROM workflows w
-            WHERE w.is_active = true
-              AND (w.code ILIKE '%' || $1 || '%' OR w.name_es ILIKE '%' || $1 || '%')
-            ORDER BY w.parent_workflow_code NULLS FIRST
-            LIMIT 1
-        """, search_term)
+    # Find workflow — always fuzzy search (user says "pasaporte", not "PASAPORTE_NUEVO")
+    wf = await db.fetchrow("""
+        SELECT w.code, w.name_es, w.description_es, w.category,
+               w.requires_appointment, w.requires_agent_validation,
+               w.sla_hours, w.max_processing_days,
+               w.appointment_delay_days, w.appointment_entity_code
+        FROM workflows w
+        WHERE w.is_active = true
+          AND (w.code ILIKE '%' || $1 || '%' OR w.name_es ILIKE '%' || $1 || '%')
+        ORDER BY w.parent_workflow_code NULLS FIRST
+        LIMIT 1
+    """, workflow_name)
 
     if not wf:
-        return {"error": f"Trámite no encontrado: {search_term}"}
+        return {"error": f"Trámite no encontrado: {workflow_name}"}
 
     result = {k: str(v) if v is not None else None for k, v in dict(wf).items()}
 
@@ -671,7 +655,7 @@ if VERTEX_AVAILABLE:
             parameters={
                 "type": "object",
                 "properties": {
-                    "service_code": {"type": "string", "description": "Código del servicio (ej: 'PAT-001')"},
+                    "service_code": {"type": "string", "description": "Código del servicio SI se conoce. Preferir service_name en lenguaje natural."},
                     "service_name": {"type": "string", "description": "Nombre parcial del servicio (si no se conoce el código)"},
                 },
             },
@@ -715,8 +699,7 @@ if VERTEX_AVAILABLE:
             parameters={
                 "type": "object",
                 "properties": {
-                    "workflow_code": {"type": "string", "description": "Código del workflow (ej: 'PASAPORTE', 'RESIDENCIA', 'CONDUCIR')"},
-                    "workflow_name": {"type": "string", "description": "Nombre parcial del trámite (si no se conoce el código)"},
+                    "workflow_name": {"type": "string", "description": "Nombre del trámite en lenguaje natural tal como lo dice el usuario (ej: 'pasaporte', 'residencia', 'licencia de conducir', 'contrato'). NO usar códigos técnicos."},
                 },
             },
         ),
