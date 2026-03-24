@@ -219,8 +219,22 @@ class ChatbotServiceRAG:
                 }
 
             # Step 4: Generate AI response with RAG context + function calling tools
-            # RAG context is ALWAYS provided (priority). Tools enrich when needed.
             func_decls = CHATBOT_FUNC_DECLS if CHATBOT_FUNC_DECLS else None
+
+            # Smart routing: if RAG found nothing, force tool use (mode=ANY)
+            rag_is_empty = not relevant_docs and not relevant_services
+            # Also detect structured data queries that tools handle better
+            structured_keywords = [
+                "empresa", "ministerio", "oficina", "trámite", "categoría",
+                "directorio", "dónde", "horario", "licencia comercial",
+                "company", "ministry", "office", "entreprise", "ministère",
+            ]
+            is_structured_query = any(kw in message.lower() for kw in structured_keywords)
+            should_force_tools = func_decls and (rag_is_empty or is_structured_query)
+
+            if should_force_tools:
+                logger.info(f"Forcing tool use: rag_empty={rag_is_empty}, structured={is_structured_query}")
+
             ai_response = await gemini_service.chat(
                 user_message=message,
                 context_content=consolidated_context,
@@ -228,6 +242,7 @@ class ChatbotServiceRAG:
                 language=language,
                 conversation_history=conversation_history,
                 function_declarations=func_decls,
+                force_tools=should_force_tools,
             )
 
             # Step 4b: Multi-round tool execution if Gemini requested function calls
@@ -289,23 +304,19 @@ class ChatbotServiceRAG:
                 message, response_message, consolidated_context
             )
 
-            # If quality too low and we haven't used tools yet, force tool use
+            # If quality too low and we haven't used tools yet, force tool use (mode=ANY)
             if quality_score < 0.4 and not tools_used and func_decls:
                 logger.warning(
-                    f"Low quality ({quality_score:.2f}), retrying with explicit tool hint"
-                )
-                retry_prompt = (
-                    f"La pregunta del usuario es: '{message}'. "
-                    f"No encontré suficiente información en el contexto. "
-                    f"Usa las herramientas disponibles para buscar la respuesta."
+                    f"Low quality ({quality_score:.2f}), retrying with force_tools=True"
                 )
                 retry_response = await gemini_service.chat(
-                    user_message=retry_prompt,
+                    user_message=message,
                     context_content="",
                     context_services=[],
                     language=language,
                     conversation_history=conversation_history,
                     function_declarations=func_decls,
+                    force_tools=True,
                 )
                 # Execute tools if requested
                 if retry_response.get("function_calls"):
