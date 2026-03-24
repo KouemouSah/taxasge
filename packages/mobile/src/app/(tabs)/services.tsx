@@ -273,7 +273,7 @@ export default function ServicesScreen() {
 
               {/* Inner search + sort (ministry mode) */}
               {isMinistryFilter && (
-                <View style={styles.innerControls}>
+                <View style={[styles.innerControls, { marginTop: 8 }]}>
                   <TextInput
                     placeholder={`${results.total} services — ${t('services.searchWithin')}`}
                     value={innerSearch}
