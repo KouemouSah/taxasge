@@ -89,9 +89,12 @@ export interface ServiceSearchResponse {
 
 export interface MinistryItem {
   id: number;
-  code: string;
+  ministry_code: string;
   name_es: string;
   description_es?: string;
+  icon?: string;
+  color?: string;
+  is_active?: boolean;
   service_count?: number;
 }
 
