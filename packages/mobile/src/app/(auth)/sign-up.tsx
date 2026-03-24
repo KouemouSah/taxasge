@@ -80,6 +80,7 @@ export default function SignUpScreen() {
   const handleSendCode = useCallback(async () => {
     const isValid = await emailForm.trigger('email');
     if (!isValid) return;
+    if (sendCodeMutation.isPending) return;
 
     setErrorMessage(null);
     const email = emailForm.getValues('email');
@@ -96,6 +97,20 @@ export default function SignUpScreen() {
       },
     });
   }, [emailForm, registerForm, sendCodeMutation]);
+
+  /**
+   * Auto-send verification code when email field loses focus
+   * and the email is valid. Avoids spamming during typing.
+   */
+  const handleEmailBlur = useCallback(async () => {
+    const email = emailForm.getValues('email');
+    if (!email || codeSent || sendCodeMutation.isPending) return;
+
+    const isValid = await emailForm.trigger('email');
+    if (isValid) {
+      handleSendCode();
+    }
+  }, [emailForm, codeSent, sendCodeMutation.isPending, handleSendCode]);
 
   const handleContinueToStep2 = useCallback(() => {
     const code = registerForm.getValues('verification_code');
@@ -196,7 +211,10 @@ export default function SignUpScreen() {
                           onChange(text);
                           registerForm.setValue('email', text);
                         }}
-                        onBlur={onBlur}
+                        onBlur={() => {
+                          onBlur();
+                          handleEmailBlur();
+                        }}
                         mode="outlined"
                         keyboardType="email-address"
                         autoCapitalize="none"
@@ -229,7 +247,7 @@ export default function SignUpScreen() {
                   loading={sendCodeMutation.isPending}
                   disabled={sendCodeMutation.isPending}
                   style={{ marginBottom: spacing.md }}
-                  icon={codeSent ? 'check' : 'email-send-outline'}
+                  icon={codeSent ? 'check' : 'email-fast-outline'}
                 >
                   {codeSent ? t('auth.codeSent') : t('auth.sendCode')}
                 </Button>

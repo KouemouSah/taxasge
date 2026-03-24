@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, TextInput, Button, Surface, HelperText } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
@@ -71,12 +71,11 @@ export default function SignInScreen() {
         <View style={[styles.content, { paddingHorizontal: spacing.lg }]}>
           {/* Header */}
           <View style={[styles.header, { marginBottom: spacing.xl }]}>
-            <Text
-              variant="displaySmall"
-              style={[styles.appName, { color: colors.primary }]}
-            >
-              Facil
-            </Text>
+            <Image
+              source={require('../../../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text
               variant="bodyLarge"
               style={[styles.subtitle, { color: colors.onSurfaceVariant, marginTop: spacing.sm }]}
@@ -216,8 +215,9 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
   },
-  appName: {
-    fontWeight: '700',
+  logo: {
+    width: 180,
+    height: 80,
   },
   subtitle: {
     textAlign: 'center',

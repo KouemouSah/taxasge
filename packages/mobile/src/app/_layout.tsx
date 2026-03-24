@@ -52,6 +52,8 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="+not-found" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
@@ -59,9 +61,10 @@ function RootNavigator() {
         options={{ presentation: 'fullScreenModal' }}
       />
       <Stack.Screen name="settings" />
-      <Stack.Screen name="service" />
+      <Stack.Screen name="service/[id]" />
       <Stack.Screen name="support" />
-      <Stack.Screen name="calculator" />
+      <Stack.Screen name="calculator/index" />
+      <Stack.Screen name="calculator/history" />
     </Stack>
   );
 }
