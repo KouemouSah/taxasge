@@ -1,38 +1,20 @@
-module.exports = {
-  presets: ['@react-native/babel-preset'],
-  plugins: [
-    // Module alias resolution
-    ['module-resolver', {
-      root: ['./src'],
-      alias: {
-        '@': './src',
-        '@assets': './src/assets',
-        '@components': './src/components',
-        '@screens': './src/screens',
-        '@services': './src/services',
-        '@utils': './src/utils',
-        '@types': './src/types',
-        '@navigation': './src/navigation',
-        '@store': './src/store',
-        '@hooks': './src/hooks',
-        '@constants': './src/constants',
-        '@database': './src/database',
-        '@config': './src/config'
-      }
-    }],
-    // Environment variables - Dynamic .env file selection
-    ['module:react-native-dotenv', {
-      moduleName: '@env',
-      path: process.env.ENVFILE || '.env',
-      safe: false,
-      allowUndefined: true
-    }]
-  ],
-  env: {
-    test: {
-      plugins: [
-        '@babel/plugin-transform-modules-commonjs'
-      ]
-    }
-  }
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      [
+        'module-resolver',
+        {
+          root: ['./src'],
+          alias: {
+            '@core': './src/core',
+            '@modules': './src/modules',
+            '@components': './src/components',
+          },
+        },
+      ],
+      'react-native-reanimated/plugin',
+    ],
+  };
 };

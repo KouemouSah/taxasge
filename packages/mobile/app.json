@@ -1,4 +1,64 @@
 {
-  "name": "TaxasGE",
-  "displayName": "TaxasGE - Gestion Fiscale"
+  "expo": {
+    "name": "Facil",
+    "slug": "facil",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "facil",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.taxasge.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Facil necesita acceso a la cámara para escanear documentos",
+        "NSPhotoLibraryUsageDescription": "Facil necesita acceso a las fotos para adjuntar documentos",
+        "NSFaceIDUsageDescription": "Facil utiliza Face ID para un acceso rápido y seguro"
+      }
+    },
+    "android": {
+      "package": "com.taxasge.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0D6E3F",
+        "foregroundImage": "./assets/images/icon.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0D6E3F"
+        }
+      ],
+      "expo-secure-store",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
 }
