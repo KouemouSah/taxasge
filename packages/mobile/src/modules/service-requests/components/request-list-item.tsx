@@ -12,6 +12,7 @@
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
 import { formatRelativeTime, formatCurrency } from '@core/utils/format';
@@ -80,7 +81,7 @@ function getStatusLabel(status: string, t: (key: string) => string): string {
 
 export function RequestListItem({ item, onPress }: RequestListItemProps) {
   const { colors, spacing } = useAppTheme();
-  const { t } = require('react-i18next').useTranslation();
+  const { t } = useTranslation();
 
   const dotColor = getStatusDotColor(item.status);
   const statusColor = getStatusTextColor(item.status);
