@@ -84,18 +84,22 @@ const renderMarkdown = (text: string): string => {
     </table></div>`
   })
 
+  // Remove extra blank lines between list items before parsing
+  html = html.replace(/^(- .+)\n\n(?=- )/gm, '$1\n')
+  html = html.replace(/^(\d+\. .+)\n\n(?=\d+\. )/gm, '$1\n')
+
   // Bullet lists - item (consecutive)
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
-  html = html.replace(/((?:<li class="ml-4 py-0\.5">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-2 space-y-0.5">$1</ul>')
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+  html = html.replace(/((?:<li class="ml-4">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-1.5 space-y-0">$1</ul>')
 
   // Numbered lists 1. item (consecutive)
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
+  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
 
   // Paragraphs (double newline → spacing)
-  html = html.replace(/\n\n/g, '</p><p class="my-2">')
+  html = html.replace(/\n\n/g, '</p><p class="my-1">')
 
   // Single newlines within paragraphs → <br>
   html = html.replace(/\n/g, '<br>')

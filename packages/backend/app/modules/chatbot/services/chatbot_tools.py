@@ -369,28 +369,36 @@ async def get_workflow_guide(db, **kwargs) -> dict:
             "hint": "Usa workflow_code para obtener la guía detallada de un trámite específico",
         }
 
-    # Find workflow — search by code or name
+    # Find workflow — search by code, then fuzzy code, then name
+    search_term = workflow_code or workflow_name
+    wf = None
+
     if workflow_code:
+        # Try exact code first
         wf = await db.fetchrow("""
             SELECT w.code, w.name_es, w.description_es, w.category,
                    w.requires_appointment, w.requires_agent_validation,
                    w.sla_hours, w.max_processing_days,
                    w.appointment_delay_days, w.appointment_entity_code
-            FROM workflows w WHERE w.code = $1
+            FROM workflows w WHERE w.code = $1 AND w.is_active = true
         """, workflow_code)
-    else:
+
+    if not wf:
+        # Fuzzy search: code LIKE or name ILIKE (catches PASAPORTE → PASAPORTE_NUEVO)
         wf = await db.fetchrow("""
             SELECT w.code, w.name_es, w.description_es, w.category,
                    w.requires_appointment, w.requires_agent_validation,
                    w.sla_hours, w.max_processing_days,
                    w.appointment_delay_days, w.appointment_entity_code
             FROM workflows w
-            WHERE w.name_es ILIKE '%' || $1 || '%' AND w.is_active = true
+            WHERE w.is_active = true
+              AND (w.code ILIKE '%' || $1 || '%' OR w.name_es ILIKE '%' || $1 || '%')
+            ORDER BY w.parent_workflow_code NULLS FIRST
             LIMIT 1
-        """, workflow_name)
+        """, search_term)
 
     if not wf:
-        return {"error": f"Trámite no encontrado: {workflow_code or workflow_name}"}
+        return {"error": f"Trámite no encontrado: {search_term}"}
 
     result = {k: str(v) if v is not None else None for k, v in dict(wf).items()}
 
