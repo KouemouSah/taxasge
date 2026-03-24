@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { chatbotApi } from "@/modules/chatbot/services/api"
+import { renderMarkdown } from "@/core/utils/markdown"
 import type { LanguageCode } from "@/modules/chatbot/types"
 
 interface Message {
@@ -232,7 +233,14 @@ export const FloatingChatbot = () => {
                         : "bg-muted text-foreground"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === "assistant" ? (
+                      <div
+                        className="text-sm prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
                   </div>
                   {message.role === "user" && (
                     <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary flex items-center justify-center">

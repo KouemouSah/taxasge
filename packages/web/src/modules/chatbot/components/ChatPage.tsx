@@ -158,7 +158,7 @@ export const ChatPage: React.FC = () => {
             /* ── Chat State ─────────────────────────────────────── */
             <div className="flex-1 flex flex-col animate-in fade-in duration-300">
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto pt-12 pb-2">
+              <div className="flex-1 overflow-y-auto pt-12 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div className="max-w-3xl mx-auto w-full px-4">
                   <MessageList
                     messages={messages}

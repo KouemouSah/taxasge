@@ -155,8 +155,10 @@ class ChatbotServiceRAG:
             fallback_message = ""
             did_you_mean_suggestions = []
 
-            # Check for insufficient primary context — only fallback if BOTH docs and services are empty
-            if not relevant_docs and not relevant_services and len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
+            # Check for insufficient primary context — only fallback if NO tools available AND no context
+            # When tools are available, ALWAYS let Gemini handle it (it can call tools)
+            has_tools = bool(CHATBOT_FUNC_DECLS)
+            if not has_tools and not relevant_docs and not relevant_services and len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
                 logger.warning(f"Insufficient primary context found for query: '{message[:50]}...' (length: {len(consolidated_context)})")
                 
                 # Try to generate "Did you mean?" suggestions
