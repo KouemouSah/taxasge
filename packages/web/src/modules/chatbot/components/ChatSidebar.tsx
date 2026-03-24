@@ -222,7 +222,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )
           ) : (
             showLabels ? (
-              <Link href={`/${locale}/login`} onClick={onNavigate}>
+              <Link href={`/${locale}/auth`} onClick={onNavigate}>
                 <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 h-9 transition-colors">
                   <LogIn {...ICON_PROPS} />
                   {t('chatPage.login_cta')}
@@ -231,7 +231,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href={`/${locale}/login`}>
+                  <Link href={`/${locale}/auth`}>
                     <Button variant="ghost" size="icon" className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
                       <LogIn {...ICON_PROPS} />
                     </Button>

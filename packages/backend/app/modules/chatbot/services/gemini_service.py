@@ -541,12 +541,7 @@ Obtener un pasaporte en Guinea Ecuatorial es un trámite que se realiza a travé
 
             # 3. Generate final response with all accumulated context
             generate_kwargs = {
-                "generation_config": GenerationConfig(
-                    temperature=self.generation_config.temperature,
-                    top_p=self.generation_config.top_p,
-                    top_k=self.generation_config.top_k,
-                    max_output_tokens=2048,
-                ),
+                "generation_config": self.generation_config,
                 "safety_settings": self.safety_settings,
             }
             if function_declarations:
