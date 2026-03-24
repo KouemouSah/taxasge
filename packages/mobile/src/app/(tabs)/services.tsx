@@ -83,6 +83,7 @@ export default function ServicesScreen() {
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [sortAlpha, setSortAlpha] = useState(false);
+  const [isMinistryFilter, setIsMinistryFilter] = useState(false);
   const isSearchMode = searchText.length > 0 || results != null;
 
   // Filter inactive + sort
@@ -96,16 +97,19 @@ export default function ServicesScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
+    setIsMinistryFilter(false);
     search(text);
   }, [search]);
 
   const handleClearSearch = useCallback(() => {
     setSearchText('');
+    setIsMinistryFilter(false);
     search('');
   }, [search]);
 
   const handleMinistryPress = useCallback((ministry: MinistryItem) => {
     setSearchText(ministry.name_es);
+    setIsMinistryFilter(true);
     search(ministry.name_es, { ministry_id: ministry.id });
   }, [search]);
 
@@ -181,7 +185,7 @@ export default function ServicesScreen() {
             <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '600' }} numberOfLines={2}>
               {item.name_es}
             </Text>
-            {item.ministry_name && (
+            {!isMinistryFilter && item.ministry_name && (
               <Text variant="bodySmall" style={{ color: colors.outline }} numberOfLines={1}>
                 {item.ministry_name}
               </Text>
@@ -216,9 +220,14 @@ export default function ServicesScreen() {
           renderItem={renderSearchItem}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
-            <Text variant="labelMedium" style={{ color: colors.outline, paddingHorizontal: 16, paddingVertical: 8 }}>
-              {t('services.results', { count: results.total })}
-            </Text>
+            <View style={styles.searchResultsHeader}>
+              <Pressable onPress={handleClearSearch} style={styles.backBtn}>
+                <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+              </Pressable>
+              <Text variant="labelMedium" style={{ color: colors.outline, flex: 1 }}>
+                {t('services.results', { count: results.total })}
+              </Text>
+            </View>
           }
         />
       );
@@ -386,6 +395,10 @@ const styles = StyleSheet.create({
   orgHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   viewToggle: { flexDirection: 'row', gap: 4 },
   toggleBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+
+  // Search results header
+  searchResultsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  backBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
   // Kanban grid
   kanbanGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

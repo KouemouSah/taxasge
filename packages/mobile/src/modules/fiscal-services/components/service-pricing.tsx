@@ -1,26 +1,26 @@
 /**
- * ServicePricing — Pricing display card for a fiscal service.
+ * ServicePricing — Native Android pricing display
  *
- * Shows expedition price (large), renewal price (if different),
- * calculation method label, processing time, and currency badge.
+ * Flat layout: expedition price + renewal price + method + processing time.
+ * Currency (XAF) is part of formatCurrency(), not a separate badge.
  */
 
 import { StyleSheet, View } from 'react-native';
-import { Surface, Text, Chip, Divider } from 'react-native-paper';
+import { Text, Divider } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { formatCurrency } from '@core/utils/format';
 import type { PricingInfo } from '../types/services.types';
 
-/** Human-readable labels for calculation methods. */
 const METHOD_LABELS: Record<string, string> = {
   fixed_expedition: 'Tasa fija',
-  fixed_renewal: 'Tasa fija (renovacion)',
+  fixed_renewal: 'Tasa fija (renovación)',
   percentage_based: 'Porcentaje',
   unit_based: 'Por unidad',
   tiered_rates: 'Escalonado',
-  formula_based: 'Formula',
+  formula_based: 'Fórmula',
   fixed_plus_unit: 'Fija + por unidad',
 };
 
@@ -30,85 +30,60 @@ interface ServicePricingProps {
 }
 
 export function ServicePricing({ pricing, processing_time_days }: ServicePricingProps) {
-  const { colors, spacing, borderRadius } = useAppTheme();
+  const { colors } = useAppTheme();
+  const { t } = useTranslation();
 
   const isFree = pricing.expedition_price === 0 && pricing.renewal_price === 0;
   const hasRenewal = pricing.renewal_price > 0 && pricing.renewal_price !== pricing.expedition_price;
   const methodLabel = METHOD_LABELS[pricing.calculation_method] ?? pricing.calculation_method;
 
   return (
-    <Surface
-      style={[
-        styles.container,
-        {
-          padding: spacing.md,
-          borderRadius: borderRadius.md,
-          backgroundColor: colors.surface,
-        },
-      ]}
-      elevation={1}
-    >
-      {/* Section header */}
-      <View style={[styles.header, { marginBottom: spacing.sm }]}>
-        <MaterialCommunityIcons name="cash-multiple" size={20} color={colors.primary} />
-        <Text
-          variant="titleSmall"
-          style={[styles.headerText, { color: colors.onSurface, marginLeft: spacing.sm }]}
-        >
-          Tarifas
+    <View>
+      <View style={styles.header}>
+        <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
+        <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 6 }}>
+          {t('services.tariff')}
         </Text>
       </View>
 
-      <Divider style={{ marginBottom: spacing.md }} />
-
       {isFree ? (
-        /* Free service */
-        <View style={styles.freeContainer}>
-          <MaterialCommunityIcons name="gift-outline" size={32} color={colors.primary} />
-          <Text
-            variant="headlineSmall"
-            style={[styles.freeLabel, { color: colors.primary, marginTop: spacing.sm }]}
-          >
-            Gratuito
+        <View style={styles.freeRow}>
+          <MaterialCommunityIcons name="gift-outline" size={20} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16, marginLeft: 8 }}>
+            {t('services.freeService')}
           </Text>
         </View>
       ) : (
         <>
-          {/* Expedition price */}
-          <View style={[styles.priceRow, { marginBottom: spacing.sm }]}>
-            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-              Expedicion
+          {/* Expedition */}
+          <View style={styles.priceRow}>
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+              {t('services.expedition')}
             </Text>
-            <Text
-              variant="headlineMedium"
-              style={[styles.priceValue, { color: colors.primary }]}
-            >
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>
               {formatCurrency(pricing.expedition_price)}
             </Text>
           </View>
 
-          {/* Renewal price (if different and > 0) */}
+          {/* Renewal */}
           {hasRenewal && (
-            <View style={[styles.priceRow, { marginBottom: spacing.sm }]}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-                Renovacion
+            <View style={styles.priceRow}>
+              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                {t('services.renewal')}
               </Text>
-              <Text
-                variant="titleMedium"
-                style={{ color: colors.onSurface, fontWeight: '600' }}
-              >
+              <Text style={{ color: colors.onSurface, fontWeight: '600', fontSize: 15 }}>
                 {formatCurrency(pricing.renewal_price)}
               </Text>
             </View>
           )}
 
-          {/* Percentage rate (if applicable) */}
+          {/* Percentage */}
           {pricing.percentage_rate != null && pricing.percentage_rate > 0 && (
-            <View style={[styles.priceRow, { marginBottom: spacing.sm }]}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-                Tasa aplicable
+            <View style={styles.priceRow}>
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                {t('services.tariff')}
               </Text>
-              <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600' }}>
+              <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '600' }}>
                 {pricing.percentage_rate}%
               </Text>
             </View>
@@ -116,79 +91,28 @@ export function ServicePricing({ pricing, processing_time_days }: ServicePricing
         </>
       )}
 
-      <Divider style={{ marginVertical: spacing.sm }} />
-
-      {/* Metadata row: method + processing time + currency */}
-      <View style={[styles.metaRow, { gap: spacing.sm }]}>
-        {/* Calculation method */}
-        <Chip
-          compact
-          mode="flat"
-          style={{ backgroundColor: colors.surfaceVariant }}
-          textStyle={{ fontSize: 11, color: colors.onSurfaceVariant }}
-          icon={() => (
-            <MaterialCommunityIcons name="calculator-variant" size={12} color={colors.onSurfaceVariant} />
-          )}
-        >
-          {methodLabel}
-        </Chip>
-
-        {/* Processing time */}
+      {/* Meta: method + processing time (inline) */}
+      <Divider style={{ marginVertical: 8 }} />
+      <View style={styles.metaRow}>
+        <MaterialCommunityIcons name="calculator-variant" size={14} color={colors.outline} />
+        <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 4 }}>{methodLabel}</Text>
         {processing_time_days != null && processing_time_days > 0 && (
-          <Chip
-            compact
-            mode="flat"
-            style={{ backgroundColor: colors.surfaceVariant }}
-            textStyle={{ fontSize: 11, color: colors.onSurfaceVariant }}
-            icon={() => (
-              <MaterialCommunityIcons name="clock-outline" size={12} color={colors.onSurfaceVariant} />
-            )}
-          >
-            {processing_time_days} dia{processing_time_days !== 1 ? 's' : ''}
-          </Chip>
+          <>
+            <Text variant="labelSmall" style={{ color: colors.outline, marginHorizontal: 8 }}>|</Text>
+            <MaterialCommunityIcons name="clock-outline" size={14} color={colors.outline} />
+            <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 4 }}>
+              {t('services.processingDays', { count: processing_time_days })}
+            </Text>
+          </>
         )}
-
-        {/* Currency badge */}
-        <Chip
-          compact
-          mode="flat"
-          style={{ backgroundColor: colors.tertiaryContainer }}
-          textStyle={{ fontSize: 11, color: colors.onTertiaryContainer }}
-        >
-          {pricing.currency}
-        </Chip>
       </View>
-    </Surface>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {},
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerText: {
-    fontWeight: '600',
-  },
-  freeContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  freeLabel: {
-    fontWeight: '700',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  priceValue: {
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  freeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 4 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
 });
