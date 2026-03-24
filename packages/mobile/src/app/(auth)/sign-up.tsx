@@ -26,7 +26,7 @@ import {
   HelperText,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -47,6 +47,7 @@ export default function SignUpScreen() {
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
   const { signUp } = useAuth();
+  const router = useRouter();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -132,9 +133,8 @@ export default function SignUpScreen() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { confirm_password, ...registerData } = data;
         await signUp(registerData);
-        // signUp stores tokens + sets user in AuthProvider.
-        // AuthProvider state change triggers auto-redirect to dashboard.
-        // NO manual navigation needed.
+        // Navigate to dashboard after successful registration
+        router.replace('/(tabs)');
       } catch (error) {
         const apiError = extractApiError(error);
         setErrorMessage(apiError.message);

@@ -81,8 +81,8 @@ export default function VerifyOtpScreen() {
     setIsSubmitting(true);
     try {
       await verify2FA(tempToken, otpValue);
-      // On success, AuthProvider updates isAuthenticated and navigation
-      // is handled automatically by the index.tsx redirect.
+      // Navigate to dashboard after successful 2FA
+      router.replace('/(tabs)');
     } catch (error) {
       const apiError = extractApiError(error);
       setErrorMessage(apiError.message);

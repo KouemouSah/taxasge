@@ -49,9 +49,10 @@ export default function SignInScreen() {
           pathname: '/(auth)/verify-otp',
           params: { tempToken: result.tempToken },
         });
+      } else {
+        // Login success — navigate to dashboard immediately
+        router.replace('/(tabs)');
       }
-      // If result.type === 'success', AuthProvider updates isAuthenticated
-      // and the index.tsx redirect handles navigation automatically.
     } catch (error) {
       const apiError = extractApiError(error);
       setErrorMessage(apiError.message);
