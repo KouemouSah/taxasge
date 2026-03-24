@@ -356,7 +356,9 @@
     "downloadPDF": "Télécharger le résumé PDF",
     "summary": "Résumé",
     "moreInPDF": "+{{count}} champs de plus dans le PDF",
-    "pdfSaved": "PDF enregistré dans les téléchargements"
+    "pdfSaved": "PDF enregistré dans les téléchargements",
+    "downloadComplete": "Document téléchargé",
+    "openFile": "Ouvrir"
   },
   "errors": {
     "network": "Erreur de connexion. Vérifiez votre internet.",

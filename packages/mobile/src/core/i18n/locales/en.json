@@ -356,7 +356,9 @@
     "downloadPDF": "Download PDF summary",
     "summary": "Summary",
     "moreInPDF": "+{{count}} more fields in PDF",
-    "pdfSaved": "PDF saved to downloads"
+    "pdfSaved": "PDF saved to downloads",
+    "downloadComplete": "Document downloaded",
+    "openFile": "Open"
   },
   "errors": {
     "network": "Connection error. Check your internet.",

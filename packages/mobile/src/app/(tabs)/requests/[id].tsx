@@ -29,7 +29,7 @@ import {
   IconButton,
   Snackbar,
 } from 'react-native-paper';
-import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy';
+import { documentDirectory, downloadAsync } from 'expo-file-system/legacy';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -119,29 +119,29 @@ export default function RequestDetailScreen() {
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [lastDownloadedUri, setLastDownloadedUri] = useState<{ uri: string; mime: string } | null>(null);
 
-  const handleDownloadPDF = useCallback(async () => {
-    if (!id) return;
+  /** Get MIME type from file extension */
+  const getMimeType = (fileName: string): string => {
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'pdf') return 'application/pdf';
+    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+    if (ext === 'png') return 'image/png';
+    return 'application/octet-stream';
+  };
+
+  /** Download file to persistent storage + show snackbar with "Ouvrir" */
+  const downloadFile = useCallback(async (url: string, fileName: string, headers?: Record<string, string>) => {
     setIsDownloading(true);
+    setLastDownloadedUri(null);
     try {
-      const token = await getAccessToken();
-      const url = `${appConfig.api.baseUrl}/api/${appConfig.api.version}${API_ENDPOINTS.serviceRequests.summaryPdf(id)}?language=es`;
-      const fileUri = `${cacheDirectory}solicitud-${id.slice(0, 8)}.pdf`;
-
-      const download = await downloadAsync(url, fileUri, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const fileUri = `${documentDirectory}${fileName}`;
+      const download = await downloadAsync(url, fileUri, headers ? { headers } : undefined);
 
       if (download.status === 200) {
-        const canShare = await isAvailableAsync();
-        if (canShare) {
-          await shareAsync(download.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: t('detail.downloadPDF'),
-          });
-        } else {
-          setSnackbar(t('detail.pdfSaved'));
-        }
+        const mime = getMimeType(fileName);
+        setLastDownloadedUri({ uri: download.uri, mime });
+        setSnackbar(t('detail.downloadComplete'));
       } else {
         setSnackbar(t('common.error'));
       }
@@ -150,36 +150,35 @@ export default function RequestDetailScreen() {
     } finally {
       setIsDownloading(false);
     }
-  }, [id, t]);
+  }, [t]);
+
+  /** Open last downloaded file via share sheet */
+  const handleOpenFile = useCallback(async () => {
+    if (!lastDownloadedUri) return;
+    try {
+      await shareAsync(lastDownloadedUri.uri, {
+        mimeType: lastDownloadedUri.mime,
+        dialogTitle: t('detail.openFile'),
+      });
+    } catch {
+      // User cancelled share sheet — ignore
+    }
+  }, [lastDownloadedUri, t]);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!id) return;
+    const token = await getAccessToken();
+    const url = `${appConfig.api.baseUrl}/api/${appConfig.api.version}${API_ENDPOINTS.serviceRequests.summaryPdf(id)}?language=es`;
+    await downloadFile(url, `solicitud-${id.slice(0, 8)}.pdf`, { Authorization: `Bearer ${token}` });
+  }, [id, downloadFile]);
 
   const handleDownloadDocument = useCallback(async (fileUrl: string | undefined, fileName: string) => {
     if (!fileUrl) {
       setSnackbar(t('common.error'));
       return;
     }
-    try {
-      const ext = fileName.split('.').pop() ?? 'pdf';
-      const fileUri = `${cacheDirectory}${fileName}`;
-      const download = await downloadAsync(fileUrl, fileUri);
-
-      if (download.status === 200) {
-        const canShare = await isAvailableAsync();
-        if (canShare) {
-          const mimeType = ext === 'pdf' ? 'application/pdf'
-            : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-            : ext === 'png' ? 'image/png'
-            : 'application/octet-stream';
-          await shareAsync(download.uri, { mimeType, dialogTitle: fileName });
-        } else {
-          setSnackbar(t('detail.pdfSaved'));
-        }
-      } else {
-        setSnackbar(t('common.error'));
-      }
-    } catch {
-      setSnackbar(t('common.error'));
-    }
-  }, [t]);
+    await downloadFile(fileUrl, fileName);
+  }, [downloadFile, t]);
 
   const essentialFields = useMemo(
     () => (data ? extractEssentialFields(data.data_sections) : []),
@@ -442,7 +441,12 @@ export default function RequestDetailScreen() {
         </Modal>
       )}
 
-      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
+      <Snackbar
+        visible={!!snackbar}
+        onDismiss={() => { setSnackbar(null); setLastDownloadedUri(null); }}
+        duration={5000}
+        action={lastDownloadedUri ? { label: t('detail.openFile'), onPress: handleOpenFile } : undefined}
+      >
         {snackbar ?? ''}
       </Snackbar>
     </SafeAreaView>
