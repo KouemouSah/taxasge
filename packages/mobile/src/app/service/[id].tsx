@@ -79,7 +79,7 @@ export default function ServiceDetailScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
 
         {/* ═══ INFO STRIP (green accent) ═══ */}
         <View style={[styles.infoStrip, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>
@@ -104,39 +104,39 @@ export default function ServiceDetailScreen() {
         {/* ═══ PRICE ═══ */}
         <View style={{ paddingHorizontal: spacing.md, paddingVertical: 10 }}>
           {isFree ? (
-            <View style={styles.priceRow}>
-              <MaterialCommunityIcons name="gift-outline" size={22} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18, marginLeft: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialCommunityIcons name="gift-outline" size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16, marginLeft: 6 }}>
                 {t('services.freeService')}
               </Text>
             </View>
           ) : (
-            <>
-              <View style={styles.priceRow}>
-                <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.expedition')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>
-                    {formatCurrency(service.pricing.expedition_price)}
-                  </Text>
-                  {service.processing_time_days != null && service.processing_time_days > 0 && (
-                    <View style={styles.metaChip}>
-                      <MaterialCommunityIcons name="clock-outline" size={12} color={colors.primary} />
-                      <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600', marginLeft: 3 }}>
-                        {t('services.processingDays', { count: service.processing_time_days })}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <Text variant="labelMedium" style={{ color: '#2E7D32' }}>{t('services.expedition')}:</Text>
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>
+                {formatCurrency(service.pricing.expedition_price)}
+              </Text>
               {hasRenewal && (
-                <View style={styles.priceRow}>
-                  <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.renewal')}</Text>
+                <>
+                  <Text style={{ color: colors.outline }}>|</Text>
+                  <Text variant="labelMedium" style={{ color: '#2E7D32' }}>{t('services.renewal')}:</Text>
                   <Text style={{ color: '#2E7D32', fontWeight: '600', fontSize: 14 }}>
                     {formatCurrency(service.pricing.renewal_price)}
                   </Text>
-                </View>
+                </>
               )}
-            </>
+              {service.processing_time_days != null && service.processing_time_days > 0 && (
+                <>
+                  <Text style={{ color: colors.outline }}>|</Text>
+                  <View style={styles.metaChip}>
+                    <MaterialCommunityIcons name="clock-outline" size={12} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600', marginLeft: 3 }}>
+                      {t('services.processingDays', { count: service.processing_time_days })}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
           )}
         </View>
 
@@ -250,21 +250,20 @@ export default function ServiceDetailScreen() {
             </View>
           </>
         )}
+        {/* ═══ CTA BUTTON (disabled, inside scroll) ═══ */}
+        <View style={{ paddingHorizontal: spacing.md, paddingVertical: 16 }}>
+          <Button
+            mode="contained"
+            onPress={handleStartRequest}
+            disabled
+            icon="lock-outline"
+            style={{ borderRadius: 8, opacity: 0.6 }}
+            contentStyle={{ paddingVertical: 4 }}
+          >
+            {t('services.startRequest')} — {t('services.comingSoon')}
+          </Button>
+        </View>
       </ScrollView>
-
-      {/* ═══ STICKY BUTTON (disabled) ═══ */}
-      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
-        <Button
-          mode="contained"
-          onPress={handleStartRequest}
-          disabled
-          icon="lock-outline"
-          style={{ flex: 1, borderRadius: 8, opacity: 0.6 }}
-          contentStyle={{ paddingVertical: 4 }}
-        >
-          {t('services.startRequest')} — {t('services.comingSoon')}
-        </Button>
-      </View>
     </SafeAreaView>
   );
 }
@@ -283,5 +282,4 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8, paddingLeft: 4 },
   stepBadge: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   relatedChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, minWidth: 120, maxWidth: 160 },
-  bottomBar: { padding: 12, borderTopWidth: 1 },
 });
