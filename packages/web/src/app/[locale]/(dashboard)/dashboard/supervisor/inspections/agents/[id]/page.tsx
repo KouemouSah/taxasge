@@ -145,15 +145,13 @@ export default function AgentDetailPage() {
   // Chart data
   // -----------------------------------------------------------------------
 
-  // Mixed bar+line chart requires generic ChartData type
-  const chartData = useMemo((): ChartData | null => {
+  const chartData = useMemo((): ChartData<'bar'> | null => {
     if (!data?.weekly_trend?.length) return null
     const labels = data.weekly_trend.map(w => fmtWeek(w.week_start, locale))
     return {
       labels,
       datasets: [
         {
-          type: 'bar' as const,
           label: t('perf.conforme'),
           data: data.weekly_trend.map(w => w.conforme),
           backgroundColor: 'rgba(34,197,94,0.7)',
@@ -162,7 +160,6 @@ export default function AgentDetailPage() {
           order: 2,
         },
         {
-          type: 'bar' as const,
           label: t('perf.non_conforme'),
           data: data.weekly_trend.map(w => w.non_conforme),
           backgroundColor: 'rgba(239,68,68,0.7)',
@@ -171,6 +168,7 @@ export default function AgentDetailPage() {
           order: 2,
         },
         {
+          // Line overlay on bar chart — Chart.js supports this via type override
           type: 'line' as const,
           label: t('perf.amount'),
           data: data.weekly_trend.map(w => w.collected_amount),
@@ -181,12 +179,12 @@ export default function AgentDetailPage() {
           pointRadius: 3,
           yAxisID: 'y1',
           order: 1,
-        },
+        } as unknown as ChartData<'bar'>['datasets'][number],
       ],
     }
-  }, [data, t])
+  }, [data, t, locale])
 
-  const chartOptions = useMemo((): ChartOptions => ({
+  const chartOptions = useMemo((): ChartOptions<'bar'> => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
