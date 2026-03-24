@@ -283,9 +283,66 @@ class ChatbotServiceRAG:
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources
 
-            # Step 5: Build structured response
-            response_time = (datetime.now() - start_time).total_seconds()
+            # Step 5: Self-evaluation + retry if quality too low (ReAct pattern)
             response_message = ai_response.get("message", "")
+            quality_score = await self._evaluate_response(
+                message, response_message, consolidated_context
+            )
+
+            # If quality too low and we haven't used tools yet, force tool use
+            if quality_score < 0.4 and not tools_used and func_decls:
+                logger.warning(
+                    f"Low quality ({quality_score:.2f}), retrying with explicit tool hint"
+                )
+                retry_prompt = (
+                    f"La pregunta del usuario es: '{message}'. "
+                    f"No encontré suficiente información en el contexto. "
+                    f"Usa las herramientas disponibles para buscar la respuesta."
+                )
+                retry_response = await gemini_service.chat(
+                    user_message=retry_prompt,
+                    context_content="",
+                    context_services=[],
+                    language=language,
+                    conversation_history=conversation_history,
+                    function_declarations=func_decls,
+                )
+                # Execute tools if requested
+                if retry_response.get("function_calls"):
+                    retry_results = []
+                    for fc in retry_response["function_calls"]:
+                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        if fn_impl:
+                            try:
+                                result = await fn_impl(db, **fc.get("args", {}))
+                                tools_used.append(fc["name"])
+                                retry_results.append({
+                                    "name": fc["name"],
+                                    "args": fc.get("args", {}),
+                                    "result": result,
+                                })
+                            except Exception as e:
+                                retry_results.append({
+                                    "name": fc["name"],
+                                    "args": fc.get("args", {}),
+                                    "result": {"error": str(e)},
+                                })
+                    if retry_results:
+                        ai_response = await gemini_service.chat_round2(
+                            round1_response=retry_response["round1_response"],
+                            chat_history=retry_response["chat_history"],
+                            function_results_data=retry_results,
+                            context_services=relevant_services,
+                            function_declarations=func_decls,
+                        )
+                        response_message = ai_response.get("message", response_message)
+                        quality_score = await self._evaluate_response(
+                            message, response_message, consolidated_context
+                        )
+                        logger.info(f"Retry quality: {quality_score:.2f}")
+
+            # Step 6: Build structured response
+            response_time = (datetime.now() - start_time).total_seconds()
 
             # Step 6: Self-evaluation — check response quality
             quality_score = await self._evaluate_response(
@@ -1108,39 +1165,86 @@ Keep it helpful and concise."""
     async def _evaluate_response(
         self, question: str, response_text: str, context: str
     ) -> float:
-        """Quick self-evaluation: does the response actually answer the question?
+        """Self-evaluation with hallucination guardrails.
 
-        Returns a quality score 0-1. If < 0.3, the response is likely
-        off-topic or hallucinated.
+        Returns quality score 0-1:
+        - >= 0.7: High quality, grounded response
+        - 0.4-0.7: Acceptable, may need improvement
+        - < 0.4: Low quality, likely off-topic or hallucinated → triggers retry
         """
         if not response_text or len(response_text) < 20:
             return 0.1
 
-        score = 0.5  # Base score
+        score = 0.4  # Base score
 
-        # Check 1: Response length proportional to context
-        if len(response_text) > 50:
-            score += 0.1
+        # ── Quality checks (positive signals) ──
+
+        # Check 1: Response length (meaningful content)
+        if len(response_text) > 100:
+            score += 0.05
+        if len(response_text) > 300:
+            score += 0.05
 
         # Check 2: Response mentions key terms from question
-        question_words = set(question.lower().split())
-        response_words = set(response_text.lower().split())
-        common = question_words & response_words
-        if len(common) >= 2:
-            score += 0.15
-
-        # Check 3: Response uses data from context (not generic)
-        if context:
-            context_snippets = [w for w in context.split() if len(w) > 5][:20]
-            context_in_response = sum(1 for w in context_snippets if w.lower() in response_text.lower())
-            if context_in_response >= 3:
-                score += 0.15
-
-        # Check 4: Response has structure (lists, bold = used context)
-        if "**" in response_text or "- " in response_text or "1." in response_text:
+        question_words = {w.lower() for w in question.split() if len(w) > 3}
+        response_lower = response_text.lower()
+        overlap = sum(1 for w in question_words if w in response_lower)
+        if overlap >= 2:
             score += 0.1
+        if overlap >= 4:
+            score += 0.05
 
-        return min(1.0, score)
+        # Check 3: Response uses data from context (grounding)
+        if context:
+            context_words = {w.lower() for w in context.split() if len(w) > 5}
+            grounded = sum(1 for w in list(context_words)[:30] if w in response_lower)
+            if grounded >= 3:
+                score += 0.1
+            if grounded >= 8:
+                score += 0.1
+
+        # Check 4: Response has structure (markdown = used context intelligently)
+        has_bold = "**" in response_text
+        has_list = "- " in response_text or "1." in response_text
+        has_heading = "###" in response_text or "##" in response_text
+        if has_bold:
+            score += 0.05
+        if has_list:
+            score += 0.05
+        if has_heading:
+            score += 0.05
+
+        # ── Guardrails (negative signals — hallucination detection) ──
+
+        # Guard 1: Response says "I don't know" or "no information"
+        refusal_phrases = [
+            "no tengo", "no puedo", "no dispongo", "no encuentro",
+            "je ne peux pas", "i cannot", "i don't have",
+            "no hay información", "sin información",
+        ]
+        if any(phrase in response_lower for phrase in refusal_phrases):
+            score -= 0.15
+
+        # Guard 2: Response mentions URLs (we told it not to)
+        if "http://" in response_text or "https://" in response_text or "www." in response_text:
+            score -= 0.1
+
+        # Guard 3: Response has emojis (we told it not to)
+        import re
+        emoji_pattern = re.compile(
+            "[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
+            "\U0001F1E0-\U0001F1FF\U00002702-\U000027B0\U000024C2-\U0001F251]"
+        )
+        if emoji_pattern.search(response_text):
+            score -= 0.05
+
+        # Guard 4: Response is too short for a factual question
+        factual_keywords = ["cuanto", "costo", "precio", "documentos", "requisitos", "procedimiento"]
+        is_factual = any(kw in question.lower() for kw in factual_keywords)
+        if is_factual and len(response_text) < 100:
+            score -= 0.1
+
+        return max(0.0, min(1.0, score))
 
 
 # ============================================================================

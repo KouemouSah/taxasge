@@ -19,7 +19,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { User, Copy, Check, Download, FileText } from 'lucide-react'
+import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
@@ -117,6 +117,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
   const t = useTranslations('chatbot')
   const [copied, setCopied] = useState(false)
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
 
   const isUser = message.role === 'user'
   const isBot = message.role === 'assistant'
@@ -153,6 +154,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     a.download = `facil-response-${Date.now()}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleFeedback = async (type: 'up' | 'down') => {
+    setFeedback(type)
+    try {
+      const { chatbotApi } = await import('../services/api')
+      await chatbotApi.submitFeedback({
+        query: '', // Parent doesn't pass query — fire and forget
+        response: message.content.substring(0, 500),
+        rating: type === 'up' ? 5 : 1,
+        feedback: type === 'up' ? 'helpful' : 'not_helpful',
+      })
+    } catch {
+      // Non-blocking — feedback is best-effort
+    }
   }
 
   // =============================================================================
@@ -234,6 +250,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               title="Download .txt"
             >
               <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+            <div className="w-px h-4 bg-stone-200 dark:bg-stone-700 mx-0.5" />
+            <Button
+              size="icon"
+              variant="ghost"
+              className={`h-7 w-7 ${feedback === 'up' ? 'text-green-600' : 'text-stone-400 hover:text-stone-700'}`}
+              onClick={() => handleFeedback('up')}
+              disabled={feedback !== null}
+              title="Helpful"
+            >
+              <ThumbsUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={`h-7 w-7 ${feedback === 'down' ? 'text-red-500' : 'text-stone-400 hover:text-stone-700'}`}
+              onClick={() => handleFeedback('down')}
+              disabled={feedback !== null}
+              title="Not helpful"
+            >
+              <ThumbsDown className="h-3.5 w-3.5" strokeWidth={1.5} />
             </Button>
           </div>
         )}

@@ -307,6 +307,34 @@ IMPORTANT:
             # The consolidated context (including system instructions) is passed directly
             # from chatbot_service_rag.py. We wrap the user message to clarify its role.
             
+            # Few-shot examples — teach Gemini the expected response format
+            few_shot_section = """
+EJEMPLOS DE BUENAS RESPUESTAS:
+
+Pregunta: "¿Cuánto cuesta un pasaporte?"
+Respuesta correcta:
+El costo del **pasaporte** en Guinea Ecuatorial es el siguiente:
+
+**Expedición de pasaporte**
+- **Costo:** **7,500 XAF**
+- **Tiempo de procesamiento:** 15 días hábiles
+
+**Documentos requeridos:**
+- Documento Nacional de Identidad (DIP) vigente
+- 4 fotografías tamaño pasaporte
+- Formulario de solicitud completado
+- Certificado de nacimiento
+
+**Procedimiento:**
+1. Completar el formulario de solicitud en la plataforma Facil
+2. Adjuntar los documentos requeridos
+3. Realizar el pago en línea o en ventanilla
+4. Acudir a la cita para la toma de datos biométricos
+5. Recoger el pasaporte en el plazo indicado
+
+¿Necesitas información sobre los puntos de recogida o los horarios de atención?
+"""
+
             # Build conversation contents for multi-turn chat
             contents = []
 
@@ -335,8 +363,8 @@ IMPORTANT:
                         "No repitas información ya proporcionada. Responde en contexto.\n"
                     )
 
-            # Add current user message with system prompt and consolidated context
-            full_user_prompt = f"{system_prompt}\n{context_summary}\n{context_content}\n\nPREGUNTA DEL USUARIO:\n{user_message}"
+            # Add current user message with system prompt + few-shot + context
+            full_user_prompt = f"{system_prompt}\n{few_shot_section}\n{context_summary}\n{context_content}\n\nPREGUNTA DEL USUARIO:\n{user_message}"
             contents.append({
                 "role": "user",
                 "parts": [{"text": full_user_prompt}]
