@@ -163,10 +163,10 @@ export default function RequestDetailScreen() {
           <View style={styles.heroRow}>
             {photo_url ? (
               <Pressable onPress={() => setPhotoModalVisible(true)}>
-                <Image source={{ uri: photo_url }} style={styles.avatar} />
+                <Image source={{ uri: photo_url }} style={styles.photoSquare} />
               </Pressable>
             ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primaryContainer }]}>
+              <View style={[styles.photoPlaceholder, { backgroundColor: colors.primaryContainer }]}>
                 <MaterialCommunityIcons name="file-document" size={28} color={colors.primary} />
               </View>
             )}
@@ -200,46 +200,77 @@ export default function RequestDetailScreen() {
         {payment_status && (
           <>
             <Divider />
-            <View style={[styles.paymentBlock, { padding: spacing.md, backgroundColor: colors.surface }]}>
-              <View style={styles.paymentHeader}>
-                <MaterialCommunityIcons name="credit-card-check-outline" size={20} color={colors.primary} />
-                <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 8 }}>
+            <View style={{ paddingHorizontal: spacing.md, paddingVertical: 12, backgroundColor: colors.surface }}>
+              {/* Line 1: icon + Paiement | badge | date */}
+              <View style={styles.payTitleRow}>
+                <MaterialCommunityIcons name="credit-card-check-outline" size={18} color={colors.primary} />
+                <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 6 }}>
                   {t('requests.payment')}
                 </Text>
+                <Text variant="bodySmall" style={{ color: colors.outline, marginHorizontal: 6 }}>|</Text>
+                <RequestStatusBadge status={payment_status} compact />
+                {request.updated_at && (
+                  <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 6 }}>
+                    {formatDate(request.updated_at, 'dd/MM/yyyy')}
+                  </Text>
+                )}
               </View>
 
-              <View style={{ marginTop: 8, gap: 6 }}>
-                {/* Amount + Status */}
-                <View style={styles.payRow}>
-                  <Text variant="headlineSmall" style={{ color: colors.primary, fontWeight: '700' }}>
-                    {tariff ? formatCurrency(tariff.total_amount, tariff.currency) : ''}
-                  </Text>
-                  <RequestStatusBadge status={payment_status} compact />
-                </View>
+              {/* Line 2: Amount bold */}
+              {tariff && (
+                <Text variant="headlineSmall" style={{ color: colors.primary, fontWeight: '700', marginTop: 6 }}>
+                  {formatCurrency(tariff.total_amount, tariff.currency)}
+                </Text>
+              )}
 
-                {/* Method + Reference */}
+              {/* Line 3-4: References left-aligned, label + value on same row */}
+              <View style={{ marginTop: 8, gap: 4 }}>
                 {payment_reference && (
-                  <View style={styles.payDetail}>
-                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.paymentReference')}</Text>
-                    <Text variant="bodySmall" style={{ color: colors.onSurface }} numberOfLines={1}>{payment_reference}</Text>
+                  <View style={styles.refRow}>
+                    <Text variant="labelSmall" style={styles.refLabel}>{t('requests.paymentReference')}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface, marginLeft: 8 }} numberOfLines={1}>{payment_reference}</Text>
                   </View>
                 )}
-
-                {/* Receipt */}
                 {receipt_number && (
-                  <View style={styles.payDetail}>
-                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.receiptNumber')}</Text>
-                    <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600' }}>{receipt_number}</Text>
+                  <View style={styles.refRow}>
+                    <Text variant="labelSmall" style={styles.refLabel}>{t('requests.receiptNumber')}</Text>
+                    <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600', marginLeft: 8 }}>{receipt_number}</Text>
                   </View>
                 )}
+              </View>
+            </View>
+          </>
+        )}
 
-                {/* Tariff breakdown (compact) */}
-                {tariff && tariff.supplements.length > 0 && (
-                  <View style={[styles.payDetail, { marginTop: 4 }]}>
-                    <Text variant="labelSmall" style={{ color: colors.outline }}>{t('requests.baseAmount')}</Text>
-                    <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                      {formatCurrency(tariff.base_amount, tariff.currency)}
-                      {tariff.supplements.map((s, i) => ` + ${formatCurrency(s.amount, tariff.currency)}`).join('')}
+        {/* ═══ RENDEZ-VOUS (distinct color block) ═══ */}
+        {appointment && (
+          <>
+            <Divider />
+            <View style={[styles.appointmentBlock, { paddingHorizontal: spacing.md, paddingVertical: 12 }]}>
+              <View style={styles.appointmentHeader}>
+                <MaterialCommunityIcons name="calendar-clock" size={20} color="#1565C0" />
+                <Text variant="titleSmall" style={{ color: '#1565C0', fontWeight: '700', marginLeft: 8 }}>
+                  {t('requests.appointment')}
+                </Text>
+              </View>
+              <View style={styles.appointmentDetails}>
+                <View style={styles.appointmentItem}>
+                  <MaterialCommunityIcons name="calendar" size={16} color="#1565C0" />
+                  <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
+                    {formatDate(appointment.date, 'EEEE dd MMMM yyyy')}
+                  </Text>
+                </View>
+                <View style={styles.appointmentItem}>
+                  <MaterialCommunityIcons name="clock-outline" size={16} color="#1565C0" />
+                  <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
+                    {appointment.time}
+                  </Text>
+                </View>
+                {appointment.location && (
+                  <View style={styles.appointmentItem}>
+                    <MaterialCommunityIcons name="map-marker" size={16} color="#1565C0" />
+                    <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
+                      {appointment.location}
                     </Text>
                   </View>
                 )}
@@ -248,33 +279,15 @@ export default function RequestDetailScreen() {
           </>
         )}
 
-        {/* ═══ QUICK INFO ═══ */}
-        <View style={[styles.quickInfo, { paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surfaceVariant }]}>
-          {request.entity_code && (
-            <View style={styles.quickItem}>
-              <MaterialCommunityIcons name="domain" size={16} color={colors.onSurfaceVariant} />
-              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
-                {humanizeCode(request.entity_code)}
-              </Text>
-            </View>
-          )}
-          {appointment && (
-            <>
-              <View style={styles.quickItem}>
-                <MaterialCommunityIcons name="calendar" size={16} color={colors.primary} />
-                <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
-                  {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
-                </Text>
-              </View>
-              {appointment.location && (
-                <View style={styles.quickItem}>
-                  <MaterialCommunityIcons name="map-marker" size={16} color={colors.onSurfaceVariant} />
-                  <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>{appointment.location}</Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
+        {/* ═══ QUICK INFO (entity) ═══ */}
+        {request.entity_code && (
+          <View style={[styles.entityRow, { paddingHorizontal: spacing.md, paddingVertical: 8, backgroundColor: colors.surfaceVariant }]}>
+            <MaterialCommunityIcons name="domain" size={16} color={colors.onSurfaceVariant} />
+            <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
+              {humanizeCode(request.entity_code)}
+            </Text>
+          </View>
+        )}
 
         {/* ═══ ESSENTIAL SUMMARY (max 5-6 fields) ═══ */}
         {essentialFields.length > 0 && (
@@ -365,17 +378,19 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
   hero: {},
   heroRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 14 },
-  avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, marginRight: 14, justifyContent: 'center', alignItems: 'center' },
+  photoSquare: { width: 72, height: 72, borderRadius: 12, marginRight: 14 },
+  photoPlaceholder: { width: 72, height: 72, borderRadius: 12, marginRight: 14, justifyContent: 'center', alignItems: 'center' },
   heroText: { flex: 1 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   progressBar: { height: 6, borderRadius: 3 },
-  paymentBlock: {},
-  paymentHeader: { flexDirection: 'row', alignItems: 'center' },
-  payRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  payDetail: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  quickInfo: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  quickItem: { flexDirection: 'row', alignItems: 'center' },
+  payTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  refRow: { flexDirection: 'row', alignItems: 'center' },
+  refLabel: { color: '#757575', minWidth: 120 },
+  appointmentBlock: { backgroundColor: '#E3F2FD' },
+  appointmentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  appointmentDetails: { gap: 6 },
+  appointmentItem: { flexDirection: 'row', alignItems: 'center' },
+  entityRow: { flexDirection: 'row', alignItems: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, borderTopWidth: 1 },
