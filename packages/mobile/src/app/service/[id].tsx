@@ -114,30 +114,27 @@ export default function ServiceDetailScreen() {
             <>
               <View style={styles.priceRow}>
                 <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.expedition')}</Text>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 22 }}>
-                  {formatCurrency(service.pricing.expedition_price)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>
+                    {formatCurrency(service.pricing.expedition_price)}
+                  </Text>
+                  {service.processing_time_days != null && service.processing_time_days > 0 && (
+                    <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 8 }}>
+                      | {t('services.processingDays', { count: service.processing_time_days })}
+                    </Text>
+                  )}
+                </View>
               </View>
               {hasRenewal && (
                 <View style={styles.priceRow}>
                   <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.renewal')}</Text>
-                  <Text style={{ color: '#2E7D32', fontWeight: '600', fontSize: 16 }}>
+                  <Text style={{ color: '#2E7D32', fontWeight: '600', fontSize: 14 }}>
                     {formatCurrency(service.pricing.renewal_price)}
                   </Text>
                 </View>
               )}
             </>
           )}
-          <View style={[styles.metaRow, { marginTop: 8 }]}>
-            {service.processing_time_days != null && service.processing_time_days > 0 && (
-              <View style={styles.metaChip}>
-                <MaterialCommunityIcons name="clock-outline" size={14} color={colors.primary} />
-                <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
-                  {t('services.processingDays', { count: service.processing_time_days })}
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         <Divider />
