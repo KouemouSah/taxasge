@@ -100,8 +100,23 @@ class InternalScheduler:
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
             (
+                "field-sla-check",
+                self._field_sla_check,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "inspection-daily-summary",
+                self._inspection_daily_summary,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
                 "supervisor-weekly-report",
                 self._supervisor_weekly_report,
+                settings.SCHEDULER_WEEKLY_INTERVAL,
+            ),
+            (
+                "inspection-weekly-digest",
+                self._inspection_weekly_digest,
                 settings.SCHEDULER_WEEKLY_INTERVAL,
             ),
             (
@@ -133,10 +148,14 @@ class InternalScheduler:
         self._tasks.clear()
         logger.info("Internal scheduler stopped")
 
+    _stagger_counter: int = 0
+
     async def _run_periodic(self, name: str, handler, interval_seconds: int):
         """Execute handler on a fixed interval with error isolation."""
-        # Initial delay: let the app fully start before first run
-        await asyncio.sleep(15)
+        # Stagger initial delay: 15s base + 2s per job to avoid pool saturation
+        InternalScheduler._stagger_counter += 1
+        initial_delay = 15 + (InternalScheduler._stagger_counter * 2)
+        await asyncio.sleep(initial_delay)
 
         while self._running:
             try:
@@ -145,8 +164,10 @@ class InternalScheduler:
                     logger.debug(f"Scheduler [{name}]: {result}")
             except asyncio.CancelledError:
                 break
+            except asyncio.TimeoutError:
+                logger.warning(f"Scheduler [{name}] timed out (pool exhaustion?), will retry next cycle")
             except Exception as e:
-                logger.error(f"Scheduler [{name}] failed: {e}")
+                logger.error(f"Scheduler [{name}] failed: {type(e).__name__}: {e}", exc_info=True)
 
             try:
                 await asyncio.sleep(interval_seconds)
@@ -472,6 +493,420 @@ class InternalScheduler:
                     logger.error(f"Failed to refresh {view}: {e2}")
         return None
 
+    async def _field_sla_check(self):
+        """Run all field inspection SLA checks (cash, MED, inactive agents)."""
+        from app.database.connection import db_manager
+
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.inspections.services.field_sla_service import (
+                    FieldSLAService,
+                )
+                sla_service = FieldSLAService()
+                results = await sla_service.run_all_checks(db)
+
+                total = (
+                    results.get("cash_warnings_sent", 0)
+                    + results.get("cash_escalations_sent", 0)
+                    + results.get("med_expired_alerts", 0)
+                    + results.get("inactive_agent_alerts", 0)
+                )
+                if total > 0 or results.get("errors"):
+                    logger.info(f"Field SLA check: {results}")
+                    return results
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None  # Migration not yet applied
+            logger.error(f"Field SLA check failed: {e}")
+        return None
+
+    async def _inspection_daily_summary(self):
+        """Send daily inspection summary email to supervisors (end of day)."""
+        from app.database.connection import db_manager
+
+        # Dedup: only send once per day (Redis key with 20h TTL)
+        dedup_key = f"scheduler:daily_summary:{date.today().isoformat()}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None  # Already sent today
+            await cache.set(dedup_key, "1", ttl=72000)  # 20h TTL
+        except Exception:
+            pass  # Proceed if cache unavailable
+
+        async with db_manager.get_connection() as db:
+            # Get all active supervisors with inspection permissions
+            supervisors = await db.fetch("""
+                SELECT ap.user_id, u.email, u.full_name,
+                       ap.entity_id, e.code AS entity_code
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_supervisor = true AND ap.is_active = true
+                  AND u.status = 'active'
+                  AND EXISTS (
+                      SELECT 1 FROM role_permissions rp
+                      JOIN permissions p ON p.id = rp.permission_id
+                      WHERE rp.role_id = u.role_id
+                        AND p.name = 'inspection.view_entity'
+                  )
+            """)
+
+            if not supervisors:
+                return None
+
+            from app.modules.communications.services.communication_service import (
+                CommunicationService,
+            )
+            from app.modules.communications.models.communication import CommunicationType
+            import asyncio as _asyncio
+
+            comm = CommunicationService()
+            sent = 0
+            today = date.today()
+
+            for sup in supervisors:
+                try:
+                    # Daily stats for this entity
+                    stats = await db.fetchrow("""
+                        SELECT
+                            COUNT(*)::int AS total_inspections,
+                            COUNT(*) FILTER (WHERE result = 'conforme')::int AS conforme,
+                            COUNT(*) FILTER (WHERE result = 'non_conforme')::int AS non_conforme,
+                            COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS collected,
+                            COUNT(*) FILTER (WHERE mise_en_demeure_issued)::int AS med_count,
+                            COUNT(*) FILTER (WHERE seal_applied OR status = 'seal_proposed')::int AS seal_count,
+                            COUNT(DISTINCT agent_id)::int AS agents_active
+                        FROM field_inspections
+                        WHERE entity_id = $1 AND inspection_date = $2
+                          AND status != 'cancelled'
+                    """, sup["entity_id"], today)
+
+                    total = stats["total_inspections"] or 0
+                    if total == 0:
+                        continue  # No inspections today, skip
+
+                    conf = stats["conforme"] or 0
+                    rate = f"{conf * 100 / total:.1f}" if total > 0 else "0"
+                    collected = float(stats["collected"] or 0)
+
+                    # Build alerts section
+                    alerts_parts = []
+
+                    # Stale zones
+                    stale_days = await db.fetchval(
+                        "SELECT COALESCE(rule_value::int, 30) FROM system_rules "
+                        "WHERE rule_code = 'INSPECTION_ZONE_STALE_DAYS' AND is_active = true"
+                    ) or 30
+                    stale_zones = await db.fetch("""
+                        SELECT cz.zone_code, cz.name_es
+                        FROM commerce_zones cz
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM field_inspections fi
+                            WHERE fi.zone_id = cz.id
+                              AND fi.entity_id = $1
+                              AND fi.inspection_date > CURRENT_DATE - $2
+                              AND fi.status != 'cancelled'
+                        )
+                    """, sup["entity_id"], stale_days)
+                    if stale_zones:
+                        zones_list = ", ".join(
+                            html_escape(z["zone_code"]) for z in stale_zones[:5]
+                        )
+                        extra = f" (+{len(stale_zones) - 5} más)" if len(stale_zones) > 5 else ""
+                        alerts_parts.append(
+                            f"Zonas sin inspección >{stale_days}d: {zones_list}{extra}"
+                        )
+
+                    alerts_html = "<br>".join(alerts_parts) if alerts_parts else ""
+
+                    # Fetch template
+                    template = await db.fetchrow(
+                        "SELECT subject_es, html_content FROM email_templates "
+                        "WHERE template_code = 'inspection_daily_summary' AND is_active = true"
+                    )
+                    if not template:
+                        continue
+
+                    # Render template
+                    replacements = {
+                        "supervisor_name": html_escape(sup["full_name"] or "Supervisor"),
+                        "entity_code": html_escape(sup["entity_code"] or ""),
+                        "date": today.isoformat(),
+                        "total_inspections": str(total),
+                        "conforme": str(conf),
+                        "non_conforme": str(stats["non_conforme"] or 0),
+                        "conformity_rate": rate,
+                        "collected_amount": f"{collected:,.0f}",
+                        "med_count": str(stats["med_count"] or 0),
+                        "seal_count": str(stats["seal_count"] or 0),
+                        "agents_active": str(stats["agents_active"] or 0),
+                        "alerts": alerts_html,
+                    }
+
+                    html = template["html_content"]
+                    subject = template["subject_es"]
+                    for k, v in replacements.items():
+                        html = html.replace("{{" + k + "}}", v)
+                        subject = subject.replace("{{" + k + "}}", v)
+
+                    # Handle conditional sections {{#alerts}}...{{/alerts}}
+                    if alerts_html:
+                        html = html.replace("{{#alerts}}", "").replace("{{/alerts}}", "")
+                    else:
+                        # Remove the entire alerts block
+                        import re
+                        html = re.sub(r"\{\{#alerts\}\}.*?\{\{/alerts\}\}", "", html, flags=re.DOTALL)
+
+                    loop = _asyncio.get_running_loop()
+                    ok = await loop.run_in_executor(
+                        None,
+                        lambda: comm.send_communication(
+                            channel=CommunicationType.EMAIL,
+                            recipient=sup["email"],
+                            subject=subject,
+                            content=html,
+                        ),
+                    )
+                    if ok:
+                        sent += 1
+
+                except Exception as e:
+                    logger.error(f"Daily summary failed for {sup.get('email')}: {e}")
+
+            if sent > 0:
+                logger.info(f"Inspection daily summaries sent: {sent}")
+                return {"daily_summaries_sent": sent}
+        return None
+
+    async def _inspection_weekly_digest(self):
+        """Send weekly performance digest comparing this week vs last week."""
+        from app.database.connection import db_manager
+
+        # Dedup: only send once per week (Redis key with 6-day TTL)
+        week_key = f"{date.today().isocalendar()[0]}-W{date.today().isocalendar()[1]:02d}"
+        dedup_key = f"scheduler:weekly_digest:{week_key}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None  # Already sent this week
+            await cache.set(dedup_key, "1", ttl=518400)  # 6 days TTL
+        except Exception:
+            pass  # Proceed if cache unavailable
+
+        async with db_manager.get_connection() as db:
+            supervisors = await db.fetch("""
+                SELECT ap.user_id, u.email, u.full_name,
+                       ap.entity_id, e.code AS entity_code
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_supervisor = true AND ap.is_active = true
+                  AND u.status = 'active'
+                  AND EXISTS (
+                      SELECT 1 FROM role_permissions rp
+                      JOIN permissions p ON p.id = rp.permission_id
+                      WHERE rp.role_id = u.role_id
+                        AND p.name = 'inspection.view_entity'
+                  )
+            """)
+
+            if not supervisors:
+                return None
+
+            from app.modules.communications.services.communication_service import (
+                CommunicationService,
+            )
+            from app.modules.communications.models.communication import CommunicationType
+            import asyncio as _asyncio
+
+            comm = CommunicationService()
+            sent = 0
+            today = date.today()
+            # ISO week number
+            week_num = today.isocalendar()[1]
+            this_week_start = today - timedelta(days=today.weekday())
+            last_week_start = this_week_start - timedelta(days=7)
+
+            for sup in supervisors:
+                try:
+                    # Compare this week vs last week
+                    comparison = await db.fetch("""
+                        SELECT
+                            CASE
+                                WHEN inspection_date >= $2 THEN 'this_week'
+                                ELSE 'last_week'
+                            END AS period,
+                            COUNT(*)::int AS inspections,
+                            COUNT(*) FILTER (WHERE result = 'conforme')::int AS conforme,
+                            COUNT(*) FILTER (WHERE result = 'non_conforme')::int AS non_conforme,
+                            COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS collected,
+                            COUNT(*) FILTER (WHERE mise_en_demeure_issued)::int AS med,
+                            COUNT(*) FILTER (WHERE seal_applied)::int AS seals,
+                            COUNT(DISTINCT agent_id)::int AS agents
+                        FROM field_inspections
+                        WHERE entity_id = $1
+                          AND inspection_date >= $3
+                          AND status != 'cancelled'
+                        GROUP BY CASE
+                            WHEN inspection_date >= $2 THEN 'this_week'
+                            ELSE 'last_week'
+                        END
+                    """, sup["entity_id"], this_week_start, last_week_start)
+
+                    this_w = {"inspections": 0, "conforme": 0, "non_conforme": 0,
+                              "collected": 0, "med": 0, "seals": 0, "agents": 0}
+                    last_w = dict(this_w)
+                    for row in comparison:
+                        target = this_w if row["period"] == "this_week" else last_w
+                        for k in target:
+                            target[k] = row.get(k, 0) or 0
+
+                    if this_w["inspections"] == 0 and last_w["inspections"] == 0:
+                        continue
+
+                    # Build comparison rows HTML
+                    # Metrics with semantic direction: True = higher is better
+                    metrics = [
+                        ("Inspecciones", "inspections", True),
+                        ("Conformes", "conforme", True),
+                        ("No conformes", "non_conforme", False),  # higher = worse
+                        ("Monto recaudado (XAF)", "collected", True),
+                        ("MED emitidas", "med", False),  # higher = worse
+                        ("Scellés", "seals", False),  # higher = worse
+                        ("Agentes activos", "agents", True),
+                    ]
+                    rows_html = ""
+                    for label, key, higher_is_good in metrics:
+                        tw = this_w[key]
+                        lw = last_w[key]
+                        if key == "collected":
+                            tw_str = f"{float(tw):,.0f}"
+                            lw_str = f"{float(lw):,.0f}"
+                        else:
+                            tw_str = str(int(tw))
+                            lw_str = str(int(lw))
+
+                        if lw > 0:
+                            pct = ((float(tw) - float(lw)) / float(lw)) * 100
+                            arrow = "↑" if pct >= 0 else "↓"
+                            # Semantic colors: green = good, red = bad
+                            is_positive = (pct >= 0) == higher_is_good
+                            color = "#155724" if is_positive else "#b33a3a"
+                            var_str = f'<span style="color:{color}">{arrow} {abs(pct):.0f}%</span>'
+                        elif tw > 0:
+                            is_positive = higher_is_good
+                            color = "#155724" if is_positive else "#b33a3a"
+                            var_str = f'<span style="color:{color}">↑ new</span>'
+                        else:
+                            var_str = "—"
+
+                        rows_html += (
+                            f'<tr>'
+                            f'<td style="padding:8px 12px;border:1px solid #e5e7eb;">'
+                            f'{html_escape(label)}</td>'
+                            f'<td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:bold;">'
+                            f'{tw_str}</td>'
+                            f'<td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">'
+                            f'{lw_str}</td>'
+                            f'<td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">'
+                            f'{var_str}</td>'
+                            f'</tr>'
+                        )
+
+                    # Top agents this week
+                    top_agents = await db.fetch("""
+                        SELECT u.full_name, COUNT(*)::int AS cnt
+                        FROM field_inspections fi
+                        JOIN users u ON u.id = fi.agent_id
+                        WHERE fi.entity_id = $1
+                          AND fi.inspection_date >= $2
+                          AND fi.status != 'cancelled'
+                        GROUP BY u.full_name
+                        ORDER BY cnt DESC LIMIT 3
+                    """, sup["entity_id"], this_week_start)
+                    top_html = ""
+                    if top_agents:
+                        top_html = ", ".join(
+                            f"{html_escape(a['full_name'])} ({a['cnt']})"
+                            for a in top_agents
+                        )
+
+                    # Stale zones
+                    stale_days = await db.fetchval(
+                        "SELECT COALESCE(rule_value::int, 30) FROM system_rules "
+                        "WHERE rule_code = 'INSPECTION_ZONE_STALE_DAYS' AND is_active = true"
+                    ) or 30
+                    stale = await db.fetch("""
+                        SELECT cz.zone_code FROM commerce_zones cz
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM field_inspections fi
+                            WHERE fi.zone_id = cz.id AND fi.entity_id = $1
+                              AND fi.inspection_date > CURRENT_DATE - $2
+                              AND fi.status != 'cancelled'
+                        )
+                    """, sup["entity_id"], stale_days)
+                    stale_html = ", ".join(html_escape(s["zone_code"]) for s in stale[:8]) if stale else ""
+
+                    # Render template
+                    template = await db.fetchrow(
+                        "SELECT subject_es, html_content FROM email_templates "
+                        "WHERE template_code = 'inspection_weekly_digest' AND is_active = true"
+                    )
+                    if not template:
+                        continue
+
+                    replacements = {
+                        "supervisor_name": html_escape(sup["full_name"] or "Supervisor"),
+                        "entity_code": html_escape(sup["entity_code"] or ""),
+                        "week_number": str(week_num),
+                        "comparison_rows": rows_html,
+                        "top_agents": top_html,
+                        "stale_zones": stale_html,
+                    }
+
+                    html = template["html_content"]
+                    subject = template["subject_es"]
+                    for k, v in replacements.items():
+                        html = html.replace("{{" + k + "}}", v)
+                        subject = subject.replace("{{" + k + "}}", v)
+
+                    # Handle conditional blocks
+                    import re
+                    for block_key in ("top_agents", "stale_zones"):
+                        if replacements.get(block_key):
+                            html = html.replace("{{#" + block_key + "}}", "").replace(
+                                "{{/" + block_key + "}}", ""
+                            )
+                        else:
+                            html = re.sub(
+                                r"\{\{#" + block_key + r"\}\}.*?\{\{/" + block_key + r"\}\}",
+                                "", html, flags=re.DOTALL,
+                            )
+
+                    loop = _asyncio.get_running_loop()
+                    ok = await loop.run_in_executor(
+                        None,
+                        lambda: comm.send_communication(
+                            channel=CommunicationType.EMAIL,
+                            recipient=sup["email"],
+                            subject=subject,
+                            content=html,
+                        ),
+                    )
+                    if ok:
+                        sent += 1
+
+                except Exception as e:
+                    logger.error(f"Weekly digest failed for {sup.get('email')}: {e}")
+
+            if sent > 0:
+                logger.info(f"Inspection weekly digests sent: {sent}")
+                return {"weekly_digests_sent": sent}
+        return None
+
     async def _anomaly_detection(self):
         """Detect assignment anomalies: queue spikes, underperformers, imbalances."""
         from app.database.connection import db_manager
@@ -541,7 +976,7 @@ class InternalScheduler:
                     a.agent_profile_id,
                     u.full_name AS agent_name,
                     COUNT(*) FILTER (
-                        WHERE srh.new_status::text IN ('REJECTED', 'rejected')
+                        WHERE srh.new_status::text = 'REJECTED'
                     ) AS rejections,
                     COUNT(*) AS total_actions
                 FROM service_request_history srh
@@ -554,7 +989,7 @@ class InternalScheduler:
                 GROUP BY a.agent_profile_id, u.full_name
                 HAVING COUNT(*) >= $2
                    AND COUNT(*) FILTER (
-                       WHERE srh.new_status::text IN ('REJECTED', 'rejected')
+                       WHERE srh.new_status::text = 'REJECTED'
                    ) * 1.0 / COUNT(*) > $3
             """, settings.ANOMALY_REJECTION_LOOKBACK_DAYS,
                 settings.ANOMALY_REJECTION_MIN_ACTIONS,
@@ -732,17 +1167,17 @@ class InternalScheduler:
                         SELECT
                             COUNT(*) FILTER (WHERE sr.created_at >= NOW() - INTERVAL '7 days') as new_requests,
                             COUNT(*) FILTER (
-                                WHERE sr.status IN ('completed', 'approved')
+                                WHERE sr.status = 'COMPLETED'
                                 AND sr.updated_at >= NOW() - INTERVAL '7 days'
                             ) as completed,
                             COUNT(*) FILTER (WHERE sr.escalated = true) as pending_escalations,
                             COALESCE(AVG(
-                                CASE WHEN sr.status IN ('completed', 'approved')
+                                CASE WHEN sr.status = 'COMPLETED'
                                 THEN EXTRACT(EPOCH FROM (sr.updated_at - sr.created_at)) / 3600.0
                                 ELSE NULL END
                             ), 0) as avg_processing_hours,
                             COUNT(*) FILTER (
-                                WHERE sr.status NOT IN ('completed', 'approved', 'rejected', 'cancelled', 'expired')
+                                WHERE sr.status NOT IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED')
                             ) as active_requests
                         FROM service_requests sr
                         WHERE sr.workflow_code = ANY($1)
