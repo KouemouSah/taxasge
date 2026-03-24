@@ -30,7 +30,6 @@ import {
 import type {
   MinistryItem,
   FiscalServiceItem,
-  ServiceSearchResult,
 } from '@modules/fiscal-services';
 
 import { ServiceCard, type ServiceCardItem } from '@modules/fiscal-services/components/service-card';
@@ -51,20 +50,6 @@ function toServiceCardItem(s: FiscalServiceItem): ServiceCardItem {
     renewal_price: s.tasa_renovacion ?? 0,
     ministry: s.ministry_name,
     category: s.category_name,
-    service_type: s.service_type,
-  };
-}
-
-/** Convert a ServiceSearchResult into ServiceCardItem shape. */
-function searchToCardItem(s: ServiceSearchResult): ServiceCardItem {
-  return {
-    id: s.id,
-    name: s.name,
-    description: s.description,
-    expedition_price: s.expedition_price,
-    renewal_price: s.renewal_price,
-    ministry: s.ministry,
-    category: s.category,
     service_type: s.service_type,
   };
 }
@@ -136,10 +121,10 @@ export default function ServicesScreen() {
   );
 
   const renderSearchItem = useCallback(
-    ({ item }: ListRenderItemInfo<ServiceSearchResult>) => (
+    ({ item }: ListRenderItemInfo<FiscalServiceItem>) => (
       <View style={{ marginBottom: spacing.sm, marginHorizontal: spacing.md }}>
         <ServiceCard
-          service={searchToCardItem(item)}
+          service={toServiceCardItem(item)}
           onPress={() => handleServicePress(item.id)}
         />
       </View>
@@ -239,10 +224,10 @@ export default function ServicesScreen() {
       );
     }
 
-    if (results && results.results.length > 0) {
+    if (results && results.services.length > 0) {
       return (
         <FlatList
-          data={results.results}
+          data={results.services}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderSearchItem}
           contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
@@ -251,15 +236,14 @@ export default function ServicesScreen() {
               variant="labelMedium"
               style={{ color: colors.onSurfaceVariant, marginHorizontal: spacing.md, marginBottom: spacing.sm }}
             >
-              {t('services.results', { count: results.total_results })}
-              {results.execution_time_ms > 0 ? ` ${t('services.searchTime', { time: results.execution_time_ms })}` : ''}
+              {t('services.results', { count: results.total })}
             </Text>
           }
         />
       );
     }
 
-    if (results && results.results.length === 0) {
+    if (results && results.services.length === 0) {
       return (
         <EmptyState
           icon="magnify-close"

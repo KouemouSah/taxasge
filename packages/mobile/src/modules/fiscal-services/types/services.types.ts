@@ -73,18 +73,16 @@ export interface ServiceSearchResult {
   relevance_score?: number;
 }
 
+/**
+ * Search response — same format as list (backend POST /fiscal-services/search
+ * returns FiscalServiceListResponse, NOT SearchDBResponse).
+ */
 export interface ServiceSearchResponse {
-  success: boolean;
-  query: string;
-  total_results: number;
+  services: FiscalServiceItem[];
+  total: number;
   page: number;
-  limit: number;
+  page_size: number;
   total_pages: number;
-  results: ServiceSearchResult[];
-  facets?: SearchFacets;
-  suggestions: string[];
-  execution_time_ms: number;
-  cached: boolean;
 }
 
 export interface MinistryItem {
