@@ -56,7 +56,7 @@ export function LiveStatusPanel() {
 
   const fetchLiveStatus = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
-    else if (!data) setLoading(true)
+    else setLoading(true)
     try {
       const result = await inspectionApi.getLiveStatus()
       setData(result)
@@ -66,12 +66,12 @@ export function LiveStatusPanel() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [data])
+  }, []) // No deps — always fetches fresh from API
 
   // Initial fetch
-  useEffect(() => { fetchLiveStatus() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchLiveStatus() }, [fetchLiveStatus])
 
-  // Polling every 30s
+  // Polling every 30s — stable ref prevents interval reset
   useEffect(() => {
     const interval = setInterval(() => fetchLiveStatus(true), POLL_INTERVAL)
     return () => clearInterval(interval)

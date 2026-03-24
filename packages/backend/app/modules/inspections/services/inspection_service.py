@@ -757,7 +757,7 @@ class InspectionService:
     # ============================================================
 
     @staticmethod
-    async def get_live_agent_status(conn, entity_id) -> dict:
+    async def get_live_agent_status(conn, entity_id: UUID) -> dict:
         """Get real-time agent status for a supervisor's entity.
 
         Single CTE query fetching:
@@ -789,8 +789,11 @@ class InspectionService:
         offline_minutes = 240
         for t in thresholds:
             val = t["rule_value"]
-            # rule_value is JSONB — could be int or string
-            minutes = int(val) if isinstance(val, (int, float)) else int(str(val).strip('"'))
+            # rule_value is JSONB — safely parse as int
+            try:
+                minutes = int(val) if isinstance(val, (int, float)) else int(str(val).strip('"'))
+            except (ValueError, TypeError):
+                continue  # Skip invalid values, keep defaults
             if t["rule_code"] == "AGENT_STATUS_IDLE_MINUTES":
                 idle_minutes = minutes
             elif t["rule_code"] == "AGENT_STATUS_OFFLINE_MINUTES":

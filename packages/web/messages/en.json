@@ -10228,6 +10228,8 @@
       "cancelMission": "Cancel mission",
       "completeNotes": "Closing notes",
       "completeConfirm": "Confirm mission completion?",
+      "startConfirm": "Confirm mission start? Assigned agents will be notified.",
+      "cancelConfirm": "Confirm mission cancellation? This action is irreversible.",
       "started": "Mission started",
       "completed_msg": "Mission completed",
       "cancelled_msg": "Mission cancelled",

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { ChevronLeft, ChevronRight, Plus, MapPin, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +32,7 @@ const STATUS_STYLES: Record<MissionStatus, string> = {
   cancelled: 'border-l-gray-400 bg-gray-50',
 }
 
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
+// Day names derived at render time via locale-aware toLocaleDateString
 
 // ---------------------------------------------------------------------------
 // Date Helpers
@@ -174,6 +174,7 @@ export function MissionCalendar({
   onCreateMission,
 }: MissionCalendarProps) {
   const t = useTranslations('inspection')
+  const locale = useLocale()
   const today = useMemo(() => new Date(), [])
 
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(today))
@@ -343,7 +344,7 @@ export function MissionCalendar({
                     {formatDayNumber(day)}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    {DAY_NAMES[weekDays.indexOf(day)]}
+                    {day.toLocaleDateString(locale, { weekday: 'short' })}
                   </span>
                 </div>
                 {dayMissions.length > 0 && (
@@ -400,7 +401,7 @@ export function MissionCalendar({
                   {formatDayNumber(day)}
                 </span>
                 <span className="text-xs font-medium text-muted-foreground">
-                  {DAY_NAMES[weekDays.indexOf(day)]}
+                  {day.toLocaleDateString(locale, { weekday: 'short' })}
                 </span>
                 {isToday && (
                   <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">

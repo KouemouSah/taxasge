@@ -10360,6 +10360,8 @@
       "cancelMission": "Cancelar misión",
       "completeNotes": "Notas de cierre",
       "completeConfirm": "¿Confirma finalizar esta misión?",
+      "startConfirm": "¿Confirma iniciar esta misión? Los agentes asignados serán notificados.",
+      "cancelConfirm": "¿Confirma cancelar esta misión? Esta acción es irreversible.",
       "started": "Misión iniciada",
       "completed_msg": "Misión completada",
       "cancelled_msg": "Misión cancelada",

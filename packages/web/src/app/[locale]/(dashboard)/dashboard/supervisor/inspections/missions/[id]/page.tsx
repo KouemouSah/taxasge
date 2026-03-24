@@ -630,8 +630,8 @@ export default function MissionDetailPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {statusAction === 'completed' && t('mission.completeConfirm')}
-              {statusAction === 'in_progress' && t('mission.completeConfirm')}
-              {statusAction === 'cancelled' && t('mission.completeConfirm')}
+              {statusAction === 'in_progress' && t('mission.startConfirm')}
+              {statusAction === 'cancelled' && t('mission.cancelConfirm')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {statusAction === 'completed' && (

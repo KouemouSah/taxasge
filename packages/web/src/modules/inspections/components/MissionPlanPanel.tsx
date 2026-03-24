@@ -51,10 +51,10 @@ const PRIORITY_STYLES: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDateLabel(dateStr: string): string {
+function formatDateLabel(dateStr: string, locale = 'es'): string {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function todayISO(): string {
@@ -387,7 +387,7 @@ export function MissionPlanPanel({
                   </div>
                 ) : sortedZones.length === 0 ? (
                   <p className="py-4 text-center text-xs text-muted-foreground">
-                    {t('mission.noMissions')}
+                    {t('mission.selectZones')}
                   </p>
                 ) : (
                   <div className="flex flex-col gap-1">
@@ -451,7 +451,7 @@ export function MissionPlanPanel({
               ) : agents.length === 0 ? (
                 <p className="py-4 text-center text-xs text-muted-foreground">
                   {missionDate
-                    ? t('mission.noMissions')
+                    ? t('mission.selectAgents')
                     : t('mission.missionDate')}
                 </p>
               ) : (

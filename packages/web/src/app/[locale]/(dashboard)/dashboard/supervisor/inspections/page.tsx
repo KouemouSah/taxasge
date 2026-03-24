@@ -151,7 +151,7 @@ export default function SupervisorInspectionDashboard() {
 
   const fetchMissions = useCallback(async (weekStart?: string) => {
     const start = weekStart || missionWeekStart
-    const end = new Date(start)
+    const end = new Date(start + 'T00:00:00')
     end.setDate(end.getDate() + 6)
     try {
       setLoadingMissions(true)
@@ -600,7 +600,7 @@ export default function SupervisorInspectionDashboard() {
                       <p className="text-xs text-blue-800 mb-1">
                         {t('payments.batchValidating', { current: batchProgress.current, total: batchProgress.total })}
                       </p>
-                      <Progress value={(batchProgress.current / batchProgress.total) * 100} className="h-1.5" />
+                      <Progress value={batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0} className="h-1.5" />
                     </div>
                   )}
 

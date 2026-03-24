@@ -10471,6 +10471,8 @@
       "cancelMission": "Annuler la mission",
       "completeNotes": "Notes de clôture",
       "completeConfirm": "Confirmez-vous la clôture de cette mission ?",
+      "startConfirm": "Confirmez-vous le démarrage de cette mission ? Les agents assignés seront notifiés.",
+      "cancelConfirm": "Confirmez-vous l'annulation de cette mission ? Cette action est irréversible.",
       "started": "Mission démarrée",
       "completed_msg": "Mission terminée",
       "cancelled_msg": "Mission annulée",
