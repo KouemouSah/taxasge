@@ -84,16 +84,18 @@ const renderMarkdown = (text: string): string => {
     </table></div>`
   })
 
-  // Remove extra blank lines between list items before parsing
-  html = html.replace(/^(- .+)\n\n(?=- )/gm, '$1\n')
-  html = html.replace(/^(\d+\. .+)\n\n(?=\d+\. )/gm, '$1\n')
+  // Remove extra blank lines between list items before parsing (handles 1-3 blank lines)
+  html = html.replace(/^(- .+)\n{2,4}(?=- )/gm, '$1\n')
+  html = html.replace(/^(\d+\. .+)\n{2,4}(?=\d+\. )/gm, '$1\n')
+  // Also handle unicode bullet markers (▸, •, ►) that LLMs sometimes generate
+  html = html.replace(/^[•▸►]\s*/gm, '- ')
 
   // Bullet lists - item (consecutive)
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-  html = html.replace(/((?:<li class="ml-4">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-1.5 space-y-0">$1</ul>')
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0">$1</li>')
+  html = html.replace(/((?:<li class="ml-4 py-0">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-1 space-y-0.5 pl-1">$1</ul>')
 
   // Numbered lists 1. item (consecutive)
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
+  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 py-0">$1</li>')
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
@@ -207,7 +209,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {/* Message Content */}
           {isBot ? (
             <div
-              className="text-sm prose prose-sm max-w-none"
+              className="text-sm prose prose-sm max-w-none prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1 prose-p:my-0.5 prose-headings:my-1.5"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
             />
           ) : (

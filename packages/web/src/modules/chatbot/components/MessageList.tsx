@@ -17,7 +17,6 @@
 
 import React, { useRef, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { ArrowDown, Bot } from 'lucide-react'
 import type { ChatMessage } from '../types'
@@ -79,12 +78,12 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className={`relative flex-1 ${className}`}>
-      <ScrollArea
-        className="h-full"
+      <div
+        className="h-full overflow-y-auto"
         ref={scrollAreaRef}
         onScroll={handleScroll}
       >
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           {/* Empty State */}
           {messages.length === 0 && !isLoading && (
             <div className="text-center text-muted-foreground text-sm py-8">
@@ -105,7 +104,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           {/* Scroll anchor */}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Scroll to Bottom Button */}
       {showScrollButton && (
