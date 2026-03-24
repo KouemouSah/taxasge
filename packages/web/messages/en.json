@@ -10285,7 +10285,13 @@
       "avgDuration": "Avg duration",
       "minutesShort": "min",
       "weeklyTrend": "Weekly trend",
-      "noZoneData": "No zone data."
+      "noZoneData": "No zone data.",
+      "trends": "Trends",
+      "back": "Back",
+      "pendingCount": "{count} pend.",
+      "selectPlaceholder": "Select...",
+      "item1": "{type} 1",
+      "item2": "{type} 2"
     },
     "live": {
       "title": "Real-time status",

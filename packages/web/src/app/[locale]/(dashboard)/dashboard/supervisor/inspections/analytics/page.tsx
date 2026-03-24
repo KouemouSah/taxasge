@@ -138,28 +138,28 @@ export default function AnalyticsPage() {
     if (trendsRes.status === 'fulfilled') {
       setTrends(trendsRes.value)
     } else {
-      toast({ title: 'Error', description: 'Failed to load trend data', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('analytics.trends'), variant: 'destructive' })
     }
     setLoadingTrends(false)
 
     if (zonesRes.status === 'fulfilled') {
       setZones(zonesRes.value)
     } else {
-      toast({ title: 'Error', description: 'Failed to load zone analytics', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('analytics.noZoneData'), variant: 'destructive' })
     }
     setLoadingZones(false)
 
     if (priorityRes.status === 'fulfilled') {
       setPriority(priorityRes.value)
     } else {
-      toast({ title: 'Error', description: 'Failed to load priority zones', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('analytics.priorityZones'), variant: 'destructive' })
     }
     setLoadingPriority(false)
 
     if (agentsRes.status === 'fulfilled') {
       setAgents(agentsRes.value)
     } else {
-      toast({ title: 'Error', description: 'Failed to load agent data', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('perf.empty'), variant: 'destructive' })
     }
     setLoadingAgents(false)
   }, [dateFrom, dateTo, granularity, toast])
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
     setLoadingTrends(true)
     inspectionApi.getTrends({ date_from: dateFrom, date_to: dateTo, granularity: g })
       .then(setTrends)
-      .catch(() => toast({ title: 'Error', description: 'Failed to load trends', variant: 'destructive' }))
+      .catch(() => toast({ title: t('common.error'), description: t('analytics.trends'), variant: 'destructive' }))
       .finally(() => setLoadingTrends(false))
   }, [dateFrom, dateTo, toast])
 
@@ -197,7 +197,7 @@ export default function AnalyticsPage() {
       })
       setCompareResult(res)
     } catch {
-      toast({ title: 'Error', description: 'Comparison failed', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('analytics.compare'), variant: 'destructive' })
     } finally {
       setLoadingCompare(false)
     }
@@ -234,12 +234,12 @@ export default function AnalyticsPage() {
           onClick={() => router.push(`/${locale}/dashboard/supervisor/inspections`)}
         >
           <ArrowLeft className="h-4 w-4" />
-          {t('filters.back') || 'Back'}
+          {t('analytics.back')}
         </Button>
 
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">Analytics</h1>
+          <h1 className="text-lg font-semibold">{t('analytics.title')}</h1>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
         <Card className="col-span-2 flex flex-col overflow-hidden">
           <CardHeader className="flex-row items-center gap-2 space-y-0 pb-2 pt-3 px-4">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">{t('trend.title') || 'Trends'}</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('analytics.trends')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 px-4 pb-3">
             <InspectionTrendChart
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
         <Card className="flex flex-col overflow-hidden">
           <CardHeader className="flex-row items-center gap-2 space-y-0 pb-2 pt-3 px-4">
             <MapPin className="h-4 w-4 text-destructive" />
-            <CardTitle className="text-sm font-medium">{t('zone.priority') || 'Priority Zones'}</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('analytics.priorityZones')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto px-4 pb-3">
             {loadingPriority ? (
@@ -294,7 +294,7 @@ export default function AnalyticsPage() {
               </div>
             ) : priorityTop5.length === 0 ? (
               <p className="py-6 text-center text-xs text-muted-foreground">
-                {t('zone.empty') || 'No data'}
+                {t('zone.empty')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -318,11 +318,11 @@ export default function AnalyticsPage() {
             <TabsList className="h-8">
               <TabsTrigger value="zones" className="gap-1.5 text-xs">
                 <Map className="h-3.5 w-3.5" />
-                Zones
+                {t('analytics.compareZones')}
               </TabsTrigger>
               <TabsTrigger value="compare" className="gap-1.5 text-xs">
                 <Trophy className="h-3.5 w-3.5" />
-                {t('perf.compare') || 'Compare'}
+                {t('analytics.compare')}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -346,17 +346,17 @@ export default function AnalyticsPage() {
               {/* Controls */}
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40">
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Type</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('analytics.compareType')}</label>
                   <Select value={compareType} onValueChange={v => setCompareType(v as 'agents' | 'zones')}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="agents">
-                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Agents</span>
+                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{t('analytics.compareAgents')}</span>
                       </SelectItem>
                       <SelectItem value="zones">
-                        <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />Zones</span>
+                        <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{t('analytics.compareZones')}</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -364,11 +364,11 @@ export default function AnalyticsPage() {
 
                 <div className="w-52">
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    {compareType === 'agents' ? 'Agent 1' : 'Zone 1'}
+                    {t('analytics.select1')}
                   </label>
                   <Select value={compareId1} onValueChange={setCompareId1}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={`Select ${compareType === 'agents' ? 'agent' : 'zone'}...`} />
+                      <SelectValue placeholder={t('analytics.selectPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {compareOptions.map(o => (
@@ -382,11 +382,11 @@ export default function AnalyticsPage() {
 
                 <div className="w-52">
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    {compareType === 'agents' ? 'Agent 2' : 'Zone 2'}
+                    {t('analytics.select2')}
                   </label>
                   <Select value={compareId2} onValueChange={setCompareId2}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={`Select ${compareType === 'agents' ? 'agent' : 'zone'}...`} />
+                      <SelectValue placeholder={t('analytics.selectPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {compareOptions.map(o => (
@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
                   ) : (
                     <span className="flex items-center gap-1.5">
                       <Trophy className="h-3.5 w-3.5" />
-                      {t('perf.compare') || 'Compare'}
+                      {t('analytics.compareAction')}
                     </span>
                   )}
                 </Button>
@@ -429,7 +429,7 @@ export default function AnalyticsPage() {
 
               {!compareResult && !loadingCompare && (
                 <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                  {t('perf.compareHint') || 'Select two items and click Compare to see side-by-side metrics.'}
+                  {t('analytics.noCompareData')}
                 </div>
               )}
             </div>
@@ -451,6 +451,7 @@ function PriorityZoneCard({
   rank: number
   locale: string
 }) {
+  const t = useTranslations('inspection')
   const tierBg = TIER_COLORS[zone.zone_tier] ?? TIER_COLORS.D
   const tierStyle = TIER_TEXT[zone.zone_tier] ?? TIER_TEXT.D
   const scoreWidth = Math.min(Math.max(zone.priority_score, 0), 100)
@@ -475,11 +476,11 @@ function PriorityZoneCard({
               style={{ width: `${scoreWidth}%` }}
             />
           </div>
-          <span className="text-[10px] font-semibold tabular-nums">{zone.priority_score.toFixed(0)}%</span>
+          <span className="text-[10px] font-semibold tabular-nums">{zone.priority_score.toFixed(0)}</span>
         </div>
         <div className="mt-0.5 flex gap-3 text-[10px] text-muted-foreground">
-          <span>{zone.days_since_last_inspection}d ago</span>
-          <span>{zone.pending_obligations} pend.</span>
+          <span>{t('analytics.daysAgo', { days: zone.days_since_last_inspection })}</span>
+          <span>{t('analytics.pendingCount', { count: zone.pending_obligations })}</span>
           <span>{fmtXAF(zone.pending_amount, locale)}</span>
         </div>
       </div>

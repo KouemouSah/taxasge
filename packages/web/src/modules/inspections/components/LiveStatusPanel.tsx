@@ -32,7 +32,7 @@ const POLL_INTERVAL = 30_000 // 30 seconds
 // ---------------------------------------------------------------------------
 
 function formatActivityTime(minutes: number | undefined | null, t: ReturnType<typeof useTranslations>): string {
-  if (minutes === null || minutes === undefined) return t('live.noActivity')
+  if (minutes === null || minutes === undefined || isNaN(minutes)) return t('live.noActivity')
   if (minutes < 1) return t('live.active')
   if (minutes < 60) return t('live.minutesAgo', { min: Math.round(minutes) })
   return t('live.hoursAgo', { hours: Math.round(minutes / 60) })

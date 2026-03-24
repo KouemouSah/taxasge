@@ -259,7 +259,7 @@ export function MissionPlanPanel({
         zone_ids: Array.from(selectedZoneIds),
       })
 
-      // 2. Assign agents
+      // 2. Assign agents (rollback mission on failure)
       const agentsPayload = Array.from(selectedAgents.values()).map((a) => ({
         agent_id: a.agent_id,
         agent_profile_id: a.agent_profile_id,
@@ -267,7 +267,17 @@ export function MissionPlanPanel({
         target_inspections: a.target_inspections,
       }))
 
-      await inspectionApi.assignAgents(mission.id, agentsPayload)
+      try {
+        await inspectionApi.assignAgents(mission.id, agentsPayload)
+      } catch (assignErr) {
+        // Rollback: cancel the mission since agents weren't assigned
+        try {
+          await inspectionApi.updateMission(mission.id, { status: 'cancelled' })
+        } catch {
+          // Rollback failed — mission exists without agents (manual cleanup needed)
+        }
+        throw assignErr // Re-throw to outer catch
+      }
 
       toast({
         title: t('mission.created'),
@@ -280,7 +290,7 @@ export function MissionPlanPanel({
       const message =
         err instanceof Error ? err.message : String(err)
       toast({
-        title: 'Error',
+        title: t('common.error'),
         description: message,
         variant: 'destructive',
       })

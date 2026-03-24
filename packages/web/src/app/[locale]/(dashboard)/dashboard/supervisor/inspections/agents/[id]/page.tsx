@@ -12,6 +12,7 @@ import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement,
   PointElement, Title, Tooltip, Legend, Filler,
+  type ChartData, type ChartOptions,
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,13 +58,13 @@ function defaultDateTo(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function fmtWeek(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+function fmtWeek(iso: string, locale?: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function fmtDate(iso: string, locale?: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(locale, {
     year: 'numeric', month: 'short', day: 'numeric',
   })
 }
@@ -144,9 +145,9 @@ export default function AgentDetailPage() {
   // Chart data
   // -----------------------------------------------------------------------
 
-  const chartData = useMemo(() => {
+  const chartData = useMemo((): ChartData<'bar'> | null => {
     if (!data?.weekly_trend?.length) return null
-    const labels = data.weekly_trend.map(w => fmtWeek(w.week_start))
+    const labels = data.weekly_trend.map(w => fmtWeek(w.week_start, locale))
     return {
       labels,
       datasets: [
@@ -184,7 +185,7 @@ export default function AgentDetailPage() {
     }
   }, [data, t])
 
-  const chartOptions = useMemo(() => ({
+  const chartOptions = useMemo((): ChartOptions<'bar'> => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
@@ -319,7 +320,7 @@ export default function AgentDetailPage() {
               {chartData ? (
                 <div style={{ height: 220 }}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Bar data={chartData as any} options={chartOptions as any} />
+                  <Bar data={chartData} options={chartOptions} />
                 </div>
               ) : (
                 <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
@@ -356,7 +357,7 @@ export default function AgentDetailPage() {
                         return (
                           <TableRow key={row.id}>
                             <TableCell className="whitespace-nowrap text-xs tabular-nums">
-                              {fmtDate(row.inspection_date)}
+                              {fmtDate(row.inspection_date, locale)}
                             </TableCell>
                             <TableCell className="max-w-[180px] truncate text-xs">
                               <span>{row.company_name}</span>

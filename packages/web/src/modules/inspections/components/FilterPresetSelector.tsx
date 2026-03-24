@@ -111,7 +111,7 @@ export function FilterPresetSelector({
       setNewName('')
       toast({ title: t('presets.saved') })
     } catch {
-      // API error — toast not shown to avoid double feedback
+      toast({ title: t('common.error'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }

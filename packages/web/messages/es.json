@@ -10417,7 +10417,13 @@
       "avgDuration": "Duración media",
       "minutesShort": "min",
       "weeklyTrend": "Tendencia semanal",
-      "noZoneData": "Aucune donnée de zone."
+      "noZoneData": "Sin datos de zonas.",
+      "trends": "Tendencias",
+      "back": "Volver",
+      "pendingCount": "{count} pend.",
+      "selectPlaceholder": "Seleccionar...",
+      "item1": "{type} 1",
+      "item2": "{type} 2"
     },
     "live": {
       "title": "Estado en tiempo real",

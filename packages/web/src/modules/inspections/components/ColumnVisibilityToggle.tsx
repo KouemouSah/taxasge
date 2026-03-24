@@ -53,8 +53,9 @@ export function ColumnVisibilityToggle({
 
   const handleHideAll = useCallback(() => {
     const next: Record<string, boolean> = {}
-    for (const col of columns) {
-      next[col.key] = false
+    // Keep first column visible to prevent empty table
+    for (let i = 0; i < columns.length; i++) {
+      next[columns[i].key] = i === 0
     }
     onVisibilityChange(next)
   }, [columns, onVisibilityChange])
