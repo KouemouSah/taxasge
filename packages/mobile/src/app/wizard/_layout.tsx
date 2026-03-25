@@ -21,6 +21,7 @@ export default function WizardLayout() {
         animation: 'slide_from_right',
       }}
     >
+      <Stack.Screen name="create" />
       <Stack.Screen name="[session-id]" />
       <Stack.Screen name="payment-result" />
     </Stack>

@@ -44,8 +44,11 @@ export default function ServiceDetailScreen() {
   const handleBack = useCallback(() => router.back(), [router]);
   const handleRelatedPress = useCallback((rid: number) => router.push(`/(tabs)/services/${rid}` as never), [router]);
   const handleStartRequest = useCallback(() => {
-    Alert.alert(t('services.comingSoon'), t('services.comingSoonDesc'));
-  }, [t]);
+    if (!service?.service_code) return;
+    // Navigate to wizard creation with workflow_code derived from service
+    // The workflow_code mapping is handled by the backend
+    router.push(`/wizard/create?workflow_code=${service.service_code}&service_id=${serviceId}` as never);
+  }, [service, serviceId, router]);
 
   if (isLoading) {
     return (
@@ -255,12 +258,11 @@ export default function ServiceDetailScreen() {
           <Button
             mode="contained"
             onPress={handleStartRequest}
-            disabled
-            icon="lock-outline"
-            style={{ borderRadius: 8, opacity: 0.6 }}
+            icon="arrow-right"
+            style={{ borderRadius: 8 }}
             contentStyle={{ paddingVertical: 4 }}
           >
-            {t('services.startRequest')} — {t('services.comingSoon')}
+            {t('services.startRequest')}
           </Button>
         </View>
       </ScrollView>

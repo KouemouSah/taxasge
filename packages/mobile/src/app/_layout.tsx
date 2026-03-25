@@ -18,6 +18,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { useTranslation } from 'react-i18next';
+
 import { ThemeProvider } from '@core/theme';
 import { AuthProvider } from '@core/auth/auth-provider';
 import { useAuth } from '@core/hooks/use-auth';
@@ -50,6 +52,8 @@ const queryClient = new QueryClient({
  */
 function RootNavigator() {
   const { isLoading } = useAuth();
+  // Subscribe to language changes so the entire tree re-renders when i18n locale switches
+  useTranslation();
 
   useEffect(() => {
     if (!isLoading) {

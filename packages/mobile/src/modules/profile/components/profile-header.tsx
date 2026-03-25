@@ -1,12 +1,13 @@
 /**
- * Profile Header
+ * Profile Header — Compact Android 14+ style
  *
- * Displays avatar (with tap-to-change), full name, email, and role badge.
+ * Displays avatar (with tap-to-change), full name, and role badge.
+ * Email/phone removed (shown only in Personal Info section to avoid duplication).
  */
 
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
-import { Text, Avatar, Chip, useTheme } from 'react-native-paper';
+import { Text, Avatar, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -32,80 +33,73 @@ export function ProfileHeader({ user, onAvatarPress, isUploading }: ProfileHeade
     .slice(0, 2);
 
   return (
-    <View style={styles.container}>
-      <Pressable onPress={onAvatarPress} style={styles.avatarContainer}>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      <Pressable
+        onPress={onAvatarPress}
+        style={styles.avatarContainer}
+        android_ripple={{ color: theme.colors.primaryContainer, borderless: true, radius: 36 }}
+      >
         {user.avatar_url ? (
-          <Avatar.Image size={96} source={{ uri: user.avatar_url }} />
+          <Avatar.Image size={64} source={{ uri: user.avatar_url }} />
         ) : (
           <Avatar.Text
-            size={96}
+            size={64}
             label={initials}
             style={{ backgroundColor: theme.colors.primaryContainer }}
             labelStyle={{ color: theme.colors.onPrimaryContainer }}
           />
         )}
         <View
-          style={[
-            styles.cameraOverlay,
-            { backgroundColor: theme.colors.primary },
-          ]}
+          style={[styles.cameraOverlay, { backgroundColor: theme.colors.primary }]}
         >
           <MaterialCommunityIcons
             name={isUploading ? 'loading' : 'camera'}
-            size={16}
+            size={14}
             color={theme.colors.onPrimary}
           />
         </View>
       </Pressable>
 
-      <Text variant="headlineSmall" style={[styles.name, { color: theme.colors.onBackground }]}>
-        {fullName}
-      </Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-        {user.email}
-      </Text>
-      {user.phone_number && (
-        <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
-          +240 {user.phone_number}
+      <View style={styles.textBlock}>
+        <Text variant="titleLarge" style={[styles.name, { color: theme.colors.onSurface }]}>
+          {fullName}
         </Text>
-      )}
-      <Chip
-        compact
-        style={[styles.roleBadge, { backgroundColor: theme.colors.secondaryContainer }]}
-        textStyle={{ color: theme.colors.onSecondaryContainer, fontSize: 12 }}
-      >
-        {t(`roles.${user.role_code ?? user.role}`)}
-      </Chip>
+        <Text variant="bodySmall" style={{ color: theme.colors.outline }}>
+          {t(`roles.${user.role_code ?? user.role}`)}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 16,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 12,
   },
   cameraOverlay: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'white',
   },
+  textBlock: {
+    flex: 1,
+    gap: 2,
+  },
   name: {
     fontWeight: '600',
-  },
-  roleBadge: {
-    marginTop: 8,
   },
 });
