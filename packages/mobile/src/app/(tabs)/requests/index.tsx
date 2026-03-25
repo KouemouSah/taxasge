@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 
 import { useAppTheme } from '@core/theme';
+import { AuthGuard } from '@core/auth/auth-guard';
 import { EmptyState } from '@components/ui/empty-state';
 import { useRequests } from '@modules/service-requests';
 import type { ServiceRequestListItem } from '@modules/service-requests';
@@ -42,7 +43,7 @@ type StatusFilter = (typeof STATUS_FILTERS)[number];
 // Screen
 // ---------------------------------------------------------------------------
 
-export default function RequestsListScreen() {
+function RequestsListContent() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
@@ -309,3 +310,11 @@ const styles = StyleSheet.create({
     right: 16,
   },
 });
+
+export default function RequestsListScreen() {
+  return (
+    <AuthGuard>
+      <RequestsListContent />
+    </AuthGuard>
+  );
+}

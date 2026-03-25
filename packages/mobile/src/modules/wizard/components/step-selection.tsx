@@ -65,14 +65,18 @@ export function StepSelection({ workflowCode, onCreateSession, isCreating }: Ste
         </>
       )}
 
-      {/* Is Minor */}
-      <Divider style={{ marginVertical: 12 }} />
-      <View style={styles.switchRow}>
-        <Text variant="bodyMedium" style={{ color: colors.onSurface, flex: 1 }}>
-          {t('wizard.selection.isMinor')}
-        </Text>
-        <Switch value={isMinor} onValueChange={setIsMinor} />
-      </View>
+      {/* Is Minor — only for PASAPORTE workflow */}
+      {workflowCode.toUpperCase().includes('PASAPORTE') && (
+        <>
+          <Divider style={{ marginVertical: 12 }} />
+          <View style={styles.switchRow}>
+            <Text variant="bodyMedium" style={{ color: colors.onSurface, flex: 1 }}>
+              {t('wizard.selection.isMinor')}
+            </Text>
+            <Switch value={isMinor} onValueChange={setIsMinor} />
+          </View>
+        </>
+      )}
 
       {/* Continue */}
       <Button

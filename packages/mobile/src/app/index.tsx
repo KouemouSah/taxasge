@@ -1,10 +1,8 @@
 /**
  * Entry Redirect
  *
- * Determines the initial route based on authentication state:
- * - Authenticated users → (tabs) dashboard
- * - Unauthenticated users → (auth) sign-in
- * - Loading → centered spinner
+ * Always redirects to (tabs). The tab layout handles which tabs
+ * to show based on authentication state (public vs auth mode).
  */
 
 import { View, ActivityIndicator } from 'react-native';
@@ -14,7 +12,7 @@ import { useAuth } from '@core/hooks/use-auth';
 import { useAppTheme } from '@core/theme';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { colors } = useAppTheme();
 
   if (isLoading) {
@@ -32,6 +30,5 @@ export default function Index() {
     );
   }
 
-  if (isAuthenticated) return <Redirect href="/(tabs)" />;
-  return <Redirect href="/(auth)/sign-in" />;
+  return <Redirect href="/(tabs)" />;
 }
