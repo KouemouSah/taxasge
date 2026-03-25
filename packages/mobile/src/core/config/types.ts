@@ -187,25 +187,14 @@ export interface PasswordResetConfirmResponse {
 // ---------------------------------------------------------------------------
 
 /** Request body for POST /auth/password/change (step 1) */
+/** Request body for POST /users/profile/change-password */
 export interface PasswordChangeRequest {
-  current_password: string;
-}
-
-/** Response from POST /auth/password/change (step 1) — code sent to email */
-export interface PasswordChangeResponse {
-  message: string;
-  email: string;
-}
-
-/** Request body for POST /auth/password/change/verify (step 2) */
-export interface PasswordChangeVerifyRequest {
-  email: string;
-  verification_code: string;
+  old_password: string;
   new_password: string;
 }
 
-/** Response from POST /auth/password/change/verify (step 2) */
-export interface PasswordChangeVerifyResponse {
+/** Response from POST /users/profile/change-password */
+export interface PasswordChangeResponse {
   message: string;
 }
 

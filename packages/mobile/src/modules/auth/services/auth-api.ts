@@ -13,9 +13,6 @@ import type {
   RequestVerificationResponse,
   PasswordResetRequestResponse,
   PasswordResetConfirmResponse,
-  PasswordChangeResponse,
-  PasswordChangeVerifyRequest,
-  PasswordChangeVerifyResponse,
   EmailVerifyResponse,
   EmailResendResponse,
   SessionsListResponse,
@@ -66,25 +63,15 @@ export async function passwordResetConfirm(
 }
 
 // ---------------------------------------------------------------------------
-// Password Change (authenticated, 2-step)
+// Password Change (authenticated, direct — same endpoint as web)
 // ---------------------------------------------------------------------------
 
-/** POST /auth/password/change (step 1: sends code to email) */
-export async function passwordChangeRequest(
-  currentPassword: string,
-): Promise<PasswordChangeResponse> {
-  return apiPost<PasswordChangeResponse>(
+/** POST /users/profile/change-password */
+export async function changePassword(
+  data: { old_password: string; new_password: string },
+): Promise<{ message: string }> {
+  return apiPost<{ message: string }>(
     API_ENDPOINTS.auth.passwordChange,
-    { current_password: currentPassword },
-  );
-}
-
-/** POST /auth/password/change/verify (step 2: verify code + set new password) */
-export async function passwordChangeVerify(
-  data: Omit<PasswordChangeVerifyRequest, 'email'> & { email: string },
-): Promise<PasswordChangeVerifyResponse> {
-  return apiPost<PasswordChangeVerifyResponse>(
-    API_ENDPOINTS.auth.passwordChangeVerify,
     data,
   );
 }

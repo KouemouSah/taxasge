@@ -14,7 +14,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as authApi from './auth-api';
 import type {
-  PasswordChangeVerifyRequest,
   TwoFactorSetupVerifyRequest,
 } from '@core/config/types';
 
@@ -55,20 +54,13 @@ export function usePasswordResetConfirm() {
 }
 
 // ---------------------------------------------------------------------------
-// Password Change (2-step)
+// Password Change (direct, same endpoint as web)
 // ---------------------------------------------------------------------------
 
-export function usePasswordChangeRequest() {
+export function useChangePassword() {
   return useMutation({
-    mutationFn: (currentPassword: string) =>
-      authApi.passwordChangeRequest(currentPassword),
-  });
-}
-
-export function usePasswordChangeVerify() {
-  return useMutation({
-    mutationFn: (data: PasswordChangeVerifyRequest) =>
-      authApi.passwordChangeVerify(data),
+    mutationFn: (data: { old_password: string; new_password: string }) =>
+      authApi.changePassword(data),
   });
 }
 

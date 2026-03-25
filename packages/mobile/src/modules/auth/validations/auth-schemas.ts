@@ -114,18 +114,16 @@ export const passwordResetConfirmSchema = z
     path: ['confirm_password'],
   });
 
-/** POST /auth/password/change (step 1: request code) */
-export const passwordChangeRequestSchema = z.object({
-  current_password: z.string().min(1, 'auth.currentPasswordRequired'),
-});
-
-/** POST /auth/password/change/verify (step 2: verify + set new) */
-export const passwordChangeVerifySchema = z
+/** POST /users/profile/change-password — aligned with web frontend */
+export const passwordChangeSchema = z
   .object({
-    email: emailSchema,
-    verification_code: verificationCodeSchema,
+    old_password: z.string().min(1, 'auth.currentPasswordRequired'),
     new_password: passwordStrengthSchema,
     confirm_password: z.string().min(1, 'auth.confirmPasswordRequired'),
+  })
+  .refine((data) => data.new_password !== data.old_password, {
+    message: 'auth.passwordMustBeDifferent',
+    path: ['new_password'],
   })
   .refine((data) => data.new_password === data.confirm_password, {
     message: 'auth.passwordMismatch',
@@ -205,7 +203,6 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type VerificationCodeRequestInput = z.infer<typeof verificationCodeRequestSchema>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
-export type PasswordChangeRequestInput = z.infer<typeof passwordChangeRequestSchema>;
-export type PasswordChangeVerifyInput = z.infer<typeof passwordChangeVerifySchema>;
+export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
 export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;
 export type TwoFactorDisableInput = z.infer<typeof twoFactorDisableSchema>;
