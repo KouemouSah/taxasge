@@ -18,14 +18,14 @@ import { useWizardSession } from '@modules/wizard';
 import { WizardStepper } from '@modules/wizard/components/wizard-stepper';
 import { TTLCountdown } from '@modules/wizard/components/ttl-countdown';
 
-// Step components (will be created in phases 3C-3F)
-// Placeholder imports — uncomment as components are created
-// import { StepUpload } from '@modules/wizard/components/step-upload';
-// import { StepForm } from '@modules/wizard/components/step-form';
-// import { StepAppointment } from '@modules/wizard/components/step-appointment';
-// import { StepSiteSelection } from '@modules/wizard/components/step-site-selection';
-// import { StepPayment } from '@modules/wizard/components/step-payment';
-// import { StepConfirmation } from '@modules/wizard/components/step-confirmation';
+import { StepUpload } from '@modules/wizard/components/step-upload';
+import { DocumentPreviewSheet } from '@modules/wizard/components/document-preview-sheet';
+import { StepForm } from '@modules/wizard/components/step-form';
+import { StepAppointment } from '@modules/wizard/components/step-appointment';
+import { StepSiteSelection } from '@modules/wizard/components/step-site-selection';
+import { StepPayment } from '@modules/wizard/components/step-payment';
+import { StepConfirmation } from '@modules/wizard/components/step-confirmation';
+import type { DocumentPreview, InitiatePaymentResult } from '@modules/wizard';
 
 type WizardStepType = 'upload' | 'form' | 'appointment' | 'site_selection' | 'payment' | 'confirmation';
 
@@ -47,6 +47,9 @@ export default function WizardSessionScreen() {
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<InitiatePaymentResult | null>(null);
 
   // Build step definitions from session
   const steps = useMemo<StepDef[]>(() => {
@@ -175,46 +178,78 @@ export default function WizardSessionScreen() {
       {/* Step content */}
       <View style={styles.stepContent}>
         {currentStep?.type === 'upload' && (
-          <View style={styles.placeholder}>
-            <MaterialCommunityIcons name="file-upload-outline" size={48} color={colors.outlineVariant} />
-            <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8 }}>
-              {t('wizard.step.upload')} — {t('services.comingSoon')}
-            </Text>
-          </View>
+          <StepUpload
+            requiredDocuments={session.required_documents}
+            uploadingDocuments={wizard.uploadingDocuments}
+            onUploadDocument={wizard.previewDocument}
+            onDeleteDocument={wizard.deleteDocument}
+            onDocumentPreview={(preview) => { setDocumentPreview(preview); setShowPreview(true); }}
+          />
         )}
         {currentStep?.type === 'form' && (
-          <View style={styles.placeholder}>
-            <MaterialCommunityIcons name="form-select" size={48} color={colors.outlineVariant} />
-            <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8 }}>
-              {t('wizard.step.form')} — {t('services.comingSoon')}
-            </Text>
-          </View>
+          <StepForm
+            stepId={currentStep.id}
+            getFormConfig={wizard.getFormConfig}
+            onSaveFormData={wizard.saveFormData}
+            isSaving={isSaving}
+          />
         )}
-        {(currentStep?.type === 'appointment' || currentStep?.type === 'site_selection') && (
-          <View style={styles.placeholder}>
-            <MaterialCommunityIcons name="calendar-clock" size={48} color={colors.outlineVariant} />
-            <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8 }}>
-              {t('wizard.step.appointment')} — {t('services.comingSoon')}
-            </Text>
-          </View>
+        {currentStep?.type === 'appointment' && (
+          <StepAppointment
+            getLocations={wizard.getLocations}
+            getAvailableDays={wizard.getAvailableDays}
+            getAvailableSlots={wizard.getAvailableSlots}
+            saveAppointment={wizard.saveAppointment}
+            currentAppointment={session.appointment_data}
+            isSaving={isSaving}
+          />
         )}
-        {currentStep?.type === 'payment' && (
-          <View style={styles.placeholder}>
-            <MaterialCommunityIcons name="credit-card-outline" size={48} color={colors.outlineVariant} />
-            <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8 }}>
-              {t('wizard.step.payment')} — {t('services.comingSoon')}
-            </Text>
-          </View>
+        {currentStep?.type === 'site_selection' && (
+          <StepSiteSelection
+            getAvailableSites={wizard.getAvailableSites}
+            saveSite={wizard.saveSite}
+            currentSite={session.site_selection}
+            isSaving={isSaving}
+          />
         )}
-        {currentStep?.type === 'confirmation' && (
-          <View style={styles.placeholder}>
-            <MaterialCommunityIcons name="check-circle-outline" size={48} color={colors.primary} />
-            <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8 }}>
-              {t('wizard.step.confirmation')}
-            </Text>
-          </View>
+        {currentStep?.type === 'payment' && !paymentResult && (
+          <StepPayment
+            preparePayment={wizard.preparePayment}
+            initiatePayment={wizard.initiatePayment}
+            isSaving={isSaving}
+            onPaymentComplete={(result) => {
+              setPaymentResult(result);
+              // Advance to confirmation
+              const confirmIdx = steps.findIndex((s) => s.type === 'confirmation');
+              if (confirmIdx >= 0) setCurrentStepIndex(confirmIdx);
+            }}
+          />
+        )}
+        {currentStep?.type === 'confirmation' && paymentResult && (
+          <StepConfirmation
+            result={paymentResult}
+            onViewRequest={() => {
+              if (paymentResult.service_request_id) {
+                router.replace(`/(tabs)/requests/${paymentResult.service_request_id}` as never);
+              }
+            }}
+            onGoHome={() => router.replace('/(tabs)' as never)}
+          />
         )}
       </View>
+
+      {/* Document preview bottom sheet */}
+      <DocumentPreviewSheet
+        visible={showPreview}
+        onDismiss={() => setShowPreview(false)}
+        preview={documentPreview}
+        onConfirm={async (data) => {
+          await wizard.confirmDocument(data);
+          setShowPreview(false);
+          setDocumentPreview(null);
+        }}
+        isConfirming={isSaving}
+      />
 
       {/* Navigation buttons */}
       <View style={[styles.navBar, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
