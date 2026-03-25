@@ -8,6 +8,7 @@ import type {
   ServiceRequestListResponse,
   ServiceRequestFilters,
   DetailViewResponse,
+  WorkflowInfo,
 } from '../types/requests.types';
 
 /** GET /service-requests/ with filters and pagination */
@@ -37,5 +38,16 @@ export async function getRequestDetailView(
 ): Promise<DetailViewResponse> {
   return apiGet<DetailViewResponse>(
     API_ENDPOINTS.serviceRequests.detailView(id),
+  );
+}
+
+/** GET /service-requests/workflows */
+export async function getAvailableWorkflows(
+  category?: string,
+): Promise<WorkflowInfo[]> {
+  const params = category ? { category } : undefined;
+  return apiGet<WorkflowInfo[]>(
+    API_ENDPOINTS.serviceRequests.workflows,
+    params,
   );
 }

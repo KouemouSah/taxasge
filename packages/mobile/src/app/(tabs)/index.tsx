@@ -148,7 +148,7 @@ export default function DashboardScreen() {
           <Text variant="titleMedium" style={{ color: colors.onSurfaceVariant, marginTop: spacing.md, fontWeight: '600' }}>
             {t('dashboard.noRequests')}
           </Text>
-          <Button mode="contained" onPress={() => router.push('/(tabs)/services')} style={{ marginTop: spacing.lg }} icon="plus">
+          <Button mode="contained" onPress={() => router.push('/wizard/select-workflow' as never)} style={{ marginTop: spacing.lg }} icon="plus">
             {t('dashboard.quickActions.newRequest')}
           </Button>
         </ScrollView>

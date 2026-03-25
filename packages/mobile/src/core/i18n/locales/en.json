@@ -373,6 +373,8 @@
   },
   "wizard": {
     "title": "New request",
+    "selectWorkflow": "Start a procedure",
+    "steps": "steps",
     "cancel": "Cancel request",
     "cancelConfirm": "Are you sure you want to cancel? All data will be lost.",
     "loading": "Loading session...",

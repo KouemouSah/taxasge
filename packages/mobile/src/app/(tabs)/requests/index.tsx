@@ -165,7 +165,7 @@ export default function RequestsListScreen() {
         title={t('dashboard.noRequests')}
         description={t('dashboard.startFirstRequest')}
         actionLabel={t('requests.new')}
-        onAction={() => router.push('/(tabs)/services')}
+        onAction={() => router.push('/wizard/select-workflow' as never)}
       />
     );
   }, [isLoading, error, colors.primary, t, router, refetch]);
@@ -258,7 +258,7 @@ export default function RequestsListScreen() {
       <FAB
         icon="plus"
         label={t('requests.new')}
-        onPress={() => router.push('/(tabs)/services')}
+        onPress={() => router.push('/wizard/select-workflow' as never)}
         style={[
           styles.fab,
           { backgroundColor: colors.primary, borderRadius: borderRadius.xl },

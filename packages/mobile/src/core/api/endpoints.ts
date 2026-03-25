@@ -55,6 +55,8 @@ export const API_ENDPOINTS = {
     detailView: (id: string) => `/service-requests/${id}/detail-view` as const,
     summaryPdf: (id: string) => `/service-requests/${id}/summary/pdf` as const,
     dashboardSummary: '/service-requests/dashboard-summary',
+    workflows: '/service-requests/workflows',
+    workflowDetail: (code: string) => `/service-requests/workflows/${code}` as const,
   },
 
   // -------------------------------------------------------------------------

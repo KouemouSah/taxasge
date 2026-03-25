@@ -105,3 +105,20 @@ export interface DetailViewResponse {
   workflow_name_es: string;
   solicitud_type_display?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Workflow Catalog
+// ---------------------------------------------------------------------------
+
+export interface WorkflowInfo {
+  code: string;
+  all_workflow_codes?: string[];
+  category: string;
+  entity_code: string;
+  service_name_es: string;
+  requires_appointment: boolean;
+  requires_agent_review: boolean;
+  allowed_solicitud_types: string[];
+  allowed_sub_types?: string[];
+  total_steps: number;
+}

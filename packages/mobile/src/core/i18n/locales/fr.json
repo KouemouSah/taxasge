@@ -373,6 +373,8 @@
   },
   "wizard": {
     "title": "Nouvelle demande",
+    "selectWorkflow": "Initier une démarche",
+    "steps": "étapes",
     "cancel": "Annuler la demande",
     "cancelConfirm": "Êtes-vous sûr de vouloir annuler ? Toutes les données seront perdues.",
     "loading": "Chargement de la session...",

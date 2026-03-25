@@ -39,3 +39,15 @@ export function useRequestDetailView(id: string, enabled = true) {
     staleTime: 30_000,
   });
 }
+
+/**
+ * Fetch available workflows (grouped by category on frontend).
+ * Cached 1h — workflows rarely change.
+ */
+export function useAvailableWorkflows(category?: string) {
+  return useQuery({
+    queryKey: ['workflows', category ?? 'all'] as const,
+    queryFn: () => requestsApi.getAvailableWorkflows(category),
+    staleTime: 60 * 60_000,
+  });
+}

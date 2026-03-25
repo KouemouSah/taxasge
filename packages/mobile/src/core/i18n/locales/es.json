@@ -373,6 +373,8 @@
   },
   "wizard": {
     "title": "Nueva solicitud",
+    "selectWorkflow": "Iniciar un trámite",
+    "steps": "pasos",
     "cancel": "Cancelar solicitud",
     "cancelConfirm": "¿Seguro que deseas cancelar? Se perderán todos los datos.",
     "loading": "Cargando sesión...",
