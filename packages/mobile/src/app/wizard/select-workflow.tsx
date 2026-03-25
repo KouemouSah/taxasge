@@ -48,8 +48,29 @@ function getCategoryLabel(category: string, lang: string): string {
   return lang === 'fr' ? config.fr : lang === 'en' ? config.en : config.es;
 }
 
+function getCategoryDesc(category: string, lang: string): string {
+  const config = CATEGORY_CONFIG[category];
+  if (!config) return '';
+  return lang === 'fr' ? config.descFr : lang === 'en' ? config.descEn : config.descEs;
+}
+
 function getCategoryIcon(category: string): string {
   return CATEGORY_CONFIG[category]?.icon ?? 'folder-outline';
+}
+
+/** Translate workflow name using i18n key, fallback to backend name */
+function getWorkflowName(wf: WorkflowInfo, t: (key: string) => string): string {
+  const key = `workflows.${wf.code}`;
+  const translated = t(key);
+  // If key not found (returns the key itself), use backend name
+  return translated === key ? wf.service_name_es : translated;
+}
+
+/** Translate solicitud type */
+function getSolicitudLabel(type: string, t: (key: string) => string): string {
+  const key = `wizard.selection.${type}`;
+  const translated = t(key);
+  return translated === key ? type : translated;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,10 +157,10 @@ export default function SelectWorkflowScreen() {
             >
               <View style={{ flex: 1 }}>
                 <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                  {item.service_name_es}
+                  {getWorkflowName(item, t)}
                 </Text>
                 <Text variant="labelSmall" style={{ color: colors.outline }}>
-                  {item.allowed_solicitud_types.join(' · ')} · {item.total_steps} {t('wizard.steps')}
+                  {item.allowed_solicitud_types.map((st) => getSolicitudLabel(st, t)).join(' · ')}
                 </Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outline} />

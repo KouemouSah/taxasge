@@ -487,5 +487,21 @@
       "viewRequest": "View my request",
       "backHome": "Back to home"
     }
+  },
+  "workflows": {
+    "PASAPORTE": "Passport Application",
+    "CONDUCIR": "Driving License",
+    "CONTRATO": "Commercial Contract Registration",
+    "RESIDENCIA": "Residence Permit for Foreigners",
+    "MATRICULACION_VEHICULO": "Vehicle Registration and Transfer",
+    "INSPECCION_VEHICULO": "Vehicle Document Inspection and Renewal",
+    "DUPLICADO_VEHICULO": "Vehicle Document Duplicate",
+    "PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
+    "CARNET_FUNCIONARIO": "Civil Servant Card",
+    "VERIFICACION_FUNCIONARIO": "Civil Servant Verification",
+    "TRAMITES_VISADO": "Visa Procedures",
+    "PERMISO_EXTRAORDINARIO": "Extraordinary Permit",
+    "CERTIFICADO_ADMINISTRATIVO": "Administrative Certificate",
+    "PAGO_OBLIGACIONES": "Tax Obligation Payment"
   }
 }

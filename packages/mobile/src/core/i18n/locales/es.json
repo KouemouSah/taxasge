@@ -487,5 +487,21 @@
       "viewRequest": "Ver mi solicitud",
       "backHome": "Volver al inicio"
     }
+  },
+  "workflows": {
+    "PASAPORTE": "Solicitud de Pasaporte",
+    "CONDUCIR": "Permiso de Conducir",
+    "CONTRATO": "Registro de Contrato Comercial",
+    "RESIDENCIA": "Permiso de Residencia para Extranjeros",
+    "MATRICULACION_VEHICULO": "Matriculación y Transferencia de Vehículos",
+    "INSPECCION_VEHICULO": "Inspección y Renovación de Documentos de Vehículos",
+    "DUPLICADO_VEHICULO": "Duplicado de Documentos de Vehículos",
+    "PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
+    "CARNET_FUNCIONARIO": "Carnet de Funcionario",
+    "VERIFICACION_FUNCIONARIO": "Verificación de Funcionario",
+    "TRAMITES_VISADO": "Trámites de Visado",
+    "PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
+    "CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
+    "PAGO_OBLIGACIONES": "Pago de Obligaciones Fiscales"
   }
 }
