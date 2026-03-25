@@ -809,6 +809,9 @@ async def list_assignments(
             )
         agent_profile_id = user_agent_profile_id
 
+    # Entity-scoped filter: supervisors only see their entity's assignments
+    entity_id = agent_ctx.get("entity_id") if (is_supervisor and not is_admin) else None
+
     try:
         # Use list_all with filters
         assignments = await repo.list_all(
@@ -817,7 +820,8 @@ async def list_assignments(
             status=status_filter.value if status_filter else None,
             item_type=item_type,
             limit=limit,
-            offset=offset
+            offset=offset,
+            entity_id=entity_id,
         )
         return assignments
 
@@ -1413,19 +1417,32 @@ async def get_assignment_stats(
     # Build base query
     date_threshold = datetime.utcnow() - timedelta(days=days)
 
-    # Build filters
-    filters = ["created_at >= $1"]
+    # Entity scoping for supervisors (not admin)
+    is_admin = current_user.role == "admin"
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    supervisor_entity_id = agent_ctx.get("entity_id") if (not is_admin and agent_ctx.get("is_supervisor")) else None
+
+    # Build filters — use alias 'a' since we may JOIN agent_profiles
+    filters = ["a.created_at >= $1"]
     params: List[Any] = [date_threshold]
     param_idx = 2
 
     if agent_profile_id:
-        filters.append(f"agent_profile_id = ${param_idx}")
+        filters.append(f"a.agent_profile_id = ${param_idx}")
         params.append(agent_profile_id)
         param_idx += 1
 
     if item_type:
-        filters.append(f"item_type = ${param_idx}")
+        filters.append(f"a.item_type = ${param_idx}")
         params.append(item_type)
+        param_idx += 1
+
+    # Supervisor entity scoping via JOIN
+    entity_join = ""
+    if supervisor_entity_id:
+        entity_join = "JOIN agent_profiles ap_s ON ap_s.id = a.agent_profile_id"
+        filters.append(f"ap_s.entity_id = ${param_idx}")
+        params.append(supervisor_entity_id)
         param_idx += 1
 
     where_clause = " AND ".join(filters)
@@ -1433,17 +1450,18 @@ async def get_assignment_stats(
     # Get counts by status
     status_query = f"""
         SELECT
-            COUNT(*) FILTER (WHERE status = 'assigned') as assigned,
-            COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
-            COUNT(*) FILTER (WHERE status = 'pending_review') as pending_review,
-            COUNT(*) FILTER (WHERE status = 'completed') as completed,
-            COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled,
-            COUNT(*) FILTER (WHERE status = 'reassigned') as reassigned,
-            COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
-            AVG(processing_duration_hours) FILTER (WHERE status = 'completed') as avg_processing_time,
-            AVG(CASE WHEN deadline_met = true THEN 1.0 ELSE 0.0 END)
-                FILTER (WHERE status = 'completed' AND deadline IS NOT NULL) as on_time_rate
-        FROM assignments
+            COUNT(*) FILTER (WHERE a.status = 'assigned') as assigned,
+            COUNT(*) FILTER (WHERE a.status = 'in_progress') as in_progress,
+            COUNT(*) FILTER (WHERE a.status = 'pending_review') as pending_review,
+            COUNT(*) FILTER (WHERE a.status = 'completed') as completed,
+            COUNT(*) FILTER (WHERE a.status = 'cancelled') as cancelled,
+            COUNT(*) FILTER (WHERE a.status = 'reassigned') as reassigned,
+            COUNT(*) FILTER (WHERE a.status = 'rejected') as rejected,
+            AVG(a.processing_duration_hours) FILTER (WHERE a.status = 'completed') as avg_processing_time,
+            AVG(CASE WHEN a.deadline_met = true THEN 1.0 ELSE 0.0 END)
+                FILTER (WHERE a.status = 'completed' AND a.deadline IS NOT NULL) as on_time_rate
+        FROM assignments a
+        {entity_join}
         WHERE {where_clause}
     """
 
@@ -1451,20 +1469,22 @@ async def get_assignment_stats(
 
     # Get breakdown by item_type
     type_query = f"""
-        SELECT item_type, COUNT(*) as count
-        FROM assignments
+        SELECT a.item_type, COUNT(*) as count
+        FROM assignments a
+        {entity_join}
         WHERE {where_clause}
-        GROUP BY item_type
+        GROUP BY a.item_type
     """
     type_rows = await db.fetch(type_query, *params)
     by_item_type = {row['item_type']: row['count'] for row in type_rows}
 
     # Get breakdown by assignment_method
     method_query = f"""
-        SELECT assignment_method, COUNT(*) as count
-        FROM assignments
+        SELECT a.assignment_method, COUNT(*) as count
+        FROM assignments a
+        {entity_join}
         WHERE {where_clause}
-        GROUP BY assignment_method
+        GROUP BY a.assignment_method
     """
     method_rows = await db.fetch(method_query, *params)
     by_assignment_method = {row['assignment_method']: row['count'] for row in method_rows}

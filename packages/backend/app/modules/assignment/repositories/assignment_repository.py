@@ -215,7 +215,8 @@ class AssignmentRepository:
         status: Optional[str] = None,
         item_type: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        entity_id: Optional[UUID] = None,
     ) -> List[Assignment]:
         """List assignments with optional filters
 
@@ -226,6 +227,7 @@ class AssignmentRepository:
             item_type: Filter by item type (declaration type or workflow code)
             limit: Max results
             offset: Pagination offset
+            entity_id: Filter by agent's entity_id (supervisor scoping)
         """
         conditions = []
         values = []
@@ -244,6 +246,11 @@ class AssignmentRepository:
         if item_type:
             conditions.append(f"a.item_type = ${param_count}")
             values.append(item_type)
+            param_count += 1
+
+        if entity_id:
+            conditions.append(f"ap_agent.entity_id = ${param_count}")
+            values.append(entity_id)
             param_count += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
