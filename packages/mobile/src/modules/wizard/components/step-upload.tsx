@@ -62,6 +62,7 @@ export function StepUpload({
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
   const [deletingDocs, setDeletingDocs] = useState<Set<string>>(new Set());
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // ── Image compression ────────────────────────────────────────────────
 
@@ -119,7 +120,13 @@ export function StepUpload({
           onPress: async () => {
             const asset = await pickFromCamera();
             if (!asset) return;
-            const compressedUri = await compressImage(asset.uri);
+            setIsCompressing(true);
+            let compressedUri: string;
+            try {
+              compressedUri = await compressImage(asset.uri);
+            } finally {
+              setIsCompressing(false);
+            }
             const fileName = asset.fileName ?? `${doc.code}_${Date.now()}.jpg`;
             try {
               const preview = await onUploadDocument(doc.code, compressedUri, fileName);
@@ -134,7 +141,13 @@ export function StepUpload({
           onPress: async () => {
             const asset = await pickFromGallery();
             if (!asset) return;
-            const compressedUri = await compressImage(asset.uri);
+            setIsCompressing(true);
+            let compressedUri: string;
+            try {
+              compressedUri = await compressImage(asset.uri);
+            } finally {
+              setIsCompressing(false);
+            }
             const fileName = asset.fileName ?? `${doc.code}_${Date.now()}.jpg`;
             try {
               const preview = await onUploadDocument(doc.code, compressedUri, fileName);
@@ -369,6 +382,14 @@ export function StepUpload({
         ItemSeparatorComponent={() => <Divider style={{ marginLeft: 46 }} />}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
       />
+
+      {/* Compression overlay */}
+      {isCompressing && (
+        <View style={styles.compressingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text variant="bodyMedium" style={{ color: colors.onSurface, marginTop: 8 }}>{t('wizard.upload.compressing')}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -400,4 +421,11 @@ const styles = StyleSheet.create({
   },
   textContainer: { flex: 1, marginRight: 8 },
   badge: { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4 },
+  compressingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
 });

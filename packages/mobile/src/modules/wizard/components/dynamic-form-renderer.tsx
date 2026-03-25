@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
 import {
   Text,
   TextInput,
@@ -10,6 +10,7 @@ import {
   Menu,
   Button,
 } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
 import type { FormSection, FormField, FormFieldOption } from '../types/wizard.types';
@@ -70,21 +71,23 @@ function SelectPicker({
         }
         contentStyle={{ maxHeight: 300 }}
       >
-        {(field.options ?? []).map((option: FormFieldOption) => (
-          <Menu.Item
-            key={option.value}
-            title={option.label_es}
-            onPress={() => {
-              onSelect(option.value);
-              setVisible(false);
-            }}
-            titleStyle={
-              option.value === value
-                ? { color: colors.primary, fontWeight: '600' }
-                : undefined
-            }
-          />
-        ))}
+        <ScrollView style={{ maxHeight: 300 }}>
+          {(field.options ?? []).map((option: FormFieldOption) => (
+            <Menu.Item
+              key={option.value}
+              title={option.label_es}
+              onPress={() => {
+                onSelect(option.value);
+                setVisible(false);
+              }}
+              titleStyle={
+                option.value === value
+                  ? { color: colors.primary, fontWeight: '600' }
+                  : undefined
+              }
+            />
+          ))}
+        </ScrollView>
       </Menu>
       {error && (
         <HelperText type="error" visible>
@@ -119,6 +122,7 @@ function FormFieldComponent({
   error?: string;
 }) {
   const { colors, borderRadius, spacing } = useAppTheme();
+  const { t } = useTranslation();
 
   const stringValue = value != null ? String(value) : '';
 
@@ -228,7 +232,7 @@ function FormFieldComponent({
             label={renderFieldLabel(field)}
             value={stringValue}
             onChangeText={(v) => handleChange(v)}
-            placeholder={field.placeholder_es ?? 'DD/MM/YYYY'}
+            placeholder={field.placeholder_es ?? t('wizard.form.dateFormat')}
             keyboardType="numeric"
             disabled={field.readonly}
             right={<TextInput.Icon icon="calendar" />}

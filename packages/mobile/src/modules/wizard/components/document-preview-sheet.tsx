@@ -276,6 +276,14 @@ export function DocumentPreviewSheet({
             contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xl }}
             keyboardShouldPersistTaps="handled"
           >
+            {extractedFields.length === 0 && (
+              <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                <MaterialCommunityIcons name="text-search" size={32} color={colors.outline} />
+                <Text variant="bodyMedium" style={{ color: colors.outline, marginTop: 8, textAlign: 'center' }}>
+                  {t('wizard.preview.noExtraction')}
+                </Text>
+              </View>
+            )}
             {extractedFields.map((field) => (
               <View key={field.key} style={styles.fieldRow}>
                 <Text

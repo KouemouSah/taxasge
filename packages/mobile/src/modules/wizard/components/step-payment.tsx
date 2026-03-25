@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
-import { Text, Button, Divider, RadioButton, TextInput, ActivityIndicator } from 'react-native-paper';
+import { Text, Button, Divider, RadioButton, TextInput, ActivityIndicator, HelperText } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
@@ -204,7 +204,7 @@ export function StepPayment({
         {payment_methods.map((method) => (
           <View key={method.code} style={styles.methodRow}>
             <MaterialCommunityIcons
-              name={(METHOD_ICONS[method.code] ?? 'cash') as any}
+              name={(METHOD_ICONS[method.code] ?? 'cash') as keyof typeof MaterialCommunityIcons.glyphMap}
               size={22}
               color={selectedMethod === method.code ? colors.primary : colors.outline}
             />
@@ -220,19 +220,26 @@ export function StepPayment({
 
       {/* Phone number input for mobile money */}
       {needsPhone && (
-        <TextInput
-          label={t('wizard.payment.phoneLabel')}
-          placeholder="222XXXXXX"
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
-          maxLength={9}
-          mode="outlined"
-          style={{ marginTop: spacing.md }}
-          outlineStyle={{ borderRadius: borderRadius.sm }}
-          error={phoneNumber.length > 0 && !phoneValid}
-          left={<TextInput.Affix text="+240" />}
-        />
+        <>
+          <TextInput
+            label={t('wizard.payment.phoneLabel')}
+            placeholder="222XXXXXX"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            maxLength={9}
+            mode="outlined"
+            style={{ marginTop: spacing.md }}
+            outlineStyle={{ borderRadius: borderRadius.sm }}
+            error={phoneNumber.length > 0 && !phoneValid}
+            left={<TextInput.Affix text="+240" />}
+          />
+          {phoneNumber.length > 0 && !phoneValid && (
+            <HelperText type="error" visible>
+              {t('auth.invalidPhoneGE')}
+            </HelperText>
+          )}
+        </>
       )}
 
       {/* Pay button */}

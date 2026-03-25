@@ -412,6 +412,7 @@
       "pending": "En attente",
       "error": "Erreur",
       "uploadFailed": "Erreur lors du téléchargement. Réessayez.",
+      "compressing": "Compression de l'image...",
       "deleteTitle": "Supprimer le document",
       "deleteMessage": "Êtes-vous sûr de vouloir supprimer ce document ?",
       "deleteFailed": "Erreur lors de la suppression.",
@@ -426,6 +427,7 @@
       "confirm": "Confirmer",
       "retry": "Réessayer",
       "needsCorrection": "Vérifier les données",
+      "noExtraction": "Impossible d'extraire les données du document. Vérifiez la qualité de l'image.",
       "notes": "Notes de correction",
       "notesPlaceholder": "Décrivez les corrections nécessaires...",
       "riskWarning": "Avertissement de risque"
@@ -436,7 +438,8 @@
       "saving": "Enregistrement...",
       "loading": "Chargement du formulaire...",
       "loadError": "Erreur de chargement du formulaire.",
-      "fieldRequired": "Ce champ est obligatoire"
+      "fieldRequired": "Ce champ est obligatoire",
+      "dateFormat": "JJ/MM/AAAA"
     },
     "appointment": {
       "selectLocation": "Sélectionner le lieu",
