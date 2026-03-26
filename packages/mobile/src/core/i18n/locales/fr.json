@@ -100,6 +100,89 @@
     "lastNameMin": "Minimum 2 caractères",
     "lastNameMax": "Maximum 50 caractères"
   },
+  "home": {
+    "title": "Accueil"
+  },
+  "guide": {
+    "title": "Guide",
+    "tabs": {
+      "steps": "Étapes",
+      "faq": "Questions",
+      "forms": "Formulaires"
+    },
+    "steps": {
+      "1_title": "Créez votre compte",
+      "1_desc": "Inscrivez-vous avec votre e-mail et vérifiez votre identité avec un code de confirmation.",
+      "2_title": "Connectez-vous",
+      "2_desc": "Accédez à votre tableau de bord pour gérer vos demandes et procédures.",
+      "3_title": "Choisissez votre procédure",
+      "3_desc": "Sélectionnez la procédure que vous souhaitez effectuer parmi les options disponibles.",
+      "4_title": "Téléchargez vos documents",
+      "4_desc": "Joignez les documents requis. Notre agent IA les analyse et vérifie automatiquement.",
+      "5_title": "Remplissez le formulaire",
+      "5_desc": "Complétez les informations nécessaires. Les données de vos documents sont pré-remplies.",
+      "6_title": "Prenez rendez-vous",
+      "6_desc": "Si nécessaire, sélectionnez une date et un horaire pour votre rendez-vous.",
+      "7_title": "Effectuez le paiement",
+      "7_desc": "Payez en ligne ou en espèces. Recevez votre reçu de paiement instantanément.",
+      "8_title": "Confirmation",
+      "8_desc": "Recevez la confirmation de votre demande et suivez son état en temps réel.",
+      "intro": "Suivez ces étapes pour effectuer votre procédure en ligne avec l'assistance de notre système intelligent. Chaque étape est guidée automatiquement."
+    },
+    "faq": {
+      "q1": "Faut-il un compte pour utiliser Facil ?",
+      "a1": "Vous pouvez explorer les services et utiliser l'assistant IA sans compte. Pour soumettre une demande, un compte gratuit est nécessaire.",
+      "q2": "Combien de temps prend une démarche ?",
+      "a2": "Cela dépend du service. Chaque service indique son délai estimé. Vous pouvez suivre l'état en temps réel.",
+      "q3": "Quels moyens de paiement acceptez-vous ?",
+      "a3": "Virement bancaire, BANGE Mobile Money, carte bancaire et paiement en espèces dans les bureaux autorisés.",
+      "q4": "En quelles langues est disponible Facil ?",
+      "a4": "Facil est disponible en espagnol, français et anglais. Vous pouvez changer la langue à tout moment.",
+      "q5": "Mes données sont-elles sécurisées ?",
+      "a5": "Oui. Nous utilisons le chiffrement de bout en bout, l'authentification à deux facteurs et respectons les normes internationales de sécurité.",
+      "q6": "Comment contacter le support ?",
+      "a6": "Utilisez l'assistant IA pour les questions fréquentes, ou créez un ticket de support depuis la section d'aide."
+    },
+    "forms": {
+      "info": "Visualisez et remplissez les formulaires fiscaux directement depuis votre appareil. Appuyez sur un formulaire pour l'apercevoir.",
+      "openError": "Impossible d'ouvrir le formulaire.",
+      "retencion_3_petrolero": "Retenue 3% - Résid. Pétrolier",
+      "retencion_5_petrolero": "Retenue 5% - Résid. Pétrolier",
+      "retencion_10_nr_petrolero": "Retenue 10% - Non Résid. Pétrolier",
+      "retencion_10_nr_comun": "Retenue 10% - Non Résid. Sec. Commun",
+      "cuota_min_petroliferos": "Cotisation min. fiscale - Sect. pétrolier",
+      "cuota_min_comun": "Cotisation min. fiscale - Sect. commun",
+      "iva_destajo": "TVA Forfaitaire",
+      "iva_real": "TVA Réelle",
+      "imp_prod_petroleros_ivs": "Imp. Prod. Pétroliers (IVS)",
+      "imp_prod_petroliferos_fmi": "Imp. Prod. Pétrolifères (FMI)",
+      "imp_salarios_petrolero": "Imp. Salaires - Pétrolier",
+      "imp_salarios_comun": "Imp. Salaires - Sec. Commun",
+      "impreso_comun": "Formulaire commun",
+      "liquidacion": "Formulaire de liquidation"
+    }
+  },
+  "account": {
+    "title": "Compte"
+  },
+  "licenses": {
+    "title": "Simulateur de Licences",
+    "selectType": "Type de commerce",
+    "selectZone": "Zone commerciale",
+    "results": "Résultat",
+    "requiredDocs": "Documents requis",
+    "restart": "Recommencer",
+    "download": "Télécharger",
+    "share": "Partager",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papier"
+  },
+  "directory": {
+    "title": "Annuaire des Entreprises",
+    "searchPlaceholder": "Rechercher entreprise, NIF...",
+    "noResults": "Aucune entreprise trouvée",
+    "results": "entreprises"
+  },
   "dashboard": {
     "title": "Accueil",
     "greeting": "Bonjour, {{name}}",
@@ -211,6 +294,9 @@
     "title": "Assistant IA",
     "placeholder": "Écrivez votre question...",
     "welcome": "Bonjour ! Je suis l'assistant Facil. Comment puis-je vous aider ?",
+    "typing": "En train d'écrire...",
+    "errorSending": "Erreur d'envoi. Réessayez.",
+    "rateLimited": "Trop de questions. Patientez un moment.",
     "suggestions": {
       "services": "Quels services proposez-vous ?",
       "documents": "Quels documents sont nécessaires ?",
@@ -486,6 +572,23 @@
       "appointmentDetails": "Détails du rendez-vous",
       "viewRequest": "Voir ma demande",
       "backHome": "Retour à l'accueil"
+    }
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "selectLanguage": "Choisissez votre langue",
+    "exploreWithout": "Explorer sans compte",
+    "slide1": {
+      "title": "Bienvenue sur Facil",
+      "desc": "La plateforme digitale de la Guinée Équatoriale. Gérez vos démarches administratives depuis votre téléphone."
+    },
+    "slide2": {
+      "title": "Intelligent et Sécurisé",
+      "desc": "Assistant IA pour vos questions. Suivi en temps réel. Authentification renforcée avec 2FA."
+    },
+    "slide3": {
+      "title": "Commencez maintenant",
+      "desc": "Passeport, résidence, véhicules, contrats... Tout en un seul endroit."
     }
   },
   "workflows": {

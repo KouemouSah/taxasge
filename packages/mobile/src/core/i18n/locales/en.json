@@ -100,6 +100,89 @@
     "lastNameMin": "Minimum 2 characters",
     "lastNameMax": "Maximum 50 characters"
   },
+  "home": {
+    "title": "Home"
+  },
+  "guide": {
+    "title": "Guide",
+    "tabs": {
+      "steps": "Steps",
+      "faq": "FAQ",
+      "forms": "Forms"
+    },
+    "steps": {
+      "1_title": "Create your account",
+      "1_desc": "Sign up with your email and verify your identity with a confirmation code.",
+      "2_title": "Sign in",
+      "2_desc": "Access your personal dashboard to manage your requests and procedures.",
+      "3_title": "Choose your procedure",
+      "3_desc": "Select the procedure you want to carry out from the available options.",
+      "4_title": "Upload your documents",
+      "4_desc": "Attach the required documents. Our AI agent analyzes and verifies them automatically.",
+      "5_title": "Complete the form",
+      "5_desc": "Fill in the required information. Data from your documents is pre-filled.",
+      "6_title": "Schedule an appointment",
+      "6_desc": "If needed, select a date and time for your in-person appointment.",
+      "7_title": "Make the payment",
+      "7_desc": "Pay online or in cash. Receive your payment receipt instantly.",
+      "8_title": "Confirmation",
+      "8_desc": "Receive confirmation of your request and track its status in real time.",
+      "intro": "Follow these steps to complete your procedure online with the assistance of our intelligent system. Each step is guided automatically."
+    },
+    "faq": {
+      "q1": "Do I need an account to use Facil?",
+      "a1": "You can explore services and use the AI assistant without an account. To submit a request, a free account is required.",
+      "q2": "How long does a procedure take?",
+      "a2": "It depends on the service. Each service shows its estimated time. You can track status in real time.",
+      "q3": "What payment methods do you accept?",
+      "a3": "Bank transfer, BANGE Mobile Money, credit card, and cash at authorized offices.",
+      "q4": "What languages is Facil available in?",
+      "a4": "Facil is available in Spanish, French, and English. You can switch languages at any time.",
+      "q5": "Is my data secure?",
+      "a5": "Yes. We use end-to-end encryption, two-factor authentication, and comply with international security standards.",
+      "q6": "How do I contact support?",
+      "a6": "Use the AI assistant for common questions, or create a support ticket from the help section."
+    },
+    "forms": {
+      "info": "View and fill out tax forms directly from your device. Tap a form to preview it.",
+      "openError": "Could not open the form.",
+      "retencion_3_petrolero": "Withholding 3% - Resident Petroleum",
+      "retencion_5_petrolero": "Withholding 5% - Resident Petroleum",
+      "retencion_10_nr_petrolero": "Withholding 10% - Non-Resident Petroleum",
+      "retencion_10_nr_comun": "Withholding 10% - Non-Resident Common",
+      "cuota_min_petroliferos": "Min. fiscal quota - Petroleum sector",
+      "cuota_min_comun": "Min. fiscal quota - Common sector",
+      "iva_destajo": "VAT Lump sum",
+      "iva_real": "VAT Real",
+      "imp_prod_petroleros_ivs": "Petroleum Products Tax (IVS)",
+      "imp_prod_petroliferos_fmi": "Petroleum Products Tax (FMI)",
+      "imp_salarios_petrolero": "Salary Tax - Petroleum",
+      "imp_salarios_comun": "Salary Tax - Common Sector",
+      "impreso_comun": "Common form",
+      "liquidacion": "Settlement form"
+    }
+  },
+  "account": {
+    "title": "Account"
+  },
+  "licenses": {
+    "title": "License Simulator",
+    "selectType": "Commerce type",
+    "selectZone": "Commerce zone",
+    "results": "Result",
+    "requiredDocs": "Required documents",
+    "restart": "Restart",
+    "download": "Download",
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied to clipboard"
+  },
+  "directory": {
+    "title": "Company Directory",
+    "searchPlaceholder": "Search company, NIF...",
+    "noResults": "No companies found",
+    "results": "companies"
+  },
   "dashboard": {
     "title": "Home",
     "greeting": "Hello, {{name}}",
@@ -211,6 +294,9 @@
     "title": "AI Assistant",
     "placeholder": "Type your question...",
     "welcome": "Hello! I'm the Facil assistant. How can I help you?",
+    "typing": "Typing...",
+    "errorSending": "Failed to send. Please try again.",
+    "rateLimited": "Too many questions. Please wait a moment.",
     "suggestions": {
       "services": "What services do you offer?",
       "documents": "What documents do I need?",
@@ -486,6 +572,23 @@
       "appointmentDetails": "Appointment details",
       "viewRequest": "View my request",
       "backHome": "Back to home"
+    }
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "selectLanguage": "Choose your language",
+    "exploreWithout": "Explore without account",
+    "slide1": {
+      "title": "Welcome to Facil",
+      "desc": "The digital platform of Equatorial Guinea. Manage your administrative procedures from your phone."
+    },
+    "slide2": {
+      "title": "Smart and Secure",
+      "desc": "AI assistant for your questions. Real-time tracking. Enhanced authentication with 2FA."
+    },
+    "slide3": {
+      "title": "Get started now",
+      "desc": "Passport, residence, vehicles, contracts... All in one place."
     }
   },
   "workflows": {

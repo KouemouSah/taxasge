@@ -111,10 +111,212 @@ function UrgentNotifications({ actions, colors, router }: {
 }
 
 // ---------------------------------------------------------------------------
-// Screen
+// Quick Action Item (native Android style)
 // ---------------------------------------------------------------------------
 
-export default function DashboardScreen() {
+const QUICK_ACTIONS = [
+  { icon: 'file-search-outline' as const, bg: '#E8F5E9', color: '#2E7D32', labelKey: 'services' },
+  { icon: 'store-outline' as const, bg: '#E3F2FD', color: '#1565C0', labelKey: 'licencias' },
+  { icon: 'office-building-outline' as const, bg: '#FFF3E0', color: '#E65100', labelKey: 'directorio' },
+  { icon: 'calculator-variant-outline' as const, bg: '#F3E5F5', color: '#7B1FA2', labelKey: 'calculador' },
+] as const;
+
+const QUICK_ACTION_ROUTES: Record<string, string> = {
+  services: '/(tabs)/services',
+  licencias: '/licencias',
+  directorio: '/directorio',
+  calculador: '/calculator',
+};
+
+const QUICK_ACTION_LABELS: Record<string, Record<string, string>> = {
+  services: { es: 'Servicios', fr: 'Services', en: 'Services' },
+  licencias: { es: 'Licencias', fr: 'Licences', en: 'Licenses' },
+  directorio: { es: 'Directorio', fr: 'Annuaire', en: 'Directory' },
+  calculador: { es: 'Calculador', fr: 'Calculateur', en: 'Calculator' },
+};
+
+// ---------------------------------------------------------------------------
+// Public Home — Native Android Material You design
+// ---------------------------------------------------------------------------
+
+function PublicHome() {
+  const { colors } = useAppTheme();
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const lang = (i18n.language || 'es') as 'es' | 'fr' | 'en';
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {/* ── Header ── */}
+        <View style={pubStyles.header}>
+          <Image source={APP_LOGO} style={pubStyles.logo} resizeMode="contain" />
+        </View>
+
+        {/* ── Search pill ── */}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
+          <View
+            style={[pubStyles.searchPill, { backgroundColor: colors.surfaceVariant }]}
+            onTouchEnd={() => router.push('/(tabs)/services')}
+          >
+            <MaterialCommunityIcons name="magnify" size={20} color={colors.onSurfaceVariant} />
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1, marginLeft: 12 }}>
+              {t('common.search')}...
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Quick actions (circular icons + label, like Google Pay) ── */}
+        <View style={pubStyles.actionsRow}>
+          {QUICK_ACTIONS.map((item) => (
+            <View key={item.labelKey} style={pubStyles.actionItem}>
+              <View
+                style={[pubStyles.actionCircle, { backgroundColor: item.bg }]}
+                onTouchEnd={() => router.push(QUICK_ACTION_ROUTES[item.labelKey] as any)}
+              >
+                <MaterialCommunityIcons name={item.icon} size={26} color={item.color} />
+              </View>
+              <Text variant="labelSmall" style={{ color: colors.onSurface, marginTop: 6 }} numberOfLines={1}>
+                {QUICK_ACTION_LABELS[item.labelKey]?.[lang] ?? item.labelKey}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── AI Chat card ── */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <View
+            style={[pubStyles.chatCard, { backgroundColor: colors.primaryContainer }]}
+            onTouchEnd={() => router.push('/(tabs)/chat')}
+          >
+            <View style={[pubStyles.chatIconCircle, { backgroundColor: colors.primary }]}>
+              <MaterialCommunityIcons name="star-four-points" size={22} color={colors.onPrimary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="titleSmall" style={{ color: colors.onPrimaryContainer, fontWeight: '600' }}>
+                {t('chat.title')}
+              </Text>
+              <Text variant="bodySmall" style={{ color: colors.onPrimaryContainer, opacity: 0.8 }}>
+                {lang === 'fr' ? 'Posez vos questions sur les démarches' :
+                 lang === 'en' ? 'Ask about any procedure' :
+                 'Pregunta sobre cualquier trámite'}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.onPrimaryContainer} />
+          </View>
+        </View>
+
+        {/* ── Info cards row ── */}
+        <View style={pubStyles.infoRow}>
+          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="shield-check-outline" size={20} color={colors.primary} />
+            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
+              {lang === 'fr' ? 'Plateforme\nofficielle' : lang === 'en' ? 'Official\nplatform' : 'Plataforma\noficial'}
+            </Text>
+          </View>
+          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="clock-fast" size={20} color={colors.primary} />
+            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
+              {lang === 'fr' ? 'Suivi en\ntemps réel' : lang === 'en' ? 'Real-time\ntracking' : 'Seguimiento\nen tiempo real'}
+            </Text>
+          </View>
+          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="translate" size={20} color={colors.primary} />
+            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
+              {lang === 'fr' ? '3 langues\nES·FR·EN' : lang === 'en' ? '3 languages\nES·FR·EN' : '3 idiomas\nES·FR·EN'}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Auth CTA ── */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
+          <Button
+            mode="contained"
+            onPress={() => router.push('/(auth)/sign-in')}
+            contentStyle={{ height: 48 }}
+          >
+            {t('auth.signIn')}
+          </Button>
+          <Button
+            mode="text"
+            onPress={() => router.push('/(auth)/sign-up')}
+            textColor={colors.primary}
+          >
+            {t('auth.signUp')}
+          </Button>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const pubStyles = StyleSheet.create({
+  header: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  logo: {
+    width: 110,
+    height: 36,
+  },
+  searchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 8,
+    paddingBottom: 20,
+  },
+  actionItem: {
+    alignItems: 'center',
+    width: 72,
+  },
+  actionCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+  },
+  chatIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    gap: 10,
+  },
+  infoCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Auth Dashboard
+// ---------------------------------------------------------------------------
+
+function AuthDashboard() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing } = useAppTheme();
@@ -260,3 +462,12 @@ const styles = StyleSheet.create({
   // Urgent notifications
   urgentItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 8, borderLeftWidth: 3, backgroundColor: '#FFF3E0', borderRadius: 4, marginBottom: 4 },
 });
+
+// ---------------------------------------------------------------------------
+// Export: Conditional render based on auth state
+// ---------------------------------------------------------------------------
+
+export default function HomeScreen() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <AuthDashboard /> : <PublicHome />;
+}

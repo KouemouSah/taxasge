@@ -30,6 +30,8 @@ import '@core/i18n';
 // These are React internals, not actionable — https://github.com/facebook/react/issues/28839
 LogBox.ignoreLogs([
   'Internal React error: Expected static flag was missing',
+  'Each child in a list',
+  'Open debugger to view warnings',
 ]);
 
 // Keep splash screen visible while providers initialize
@@ -64,6 +66,7 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
       <Stack.Screen name="+not-found" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
@@ -75,6 +78,8 @@ function RootNavigator() {
       <Stack.Screen name="support" />
       <Stack.Screen name="calculator/index" />
       <Stack.Screen name="calculator/history" />
+      <Stack.Screen name="licencias" />
+      <Stack.Screen name="directorio" />
     </Stack>
   );
 }

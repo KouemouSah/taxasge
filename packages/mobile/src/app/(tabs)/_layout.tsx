@@ -79,7 +79,7 @@ export default function TabLayout() {
         options={{
           title: t('chat.title'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="robot-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="star-four-points" size={size} color={color} />
           ),
         }}
       />
