@@ -153,12 +153,29 @@ export default function OnboardingScreen() {
       <View style={[s.slide, { width: SW }]}>
         {/* ═══ TOP: colored bg + animation + deco icons ═══ */}
         <View style={[s.topSection, { backgroundColor: item.bgTop }]}>
-          {/* Futuristic lines crossing the screen */}
+          {/* Futuristic lines */}
           <View style={[s.futureLine, { top: '15%', transform: [{ rotate: '-8deg' }], backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-          <View style={[s.futureLine, { top: '30%', transform: [{ rotate: '5deg' }], backgroundColor: 'rgba(255,255,255,0.06)', height: 1 }]} />
-          <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-          <View style={[s.futureCircle, { top: '10%', right: -30, backgroundColor: 'rgba(255,255,255,0.06)' }]} />
-          <View style={[s.futureCircle, { top: '40%', left: -40, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+          <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
+          <View style={[s.futureCircle, { top: '8%', right: -30, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+
+          {/* Pattern icons (line-art style, scattered like o3.png) */}
+          {['passport', 'car-outline', 'file-document-outline', 'scale-balance',
+            'home-city-outline', 'shield-check-outline', 'account-outline', 'calculator-variant-outline',
+            'certificate-outline', 'cash-register', 'office-building-outline', 'translate',
+            'fingerprint', 'cellphone', 'earth', 'gavel'].map((icon, i) => (
+            <MaterialCommunityIcons
+              key={`pat-${i}`}
+              name={icon as keyof typeof MaterialCommunityIcons.glyphMap}
+              size={18 + (i % 4) * 4}
+              color="#fff"
+              style={{
+                position: 'absolute',
+                opacity: 0.12 + (i % 3) * 0.03,
+                top: 20 + ((i * 53) % Math.floor(SH * TOP_RATIO - 60)),
+                left: 12 + ((i * 67 + 23) % Math.floor(SW - 40)),
+              }}
+            />
+          ))}
 
           {/* Animation or icon */}
           {item.animation ? (
@@ -379,8 +396,8 @@ const s = StyleSheet.create({
   watermarkImg: { width: 500, height: 500, opacity: 0.06 },
   splashRect: { position: 'absolute', backgroundColor: '#fff' },
   splashCircle: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
-  titleSmall: { fontSize: 44, fontWeight: '600', letterSpacing: 0.5 },
-  titleBig: { fontSize: 100, fontWeight: '900', letterSpacing: 8, lineHeight: 106, marginBottom: 6 },
+  titleSmall: { fontSize: 44, fontWeight: '600', letterSpacing: 0.3, marginLeft: 2 },
+  titleBig: { fontSize: 100, fontWeight: '900', letterSpacing: 4, lineHeight: 106, marginBottom: 6, marginLeft: -4 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
 
