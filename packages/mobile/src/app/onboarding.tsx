@@ -158,18 +158,20 @@ export default function OnboardingScreen() {
           <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
           <View style={[s.futureCircle, { top: '8%', right: -30, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
 
-          {/* Icons around animation + cloud shapes (like o3.png) */}
+          {/* Cloud of icons tight around animation center (~20px gap) */}
           {[
-            { icon: 'passport', size: 20, top: '15%', left: '8%', opacity: 0.22 },
-            { icon: 'car-outline', size: 28, top: '10%', right: '6%', opacity: 0.18 },
-            { icon: 'file-document-outline', size: 16, top: '30%', left: '4%', opacity: 0.2 },
-            { icon: 'shield-check-outline', size: 24, top: '25%', right: '3%', opacity: 0.16 },
-            { icon: 'home-city-outline', size: 18, top: '55%', left: '5%', opacity: 0.2 },
-            { icon: 'scale-balance', size: 22, top: '60%', right: '4%', opacity: 0.18 },
-            { icon: 'calculator-variant-outline', size: 14, top: '75%', left: '12%', opacity: 0.22 },
-            { icon: 'translate', size: 26, top: '72%', right: '10%', opacity: 0.16 },
-            { icon: 'cellphone', size: 12, top: '45%', left: '12%', opacity: 0.2 },
-            { icon: 'earth', size: 18, top: '80%', left: '40%', opacity: 0.14 },
+            { icon: 'passport', size: 22, top: '14%', left: '18%' },
+            { icon: 'car-outline', size: 16, top: '10%', right: '20%' },
+            { icon: 'file-document-outline', size: 20, top: '22%', left: '10%' },
+            { icon: 'shield-check-outline', size: 14, top: '18%', right: '12%' },
+            { icon: 'home-city-outline', size: 18, top: '52%', left: '10%' },
+            { icon: 'scale-balance', size: 24, top: '56%', right: '14%' },
+            { icon: 'calculator-variant-outline', size: 12, top: '65%', left: '20%' },
+            { icon: 'translate', size: 16, top: '62%', right: '18%' },
+            { icon: 'cellphone', size: 14, top: '35%', left: '6%' },
+            { icon: 'earth', size: 18, top: '42%', right: '6%' },
+            { icon: 'fingerprint', size: 12, top: '28%', left: '22%' },
+            { icon: 'account-outline', size: 16, top: '70%', right: '26%' },
           ].map((item, i) => (
             <MaterialCommunityIcons
               key={`ic-${i}`}
@@ -178,7 +180,7 @@ export default function OnboardingScreen() {
               color="#fff"
               style={{
                 position: 'absolute',
-                opacity: item.opacity,
+                opacity: 0.18,
                 top: item.top as any,
                 left: (item as any).left,
                 right: (item as any).right,
@@ -186,12 +188,18 @@ export default function OnboardingScreen() {
             />
           ))}
 
-          {/* Cloud shapes (soft rounded rectangles like o3.png) */}
-          <View style={[s.cloud, { top: '8%', left: '15%', width: 40, height: 18 }]} />
-          <View style={[s.cloud, { top: '20%', right: '12%', width: 30, height: 14 }]} />
-          <View style={[s.cloud, { top: '65%', left: '6%', width: 35, height: 16 }]} />
-          <View style={[s.cloud, { top: '50%', right: '8%', width: 28, height: 12 }]} />
-          <View style={[s.cloud, { top: '78%', right: '25%', width: 24, height: 10 }]} />
+          {/* Circles of different sizes */}
+          <View style={[s.decoCircle, { top: '6%', left: '30%', width: 50, height: 50, borderRadius: 25 }]} />
+          <View style={[s.decoCircle, { top: '16%', right: '5%', width: 30, height: 30, borderRadius: 15 }]} />
+          <View style={[s.decoCircle, { top: '48%', left: '3%', width: 20, height: 20, borderRadius: 10 }]} />
+          <View style={[s.decoCircle, { top: '60%', right: '2%', width: 40, height: 40, borderRadius: 20 }]} />
+          <View style={[s.decoCircle, { top: '75%', left: '35%', width: 14, height: 14, borderRadius: 7 }]} />
+          <View style={[s.decoCircle, { top: '8%', right: '35%', width: 10, height: 10, borderRadius: 5 }]} />
+          <View style={[s.decoCircle, { top: '68%', left: '8%', width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)' }]} />
+
+          {/* Small clouds */}
+          <View style={[s.cloud, { top: '12%', left: '45%', width: 36, height: 14 }]} />
+          <View style={[s.cloud, { top: '70%', right: '35%', width: 28, height: 12 }]} />
 
           {/* Animation or icon */}
           {item.animation ? (
@@ -380,6 +388,7 @@ const s = StyleSheet.create({
   futureLine: { position: 'absolute', left: -20, right: -20, height: 2, borderRadius: 1 },
   futureCircle: { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
   cloud: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 20 },
+  decoCircle: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'transparent' },
   lottie: { width: SW * 0.7, height: SW * 0.7, maxWidth: 320, maxHeight: 320 },
   iconCircle: {
     width: 160, height: 160, borderRadius: 80,
