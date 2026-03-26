@@ -35,7 +35,7 @@ import { NotificationsList } from '@modules/dashboard/components/notifications-l
 import { AppointmentCard } from '@modules/dashboard/components/appointment-card';
 import { QuickActions } from '@modules/dashboard/components/quick-actions';
 
-const APP_LOGO = require('../../../assets/images/logo.png');
+const APP_LOGO = require('../../../assets/images/logo_hd.png');
 
 type TabValue = 'requests' | 'payments' | 'notifications';
 

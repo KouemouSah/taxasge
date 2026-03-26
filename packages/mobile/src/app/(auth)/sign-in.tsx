@@ -73,7 +73,7 @@ export default function SignInScreen() {
           {/* Header */}
           <View style={[styles.header, { marginBottom: spacing.xl }]}>
             <Image
-              source={require('../../../assets/images/logo.png')}
+              source={require('../../../assets/images/logo_hd.png')}
               style={styles.logo}
               resizeMode="contain"
             />
