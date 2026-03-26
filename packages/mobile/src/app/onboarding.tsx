@@ -158,21 +158,32 @@ export default function OnboardingScreen() {
           <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
           <View style={[s.futureCircle, { top: '8%', right: -30, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
 
-          {/* Pattern icons (line-art style, scattered like o3.png) */}
-          {['passport', 'car-outline', 'file-document-outline', 'scale-balance',
-            'home-city-outline', 'shield-check-outline', 'account-outline', 'calculator-variant-outline',
-            'certificate-outline', 'cash-register', 'office-building-outline', 'translate',
-            'fingerprint', 'cellphone', 'earth', 'gavel'].map((icon, i) => (
+          {/* Icons arranged AROUND the central animation (halo pattern) */}
+          {[
+            { icon: 'passport', size: 22, top: '12%', left: '8%', opacity: 0.18 },
+            { icon: 'car-outline', size: 18, top: '8%', right: '12%', opacity: 0.14 },
+            { icon: 'file-document-outline', size: 26, top: '25%', left: '5%', opacity: 0.16 },
+            { icon: 'shield-check-outline', size: 20, top: '20%', right: '8%', opacity: 0.12 },
+            { icon: 'home-city-outline', size: 16, top: '45%', left: '4%', opacity: 0.15 },
+            { icon: 'scale-balance', size: 24, top: '50%', right: '5%', opacity: 0.13 },
+            { icon: 'calculator-variant-outline', size: 18, top: '65%', left: '10%', opacity: 0.17 },
+            { icon: 'translate', size: 20, top: '60%', right: '10%', opacity: 0.14 },
+            { icon: 'fingerprint', size: 14, top: '35%', left: '15%', opacity: 0.10 },
+            { icon: 'cellphone', size: 16, top: '70%', right: '15%', opacity: 0.12 },
+            { icon: 'account-outline', size: 20, top: '5%', left: '40%', opacity: 0.10 },
+            { icon: 'earth', size: 14, top: '75%', left: '30%', opacity: 0.11 },
+          ].map((item, i) => (
             <MaterialCommunityIcons
-              key={`pat-${i}`}
-              name={icon as keyof typeof MaterialCommunityIcons.glyphMap}
-              size={18 + (i % 4) * 4}
+              key={`halo-${i}`}
+              name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+              size={item.size}
               color="#fff"
               style={{
                 position: 'absolute',
-                opacity: 0.12 + (i % 3) * 0.03,
-                top: 20 + ((i * 53) % Math.floor(SH * TOP_RATIO - 60)),
-                left: 12 + ((i * 67 + 23) % Math.floor(SW - 40)),
+                opacity: item.opacity,
+                top: item.top as any,
+                left: (item as any).left,
+                right: (item as any).right,
               }}
             />
           ))}
