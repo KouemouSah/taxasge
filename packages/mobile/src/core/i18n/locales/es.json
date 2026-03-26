@@ -579,16 +579,19 @@
     "selectLanguage": "Selecciona tu idioma",
     "exploreWithout": "Explorar sin cuenta",
     "slide1": {
-      "title": "Bienvenido a Facil",
-      "desc": "La plataforma digital de Guinea Ecuatorial. Gestiona tus trámites administrativos desde tu teléfono."
+      "title": "Bienvenido a\nFACIL",
+      "desc_sub": "La plataforma digital de los trámites",
+      "desc": "Gestiona tus trámites administrativos desde tu teléfono, en cualquier momento y lugar."
     },
     "slide2": {
       "title": "Inteligente y Seguro",
-      "desc": "Asistente IA para tus preguntas. Seguimiento en tiempo real. Autenticación reforzada con 2FA."
+      "desc_sub": "Asistente IA + Seguridad reforzada",
+      "desc": "Haz tus preguntas, sigue tus solicitudes en tiempo real. Autenticación 2FA y cifrado."
     },
     "slide3": {
       "title": "Comienza ahora",
-      "desc": "Pasaporte, residencia, vehículos, contratos... Todo en un solo lugar."
+      "desc_sub": "Todo en un solo lugar",
+      "desc": "Pasaporte, residencia, vehículos, contratos... Inicia tu primera solicitud."
     }
   },
   "workflows": {

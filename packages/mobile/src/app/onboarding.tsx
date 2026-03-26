@@ -136,9 +136,30 @@ export default function OnboardingScreen() {
   // Render slide
   // ---------------------------------------------------------------------------
 
+  // Background watermark icons per slide
+  const BG_ICONS: string[][] = [
+    ['passport', 'car', 'file-document', 'home-city', 'account-group', 'shield-check'],
+    ['robot', 'lock', 'fingerprint', 'eye-off', 'shield-lock', 'two-factor-authentication'],
+    ['rocket-launch', 'translate', 'cellphone', 'earth', 'star', 'check-decagram'],
+  ];
+
   const renderSlide = ({ item, index }: { item: Slide; index: number }) => (
     <View style={[styles.slide, { width: SCREEN_WIDTH, backgroundColor: item.bgColor }]}>
-      {/* Animation or icon */}
+
+      {/* Background watermark icons */}
+      <View style={styles.bgIcons}>
+        {BG_ICONS[index]?.map((icon, i) => (
+          <MaterialCommunityIcons
+            key={`bg-${i}`}
+            name={icon as keyof typeof MaterialCommunityIcons.glyphMap}
+            size={40}
+            color={item.accentColor}
+            style={[styles.bgIcon, { opacity: 0.06, top: 60 + (i % 3) * 180, left: (i % 2 === 0 ? 20 : SCREEN_WIDTH - 70) + (i * 15) % 60 }]}
+          />
+        ))}
+      </View>
+
+      {/* Animation — LARGE */}
       <View style={styles.animationContainer}>
         {item.animation ? (
           <LottieView
@@ -148,22 +169,40 @@ export default function OnboardingScreen() {
             style={styles.lottie}
           />
         ) : (
-          <View style={[styles.iconCircle, { backgroundColor: `${item.accentColor}20` }]}>
+          <View style={[styles.iconCircle, { backgroundColor: `${item.accentColor}15` }]}>
             <MaterialCommunityIcons
               name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-              size={64}
+              size={80}
               color={item.accentColor}
             />
           </View>
         )}
       </View>
 
-      {/* Text */}
+      {/* Text — LEFT ALIGNED, FACIL giant */}
       <View style={styles.textContainer}>
-        <Text variant="headlineSmall" style={[styles.title, { color: item.accentColor }]}>
-          {t(item.titleKey)}
+        {(() => {
+          const titleText = t(item.titleKey);
+          const parts = titleText.split('\n');
+          return (
+            <>
+              {parts[0] && (
+                <Text style={[styles.titleSmall, { color: item.accentColor }]}>
+                  {parts[0]}
+                </Text>
+              )}
+              {parts[1] && (
+                <Text style={[styles.titleBig, { color: item.accentColor }]}>
+                  {parts[1]}
+                </Text>
+              )}
+            </>
+          );
+        })()}
+        <Text style={[styles.subtitle, { color: item.accentColor }]}>
+          {t(item.descKey + '_sub')}
         </Text>
-        <Text variant="bodyLarge" style={[styles.desc, { color: '#424242' }]}>
+        <Text style={styles.desc}>
           {t(item.descKey)}
         </Text>
       </View>
@@ -184,10 +223,10 @@ export default function OnboardingScreen() {
                   selectedLang === lang.code && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
               >
-                <Text style={{ fontSize: 18 }}>{lang.flag}</Text>
+                <Text style={{ fontSize: 20 }}>{lang.flag}</Text>
                 <Text
                   variant="labelMedium"
-                  style={{ color: selectedLang === lang.code ? '#fff' : '#424242', marginLeft: 6 }}
+                  style={{ color: selectedLang === lang.code ? '#fff' : '#424242', marginLeft: 8, fontWeight: '600' }}
                 >
                   {lang.label}
                 </Text>
@@ -284,13 +323,17 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  slide: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
-  animationContainer: { height: 220, justifyContent: 'center', alignItems: 'center' },
-  lottie: { width: 200, height: 200 },
-  iconCircle: { width: 120, height: 120, borderRadius: 60, justifyContent: 'center', alignItems: 'center' },
-  textContainer: { alignItems: 'center', marginTop: 24, paddingHorizontal: 16 },
-  title: { fontWeight: '700', textAlign: 'center', marginBottom: 12 },
-  desc: { textAlign: 'center', lineHeight: 24, opacity: 0.8 },
+  slide: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, overflow: 'hidden' },
+  bgIcons: { ...StyleSheet.absoluteFillObject },
+  bgIcon: { position: 'absolute' },
+  animationContainer: { height: 280, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  lottie: { width: 280, height: 280 },
+  iconCircle: { width: 150, height: 150, borderRadius: 75, justifyContent: 'center', alignItems: 'center' },
+  textContainer: { alignItems: 'flex-start', paddingLeft: 8, paddingRight: 24 },
+  titleSmall: { fontSize: 22, fontWeight: '600', textAlign: 'left', letterSpacing: 0.5, opacity: 0.8 },
+  titleBig: { fontSize: 44, fontWeight: '900', textAlign: 'left', letterSpacing: 1, marginBottom: 8 },
+  subtitle: { fontSize: 15, fontWeight: '600', textAlign: 'left', marginBottom: 8, opacity: 0.6 },
+  desc: { fontSize: 14, textAlign: 'left', lineHeight: 22, color: '#555', opacity: 0.75 },
   langContainer: { marginTop: 32, alignItems: 'center' },
   langRow: { flexDirection: 'row', gap: 10 },
   langBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#C0C0C0' },

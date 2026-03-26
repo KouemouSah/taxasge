@@ -579,16 +579,19 @@
     "selectLanguage": "Choisissez votre langue",
     "exploreWithout": "Explorer sans compte",
     "slide1": {
-      "title": "Bienvenue sur Facil",
-      "desc": "La plateforme digitale de la Guinée Équatoriale. Gérez vos démarches administratives depuis votre téléphone."
+      "title": "Bienvenue sur\nFACIL",
+      "desc_sub": "La plateforme digitale des procédures",
+      "desc": "Gérez vos démarches administratives depuis votre téléphone, à tout moment et partout."
     },
     "slide2": {
-      "title": "Intelligent et Sécurisé",
-      "desc": "Assistant IA pour vos questions. Suivi en temps réel. Authentification renforcée avec 2FA."
+      "title": "Intelligent et\nSécurisé",
+      "desc_sub": "Assistant IA + Sécurité renforcée",
+      "desc": "Posez vos questions, suivez vos demandes en temps réel. Authentification 2FA et chiffrement."
     },
     "slide3": {
-      "title": "Commencez maintenant",
-      "desc": "Passeport, résidence, véhicules, contrats... Tout en un seul endroit."
+      "title": "Commencez\nmaintenant",
+      "desc_sub": "Tout en un seul endroit",
+      "desc": "Passeport, résidence, véhicules, contrats... Lancez votre première demande."
     }
   },
   "workflows": {

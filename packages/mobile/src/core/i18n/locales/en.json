@@ -579,16 +579,19 @@
     "selectLanguage": "Choose your language",
     "exploreWithout": "Explore without account",
     "slide1": {
-      "title": "Welcome to Facil",
-      "desc": "The digital platform of Equatorial Guinea. Manage your administrative procedures from your phone."
+      "title": "Welcome to\nFACIL",
+      "desc_sub": "The digital procedures platform",
+      "desc": "Manage your administrative procedures from your phone, anytime, anywhere."
     },
     "slide2": {
-      "title": "Smart and Secure",
-      "desc": "AI assistant for your questions. Real-time tracking. Enhanced authentication with 2FA."
+      "title": "Smart and\nSecure",
+      "desc_sub": "AI Assistant + Enhanced Security",
+      "desc": "Ask your questions, track your requests in real-time. 2FA authentication and encryption."
     },
     "slide3": {
-      "title": "Get started now",
-      "desc": "Passport, residence, vehicles, contracts... All in one place."
+      "title": "Get started\nnow",
+      "desc_sub": "All in one place",
+      "desc": "Passport, residence, vehicles, contracts... Start your first request."
     }
   },
   "workflows": {
