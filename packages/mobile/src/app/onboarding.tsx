@@ -364,10 +364,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 4,
   },
-  titleSmall: { fontSize: 26, fontWeight: '500', letterSpacing: 0.3 },
-  titleBig: { fontSize: 56, fontWeight: '900', letterSpacing: 1.5, lineHeight: 62, marginBottom: 10 },
+  titleSmall: { fontSize: 34, fontWeight: '500', letterSpacing: 0.3 },
+  titleBig: { fontSize: 72, fontWeight: '900', letterSpacing: 2, lineHeight: 78, marginBottom: 10 },
   subtitle: { fontSize: 18, fontWeight: '600', opacity: 0.6, marginBottom: 12 },
-  desc: { fontSize: 17, lineHeight: 26, color: '#555' },
+  desc: { fontSize: 18, lineHeight: 28, color: '#555' },
 
   // Language
   langContainer: { marginTop: 16 },
