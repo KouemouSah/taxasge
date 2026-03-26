@@ -15,6 +15,7 @@ import {
   FlatList,
   Dimensions,
   Pressable,
+  Image,
   type ViewToken,
 } from 'react-native';
 import { Text, Button } from 'react-native-paper';
@@ -181,27 +182,42 @@ export default function OnboardingScreen() {
           <View style={s.curveOverlay} />
         </View>
 
-        {/* ═══ BOTTOM: white card with text ═══ */}
+        {/* ═══ BOTTOM: white card with text + watermark ═══ */}
         <View style={s.bottomSection}>
+          {/* Watermark logo — faded, right side, partially covered */}
+          <View style={s.watermarkWrap}>
+            <Image
+              source={require('../../assets/images/icon_facil_watermark.png')}
+              style={s.watermarkImg}
+              resizeMode="contain"
+            />
+            {/* Splash overlays */}
+            <View style={[s.splashRect, { top: 0, right: 0, width: '45%', height: '35%' }]} />
+            <View style={[s.splashRect, { bottom: 0, left: '15%', width: '55%', height: '30%', borderTopLeftRadius: 50 }]} />
+            <View style={[s.splashCircle, { top: '25%', right: '5%', backgroundColor: `${item.accent}0A` }]} />
+          </View>
+
           {/* Title: small line + BIG line */}
-          {parts[0] && (
-            <Text style={[s.titleSmall, { color: item.accent }]}>
-              {parts[0]}
-            </Text>
-          )}
-          {parts[1] && (
-            <Text style={[s.titleBig, { color: item.accent }]}>
-              {parts[1]}
-            </Text>
-          )}
+          <View style={{ zIndex: 2 }}>
+            {parts[0] && (
+              <Text style={[s.titleSmall, { color: item.accent }]}>
+                {parts[0]}
+              </Text>
+            )}
+            {parts[1] && (
+              <Text style={[s.titleBig, { color: item.accent }]}>
+                {parts[1]}
+              </Text>
+            )}
+          </View>
 
           {/* Subtitle */}
-          <Text style={[s.subtitle, { color: item.accent }]}>
+          <Text style={[s.subtitle, { color: item.accent, zIndex: 2 }]}>
             {t(item.descSubKey)}
           </Text>
 
           {/* Description */}
-          <Text style={s.desc}>
+          <Text style={[s.desc, { zIndex: 2 }]}>
             {t(item.descKey)}
           </Text>
 
@@ -353,8 +369,17 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 28,
     paddingTop: 4,
+    overflow: 'hidden',
   },
-  titleSmall: { fontSize: 34, fontWeight: '500', letterSpacing: 0.3 },
+  watermarkWrap: {
+    position: 'absolute', top: -10, right: -20,
+    width: 200, height: 200,
+    zIndex: 1,
+  },
+  watermarkImg: { width: 200, height: 200, opacity: 0.08 },
+  splashRect: { position: 'absolute', backgroundColor: '#fff' },
+  splashCircle: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
+  titleSmall: { fontSize: 44, fontWeight: '600', letterSpacing: 0.5 },
   titleBig: { fontSize: 100, fontWeight: '900', letterSpacing: 8, lineHeight: 106, marginBottom: 6 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
