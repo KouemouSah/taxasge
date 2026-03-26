@@ -158,33 +158,40 @@ export default function OnboardingScreen() {
           <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
           <View style={[s.futureCircle, { top: '8%', right: -30, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
 
-          {/* Small scattered icons — spaced out like o3.png reference */}
+          {/* Icons around animation + cloud shapes (like o3.png) */}
           {[
-            { icon: 'passport', size: 14, top: '6%', left: '6%' },
-            { icon: 'car-outline', size: 12, top: '4%', right: '18%' },
-            { icon: 'file-document-outline', size: 16, top: '18%', left: '3%' },
-            { icon: 'shield-check-outline', size: 13, top: '14%', right: '4%' },
-            { icon: 'home-city-outline', size: 11, top: '38%', left: '2%' },
-            { icon: 'scale-balance', size: 15, top: '58%', right: '3%' },
-            { icon: 'calculator-variant-outline', size: 12, top: '72%', left: '8%' },
-            { icon: 'translate', size: 14, top: '68%', right: '7%' },
-            { icon: 'cellphone', size: 11, top: '82%', left: '25%' },
-            { icon: 'earth', size: 13, top: '80%', right: '22%' },
+            { icon: 'passport', size: 20, top: '15%', left: '8%', opacity: 0.22 },
+            { icon: 'car-outline', size: 28, top: '10%', right: '6%', opacity: 0.18 },
+            { icon: 'file-document-outline', size: 16, top: '30%', left: '4%', opacity: 0.2 },
+            { icon: 'shield-check-outline', size: 24, top: '25%', right: '3%', opacity: 0.16 },
+            { icon: 'home-city-outline', size: 18, top: '55%', left: '5%', opacity: 0.2 },
+            { icon: 'scale-balance', size: 22, top: '60%', right: '4%', opacity: 0.18 },
+            { icon: 'calculator-variant-outline', size: 14, top: '75%', left: '12%', opacity: 0.22 },
+            { icon: 'translate', size: 26, top: '72%', right: '10%', opacity: 0.16 },
+            { icon: 'cellphone', size: 12, top: '45%', left: '12%', opacity: 0.2 },
+            { icon: 'earth', size: 18, top: '80%', left: '40%', opacity: 0.14 },
           ].map((item, i) => (
             <MaterialCommunityIcons
-              key={`sc-${i}`}
+              key={`ic-${i}`}
               name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
               size={item.size}
               color="#fff"
               style={{
                 position: 'absolute',
-                opacity: 0.2,
+                opacity: item.opacity,
                 top: item.top as any,
                 left: (item as any).left,
                 right: (item as any).right,
               }}
             />
           ))}
+
+          {/* Cloud shapes (soft rounded rectangles like o3.png) */}
+          <View style={[s.cloud, { top: '8%', left: '15%', width: 40, height: 18 }]} />
+          <View style={[s.cloud, { top: '20%', right: '12%', width: 30, height: 14 }]} />
+          <View style={[s.cloud, { top: '65%', left: '6%', width: 35, height: 16 }]} />
+          <View style={[s.cloud, { top: '50%', right: '8%', width: 28, height: 12 }]} />
+          <View style={[s.cloud, { top: '78%', right: '25%', width: 24, height: 10 }]} />
 
           {/* Animation or icon */}
           {item.animation ? (
@@ -372,6 +379,7 @@ const s = StyleSheet.create({
   },
   futureLine: { position: 'absolute', left: -20, right: -20, height: 2, borderRadius: 1 },
   futureCircle: { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
+  cloud: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 20 },
   lottie: { width: SW * 0.7, height: SW * 0.7, maxWidth: 320, maxHeight: 320 },
   iconCircle: {
     width: 160, height: 160, borderRadius: 80,
