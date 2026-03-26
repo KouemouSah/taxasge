@@ -158,29 +158,27 @@ export default function OnboardingScreen() {
           <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
           <View style={[s.futureCircle, { top: '8%', right: -30, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
 
-          {/* Icons arranged AROUND the central animation (halo pattern) */}
+          {/* Small scattered icons — spaced out like o3.png reference */}
           {[
-            { icon: 'passport', size: 22, top: '12%', left: '8%', opacity: 0.18 },
-            { icon: 'car-outline', size: 18, top: '8%', right: '12%', opacity: 0.14 },
-            { icon: 'file-document-outline', size: 26, top: '25%', left: '5%', opacity: 0.16 },
-            { icon: 'shield-check-outline', size: 20, top: '20%', right: '8%', opacity: 0.12 },
-            { icon: 'home-city-outline', size: 16, top: '45%', left: '4%', opacity: 0.15 },
-            { icon: 'scale-balance', size: 24, top: '50%', right: '5%', opacity: 0.13 },
-            { icon: 'calculator-variant-outline', size: 18, top: '65%', left: '10%', opacity: 0.17 },
-            { icon: 'translate', size: 20, top: '60%', right: '10%', opacity: 0.14 },
-            { icon: 'fingerprint', size: 14, top: '35%', left: '15%', opacity: 0.10 },
-            { icon: 'cellphone', size: 16, top: '70%', right: '15%', opacity: 0.12 },
-            { icon: 'account-outline', size: 20, top: '5%', left: '40%', opacity: 0.10 },
-            { icon: 'earth', size: 14, top: '75%', left: '30%', opacity: 0.11 },
+            { icon: 'passport', size: 14, top: '6%', left: '6%' },
+            { icon: 'car-outline', size: 12, top: '4%', right: '18%' },
+            { icon: 'file-document-outline', size: 16, top: '18%', left: '3%' },
+            { icon: 'shield-check-outline', size: 13, top: '14%', right: '4%' },
+            { icon: 'home-city-outline', size: 11, top: '38%', left: '2%' },
+            { icon: 'scale-balance', size: 15, top: '58%', right: '3%' },
+            { icon: 'calculator-variant-outline', size: 12, top: '72%', left: '8%' },
+            { icon: 'translate', size: 14, top: '68%', right: '7%' },
+            { icon: 'cellphone', size: 11, top: '82%', left: '25%' },
+            { icon: 'earth', size: 13, top: '80%', right: '22%' },
           ].map((item, i) => (
             <MaterialCommunityIcons
-              key={`halo-${i}`}
+              key={`sc-${i}`}
               name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
               size={item.size}
               color="#fff"
               style={{
                 position: 'absolute',
-                opacity: item.opacity,
+                opacity: 0.2,
                 top: item.top as any,
                 left: (item as any).left,
                 right: (item as any).right,
