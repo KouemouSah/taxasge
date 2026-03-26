@@ -152,23 +152,12 @@ export default function OnboardingScreen() {
       <View style={[s.slide, { width: SW }]}>
         {/* ═══ TOP: colored bg + animation + deco icons ═══ */}
         <View style={[s.topSection, { backgroundColor: item.bgTop }]}>
-          {/* Decorative floating icons */}
-          {item.decoIcons.map((icon, i) => (
-            <MaterialCommunityIcons
-              key={`deco-${i}`}
-              name={icon as keyof typeof MaterialCommunityIcons.glyphMap}
-              size={28 + (i % 3) * 8}
-              color="#fff"
-              style={[
-                s.decoIcon,
-                {
-                  opacity: 0.12 + (i % 3) * 0.04,
-                  top: 30 + (i * 47) % (SH * TOP_RATIO - 80),
-                  left: 15 + (i * 73) % (SW - 60),
-                },
-              ]}
-            />
-          ))}
+          {/* Futuristic lines crossing the screen */}
+          <View style={[s.futureLine, { top: '15%', transform: [{ rotate: '-8deg' }], backgroundColor: 'rgba(255,255,255,0.08)' }]} />
+          <View style={[s.futureLine, { top: '30%', transform: [{ rotate: '5deg' }], backgroundColor: 'rgba(255,255,255,0.06)', height: 1 }]} />
+          <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+          <View style={[s.futureCircle, { top: '10%', right: -30, backgroundColor: 'rgba(255,255,255,0.06)' }]} />
+          <View style={[s.futureCircle, { top: '40%', left: -40, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.04)' }]} />
 
           {/* Animation or icon */}
           {item.animation ? (
@@ -339,7 +328,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
-  decoIcon: { position: 'absolute' },
+  futureLine: { position: 'absolute', left: -20, right: -20, height: 2, borderRadius: 1 },
+  futureCircle: { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
   lottie: { width: SW * 0.7, height: SW * 0.7, maxWidth: 320, maxHeight: 320 },
   iconCircle: {
     width: 160, height: 160, borderRadius: 80,
@@ -365,7 +355,7 @@ const s = StyleSheet.create({
     paddingTop: 4,
   },
   titleSmall: { fontSize: 34, fontWeight: '500', letterSpacing: 0.3 },
-  titleBig: { fontSize: 72, fontWeight: '900', letterSpacing: 6, lineHeight: 78, marginBottom: 6 },
+  titleBig: { fontSize: 100, fontWeight: '900', letterSpacing: 8, lineHeight: 106, marginBottom: 6 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
 
