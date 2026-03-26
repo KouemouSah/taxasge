@@ -365,8 +365,8 @@ const s = StyleSheet.create({
     paddingTop: 4,
   },
   titleSmall: { fontSize: 34, fontWeight: '500', letterSpacing: 0.3 },
-  titleBig: { fontSize: 72, fontWeight: '900', letterSpacing: 2, lineHeight: 78, marginBottom: 10 },
-  subtitle: { fontSize: 18, fontWeight: '600', opacity: 0.6, marginBottom: 12 },
+  titleBig: { fontSize: 72, fontWeight: '900', letterSpacing: 6, lineHeight: 78, marginBottom: 6 },
+  subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
 
   // Language
