@@ -33,6 +33,7 @@ LogBox.ignoreLogs([
   'Internal React error: Expected static flag was missing',
   'Each child in a list',
   'Open debugger to view warnings',
+  'Unable to activate keep awake',
 ]);
 
 // Keep splash screen visible while providers initialize
@@ -50,24 +51,29 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Prefetch slow catalog data in background so screens load instantly.
- * These are public endpoints with long staleTime — fetched once, cached for the session.
+ * Prefetch slow catalog data in background AFTER splash is hidden.
+ * Delayed 3s to avoid competing with auth bootstrap for network/CPU.
+ * Non-blocking, errors silently ignored.
  */
 function usePrefetchCatalogs() {
   useEffect(() => {
-    const prefetch = async () => {
-      try {
-        // Fire all prefetches in parallel — non-blocking, errors swallowed
-        await Promise.allSettled([
-          queryClient.prefetchQuery({ queryKey: ['bundles', 'commerce-types'], queryFn: () => import('@modules/bundles').then(m => m.default?.getCommerceTypes?.() ?? fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/service-bundles/commerce-types`).then(r => r.json())), staleTime: 60 * 60_000 }),
-          queryClient.prefetchQuery({ queryKey: ['bundles', 'zones'], queryFn: () => fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/service-bundles/zones`).then(r => r.json()), staleTime: 60 * 60_000 }),
-          queryClient.prefetchQuery({ queryKey: ['directory', 'search', { page_size: '20' }], queryFn: () => fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/public/companies/search?page_size=20`).then(r => r.json()), staleTime: 30_000 }),
-        ]);
-      } catch {
-        // Silent — prefetch is best-effort
-      }
-    };
-    prefetch();
+    const timer = setTimeout(() => {
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL;
+      if (!baseUrl) return;
+      const api = `${baseUrl}/api/v1`;
+      // Fire and forget — no await, no blocking
+      queryClient.prefetchQuery({
+        queryKey: ['bundles', 'commerce-types'],
+        queryFn: () => fetch(`${api}/service-bundles/commerce-types`).then(r => r.json()).catch(() => []),
+        staleTime: 60 * 60_000,
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['bundles', 'zones'],
+        queryFn: () => fetch(`${api}/service-bundles/zones`).then(r => r.json()).catch(() => []),
+        staleTime: 60 * 60_000,
+      });
+    }, 3000); // Delay 3s after mount — let auth bootstrap finish first
+    return () => clearTimeout(timer);
   }, []);
 }
 

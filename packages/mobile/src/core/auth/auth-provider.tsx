@@ -95,9 +95,10 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
  *
  * Note: apiClient is the default export from @core/api/client.
  */
-async function getApiClient() {
-  const module = await import('@core/api/client');
-  return module.default;
+// Static import — avoids dynamic import() overhead during bootstrap
+import apiClient from '@core/api/client';
+function getApiClient() {
+  return apiClient;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,46 +127,96 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let cancelled = false;
 
     async function bootstrap() {
+      const BOOTSTRAP_TIMEOUT_MS = 8000; // Max 8s for bootstrap — after that, show app with cached profile or guest
+
       try {
         const accessToken = await getAccessToken();
 
         if (!accessToken) {
-          // No stored token - user needs to sign in
           if (!cancelled) {
             setState({ user: null, isAuthenticated: false, isLoading: false });
           }
           return;
         }
 
-        // Try to fetch the user profile with the stored token
-        const client = await getApiClient();
-        try {
-          const response = await client.get<UserProfile>(API_ENDPOINTS.users.profile);
-          const profile = response.data;
+        // Try cached profile first (instant, no network)
+        const cachedProfile = getUserProfile();
+        if (cachedProfile && !cancelled) {
+          // Show app immediately with cached data, refresh in background
+          setState({ user: cachedProfile, isAuthenticated: true, isLoading: false });
 
+          // Background refresh — non-blocking, updates silently
+          const client = await getApiClient();
+          client
+            .get<UserProfile>(API_ENDPOINTS.users.profile, { timeout: BOOTSTRAP_TIMEOUT_MS })
+            .then((res) => {
+              if (!cancelled) {
+                setUserProfile(res.data);
+                setState((prev) => ({ ...prev, user: res.data }));
+              }
+            })
+            .catch((err) => {
+              // 401/403 = token definitely expired → force logout
+              const status = err?.response?.status;
+              if ((status === 401 || status === 403) && !cancelled) {
+                clearAllAuthData();
+                clearBiometricCredentials();
+                setState({ user: null, isAuthenticated: false, isLoading: false });
+              }
+              // Network error (timeout, offline) → keep cached profile, retry next time
+            });
+          return;
+        }
+
+        // No cached profile — must fetch from network (with timeout)
+        const client = await getApiClient();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), BOOTSTRAP_TIMEOUT_MS);
+
+        try {
+          const response = await client.get<UserProfile>(API_ENDPOINTS.users.profile, {
+            signal: controller.signal,
+            timeout: BOOTSTRAP_TIMEOUT_MS,
+          });
+          clearTimeout(timeoutId);
+          const profile = response.data;
           setUserProfile(profile);
 
           if (!cancelled) {
             setState({ user: profile, isAuthenticated: true, isLoading: false });
           }
         } catch (profileError) {
-          // Access token might be expired - try refresh
+          clearTimeout(timeoutId);
+
+          // If aborted (timeout), go to guest mode
+          if (controller.signal.aborted) {
+            if (!cancelled) {
+              setState({ user: null, isAuthenticated: false, isLoading: false });
+            }
+            return;
+          }
+
+          // Access token might be expired — try refresh (with timeout)
           const refreshed = await attemptTokenRefresh();
 
           if (refreshed && !cancelled) {
-            // Refresh succeeded, fetch profile with new token
-            const retryResponse = await client.get<UserProfile>(API_ENDPOINTS.users.profile);
-            const profile = retryResponse.data;
-            setUserProfile(profile);
-            setState({ user: profile, isAuthenticated: true, isLoading: false });
+            try {
+              const retryResponse = await client.get<UserProfile>(API_ENDPOINTS.users.profile, {
+                timeout: BOOTSTRAP_TIMEOUT_MS,
+              });
+              const profile = retryResponse.data;
+              setUserProfile(profile);
+              setState({ user: profile, isAuthenticated: true, isLoading: false });
+            } catch {
+              await clearAllAuthData();
+              setState({ user: null, isAuthenticated: false, isLoading: false });
+            }
           } else if (!cancelled) {
-            // Refresh failed - force sign out
             await clearAllAuthData();
             setState({ user: null, isAuthenticated: false, isLoading: false });
           }
         }
       } catch {
-        // Unexpected error during bootstrap
         if (!cancelled) {
           await clearAllAuthData();
           setState({ user: null, isAuthenticated: false, isLoading: false });
