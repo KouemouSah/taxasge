@@ -24,6 +24,7 @@ from app.modules.chatbot.services.gemini_service import gemini_service
 from app.modules.chatbot.services.chatbot_tools import (
     CHATBOT_FUNC_DECLS, CHATBOT_FUNCTION_MAP,
 )
+from app.modules.chatbot.services.query_preprocessor import QueryPreprocessor
 from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
 from app.modules.chatbot.repositories.legislacion_repository import LegislacionRepository
 from app.config import settings
@@ -48,6 +49,7 @@ class ChatbotServiceRAG:
         """Initialize chatbot service"""
         self.provider = "gemini-rag"
         self.enabled = embedding_service.enabled and gemini_service.enabled
+        self.preprocessor = QueryPreprocessor()
 
         if self.enabled:
             logger.info("✅ ChatbotServiceRAG initialized (RAG mode active)")
@@ -115,45 +117,97 @@ class ChatbotServiceRAG:
                 conversation_history = self._summarize_history(conversation_history)
                 logger.info(f"Conversation summarized to {len(conversation_history)} messages")
 
-            # Step 1: Generate query embedding
-            logger.info(f"Processing chat: '{message[:50]}...' (lang: {language})")
-            query_embedding = await embedding_service.generate_query_embedding(message)
+            # Step 0: Preprocess query (normalize, expand abbreviations, extract entities)
+            processed = self.preprocessor.preprocess(message)
+            logger.info(
+                f"Processing chat: '{message[:50]}...' (lang: {language}) "
+                f"entities={processed.entities}, hints={processed.detected_intent_hints}"
+            )
 
-            if not query_embedding:
-                logger.warning("Failed to generate query embedding, using fallback")
+            # Step 1: Generate embedding + classify intent IN PARALLEL (no extra latency)
+            import asyncio
+            embedding_task = embedding_service.generate_query_embedding(processed.expanded)
+            intent_task = gemini_service.classify_intent(processed.expanded, language)
+
+            query_embedding, intent_result = await asyncio.gather(
+                embedding_task, intent_task, return_exceptions=True
+            )
+
+            # Handle embedding failure
+            if isinstance(query_embedding, Exception) or not query_embedding:
+                logger.warning(f"Failed to generate query embedding: {query_embedding}")
                 return await self._fallback_response(message, conversation_id, language)
 
-            # Step 2a: Semantic search for relevant legislative documents (PDFs)
-            legislacion_repo = LegislacionRepository(db)
-            relevant_docs_extended = await legislacion_repo.search_documents( # Renamed variable
-                query_embedding=query_embedding,
-                limit=settings.RAG_EXTENDED_SEARCH_TOP_K, # Changed limit
-                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
-            )
-            logger.info(f"Found {len(relevant_docs_extended)} extended relevant legislative document chunks")
+            # Extract intent (fallback to preprocessor hints if Gemini failed)
+            if isinstance(intent_result, Exception):
+                logger.warning(f"Intent classification failed: {intent_result}")
+                intent = processed.detected_intent_hints[0] if processed.detected_intent_hints else 'search'
+                intent_confidence = 0.3
+            else:
+                intent = intent_result.get('intent', 'search')
+                intent_confidence = intent_result.get('confidence', 0.5)
 
-            # Step 2b: Semantic search for relevant fiscal services (DB)
-            search_repo = SemanticSearchRepository(db)
-            relevant_services_extended = await search_repo.search_services( # Renamed variable
-                query_embedding=query_embedding,
-                limit=settings.RAG_EXTENDED_SEARCH_TOP_K, # Changed limit
-                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
-            )
-            logger.info(f"Found {len(relevant_services_extended)} extended relevant services")
+            logger.info(f"Intent: {intent} (confidence: {intent_confidence:.2f})")
 
-            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD) + deduplicate
+            # Step 2: Smart routing based on intent
+            # Adjust semantic weight per intent type
+            semantic_weights = {
+                'calculate': 0.5,  # Price keywords are exact
+                'document': 0.6,   # Document names are keywords
+                'guide': 0.7,
+                'search': 0.7,
+                'general': 0.7,
+                'status': 0.7,
+            }
+            semantic_weight = semantic_weights.get(intent, 0.7)
+
+            # For status/general, skip expensive search if intent is clear
+            skip_search = (intent == 'status' and intent_confidence > 0.7)
+
+            if skip_search:
+                relevant_docs_extended = []
+                relevant_services_extended = []
+                logger.info("Skipping search for status intent — forcing tools")
+            else:
+                # Step 2a: Semantic search for legislative documents
+                legislacion_repo = LegislacionRepository(db)
+                relevant_docs_extended = await legislacion_repo.search_documents(
+                    query_embedding=query_embedding,
+                    limit=settings.RAG_EXTENDED_SEARCH_TOP_K,
+                    similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
+                )
+                logger.info(f"Found {len(relevant_docs_extended)} legislative doc chunks")
+
+                # Step 2b: Hybrid search for fiscal services
+                search_repo = SemanticSearchRepository(db)
+                relevant_services_extended = await search_repo.search_services_hybrid(
+                    query_embedding=query_embedding,
+                    query_text=processed.normalized,
+                    limit=settings.RAG_EXTENDED_SEARCH_TOP_K,
+                    similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD,
+                    semantic_weight=semantic_weight,
+                )
+                logger.info(f"Found {len(relevant_services_extended)} services (hybrid, sw={semantic_weight})")
+
+            # Filter + deduplicate
             relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
             relevant_services = self._deduplicate_services(
                 [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
             )[:settings.RAG_MAX_CONTEXT_SERVICES]
 
-            # Step 2c: Enrich with bundle pricing data when query is about commerce/prices
-            bundle_context = await self._enrich_with_bundles(db, message)
+            # Step 2c: Bundle enrichment (force for calculate intent)
+            if intent == 'calculate' or processed.entities.get('commerce_type'):
+                bundle_context = await self._enrich_with_bundles(db, message)
+            else:
+                bundle_context = await self._enrich_with_bundles(db, message)
 
-            # Step 3: Consolidate and prioritize context for LLM
+            # Step 3: Consolidate context with intent hint
             consolidated_context, context_sources = self._consolidate_context(
                 relevant_docs, relevant_services, bundle_context
             )
+            # Prepend intent to context so Gemini knows the classification
+            if intent != 'search':
+                consolidated_context = f"=== INTENCIÓN DETECTADA: {intent} (confianza: {intent_confidence:.0%}) ===\n{consolidated_context}"
 
             # --- Fallback Logic (Suggestion 2 & 6 Implementation) ---
             message_to_llm = message # The message to send to LLM, might be refined by fallback
@@ -178,10 +232,8 @@ class ChatbotServiceRAG:
                     fallback_message = did_you_mean_suggestions[0] # Take the first "Did you mean?" message
                     logger.info(f"Using 'Did you mean?' fallback: {fallback_message}")
                 else:
-                    # If no "Did you mean?" suggestions, classify intent for a more guided fallback
-                    intent_classification = await gemini_service.classify_intent(message, language)
-                    intent = intent_classification.get('intent', 'search')
-                    logger.info(f"Intent classified as '{intent}' for fallback.")
+                    # Reuse already-computed intent (no duplicate Gemini call)
+                    logger.info(f"Using pre-computed intent '{intent}' for fallback.")
 
                     if intent in ["search", "general", "guide", "document", "calculate"]:
                         # General clarification if intent is broad or specific but no results
@@ -226,19 +278,24 @@ class ChatbotServiceRAG:
             # Step 4: Generate AI response with RAG context + function calling tools
             func_decls = CHATBOT_FUNC_DECLS if CHATBOT_FUNC_DECLS else None
 
-            # Smart routing: if RAG found nothing, force tool use (mode=ANY)
+            # Smart routing: force tools based on intent + context availability
             rag_is_empty = not relevant_docs and not relevant_services
-            # Also detect structured data queries that tools handle better
+            # Intents that benefit from forced tool use
+            tool_biased_intents = {'status', 'guide', 'document'}
             structured_keywords = [
                 "empresa", "ministerio", "oficina", "trámite", "categoría",
                 "directorio", "dónde", "horario", "licencia comercial",
                 "company", "ministry", "office", "entreprise", "ministère",
             ]
             is_structured_query = any(kw in message.lower() for kw in structured_keywords)
-            should_force_tools = func_decls and (rag_is_empty or is_structured_query)
+            should_force_tools = func_decls and (
+                rag_is_empty or is_structured_query or
+                (intent in tool_biased_intents and intent_confidence > 0.5) or
+                skip_search
+            )
 
             if should_force_tools:
-                logger.info(f"Forcing tool use: rag_empty={rag_is_empty}, structured={is_structured_query}")
+                logger.info(f"Forcing tools: intent={intent}, rag_empty={rag_is_empty}, structured={is_structured_query}")
 
             ai_response = await gemini_service.chat(
                 user_message=message,
@@ -493,8 +550,11 @@ class ChatbotServiceRAG:
             return
 
         try:
-            # Generate query embedding
-            query_embedding = await embedding_service.generate_query_embedding(message)
+            # Preprocess query
+            processed = self.preprocessor.preprocess(message)
+
+            # Generate query embedding (use expanded query)
+            query_embedding = await embedding_service.generate_query_embedding(processed.expanded)
 
             if not query_embedding:
                 yield {"type": "error", "message": "Failed to process query"}
@@ -508,12 +568,14 @@ class ChatbotServiceRAG:
                 similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
             )
 
-            # Semantic search for relevant fiscal services (DB)
+            # Hybrid search for relevant fiscal services (semantic + full-text)
             search_repo = SemanticSearchRepository(db)
-            relevant_services_extended = await search_repo.search_services(
+            relevant_services_extended = await search_repo.search_services_hybrid(
                 query_embedding=query_embedding,
+                query_text=processed.normalized,
                 limit=settings.RAG_EXTENDED_SEARCH_TOP_K,
-                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
+                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD,
+                semantic_weight=0.7,
             )
             
             # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD) + deduplicate
@@ -956,10 +1018,10 @@ class ChatbotServiceRAG:
                 doc_name = doc.get('document_name', 'Documento')
                 page = doc.get('page_number', '?')
                 content = doc.get('content', '')
-                # Smart truncation at sentence boundary
-                if len(content) > 600:
-                    cut = content[:600].rfind('.')
-                    content = content[:cut + 1] if cut > 200 else content[:600]
+                # Smart truncation at sentence boundary (1000 chars for richer context)
+                if len(content) > 1000:
+                    cut = content[:1000].rfind('.')
+                    content = content[:cut + 1] if cut > 300 else content[:1000]
                 parts.append(f"[{doc_name} - Pág. {page}]")
                 parts.append(content)
                 sources.append(f"DOC:{doc_name}:p{page}")
@@ -988,8 +1050,8 @@ class ChatbotServiceRAG:
 
                 parts.append(f"[{code}] {name} ({cat})")
                 if desc:
-                    # Smart truncation
-                    short_desc = desc[:300].rsplit('.', 1)[0] + '.' if len(desc) > 300 else desc
+                    # Smart truncation (500 chars for richer context)
+                    short_desc = desc[:500].rsplit('.', 1)[0] + '.' if len(desc) > 500 else desc
                     parts.append(f"  Descripción: {short_desc}")
                 if price_exp and float(price_exp) > 0:
                     parts.append(f"  Tarifa expedición: {price_exp} XAF")
@@ -1039,10 +1101,15 @@ class ChatbotServiceRAG:
 
         context_text = "\n".join(parts)
 
-        # Truncate to MAX_CONTEXT_TOKENS (~4 chars/token)
+        # Truncate to MAX_CONTEXT_TOKENS (~4 chars/token) — section-aware
         max_chars = getattr(settings, 'MAX_CONTEXT_TOKENS', 3000) * 4
         if len(context_text) > max_chars:
-            context_text = context_text[:max_chars]
+            # Find last complete section boundary (===) before limit
+            cut_point = context_text[:max_chars].rfind('\n===')
+            if cut_point < max_chars * 0.5:
+                # No good section boundary — find last double newline
+                cut_point = context_text[:max_chars].rfind('\n\n')
+            context_text = context_text[:cut_point] if cut_point > 0 else context_text[:max_chars]
 
         return context_text, sources
 

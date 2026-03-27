@@ -294,50 +294,53 @@ class SemanticSearchRepository:
         query_embedding: List[float],
         query_text: str,
         limit: int = None,
+        similarity_threshold: float = None,
         semantic_weight: float = 0.7,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Hybrid search combining semantic (vector) and full-text (tsvector)
-
-        Uses weighted combination:
-        - Semantic similarity (vector <->)
-        - Full-text relevance (ts_rank)
+        Hybrid search combining semantic (vector) and full-text (tsvector).
+        Returns the SAME enriched fields as search_services() for full compatibility.
 
         Args:
             query_embedding: 768-dimensional query vector
             query_text: Original query text for full-text search
             limit: Max results
-            semantic_weight: Weight for semantic score (0-1)
-                - 1.0 = pure semantic
-                - 0.0 = pure full-text
-                - 0.7 = 70% semantic, 30% full-text (recommended)
-            filters: Optional filters
+            similarity_threshold: Min combined score (0-1)
+            semantic_weight: Weight for semantic score (0-1, default 0.7)
+            filters: Optional filters (category_id, service_type, sector_id, ministry_id)
 
         Returns:
-            Services ranked by combined score
-
-        Note: Hybrid search provides better results for:
-        - Exact keyword matches (e.g., "PAT-001")
-        - Specialized terminology
-        - Abbreviations and codes
+            Services ranked by combined score with full context enrichment
         """
         if limit is None:
             limit = settings.SEMANTIC_SEARCH_TOP_K
+        if similarity_threshold is None:
+            similarity_threshold = settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
 
         fulltext_weight = 1.0 - semantic_weight
 
-        # Build WHERE clause
         where_conditions = ["fs.status = 'active'", "fs.embedding IS NOT NULL"]
-        # Convert embedding list to pgvector string format: '[x,y,z,...]'
         embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
-        params = [embedding_str, query_text, semantic_weight, fulltext_weight, limit]
-        param_idx = 6
+        params = [embedding_str, query_text, semantic_weight, fulltext_weight, similarity_threshold, limit]
+        param_idx = 7
 
         if filters:
             if filters.get('category_id'):
                 where_conditions.append(f"fs.category_id = ${param_idx}")
                 params.append(filters['category_id'])
+                param_idx += 1
+            if filters.get('service_type'):
+                where_conditions.append(f"fs.service_type = ${param_idx}")
+                params.append(filters['service_type'])
+                param_idx += 1
+            if filters.get('sector_id'):
+                where_conditions.append(f"c.sector_id = ${param_idx}")
+                params.append(filters['sector_id'])
+                param_idx += 1
+            if filters.get('ministry_id'):
+                where_conditions.append(f"c.ministry_id = ${param_idx}")
+                params.append(filters['ministry_id'])
                 param_idx += 1
 
         where_clause = " AND ".join(where_conditions)
@@ -348,39 +351,127 @@ class SemanticSearchRepository:
                 fs.service_code,
                 fs.name_es,
                 fs.description_es,
-                fs.category_id,
+                fs.service_type,
+                fs.calculation_method,
+                fs.tasa_expedicion,
+                fs.tasa_renovacion,
+                fs.processing_time_days,
+                fs.validity_period_months,
+                fs.legal_reference,
 
-                -- Individual scores (cosine — matches HNSW index)
-                (1 - (fs.embedding <=> $1::vector))::FLOAT as semantic_score,
-                ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))::FLOAT as fulltext_score,
+                -- Category hierarchy
+                c.id as category_id,
+                c.name_es as category_name,
+                s.id as sector_id,
+                s.name_es as sector_name,
+                m.id as ministry_id,
+                m.name_es as ministry_name,
 
-                -- Combined score
+                -- Combined score as "similarity" for downstream compatibility
                 (
                     $3 * (1 - (fs.embedding <=> $1::vector)) +
                     $4 * ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))
-                )::FLOAT as combined_score
+                )::FLOAT as similarity,
+
+                -- Keywords
+                COALESCE(
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object('keyword', sk.keyword, 'weight', sk.weight)
+                        ORDER BY jsonb_build_object('keyword', sk.keyword, 'weight', sk.weight)
+                    ) FILTER (WHERE sk.id IS NOT NULL AND sk.language_code = 'es'),
+                    '[]'::jsonb
+                ) as keywords,
+
+                -- Required documents
+                COALESCE(
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'template_code', dt.template_code,
+                            'document_name', dt.document_name_es,
+                            'is_required_expedition', sda.is_required_expedition,
+                            'is_required_renewal', sda.is_required_renewal
+                        ) ORDER BY jsonb_build_object(
+                            'template_code', dt.template_code,
+                            'document_name', dt.document_name_es,
+                            'is_required_expedition', sda.is_required_expedition,
+                            'is_required_renewal', sda.is_required_renewal
+                        )
+                    ) FILTER (WHERE dt.id IS NOT NULL),
+                    '[]'::jsonb
+                ) as required_documents,
+
+                -- Procedures with steps
+                COALESCE(
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'procedure_name', pt.name_es,
+                            'applies_to', spa.applies_to,
+                            'steps', COALESCE(pts_data.steps, '[]'::jsonb)
+                        ) ORDER BY jsonb_build_object(
+                            'procedure_name', pt.name_es,
+                            'applies_to', spa.applies_to,
+                            'steps', COALESCE(pts_data.steps, '[]'::jsonb)
+                        )
+                    ) FILTER (WHERE pt.id IS NOT NULL),
+                    '[]'::jsonb
+                ) as procedures,
+
+                -- Bundle context
+                sb.name_es as bundle_name,
+                cz.name_es as zone_name
 
             FROM fiscal_services fs
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON c.ministry_id = m.id
+            LEFT JOIN LATERAL (
+                SELECT sbi.bundle_id, sbi.zone_id
+                FROM service_bundle_items sbi
+                WHERE sbi.fiscal_service_id = fs.id
+                LIMIT 1
+            ) first_bundle ON true
+            LEFT JOIN service_bundles sb ON sb.id = first_bundle.bundle_id
+            LEFT JOIN commerce_zones cz ON cz.id = first_bundle.zone_id
+            LEFT JOIN service_keywords sk ON fs.id = sk.fiscal_service_id
+            LEFT JOIN service_document_assignments sda ON fs.id = sda.fiscal_service_id
+            LEFT JOIN document_templates dt ON sda.document_template_id = dt.id
+            LEFT JOIN service_procedure_assignments spa ON fs.id = spa.fiscal_service_id
+            LEFT JOIN procedure_templates pt ON spa.template_id = pt.id
+            LEFT JOIN LATERAL (
+                SELECT jsonb_agg(
+                    jsonb_build_object('step_number', pts.step_number, 'description', pts.description_es)
+                    ORDER BY pts.step_number
+                ) as steps
+                FROM procedure_template_steps pts
+                WHERE pts.template_id = pt.id
+            ) pts_data ON true
+
             WHERE {where_clause}
-            ORDER BY combined_score DESC
-            LIMIT $5
+                AND (
+                    $3 * (1 - (fs.embedding <=> $1::vector)) +
+                    $4 * ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))
+                ) >= $5
+
+            GROUP BY
+                fs.id, fs.service_code, fs.name_es, fs.description_es,
+                fs.service_type, fs.calculation_method, fs.tasa_expedicion,
+                fs.tasa_renovacion, fs.processing_time_days,
+                fs.validity_period_months, fs.legal_reference,
+                c.id, c.name_es, s.id, s.name_es, m.id, m.name_es,
+                sb.name_es, cz.name_es
+
+            ORDER BY similarity DESC
+            LIMIT $6
         """
 
         try:
             results = await self.db.fetch(query, *params)
+            services = [dict(row) for row in results]
 
-            services = []
-            for row in results:
-                service = dict(row)
-                logger.debug(
-                    f"Hybrid result: {service['service_code']} "
-                    f"(semantic: {service['semantic_score']:.3f}, "
-                    f"fulltext: {service['fulltext_score']:.3f}, "
-                    f"combined: {service['combined_score']:.3f})"
-                )
-                services.append(service)
-
-            logger.info(f"Hybrid search returned {len(services)} results")
+            logger.info(
+                f"Hybrid search: {len(services)} results "
+                f"(semantic_w={semantic_weight}, threshold={similarity_threshold})"
+            )
             return services
 
         except Exception as e:

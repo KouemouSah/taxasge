@@ -703,6 +703,119 @@ async def search_bundles(db, **kwargs) -> dict:
         return {"bundles": [], "error": str(e)}
 
 
+async def start_workflow(db, **kwargs) -> dict:
+    """Generate a start link for a workflow procedure on Facil platform."""
+    workflow_name = kwargs.get("workflow_name", "")
+    if not workflow_name:
+        return {"error": "Proporcione el nombre del trámite"}
+
+    wf = await db.fetchrow("""
+        SELECT w.code, w.name_es, w.description_es, w.category,
+               w.requires_appointment, w.sla_hours, w.max_processing_days
+        FROM workflows w
+        WHERE w.is_active = true
+          AND (w.code ILIKE '%' || $1 || '%' OR w.name_es ILIKE '%' || $1 || '%')
+        ORDER BY w.parent_workflow_code NULLS FIRST
+        LIMIT 1
+    """, workflow_name)
+
+    if not wf:
+        return {"error": f"Trámite no encontrado: {workflow_name}"}
+
+    code = wf["code"]
+
+    # Get sub-types
+    sub_types = await db.fetch("""
+        SELECT code, name_es FROM workflows
+        WHERE parent_workflow_code = $1 AND is_active = true
+        ORDER BY name_es
+    """, code)
+
+    # Get tariff estimate
+    tariff = await db.fetchrow("""
+        SELECT amount, currency FROM workflow_tariffs
+        WHERE workflow_code = $1 AND is_active = true
+        ORDER BY solicitud_type LIMIT 1
+    """, code)
+
+    return {
+        "workflow_name": wf["name_es"],
+        "workflow_code": code,
+        "wizard_url": f"/dashboard/service-requests/new?workflow={code}",
+        "description": wf["description_es"],
+        "estimated_cost_xaf": float(tariff["amount"]) if tariff else None,
+        "estimated_time_days": wf["max_processing_days"],
+        "requires_appointment": wf["requires_appointment"],
+        "sub_types": [
+            {"code": s["code"], "name": s["name_es"]}
+            for s in sub_types
+        ] if sub_types else [],
+        "instructions": (
+            f"Para iniciar el trámite de {wf['name_es']}, "
+            f"acceda a la plataforma Facil y seleccione este servicio. "
+            f"El asistente digital le guiará paso a paso."
+        ),
+    }
+
+
+async def get_document_checklist(db, **kwargs) -> dict:
+    """Get the exact document checklist for a workflow with conditions."""
+    workflow_name = kwargs.get("workflow_name", "")
+    solicitud_type = kwargs.get("solicitud_type", "")
+
+    if not workflow_name:
+        return {"error": "Proporcione el nombre del trámite"}
+
+    wf = await db.fetchrow("""
+        SELECT code, name_es FROM workflows
+        WHERE is_active = true
+          AND (code ILIKE '%' || $1 || '%' OR name_es ILIKE '%' || $1 || '%')
+        ORDER BY parent_workflow_code NULLS FIRST
+        LIMIT 1
+    """, workflow_name)
+
+    if not wf:
+        return {"error": f"Trámite no encontrado: {workflow_name}"}
+
+    docs = await db.fetch("""
+        SELECT document_code, document_name_es, is_required,
+               condition_type, instructions_es, display_order
+        FROM workflow_document_requirements
+        WHERE workflow_code = $1 AND is_active = true
+        ORDER BY display_order
+    """, wf["code"])
+
+    documents = []
+    for d in docs:
+        doc = {
+            "name": d["document_name_es"],
+            "code": d["document_code"],
+            "is_required": d["is_required"],
+            "condition": d["condition_type"] or "always",
+            "instructions": d["instructions_es"],
+        }
+        # Filter by solicitud_type if provided
+        if solicitud_type:
+            cond = (d["condition_type"] or "always").lower()
+            if cond == "always" or solicitud_type.lower() in cond:
+                documents.append(doc)
+        else:
+            documents.append(doc)
+
+    required = [d for d in documents if d["is_required"]]
+    optional = [d for d in documents if not d["is_required"]]
+
+    return {
+        "workflow_name": wf["name_es"],
+        "workflow_code": wf["code"],
+        "solicitud_type": solicitud_type or "todos",
+        "documents": documents,
+        "total_required": len(required),
+        "total_optional": len(optional),
+        "note": "Los documentos marcados como requeridos son obligatorios. Los opcionales pueden ser solicitados según el caso.",
+    }
+
+
 CHATBOT_FUNCTION_MAP = {
     "search_fiscal_services": search_fiscal_services,
     "get_service_details": get_service_details,
@@ -713,6 +826,8 @@ CHATBOT_FUNCTION_MAP = {
     "get_service_categories": get_service_categories,
     "get_platform_info": get_platform_info,
     "search_bundles": search_bundles,
+    "start_workflow": start_workflow,
+    "get_document_checklist": get_document_checklist,
 }
 
 
@@ -829,6 +944,29 @@ if VERTEX_AVAILABLE:
                         "description": "Zona geográfica o ciudad (ej: 'A1', 'Malabo', 'Bata', 'Capitales de Regiones'). Dejar vacío para ver todas las zonas.",
                     },
                 },
+            },
+        ),
+        FunctionDeclaration(
+            name="start_workflow",
+            description="Iniciar un trámite administrativo en la plataforma Facil. Devuelve el enlace directo al asistente digital, costo estimado y tiempo de procesamiento. SIEMPRE usar cuando el usuario quiera INICIAR, COMENZAR, EMPEZAR, SOLICITAR un trámite o diga 'quiero hacer'.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_name": {"type": "string", "description": "Nombre del trámite en lenguaje natural (ej: 'pasaporte', 'residencia', 'licencia de conducir')"},
+                },
+                "required": ["workflow_name"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_document_checklist",
+            description="Obtener la lista exacta de documentos requeridos para un trámite, con instrucciones y condiciones. Usar cuando el usuario pregunte específicamente QUÉ DOCUMENTOS, REQUISITOS, o PAPELES necesita para un trámite.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_name": {"type": "string", "description": "Nombre del trámite (ej: 'pasaporte', 'residencia')"},
+                    "solicitud_type": {"type": "string", "description": "Tipo de solicitud (opcional: 'expedicion', 'renovacion', 'duplicado')"},
+                },
+                "required": ["workflow_name"],
             },
         ),
     ]
