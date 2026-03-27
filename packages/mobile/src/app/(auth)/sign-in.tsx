@@ -6,19 +6,26 @@
  * Wired to AuthProvider signIn flow with 2FA support.
  */
 
-import { useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { Text, TextInput, Button, Surface, HelperText } from 'react-native-paper';
+import { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, Image, Pressable, Alert } from 'react-native';
+import { Text, TextInput, Button, Surface, HelperText, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
 import { extractApiError } from '@core/api/errors';
 import { loginSchema, type LoginInput } from '@modules/auth/validations';
+import {
+  isBiometricAvailable,
+  hasBiometricCredentials,
+  getBiometricCredentials,
+  saveBiometricCredentials,
+} from '@core/security/biometric-login';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -29,6 +36,18 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showBiometric, setShowBiometric] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Check if biometric quick login is available
+  useEffect(() => {
+    (async () => {
+      const available = await isBiometricAvailable();
+      if (!available) return;
+      const hasCreds = await hasBiometricCredentials();
+      setShowBiometric(hasCreds);
+    })();
+  }, []);
 
   const {
     control,
@@ -50,7 +69,24 @@ export default function SignInScreen() {
           params: { tempToken: result.tempToken },
         });
       } else {
-        // Login success — navigate to dashboard immediately
+        // Save credentials for biometric login (prompt only on first success)
+        const available = await isBiometricAvailable();
+        if (available) {
+          const hasCreds = await hasBiometricCredentials();
+          if (!hasCreds) {
+            Alert.alert(
+              t('auth.enableBiometric'),
+              t('auth.enableBiometricDesc'),
+              [
+                { text: t('common.no'), style: 'cancel' },
+                { text: t('common.yes'), onPress: () => saveBiometricCredentials(data.email, data.password) },
+              ],
+            );
+          } else {
+            // Update stored credentials silently
+            await saveBiometricCredentials(data.email, data.password);
+          }
+        }
         router.replace('/(tabs)');
       }
     } catch (error) {
@@ -60,6 +96,32 @@ export default function SignInScreen() {
       setIsSubmitting(false);
     }
   };
+
+  const handleBiometricLogin = useCallback(async () => {
+    setBiometricLoading(true);
+    setErrorMessage(null);
+    try {
+      const creds = await getBiometricCredentials();
+      if (!creds) {
+        setBiometricLoading(false);
+        return; // User cancelled or failed
+      }
+      const result = await signIn(creds.email, creds.password);
+      if (result.type === 'requires_2fa') {
+        router.push({
+          pathname: '/(auth)/verify-otp',
+          params: { tempToken: result.tempToken },
+        });
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (error) {
+      const apiError = extractApiError(error);
+      setErrorMessage(apiError.message);
+    } finally {
+      setBiometricLoading(false);
+    }
+  }, [signIn, router]);
 
   return (
     <SafeAreaView
@@ -185,6 +247,24 @@ export default function SignInScreen() {
             </Button>
           </Surface>
 
+          {/* Biometric login button */}
+          {showBiometric && (
+            <View style={{ alignItems: 'center', marginTop: spacing.md }}>
+              <Divider style={{ width: '60%', marginBottom: spacing.md }} />
+              <Pressable
+                onPress={handleBiometricLogin}
+                disabled={biometricLoading}
+                style={styles.biometricBtn}
+                android_ripple={{ color: colors.primaryContainer }}
+              >
+                <MaterialCommunityIcons name="fingerprint" size={32} color={colors.primary} />
+                <Text variant="labelMedium" style={{ color: colors.primary, marginTop: 4 }}>
+                  {t('auth.biometricLogin')}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* Sign up link */}
           <View style={[styles.footer, { marginTop: spacing.lg }]}>
             <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
@@ -237,5 +317,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  biometricBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 16,
   },
 });

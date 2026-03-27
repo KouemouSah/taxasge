@@ -5,6 +5,36 @@
  */
 
 // ---------------------------------------------------------------------------
+// Workflow Config (from GET /service-requests/workflows/{code})
+// ---------------------------------------------------------------------------
+
+export interface WorkflowStepConfig {
+  number: number;
+  id: string;
+  type: string; // selection, document_upload, form_review_1..N, appointment, site_selection, payment, confirmation, custom, select_applicant_type
+  title_es: string;
+  description_es?: string;
+  is_inherited: boolean;
+  is_optional?: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface WorkflowConfig {
+  code: string;
+  all_workflow_codes?: string[];
+  category: string;
+  entity_code: string;
+  service_name_es: string;
+  requires_nota_ingreso: boolean;
+  requires_appointment: boolean;
+  requires_agent_review: boolean;
+  allowed_solicitud_types?: string[];
+  allowed_sub_types: string[];
+  total_steps?: number;
+  steps?: WorkflowStepConfig[];
+}
+
+// ---------------------------------------------------------------------------
 // Session
 // ---------------------------------------------------------------------------
 

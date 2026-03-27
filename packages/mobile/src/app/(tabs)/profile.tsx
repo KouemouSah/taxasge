@@ -19,9 +19,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { Switch } from 'react-native';
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
 import { AuthGuard } from '@core/auth/auth-guard';
+import { useAppLock } from '@core/security/app-lock';
+import { useScreenProtection } from '@core/security/use-screen-protection';
 import type { SupportedLanguage, UserUpdateRequest } from '@core/config/types';
 
 import { useProfile, useUpdateProfile, useUploadAvatar, useDeleteAvatar } from '@modules/profile';
@@ -51,7 +54,35 @@ const LANGUAGE_LABELS: Record<string, string> = {
   en: 'English',
 };
 
+function AppLockToggle() {
+  const { t } = useTranslation();
+  const { colors } = useAppTheme();
+  const { isAppLockEnabled, isBiometricAvailable, setAppLockEnabled } = useAppLock();
+
+  if (!isBiometricAvailable) return null;
+
+  return (
+    <>
+      <Divider style={{ marginLeft: 56 }} />
+      <List.Item
+        title={t('settings.appLock')}
+        description={t('settings.appLockDesc')}
+        left={(props) => <List.Icon {...props} icon="fingerprint" />}
+        right={() => (
+          <Switch
+            value={isAppLockEnabled}
+            onValueChange={setAppLockEnabled}
+            trackColor={{ false: '#ccc', true: colors.primary + '80' }}
+            thumbColor={isAppLockEnabled ? colors.primary : '#f4f4f4'}
+          />
+        )}
+      />
+    </>
+  );
+}
+
 function ProfileScreenContent() {
+  useScreenProtection();
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const { user, signOut } = useAuth();
@@ -302,6 +333,7 @@ function ProfileScreenContent() {
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => router.push('/settings/sessions')}
           />
+          <AppLockToggle />
         </View>
 
         <Divider />

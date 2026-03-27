@@ -12,6 +12,7 @@ import * as wizardApi from './wizard-api';
 import type {
   WizardSessionCreate,
   WizardSession,
+  WorkflowConfig,
   DocumentPreview,
   DocumentConfirmRequest,
   FormConfig,
@@ -29,7 +30,9 @@ import type {
 export interface UseWizardSessionReturn {
   // State
   session: WizardSession | null;
+  workflowConfig: WorkflowConfig | null;
   isLoading: boolean;
+  isLoadingConfig: boolean;
   isSaving: boolean;
   error: string | null;
 
@@ -42,6 +45,9 @@ export interface UseWizardSessionReturn {
   createSession: (data: WizardSessionCreate) => Promise<WizardSession>;
   loadSession: (sessionId: string) => Promise<void>;
   cancelSession: (reason?: string) => Promise<void>;
+
+  // Workflow config
+  loadWorkflowConfig: (workflowCode: string) => Promise<WorkflowConfig | null>;
 
   // Documents
   previewDocument: (documentCode: string, fileUri: string, fileName: string) => Promise<DocumentPreview>;
@@ -74,7 +80,9 @@ export interface UseWizardSessionReturn {
 
 export function useWizardSession(initialSessionId?: string): UseWizardSessionReturn {
   const [session, setSession] = useState<WizardSession | null>(null);
+  const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -187,6 +195,32 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
       // Silent refresh failure
     }
   }, [getSessionId, updateSession]);
+
+  // -----------------------------------------------------------------------
+  // Workflow Config
+  // -----------------------------------------------------------------------
+
+  const loadWorkflowConfig = useCallback(async (workflowCode: string): Promise<WorkflowConfig | null> => {
+    setIsLoadingConfig(true);
+    try {
+      const config = await wizardApi.getWorkflowConfig(workflowCode);
+      setWorkflowConfig(config);
+      return config;
+    } catch (e) {
+      // Non-fatal: the wizard can still work without config (fallback to legacy steps)
+      console.warn('[useWizardSession] Failed to load workflow config:', e);
+      return null;
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  }, []);
+
+  // Auto-load workflow config when session is available
+  useEffect(() => {
+    if (session?.workflow_code && !workflowConfig) {
+      loadWorkflowConfig(session.workflow_code);
+    }
+  }, [session?.workflow_code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -----------------------------------------------------------------------
   // Documents
@@ -374,7 +408,9 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
 
   return {
     session,
+    workflowConfig,
     isLoading,
+    isLoadingConfig,
     isSaving,
     error,
     timeRemaining,
@@ -383,6 +419,7 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
     createSession,
     loadSession,
     cancelSession,
+    loadWorkflowConfig,
     previewDocument,
     confirmDocument,
     deleteDocument,

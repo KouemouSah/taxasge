@@ -53,6 +53,9 @@
     "createAccountTitle": "Créez votre compte Facil",
     "biometricPrompt": "Utilisez votre empreinte digitale ou Face ID pour vous connecter",
     "personalInfo": "Informations personnelles",
+    "enableBiometric": "Connexion biométrique",
+    "enableBiometricDesc": "Activer la connexion rapide par empreinte digitale ?",
+    "biometricLogin": "Empreinte digitale",
     "signOutTitle": "Se déconnecter",
     "signOutMessage": "Êtes-vous sûr de vouloir vous déconnecter ?",
     "emailRequired": "L'adresse e-mail est obligatoire",
@@ -368,7 +371,9 @@
     "title": "Paramètres",
     "account": "Compte",
     "security": "Sécurité",
-    "preferences": "Préférences"
+    "preferences": "Préférences",
+    "appLock": "Verrouillage biométrique",
+    "appLockDesc": "Verrouiller l'app après 5 min en arrière-plan"
   },
   "roles": {
     "citizen": "Citoyen",
@@ -376,6 +381,15 @@
     "accountant": "Comptable",
     "admin": "Administrateur",
     "supervisor": "Superviseur"
+  },
+  "security": {
+    "appLocked": "Application verrouillée",
+    "verifyIdentity": "Vérifiez votre identité pour continuer",
+    "unlock": "Déverrouiller",
+    "unlockPrompt": "Déverrouiller Facil",
+    "usePin": "Utiliser le PIN",
+    "verificationFailed": "Vérification échouée",
+    "authError": "Erreur d'authentification"
   },
   "support": {
     "title": "Support",
@@ -480,6 +494,22 @@
       "expedicion": "Expédition (première fois)",
       "renovacion": "Renouvellement",
       "duplicado": "Duplicata",
+      "nuevo": "Nouveau",
+      "primera_vez": "Première fois",
+      "legalizacion": "Légalisation",
+      "transferencia": "Transfert",
+      "inspeccion": "Inspection",
+      "matriculacion": "Immatriculation",
+      "prorroga": "Prorogation",
+      "alternativo": "Alternatif",
+      "permanencia": "Permanence",
+      "salida_vencido": "Sortie après expiration",
+      "promocion": "Promotion",
+      "carnet": "Carte",
+      "verificacion": "Vérification",
+      "certificado": "Certificat",
+      "permiso": "Permis",
+      "pago": "Paiement",
       "motivo": "Motif",
       "motivo_vencimiento": "Expiration",
       "motivo_perdida": "Perte",
@@ -584,30 +614,30 @@
       "desc": "Gérez vos démarches administratives\ndepuis votre téléphone, à tout moment."
     },
     "slide2": {
-      "title": "Intelligent et\nSécurisé",
+      "title": "Intelligent\net Sécurisé",
       "desc_sub": "Assistant IA + Sécurité renforcée",
-      "desc": "Posez vos questions, suivez vos demandes en temps réel. Authentification 2FA et chiffrement."
+      "desc": "Posez vos questions, suivez vos demandes\nen temps réel.\nAuthentification 2FA et chiffrement."
     },
     "slide3": {
       "title": "Commencez\nmaintenant",
       "desc_sub": "Tout en un seul endroit",
-      "desc": "Passeport, résidence, véhicules, contrats... Lancez votre première demande."
+      "desc": "Passeport, résidence, véhicules, contrats...\nLancez votre première demande."
     }
   },
   "workflows": {
-    "PASAPORTE": "Demande de Passeport",
-    "CONDUCIR": "Permis de Conduire",
-    "CONTRATO": "Enregistrement de Contrat Commercial",
-    "RESIDENCIA": "Permis de Résidence pour Étrangers",
-    "MATRICULACION_VEHICULO": "Immatriculation et Transfert de Véhicules",
-    "INSPECCION_VEHICULO": "Inspection et Renouvellement de Documents de Véhicules",
-    "DUPLICADO_VEHICULO": "Duplicata de Documents de Véhicules",
-    "PROMOCION_ADMINISTRATIVA": "Promotion Administrative",
-    "CARNET_FUNCIONARIO": "Carte de Fonctionnaire",
-    "VERIFICACION_FUNCIONARIO": "Vérification de Fonctionnaire",
-    "TRAMITES_VISADO": "Démarches de Visa",
-    "PERMISO_EXTRAORDINARIO": "Permis Extraordinaire",
-    "CERTIFICADO_ADMINISTRATIVO": "Certificat Administratif",
-    "PAGO_OBLIGACIONES": "Paiement d'Obligations Fiscales"
+    "PASAPORTE_NUEVO": "Demande de Passeport",
+    "CONDUCIR_NUEVO": "Permis de Conduire",
+    "CONTRATO_OBRA": "Enregistrement de Contrat Commercial",
+    "RESIDENCIA_PRIMERA_VEZ": "Permis de Résidence pour Étrangers",
+    "VEHICULO_PRIMERA_MATRICULACION": "Immatriculation et Transfert de Véhicules",
+    "VEHICULO_RENOVACION_ITV": "Inspection et Renouvellement de Documents de Véhicules",
+    "VEHICULO_DUPLICADO_PERMISO": "Duplicata de Documents de Véhicules",
+    "FP_PROMOCION_ADMINISTRATIVA": "Promotion Administrative",
+    "FP_CARNET_FUNCIONARIO": "Carte de Fonctionnaire",
+    "FP_VERIFICACION_FUNCIONARIO": "Vérification de Fonctionnaire",
+    "PRORROGA_VISADO": "Démarches de Visa",
+    "FP_PERMISO_EXTRAORDINARIO": "Permis Extraordinaire",
+    "FP_CERTIFICADO_ADMINISTRATIVO": "Certificat Administratif",
+    "BUNDLE_PAYMENT": "Paiement d'Obligations Fiscales"
   }
 }

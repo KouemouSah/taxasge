@@ -11,8 +11,10 @@ import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
+import { useScreenProtection } from '@core/security/use-screen-protection';
 
 export default function SettingsLayout() {
+  useScreenProtection();
   const { colors } = useAppTheme();
   const { t } = useTranslation();
 

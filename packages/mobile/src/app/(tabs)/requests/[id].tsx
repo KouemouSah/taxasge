@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { useScreenProtection } from '@core/security/use-screen-protection';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import { appConfig } from '@core/config/app';
 import { getAccessToken } from '@core/auth/auth-storage';
@@ -110,6 +111,7 @@ function extractEssentialFields(
 // ---------------------------------------------------------------------------
 
 export default function RequestDetailScreen() {
+  useScreenProtection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { t } = useTranslation();

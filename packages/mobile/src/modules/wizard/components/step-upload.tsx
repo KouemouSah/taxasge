@@ -87,7 +87,7 @@ export function StepUpload({
       return null;
     }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.length) return null;

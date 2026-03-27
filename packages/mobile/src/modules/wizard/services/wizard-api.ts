@@ -9,6 +9,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '@core/api/client'
 import type {
   WizardSessionCreate,
   WizardSession,
+  WorkflowConfig,
   DocumentPreview,
   DocumentConfirmRequest,
   FormConfig,
@@ -26,6 +27,11 @@ import type {
 import { Platform } from 'react-native';
 
 const BASE = '/wizard-sessions';
+
+// Workflow config (from service-requests router)
+export async function getWorkflowConfig(workflowCode: string): Promise<WorkflowConfig> {
+  return apiGet<WorkflowConfig>(`/service-requests/workflows/${workflowCode}`);
+}
 
 // Session lifecycle
 export async function createSession(data: WizardSessionCreate): Promise<WizardSession> {

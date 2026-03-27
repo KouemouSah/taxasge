@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
+import QRCode from 'qrcode';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 
 import { useAppTheme } from '@core/theme';
@@ -243,51 +244,31 @@ const FEE_COLORS: Record<string, { bg: string; text: string; light: string }> = 
   chamber: { bg: '#6A1B9A', text: '#fff', light: '#F3E5F5' },
 };
 
-async function generateQrDataUrl(url: string): Promise<string> {
+async function generateQrSvg(url: string): Promise<string> {
   try {
-    const QRCode = await import('qrcode');
-    return await QRCode.toDataURL(url, { width: 80, margin: 1, errorCorrectionLevel: 'M' });
+    return await QRCode.toString(url, { type: 'svg', width: 64, margin: 1, errorCorrectionLevel: 'M' });
   } catch {
     return '';
   }
 }
 
-async function buildPdfHtmlAsync(data: any): Promise<string> {
+async function buildPdfHtml(data: any): Promise<string> {
   const date = new Date().toLocaleDateString('es-GQ', { year: 'numeric', month: 'long', day: 'numeric' });
   const verifyUrl = `https://taxasge.emacsah.com/licencias-comerciales?commerce=${data.bundle?.commerce_type}&zone=${data.zone?.zone_code}`;
+  const qrSvg = await generateQrSvg(verifyUrl);
 
-  // Generate real QR code (same library as web)
-  const qrDataUrl = await generateQrDataUrl(verifyUrl);
-
-  // Build fee sections with ministry grouping
+  // Build fee sections — compact, no ministry sub-grouping to save space
   const feeSections = (data.fee_groups || []).map((g: any) => {
     const fc = FEE_COLORS[g.fee_type] || { bg: '#0D6E3F', text: '#fff', light: '#E8F5E9' };
-
-    // Group items by ministry
-    const byMinistry: Record<string, any[]> = {};
-    for (const it of (g.items || [])) {
-      const mKey = it.ministry_name || 'Otros';
-      if (!byMinistry[mKey]) byMinistry[mKey] = [];
-      byMinistry[mKey].push(it);
-    }
-
-    const ministryBlocks = Object.entries(byMinistry).map(([ministry, items]) => {
-      const rows = items.map((it: any) =>
-        `<tr><td style="padding:4px 12px;border-bottom:1px solid #eee;font-size:8.5pt">${it.service_name}</td><td style="padding:4px 12px;text-align:right;border-bottom:1px solid #eee;font-size:8.5pt;white-space:nowrap">${formatAmount(parseFloat(it.amount))}</td></tr>`
-      ).join('');
-      const ministrySubtotal = items.reduce((s: number, it: any) => s + parseFloat(it.amount), 0);
-      return `
-        <tr><td colspan="2" style="padding:5px 12px;font-size:8pt;font-weight:600;color:#555;background:#fafafa;border-bottom:1px solid #e0e0e0">${ministry}</td></tr>
-        ${rows}
-        <tr><td style="padding:4px 12px;font-size:8pt;font-weight:500;color:#888">Subtotal ${ministry.split(' ').slice(0, 3).join(' ')}</td><td style="padding:4px 12px;text-align:right;font-size:8pt;font-weight:600;color:#555">${formatAmount(ministrySubtotal)}</td></tr>
-      `;
-    }).join('');
+    const rows = (g.items || []).map((it: any) =>
+      `<tr><td style="padding:2px 8px;border-bottom:1px solid #eee;font-size:7.5pt">${it.service_name}</td><td style="padding:2px 8px;text-align:right;border-bottom:1px solid #eee;font-size:7.5pt;white-space:nowrap">${formatAmount(parseFloat(it.amount))}</td></tr>`
+    ).join('');
 
     return `
-      <div style="border:1px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:12px;background:${fc.light}">
-        <div style="background:${fc.bg};color:${fc.text};padding:8px 12px;font-weight:700;font-size:10pt">${g.label_es || g.fee_type}</div>
-        <table>${ministryBlocks}</table>
-        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#f0f0f0;font-weight:700;font-size:9.5pt;border-top:2px solid ${fc.bg}">
+      <div style="border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:6px">
+        <div style="background:${fc.bg};color:${fc.text};padding:4px 8px;font-weight:700;font-size:8pt">${g.label_es || g.fee_type}</div>
+        <table>${rows}</table>
+        <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#f0f0f0;font-weight:700;font-size:8pt;border-top:1.5px solid ${fc.bg}">
           <span>Subtotal</span><span style="color:${fc.bg}">${formatAmount(parseFloat(g.subtotal))}</span>
         </div>
       </div>
@@ -295,62 +276,60 @@ async function buildPdfHtmlAsync(data: any): Promise<string> {
   }).join('');
 
   const docs = (data.documents || []).map((d: any) =>
-    `<li style="padding:2px 0;font-size:8.5pt">${d.document_name_es || d}</li>`
+    `<li style="padding:1px 0;font-size:7.5pt">${d.document_name_es || d}</li>`
   ).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    @page{size:A4;margin:12mm}
+    @page{size:A4;margin:8mm 10mm}
     *{box-sizing:border-box}
-    body{font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;color:#333;font-size:9pt}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;color:#333;font-size:8pt}
     table{width:100%;border-collapse:collapse}
   </style></head><body>
 
     <!-- HEADER -->
-    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:6px">
       <div>
-        <div style="font-size:16pt;font-weight:800;color:#0D6E3F;letter-spacing:1px">FACIL</div>
-        <div style="font-size:7pt;color:#666">Plataforma de Servicios Fiscales</div>
+        <div style="font-size:14pt;font-weight:800;color:#0D6E3F;letter-spacing:1px">FACIL</div>
+        <div style="font-size:6.5pt;color:#666">Plataforma de Servicios Fiscales</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:12pt;font-weight:700;letter-spacing:2px">FICHA TARIFARIA</div>
-        <div style="font-size:7pt;color:#666">Licencias Comerciales — República de Guinea Ecuatorial</div>
+        <div style="font-size:11pt;font-weight:700;letter-spacing:2px">FICHA TARIFARIA</div>
+        <div style="font-size:6.5pt;color:#666">Licencias Comerciales — República de Guinea Ecuatorial</div>
       </div>
     </div>
 
     <!-- METADATA -->
-    <div style="display:flex;justify-content:space-between;font-size:8pt;color:#555;margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid #ddd">
+    <div style="display:flex;justify-content:space-between;font-size:7pt;color:#555;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #ddd">
       <span><strong>Tipo:</strong> ${data.bundle?.name_es}</span>
       <span><strong>Zona:</strong> ${data.zone?.zone_code} — ${data.zone?.name_es}</span>
       <span><strong>Ref.:</strong> Decreto Presidencial</span>
       <span>${date}</span>
     </div>
 
-    <!-- FEE SECTIONS (grouped by ministry) -->
+    <!-- FEE SECTIONS -->
     ${feeSections}
 
     <!-- GRAND TOTAL -->
-    <div style="text-align:center;padding:14px;border-radius:6px;margin:14px 0;border:2px solid #0D6E3F">
-      <div style="font-size:9pt;font-weight:500;color:#555">TOTAL ANUAL</div>
-      <div style="font-size:20pt;font-weight:800;letter-spacing:1px;color:#0D6E3F">${formatAmount(parseFloat(data.grand_total))}</div>
+    <div style="text-align:center;padding:8px;border-radius:4px;margin:8px 0;border:2px solid #0D6E3F">
+      <div style="font-size:8pt;font-weight:500;color:#555">TOTAL ANUAL</div>
+      <div style="font-size:16pt;font-weight:800;letter-spacing:1px;color:#0D6E3F">${formatAmount(parseFloat(data.grand_total))}</div>
     </div>
 
     <!-- DOCUMENTS -->
-    ${docs ? `<div style="margin-top:12px"><div style="font-size:10pt;font-weight:600;color:#0D6E3F;margin-bottom:6px">Documentos requeridos</div><ul style="margin:0;padding-left:18px">${docs}</ul></div>` : ''}
+    ${docs ? `<div style="margin-top:6px"><div style="font-size:8pt;font-weight:600;color:#0D6E3F;margin-bottom:3px">Documentos requeridos</div><ul style="margin:0;padding-left:16px">${docs}</ul></div>` : ''}
 
-    <!-- FOOTER with real QR -->
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:24px;padding-top:10px;border-top:1px solid #999;font-size:7pt;color:#888">
+    <!-- FOOTER with QR -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px;padding-top:6px;border-top:1px solid #999;font-size:6.5pt;color:#888">
       <div>
         <div style="font-weight:600;color:#555">FACIL — Plataforma de Servicios Fiscales</div>
         <div>República de Guinea Ecuatorial</div>
-        <div style="margin-top:3px;font-style:italic">Documento informativo. Precios sujetos a modificaciones según normativa vigente.</div>
-        <div style="margin-top:2px">${date}</div>
+        <div style="margin-top:2px;font-style:italic">Documento informativo. Precios sujetos a modificaciones según normativa vigente.</div>
+        <div style="margin-top:1px">${date}</div>
       </div>
-      ${qrDataUrl ? `
-        <div style="text-align:center">
-          <img src="${qrDataUrl}" width="64" height="64" style="display:block"/>
-          <div style="font-size:6pt;margin-top:2px">Verificar en línea</div>
-        </div>
-      ` : ''}
+      ${qrSvg ? `<div style="text-align:center;flex-shrink:0;margin-left:12px">
+        ${qrSvg}
+        <div style="font-size:5.5pt;margin-top:1px">Verificar en línea</div>
+      </div>` : ''}
     </div>
   </body></html>`;
 }
@@ -392,7 +371,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
 
   const handleDownload = async () => {
     try {
-      const html = await buildPdfHtmlAsync(data);
+      const html = await buildPdfHtml(data);
       const { uri } = await Print.printToFileAsync({ html });
       if (await isAvailableAsync()) {
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });
@@ -404,7 +383,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
 
   const handleShare = async () => {
     try {
-      const html = await buildPdfHtmlAsync(data);
+      const html = await buildPdfHtml(data);
       const { uri } = await Print.printToFileAsync({ html });
       if (await isAvailableAsync()) {
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });

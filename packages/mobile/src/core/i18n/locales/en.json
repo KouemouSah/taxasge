@@ -53,6 +53,9 @@
     "createAccountTitle": "Create your Facil account",
     "biometricPrompt": "Use your fingerprint or Face ID to sign in",
     "personalInfo": "Personal information",
+    "enableBiometric": "Biometric login",
+    "enableBiometricDesc": "Enable quick fingerprint login?",
+    "biometricLogin": "Fingerprint",
     "signOutTitle": "Sign out",
     "signOutMessage": "Are you sure you want to sign out?",
     "emailRequired": "Email is required",
@@ -368,7 +371,9 @@
     "title": "Settings",
     "account": "Account",
     "security": "Security",
-    "preferences": "Preferences"
+    "preferences": "Preferences",
+    "appLock": "Biometric lock",
+    "appLockDesc": "Lock app after 5 min in background"
   },
   "roles": {
     "citizen": "Citizen",
@@ -376,6 +381,15 @@
     "accountant": "Accountant",
     "admin": "Administrator",
     "supervisor": "Supervisor"
+  },
+  "security": {
+    "appLocked": "App locked",
+    "verifyIdentity": "Verify your identity to continue",
+    "unlock": "Unlock",
+    "unlockPrompt": "Unlock Facil",
+    "usePin": "Use PIN",
+    "verificationFailed": "Verification failed",
+    "authError": "Authentication error"
   },
   "support": {
     "title": "Support",
@@ -480,6 +494,22 @@
       "expedicion": "First issuance",
       "renovacion": "Renewal",
       "duplicado": "Duplicate",
+      "nuevo": "New",
+      "primera_vez": "First time",
+      "legalizacion": "Legalization",
+      "transferencia": "Transfer",
+      "inspeccion": "Inspection",
+      "matriculacion": "Registration",
+      "prorroga": "Extension",
+      "alternativo": "Alternative",
+      "permanencia": "Permanence",
+      "salida_vencido": "Exit after expiration",
+      "promocion": "Promotion",
+      "carnet": "Card",
+      "verificacion": "Verification",
+      "certificado": "Certificate",
+      "permiso": "Permit",
+      "pago": "Payment",
       "motivo": "Reason",
       "motivo_vencimiento": "Expiration",
       "motivo_perdida": "Loss",
@@ -584,30 +614,30 @@
       "desc": "Manage your administrative procedures from your phone, anytime, anywhere."
     },
     "slide2": {
-      "title": "Smart and\nSecure",
+      "title": "Smart\nand Secure",
       "desc_sub": "AI Assistant + Enhanced Security",
-      "desc": "Ask your questions, track your requests in real-time. 2FA authentication and encryption."
+      "desc": "Ask your questions, track your requests\nin real-time.\n2FA authentication and encryption."
     },
     "slide3": {
       "title": "Get started\nnow",
       "desc_sub": "All in one place",
-      "desc": "Passport, residence, vehicles, contracts... Start your first request."
+      "desc": "Passport, residence, vehicles, contracts...\nStart your first request."
     }
   },
   "workflows": {
-    "PASAPORTE": "Passport Application",
-    "CONDUCIR": "Driving License",
-    "CONTRATO": "Commercial Contract Registration",
-    "RESIDENCIA": "Residence Permit for Foreigners",
-    "MATRICULACION_VEHICULO": "Vehicle Registration and Transfer",
-    "INSPECCION_VEHICULO": "Vehicle Document Inspection and Renewal",
-    "DUPLICADO_VEHICULO": "Vehicle Document Duplicate",
-    "PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
-    "CARNET_FUNCIONARIO": "Civil Servant Card",
-    "VERIFICACION_FUNCIONARIO": "Civil Servant Verification",
-    "TRAMITES_VISADO": "Visa Procedures",
-    "PERMISO_EXTRAORDINARIO": "Extraordinary Permit",
-    "CERTIFICADO_ADMINISTRATIVO": "Administrative Certificate",
-    "PAGO_OBLIGACIONES": "Tax Obligation Payment"
+    "PASAPORTE_NUEVO": "Passport Application",
+    "CONDUCIR_NUEVO": "Driving License",
+    "CONTRATO_OBRA": "Commercial Contract Registration",
+    "RESIDENCIA_PRIMERA_VEZ": "Residence Permit for Foreigners",
+    "VEHICULO_PRIMERA_MATRICULACION": "Vehicle Registration and Transfer",
+    "VEHICULO_RENOVACION_ITV": "Vehicle Document Inspection and Renewal",
+    "VEHICULO_DUPLICADO_PERMISO": "Vehicle Document Duplicate",
+    "FP_PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
+    "FP_CARNET_FUNCIONARIO": "Civil Servant Card",
+    "FP_VERIFICACION_FUNCIONARIO": "Civil Servant Verification",
+    "PRORROGA_VISADO": "Visa Procedures",
+    "FP_PERMISO_EXTRAORDINARIO": "Extraordinary Permit",
+    "FP_CERTIFICADO_ADMINISTRATIVO": "Administrative Certificate",
+    "BUNDLE_PAYMENT": "Tax Obligation Payment"
   }
 }

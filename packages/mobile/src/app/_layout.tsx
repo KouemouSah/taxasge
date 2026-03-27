@@ -24,6 +24,7 @@ import { ThemeProvider } from '@core/theme';
 import { AuthProvider } from '@core/auth/auth-provider';
 import { useAuth } from '@core/hooks/use-auth';
 import { ErrorBoundary } from '@components/ui/error-boundary';
+import { AppLockProvider } from '@core/security/app-lock';
 import '@core/i18n';
 
 // Suppress known React 19 + New Architecture internal warnings
@@ -49,6 +50,28 @@ const queryClient = new QueryClient({
 });
 
 /**
+ * Prefetch slow catalog data in background so screens load instantly.
+ * These are public endpoints with long staleTime — fetched once, cached for the session.
+ */
+function usePrefetchCatalogs() {
+  useEffect(() => {
+    const prefetch = async () => {
+      try {
+        // Fire all prefetches in parallel — non-blocking, errors swallowed
+        await Promise.allSettled([
+          queryClient.prefetchQuery({ queryKey: ['bundles', 'commerce-types'], queryFn: () => import('@modules/bundles').then(m => m.default?.getCommerceTypes?.() ?? fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/service-bundles/commerce-types`).then(r => r.json())), staleTime: 60 * 60_000 }),
+          queryClient.prefetchQuery({ queryKey: ['bundles', 'zones'], queryFn: () => fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/service-bundles/zones`).then(r => r.json()), staleTime: 60 * 60_000 }),
+          queryClient.prefetchQuery({ queryKey: ['directory', 'search', { page_size: '20' }], queryFn: () => fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/public/companies/search?page_size=20`).then(r => r.json()), staleTime: 30_000 }),
+        ]);
+      } catch {
+        // Silent — prefetch is best-effort
+      }
+    };
+    prefetch();
+  }, []);
+}
+
+/**
  * Inner navigator component that has access to AuthContext.
  * Hides the splash screen only after auth bootstrap finishes.
  */
@@ -56,6 +79,8 @@ function RootNavigator() {
   const { isLoading } = useAuth();
   // Subscribe to language changes so the entire tree re-renders when i18n locale switches
   useTranslation();
+  // Prefetch catalog data in background
+  usePrefetchCatalogs();
 
   useEffect(() => {
     if (!isLoading) {
@@ -90,10 +115,12 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <ErrorBoundary>
-              <StatusBar style="auto" />
-              <RootNavigator />
-            </ErrorBoundary>
+            <AppLockProvider>
+              <ErrorBoundary>
+                <StatusBar style="auto" />
+                <RootNavigator />
+              </ErrorBoundary>
+            </AppLockProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

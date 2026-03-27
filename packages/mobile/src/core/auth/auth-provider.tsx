@@ -38,6 +38,7 @@ import {
   setTokens,
   setUserProfile,
 } from '@core/auth/auth-storage';
+import { clearBiometricCredentials } from '@core/security/biometric-login';
 import type {
   RegisterData,
   TokenRefreshResponse,
@@ -334,6 +335,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Network error during logout - proceed with local cleanup
     } finally {
       await clearAllAuthData();
+      await clearBiometricCredentials();
       setState({ user: null, isAuthenticated: false, isLoading: false });
     }
   }, []);

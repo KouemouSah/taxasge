@@ -8,8 +8,8 @@
  * - Tabs: requests / payments / notifications
  */
 
-import { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, Image } from 'react-native';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, RefreshControl, Image, Pressable, Dimensions } from 'react-native';
 import {
   Text,
   Surface,
@@ -25,6 +25,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
+import { setApiLocale } from '@core/api/client';
+import type { SupportedLanguage } from '@core/config/types';
 import { getFullName } from '@core/config/types';
 import { formatCurrency } from '@core/utils/format';
 import { useDashboard } from '@modules/dashboard';
@@ -115,28 +117,85 @@ function UrgentNotifications({ actions, colors, router }: {
 // ---------------------------------------------------------------------------
 
 const QUICK_ACTIONS = [
-  { icon: 'file-search-outline' as const, bg: '#E8F5E9', color: '#2E7D32', labelKey: 'services' },
-  { icon: 'store-outline' as const, bg: '#E3F2FD', color: '#1565C0', labelKey: 'licencias' },
-  { icon: 'office-building-outline' as const, bg: '#FFF3E0', color: '#E65100', labelKey: 'directorio' },
-  { icon: 'calculator-variant-outline' as const, bg: '#F3E5F5', color: '#7B1FA2', labelKey: 'calculador' },
+  { icon: 'file-search-outline' as const, bg: '#E8F5E9', color: '#2E7D32', labelKey: 'services', descKey: 'services_desc' },
+  { icon: 'store-outline' as const, bg: '#E3F2FD', color: '#1565C0', labelKey: 'licencias', descKey: 'licencias_desc' },
+  { icon: 'domain' as const, bg: '#FFF3E0', color: '#E65100', labelKey: 'empresas', descKey: 'empresas_desc' },
+  { icon: 'calculator-variant-outline' as const, bg: '#F3E5F5', color: '#7B1FA2', labelKey: 'calculador', descKey: 'calculador_desc' },
 ] as const;
 
 const QUICK_ACTION_ROUTES: Record<string, string> = {
   services: '/(tabs)/services',
   licencias: '/licencias',
-  directorio: '/directorio',
+  empresas: '/directorio',
   calculador: '/calculator',
 };
 
 const QUICK_ACTION_LABELS: Record<string, Record<string, string>> = {
   services: { es: 'Servicios', fr: 'Services', en: 'Services' },
   licencias: { es: 'Licencias', fr: 'Licences', en: 'Licenses' },
-  directorio: { es: 'Directorio', fr: 'Annuaire', en: 'Directory' },
+  empresas: { es: 'Empresas', fr: 'Entreprises', en: 'Companies' },
   calculador: { es: 'Calculador', fr: 'Calculateur', en: 'Calculator' },
 };
 
+const QUICK_ACTION_DESCS: Record<string, Record<string, string>> = {
+  services_desc: { es: '850+ trámites', fr: '850+ démarches', en: '850+ procedures' },
+  licencias_desc: { es: 'Simulador comercial', fr: 'Simulateur commercial', en: 'Business simulator' },
+  empresas_desc: { es: 'Directorio nacional', fr: 'Annuaire national', en: 'National directory' },
+  calculador_desc: { es: 'Calcular impuestos', fr: 'Calculer impôts', en: 'Calculate taxes' },
+};
+
+// Hero slides data
+interface HeroSlide {
+  isLogo?: boolean;
+  mainIcon?: string;
+  smallIcons?: readonly string[];
+  bgColor: string; bgEnd: string;
+  titleKey: string; descKey: string; badge?: string;
+}
+
+const HERO_SLIDES: HeroSlide[] = [
+  {
+    isLogo: true,
+    bgColor: '#0D6E3F', bgEnd: '#1B9E5A',
+    titleKey: 'hero1', descKey: 'hero1_desc',
+  },
+  {
+    mainIcon: 'head-lightbulb-outline',
+    smallIcons: ['scale-balance', 'gavel', 'book-open-page-variant-outline'],
+    bgColor: '#1565C0', bgEnd: '#42A5F5',
+    titleKey: 'hero2', descKey: 'hero2_desc', badge: 'IA',
+  },
+  {
+    mainIcon: 'account-edit-outline',
+    smallIcons: ['file-sign', 'calculator-variant', 'send-check-outline'],
+    bgColor: '#E65100', bgEnd: '#FF8A65',
+    titleKey: 'hero3', descKey: 'hero3_desc', badge: 'PDF',
+  },
+];
+
+const HERO_I18N: Record<string, Record<string, string>> = {
+  hero1: { es: 'Nada más fácil para servirle', fr: 'Rien de plus facile pour vous servir', en: 'Nothing easier to serve you' },
+  hero1_desc: { es: '850+ servicios · Pasaporte · Residencia · Vehículos · Empresas', fr: '850+ services · Passeport · Résidence · Véhicules · Entreprises', en: '850+ services · Passport · Residence · Vehicles · Companies' },
+  hero2: { es: 'Asistente IA fiscal', fr: 'Assistant IA fiscal', en: 'Tax AI Assistant' },
+  hero2_desc: { es: 'Consulta leyes, tasas y procedimientos al instante', fr: 'Consultez lois, taxes et procédures instantanément', en: 'Query laws, taxes and procedures instantly' },
+  hero3: { es: 'Declaraciones fiscales', fr: 'Déclarations fiscales', en: 'Tax declarations' },
+  hero3_desc: { es: 'Descarga, rellena y envía formularios desde tu móvil', fr: 'Téléchargez, remplissez et envoyez les formulaires', en: 'Download, fill and submit forms from your phone' },
+};
+
+const HERO_WIDTH = Dimensions.get('window').width - 32; // paddingHorizontal 16 each side
+
 // ---------------------------------------------------------------------------
-// Public Home — Native Android Material You design
+// Language selector
+// ---------------------------------------------------------------------------
+
+const LANGUAGES: Array<{ code: SupportedLanguage; label: string; flag: string }> = [
+  { code: 'es', label: 'ES', flag: '🇬🇶' },
+  { code: 'fr', label: 'FR', flag: '🇫🇷' },
+  { code: 'en', label: 'EN', flag: '🇬🇧' },
+];
+
+// ---------------------------------------------------------------------------
+// Public Home — Redesigned Phase C
 // ---------------------------------------------------------------------------
 
 function PublicHome() {
@@ -144,146 +203,356 @@ function PublicHome() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const lang = (i18n.language || 'es') as 'es' | 'fr' | 'en';
+  const [selectedLang, setSelectedLang] = useState<SupportedLanguage>(lang);
+
+  const handleLanguageChange = useCallback(async (code: SupportedLanguage) => {
+    setSelectedLang(code);
+    await i18n.changeLanguage(code);
+    setApiLocale(code);
+  }, [i18n]);
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroScrollRef = useRef<ScrollView>(null);
+
+  // Auto-scroll hero every 4s
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => {
+        const next = (prev + 1) % HERO_SLIDES.length;
+        heroScrollRef.current?.scrollTo({ x: next * HERO_WIDTH, animated: true });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        {/* ── Header ── */}
-        <View style={pubStyles.header}>
-          <Image source={APP_LOGO} style={pubStyles.logo} resizeMode="contain" />
-        </View>
+    <View style={{ flex: 1, backgroundColor: '#F4FBF6' }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
 
-        {/* ── Search pill ── */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
-          <View
-            style={[pubStyles.searchPill, { backgroundColor: colors.surfaceVariant }]}
-            onTouchEnd={() => router.push('/(tabs)/services')}
-          >
-            <MaterialCommunityIcons name="magnify" size={20} color={colors.onSurfaceVariant} />
-            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1, marginLeft: 12 }}>
-              {t('common.search')}...
-            </Text>
+          {/* ── Header: Logo + Language selector ── */}
+          <View style={pubStyles.headerRow}>
+            <Image source={APP_LOGO} style={pubStyles.logo} resizeMode="contain" />
+            <View style={pubStyles.langRow}>
+              {LANGUAGES.map((l) => (
+                <Pressable
+                  key={l.code}
+                  onPress={() => handleLanguageChange(l.code)}
+                  style={[
+                    pubStyles.langPill,
+                    selectedLang === l.code && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                >
+                  <Text style={{ fontSize: 13 }}>{l.flag}</Text>
+                  <Text style={{
+                    fontSize: 11, fontWeight: '600', marginLeft: 3,
+                    color: selectedLang === l.code ? '#fff' : colors.onSurfaceVariant,
+                  }}>
+                    {l.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* ── Quick actions (circular icons + label, like Google Pay) ── */}
-        <View style={pubStyles.actionsRow}>
-          {QUICK_ACTIONS.map((item) => (
-            <View key={item.labelKey} style={pubStyles.actionItem}>
-              <View
-                style={[pubStyles.actionCircle, { backgroundColor: item.bg }]}
-                onTouchEnd={() => router.push(QUICK_ACTION_ROUTES[item.labelKey] as any)}
-              >
-                <MaterialCommunityIcons name={item.icon} size={26} color={item.color} />
+          {/* ── Hero slider — ScrollView horizontal ── */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+            <ScrollView
+              ref={heroScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={HERO_WIDTH}
+              decelerationRate="fast"
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / HERO_WIDTH);
+                setHeroIndex(idx);
+              }}
+            >
+              {HERO_SLIDES.map((item, i) => item.isLogo ? (
+                <View key={i} style={[pubStyles.heroSlideLogo, { width: HERO_WIDTH }]}>
+                  <Image source={APP_LOGO} style={pubStyles.heroLogoBig} resizeMode="contain" />
+                  <Text style={pubStyles.heroLogoTitle}>
+                    {HERO_I18N[item.titleKey]?.[lang] ?? ''}
+                  </Text>
+                  <Text style={pubStyles.heroLogoDesc}>
+                    {HERO_I18N[item.descKey]?.[lang] ?? ''}
+                  </Text>
+                </View>
+              ) : (
+                <View key={i} style={[pubStyles.heroSlide, { width: HERO_WIDTH, backgroundColor: item.bgColor }]}>
+                  <View style={[pubStyles.heroBgCircle1, { backgroundColor: item.bgEnd }]} />
+                  <View style={[pubStyles.heroBgCircle2, { borderColor: 'rgba(255,255,255,0.1)' }]} />
+                  <View style={pubStyles.heroMainCircle}>
+                    <MaterialCommunityIcons name={item.mainIcon as keyof typeof MaterialCommunityIcons.glyphMap} size={48} color="#fff" />
+                    {item.badge && (
+                      <View style={pubStyles.heroBadge}>
+                        <Text style={pubStyles.heroBadgeText}>{item.badge}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={pubStyles.heroTextBlock}>
+                    <Text style={pubStyles.heroTitle}>
+                      {HERO_I18N[item.titleKey]?.[lang] ?? ''}
+                    </Text>
+                    <Text style={pubStyles.heroDesc}>
+                      {HERO_I18N[item.descKey]?.[lang] ?? ''}
+                    </Text>
+                    {item.smallIcons && (
+                      <View style={pubStyles.heroMiniIcons}>
+                        {item.smallIcons.map((si, idx) => (
+                          <View key={idx} style={pubStyles.heroMiniCircle}>
+                            <MaterialCommunityIcons name={si as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#fff" />
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            {/* Dots */}
+            <View style={pubStyles.heroDots}>
+              {HERO_SLIDES.map((slide, i) => (
+                <View
+                  key={i}
+                  style={[
+                    pubStyles.heroDot,
+                    { backgroundColor: i === heroIndex ? slide.bgColor : '#D0D0D0', width: i === heroIndex ? 20 : 8 },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* ── Quick actions 2×2 grid ── */}
+          <View style={pubStyles.actionsGrid}>
+            {[0, 2].map((rowStart) => (
+              <View key={rowStart} style={pubStyles.actionsRow2}>
+                {QUICK_ACTIONS.slice(rowStart, rowStart + 2).map((item) => (
+                  <Pressable
+                    key={item.labelKey}
+                    style={[pubStyles.actionCard, { backgroundColor: item.bg + 'CC' }]}
+                    onPress={() => router.push(QUICK_ACTION_ROUTES[item.labelKey] as any)}
+                    android_ripple={{ color: item.color + '30' }}
+                  >
+                    <View style={pubStyles.actionCircle}>
+                      <MaterialCommunityIcons name={item.icon} size={28} color={item.color} />
+                    </View>
+                    <Text style={[pubStyles.actionLabel, { color: item.color }]}>
+                      {QUICK_ACTION_LABELS[item.labelKey]?.[lang] ?? item.labelKey}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: item.color, opacity: 0.7, marginTop: 2 }}>
+                      {QUICK_ACTION_DESCS[item.descKey]?.[lang] ?? ''}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
-              <Text variant="labelSmall" style={{ color: colors.onSurface, marginTop: 6 }} numberOfLines={1}>
-                {QUICK_ACTION_LABELS[item.labelKey]?.[lang] ?? item.labelKey}
-              </Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
 
-        {/* ── AI Chat card ── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <View
-            style={[pubStyles.chatCard, { backgroundColor: colors.primaryContainer }]}
-            onTouchEnd={() => router.push('/(tabs)/chat')}
-          >
-            <View style={[pubStyles.chatIconCircle, { backgroundColor: colors.primary }]}>
-              <MaterialCommunityIcons name="star-four-points" size={22} color={colors.onPrimary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="titleSmall" style={{ color: colors.onPrimaryContainer, fontWeight: '600' }}>
-                {t('chat.title')}
-              </Text>
-              <Text variant="bodySmall" style={{ color: colors.onPrimaryContainer, opacity: 0.8 }}>
-                {lang === 'fr' ? 'Posez vos questions sur les démarches' :
-                 lang === 'en' ? 'Ask about any procedure' :
-                 'Pregunta sobre cualquier trámite'}
-              </Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.onPrimaryContainer} />
+          {/* ── AI Chat card ── */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
+            <Pressable
+              style={[pubStyles.chatCard, { backgroundColor: colors.primaryContainer }]}
+              onPress={() => router.push('/(tabs)/chat')}
+              android_ripple={{ color: colors.primary + '20' }}
+            >
+              <View style={[pubStyles.chatIconCircle, { backgroundColor: colors.primary }]}>
+                <MaterialCommunityIcons name="star-four-points" size={22} color={colors.onPrimary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="titleSmall" style={{ color: colors.onPrimaryContainer, fontWeight: '600' }}>
+                  {t('chat.title')}
+                </Text>
+                <Text variant="bodySmall" style={{ color: colors.onPrimaryContainer, opacity: 0.8 }}>
+                  {lang === 'fr' ? 'Posez vos questions sur les démarches' :
+                   lang === 'en' ? 'Ask about any procedure' :
+                   'Pregunta sobre cualquier trámite'}
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={colors.onPrimaryContainer} />
+            </Pressable>
           </View>
-        </View>
 
-        {/* ── Info cards row ── */}
-        <View style={pubStyles.infoRow}>
-          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
-            <MaterialCommunityIcons name="shield-check-outline" size={20} color={colors.primary} />
-            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
-              {lang === 'fr' ? 'Plateforme\nofficielle' : lang === 'en' ? 'Official\nplatform' : 'Plataforma\noficial'}
-            </Text>
+          {/* ── Auth CTA — full width, native Android ── */}
+          <View style={pubStyles.authSection}>
+            <Pressable
+              onPress={() => router.push('/(auth)/sign-up')}
+              style={[pubStyles.authBtnPrimary, { backgroundColor: colors.primary }]}
+              android_ripple={{ color: 'rgba(255,255,255,0.25)' }}
+            >
+              <Text style={pubStyles.authBtnPrimaryText}>{t('auth.signUp')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(auth)/sign-in')}
+              style={[pubStyles.authBtnOutline, { borderColor: colors.primary }]}
+              android_ripple={{ color: colors.primaryContainer }}
+            >
+              <Text style={[pubStyles.authBtnOutlineText, { color: colors.primary }]}>{t('auth.signIn')}</Text>
+            </Pressable>
           </View>
-          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
-            <MaterialCommunityIcons name="clock-fast" size={20} color={colors.primary} />
-            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
-              {lang === 'fr' ? 'Suivi en\ntemps réel' : lang === 'en' ? 'Real-time\ntracking' : 'Seguimiento\nen tiempo real'}
-            </Text>
-          </View>
-          <View style={[pubStyles.infoCard, { backgroundColor: colors.surface }]}>
-            <MaterialCommunityIcons name="translate" size={20} color={colors.primary} />
-            <Text variant="labelSmall" style={{ color: colors.onSurface, textAlign: 'center', marginTop: 4 }}>
-              {lang === 'fr' ? '3 langues\nES·FR·EN' : lang === 'en' ? '3 languages\nES·FR·EN' : '3 idiomas\nES·FR·EN'}
-            </Text>
-          </View>
-        </View>
 
-        {/* ── Auth CTA ── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
-          <Button
-            mode="contained"
-            onPress={() => router.push('/(auth)/sign-in')}
-            contentStyle={{ height: 48 }}
-          >
-            {t('auth.signIn')}
-          </Button>
-          <Button
-            mode="text"
-            onPress={() => router.push('/(auth)/sign-up')}
-            textColor={colors.primary}
-          >
-            {t('auth.signUp')}
-          </Button>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const pubStyles = StyleSheet.create({
-  header: {
+  // Header: logo left, lang right
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   logo: {
-    width: 110,
-    height: 36,
+    width: 100,
+    height: 32,
   },
-  searchPill: {
+  langRow: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  langPill: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 14, borderWidth: 1, borderColor: '#D0D0D0',
+  },
+
+  // Hero slider
+  heroSlideLogo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    padding: 24,
+    minHeight: 190,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2.5,
+    borderColor: '#0D6E3F',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  heroLogoBig: {
+    width: 140, height: 48,
+  },
+  heroLogoTitle: {
+    fontSize: 17, fontWeight: '700', color: '#0D6E3F',
+    marginTop: 14, textAlign: 'center', lineHeight: 22,
+  },
+  heroLogoDesc: {
+    fontSize: 12, color: '#666',
+    marginTop: 6, textAlign: 'center',
+  },
+  heroSlide: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderRadius: 24,
+    borderRadius: 20,
+    padding: 22,
+    minHeight: 190,
+    overflow: 'hidden',
+  },
+  heroBgCircle1: {
+    position: 'absolute', top: -30, right: -30,
+    width: 120, height: 120, borderRadius: 60, opacity: 0.3,
+  },
+  heroBgCircle2: {
+    position: 'absolute', bottom: -20, left: -15,
+    width: 80, height: 80, borderRadius: 40,
+    borderWidth: 2, backgroundColor: 'transparent',
+  },
+  heroMainCircle: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)',
+  },
+  heroBadge: {
+    position: 'absolute', bottom: -4, right: -4,
+    backgroundColor: '#FFD600',
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 10, elevation: 2,
+  },
+  heroBadgeText: {
+    fontSize: 10, fontWeight: '800', color: '#333',
+  },
+  heroTextBlock: {
+    flex: 1, marginLeft: 16,
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 19,
+    fontWeight: '800',
+    lineHeight: 24,
+  },
+  heroDesc: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginTop: 5,
+    lineHeight: 17,
+  },
+  heroMiniIcons: {
+    flexDirection: 'row', gap: 6, marginTop: 10,
+  },
+  heroMiniCircle: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  heroDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  heroDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+
+  // Quick actions 2×2
+  actionsGrid: {
     paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    gap: 10,
   },
-  actionsRow: {
+  actionsRow2: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 8,
-    paddingBottom: 20,
+    gap: 10,
   },
-  actionItem: {
+  actionCard: {
+    flex: 1,
     alignItems: 'center',
-    width: 72,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.06)',
+    paddingVertical: 16,
+    paddingHorizontal: 10,
   },
   actionCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 8,
   },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Chat card
   chatCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,17 +567,40 @@ const pubStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  infoRow: {
+
+  // Auth buttons
+  authSection: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 16,
     gap: 10,
   },
-  infoCard: {
+  authBtnPrimary: {
     flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
+    height: 50,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  authBtnPrimaryText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  authBtnOutline: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authBtnOutlineText: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });
 

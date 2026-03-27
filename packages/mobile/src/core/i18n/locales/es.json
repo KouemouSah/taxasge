@@ -53,6 +53,9 @@
     "createAccountTitle": "Crea tu cuenta Facil",
     "biometricPrompt": "Usa tu huella dactilar o Face ID para acceder",
     "personalInfo": "Información personal",
+    "enableBiometric": "Inicio biométrico",
+    "enableBiometricDesc": "¿Activar inicio de sesión rápido con huella digital?",
+    "biometricLogin": "Huella digital",
     "signOutTitle": "Cerrar sesión",
     "signOutMessage": "¿Estás seguro de que quieres cerrar sesión?",
     "emailRequired": "El correo es obligatorio",
@@ -368,7 +371,9 @@
     "title": "Configuración",
     "account": "Cuenta",
     "security": "Seguridad",
-    "preferences": "Preferencias"
+    "preferences": "Preferencias",
+    "appLock": "Bloqueo biométrico",
+    "appLockDesc": "Bloquear la app tras 5 min en segundo plano"
   },
   "roles": {
     "citizen": "Ciudadano",
@@ -376,6 +381,15 @@
     "accountant": "Contable",
     "admin": "Administrador",
     "supervisor": "Supervisor"
+  },
+  "security": {
+    "appLocked": "Aplicación bloqueada",
+    "verifyIdentity": "Verifica tu identidad para continuar",
+    "unlock": "Desbloquear",
+    "unlockPrompt": "Desbloquear Facil",
+    "usePin": "Usar PIN",
+    "verificationFailed": "Verificación fallida",
+    "authError": "Error de autenticación"
   },
   "support": {
     "title": "Soporte",
@@ -480,6 +494,22 @@
       "expedicion": "Expedición (primera vez)",
       "renovacion": "Renovación",
       "duplicado": "Duplicado",
+      "nuevo": "Nuevo",
+      "primera_vez": "Primera vez",
+      "legalizacion": "Legalización",
+      "transferencia": "Transferencia",
+      "inspeccion": "Inspección",
+      "matriculacion": "Matriculación",
+      "prorroga": "Prórroga",
+      "alternativo": "Alternativo",
+      "permanencia": "Permanencia",
+      "salida_vencido": "Salida por vencimiento",
+      "promocion": "Promoción",
+      "carnet": "Carnet",
+      "verificacion": "Verificación",
+      "certificado": "Certificado",
+      "permiso": "Permiso",
+      "pago": "Pago",
       "motivo": "Motivo",
       "motivo_vencimiento": "Vencimiento",
       "motivo_perdida": "Pérdida",
@@ -584,30 +614,30 @@
       "desc": "Gestiona tus trámites administrativos desde tu teléfono, en cualquier momento y lugar."
     },
     "slide2": {
-      "title": "Inteligente y Seguro",
+      "title": "Inteligente\ny Seguro",
       "desc_sub": "Asistente IA + Seguridad reforzada",
-      "desc": "Haz tus preguntas, sigue tus solicitudes en tiempo real. Autenticación 2FA y cifrado."
+      "desc": "Haz tus preguntas, sigue tus solicitudes\nen tiempo real.\nAutenticación 2FA y cifrado."
     },
     "slide3": {
-      "title": "Comienza ahora",
+      "title": "Comienza\nahora",
       "desc_sub": "Todo en un solo lugar",
-      "desc": "Pasaporte, residencia, vehículos, contratos... Inicia tu primera solicitud."
+      "desc": "Pasaporte, residencia, vehículos, contratos...\nInicia tu primera solicitud."
     }
   },
   "workflows": {
-    "PASAPORTE": "Solicitud de Pasaporte",
-    "CONDUCIR": "Permiso de Conducir",
-    "CONTRATO": "Registro de Contrato Comercial",
-    "RESIDENCIA": "Permiso de Residencia para Extranjeros",
-    "MATRICULACION_VEHICULO": "Matriculación y Transferencia de Vehículos",
-    "INSPECCION_VEHICULO": "Inspección y Renovación de Documentos de Vehículos",
-    "DUPLICADO_VEHICULO": "Duplicado de Documentos de Vehículos",
-    "PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
-    "CARNET_FUNCIONARIO": "Carnet de Funcionario",
-    "VERIFICACION_FUNCIONARIO": "Verificación de Funcionario",
-    "TRAMITES_VISADO": "Trámites de Visado",
-    "PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
-    "CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
-    "PAGO_OBLIGACIONES": "Pago de Obligaciones Fiscales"
+    "PASAPORTE_NUEVO": "Solicitud de Pasaporte",
+    "CONDUCIR_NUEVO": "Permiso de Conducir",
+    "CONTRATO_OBRA": "Registro de Contrato Comercial",
+    "RESIDENCIA_PRIMERA_VEZ": "Permiso de Residencia para Extranjeros",
+    "VEHICULO_PRIMERA_MATRICULACION": "Matriculación y Transferencia de Vehículos",
+    "VEHICULO_RENOVACION_ITV": "Inspección y Renovación de Documentos de Vehículos",
+    "VEHICULO_DUPLICADO_PERMISO": "Duplicado de Documentos de Vehículos",
+    "FP_PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
+    "FP_CARNET_FUNCIONARIO": "Carnet de Funcionario",
+    "FP_VERIFICACION_FUNCIONARIO": "Verificación de Funcionario",
+    "PRORROGA_VISADO": "Trámites de Visado",
+    "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
+    "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
+    "BUNDLE_PAYMENT": "Pago de Obligaciones Fiscales"
   }
 }
