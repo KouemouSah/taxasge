@@ -84,11 +84,23 @@ const renderMarkdown = (text: string): string => {
   // Italic *text* (only if not already part of bold)
   html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em class="italic">$1</em>')
 
+  // Blockquotes > text (attention notes, legal quotes) — BEFORE lists
+  html = html.replace(/^>\s*(.+)$/gm, '<blockquote class="border-l-4 border-primary/40 bg-primary/5 dark:bg-primary/10 pl-3 pr-2 py-2 my-2 rounded-r text-sm">$1</blockquote>')
+  // Merge consecutive blockquotes
+  html = html.replace(/<\/blockquote>\n<blockquote/g, '<br><blockquote')
+
+  // Horizontal rule --- (separators)
+  html = html.replace(/^---+$/gm, '<hr class="my-3 border-stone-200 dark:border-stone-700">')
+
   // Unicode bullet markers (▸, •, ►, →) → standard bullets
-  html = html.replace(/^[•▸►→]\s*/gm, '- ')
+  html = html.replace(/^[•▸►]\s*/gm, '- ')
+  // Arrow → at line start as sub-item indicator
+  html = html.replace(/^→\s*/gm, '- ')
+
+  // Checkmark lines ✓ item → checklist style
+  html = html.replace(/^[✓✔]\s+(.+)$/gm, '<li class="ml-4 py-0.5 list-none flex items-start gap-1.5"><span class="text-green-600 dark:text-green-400 mt-0.5 shrink-0">✓</span><span>$1</span></li>')
 
   // Auto-detect price/item lines: "ConceptName: 123.456 XAF" without bullet prefix
-  // Convert them to bullet list items for better formatting
   html = html.replace(/^([A-ZÁÉÍÓÚÑ][^:\n]{2,60}):\s*([\d.]+(?:\s*XAF)?)\s*$/gm, '- **$1**: $2')
 
   // Remove extra blank lines between list items
@@ -96,13 +108,17 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/^(\d+\. .+)\n{2,4}(?=\d+\. )/gm, '$1\n')
 
   // Bullet lists - item (consecutive)
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
-  html = html.replace(/((?:<li class="ml-4 py-0.5">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-2 space-y-0.5 pl-1">$1</ul>')
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5 list-disc">$1</li>')
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li class="ml-4 py-0.5[^"]*">[\s\S]*?<\/li>\n?)+)/g, (match) => {
+    if (match.includes('list-none')) return `<ul class="my-2 space-y-0.5 pl-1">${match}</ul>`
+    return `<ul class="list-disc my-2 space-y-0.5 pl-1">${match}</ul>`
+  })
 
   // Numbered lists 1. item (consecutive)
   html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
-  html = html.replace(/((?:<li class="ml-4 py-0.5">(?!.*list-disc)[\s\S]*?<\/li>\n?)+)/g,
-    (match) => match.includes('list-disc') ? match : `<ol class="list-decimal my-2 space-y-0.5 pl-1">${match}</ol>`)
+  html = html.replace(/((?:<li class="ml-4 py-0.5">(?!.*list-disc)(?!.*list-none)[\s\S]*?<\/li>\n?)+)/g,
+    (match) => `<ol class="list-decimal my-2 space-y-0.5 pl-1">${match}</ol>`)
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
