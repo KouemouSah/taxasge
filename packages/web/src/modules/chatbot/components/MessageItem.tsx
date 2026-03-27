@@ -49,8 +49,8 @@ const highlightServiceCodes = (text: string): string => {
 }
 
 /**
- * Simple Markdown rendering (bold, italic, code, lists)
- * Note: For production, consider using a library like react-markdown
+ * Markdown rendering optimized for LLM fiscal assistant responses.
+ * Handles bold, italic, code, lists, tables, and auto-detects price line items.
  */
 const renderMarkdown = (text: string): string => {
   let html = text
@@ -66,44 +66,51 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-base mt-4 mb-2 text-stone-800 dark:text-stone-200">$1</h4>')
   html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-lg mt-5 mb-2 text-stone-800 dark:text-stone-200">$1</h3>')
 
-  // Bold **text**
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-stone-800 dark:text-stone-100">$1</strong>')
-
-  // Italic *text*
-  html = html.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
-
-  // Tables (markdown table format)
+  // Tables (markdown table format) - BEFORE bold/italic to preserve pipes
   html = html.replace(/^\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)*)/gm, (_match, header, body) => {
     const headers = header.split('|').map((h: string) => h.trim()).filter(Boolean)
     const rows = body.trim().split('\n').map((row: string) =>
       row.split('|').map((c: string) => c.trim()).filter(Boolean)
     )
-    return `<div class="overflow-x-auto my-3"><table class="w-full text-sm border-collapse">
-      <thead><tr>${headers.map((h: string) => `<th class="border-b border-stone-200 dark:border-stone-700 px-3 py-2 text-left font-semibold text-stone-700 dark:text-stone-300">${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map((row: string[]) => `<tr>${row.map((c: string) => `<td class="border-b border-stone-100 dark:border-stone-800 px-3 py-1.5">${c}</td>`).join('')}</tr>`).join('')}</tbody>
+    return `<div class="overflow-x-auto my-3 rounded-md border border-stone-200 dark:border-stone-700"><table class="w-full text-sm border-collapse">
+      <thead><tr>${headers.map((h: string) => `<th class="border-b border-stone-200 dark:border-stone-700 px-3 py-2 text-left font-semibold text-stone-700 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/50">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((row: string[], ri: number) => `<tr class="${ri % 2 ? 'bg-stone-50/50 dark:bg-stone-800/20' : ''}">${row.map((c: string) => `<td class="border-b border-stone-100 dark:border-stone-800 px-3 py-1.5">${c}</td>`).join('')}</tr>`).join('')}</tbody>
     </table></div>`
   })
 
-  // Remove extra blank lines between list items before parsing (handles 1-3 blank lines)
+  // Bold **text**
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-stone-800 dark:text-stone-100">$1</strong>')
+
+  // Italic *text* (only if not already part of bold)
+  html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em class="italic">$1</em>')
+
+  // Unicode bullet markers (▸, •, ►, →) → standard bullets
+  html = html.replace(/^[•▸►→]\s*/gm, '- ')
+
+  // Auto-detect price/item lines: "ConceptName: 123.456 XAF" without bullet prefix
+  // Convert them to bullet list items for better formatting
+  html = html.replace(/^([A-ZÁÉÍÓÚÑ][^:\n]{2,60}):\s*([\d.]+(?:\s*XAF)?)\s*$/gm, '- **$1**: $2')
+
+  // Remove extra blank lines between list items
   html = html.replace(/^(- .+)\n{2,4}(?=- )/gm, '$1\n')
   html = html.replace(/^(\d+\. .+)\n{2,4}(?=\d+\. )/gm, '$1\n')
-  // Also handle unicode bullet markers (▸, •, ►) that LLMs sometimes generate
-  html = html.replace(/^[•▸►]\s*/gm, '- ')
 
   // Bullet lists - item (consecutive)
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0">$1</li>')
-  html = html.replace(/((?:<li class="ml-4 py-0">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-1 space-y-0.5 pl-1">$1</ul>')
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
+  html = html.replace(/((?:<li class="ml-4 py-0.5">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-2 space-y-0.5 pl-1">$1</ul>')
 
   // Numbered lists 1. item (consecutive)
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 py-0">$1</li>')
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
+  html = html.replace(/((?:<li class="ml-4 py-0.5">(?!.*list-disc)[\s\S]*?<\/li>\n?)+)/g,
+    (match) => match.includes('list-disc') ? match : `<ol class="list-decimal my-2 space-y-0.5 pl-1">${match}</ol>`)
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
 
   // Paragraphs (double newline → spacing)
-  html = html.replace(/\n\n/g, '</p><p class="my-1">')
+  html = html.replace(/\n\n/g, '</p><p class="my-2">')
 
-  // Single newlines within paragraphs → <br>
+  // Single newlines → <br>
   html = html.replace(/\n/g, '<br>')
 
   // Highlight service codes
