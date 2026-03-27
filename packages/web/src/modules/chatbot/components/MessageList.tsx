@@ -63,47 +63,58 @@ export const MessageList: React.FC<MessageListProps> = ({
     scrollToBottom()
   }, [messages])
 
-  // Check if user has scrolled up
-  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLDivElement
-    const isAtBottom =
-      target.scrollHeight - target.scrollTop - target.clientHeight < 100
+  // Find the nearest scrollable ancestor for scroll detection
+  useEffect(() => {
+    const el = scrollAreaRef.current
+    if (!el) return
 
-    setShowScrollButton(!isAtBottom && messages.length > 3)
-  }
+    // Walk up to find the scrollable parent container
+    let scrollParent: HTMLElement | null = el.parentElement
+    while (scrollParent) {
+      const style = getComputedStyle(scrollParent)
+      if (
+        style.overflowY === 'auto' ||
+        style.overflowY === 'scroll'
+      ) {
+        break
+      }
+      scrollParent = scrollParent.parentElement
+    }
 
-  // =============================================================================
-  // RENDER
-  // =============================================================================
+    if (!scrollParent) return
+
+    const onScroll = () => {
+      const isAtBottom =
+        scrollParent!.scrollHeight - scrollParent!.scrollTop - scrollParent!.clientHeight < 100
+      setShowScrollButton(!isAtBottom && messages.length > 3)
+    }
+
+    scrollParent.addEventListener('scroll', onScroll, { passive: true })
+    return () => scrollParent?.removeEventListener('scroll', onScroll)
+  }, [messages.length])
 
   return (
-    <div className={`relative flex-1 ${className}`}>
-      <div
-        className="h-full overflow-y-auto"
-        ref={scrollAreaRef}
-        onScroll={handleScroll}
-      >
-        <div className="p-4 space-y-3">
-          {/* Empty State */}
-          {messages.length === 0 && !isLoading && (
-            <div className="text-center text-muted-foreground text-sm py-8">
-              <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>{emptyStateMessage || t('welcomeMessage')}</p>
-            </div>
-          )}
+    <div className={`relative ${className}`} ref={scrollAreaRef}>
+      <div className="space-y-3">
+        {/* Empty State */}
+        {messages.length === 0 && !isLoading && (
+          <div className="text-center text-muted-foreground text-sm py-8">
+            <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <p>{emptyStateMessage || t('welcomeMessage')}</p>
+          </div>
+        )}
 
-          {/* Messages */}
-          {messages.map((message, index) => (
-            <MessageItem
-              key={`${message.timestamp}-${index}`}
-              message={message}
-              locale={locale}
-            />
-          ))}
+        {/* Messages */}
+        {messages.map((message, index) => (
+          <MessageItem
+            key={`${message.timestamp}-${index}`}
+            message={message}
+            locale={locale}
+          />
+        ))}
 
-          {/* Scroll anchor */}
-          <div ref={messagesEndRef} />
-        </div>
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Scroll to Bottom Button */}
@@ -111,7 +122,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         <Button
           size="icon"
           variant="secondary"
-          className="absolute bottom-4 right-4 rounded-full shadow-lg"
+          className="sticky bottom-4 float-right mr-4 rounded-full shadow-lg z-10"
           onClick={() => scrollToBottom('smooth')}
           aria-label={t('scrollToBottom') || 'Scroll to bottom'}
         >

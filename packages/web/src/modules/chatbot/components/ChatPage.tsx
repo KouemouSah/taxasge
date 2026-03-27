@@ -165,7 +165,7 @@ export const ChatPage: React.FC = () => {
             /* ── Chat State ─────────────────────────────────────── */
             <div className="flex-1 flex flex-col animate-in fade-in duration-300">
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto pt-12 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex-1 overflow-y-auto pt-12 pb-2 scrollbar-thin scrollbar-thumb-stone-300 dark:scrollbar-thumb-stone-600 scrollbar-track-transparent">
                 <div className="max-w-3xl mx-auto w-full px-4">
                   <MessageList
                     messages={messages}
@@ -200,7 +200,7 @@ export const ChatPage: React.FC = () => {
                     onClick={clearChat}
                   >
                     <Square className="w-3 h-3 fill-current" strokeWidth={1.5} />
-                    Detener
+                    {locale === 'fr' ? 'Arrêter' : locale === 'en' ? 'Stop' : 'Detener'}
                   </Button>
                 </div>
               )}

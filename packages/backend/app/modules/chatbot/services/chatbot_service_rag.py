@@ -147,8 +147,13 @@ class ChatbotServiceRAG:
                 [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
             )[:settings.RAG_MAX_CONTEXT_SERVICES]
 
+            # Step 2c: Enrich with bundle pricing data when query is about commerce/prices
+            bundle_context = await self._enrich_with_bundles(db, message)
+
             # Step 3: Consolidate and prioritize context for LLM
-            consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
+            consolidated_context, context_sources = self._consolidate_context(
+                relevant_docs, relevant_services, bundle_context
+            )
 
             # --- Fallback Logic (Suggestion 2 & 6 Implementation) ---
             message_to_llm = message # The message to send to LLM, might be refined by fallback
@@ -517,7 +522,12 @@ class ChatbotServiceRAG:
                 [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
             )[:settings.RAG_MAX_CONTEXT_SERVICES]
             
-            consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
+            # Enrich with bundle pricing data
+            bundle_context = await self._enrich_with_bundles(db, message)
+
+            consolidated_context, context_sources = self._consolidate_context(
+                relevant_docs, relevant_services, bundle_context
+            )
 
             # --- Fallback Logic (Suggestion 2 & 6 Implementation for stream) ---
             if len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
@@ -744,14 +754,194 @@ class ChatbotServiceRAG:
                 seen[code] = svc
         return list(seen.values())
 
+    # Commerce keywords for bundle detection
+    COMMERCE_KEYWORDS = {
+        'restaurant': 'BARES_RESTAURANTES',
+        'restaurante': 'BARES_RESTAURANTES',
+        'bar': 'BARES_RESTAURANTES',
+        'farmacia': 'CLINICAS_FARMACIAS',
+        'clinica': 'CLINICAS_FARMACIAS',
+        'clínica': 'CLINICAS_FARMACIAS',
+        'discoteca': 'DISCOTECAS',
+        'ferretería': 'FERRETERIAS',
+        'ferreteria': 'FERRETERIAS',
+        'carpintería': 'CARPINTERIAS',
+        'carpinteria': 'CARPINTERIAS',
+        'cafetería': 'CAFETERIAS_PASTELERIAS',
+        'cafeteria': 'CAFETERIAS_PASTELERIAS',
+        'panadería': 'CAFETERIAS_PASTELERIAS',
+        'panaderia': 'CAFETERIAS_PASTELERIAS',
+        'pastelería': 'CAFETERIAS_PASTELERIAS',
+        'pasteleria': 'CAFETERIAS_PASTELERIAS',
+        'snack': 'CAFETERIAS_PASTELERIAS',
+        'taller': 'TALLERES_BLOQUERIAS',
+        'bloquería': 'TALLERES_BLOQUERIAS',
+        'bloqueria': 'TALLERES_BLOQUERIAS',
+        'artesanal': 'TALLERES_ARTESANALES',
+        'artesanía': 'TALLERES_ARTESANALES',
+        'artesania': 'TALLERES_ARTESANALES',
+        'video club': 'VIDEOS_CLUBS',
+        'videoclub': 'VIDEOS_CLUBS',
+        'abacería': 'ABACERIAS',
+        'abaceria': 'ABACERIAS',
+        'factoría': 'ABACERIAS',
+        'factoria': 'ABACERIAS',
+        'comercio': 'ABACERIAS',
+        'tienda': 'ABACERIAS',
+        'negocio': None,  # generic → show all bundles summary
+        'apertura': None,
+        'licencia comercial': None,
+        'abrir': None,
+    }
+
+    CITY_ZONE_MAP = {
+        'malabo': 'A1',
+        'bata': 'A1',
+        'ebebiyin': 'B1',
+        'evinayong': 'B1',
+        'mongomo': 'B1',
+        'luba': 'B1',
+        'añisok': 'C1',
+        'anisok': 'C1',
+        'niefang': 'C1',
+        'micomeseng': 'C1',
+        'acurenam': 'C1',
+        'nsork': 'C1',
+        'mbini': 'C1',
+    }
+
+    async def _enrich_with_bundles(
+        self,
+        db: asyncpg.Connection,
+        message: str,
+    ) -> Optional[str]:
+        """
+        Detect commerce/pricing intent in message and fetch bundle pricing from DB.
+        Returns structured pricing context string, or None if not relevant.
+        """
+        msg_lower = message.lower()
+
+        # Detect commerce type
+        detected_bundle = None
+        for keyword, bundle_code in self.COMMERCE_KEYWORDS.items():
+            if keyword in msg_lower:
+                detected_bundle = bundle_code
+                break
+
+        if detected_bundle is None and not any(
+            kw in msg_lower for kw in ['precio', 'prix', 'price', 'cuánto', 'combien', 'cost', 'cuesta', 'coûte', 'tarifa', 'tasa']
+        ):
+            return None
+
+        # Detect zone from city name
+        detected_zone = None
+        for city, zone_code in self.CITY_ZONE_MAP.items():
+            if city in msg_lower:
+                detected_zone = zone_code
+                break
+
+        try:
+            if detected_bundle:
+                # Specific bundle: fetch pricing by zone
+                rows = await db.fetch("""
+                    SELECT cz.name_es as zone_name, cz.zone_code,
+                           SUM(sbi.amount) as total,
+                           COUNT(sbi.id) as item_count,
+                           array_agg(
+                               fs.name_es || ': ' || sbi.amount || ' XAF'
+                               ORDER BY sbi.display_order
+                           ) as items
+                    FROM service_bundle_items sbi
+                    JOIN service_bundles sb ON sb.id = sbi.bundle_id
+                    JOIN fiscal_services fs ON fs.id = sbi.fiscal_service_id
+                    JOIN commerce_zones cz ON cz.id = sbi.zone_id
+                    WHERE sb.bundle_code = $1 AND sbi.is_active = true
+                    GROUP BY cz.name_es, cz.zone_code
+                    ORDER BY SUM(sbi.amount) DESC
+                """, detected_bundle)
+
+                if not rows:
+                    return None
+
+                # Get bundle name
+                bundle_name = await db.fetchval(
+                    "SELECT name_es FROM service_bundles WHERE bundle_code = $1",
+                    detected_bundle
+                )
+
+                parts = [f"=== PRECIOS DE PAQUETE FISCAL: {bundle_name} ==="]
+                parts.append(f"Tipo de negocio: {bundle_name}")
+                parts.append("")
+
+                if detected_zone:
+                    # Show detailed breakdown for specific zone
+                    zone_rows = [r for r in rows if r['zone_code'] == detected_zone]
+                    if zone_rows:
+                        r = zone_rows[0]
+                        parts.append(f"### {r['zone_name']} (Zona {r['zone_code']})")
+                        parts.append(f"TOTAL: {r['total']:,.0f} XAF".replace(',', '.'))
+                        parts.append("Desglose:")
+                        for item in r['items']:
+                            parts.append(f"  - {item}")
+                    parts.append("")
+                    parts.append("Comparación con otras zonas:")
+
+                # Summary table all zones
+                parts.append("| Zona | Código | Total XAF |")
+                parts.append("|------|--------|-----------|")
+                for r in rows:
+                    marker = " ←" if r['zone_code'] == detected_zone else ""
+                    parts.append(f"| {r['zone_name']} | {r['zone_code']} | {r['total']:,.0f}{marker} |".replace(',', '.'))
+
+                return "\n".join(parts)
+
+            else:
+                # Generic commerce query: show all bundle types with price range
+                rows = await db.fetch("""
+                    SELECT sb.name_es as bundle_name, sb.bundle_code,
+                           MIN(zone_totals.total) as min_total,
+                           MAX(zone_totals.total) as max_total,
+                           COUNT(DISTINCT zone_totals.zone_id) as zone_count
+                    FROM service_bundles sb
+                    JOIN (
+                        SELECT sbi.bundle_id, sbi.zone_id, SUM(sbi.amount) as total
+                        FROM service_bundle_items sbi
+                        WHERE sbi.is_active = true
+                        GROUP BY sbi.bundle_id, sbi.zone_id
+                    ) zone_totals ON zone_totals.bundle_id = sb.id
+                    WHERE sb.is_active = true
+                    GROUP BY sb.name_es, sb.bundle_code
+                    ORDER BY MAX(zone_totals.total) DESC
+                """)
+
+                if not rows:
+                    return None
+
+                parts = ["=== PAQUETES FISCALES PARA NEGOCIOS COMERCIALES ==="]
+                parts.append("Precios varían según la zona geográfica (A1=Capitales Regiones/más alto → D1=Poblados/más bajo)")
+                parts.append("")
+                parts.append("| Tipo de Negocio | Precio Mínimo | Precio Máximo |")
+                parts.append("|----------------|---------------|---------------|")
+                for r in rows:
+                    parts.append(
+                        f"| {r['bundle_name']} | {r['min_total']:,.0f} XAF | {r['max_total']:,.0f} XAF |".replace(',', '.')
+                    )
+
+                return "\n".join(parts)
+
+        except Exception as e:
+            logger.warning(f"Bundle enrichment failed: {e}")
+            return None
+
     def _consolidate_context(
         self,
         relevant_docs: List[Dict],
-        relevant_services: List[Dict]
+        relevant_services: List[Dict],
+        bundle_context: Optional[str] = None,
     ) -> tuple:
         """
-        Build structured context string from legislative docs + fiscal services for LLM.
-        Priority: legislative documents first (official sources), then services.
+        Build structured context string from legislative docs + fiscal services + bundles for LLM.
+        Priority: legislative documents first (official sources), then bundles, then services.
 
         Returns:
             (context_text: str, source_codes: List[str])
@@ -774,7 +964,12 @@ class ChatbotServiceRAG:
                 parts.append(content)
                 sources.append(f"DOC:{doc_name}:p{page}")
 
-        # Priority 2: Fiscal services (with bundle context if available)
+        # Priority 2: Bundle pricing (commerce packages with zone pricing)
+        if bundle_context:
+            parts.append(bundle_context)
+            sources.append("BUNDLE_PRICING")
+
+        # Priority 3: Fiscal services (individual service details)
         if relevant_services:
             parts.append("=== SERVICIOS FISCALES ===")
             for svc in relevant_services[:getattr(settings, 'RAG_MAX_CONTEXT_SERVICES', 5)]:

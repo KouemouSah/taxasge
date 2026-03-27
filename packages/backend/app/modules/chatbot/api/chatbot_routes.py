@@ -867,3 +867,141 @@ async def get_legislacion_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error retrieving legislacion stats"
         )
+
+
+@router.post("/admin/reindex-legislacion", response_model=Dict[str, Any])
+async def admin_reindex_legislacion(
+    force: bool = Query(False, description="Force re-index existing chunks"),
+    doc: str = Query("", description="Filter by document name (partial match)"),
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """
+    Admin endpoint to trigger re-indexation of legislative PDFs.
+    Requires admin role. Delegates to the same logic as the cron endpoint.
+    """
+    if current_user.role.value not in ("admin", "supervisor"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    import glob
+    import os
+    import time as time_module
+
+    try:
+        from app.modules.chatbot.services.embedding_service import embedding_service
+
+        if not embedding_service.enabled:
+            raise HTTPException(
+                status_code=503,
+                detail="Embedding service disabled (Vertex AI not available)"
+            )
+
+        # Find PDFs - same discovery logic as cron
+        pdf_folder = None
+        candidates = [
+            os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'data', 'legislacion'),
+            os.path.join(os.getcwd(), 'data', 'legislacion'),
+            '/app/data/legislacion',
+            os.path.join(os.getcwd(), '..', 'web', 'public', 'documents', 'legislacion'),
+        ]
+        for candidate in candidates:
+            if os.path.isdir(candidate):
+                pdf_folder = candidate
+                break
+
+        if not pdf_folder:
+            raise HTTPException(status_code=404, detail="No legislacion PDF folder found")
+
+        pdf_files = sorted(glob.glob(os.path.join(pdf_folder, '*.pdf')))
+        if doc:
+            pdf_files = [f for f in pdf_files if doc.lower() in os.path.basename(f).lower()]
+
+        if not pdf_files:
+            return {"message": "No matching PDFs found", "pdf_count": 0}
+
+        import pdfplumber
+        from app.config import get_settings
+        settings = get_settings()
+        chunk_size = settings.PDF_CHUNK_SIZE
+        chunk_overlap = settings.PDF_CHUNK_OVERLAP
+        start_time = time_module.time()
+
+        total_stats = {"inserted": 0, "updated": 0, "skipped": 0, "failed": 0, "pdfs_processed": 0}
+
+        for pdf_path in pdf_files:
+            filename = os.path.basename(pdf_path)
+            doc_name = os.path.splitext(filename)[0]
+
+            existing = set()
+            if not force:
+                rows = await db.fetch(
+                    "SELECT chunk_id FROM legislacion_documents WHERE document_name = $1",
+                    doc_name,
+                )
+                existing = {r['chunk_id'] for r in rows}
+
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        text = page.extract_text() or ''
+                        if not text.strip():
+                            continue
+                        step = max(1, chunk_size - chunk_overlap)
+                        for i in range(0, len(text), step):
+                            chunk_text = text[i:i + chunk_size]
+                            if len(chunk_text.strip()) < 50:
+                                continue
+                            chunk_idx = i // step
+                            chunk_id = f'{doc_name.lower()}_p{page_num}_c{chunk_idx}'
+                            if chunk_id in existing and not force:
+                                total_stats['skipped'] += 1
+                                continue
+                            emb = await embedding_service.generate_embedding(
+                                chunk_text.strip(),
+                                task_type='RETRIEVAL_DOCUMENT',
+                                title=f"{doc_name} - Página {page_num}",
+                            )
+                            if not emb:
+                                total_stats['failed'] += 1
+                                continue
+                            emb_str = '[' + ','.join(str(x) for x in emb) + ']'
+                            is_update = chunk_id in existing
+                            await db.execute(
+                                """
+                                INSERT INTO legislacion_documents
+                                    (document_name, page_number, chunk_id, content,
+                                     embedding, embedding_model, embedding_generated_at)
+                                VALUES ($1, $2, $3, $4, $5::vector, $6, NOW())
+                                ON CONFLICT (document_name, chunk_id) DO UPDATE SET
+                                    content = EXCLUDED.content,
+                                    embedding = EXCLUDED.embedding,
+                                    embedding_model = EXCLUDED.embedding_model,
+                                    embedding_generated_at = NOW(),
+                                    updated_at = NOW()
+                                """,
+                                doc_name, page_num, chunk_id, chunk_text.strip(),
+                                emb_str, 'text-embedding-005',
+                            )
+                            if is_update:
+                                total_stats['updated'] += 1
+                            else:
+                                total_stats['inserted'] += 1
+            except Exception as pdf_err:
+                logger.error(f"Error processing {filename}: {pdf_err}")
+                total_stats['failed'] += 1
+
+            total_stats['pdfs_processed'] += 1
+
+        elapsed = time_module.time() - start_time
+        return {
+            "message": f"Indexation completed in {elapsed:.1f}s",
+            "pdf_folder": pdf_folder,
+            "pdf_count": len(pdf_files),
+            **total_stats,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin reindex error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

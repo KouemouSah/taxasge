@@ -617,6 +617,92 @@ async def get_platform_info(db, **kwargs) -> dict:
 # FUNCTION MAP — Maps function names to async callables
 # ============================================================================
 
+async def search_bundles(db, **kwargs) -> dict:
+    """Search fiscal bundles (commerce packages) with pricing by zone."""
+    commerce_type = kwargs.get("commerce_type", "")
+    zone = kwargs.get("zone", "")
+
+    try:
+        if commerce_type:
+            # Search specific bundle type
+            rows = await db.fetch("""
+                SELECT sb.name_es as bundle_name, sb.bundle_code,
+                       cz.name_es as zone_name, cz.zone_code,
+                       SUM(sbi.amount) as total,
+                       array_agg(
+                           fs.name_es || ': ' || sbi.amount || ' XAF'
+                           ORDER BY sbi.display_order
+                       ) as items
+                FROM service_bundles sb
+                JOIN service_bundle_items sbi ON sbi.bundle_id = sb.id AND sbi.is_active = true
+                JOIN fiscal_services fs ON fs.id = sbi.fiscal_service_id
+                JOIN commerce_zones cz ON cz.id = sbi.zone_id
+                WHERE sb.name_es ILIKE '%' || $1 || '%' AND sb.is_active = true
+                GROUP BY sb.name_es, sb.bundle_code, cz.name_es, cz.zone_code
+                ORDER BY SUM(sbi.amount) DESC
+            """, commerce_type)
+        else:
+            # List all bundles with price ranges
+            rows = await db.fetch("""
+                SELECT sb.name_es as bundle_name, sb.bundle_code,
+                       MIN(zone_totals.total) as min_total,
+                       MAX(zone_totals.total) as max_total
+                FROM service_bundles sb
+                JOIN (
+                    SELECT sbi.bundle_id, sbi.zone_id, SUM(sbi.amount) as total
+                    FROM service_bundle_items sbi WHERE sbi.is_active = true
+                    GROUP BY sbi.bundle_id, sbi.zone_id
+                ) zone_totals ON zone_totals.bundle_id = sb.id
+                WHERE sb.is_active = true
+                GROUP BY sb.name_es, sb.bundle_code
+                ORDER BY MAX(zone_totals.total) DESC
+            """)
+
+        if not rows:
+            return {"bundles": [], "message": "No se encontraron paquetes fiscales"}
+
+        bundles = []
+        for r in rows:
+            bundle = {"bundle_name": r["bundle_name"], "bundle_code": r["bundle_code"]}
+            if "zone_name" in r.keys():
+                bundle["zone_name"] = r["zone_name"]
+                bundle["zone_code"] = r["zone_code"]
+                bundle["total_xaf"] = float(r["total"])
+                bundle["items"] = list(r["items"]) if r.get("items") else []
+            else:
+                bundle["min_total_xaf"] = float(r["min_total"])
+                bundle["max_total_xaf"] = float(r["max_total"])
+            bundles.append(bundle)
+
+        # Filter by zone if specified (supports city names, zone codes, zone names)
+        if zone and bundles and "zone_code" in bundles[0]:
+            zone_lower = zone.lower().strip()
+            # Map city names to zone codes
+            city_zone_map = {
+                'malabo': 'A1', 'bata': 'A1',
+                'ebebiyin': 'B1', 'evinayong': 'B1', 'mongomo': 'B1', 'luba': 'B1',
+                'niefang': 'C1', 'micomeseng': 'C1', 'acurenam': 'C1',
+            }
+            zone_code_match = city_zone_map.get(zone_lower, zone.upper())
+            filtered = [
+                b for b in bundles
+                if zone_code_match == b.get("zone_code", "")
+                or zone_lower in b.get("zone_name", "").lower()
+            ]
+            if filtered:
+                bundles = filtered
+
+        return {
+            "bundles": bundles[:20],
+            "total_found": len(bundles),
+            "note": "Precios varían por zona geográfica. A1=Capitales Regiones (Malabo/Bata), B1=Capitales Provincias, C1=Capitales Distritales, D1=Consejos Poblados"
+        }
+
+    except Exception as e:
+        logger.error(f"search_bundles error: {e}")
+        return {"bundles": [], "error": str(e)}
+
+
 CHATBOT_FUNCTION_MAP = {
     "search_fiscal_services": search_fiscal_services,
     "get_service_details": get_service_details,
@@ -626,6 +712,7 @@ CHATBOT_FUNCTION_MAP = {
     "get_workflow_guide": get_workflow_guide,
     "get_service_categories": get_service_categories,
     "get_platform_info": get_platform_info,
+    "search_bundles": search_bundles,
 }
 
 
@@ -723,6 +810,23 @@ if VERTEX_AVAILABLE:
                         "type": "string",
                         "description": "Tema de información",
                         "enum": ["about", "hours", "contact", "faq"],
+                    },
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="search_bundles",
+            description="Buscar paquetes fiscales (licencias comerciales) con precios por zona geográfica. SIEMPRE usar cuando el usuario pregunte sobre precios de apertura de negocio, licencia comercial, cuánto cuesta abrir un restaurante/farmacia/tienda/bar, o precios por zona. Los precios varían según la zona (A1=Malabo/Bata más caro, D1=Poblados más barato).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "commerce_type": {
+                        "type": "string",
+                        "description": "Tipo de comercio (ej: 'restaurante', 'farmacia', 'ferretería', 'cafetería', 'discoteca', 'taller', 'abacería'). Dejar vacío para ver todos los tipos.",
+                    },
+                    "zone": {
+                        "type": "string",
+                        "description": "Zona geográfica o ciudad (ej: 'A1', 'Malabo', 'Bata', 'Capitales de Regiones'). Dejar vacío para ver todas las zonas.",
                     },
                 },
             },
