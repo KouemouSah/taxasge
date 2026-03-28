@@ -19,7 +19,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
@@ -237,6 +237,22 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             />
           ) : (
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          )}
+
+          {/* Action Buttons — inline CTAs from tool results */}
+          {isBot && message.actions && message.actions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-stone-200/50 dark:border-stone-700/50">
+              {message.actions.map((action: { type: string; label: string; url?: string }, i: number) => (
+                <a
+                  key={i}
+                  href={action.url || '#'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors no-underline"
+                >
+                  {action.type === 'start_workflow' && <ExternalLink className="h-3 w-3" />}
+                  {action.label}
+                </a>
+              ))}
+            </div>
           )}
 
           {/* Timestamp */}

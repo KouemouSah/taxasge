@@ -374,6 +374,9 @@ class ChatbotServiceRAG:
             if tools_used:
                 logger.info(f"Chatbot used {len(tools_used)} tools in {tool_round} round(s): {tools_used}")
 
+            # Extract action buttons from tool results
+            actions = self._extract_actions_from_tools(tools_used, function_results_data if tools_used else [])
+
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources
 
@@ -504,10 +507,15 @@ class ChatbotServiceRAG:
             final_response = {
                 "message": response_message,
                 "conversation_id": conversation_id,
-                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language, user_query=message),
+                "suggestions": self._generate_suggestions(
+                    relevant_docs, relevant_services, language,
+                    user_query=message, intent=intent,
+                    entities=processed.entities if processed else {},
+                ),
                 "related_services": self._format_related_services(relevant_services),
                 "related_documents": self._format_related_documents(relevant_docs),
                 "follow_up_actions": self._generate_follow_up_actions(relevant_services, language),
+                "actions": actions,
                 "confidence": confidence,
                 "response_time": response_time,
                 "sources": ai_response.get("sources", []),
@@ -553,6 +561,9 @@ class ChatbotServiceRAG:
             # Preprocess query
             processed = self.preprocessor.preprocess(message)
 
+            # Status: searching
+            yield {"type": "status", "step": "searching", "text": self._status_text("searching", language)}
+
             # Generate query embedding (use expanded query)
             query_embedding = await embedding_service.generate_query_embedding(processed.expanded)
 
@@ -577,6 +588,9 @@ class ChatbotServiceRAG:
                 similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD,
                 semantic_weight=0.7,
             )
+
+            # Status: analyzing
+            yield {"type": "status", "step": "analyzing", "text": self._status_text("analyzing", language)}
             
             # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD) + deduplicate
             relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
@@ -1148,20 +1162,51 @@ class ChatbotServiceRAG:
         services: List[Dict],
         language: str,
         user_query: str = "",
+        intent: str = "search",
+        entities: Optional[Dict[str, str]] = None,
     ) -> List[str]:
-        """Generate contextual follow-up suggestions based on the user's question.
+        """Generate contextual follow-up suggestions based on intent + entities.
 
-        Suggestions should be relevant to what the user ASKED, not just
-        what the RAG found. If user asked about "pasaporte", suggestions
-        should be about passports — not random Ley_de_Tasas pages.
+        Intent-aware: suggests complementary actions, not generic questions.
         """
         suggestions = []
-
-        # Extract topic from user query for contextual suggestions
+        entities = entities or {}
         query_lower = (user_query or "").lower()
 
-        # Service-based suggestions (most relevant)
-        if services:
+        # Intent-based suggestions (most relevant — complementary to what was asked)
+        _intent_suggestions = {
+            "calculate": {
+                "es": ["¿Qué documentos necesito?", "¿Cómo iniciar el trámite?", "¿Dónde se realiza?"],
+                "fr": ["Quels documents faut-il ?", "Comment démarrer la démarche ?", "Où se fait-elle ?"],
+                "en": ["What documents do I need?", "How to start the procedure?", "Where is it done?"],
+            },
+            "guide": {
+                "es": ["¿Cuánto cuesta?", "¿Qué documentos necesito?", "Quiero iniciar este trámite"],
+                "fr": ["Combien ça coûte ?", "Quels documents faut-il ?", "Je veux commencer"],
+                "en": ["How much does it cost?", "What documents do I need?", "I want to start"],
+            },
+            "document": {
+                "es": ["¿Cuánto cuesta?", "Quiero iniciar este trámite", "¿Cuánto tarda?"],
+                "fr": ["Combien ça coûte ?", "Je veux commencer", "Combien de temps ?"],
+                "en": ["How much does it cost?", "I want to start", "How long does it take?"],
+            },
+        }
+
+        intent_sugg = _intent_suggestions.get(intent, {}).get(language, [])
+
+        # Personalize with workflow entity if detected
+        workflow_name = entities.get('workflow_keyword', '')
+        if workflow_name and intent_sugg:
+            suggestions = [
+                s.replace('?', f' para {workflow_name}?') if '?' in s and workflow_name not in s.lower()
+                else s
+                for s in intent_sugg[:3]
+            ]
+        elif intent_sugg:
+            suggestions = intent_sugg[:3]
+
+        # Fallback: service-based suggestions
+        if not suggestions and services:
             top = services[0]
             name = top.get("name_es", "este servicio")
             suggestions.append({
@@ -1169,21 +1214,11 @@ class ChatbotServiceRAG:
                 "fr": f"Quels documents faut-il pour {name} ?",
                 "en": f"What documents do I need for {name}?",
             }.get(language, f"What documents do I need for {name}?"))
-
             suggestions.append({
-                "es": f"¿Cuánto cuesta y cuánto tarda {name}?",
-                "fr": f"Combien coûte et combien de temps prend {name} ?",
-                "en": f"How much does {name} cost and how long does it take?",
+                "es": f"¿Cuánto cuesta {name}?",
+                "fr": f"Combien coûte {name} ?",
+                "en": f"How much does {name} cost?",
             }.get(language, f"How much does {name} cost?"))
-
-            if len(services) > 1:
-                other = services[1].get("name_es", "")
-                if other:
-                    suggestions.append({
-                        "es": f"Información sobre {other}",
-                        "fr": f"Informations sur {other}",
-                        "en": f"Information about {other}",
-                    }.get(language, f"Information about {other}"))
 
         # Topic-based suggestions when no services found
         if not suggestions:
@@ -1648,6 +1683,152 @@ Keep it helpful and concise."""
             score -= 0.1
 
         return max(0.0, min(1.0, score))
+
+    # ========================================================================
+    # ACTION BUTTONS EXTRACTION
+    # ========================================================================
+
+    def _extract_actions_from_tools(
+        self,
+        tools_used: List[str],
+        function_results_data: List[Dict],
+    ) -> List[Dict[str, str]]:
+        """Extract action buttons from tool execution results."""
+        actions = []
+
+        for fr in function_results_data:
+            fn_name = fr.get("name", "")
+            result = fr.get("result", {})
+
+            if fn_name == "start_workflow" and result.get("wizard_url"):
+                actions.append({
+                    "type": "start_workflow",
+                    "label": f"Iniciar {result.get('workflow_name', 'trámite')} en Facil",
+                    "url": result["wizard_url"],
+                    "workflow_code": result.get("workflow_code", ""),
+                })
+
+            elif fn_name == "get_workflow_guide" and result.get("workflow_code"):
+                actions.append({
+                    "type": "start_workflow",
+                    "label": f"Iniciar en Facil",
+                    "url": f"/dashboard/service-requests/new?workflow={result['workflow_code']}",
+                    "workflow_code": result["workflow_code"],
+                })
+
+            elif fn_name == "search_bundles" and result.get("bundles"):
+                actions.append({
+                    "type": "view_pricing",
+                    "label": "Ver todos los precios por zona",
+                })
+
+            elif fn_name == "get_document_checklist" and result.get("documents"):
+                actions.append({
+                    "type": "start_workflow",
+                    "label": "Iniciar trámite en Facil",
+                    "url": f"/dashboard/service-requests/new?workflow={result.get('workflow_code', '')}",
+                    "workflow_code": result.get("workflow_code", ""),
+                })
+
+        return actions
+
+    # ========================================================================
+    # STREAMING STATUS MESSAGES
+    # ========================================================================
+
+    _STATUS_TEXTS = {
+        "searching": {
+            "es": "Buscando en documentos y servicios...",
+            "fr": "Recherche dans les documents et services...",
+            "en": "Searching documents and services...",
+        },
+        "analyzing": {
+            "es": "Analizando resultados...",
+            "fr": "Analyse des résultats...",
+            "en": "Analyzing results...",
+        },
+        "generating": {
+            "es": "Preparando respuesta...",
+            "fr": "Préparation de la réponse...",
+            "en": "Preparing response...",
+        },
+    }
+
+    def _status_text(self, step: str, language: str = "es") -> str:
+        return self._STATUS_TEXTS.get(step, {}).get(language, self._STATUS_TEXTS.get(step, {}).get("es", ""))
+
+    # ========================================================================
+    # FEEDBACK & ANALYTICS
+    # ========================================================================
+
+    async def record_feedback(
+        self,
+        db: asyncpg.Connection,
+        conversation_id: str,
+        rating: int,
+        feedback_text: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Record user feedback (thumbs up/down) for a chatbot response."""
+        try:
+            await db.execute("""
+                INSERT INTO chatbot_feedback (conversation_id, rating, feedback_text, user_id)
+                VALUES ($1, $2, $3, $4)
+            """, conversation_id, rating, feedback_text,
+                user_id if user_id else None)
+
+            logger.info(f"Feedback recorded: conv={conversation_id}, rating={rating}")
+            return {"status": "success", "message": "Feedback recorded"}
+        except Exception as e:
+            logger.error(f"Failed to record feedback: {e}")
+            return {"status": "error", "message": str(e)}
+
+    async def get_usage_stats(
+        self,
+        db: asyncpg.Connection,
+    ) -> Dict[str, Any]:
+        """Get chatbot usage statistics for admin dashboard."""
+        try:
+            # Conversation stats
+            conv_stats = await db.fetchrow("""
+                SELECT
+                    COUNT(*) as total_conversations,
+                    COALESCE(SUM(message_count), 0) as total_messages,
+                    COUNT(*) FILTER (WHERE last_message_at >= NOW() - INTERVAL '24 hours') as active_24h,
+                    COUNT(*) FILTER (WHERE last_message_at >= NOW() - INTERVAL '7 days') as active_7d
+                FROM chatbot_conversations
+            """)
+
+            # Feedback stats (from view if table exists, otherwise empty)
+            try:
+                feedback_stats = await db.fetchrow("SELECT * FROM v_chatbot_feedback_stats")
+                feedback = dict(feedback_stats) if feedback_stats else {}
+            except Exception:
+                feedback = {
+                    "total_feedback": 0, "positive_count": 0, "negative_count": 0,
+                    "avg_rating": 0, "unique_conversations": 0,
+                    "feedback_last_24h": 0, "feedback_last_7d": 0,
+                }
+
+            # Rating distribution
+            try:
+                dist_rows = await db.fetch("""
+                    SELECT rating, COUNT(*) as count
+                    FROM chatbot_feedback
+                    GROUP BY rating ORDER BY rating
+                """)
+                rating_distribution = {str(r["rating"]): r["count"] for r in dist_rows}
+            except Exception:
+                rating_distribution = {}
+
+            return {
+                "conversations": dict(conv_stats) if conv_stats else {},
+                "feedback": feedback,
+                "rating_distribution": rating_distribution,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get usage stats: {e}")
+            return {"error": str(e)}
 
 
 # ============================================================================

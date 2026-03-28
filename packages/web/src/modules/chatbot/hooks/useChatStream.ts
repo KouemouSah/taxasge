@@ -85,6 +85,8 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
   const [streamedText, setStreamedText] = useState('')
   const [sources, setSources] = useState<string[]>([])
   const [lastMessage, setLastMessage] = useState<string | null>(null)
+  const [statusText, setStatusText] = useState<string | null>(null)
+  const [statusStep, setStatusStep] = useState<string | null>(null)
 
   // Refs
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -144,8 +146,19 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
           conversationId || undefined,
           language
         )) {
-          // Handle chunk
+          // Handle status updates (searching, analyzing, generating)
+          if (chunk.type === 'status') {
+            setStatusText(chunk.text || null)
+            setStatusStep(chunk.step || null)
+            continue
+          }
+
+          // Handle chunk — clear status when text starts arriving
           if (chunk.type === 'chunk' && chunk.text) {
+            if (statusText) {
+              setStatusText(null)
+              setStatusStep(null)
+            }
             fullText += chunk.text
             setStreamedText(fullText)
             setCurrentChunk(chunk.text)
@@ -297,6 +310,8 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
     currentChunk,
     streamedText,
     sources,
+    statusText,
+    statusStep,
 
     // Actions
     sendMessage,

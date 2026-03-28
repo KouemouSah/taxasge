@@ -119,6 +119,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [relatedServices, setRelatedServices] = useState<ServiceReference[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
   const [lastRequest, setLastRequest] = useState<ChatRequest | null>(null)
+  const [statusText, setStatusText] = useState<string | null>(null)
+  const [statusStep, setStatusStep] = useState<string | null>(null)
 
   // Refs for streaming control
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -320,11 +322,12 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       try {
         const response = await chatbotApi.chat(request)
 
-        // Add assistant message
+        // Add assistant message with action buttons if available
         const assistantMessage: ChatMessage = {
           role: 'assistant' as MessageRole,
           content: response.response,
           timestamp: response.timestamp || new Date().toISOString(),
+          actions: (response as Record<string, unknown>).actions as ChatMessage['actions'],
         }
 
         setMessages((prev) => [...prev, assistantMessage])
@@ -450,6 +453,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     suggestions,
     relatedServices,
     confidence,
+    statusText,
+    statusStep,
 
     // Actions
     sendMessage,

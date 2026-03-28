@@ -54,6 +54,7 @@ export interface ChatMessage {
   role: MessageRole
   content: string
   timestamp: string
+  actions?: ChatAction[]
 }
 
 export interface ConversationContext {
@@ -291,11 +292,19 @@ export interface ValidationResponse {
 // =============================================================================
 
 export interface StreamChunk {
-  type: 'chunk' | 'done' | 'error'
+  type: 'chunk' | 'done' | 'error' | 'status'
   text?: string
   sources?: string[]
   totalLength?: number
   message?: string
+  step?: string  // 'searching' | 'analyzing' | 'generating'
+}
+
+export interface ChatAction {
+  type: 'start_workflow' | 'view_pricing' | 'view_documents'
+  label: string
+  url?: string
+  workflow_code?: string
 }
 
 // =============================================================================

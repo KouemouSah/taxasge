@@ -60,6 +60,8 @@ export const ChatPage: React.FC = () => {
     suggestions,
     sendMessage,
     clearChat,
+    statusText,
+    statusStep,
   } = useChat({
     language: settings.language || (locale as 'es' | 'fr' | 'en'),
     persistToStorage: true,
@@ -174,7 +176,7 @@ export const ChatPage: React.FC = () => {
                   />
                   {isLoading && (
                     <div className="py-3">
-                      <TypingIndicator />
+                      <TypingIndicator statusText={statusText} statusStep={statusStep} />
                     </div>
                   )}
                 </div>
