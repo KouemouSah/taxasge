@@ -176,7 +176,7 @@ export const ChatPage: React.FC = () => {
                   />
                   {isLoading && (
                     <div className="py-3">
-                      <TypingIndicator statusText={statusText} statusStep={statusStep} />
+                      <TypingIndicator statusText={statusText ?? undefined} statusStep={statusStep ?? undefined} />
                     </div>
                   )}
                 </div>

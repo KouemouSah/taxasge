@@ -121,8 +121,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [relatedServices, setRelatedServices] = useState<ServiceReference[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
   const [lastRequest, setLastRequest] = useState<ChatRequest | null>(null)
-  const [statusText, setStatusText] = useState<string | null>(null)
-  const [statusStep, setStatusStep] = useState<string | null>(null)
+  const [statusText, _setStatusText] = useState<string | null>(null)
+  const [statusStep, _setStatusStep] = useState<string | null>(null)
 
   // Refs for streaming control
   const abortControllerRef = useRef<AbortController | null>(null)
