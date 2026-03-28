@@ -1220,58 +1220,66 @@ class ChatbotServiceRAG:
                 "en": f"How much does {name} cost?",
             }.get(language, f"How much does {name} cost?"))
 
-        # Topic-based suggestions when no services found
+        # Topic-based suggestions when no services found (multilingual)
         if not suggestions:
             topic_suggestions = {
-                "pasaporte": [
-                    "¿Cuánto cuesta un pasaporte?",
-                    "¿Qué documentos necesito para el pasaporte?",
-                    "¿Dónde se tramita el pasaporte?",
-                ],
-                "empresa": [
-                    "¿Cuántas empresas hay registradas?",
-                    "Empresas en Malabo",
-                    "Empresas del sector comercio",
-                ],
-                "ministerio": [
-                    "¿Cuáles son los ministerios?",
-                    "¿Qué servicios ofrece cada ministerio?",
-                    "Contacto de los ministerios",
-                ],
-                "residencia": [
-                    "¿Cuánto cuesta el permiso de residencia?",
-                    "Documentos para la residencia",
-                    "¿Cuánto tarda el permiso de residencia?",
-                ],
-                "conducir": [
-                    "¿Cuánto cuesta la licencia de conducir?",
-                    "Documentos para la licencia de conducir",
-                    "Tipos de licencia de conducir",
-                ],
+                "pasaporte": {
+                    "es": ["¿Cuánto cuesta un pasaporte?", "¿Qué documentos necesito para el pasaporte?", "¿Dónde se tramita el pasaporte?"],
+                    "fr": ["Combien coûte un passeport ?", "Quels documents faut-il pour le passeport ?", "Où se fait le passeport ?"],
+                    "en": ["How much does a passport cost?", "What documents do I need for a passport?", "Where to get a passport?"],
+                },
+                "passport": {
+                    "es": ["¿Cuánto cuesta un pasaporte?", "¿Qué documentos necesito?", "¿Dónde se tramita?"],
+                    "fr": ["Combien coûte un passeport ?", "Quels documents faut-il ?", "Où se fait le passeport ?"],
+                    "en": ["How much does a passport cost?", "What documents do I need?", "Where to apply?"],
+                },
+                "empresa": {
+                    "es": ["¿Cuántas empresas hay registradas?", "Empresas en Malabo", "Empresas del sector comercio"],
+                    "fr": ["Combien d'entreprises sont enregistrées ?", "Entreprises à Malabo", "Entreprises du secteur commerce"],
+                    "en": ["How many companies are registered?", "Companies in Malabo", "Commerce sector companies"],
+                },
+                "entreprise": {
+                    "es": ["¿Cuántas empresas hay registradas?", "Empresas en Malabo", "Empresas del sector comercio"],
+                    "fr": ["Combien d'entreprises sont enregistrées ?", "Entreprises à Malabo", "Entreprises du secteur commerce"],
+                    "en": ["How many companies are registered?", "Companies in Malabo", "Commerce sector companies"],
+                },
+                "ministerio": {
+                    "es": ["¿Cuáles son los ministerios?", "¿Qué servicios ofrece cada ministerio?", "Contacto de los ministerios"],
+                    "fr": ["Quels sont les ministères ?", "Quels services offre chaque ministère ?", "Contact des ministères"],
+                    "en": ["What are the ministries?", "What services does each ministry offer?", "Ministry contacts"],
+                },
+                "ministère": {
+                    "es": ["¿Cuáles son los ministerios?", "¿Qué servicios ofrece cada ministerio?", "Contacto"],
+                    "fr": ["Quels sont les ministères ?", "Quels services offre chaque ministère ?", "Contact des ministères"],
+                    "en": ["What are the ministries?", "What services does each ministry offer?", "Contacts"],
+                },
+                "residencia": {
+                    "es": ["¿Cuánto cuesta el permiso de residencia?", "Documentos para la residencia", "¿Cuánto tarda?"],
+                    "fr": ["Combien coûte le permis de résidence ?", "Documents pour la résidence", "Combien de temps ?"],
+                    "en": ["How much does a residence permit cost?", "Residence documents", "How long does it take?"],
+                },
+                "résidence": {
+                    "es": ["¿Cuánto cuesta el permiso de residencia?", "Documentos para la residencia", "¿Cuánto tarda?"],
+                    "fr": ["Combien coûte le permis de résidence ?", "Documents pour la résidence", "Combien de temps ?"],
+                    "en": ["How much does a residence permit cost?", "Residence documents", "How long does it take?"],
+                },
+                "conducir": {
+                    "es": ["¿Cuánto cuesta la licencia de conducir?", "Documentos para la licencia", "Tipos de licencia"],
+                    "fr": ["Combien coûte le permis de conduire ?", "Documents pour le permis", "Types de permis"],
+                    "en": ["How much does a driver's license cost?", "License documents", "License types"],
+                },
             }
-            for keyword, sug_list in topic_suggestions.items():
+            for keyword, lang_suggestions in topic_suggestions.items():
                 if keyword in query_lower:
-                    suggestions.extend(sug_list[:3])
+                    suggestions.extend(lang_suggestions.get(language, lang_suggestions.get("es", []))[:3])
                     break
 
             # Generic fallback
             if not suggestions:
                 suggestions = {
-                    "es": [
-                        "¿Qué servicios están disponibles?",
-                        "¿Cuáles son los ministerios?",
-                        "¿Cómo funciona la plataforma Facil?",
-                    ],
-                    "fr": [
-                        "Quels services sont disponibles ?",
-                        "Quels sont les ministères ?",
-                        "Comment fonctionne la plateforme Facil ?",
-                    ],
-                    "en": [
-                        "What services are available?",
-                        "What are the ministries?",
-                        "How does the Facil platform work?",
-                    ],
+                    "es": ["¿Qué servicios están disponibles?", "¿Cuáles son los ministerios?", "¿Cómo funciona Facil?"],
+                    "fr": ["Quels services sont disponibles ?", "Quels sont les ministères ?", "Comment fonctionne Facil ?"],
+                    "en": ["What services are available?", "What are the ministries?", "How does Facil work?"],
                 }.get(language, ["What services are available?"])
 
         return list(dict.fromkeys(suggestions))[:3]
