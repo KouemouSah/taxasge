@@ -407,8 +407,13 @@ async def get_live_agent_status(
     if not ctx["is_supervisor"]:
         raise HTTPException(status_code=403, detail="Supervisor only")
 
+    # Location scoping: secondary-site supervisors see only their site agents
+    location_id = None
+    if not ctx.get("is_main_office", False):
+        location_id = ctx.get("entity_location_id")
+
     result = await InspectionService.get_live_agent_status(
-        db, ctx["entity_id"]
+        db, ctx["entity_id"], entity_location_id=location_id
     )
     return result
 

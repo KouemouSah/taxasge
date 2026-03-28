@@ -141,6 +141,60 @@ def _get_effective_location_id(agent_ctx: Dict[str, Any], explicit_location_id: 
     return explicit_location_id or None
 
 
+async def _verify_entity_ownership(
+    db, agent_ctx: Dict[str, Any], *,
+    agent_profile_id: Optional[str] = None,
+    service_request_id: Optional[str] = None,
+    queue_item_id: Optional[str] = None,
+) -> None:
+    """
+    Verify a resource belongs to the supervisor's entity. Raises 403 if not.
+
+    Checks (in order of specificity):
+    - agent_profile_id → agent_profiles.entity_id must match
+    - service_request_id → via assignment or direct entity_code check
+    - queue_item_id → via agent_work_queue.entity_code check
+    """
+    entity_id = agent_ctx.get("entity_id")
+    if not entity_id:
+        raise HTTPException(status_code=403, detail="No entity context")
+
+    if agent_profile_id:
+        row = await db.fetchrow(
+            "SELECT entity_id FROM agent_profiles WHERE id = $1 AND is_active = true",
+            agent_profile_id if isinstance(agent_profile_id, UUID) else UUID(str(agent_profile_id))
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Agent profile not found")
+        if row["entity_id"] != entity_id:
+            raise HTTPException(status_code=403, detail="Agent belongs to another entity")
+
+    if service_request_id:
+        # Check via entity_code on service_request or assignment
+        row = await db.fetchrow("""
+            SELECT sr.entity_code, e.id as entity_id
+            FROM service_requests sr
+            LEFT JOIN entities e ON e.code = sr.entity_code
+            WHERE sr.id = $1
+        """, UUID(str(service_request_id)))
+        if not row:
+            raise HTTPException(status_code=404, detail="Service request not found")
+        if row["entity_id"] and row["entity_id"] != entity_id:
+            raise HTTPException(status_code=403, detail="Request belongs to another entity")
+
+    if queue_item_id:
+        row = await db.fetchrow("""
+            SELECT aq.entity_code, e.id as entity_id
+            FROM agent_work_queue aq
+            LEFT JOIN entities e ON e.code = aq.entity_code
+            WHERE aq.id = $1
+        """, UUID(str(queue_item_id)))
+        if not row:
+            raise HTTPException(status_code=404, detail="Queue item not found")
+        if row["entity_id"] and row["entity_id"] != entity_id:
+            raise HTTPException(status_code=403, detail="Queue item belongs to another entity")
+
+
 async def _get_supervisor_workflow_scope(agent_ctx: Dict[str, Any], db) -> Optional[list]:
     """
     Returns the list of workflow_codes this supervisor can see, or None for admin (no filter).
@@ -663,6 +717,11 @@ async def get_agent_stats(
 
     Migration 054: Uses agent_profile_id instead of agent_id
     """
+    # IDOR check: verify agent belongs to supervisor's entity
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, agent_profile_id=agent_profile_id)
+
     assignment_repo = get_assignment_repository(db)
 
     try:
@@ -709,6 +768,11 @@ async def get_agent_forecast(
 
     Migration 054: Uses agent_profile_id instead of agent_id
     """
+    # IDOR check: verify agent belongs to supervisor's entity
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, agent_profile_id=agent_profile_id)
+
     workload_repo = get_workload_repository(db)
 
     try:
@@ -1375,6 +1439,11 @@ async def assign_escalation(
 
     queue_id is actually the service_request.id (frontend compatibility).
     """
+    # IDOR check: verify request belongs to supervisor's entity
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, service_request_id=queue_id)
+
     # agent_id from frontend is an agent_profile_id; resolve to user_id
     if agent_id:
         target_row = await db.fetchrow(
@@ -1458,6 +1527,11 @@ async def resolve_escalation(
     queue_id is actually service_request.id (frontend compatibility).
     De-escalates the request and records resolution notes in history.
     """
+    # IDOR check: verify request belongs to supervisor's entity
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, service_request_id=queue_id)
+
     # Find the escalated service request
     request = await db.fetchrow("""
         SELECT id, reference, status, escalated, escalated_by
@@ -1550,6 +1624,11 @@ async def supervisor_approve(
     Bypasses the agent: status → DOSSIER_VALIDE, escalated → false.
     Publishes REQUEST_APPROVED event for citizen notification.
     """
+    # IDOR check
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, service_request_id=queue_id)
+
     request = await db.fetchrow("""
         SELECT id, reference, status, escalated, user_id, workflow_code
         FROM service_requests WHERE id = $1
@@ -1636,6 +1715,11 @@ async def supervisor_reject(
     Bypasses the agent: status → REJECTED, escalated → false.
     Publishes REQUEST_REJECTED event for citizen notification.
     """
+    # IDOR check
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, service_request_id=queue_id)
+
     request = await db.fetchrow("""
         SELECT id, reference, status, escalated, user_id, workflow_code
         FROM service_requests WHERE id = $1
@@ -2215,6 +2299,10 @@ async def get_agent_trends(
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Supervisor access required")
 
+    # IDOR check: verify agent belongs to supervisor's entity
+    if current_user.role != "admin":
+        await _verify_entity_ownership(db, agent_ctx, agent_profile_id=agent_profile_id)
+
     try:
         # Get agent name
         agent_row = await db.fetchrow(
@@ -2335,6 +2423,10 @@ async def get_agent_assignments(
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    # IDOR check: verify agent belongs to supervisor's entity
+    if current_user.role != "admin":
+        await _verify_entity_ownership(db, agent_ctx, agent_profile_id=agent_profile_id)
 
     rows = await db.fetch("""
         SELECT
@@ -2479,6 +2571,11 @@ async def reassign_request(
         agent_ctx = await get_agent_context(current_user.id, db)
     if not agent_ctx or not agent_ctx.get("is_supervisor"):
         raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    # IDOR check: verify request + target agent belong to supervisor's entity
+    if current_user.role != "admin":
+        await _verify_entity_ownership(db, agent_ctx, service_request_id=request_id)
+        await _verify_entity_ownership(db, agent_ctx, agent_profile_id=body.target_agent_id)
 
     # Verify target agent exists (target_agent_id is an agent_profile_id)
     target = await db.fetchrow(
@@ -2833,6 +2930,11 @@ async def retry_dead_letter(
     Resets retry_count to 0 and clears last_error so the outbox
     processor will pick it up on the next cycle.
     """
+    # IDOR check: verify dead-letter belongs to supervisor's entity
+    if current_user.role != "admin":
+        agent_ctx = await get_agent_context(current_user.id, db)
+        await _verify_entity_ownership(db, agent_ctx, queue_item_id=item_id)
+
     result = await db.execute("""
         UPDATE assignment_outbox
         SET status = 'pending', retry_count = 0,

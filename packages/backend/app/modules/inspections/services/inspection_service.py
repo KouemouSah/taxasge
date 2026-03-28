@@ -53,6 +53,7 @@ class InspectionService:
                 ap.is_supervisor,
                 e.code AS entity_code,
                 el.region, el.city_id,
+                COALESCE(el.is_main_office, false) AS is_main_office,
                 r.code AS role_code,
                 EXISTS(
                     SELECT 1 FROM role_permissions rp2
@@ -92,6 +93,7 @@ class InspectionService:
             "entity_code": row["entity_code"],
             "region": row["region"],
             "city_id": row["city_id"],
+            "is_main_office": row["is_main_office"],
             "role_code": role_code,
             "is_supervisor": is_supervisor,
         }
@@ -757,7 +759,7 @@ class InspectionService:
     # ============================================================
 
     @staticmethod
-    async def get_live_agent_status(conn, entity_id: UUID) -> dict:
+    async def get_live_agent_status(conn, entity_id: UUID, entity_location_id: UUID = None) -> dict:
         """Get real-time agent status for a supervisor's entity.
 
         Single CTE query fetching:
@@ -772,7 +774,8 @@ class InspectionService:
         from app.core.cache import get_cache
 
         cache = get_cache()
-        cache_key = f"live_status:entity:{entity_id}"
+        loc_suffix = f":loc:{entity_location_id}" if entity_location_id else ""
+        cache_key = f"live_status:entity:{entity_id}{loc_suffix}"
 
         cached = await cache.get(cache_key)
         if cached:
@@ -799,8 +802,15 @@ class InspectionService:
             elif t["rule_code"] == "AGENT_STATUS_OFFLINE_MINUTES":
                 offline_minutes = minutes
 
+        # Build location filter for secondary-site supervisors
+        location_filter = ""
+        query_params = [entity_id]
+        if entity_location_id:
+            location_filter = "AND ap.entity_location_id = $2"
+            query_params.append(entity_location_id)
+
         # Single CTE query — O(agents) not O(inspections)
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             WITH agent_base AS (
                 SELECT
                     ap.id AS agent_profile_id,
@@ -813,6 +823,7 @@ class InspectionService:
                 JOIN users u ON u.id = ap.user_id
                 WHERE ap.entity_id = $1
                   AND ap.is_active = true
+                  {location_filter}
             ),
             today_stats AS (
                 SELECT
@@ -852,7 +863,7 @@ class InspectionService:
             LEFT JOIN today_stats ts ON ts.agent_id = ab.agent_id
             LEFT JOIN in_progress ip ON ip.agent_id = ab.agent_id AND ip.rn = 1
             ORDER BY ab.minutes_since_activity ASC NULLS LAST
-        """, entity_id)
+        """, *query_params)
 
         # Build agent statuses
         agents = []
