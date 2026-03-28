@@ -49,6 +49,8 @@ export interface UseChatStreamReturn {
   currentChunk: string
   streamedText: string
   sources: string[]
+  statusText: string | null
+  statusStep: string | null
 
   // Actions
   sendMessage: (message: string) => Promise<void>

@@ -55,6 +55,8 @@ export interface UseChatReturn {
   suggestions: string[]
   relatedServices: ServiceReference[]
   confidence: number | null
+  statusText: string | null
+  statusStep: string | null
 
   // Actions
   sendMessage: (message: string, context?: Record<string, any>) => Promise<void>
@@ -327,7 +329,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           role: 'assistant' as MessageRole,
           content: response.response,
           timestamp: response.timestamp || new Date().toISOString(),
-          actions: (response as Record<string, unknown>).actions as ChatMessage['actions'],
+          actions: (response as unknown as Record<string, unknown>).actions as ChatMessage['actions'],
         }
 
         setMessages((prev) => [...prev, assistantMessage])
