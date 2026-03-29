@@ -63,7 +63,7 @@ export const ChatPage: React.FC = () => {
     statusText,
     statusStep,
   } = useChat({
-    language: settings.language || (locale as 'es' | 'fr' | 'en'),
+    language: (locale as 'es' | 'fr' | 'en') || settings.language || 'es',
     persistToStorage: true,
   });
 

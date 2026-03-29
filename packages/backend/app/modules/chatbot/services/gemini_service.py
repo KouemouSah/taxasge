@@ -42,8 +42,34 @@ if settings.GEMINI_API_KEY:
         GenerativeModel = genai.GenerativeModel
         FunctionDeclaration = genai.protos.FunctionDeclaration
         Tool = genai.protos.Tool
-        Content = genai.protos.Content
-        Part = genai.protos.Part
+
+        # Google AI Studio: Content/Part are protos (no .from_text method)
+        _ProtoContent = genai.protos.Content
+        _ProtoPart = genai.protos.Part
+
+        class Content:
+            """Compatibility wrapper for Vertex AI Content class."""
+            def __init__(self, role="user", parts=None):
+                self._proto = _ProtoContent(role=role, parts=[p._proto if hasattr(p, '_proto') else p for p in (parts or [])])
+            @property
+            def _raw(self):
+                return self._proto
+
+        class Part:
+            """Compatibility wrapper for Vertex AI Part class."""
+            def __init__(self, text=None):
+                if text:
+                    self._proto = _ProtoPart(text=text)
+                else:
+                    self._proto = _ProtoPart()
+
+            @staticmethod
+            def from_text(text):
+                return Part(text=text)
+
+            @staticmethod
+            def from_function_response(name, response):
+                return _ProtoPart(function_response=genai.protos.FunctionResponse(name=name, response=response))
     except ImportError:
         logger.warning("⚠️ google-generativeai SDK not installed, trying Vertex AI")
 
@@ -710,27 +736,19 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                 "safety_settings": self.safety_settings,
             }
 
-            # Thinking budget: passed directly to generate_content (not inside GenerationConfig)
+            # Thinking budget — try multiple approaches per SDK version
             if thinking_budget is not None:
                 try:
-                    if self.backend == 'google_ai':
-                        # Google AI Studio: thinking_config as top-level kwarg
-                        generate_kwargs["generation_config"] = GenerationConfig(
-                            temperature=settings.GEMINI_TEMPERATURE,
-                            top_p=settings.GEMINI_TOP_P,
-                            top_k=settings.GEMINI_TOP_K,
-                            max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
-                            thinking_config={"type": "enabled", "budget_tokens": thinking_budget},
-                        )
-                    else:
-                        # Vertex AI: ThinkingConfig separate object
+                    if self.backend == 'vertex_ai':
                         from vertexai.generative_models import ThinkingConfig
-                        generate_kwargs["thinking_config"] = ThinkingConfig(
-                            thinking_budget=thinking_budget
-                        )
-                    logger.info(f"Thinking budget: {thinking_budget} tokens")
-                except (ImportError, TypeError) as e:
-                    logger.warning(f"Thinking config not supported by this SDK/model: {e}")
+                        generate_kwargs["thinking_config"] = ThinkingConfig(thinking_budget=thinking_budget)
+                        logger.debug(f"Thinking budget: {thinking_budget} tokens (Vertex AI ThinkingConfig)")
+                    else:
+                        # Google AI Studio: thinking may not be supported in SDK 0.8.x
+                        # Skip silently — the model still reasons well without explicit thinking budget
+                        logger.debug(f"Thinking budget: skipped (Google AI Studio SDK {getattr(genai, '__version__', '?')} may not support it)")
+                except (ImportError, TypeError, AttributeError) as e:
+                    logger.debug(f"Thinking config not available: {e}")
             if function_declarations:
                 if self.backend == 'google_ai':
                     generate_kwargs["tools"] = function_declarations
