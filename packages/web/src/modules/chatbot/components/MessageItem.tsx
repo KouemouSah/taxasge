@@ -19,10 +19,29 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
+import DOMPurify from 'dompurify'
 import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
+
+/**
+ * Sanitize HTML output from renderMarkdown to prevent XSS.
+ * Whitelists only safe tags/attributes for chatbot markdown rendering.
+ */
+const sanitizeHtml = (html: string): string => {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'strong', 'em', 'li', 'ul', 'ol', 'code', 'pre',
+      'table', 'tr', 'td', 'th', 'thead', 'tbody',
+      'a', 'h3', 'h4', 'h5', 'blockquote', 'hr', 'br', 'p',
+      'span', 'div',
+    ],
+    ALLOWED_ATTR: ['class', 'href', 'target', 'rel', 'style'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+  })
+}
 
 // =============================================================================
 // TYPES
@@ -233,7 +252,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {isBot ? (
             <div
               className="text-sm prose prose-sm max-w-none prose-li:my-0 prose-ul:my-0.5 prose-ol:my-0.5 prose-p:my-0.5 prose-headings:my-1 [&_li]:leading-snug [&_p]:leading-snug [&_br+br]:hidden"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(message.content)) }}
             />
           ) : (
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>

@@ -4,7 +4,7 @@ Chatbot Routes - AI-powered assistance API
 Migrated from app/api/v1/ai_services.py to modern module architecture
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 from typing import Optional, Dict, Any, AsyncGenerator
 from loguru import logger
@@ -337,14 +337,16 @@ async def get_conversation_history(
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
+    http_request: Request,
     current_user: Optional[UserResponse] = Depends(get_current_user_optional),
     db: asyncpg.Connection = Depends(get_db)
 ):
     """
     Interactive AI chat assistance for fiscal services
     """
-    # Rate limiting: 30/min authenticated, 10/min anonymous
-    rate_key = str(current_user.id) if current_user else "anon"
+    # Rate limiting: 30/min authenticated, 10/min per-IP anonymous
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    rate_key = str(current_user.id) if current_user else f"anon:{client_ip}"
     rate_limit = 30 if current_user else 10
     is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat", rate_limit, 60)
     if not is_allowed:
@@ -403,6 +405,7 @@ async def chat(
 
 @router.post("/chat/stream")
 async def chat_stream(
+    http_request: Request,
     message: str = Query(..., min_length=1, max_length=2000),
     conversation_id: Optional[str] = Query(None),
     language: LanguageCode = Query(LanguageCode.SPANISH),
@@ -412,8 +415,9 @@ async def chat_stream(
     """
     Streaming AI chat for real-time responses
     """
-    # Rate limiting: 30/min authenticated, 10/min anonymous
-    rate_key = str(current_user.id) if current_user else "anon"
+    # Rate limiting: 30/min authenticated, 10/min per-IP anonymous
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    rate_key = str(current_user.id) if current_user else f"anon:{client_ip}"
     rate_limit = 30 if current_user else 10
     is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat/stream", rate_limit, 60)
     if not is_allowed:

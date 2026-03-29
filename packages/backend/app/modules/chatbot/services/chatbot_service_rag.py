@@ -94,9 +94,28 @@ class ChatbotServiceRAG:
         if not self.enabled or not db:
             return await self._fallback_response(message, conversation_id, language)
 
-        # Cache check — skip for conversations with history (follow-ups need fresh context)
+        # ── Security: Prompt injection detection ────────────────────────
+        if self._detect_prompt_injection(message):
+            logger.warning(f"Prompt injection detected: '{message[:80]}...'")
+            return {
+                "message": {
+                    "es": "Lo siento, no puedo procesar esa solicitud. ¿En qué puedo ayudarte con los trámites fiscales?",
+                    "fr": "Désolé, je ne peux pas traiter cette demande. Comment puis-je vous aider avec les démarches fiscales ?",
+                    "en": "Sorry, I cannot process that request. How can I help you with fiscal procedures?",
+                }.get(language, "Sorry, I cannot process that request."),
+                "conversation_id": conversation_id,
+                "suggestions": [],
+                "related_services": [],
+                "confidence": 0.0,
+                "response_time": (datetime.now() - start_time).total_seconds(),
+                "sources": [],
+                "model": "security-filter",
+            }
+
+        # ── Cache check (user-scoped) ────────────────────────────────
+        user_id = context.get("user_id") if context else None
         if not conversation_history:
-            cached = await self._get_cached_response(message, language)
+            cached = await self._get_cached_response(message, language, user_id=user_id)
             if cached:
                 cached["conversation_id"] = conversation_id
                 cached["response_time"] = (datetime.now() - start_time).total_seconds()
@@ -124,9 +143,9 @@ class ChatbotServiceRAG:
                 f"entities={processed.entities}, hints={processed.detected_intent_hints}"
             )
 
-            # Step 1: Generate embedding + classify intent IN PARALLEL (no extra latency)
+            # Step 1: Generate embedding (with cache) + classify intent IN PARALLEL
             import asyncio
-            embedding_task = embedding_service.generate_query_embedding(processed.expanded)
+            embedding_task = self._get_or_create_embedding(processed.expanded)
             intent_task = gemini_service.classify_intent(processed.expanded, language)
 
             query_embedding, intent_result = await asyncio.gather(
@@ -523,7 +542,7 @@ class ChatbotServiceRAG:
             }
 
             # Step 7: Cache successful response for future identical queries
-            await self._cache_response(message, language, final_response)
+            await self._cache_response(message, language, final_response, user_id=user_id)
 
             return final_response
 
@@ -1531,12 +1550,13 @@ Keep it helpful and concise."""
     # RESPONSE CACHE (Redis-backed, 1h TTL for common queries)
     # ========================================================================
 
-    async def _get_cached_response(self, message: str, language: str) -> Optional[Dict]:
-        """Check Redis cache for a previous response to the same query."""
+    async def _get_cached_response(self, message: str, language: str, user_id: Optional[str] = None) -> Optional[Dict]:
+        """Check Redis cache for a previous response (user-scoped)."""
         try:
             from app.core.cache import get_cache
             cache = get_cache()
-            cache_key = f"chat:resp:{language}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
+            uid = user_id or "anon"
+            cache_key = f"chat:resp:{language}:{uid}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
             cached = await cache.get(cache_key)
             if cached and isinstance(cached, dict):
                 return cached
@@ -1544,25 +1564,27 @@ Keep it helpful and concise."""
             pass
         return None
 
-    async def _cache_response(self, message: str, language: str, response: Dict):
-        """Cache a successful response for future identical queries."""
+    async def _cache_response(self, message: str, language: str, response: Dict, user_id: Optional[str] = None):
+        """Cache a successful response (user-scoped, 10min TTL, confidence >= 0.6)."""
         try:
             from app.core.cache import get_cache
             cache = get_cache()
-            cache_key = f"chat:resp:{language}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
-            # Only cache high-confidence responses
-            if response.get("confidence", 0) >= 0.3:
+            uid = user_id or "anon"
+            cache_key = f"chat:resp:{language}:{uid}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
+            # Only cache high-confidence responses (0.6 threshold)
+            if response.get("confidence", 0) >= 0.6:
                 cache_data = {
                     "message": response.get("message", ""),
                     "suggestions": response.get("suggestions", []),
                     "related_services": response.get("related_services", []),
                     "related_documents": response.get("related_documents", []),
                     "follow_up_actions": response.get("follow_up_actions", []),
+                    "actions": response.get("actions", []),
                     "confidence": response.get("confidence", 0),
                     "sources": response.get("sources", []),
                 }
-                await cache.set(cache_key, cache_data, ttl=CACHE_TTL_SECONDS)
-                logger.debug(f"Cached response for: '{message[:40]}...'")
+                await cache.set(cache_key, cache_data, ttl=600)  # 10 minutes (was 1 hour)
+                logger.debug(f"Cached response for user={uid}: '{message[:40]}...'")
         except Exception as e:
             logger.debug(f"Cache set failed (non-fatal): {e}")
 
@@ -1694,6 +1716,60 @@ Keep it helpful and concise."""
             score -= 0.1
 
         return max(0.0, min(1.0, score))
+
+    # ========================================================================
+    # SECURITY: PROMPT INJECTION DETECTION
+    # ========================================================================
+
+    _INJECTION_PATTERNS = [
+        # English
+        'ignore previous', 'ignore all previous', 'forget your instructions',
+        'disregard your', 'override your', 'new instructions',
+        'you are now', 'pretend you are', 'act as', 'roleplay',
+        'what are your instructions', 'show me your prompt',
+        'system prompt', 'system message', 'reveal your',
+        # Spanish
+        'ignora las instrucciones', 'olvida tus instrucciones',
+        'ignora todo lo anterior', 'nuevas instrucciones',
+        'ahora eres', 'finge que eres', 'actúa como',
+        'muéstrame tu prompt', 'cuáles son tus instrucciones',
+        # French
+        'ignore les instructions', 'oublie tes instructions',
+        'ignore tout ce qui précède', 'nouvelles instructions',
+        'tu es maintenant', 'fais semblant', 'joue le rôle',
+        'montre-moi ton prompt', 'quelles sont tes instructions',
+    ]
+
+    def _detect_prompt_injection(self, message: str) -> bool:
+        """Detect common prompt injection patterns in user messages."""
+        msg_lower = message.lower()
+        return any(pattern in msg_lower for pattern in self._INJECTION_PATTERNS)
+
+    # ========================================================================
+    # EMBEDDING CACHE (24h TTL)
+    # ========================================================================
+
+    async def _get_or_create_embedding(self, query: str) -> Optional[List[float]]:
+        """Get embedding from cache or generate fresh one. 24h TTL."""
+        import hashlib
+        cache = get_cache()
+        cache_key = f"emb:query:{hashlib.md5(query.lower().strip().encode()).hexdigest()}"
+
+        try:
+            cached = await cache.get(cache_key)
+            if cached and isinstance(cached, list) and len(cached) > 0:
+                logger.debug(f"Embedding cache HIT for: '{query[:40]}...'")
+                return cached
+        except Exception:
+            pass
+
+        embedding = await embedding_service.generate_query_embedding(query)
+        if embedding:
+            try:
+                await cache.set(cache_key, embedding, ttl=86400)  # 24 hours
+            except Exception:
+                pass
+        return embedding
 
     # ========================================================================
     # ACTION BUTTONS EXTRACTION
