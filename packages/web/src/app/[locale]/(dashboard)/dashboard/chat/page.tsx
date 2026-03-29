@@ -2,18 +2,21 @@
 import React from 'react'
 
 /**
- * Chat Assistant Page
- * Full-page chat interface with the Facil AI assistant
+ * Chat Assistant Page — Dashboard version
+ * Uses the same components as the public chat (MessageItem, TypingIndicator)
+ * for consistent rendering (markdown, DOMPurify, action buttons, feedback).
  *
  * @module dashboard/chat
- * @author Claude Code
- * @date 2025-11-26
  */
 
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { MessageCircle, Bot, Lightbulb, FileText, Calculator, HelpCircle } from 'lucide-react'
+import { MessageCircle, Bot, Lightbulb, FileText, Calculator, HelpCircle, Send, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useChat, useChatSettings } from '@/modules/chatbot/hooks'
+import { MessageItem } from '@/modules/chatbot/components/MessageItem'
+import { TypingIndicator } from '@/modules/chatbot/components/TypingIndicator'
+import { SuggestionChips } from '@/modules/chatbot/components/SuggestionChips'
 import type { ChatMessage } from '@/modules/chatbot/types'
 
 export default function ChatPage() {
@@ -138,24 +141,22 @@ export default function ChatPage() {
 }
 
 /**
- * Embedded Chat Widget (non-floating version)
+ * Embedded Chat Widget — uses same components as public chat
+ * (MessageItem with markdown/DOMPurify/actions, TypingIndicator, SuggestionChips)
  */
 function ChatWidgetEmbedded({ locale }: { locale: string }) {
   const t = useTranslations('chatbot')
-
-  // Import and use hooks from chatbot module
-  // Hooks already imported at top
-
   useChatSettings({ persistToStorage: true })
+
   const {
     messages,
     isLoading,
     error,
     suggestions,
-    
     sendMessage,
-    
     retry,
+    statusText,
+    statusStep,
   } = useChat({
     language: locale as 'es' | 'fr' | 'en',
     persistToStorage: true,
@@ -164,7 +165,6 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
   const [message, setMessage] = React.useState('')
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
-  // Auto-scroll
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -175,17 +175,10 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
     setMessage('')
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Messages — reuses MessageItem for markdown, actions, feedback */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" style={{ scrollbarWidth: 'thin' }}>
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -194,47 +187,24 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
         )}
 
         {messages.map((msg: ChatMessage, i: number) => (
-          <div
-            key={i}
-            className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.role === 'assistant' && (
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary" />
-              </div>
-            )}
-            <div
-              className={`max-w-[75%] rounded-lg p-3 ${
-                msg.role === 'user'
-                  ? 'bg-primary text-white'
-                  : 'bg-muted text-foreground'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          </div>
+          <MessageItem
+            key={`${msg.timestamp}-${i}`}
+            message={msg}
+            locale={locale}
+          />
         ))}
 
         {isLoading && (
-          <div className="flex gap-2 justify-start">
-            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bot className="h-4 w-4 text-primary" />
-            </div>
-            <div className="bg-muted rounded-lg p-3 flex items-center gap-1">
-              <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" />
-              <span className="text-xs text-muted-foreground ml-2">{t('typing')}</span>
-            </div>
-          </div>
+          <TypingIndicator
+            statusText={statusText ?? undefined}
+            statusStep={statusStep ?? undefined}
+          />
         )}
 
         {error && (
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
             {error}
-            <button onClick={retry} className="ml-2 underline">
-              {t('retry')}
-            </button>
+            <button onClick={retry} className="ml-2 underline">{t('retry')}</button>
           </div>
         )}
 
@@ -242,39 +212,31 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
       </div>
 
       {/* Suggestions */}
-      {suggestions.length > 0 && (
-        <div className="px-4 py-2 border-t bg-muted/30 flex flex-wrap gap-2">
-          {suggestions.slice(0, 3).map((suggestion: string, i: number) => (
-            <button
-              key={i}
-              onClick={() => sendMessage(suggestion)}
-              disabled={isLoading}
-              className="text-xs px-2 py-1 rounded-full bg-secondary hover:bg-secondary/80 disabled:opacity-50"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+      {suggestions.length > 0 && !isLoading && (
+        <SuggestionChips
+          suggestions={suggestions}
+          onSelect={(s) => sendMessage(s)}
+        />
       )}
 
       {/* Input */}
-      <div className="p-4 border-t flex gap-2">
+      <div className="p-3 border-t flex gap-2">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
           placeholder={t('inputPlaceholder')}
           disabled={isLoading}
-          className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <button
+        <Button
           onClick={handleSend}
           disabled={isLoading || !message.trim()}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
+          size="icon"
         >
-          {isLoading ? t('sending') : 'Send'}
-        </button>
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
       </div>
     </div>
   )
