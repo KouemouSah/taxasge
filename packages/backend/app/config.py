@@ -243,29 +243,27 @@ class Settings(BaseSettings):
     )
 
     # Gemini Models Configuration
-    # Note: Gemini 1.5 models are retired. Using Gemini 2.0 Flash.
-    # See: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+    # Dual-backend: set GEMINI_API_KEY for Google AI Studio, or use Vertex AI (default)
+    # gemini-2.5-flash-preview: latest Flash with built-in thinking/reasoning
+    GEMINI_API_KEY: str = Field(default="", env="GEMINI_API_KEY")
     GEMINI_CHAT_MODEL: str = Field(
-        default="gemini-2.0-flash",
+        default="gemini-2.5-flash-preview-05-20",
         env="GEMINI_CHAT_MODEL"
     )
     GEMINI_PRO_MODEL: str = Field(
-        default="gemini-2.0-flash",
+        default="gemini-2.5-flash-preview-05-20",
         env="GEMINI_PRO_MODEL"
     )
-    # text-embedding-005: GA, same 768 dims as 004, better quality.
-    # After deployment, run /cron/reembed-fiscal-services?force=true
-    # and /cron/reindex-legislacion-pdfs?force=true to re-generate all vectors.
     GEMINI_EMBEDDING_MODEL: str = Field(
         default="text-embedding-005",
         env="GEMINI_EMBEDDING_MODEL"
     )
 
     # Gemini Generation Configuration
-    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, env="GEMINI_MAX_OUTPUT_TOKENS")
-    GEMINI_TEMPERATURE: float = Field(default=0.3, env="GEMINI_TEMPERATURE")
-    GEMINI_TOP_P: float = Field(default=0.85, env="GEMINI_TOP_P")
-    GEMINI_TOP_K: int = Field(default=10, env="GEMINI_TOP_K")
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=2048, env="GEMINI_MAX_OUTPUT_TOKENS")
+    GEMINI_TEMPERATURE: float = Field(default=0.5, env="GEMINI_TEMPERATURE")
+    GEMINI_TOP_P: float = Field(default=0.9, env="GEMINI_TOP_P")
+    GEMINI_TOP_K: int = Field(default=40, env="GEMINI_TOP_K")
 
     # Embedding Configuration
     EMBEDDING_DIMENSIONS: int = Field(default=768, env="EMBEDDING_DIMENSIONS")

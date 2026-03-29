@@ -16,26 +16,56 @@ from typing import Dict, Any, List, Optional, AsyncGenerator
 from datetime import datetime
 from loguru import logger
 
-# Vertex AI imports
-try:
-    from vertexai.generative_models import (
-        GenerativeModel,
-        ChatSession,
-        Content,
-        Part,
-        GenerationConfig,
-        HarmCategory,
-        HarmBlockThreshold,
-        Tool,
-        FunctionDeclaration,
-    )
-    import vertexai
-    VERTEX_AI_AVAILABLE = True
-except ImportError:
-    VERTEX_AI_AVAILABLE = False
-    logger.warning("⚠️ Vertex AI SDK not installed")
-
 from app.config import settings
+
+# ============================================================================
+# DUAL-BACKEND: Google AI Studio (API key) OR Vertex AI (service account)
+# Priority: GEMINI_API_KEY → Google AI Studio | else → Vertex AI
+# ============================================================================
+
+BACKEND = None  # 'google_ai' or 'vertex_ai'
+VERTEX_AI_AVAILABLE = False
+GOOGLE_AI_AVAILABLE = False
+
+# Try Google AI Studio first (simpler, API key based)
+if settings.GEMINI_API_KEY:
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        GOOGLE_AI_AVAILABLE = True
+        BACKEND = 'google_ai'
+        logger.info("✅ Google AI Studio SDK configured (API key)")
+
+        # Create compatibility aliases for Vertex AI types
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+        from google.generativeai.types import GenerationConfig
+        GenerativeModel = genai.GenerativeModel
+        FunctionDeclaration = genai.protos.FunctionDeclaration
+        Tool = genai.protos.Tool
+    except ImportError:
+        logger.warning("⚠️ google-generativeai SDK not installed, trying Vertex AI")
+
+# Fallback to Vertex AI
+if not GOOGLE_AI_AVAILABLE:
+    try:
+        from vertexai.generative_models import (
+            GenerativeModel,
+            ChatSession,
+            Content,
+            Part,
+            GenerationConfig,
+            HarmCategory,
+            HarmBlockThreshold,
+            Tool,
+            FunctionDeclaration,
+        )
+        import vertexai
+        VERTEX_AI_AVAILABLE = True
+        BACKEND = 'vertex_ai'
+        logger.info("✅ Vertex AI SDK available")
+    except ImportError:
+        VERTEX_AI_AVAILABLE = False
+        logger.warning("⚠️ No Gemini SDK available (neither google-generativeai nor vertexai)")
 
 
 class GeminiService:
@@ -414,22 +444,27 @@ Principles: concise, each data point on its own line, total in bold, end with su
     }
 
     def __init__(self):
-        """Initialize Gemini service with Vertex AI"""
-        if not VERTEX_AI_AVAILABLE:
-            logger.error("❌ Vertex AI SDK not available - Gemini disabled")
-            self.enabled = False
+        """Initialize Gemini service — dual-backend (Google AI Studio or Vertex AI)"""
+        self.backend = BACKEND
+        self.enabled = False
+
+        if not BACKEND:
+            logger.error("❌ No Gemini SDK available - AI disabled")
             return
 
         try:
-            # Initialize Vertex AI
-            vertexai.init(
-                project=settings.GOOGLE_CLOUD_PROJECT,
-                location=settings.GOOGLE_CLOUD_LOCATION
-            )
-
-            # Initialize models
-            self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
-            self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
+            if self.backend == 'google_ai':
+                # Google AI Studio — already configured via genai.configure() above
+                self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
+                self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
+            else:
+                # Vertex AI — needs project init
+                vertexai.init(
+                    project=settings.GOOGLE_CLOUD_PROJECT,
+                    location=settings.GOOGLE_CLOUD_LOCATION
+                )
+                self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
+                self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
 
             # Generation configuration
             self.generation_config = GenerationConfig(
@@ -439,7 +474,7 @@ Principles: concise, each data point on its own line, total in bold, end with su
                 max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
             )
 
-            # Safety settings (important for government service!)
+            # Safety settings
             self.safety_settings = {
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                 HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -449,9 +484,9 @@ Principles: concise, each data point on its own line, total in bold, end with su
 
             self.enabled = True
             logger.info(
-                f"✅ Gemini service initialized "
-                f"(chat: {settings.GEMINI_CHAT_MODEL}, "
-                f"pro: {settings.GEMINI_PRO_MODEL})"
+                f"✅ Gemini service initialized via {self.backend} "
+                f"(model: {settings.GEMINI_CHAT_MODEL}, "
+                f"temp: {settings.GEMINI_TEMPERATURE})"
             )
 
         except Exception as e:
@@ -507,38 +542,95 @@ Principles: concise, each data point on its own line, total in bold, end with su
             # The consolidated context (including system instructions) is passed directly
             # from chatbot_service_rag.py. We wrap the user message to clarify its role.
             
-            # Few-shot examples — teach Gemini the expected tutorial-style format
+            # Few-shot examples — 4 gold-standard Q&A pairs showing ideal responses
             few_shot_section = """
-EJEMPLO DE BUENA RESPUESTA (formato tutoriel):
+=== EJEMPLOS DE RESPUESTAS IDEALES ===
+
+EJEMPLO 1 — Procedimiento (formato mixto: ficha + pasos + checklist):
 
 Pregunta: "¿Cómo obtener un pasaporte?"
-Respuesta correcta:
+Respuesta:
+### Pasaporte Biométrico — Primera Expedición
 
-### Pasaporte — Primera Expedición
+▸ **Costo:** **7.500 XAF**
+▸ **Plazo:** 15 días hábiles
+▸ **Entidad:** CNEDOGE (Malabo o Bata)
 
-Obtener un pasaporte en Guinea Ecuatorial es un trámite que se realiza a través de la plataforma Facil.
+**Documentos necesarios:**
+- ✓ Documento Nacional de Identidad (DIP) — original y copia
+- ✓ 4 fotografías tamaño pasaporte — fondo blanco
+- ✓ Certificado de nacimiento — original
 
-**Costo:** **7,500 XAF**
+**Procedimiento paso a paso:**
+1. **Accede a Facil** → Crea tu cuenta en la plataforma
+2. **Selecciona "Pasaporte"** → Busca en el catálogo de servicios
+3. **Sube tus documentos** → Escanea y adjunta los 3 documentos
+4. **Reserva tu cita** → Elige fecha y hora (mínimo 3 días)
+5. **Paga** → **7.500 XAF** por BANGE, tarjeta o ventanilla
+6. **Acude a tu cita** → Lleva los originales para la toma biométrica
+7. **Recoge tu pasaporte** → Te notificaremos cuando esté listo
 
-**Documentos que necesitas:**
-- ▸ Documento Nacional de Identidad (DIP) — original y copia
-- ▸ 4 fotografías tamaño pasaporte — fondo blanco
-- ▸ Certificado de nacimiento — original
+> **Nota:** También puede tramitarlo en cnedoge.gq, pero **Facil** ofrece asistencia IA y seguimiento en tiempo real.
 
-**Cómo hacerlo paso a paso:**
-1. **Accede a Facil** → Entra en la plataforma y crea tu cuenta
-2. **Selecciona "Pasaporte"** → Busca el servicio en el catálogo
-3. **Prepara tus documentos** → Escanea o fotografía los 3 documentos de la lista
-4. **Sube los documentos** → Adjunta los archivos uno por uno en la plataforma
-5. **Reserva tu cita** → Elige fecha y hora disponibles (mínimo 3 días)
-6. **Paga el servicio** → **7,500 XAF** por BANGE, tarjeta o en ventanilla
-7. **Acude a tu cita** → Lleva los documentos originales para la toma biométrica
-8. **Recoge tu pasaporte** → Te notificaremos cuando esté listo
+¿Quieres iniciar este trámite en Facil o conocer los horarios de las oficinas?
 
-**Tiempo total:** 15 días hábiles aproximadamente
-**Entidad:** CNEDOGE (Malabo o Bata)
+---
 
-¿Necesitas saber las direcciones de las oficinas o los horarios de atención?
+EJEMPLO 2 — Precios (formato tabla comparativa):
+
+Pregunta: "¿Cuánto cuesta abrir un restaurante?"
+Respuesta:
+### Apertura de Restaurante — Paquete Fiscal
+
+El costo de apertura depende de la **zona geográfica**. Aquí el desglose para las principales zonas:
+
+| Zona | Código | Total |
+|------|--------|-------|
+| Capitales de Regiones (Malabo, Bata) | A1 | **855.350 XAF** |
+| Capitales de Provincias | B1 | **322.000 XAF** |
+| Capitales Distritales | C1 | **212.000 XAF** |
+| Consejos de Poblados | D1 | **174.000 XAF** |
+
+El paquete incluye: CMF, Cuota Anual, Ficha Comercial, Certificado de Comercio, Licencia de Turismo y Cuota Cámara de Comercio.
+
+¿En qué ciudad desea abrir? Puedo darle el desglose detallado.
+
+---
+
+EJEMPLO 3 — Documentos (formato checklist):
+
+Pregunta: "¿Qué documentos necesito para la residencia?"
+Respuesta:
+### Permiso de Residencia — Documentos Requeridos
+
+- ✓ Pasaporte vigente — con mínimo 6 meses de validez
+- ✓ Visado de entrada — original y copia
+- ✓ Certificado médico — expedido en Guinea Ecuatorial
+- ✓ Certificado de antecedentes penales — del país de origen (apostillado)
+- ✓ Justificante de medios económicos — contrato laboral o extracto bancario
+- ✓ 4 fotografías tamaño carné — fondo blanco
+- ✓ Formulario de solicitud — disponible en Facil
+
+> **Importante:** Todos los documentos en idioma extranjero deben estar traducidos al español por un traductor jurado.
+
+¿Desea iniciar la solicitud en Facil o conocer el costo del trámite?
+
+---
+
+EJEMPLO 4 — Información general (formato explicativo):
+
+Pregunta: "¿Qué es Facil?"
+Respuesta:
+**Facil** es la plataforma digital de trámites administrativos de Guinea Ecuatorial. Permite realizar más de 850 servicios fiscales en línea con:
+
+▸ **Asistencia IA** — Un asistente inteligente te guía durante todo el proceso
+▸ **Pago integrado** — BANGE Mobile Money, tarjeta o efectivo
+▸ **Seguimiento en tiempo real** — Consulta el estado de tu solicitud 24/7
+▸ **Multilingüe** — Disponible en español, francés e inglés
+
+Facil simplifica los trámites que antes requerían múltiples visitas a oficinas gubernamentales.
+
+¿Sobre qué servicio te gustaría obtener información?
 """
 
             # Build conversation contents for multi-turn chat
@@ -582,19 +674,26 @@ Obtener un pasaporte en Guinea Ecuatorial es un trámite que se realiza a travé
                 "safety_settings": self.safety_settings,
             }
             if function_declarations:
-                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
+                if self.backend == 'google_ai':
+                    generate_kwargs["tools"] = function_declarations
+                else:
+                    generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
                 # Force tool use when RAG context is empty/insufficient
                 if force_tools:
                     try:
-                        from vertexai.preview.generative_models import ToolConfig
-                        generate_kwargs["tool_config"] = ToolConfig(
-                            function_calling_config=ToolConfig.FunctionCallingConfig(
-                                mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
+                        if self.backend == 'google_ai':
+                            # Google AI Studio: tool_config via dict
+                            generate_kwargs["tool_config"] = {"function_calling_config": {"mode": "ANY"}}
+                        else:
+                            from vertexai.preview.generative_models import ToolConfig
+                            generate_kwargs["tool_config"] = ToolConfig(
+                                function_calling_config=ToolConfig.FunctionCallingConfig(
+                                    mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
+                                )
                             )
-                        )
-                        logger.info("ToolConfig mode=ANY: forcing tool use")
-                    except ImportError:
-                        logger.debug("ToolConfig not available, using default AUTO mode")
+                        logger.info("Forcing tool use (mode=ANY)")
+                    except (ImportError, Exception) as e:
+                        logger.debug(f"ToolConfig not available: {e}")
 
             # Generate response
             loop = asyncio.get_event_loop()
@@ -725,7 +824,10 @@ Obtener un pasaporte en Guinea Ecuatorial es un trámite que se realiza a travé
                 "safety_settings": self.safety_settings,
             }
             if function_declarations:
-                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
+                if self.backend == 'google_ai':
+                    generate_kwargs["tools"] = function_declarations
+                else:
+                    generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
 
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(

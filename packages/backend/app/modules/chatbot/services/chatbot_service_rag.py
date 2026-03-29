@@ -31,7 +31,7 @@ from app.modules.chatbot.repositories.semantic_search_repository import Semantic
 from app.modules.chatbot.repositories.legislacion_repository import LegislacionRepository
 from app.config import settings
 
-MAX_TOOL_ROUNDS = 2
+MAX_TOOL_ROUNDS = 4  # Allow multi-step reasoning (compare, calculate across zones)
 CACHE_TTL_SECONDS = 3600  # 1 hour cache for common queries
 
 

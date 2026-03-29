@@ -24,11 +24,23 @@ IMPORTANT: All functions accept (db, **kwargs) pattern.
 from typing import Any, Dict, List
 from loguru import logger
 
-try:
-    from vertexai.generative_models import FunctionDeclaration
-    VERTEX_AVAILABLE = True
-except ImportError:
-    VERTEX_AVAILABLE = False
+from app.config import settings as _settings
+
+# Import FunctionDeclaration from the active Gemini backend
+VERTEX_AVAILABLE = False
+if _settings.GEMINI_API_KEY:
+    try:
+        from google.generativeai.types import FunctionDeclaration
+        VERTEX_AVAILABLE = True
+    except ImportError:
+        pass
+
+if not VERTEX_AVAILABLE:
+    try:
+        from vertexai.generative_models import FunctionDeclaration
+        VERTEX_AVAILABLE = True
+    except ImportError:
+        pass
 
 
 # ============================================================================
