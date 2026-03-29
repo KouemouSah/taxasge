@@ -160,9 +160,10 @@ jobs:
             --set-env-vars="GOOGLE_CLOUD_LOCATION=${{ env.REGION }}" \
             --set-env-vars="FIREBASE_PROJECT_ID=${{ env.PROJECT_ID }}" \
             --set-env-vars="FIREBASE_STORAGE_BUCKET=${{ env.PROJECT_ID }}.firebasestorage.app" \
-            --set-env-vars="GEMINI_CHAT_MODEL=gemini-2.0-flash" \
-            --set-env-vars="GEMINI_PRO_MODEL=gemini-2.0-flash" \
-            --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-004" \
+            --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+            --set-env-vars="GEMINI_CHAT_MODEL=${{ secrets.GEMINI_CHAT_MODEL }}" \
+            --set-env-vars="GEMINI_PRO_MODEL=${{ secrets.GEMINI_CHAT_MODEL }}" \
+            --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-005" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
             --min-instances=0 \
             --max-instances=10 \
