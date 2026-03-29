@@ -144,6 +144,9 @@ class ChatbotServiceRAG:
                 f"entities={processed.entities}, hints={processed.detected_intent_hints}"
             )
 
+            # Step 0b: Load user profile for personalization
+            user_profile_context = await self._load_user_profile(db, user_id)
+
             # Step 1: Generate embedding (with cache) + classify intent IN PARALLEL
             embedding_task = self._get_or_create_embedding(processed.expanded)
             intent_task = gemini_service.classify_intent(processed.expanded, language)
@@ -223,9 +226,26 @@ class ChatbotServiceRAG:
             consolidated_context, context_sources = self._consolidate_context(
                 relevant_docs, relevant_services, bundle_context
             )
-            # Prepend intent to context so Gemini knows the classification
+            # Prepend intent + auth status + user profile to context
+            is_authenticated = bool(user_id)
+            prefix_parts = []
             if intent != 'search':
-                consolidated_context = f"=== INTENCIÓN DETECTADA: {intent} (confianza: {intent_confidence:.0%}) ===\n{consolidated_context}"
+                prefix_parts.append(f"=== INTENCIÓN DETECTADA: {intent} (confianza: {intent_confidence:.0%}) ===")
+            # Auth context — tells the LLM what the user can/cannot do
+            if is_authenticated:
+                prefix_parts.append("=== USUARIO AUTENTICADO === Puede: iniciar trámites, ver estado de solicitudes, historial personalizado.")
+            else:
+                prefix_parts.append(
+                    "=== USUARIO NO AUTENTICADO (público) === "
+                    "NO puede: consultar estado de solicitudes, acceder a datos personales. "
+                    "Si pregunta por el estado de una solicitud o datos personales, responde: "
+                    "'Para consultar el estado de su solicitud, necesita iniciar sesión en la plataforma Facil.' "
+                    "El botón 'Iniciar en Facil' redirigirá al usuario a la página de connexión."
+                )
+            if user_profile_context:
+                prefix_parts.append(user_profile_context)
+            if prefix_parts:
+                consolidated_context = "\n".join(prefix_parts) + "\n" + consolidated_context
 
             # --- Fallback Logic (Suggestion 2 & 6 Implementation) ---
             message_to_llm = message # The message to send to LLM, might be refined by fallback
@@ -315,6 +335,27 @@ class ChatbotServiceRAG:
             if should_force_tools:
                 logger.info(f"Forcing tools: intent={intent}, rag_empty={rag_is_empty}, structured={is_structured_query}")
 
+            # Smart Thinking Budget: adjust reasoning depth by query complexity
+            # Simple (greetings, basic info) → 0 (no thinking, fast)
+            # Medium (price, procedure, documents) → 1024 (light reasoning)
+            # Complex (comparisons, multi-zone calculations) → 8192 (deep reasoning)
+            complexity_signals = sum([
+                len(processed.entities) >= 2,           # multiple entities = complex
+                intent == 'calculate',                   # price calculation
+                'compar' in message.lower(),             # comparison
+                'diferencia' in message.lower() or 'différence' in message.lower(),
+                len(message) > 150,                      # long query = complex
+                bool(conversation_history and len(conversation_history) > 4),  # deep conversation
+            ])
+            if intent in ('status', 'general') and len(message) < 30:
+                thinking_budget = 0  # Simple: no thinking needed
+            elif complexity_signals >= 2:
+                thinking_budget = 8192  # Complex: deep reasoning
+            else:
+                thinking_budget = 1024  # Medium: light reasoning
+
+            logger.info(f"Thinking budget: {thinking_budget} (complexity_signals={complexity_signals})")
+
             ai_response = await gemini_service.chat(
                 user_message=message,
                 context_content=consolidated_context,
@@ -323,6 +364,7 @@ class ChatbotServiceRAG:
                 conversation_history=conversation_history,
                 function_declarations=func_decls,
                 force_tools=should_force_tools,
+                thinking_budget=thinking_budget,
             )
 
             # Step 4b: Multi-round tool execution if Gemini requested function calls
@@ -505,16 +547,43 @@ class ChatbotServiceRAG:
                         )
                         logger.info(f"Retry quality: {quality_score:.2f}")
 
+            # Step 5b: Self-Reflection Loop — LLM evaluates its own response
+            reflection_score = await self._self_reflect(
+                message, response_message, language
+            )
+            if reflection_score is not None and reflection_score < 5 and not tools_used:
+                logger.info(f"Self-reflection score {reflection_score}/10 < 5, regenerating with enriched context")
+                retry = await gemini_service.chat(
+                    user_message=(
+                        f"Tu as répondu à cette question: \"{message}\"\n"
+                        f"Ta réponse précédente a été évaluée {reflection_score}/10.\n"
+                        f"Améliore ta réponse en étant plus complet, précis et structuré.\n"
+                        f"Contexte disponible:\n{consolidated_context}"
+                    ),
+                    context_content=consolidated_context,
+                    context_services=relevant_services,
+                    language=language,
+                    function_declarations=func_decls,
+                )
+                retry_msg = retry.get("message", "")
+                if retry_msg and len(retry_msg) > len(response_message) * 0.5:
+                    response_message = retry_msg
+                    logger.info("Self-reflection: regenerated response accepted")
+
             # Step 6: Build structured response
             response_time = (datetime.now() - start_time).total_seconds()
             confidence = max(ai_response.get("confidence", 0.5), quality_score)
             logger.info(f"Response quality: {quality_score:.2f}, confidence: {confidence:.2f}")
 
-            # Persist conversation (non-blocking, non-fatal)
+            # Persist conversation + update user preferences (non-blocking, non-fatal)
             if db:
                 await self._save_conversation(
                     db, conversation_id, message, response_message,
                     user_id=user_id, language=language,
+                )
+                await self._update_user_preferences(
+                    db, user_id, language,
+                    processed.entities if processed else {},
                 )
 
             final_response = {
@@ -1757,6 +1826,131 @@ Keep it helpful and concise."""
             score -= 0.1
 
         return max(0.0, min(1.0, score))
+
+    # ========================================================================
+    # USER MEMORY — Personalization
+    # ========================================================================
+
+    async def _load_user_profile(self, db: asyncpg.Connection, user_id: Optional[str]) -> Optional[str]:
+        """Load user preferences and build a profile context string for the LLM."""
+        if not user_id:
+            return None
+        try:
+            prefs = await db.fetchrow(
+                "SELECT * FROM chatbot_user_preferences WHERE user_id = $1",
+                user_id
+            )
+            if not prefs:
+                return None
+
+            parts = ["=== PROFIL UTILISATEUR ==="]
+            if prefs["preferred_language"]:
+                parts.append(f"Langue préférée: {prefs['preferred_language']}")
+            if prefs["preferred_city"]:
+                parts.append(f"Ville: {prefs['preferred_city']} (zone {prefs.get('preferred_zone_code', '?')})")
+            if prefs["user_type"]:
+                type_labels = {
+                    "citizen": "Citoyen",
+                    "business_owner": "Entrepreneur / Chef d'entreprise",
+                    "accountant": "Comptable",
+                    "agent": "Agent gouvernemental",
+                }
+                parts.append(f"Profil: {type_labels.get(prefs['user_type'], prefs['user_type'])}")
+            if prefs["frequent_topics"]:
+                parts.append(f"Sujets fréquents: {', '.join(prefs['frequent_topics'][:5])}")
+            if prefs["total_conversations"]:
+                parts.append(f"Conversations précédentes: {prefs['total_conversations']}")
+
+            return "\n".join(parts) if len(parts) > 1 else None
+        except Exception as e:
+            logger.warning(f"User profile load failed (table may not exist yet): {e}")
+            return None
+
+    async def _update_user_preferences(
+        self,
+        db: asyncpg.Connection,
+        user_id: Optional[str],
+        language: str,
+        entities: Dict[str, str],
+    ):
+        """Update user preferences based on conversation context (non-blocking)."""
+        if not user_id:
+            return
+        try:
+            city = entities.get('city')
+            zone = entities.get('zone_code')
+            topic = entities.get('workflow_keyword') or entities.get('commerce_keyword')
+
+            await db.execute("""
+                INSERT INTO chatbot_user_preferences (user_id, preferred_language, preferred_city, preferred_zone_code, total_conversations, last_interaction_at)
+                VALUES ($1::uuid, $2, $3, $4, 1, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    preferred_language = COALESCE(EXCLUDED.preferred_language, chatbot_user_preferences.preferred_language),
+                    preferred_city = COALESCE(EXCLUDED.preferred_city, chatbot_user_preferences.preferred_city),
+                    preferred_zone_code = COALESCE(EXCLUDED.preferred_zone_code, chatbot_user_preferences.preferred_zone_code),
+                    total_conversations = chatbot_user_preferences.total_conversations + 1,
+                    last_interaction_at = NOW(),
+                    updated_at = NOW()
+            """, user_id, language, city, zone)
+
+            # Append topic to frequent_topics array (max 10, no duplicates)
+            if topic:
+                await db.execute("""
+                    UPDATE chatbot_user_preferences
+                    SET frequent_topics = (
+                        SELECT array_agg(t) FROM (
+                            SELECT DISTINCT t FROM unnest(
+                                array_append(COALESCE(frequent_topics, ARRAY[]::text[]), $2)
+                            ) t
+                            ORDER BY t
+                            LIMIT 10
+                        ) sub
+                    )
+                    WHERE user_id = $1
+                """, user_id, topic)
+
+        except Exception as e:
+            logger.debug(f"User preferences update failed: {e}")
+
+    # ========================================================================
+    # SELF-REFLECTION LOOP
+    # ========================================================================
+
+    async def _self_reflect(
+        self,
+        question: str,
+        response: str,
+        language: str,
+    ) -> Optional[int]:
+        """Ask the LLM to evaluate its own response. Returns score 1-10 or None on failure."""
+        if not response or len(response) < 50:
+            return None
+
+        eval_prompt = {
+            "es": f'Evalúa esta respuesta a la pregunta "{question[:100]}" en 3 criterios: exactitud, completitud, claridad. Responde SOLO con un número del 1 al 10. Nada más.\n\nRespuesta a evaluar:\n{response[:500]}',
+            "fr": f'Évalue cette réponse à la question "{question[:100]}" sur 3 critères : exactitude, complétude, clarté. Réponds UNIQUEMENT avec un nombre de 1 à 10. Rien d\'autre.\n\nRéponse à évaluer :\n{response[:500]}',
+            "en": f'Evaluate this response to "{question[:100]}" on 3 criteria: accuracy, completeness, clarity. Reply ONLY with a number from 1 to 10. Nothing else.\n\nResponse to evaluate:\n{response[:500]}',
+        }
+
+        try:
+            result = await gemini_service.chat(
+                user_message=eval_prompt.get(language, eval_prompt["es"]),
+                context_content="",
+                context_services=[],
+                language=language,
+            )
+            score_text = result.get("message", "").strip()
+            # Extract first number from response
+            match = re.search(r'\b(\d{1,2})\b', score_text)
+            if match:
+                score = int(match.group(1))
+                if 1 <= score <= 10:
+                    logger.info(f"Self-reflection score: {score}/10 for '{question[:40]}...'")
+                    return score
+        except Exception as e:
+            logger.debug(f"Self-reflection failed: {e}")
+
+        return None
 
     # ========================================================================
     # SECURITY: PROMPT INJECTION DETECTION

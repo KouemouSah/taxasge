@@ -42,6 +42,8 @@ if settings.GEMINI_API_KEY:
         GenerativeModel = genai.GenerativeModel
         FunctionDeclaration = genai.protos.FunctionDeclaration
         Tool = genai.protos.Tool
+        Content = genai.protos.Content
+        Part = genai.protos.Part
     except ImportError:
         logger.warning("⚠️ google-generativeai SDK not installed, trying Vertex AI")
 
@@ -135,6 +137,23 @@ Herramientas clave según la intención:
 - Usuario pregunta **CÓMO HACER** un trámite → `get_workflow_guide` (guía tutorial completa)
 - Usuario busca **EMPRESAS** → `search_companies`
 - Usuario pregunta **DÓNDE/HORARIOS** → `get_office_locations`
+
+## CONTEXTO USUARIO (autenticado vs público)
+
+El contexto te indicará si el usuario está autenticado o no. Adapta tu comportamiento:
+
+**USUARIO AUTENTICADO:**
+- Puede iniciar trámites directamente (el botón "Iniciar en Facil" lo lleva al wizard)
+- Puede consultar el estado de sus solicitudes
+- Tiene historial y preferencias personalizadas
+- Salúdalo con familiaridad si tiene un perfil
+
+**USUARIO NO AUTENTICADO (público):**
+- Puede consultar información general (precios, documentos, procedimientos, oficinas)
+- NO puede consultar el estado de solicitudes ni datos personales
+- Si pregunta "¿cuál es el estado de mi solicitud?" → Responde: "Para consultar el estado de su solicitud, necesita iniciar sesión en Facil."
+- El botón "Iniciar en Facil" lo redirigirá automáticamente a la página de conexión
+- Anímalo a crear una cuenta para beneficiarse de la asistencia personalizada
 
 ## LÓGICA DE PRECIOS (CRÍTICO)
 
@@ -302,6 +321,14 @@ Vous êtes un AGENT avec des outils. RÈGLE ABSOLUE :
 - Contexte RAG insuffisant → UTILISEZ l'outil approprié IMMÉDIATEMENT
 - Question vague → interprétez l'intention et cherchez
 
+## CONTEXTE UTILISATEUR (authentifié vs public)
+
+Le contexte vous indiquera si l'utilisateur est authentifié ou non. Adaptez votre comportement :
+
+**UTILISATEUR AUTHENTIFIÉ :** Peut initier des démarches, consulter le statut de ses demandes, bénéficie de l'historique personnalisé.
+
+**UTILISATEUR NON AUTHENTIFIÉ (public) :** Peut consulter les informations générales (prix, documents, procédures). NE PEUT PAS consulter le statut de demandes ni accéder aux données personnelles. Si il demande le statut → "Pour consulter le statut de votre demande, vous devez vous connecter sur Facil." Le bouton "Démarrer sur Facil" le redirigera vers la page de connexion.
+
 ## LOGIQUE DE PRIX (CRITIQUE)
 
 Les services de GE utilisent des PAQUETS FISCAUX (bundles) par type de commerce, avec prix variant par ZONE :
@@ -391,6 +418,14 @@ You are an AGENT with tools. ABSOLUTE RULE:
 - NEVER say "I don't have information" when you have tools available
 - Insufficient RAG context → USE the appropriate tool IMMEDIATELY
 - Vague question → interpret the most likely intent and search
+
+## USER CONTEXT (authenticated vs public)
+
+Context will indicate if the user is authenticated or not. Adapt accordingly:
+
+**AUTHENTICATED USER:** Can start procedures, check request status, has personalized history.
+
+**PUBLIC USER (not authenticated):** Can browse general info (prices, documents, procedures). CANNOT check request status or access personal data. If they ask about status → "To check your request status, you need to sign in on Facil." The "Start on Facil" button will redirect them to the login page.
 
 ## PRICING LOGIC (CRITICAL)
 
@@ -504,6 +539,7 @@ Principles: concise, each data point on its own line, total in bold, end with su
         conversation_history: Optional[List[Dict[str, str]]] = None,
         function_declarations: Optional[list] = None,
         force_tools: bool = False,
+        thinking_budget: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Generate chat response with RAG context
@@ -673,6 +709,28 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                 "generation_config": self.generation_config,
                 "safety_settings": self.safety_settings,
             }
+
+            # Thinking budget: passed directly to generate_content (not inside GenerationConfig)
+            if thinking_budget is not None:
+                try:
+                    if self.backend == 'google_ai':
+                        # Google AI Studio: thinking_config as top-level kwarg
+                        generate_kwargs["generation_config"] = GenerationConfig(
+                            temperature=settings.GEMINI_TEMPERATURE,
+                            top_p=settings.GEMINI_TOP_P,
+                            top_k=settings.GEMINI_TOP_K,
+                            max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
+                            thinking_config={"type": "enabled", "budget_tokens": thinking_budget},
+                        )
+                    else:
+                        # Vertex AI: ThinkingConfig separate object
+                        from vertexai.generative_models import ThinkingConfig
+                        generate_kwargs["thinking_config"] = ThinkingConfig(
+                            thinking_budget=thinking_budget
+                        )
+                    logger.info(f"Thinking budget: {thinking_budget} tokens")
+                except (ImportError, TypeError) as e:
+                    logger.warning(f"Thinking config not supported by this SDK/model: {e}")
             if function_declarations:
                 if self.backend == 'google_ai':
                     generate_kwargs["tools"] = function_declarations
