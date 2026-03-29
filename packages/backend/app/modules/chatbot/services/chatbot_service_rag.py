@@ -12,12 +12,13 @@ Date: 2025-01-22
 
 from typing import Dict, Any, List, Optional, AsyncGenerator
 from loguru import logger
+import asyncio
+import hashlib
 import json
+import re
 import uuid
 import asyncpg
 from datetime import datetime
-
-import hashlib
 
 from app.modules.chatbot.services.embedding_service import embedding_service
 from app.modules.chatbot.services.gemini_service import gemini_service
@@ -88,7 +89,6 @@ class ChatbotServiceRAG:
         """
         start_time = datetime.now()
         conversation_id = context.get("conversation_id") or str(uuid.uuid4())
-        user_id = context.get("user_id")
 
         # Fallback if AI disabled
         if not self.enabled or not db:
@@ -144,7 +144,6 @@ class ChatbotServiceRAG:
             )
 
             # Step 1: Generate embedding (with cache) + classify intent IN PARALLEL
-            import asyncio
             embedding_task = self._get_or_create_embedding(processed.expanded)
             intent_task = gemini_service.classify_intent(processed.expanded, language)
 
@@ -214,10 +213,9 @@ class ChatbotServiceRAG:
                 [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
             )[:settings.RAG_MAX_CONTEXT_SERVICES]
 
-            # Step 2c: Bundle enrichment (force for calculate intent)
+            # Step 2c: Bundle enrichment (only for price/commerce queries)
+            bundle_context = None
             if intent == 'calculate' or processed.entities.get('commerce_type'):
-                bundle_context = await self._enrich_with_bundles(db, message)
-            else:
                 bundle_context = await self._enrich_with_bundles(db, message)
 
             # Step 3: Consolidate context with intent hint
@@ -1751,7 +1749,7 @@ Keep it helpful and concise."""
 
     async def _get_or_create_embedding(self, query: str) -> Optional[List[float]]:
         """Get embedding from cache or generate fresh one. 24h TTL."""
-        import hashlib
+        from app.core.cache import get_cache
         cache = get_cache()
         cache_key = f"emb:query:{hashlib.md5(query.lower().strip().encode()).hexdigest()}"
 

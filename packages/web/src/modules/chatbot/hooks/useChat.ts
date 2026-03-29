@@ -478,6 +478,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   useEffect(() => {
     return () => {
       stopStreaming()
+      // Clean up status timers to prevent state updates on unmounted component
+      statusTimersRef.current.forEach(clearTimeout)
+      statusTimersRef.current = []
     }
   }, [stopStreaming])
 

@@ -19,7 +19,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import DOMPurify from 'dompurify'
+import createDOMPurify from 'dompurify'
 import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
@@ -30,6 +30,8 @@ import type { ChatMessage } from '../types'
  * Whitelists only safe tags/attributes for chatbot markdown rendering.
  */
 const sanitizeHtml = (html: string): string => {
+  if (typeof window === 'undefined') return html // SSR: skip sanitization (rendered client-side)
+  const DOMPurify = createDOMPurify(window)
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'strong', 'em', 'li', 'ul', 'ol', 'code', 'pre',
@@ -37,7 +39,7 @@ const sanitizeHtml = (html: string): string => {
       'a', 'h3', 'h4', 'h5', 'blockquote', 'hr', 'br', 'p',
       'span', 'div',
     ],
-    ALLOWED_ATTR: ['class', 'href', 'target', 'rel', 'style'],
+    ALLOWED_ATTR: ['class', 'href', 'target', 'rel'],
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
   })
@@ -119,8 +121,8 @@ const renderMarkdown = (text: string): string => {
   // Checkmark lines ✓ item → checklist style
   html = html.replace(/^[✓✔]\s+(.+)$/gm, '<li class="ml-4 py-0 list-none flex items-start gap-1.5"><span class="text-green-600 dark:text-green-400 mt-0.5 shrink-0">✓</span><span>$1</span></li>')
 
-  // Auto-detect price/item lines: "ConceptName: 123.456 XAF" without bullet prefix
-  html = html.replace(/^([A-ZÁÉÍÓÚÑ][^:\n]{2,60}):\s*([\d.]+(?:\s*XAF)?)\s*$/gm, '- **$1**: $2')
+  // Auto-detect price lines: "ConceptName: 123.456 XAF" (requires XAF or 3+ digit number with dots)
+  html = html.replace(/^([A-ZÁÉÍÓÚÑ][^:\n]{2,60}):\s*([\d.]+\s*XAF)\s*$/gm, '- **$1**: $2')
 
   // Remove extra blank lines between list items
   html = html.replace(/^(- .+)\n{2,4}(?=- )/gm, '$1\n')
@@ -261,7 +263,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {/* Action Buttons — inline CTAs from tool results */}
           {isBot && message.actions && message.actions.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-stone-200/50 dark:border-stone-700/50">
-              {message.actions.map((action: { type: string; label: string; url?: string }, i: number) => (
+              {message.actions
+                .filter((a: { url?: string }) => !a.url || a.url.startsWith('/'))
+                .map((action: { type: string; label: string; url?: string }, i: number) => (
                 <a
                   key={i}
                   href={action.url || '#'}

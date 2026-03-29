@@ -743,7 +743,7 @@ async def start_workflow(db, **kwargs) -> dict:
         "workflow_code": code,
         "wizard_url": f"/dashboard/service-requests/new?workflow={code}",
         "description": wf["description_es"],
-        "estimated_cost_xaf": float(tariff["amount"]) if tariff else None,
+        "estimated_cost_xaf": float(tariff["amount"]) if tariff and tariff["amount"] is not None else None,
         "estimated_time_days": wf["max_processing_days"],
         "requires_appointment": wf["requires_appointment"],
         "sub_types": [
