@@ -158,33 +158,37 @@ async def get_service_details(db, **kwargs) -> dict:
         for d in docs
     ]
 
-    # Get procedures with steps
-    procs = await db.fetch("""
-        SELECT pt.id, pt.template_code, pt.name_es, pt.description_es
+    # Get procedures with steps (single query, no N+1)
+    procs_with_steps = await db.fetch("""
+        SELECT pt.id as proc_id, pt.name_es as proc_name, pt.description_es as proc_desc,
+               pts.step_number, pts.description_es as step_desc,
+               pts.instructions_es as step_instructions,
+               pts.estimated_duration_minutes
         FROM service_procedure_assignments spa
         JOIN procedure_templates pt ON pt.id = spa.procedure_template_id
+        LEFT JOIN procedure_template_steps pts ON pts.template_id = pt.id
         WHERE spa.fiscal_service_id = $1
-        ORDER BY spa.display_order
+        ORDER BY spa.display_order, pts.step_number
     """, service_id)
 
-    procedures = []
-    for proc in procs:
-        steps = await db.fetch("""
-            SELECT step_number, description_es, instructions_es,
-                   estimated_duration_minutes
-            FROM procedure_template_steps
-            WHERE template_id = $1
-            ORDER BY step_number
-        """, proc["id"])
-        procedures.append({
-            "name": proc["name_es"],
-            "description": proc["description_es"],
-            "steps": [
-                {k: str(v) if v is not None else None for k, v in dict(s).items()}
-                for s in steps
-            ],
-        })
-    result["procedures"] = procedures
+    # Group steps by procedure
+    procedures_map: dict = {}
+    for row in procs_with_steps:
+        pid = row["proc_id"]
+        if pid not in procedures_map:
+            procedures_map[pid] = {
+                "name": row["proc_name"],
+                "description": row["proc_desc"],
+                "steps": [],
+            }
+        if row["step_number"] is not None:
+            procedures_map[pid]["steps"].append({
+                "step_number": str(row["step_number"]),
+                "description_es": row["step_desc"],
+                "instructions_es": row["step_instructions"],
+                "estimated_duration_minutes": str(row["estimated_duration_minutes"]) if row["estimated_duration_minutes"] else None,
+            })
+    result["procedures"] = list(procedures_map.values())
 
     return result
 
@@ -505,8 +509,8 @@ async def get_workflow_guide(db, **kwargs) -> dict:
         )
         step_num += 1
 
-    tariff_amount = tariffs[0]["amount"] if tariffs else "0"
-    tariff_currency = tariffs[0]["currency"] if tariffs else "XAF"
+    tariff_amount = tariffs[0]["amount"] if tariffs and tariffs[0]["amount"] is not None else "0"
+    tariff_currency = tariffs[0]["currency"] if tariffs and tariffs[0]["currency"] is not None else "XAF"
     tutorial.append(
         f"{step_num}. **Realiza el pago** → Paga **{tariff_amount} {tariff_currency}** "
         f"por BANGE Mobile Money, tarjeta, transferencia o efectivo en ventanilla"
@@ -581,16 +585,41 @@ async def get_service_categories(db, **kwargs) -> dict:
 
 
 async def get_platform_info(db, **kwargs) -> dict:
-    """Get general information about the Facil platform."""
+    """Get general information about the Facil platform with live stats."""
     topic = kwargs.get("topic", "about")
+
+    # Fetch live stats for "about" topic
+    live_stats = {}
+    if topic == "about":
+        try:
+            stats = await db.fetchrow("""
+                SELECT
+                    (SELECT COUNT(*) FROM fiscal_services WHERE status = 'active') as total_services,
+                    (SELECT COUNT(*) FROM workflows WHERE is_active = true) as total_workflows,
+                    (SELECT COUNT(*) FROM companies WHERE is_verified = true) as total_companies,
+                    (SELECT COUNT(*) FROM ministries) as total_ministries
+            """)
+            if stats:
+                live_stats = {
+                    "total_services": stats["total_services"],
+                    "total_workflows": stats["total_workflows"],
+                    "total_companies": stats["total_companies"],
+                    "total_ministries": stats["total_ministries"],
+                }
+        except Exception:
+            pass
 
     info = {
         "about": {
             "name": "Facil (TaxasGE)",
-            "description": "Plataforma oficial de servicios fiscales y administrativos de Guinea Ecuatorial. Facilita los trámites gubernamentales para ciudadanos y empresas.",
-            "services": "Más de 850 servicios fiscales disponibles en línea",
+            "description": "Plataforma digital inteligente de trámites fiscales y administrativos de Guinea Ecuatorial. Ofrece asistencia IA, pago integrado y seguimiento en tiempo real.",
+            "services": f"{live_stats.get('total_services', '850+')} servicios fiscales disponibles",
+            "workflows": f"{live_stats.get('total_workflows', '15+')} trámites administrativos automatizados",
+            "companies": f"{live_stats.get('total_companies', '100+')} empresas registradas",
+            "ministries": f"{live_stats.get('total_ministries', '20+')} ministerios",
             "languages": "Español (principal), Francés, Inglés",
             "coverage": "Todo el territorio de Guinea Ecuatorial (Región Insular y Continental)",
+            "key_features": "Asistencia IA, pago integrado (BANGE, tarjeta, efectivo), seguimiento en tiempo real, verificación automática de documentos",
         },
         "hours": {
             "online_platform": "Disponible 24/7",

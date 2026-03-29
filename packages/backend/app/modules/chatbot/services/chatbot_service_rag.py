@@ -16,6 +16,7 @@ import asyncio
 import hashlib
 import json
 import re
+import unicodedata
 import uuid
 import asyncpg
 from datetime import datetime
@@ -610,8 +611,12 @@ class ChatbotServiceRAG:
                 [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
             )[:settings.RAG_MAX_CONTEXT_SERVICES]
             
-            # Enrich with bundle pricing data
-            bundle_context = await self._enrich_with_bundles(db, message)
+            # Enrich with bundle pricing data (only for commerce/pricing queries)
+            bundle_context = None
+            if processed.entities.get('commerce_type') or any(
+                kw in processed.normalized for kw in ['precio', 'prix', 'price', 'cuesta', 'coûte', 'cost']
+            ):
+                bundle_context = await self._enrich_with_bundles(db, message)
 
             consolidated_context, context_sources = self._consolidate_context(
                 relevant_docs, relevant_services, bundle_context
@@ -659,15 +664,57 @@ class ChatbotServiceRAG:
                 yield {"type": "done", "sources": [], "confidence": 0.1, "model": "gemini-rag-fallback", "suggestions": did_you_mean_suggestions}
                 return # Exit early if fallback is used
 
-            # Stream AI response
+            # Status: generating
+            yield {"type": "status", "step": "generating", "text": self._status_text("generating", language)}
+
+            # Pre-stream: execute tools if context is insufficient (non-streaming tool call)
+            func_decls = CHATBOT_FUNC_DECLS if CHATBOT_FUNC_DECLS else None
+            rag_is_empty = not relevant_docs and not relevant_services
+            if rag_is_empty and func_decls:
+                logger.info("Stream: RAG empty, executing tools before streaming")
+                tool_response = await gemini_service.chat(
+                    user_message=message,
+                    context_content=consolidated_context,
+                    context_services=relevant_services,
+                    language=language,
+                    function_declarations=func_decls,
+                    force_tools=True,
+                )
+                # Execute tools if Gemini requested them
+                if tool_response.get("function_calls"):
+                    tool_results = []
+                    for fc in tool_response["function_calls"]:
+                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        if fn_impl:
+                            try:
+                                result = await fn_impl(db, **fc.get("args", {}))
+                                tool_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": result})
+                            except Exception as e:
+                                tool_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": {"error": str(e)}})
+                    if tool_results:
+                        final = await gemini_service.chat_round2(
+                            round1_response=tool_response["round1_response"],
+                            chat_history=tool_response["chat_history"],
+                            function_results_data=tool_results,
+                            context_services=relevant_services,
+                            function_declarations=func_decls,
+                        )
+                        # Yield the tool-enriched response as stream chunks
+                        response_text = final.get("message", "")
+                        if response_text:
+                            yield {"type": "chunk", "text": response_text}
+                            yield {"type": "done", "sources": context_sources}
+                            return
+
+            # Stream AI response (standard path)
             async for chunk in gemini_service.chat_stream(
                 user_message=message,
-                context_content=consolidated_context, # New parameter
-                context_services=relevant_services, # Keep for compatibility/future
+                context_content=consolidated_context,
+                context_services=relevant_services,
                 language=language
             ):
                 if chunk.get("type") == "done":
-                    chunk["sources"] = context_sources # Override sources
+                    chunk["sources"] = context_sources
                 yield chunk
 
         except Exception as e:
@@ -827,19 +874,21 @@ class ChatbotServiceRAG:
 
     def _deduplicate_services(self, services: List[Dict]) -> List[Dict]:
         """Deduplicate services by service_code, keeping highest similarity.
-        Also filters out test/invalid data (e.g., cost < 100 XAF)."""
+        Filters test data (cost < 100 XAF) — validated: no real service costs < 100 XAF."""
         seen = {}
+        filtered_count = 0
         for svc in services:
             code = svc.get('service_code', '')
             if not code:
                 continue
-            # Filter out test data (suspiciously low prices)
             price = svc.get('tasa_expedicion', 0)
             if price and float(price) > 0 and float(price) < 100:
-                logger.debug(f"Filtered test service {code}: {price} XAF")
+                filtered_count += 1
                 continue
             if code not in seen or svc.get('similarity', 0) > seen[code].get('similarity', 0):
                 seen[code] = svc
+        if filtered_count:
+            logger.debug(f"Dedup: filtered {filtered_count} test services (<100 XAF)")
         return list(seen.values())
 
     # Commerce keywords for bundle detection
@@ -1694,7 +1743,6 @@ Keep it helpful and concise."""
             score -= 0.1
 
         # Guard 3: Response has colored emojis (monographic symbols → ▸ ● ✓ are OK)
-        import re
         emoji_pattern = re.compile(
             "[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
             "\U0001F1E0-\U0001F1FF\U0001F900-\U0001F9FF]"
@@ -1735,7 +1783,6 @@ Keep it helpful and concise."""
 
     def _detect_prompt_injection(self, message: str) -> bool:
         """Detect prompt injection patterns with unicode normalization."""
-        import unicodedata
         # Normalize unicode (strip homoglyphs, zero-width chars)
         normalized = unicodedata.normalize('NFKC', message)
         # Remove zero-width characters

@@ -251,37 +251,13 @@ class SemanticSearchRepository:
         try:
             results = await self.db.fetch(query, *params)
 
-            # Log ALL results with similarities for debugging
-            all_services = []
-            for row in results:
-                service = dict(row)
-                similarity = service.get('similarity', 0)
-                all_services.append(service)
-                logger.debug(
-                    f"RAW result: {service['service_code']} - "
-                    f"{service['name_es'][:40] if service['name_es'] else 'N/A'}... "
-                    f"(similarity: {similarity:.4f})"
-                )
-
-            # Apply threshold filter in code (for debugging)
-            services = [
-                s for s in all_services
-                if s.get('similarity', 0) >= similarity_threshold
-            ]
+            # SQL already filters by threshold — no need for redundant Python filter
+            services = [dict(row) for row in results]
 
             logger.info(
-                f"Semantic search: {len(all_services)} raw results, "
-                f"{len(services)} after threshold filter "
+                f"Semantic search: {len(services)} results "
                 f"(threshold: {similarity_threshold}, limit: {limit})"
             )
-
-            if len(all_services) > 0 and len(services) == 0:
-                # Log warning if threshold filtering removes all results
-                max_sim = max(s.get('similarity', 0) for s in all_services)
-                logger.warning(
-                    f"⚠️ All results filtered by threshold! "
-                    f"Max similarity: {max_sim:.4f}, threshold: {similarity_threshold}"
-                )
 
             return services
 

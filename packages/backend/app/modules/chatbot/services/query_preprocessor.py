@@ -154,14 +154,14 @@ INTENT_HINTS = {
         'how to', 'steps', 'procedure', 'process',
     ],
     'document': [
-        'documento', 'documentos', 'requisito', 'requisitos', 'necesito', 'papeles',
-        'documents', 'pièces', 'justificatif',
-        'document', 'requirements', 'need',
+        'documento', 'documentos', 'requisito', 'requisitos', 'necesito papeles', 'papeles necesarios',
+        'documents requis', 'pièces', 'justificatif',
+        'documents needed', 'requirements', 'what documents',
     ],
     'start': [
-        'iniciar', 'comenzar', 'empezar', 'solicitar', 'quiero',
-        'commencer', 'démarrer', 'je veux',
-        'start', 'begin', 'apply', 'i want',
+        'iniciar', 'comenzar', 'empezar', 'solicitar trámite', 'quiero hacer',
+        'commencer', 'démarrer', 'je veux faire',
+        'start the', 'begin the', 'apply for', 'i want to start',
     ],
 }
 
