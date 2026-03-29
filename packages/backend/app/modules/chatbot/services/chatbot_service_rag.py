@@ -1197,9 +1197,12 @@ class ChatbotServiceRAG:
         # Personalize with workflow entity if detected
         workflow_name = entities.get('workflow_keyword', '')
         if workflow_name and intent_sugg:
+            # Use language-appropriate connector
+            connector = {'es': 'para', 'fr': 'pour', 'en': 'for'}.get(language, 'para')
+            suffix = {'es': '?', 'fr': ' ?', 'en': '?'}.get(language, '?')
             suggestions = [
-                s.replace('?', f' para {workflow_name}?') if '?' in s and workflow_name not in s.lower()
-                else s
+                s.rstrip(' ?¿').strip() + f' {connector} {workflow_name}{suffix}'
+                if workflow_name.lower() not in s.lower() else s
                 for s in intent_sugg[:3]
             ]
         elif intent_sugg:

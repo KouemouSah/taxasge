@@ -98,7 +98,7 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/^→\s*/gm, '- ')
 
   // Checkmark lines ✓ item → checklist style
-  html = html.replace(/^[✓✔]\s+(.+)$/gm, '<li class="ml-4 py-0.5 list-none flex items-start gap-1.5"><span class="text-green-600 dark:text-green-400 mt-0.5 shrink-0">✓</span><span>$1</span></li>')
+  html = html.replace(/^[✓✔]\s+(.+)$/gm, '<li class="ml-4 py-0 list-none flex items-start gap-1.5"><span class="text-green-600 dark:text-green-400 mt-0.5 shrink-0">✓</span><span>$1</span></li>')
 
   // Auto-detect price/item lines: "ConceptName: 123.456 XAF" without bullet prefix
   html = html.replace(/^([A-ZÁÉÍÓÚÑ][^:\n]{2,60}):\s*([\d.]+(?:\s*XAF)?)\s*$/gm, '- **$1**: $2')
@@ -108,23 +108,23 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/^(\d+\. .+)\n{2,4}(?=\d+\. )/gm, '$1\n')
 
   // Bullet lists - item (consecutive)
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5 list-disc">$1</li>')
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0 list-disc">$1</li>')
   // Wrap consecutive <li> in <ul>
-  html = html.replace(/((?:<li class="ml-4 py-0.5[^"]*">[\s\S]*?<\/li>\n?)+)/g, (match) => {
-    if (match.includes('list-none')) return `<ul class="my-2 space-y-0.5 pl-1">${match}</ul>`
-    return `<ul class="list-disc my-2 space-y-0.5 pl-1">${match}</ul>`
+  html = html.replace(/((?:<li class="ml-4 py-0[^"]*">[\s\S]*?<\/li>\n?)+)/g, (match) => {
+    if (match.includes('list-none')) return `<ul class="my-1 space-y-0 pl-1">${match}</ul>`
+    return `<ul class="list-disc my-1 space-y-0 pl-1">${match}</ul>`
   })
 
   // Numbered lists 1. item (consecutive)
-  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
-  html = html.replace(/((?:<li class="ml-4 py-0.5">(?!.*list-disc)(?!.*list-none)[\s\S]*?<\/li>\n?)+)/g,
-    (match) => `<ol class="list-decimal my-2 space-y-0.5 pl-1">${match}</ol>`)
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 py-0">$1</li>')
+  html = html.replace(/((?:<li class="ml-4 py-0">(?!.*list-disc)(?!.*list-none)[\s\S]*?<\/li>\n?)+)/g,
+    (match) => `<ol class="list-decimal my-1 space-y-0 pl-1">${match}</ol>`)
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
 
   // Paragraphs (double newline → spacing)
-  html = html.replace(/\n\n/g, '</p><p class="my-2">')
+  html = html.replace(/\n\n/g, '</p><p class="my-1">')
 
   // Single newlines → <br>
   html = html.replace(/\n/g, '<br>')
@@ -232,7 +232,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {/* Message Content */}
           {isBot ? (
             <div
-              className="text-sm prose prose-sm max-w-none prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1 prose-p:my-0.5 prose-headings:my-1.5"
+              className="text-sm prose prose-sm max-w-none prose-li:my-0 prose-ul:my-0.5 prose-ol:my-0.5 prose-p:my-0.5 prose-headings:my-1 [&_li]:leading-snug [&_p]:leading-snug [&_br+br]:hidden"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
             />
           ) : (
