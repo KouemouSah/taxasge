@@ -25,6 +25,7 @@ from app.modules.chatbot.services.embedding_service import embedding_service
 from app.modules.chatbot.services.gemini_service import gemini_service
 from app.modules.chatbot.services.chatbot_tools import (
     CHATBOT_FUNC_DECLS, CHATBOT_FUNCTION_MAP,
+    CHATBOT_AUTH_FUNC_DECLS, CHATBOT_AUTH_FUNCTION_MAP,
 )
 from app.modules.chatbot.services.query_preprocessor import QueryPreprocessor
 from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
@@ -314,7 +315,13 @@ class ChatbotServiceRAG:
                 }
 
             # Step 4: Generate AI response with RAG context + function calling tools
-            func_decls = CHATBOT_FUNC_DECLS if CHATBOT_FUNC_DECLS else None
+            # Merge public + authenticated tools when user is logged in
+            func_decls = list(CHATBOT_FUNC_DECLS) if CHATBOT_FUNC_DECLS else []
+            active_function_map = dict(CHATBOT_FUNCTION_MAP)
+            if is_authenticated and CHATBOT_AUTH_FUNC_DECLS:
+                func_decls = func_decls + list(CHATBOT_AUTH_FUNC_DECLS)
+                active_function_map.update(CHATBOT_AUTH_FUNCTION_MAP)
+            func_decls = func_decls or None
 
             # Smart routing: force tools based on intent + context availability
             rag_is_empty = not relevant_docs and not relevant_services
@@ -377,7 +384,7 @@ class ChatbotServiceRAG:
                 for fc in ai_response["function_calls"]:
                     fn_name = fc["name"]
                     fn_args = fc.get("args", {})
-                    fn_impl = CHATBOT_FUNCTION_MAP.get(fn_name)
+                    fn_impl = active_function_map.get(fn_name)
 
                     if not fn_impl:
                         logger.warning(f"Unknown tool called: {fn_name}")
@@ -389,6 +396,9 @@ class ChatbotServiceRAG:
                         continue
 
                     try:
+                        # Inject user_id for authenticated tools
+                        if fn_name in CHATBOT_AUTH_FUNCTION_MAP and user_id:
+                            fn_args["user_id"] = user_id
                         result = await fn_impl(db, **fn_args)
                         tools_used.append(fn_name)
 
@@ -459,10 +469,13 @@ class ChatbotServiceRAG:
                 if retry_response.get("function_calls"):
                     retry_results = []
                     for fc in retry_response["function_calls"]:
-                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        fn_impl = active_function_map.get(fc["name"])
                         if fn_impl:
                             try:
-                                result = await fn_impl(db, **fc.get("args", {}))
+                                call_args = dict(fc.get("args", {}))
+                                if fc["name"] in CHATBOT_AUTH_FUNCTION_MAP and user_id:
+                                    call_args["user_id"] = user_id
+                                result = await fn_impl(db, **call_args)
                                 tools_used.append(fc["name"])
                                 retry_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": result})
                             except Exception as e:
@@ -517,10 +530,13 @@ class ChatbotServiceRAG:
                 if retry_response.get("function_calls"):
                     retry_results = []
                     for fc in retry_response["function_calls"]:
-                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        fn_impl = active_function_map.get(fc["name"])
                         if fn_impl:
                             try:
-                                result = await fn_impl(db, **fc.get("args", {}))
+                                call_args = dict(fc.get("args", {}))
+                                if fc["name"] in CHATBOT_AUTH_FUNCTION_MAP and user_id:
+                                    call_args["user_id"] = user_id
+                                result = await fn_impl(db, **call_args)
                                 tools_used.append(fc["name"])
                                 retry_results.append({
                                     "name": fc["name"],
@@ -753,10 +769,13 @@ class ChatbotServiceRAG:
                 if tool_response.get("function_calls"):
                     tool_results = []
                     for fc in tool_response["function_calls"]:
-                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        fn_impl = active_function_map.get(fc["name"])
                         if fn_impl:
                             try:
-                                result = await fn_impl(db, **fc.get("args", {}))
+                                call_args = dict(fc.get("args", {}))
+                                if fc["name"] in CHATBOT_AUTH_FUNCTION_MAP and user_id:
+                                    call_args["user_id"] = user_id
+                                result = await fn_impl(db, **call_args)
                                 tool_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": result})
                             except Exception as e:
                                 tool_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": {"error": str(e)}})

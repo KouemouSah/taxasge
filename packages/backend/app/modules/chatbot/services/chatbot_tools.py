@@ -871,6 +871,24 @@ CHATBOT_FUNCTION_MAP = {
     "get_document_checklist": get_document_checklist,
 }
 
+# Authenticated-only tools (added dynamically when user is logged in)
+from app.modules.chatbot.services.chatbot_tools_authenticated import (
+    get_my_requests, get_request_detail, get_my_payments,
+    get_my_appointments, get_my_notifications, get_my_profile,
+    get_my_next_actions, get_my_documents,
+)
+
+CHATBOT_AUTH_FUNCTION_MAP = {
+    "get_my_requests": get_my_requests,
+    "get_request_detail": get_request_detail,
+    "get_my_payments": get_my_payments,
+    "get_my_appointments": get_my_appointments,
+    "get_my_notifications": get_my_notifications,
+    "get_my_profile": get_my_profile,
+    "get_my_next_actions": get_my_next_actions,
+    "get_my_documents": get_my_documents,
+}
+
 
 # ============================================================================
 # FUNCTION DECLARATIONS — Gemini tool definitions
@@ -1011,3 +1029,82 @@ if VERTEX_AVAILABLE:
             },
         ),
     ]
+
+    # Authenticated-only function declarations (added when user is logged in)
+    CHATBOT_AUTH_FUNC_DECLS = [
+        FunctionDeclaration(
+            name="get_my_requests",
+            description="Ver mis solicitudes de trámites. USAR cuando el usuario pregunta por sus demandes, solicitudes, dossiers, expedientes, o estado de sus trámites.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "description": "Filtrar por estado (opcional: SUBMITTED, UNDER_REVIEW, COMPLETED, REJECTED, PAID, DRAFT)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_request_detail",
+            description="Ver el detalle completo de una solicitud específica con su timeline de acciones. USAR cuando el usuario pregunta por el estado de una solicitud concreta o menciona una referencia (SR-xxxx).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "reference": {"type": "string", "description": "Referencia de la solicitud (ej: SR-2026-0001) o parte de ella"},
+                },
+                "required": ["reference"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_payments",
+            description="Ver mis pagos pendientes y realizados. USAR cuando el usuario pregunta por pagos, facturas, cuánto debe, o recibos.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "description": "Filtrar por estado (opcional: pending, completed, failed)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_appointments",
+            description="Ver mis citas programadas. USAR cuando el usuario pregunta por citas, rendez-vous, cuándo tiene que ir, o próxima cita.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_notifications",
+            description="Ver las últimas acciones y cambios en mis solicitudes. USAR cuando el usuario pregunta '¿qué hay de nuevo?', '¿novedades?', o actividad reciente.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_profile",
+            description="Ver mi información de cuenta (nombre, email, empresas). USAR cuando el usuario pregunta por su perfil, cuenta, o datos personales.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_next_actions",
+            description="¿Qué debo hacer ahora? Muestra pagos pendientes, citas próximas, documentos faltantes y solicitudes que necesitan atención. USAR cuando el usuario pregunta '¿qué tengo pendiente?', '¿qué debo hacer?', o cualquier pregunta sobre sus tareas.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_my_documents",
+            description="Ver mis documentos enviados y su estado de verificación. USAR cuando el usuario pregunta por sus documentos subidos, archivos, o documentos faltantes.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "reference": {"type": "string", "description": "Referencia de solicitud para filtrar (opcional)"},
+                },
+            },
+        ),
+    ]
+else:
+    CHATBOT_AUTH_FUNC_DECLS = []
