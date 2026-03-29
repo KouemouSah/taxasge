@@ -556,6 +556,100 @@ Principles: concise, each data point on its own line, total in bold, end with su
 
 
 
+    async def _call_rest_api_with_thinking(
+        self,
+        contents: list,
+        thinking_budget: int,
+        gen_config: Any = None,
+    ) -> Any:
+        """Call Gemini REST API directly to use thinking_config.
+
+        SDK 0.8.x doesn't support thinking_config, so we bypass it
+        and call the API endpoint directly with httpx.
+
+        Returns a response object compatible with the SDK response format.
+        """
+        import httpx
+
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{settings.GEMINI_CHAT_MODEL}:generateContent"
+            f"?key={settings.GEMINI_API_KEY}"
+        )
+
+        # Build request body
+        body: dict = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": settings.GEMINI_TEMPERATURE,
+                "topP": settings.GEMINI_TOP_P,
+                "topK": settings.GEMINI_TOP_K,
+                "maxOutputTokens": settings.GEMINI_MAX_OUTPUT_TOKENS,
+                "thinkingConfig": {
+                    "thinkingBudget": thinking_budget,
+                },
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, json=body)
+                resp.raise_for_status()
+                data = resp.json()
+
+            # Extract text from response
+            text = ""
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    if "text" in part:
+                        text += part["text"]
+
+            logger.info(f"REST API thinking response: {len(text)} chars (budget={thinking_budget})")
+
+            # Return a mock response object compatible with SDK
+            class _RestResponse:
+                def __init__(self, text_content, raw_data):
+                    self.text = text_content
+                    self.candidates = []
+                    self._raw = raw_data
+                    # Create mock candidate for compatibility
+                    if text_content:
+                        class _Part:
+                            def __init__(self, t):
+                                self.text = t
+                                self.function_call = None
+                        class _Content:
+                            def __init__(self, parts):
+                                self.parts = parts
+                        class _Candidate:
+                            def __init__(self, content):
+                                self.content = content
+                                self.finish_reason = "STOP"
+                        self.candidates = [_Candidate(_Content([_Part(text_content)]))]
+                    # Usage metadata
+                    usage = raw_data.get("usageMetadata", {})
+                    class _Usage:
+                        prompt_token_count = usage.get("promptTokenCount", 0)
+                        candidates_token_count = usage.get("candidatesTokenCount", 0)
+                        thoughts_token_count = usage.get("thoughtsTokenCount", 0)
+                    self.usage_metadata = _Usage()
+
+            return _RestResponse(text, data)
+
+        except Exception as e:
+            logger.error(f"REST API thinking call failed: {e}")
+            # Fallback to SDK without thinking
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None,
+                lambda: self.chat_model.generate_content(
+                    contents,
+                    generation_config=gen_config or self.generation_config,
+                )
+            )
+
     async def chat(
         self,
         user_message: str,
@@ -736,19 +830,23 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                 "safety_settings": self.safety_settings,
             }
 
-            # Thinking budget — try multiple approaches per SDK version
-            if thinking_budget is not None:
+            # Thinking budget — Vertex AI uses SDK, Google AI Studio uses REST API
+            use_rest_for_thinking = False
+            if thinking_budget is not None and thinking_budget > 0:
                 try:
                     if self.backend == 'vertex_ai':
                         from vertexai.generative_models import ThinkingConfig
                         generate_kwargs["thinking_config"] = ThinkingConfig(thinking_budget=thinking_budget)
-                        logger.debug(f"Thinking budget: {thinking_budget} tokens (Vertex AI ThinkingConfig)")
+                        logger.debug(f"Thinking budget: {thinking_budget} tokens (Vertex AI)")
                     else:
-                        # Google AI Studio: thinking may not be supported in SDK 0.8.x
-                        # Skip silently — the model still reasons well without explicit thinking budget
-                        logger.debug(f"Thinking budget: skipped (Google AI Studio SDK {getattr(genai, '__version__', '?')} may not support it)")
+                        # Google AI Studio SDK 0.8.x doesn't support thinking_config
+                        # Use REST API directly instead of SDK for this call
+                        use_rest_for_thinking = True
+                        logger.debug(f"Thinking budget: {thinking_budget} tokens (REST API)")
                 except (ImportError, TypeError, AttributeError) as e:
-                    logger.debug(f"Thinking config not available: {e}")
+                    logger.debug(f"Thinking config fallback: {e}")
+                    if self.backend == 'google_ai':
+                        use_rest_for_thinking = True
             if function_declarations:
                 if self.backend == 'google_ai':
                     generate_kwargs["tools"] = function_declarations
@@ -771,12 +869,18 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                     except (ImportError, Exception) as e:
                         logger.debug(f"ToolConfig not available: {e}")
 
-            # Generate response
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
-            )
+            # Generate response — REST API for thinking, SDK otherwise
+            if use_rest_for_thinking and not function_declarations:
+                # REST API call with thinking_config (SDK doesn't support it)
+                response = await self._call_rest_api_with_thinking(
+                    contents, thinking_budget, generate_kwargs.get("generation_config")
+                )
+            else:
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: self.chat_model.generate_content(contents, **generate_kwargs)
+                )
 
             # Check for function calls in response
             function_calls = []
