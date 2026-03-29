@@ -121,8 +121,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [relatedServices, setRelatedServices] = useState<ServiceReference[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
   const [lastRequest, setLastRequest] = useState<ChatRequest | null>(null)
-  const [statusText, _setStatusText] = useState<string | null>(null)
-  const [statusStep, _setStatusStep] = useState<string | null>(null)
+  const [statusText, setStatusText] = useState<string | null>(null)
+  const [statusStep, setStatusStep] = useState<string | null>(null)
+  const statusTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Refs for streaming control
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -291,6 +292,37 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       setIsLoading(true)
       setError(null)
 
+      // Progressive status indicators (simulated for non-streaming)
+      const statusMessages = language === 'fr'
+        ? [
+            { step: 'searching', text: 'Recherche dans les documents...' },
+            { step: 'analyzing', text: 'Analyse des résultats...' },
+            { step: 'generating', text: 'Préparation de la réponse...' },
+          ]
+        : language === 'en'
+        ? [
+            { step: 'searching', text: 'Searching documents...' },
+            { step: 'analyzing', text: 'Analyzing results...' },
+            { step: 'generating', text: 'Preparing response...' },
+          ]
+        : [
+            { step: 'searching', text: 'Buscando en documentos...' },
+            { step: 'analyzing', text: 'Analizando resultados...' },
+            { step: 'generating', text: 'Preparando respuesta...' },
+          ]
+
+      // Clear previous timers
+      statusTimersRef.current.forEach(clearTimeout)
+      statusTimersRef.current = []
+
+      // Set status messages progressively
+      setStatusText(statusMessages[0].text)
+      setStatusStep(statusMessages[0].step)
+      statusTimersRef.current.push(
+        setTimeout(() => { setStatusText(statusMessages[1].text); setStatusStep(statusMessages[1].step) }, 1500),
+        setTimeout(() => { setStatusText(statusMessages[2].text); setStatusStep(statusMessages[2].step) }, 4000),
+      )
+
       // Add user message immediately
       const userMessage: ChatMessage = {
         role: 'user' as MessageRole,
@@ -359,6 +391,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         setMessages((prev) => [...prev, errorChatMessage])
       } finally {
         setIsLoading(false)
+        // Clear status indicators
+        statusTimersRef.current.forEach(clearTimeout)
+        statusTimersRef.current = []
+        setStatusText(null)
+        setStatusStep(null)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- messages is intentionally omitted to prevent re-creating callback on every message
