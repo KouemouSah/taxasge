@@ -247,11 +247,11 @@ class Settings(BaseSettings):
     # gemini-2.5-flash-preview: latest Flash with built-in thinking/reasoning
     GEMINI_API_KEY: str = Field(default="", env="GEMINI_API_KEY")
     GEMINI_CHAT_MODEL: str = Field(
-        default="gemini-2.5-flash-preview-05-20",
+        default="gemini-2.5-flash",
         env="GEMINI_CHAT_MODEL"
     )
     GEMINI_PRO_MODEL: str = Field(
-        default="gemini-2.5-flash-preview-05-20",
+        default="gemini-2.5-flash",
         env="GEMINI_PRO_MODEL"
     )
     GEMINI_EMBEDDING_MODEL: str = Field(
