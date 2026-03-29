@@ -896,10 +896,11 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
             # If Gemini wants to call functions, return them for orchestration
             if function_calls:
                 logger.info(f"Gemini requested {len(function_calls)} function call(s): {[fc['name'] for fc in function_calls]}")
-                # Build proper Content objects for chat_history (round 2 needs these)
-                chat_history = [
-                    Content(role="user", parts=[Part.from_text(full_user_prompt)]),
-                ]
+                # Build chat_history for round 2 (dicts for Google AI, Content for Vertex)
+                if self.backend == 'google_ai':
+                    chat_history = [{"role": "user", "parts": [{"text": full_user_prompt}]}]
+                else:
+                    chat_history = [Content(role="user", parts=[Part.from_text(full_user_prompt)])]
                 return {
                     "function_calls": function_calls,
                     "round1_response": response,  # Raw response for round 2
@@ -980,23 +981,42 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
         try:
             # 1. Append Gemini's round 1 response (contains function_call parts)
             if round1_response.candidates and round1_response.candidates[0].content:
-                chat_history.append(round1_response.candidates[0].content)
+                if self.backend == 'google_ai':
+                    # Convert proto to dict for Google AI Studio
+                    r1_content = round1_response.candidates[0].content
+                    r1_parts = []
+                    for p in r1_content.parts:
+                        if hasattr(p, 'function_call') and p.function_call.name:
+                            r1_parts.append({"functionCall": {"name": p.function_call.name, "args": dict(p.function_call.args)}})
+                        elif hasattr(p, 'text') and p.text:
+                            r1_parts.append({"text": p.text})
+                    chat_history.append({"role": "model", "parts": r1_parts})
+                else:
+                    chat_history.append(round1_response.candidates[0].content)
 
-            # 2. Build function_response parts (proven pattern from base_analyst_service)
-            fn_response_parts = []
-            for fr in function_results_data:
-                fn_response_parts.append(
-                    Part.from_function_response(
-                        name=fr["name"],
-                        response={
-                            "result": json_module.dumps(
-                                fr["result"], default=str, ensure_ascii=False
-                            )
-                        },
+            # 2. Build function_response parts
+            if self.backend == 'google_ai':
+                fn_parts = []
+                for fr in function_results_data:
+                    fn_parts.append({
+                        "functionResponse": {
+                            "name": fr["name"],
+                            "response": {"result": json_module.dumps(fr["result"], default=str, ensure_ascii=False)}
+                        }
+                    })
+                chat_history.append({"role": "function", "parts": fn_parts})
+            else:
+                fn_response_parts = []
+                for fr in function_results_data:
+                    fn_response_parts.append(
+                        Part.from_function_response(
+                            name=fr["name"],
+                            response={
+                                "result": json_module.dumps(fr["result"], default=str, ensure_ascii=False)
+                            },
+                        )
                     )
-                )
-
-            chat_history.append(Content(role="user", parts=fn_response_parts))
+                chat_history.append(Content(role="user", parts=fn_response_parts))
 
             # 3. Generate final response with all accumulated context
             generate_kwargs = {
