@@ -115,10 +115,36 @@ class BaseAnalystService(abc.ABC):
         """Return agent type for query logging. Subclasses override: 'treasury' | 'admin'."""
         return None
 
+    _INJECTION_PATTERNS = [
+        'ignore previous', 'forget your instructions', 'disregard your',
+        'override your', 'you are now', 'pretend you are', 'act as', 'roleplay',
+        'show me your prompt', 'system prompt', 'reveal your',
+        'ignora las instrucciones', 'olvida tus instrucciones', 'nuevas instrucciones',
+        'muéstrame tu prompt', 'cuáles son tus instrucciones',
+        'ignore les instructions', 'oublie tes instructions', 'montre-moi ton prompt',
+    ]
+
+    def _detect_injection(self, text: str) -> bool:
+        """Detect prompt injection patterns with unicode normalization."""
+        import unicodedata
+        import re
+        normalized = unicodedata.normalize('NFKC', text)
+        normalized = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', normalized)
+        msg_lower = normalized.lower()
+        return any(p in msg_lower for p in self._INJECTION_PATTERNS)
+
+    def _is_thinking_enabled(self) -> bool:
+        """Whether to use thinking budget on final analysis round. Override in subclass."""
+        return True
+
+    def _is_self_reflection_enabled(self) -> bool:
+        """Whether to self-evaluate response quality. Override in subclass."""
+        return False
+
     def _get_model_name(self) -> str:
-        """Gemini model name."""
+        """Gemini model name — uses GEMINI_CHAT_MODEL from settings (default: gemini-2.5-flash)."""
         settings = get_settings()
-        return getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
+        return getattr(settings, "GEMINI_CHAT_MODEL", "gemini-2.5-flash")
 
     def _get_vertex_config(self) -> Dict[str, str]:
         """Return {project, location} for vertexai.init()."""
@@ -313,6 +339,16 @@ class BaseAnalystService(abc.ABC):
         service_name = self._get_service_name()
         start_time = time.monotonic()
         ctx = context or {}
+
+        # ── Security: prompt injection detection ──────────────────────────
+        if self._detect_injection(question):
+            logger.warning(f"{service_name}: prompt injection detected: '{question[:80]}'")
+            return {
+                "answer": "No puedo procesar esa solicitud. ¿En qué puedo ayudarte con tus tareas?",
+                "tools_used": [],
+                "data": {},
+                "artifacts": [],
+            }
 
         if not self._model:
             return {
@@ -518,24 +554,51 @@ class BaseAnalystService(abc.ABC):
                 fn_response_parts = self._build_function_response_parts(tool_results)
                 chat_history.append(Content(role="user", parts=fn_response_parts))
 
+                is_final_round = current_round >= max_rounds - 1
+                # Final round: higher temperature for natural analysis, add top_p
+                gen_kwargs_final: dict = {
+                    "temperature": 0.4 if is_final_round else 0.2,
+                    "max_output_tokens": (
+                        FIRST_CALL_MAX_TOKENS
+                        if not is_final_round
+                        else self._get_second_call_max_tokens()
+                    ),
+                }
+                if is_final_round:
+                    gen_kwargs_final["top_p"] = 0.9
+                final_gen_config = GenerationConfig(**gen_kwargs_final)
+
+                # Thinking budget for final analysis (separate from GenerationConfig)
+                extra_gen_kwargs: dict = {}
+                if is_final_round and self._is_thinking_enabled():
+                    try:
+                        # Attempt 1: Vertex AI ThinkingConfig class
+                        from vertexai.generative_models import ThinkingConfig
+                        extra_gen_kwargs["thinking_config"] = ThinkingConfig(thinking_budget=2048)
+                        logger.debug(f"{service_name}: thinking_budget=2048 via ThinkingConfig")
+                    except (ImportError, TypeError):
+                        try:
+                            # Attempt 2: dict format (Google AI Studio / newer SDK)
+                            final_gen_config = GenerationConfig(
+                                **gen_kwargs_final,
+                                thinking_config={"type": "enabled", "budget_tokens": 2048}
+                            )
+                            logger.debug(f"{service_name}: thinking_budget=2048 via dict")
+                        except (TypeError, ValueError):
+                            logger.debug(f"{service_name}: thinking_config not supported by SDK")
+
                 next_response = await asyncio.wait_for(
                     loop.run_in_executor(
                         None,
                         lambda: self._model.generate_content(
                             chat_history,
-                            generation_config=GenerationConfig(
-                                temperature=0.2,
-                                max_output_tokens=(
-                                    FIRST_CALL_MAX_TOKENS
-                                    if current_round < max_rounds - 1
-                                    else self._get_second_call_max_tokens()
-                                ),
-                            ),
+                            generation_config=final_gen_config,
+                            **extra_gen_kwargs,
                         ),
                     ),
                     timeout=(
                         GEMINI_TIMEOUT_EXTRA_ROUND
-                        if current_round < max_rounds - 1
+                        if not is_final_round
                         else GEMINI_TIMEOUT_SECOND_CALL
                     ),
                 )
@@ -624,6 +687,54 @@ class BaseAnalystService(abc.ABC):
                     was_successful=True,
                 )
             )
+
+            # Self-reflection: evaluate response quality (if enabled)
+            if self._is_self_reflection_enabled() and answer and len(answer) > 50:
+                try:
+                    reflection_prompt = (
+                        f'Evalúa esta respuesta del 1 al 10 (exactitud, completitud, claridad). '
+                        f'Responde SOLO con un número.\n\nPregunta: {question[:100]}\n\nRespuesta: {answer[:500]}'
+                    )
+                    ref_response = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            None,
+                            lambda: self._model.generate_content(
+                                reflection_prompt,
+                                generation_config=GenerationConfig(temperature=0.1, max_output_tokens=10),
+                            ),
+                        ),
+                        timeout=8.0,
+                    )
+                    import re as _re
+                    score_match = _re.search(r'\b(\d{1,2})\b', ref_response.text or "")
+                    if score_match:
+                        reflection_score = int(score_match.group(1))
+                        logger.info(f"{service_name} self-reflection: {reflection_score}/10")
+                        if reflection_score < 5:
+                            logger.warning(f"{service_name} low quality ({reflection_score}/10), regenerating")
+                            # Regenerate with explicit improvement instruction
+                            regen_response = await asyncio.wait_for(
+                                loop.run_in_executor(
+                                    None,
+                                    lambda: self._model.generate_content(
+                                        chat_history + [Content(
+                                            role="user",
+                                            parts=[Part.from_text(
+                                                f"Tu respuesta anterior fue evaluada {reflection_score}/10. "
+                                                f"Mejórala: más completa, precisa y estructurada."
+                                            )]
+                                        )],
+                                        generation_config=GenerationConfig(temperature=0.4, max_output_tokens=self._get_second_call_max_tokens()),
+                                    ),
+                                ),
+                                timeout=GEMINI_TIMEOUT_SECOND_CALL,
+                            )
+                            regen_text = regen_response.text or ""
+                            if regen_text and len(regen_text) > len(answer) * 0.5:
+                                answer = regen_text
+                                logger.info(f"{service_name} self-reflection: regenerated response accepted")
+                except Exception as ref_err:
+                    logger.debug(f"{service_name} self-reflection failed (non-fatal): {ref_err}")
 
             return {
                 "answer": answer,

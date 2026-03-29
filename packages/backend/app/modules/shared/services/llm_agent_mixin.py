@@ -81,7 +81,7 @@ class LLMAgentMixin:
 
     def _get_default_generation_config(self) -> dict:
         """Default generation config (can be overridden per call)."""
-        return {"temperature": 0.2, "max_output_tokens": 2048}
+        return {"temperature": 0.3, "top_p": 0.9, "max_output_tokens": 2048}
 
     # ── Model lifecycle ──────────────────────────────────────────────────
 

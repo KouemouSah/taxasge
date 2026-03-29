@@ -48,6 +48,8 @@ class ToolSet:
     process_fn: Optional[Callable] = None  # async(question, context) -> dict
     # For agents without function-calling pattern (RAG, batch, briefing, routing).
     # If present, DynamicAnalystService/orchestrator can delegate via process_fn.
+    thinking_enabled: bool = True  # Enable thinking budget on final round (disable for batch/routing)
+    self_reflection_enabled: bool = False  # Self-evaluate response quality (enable for reasoning agents)
 
 
 @dataclass
@@ -186,6 +188,7 @@ def _register_treasury(registry: ToolRegistry) -> None:
             max_tool_rounds=3,
             second_call_max_tokens=4096,
             agent_type_label="Treasury Analyst",
+            self_reflection_enabled=True,
         ))
     except ImportError as e:
         logger.warning(f"ToolRegistry: treasury registration failed: {e}")
@@ -200,13 +203,21 @@ def _register_admin(registry: ToolRegistry) -> None:
             SYSTEM_PROMPT as ADMIN_SYSTEM_PROMPT,
         )
 
+        # Merge admin tools + decision support tools (map + declarations)
+        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP as _ADFM, DECISION_FUNC_DECLS as _ADFD
+        admin_tools = ('get_system_health', 'optimize_workload')
+        admin_merged_map = dict(ADMIN_FUNCTION_MAP)
+        admin_merged_map.update({k: v for k, v in _ADFM.items() if k in admin_tools})
+        admin_merged_decls = list(ADMIN_TOOL_FUNCTIONS) + [d for d in _ADFD if d.name in admin_tools]
+
         registry.register("admin", ToolSet(
-            function_declarations=ADMIN_TOOL_FUNCTIONS,
-            function_map=ADMIN_FUNCTION_MAP,
+            function_declarations=admin_merged_decls,
+            function_map=admin_merged_map,
             prompt_template=ADMIN_SYSTEM_PROMPT,
             max_tool_rounds=2,
             second_call_max_tokens=2048,
             agent_type_label="Admin Assistant",
+            self_reflection_enabled=True,
         ))
     except ImportError as e:
         logger.warning(f"ToolRegistry: admin registration failed: {e}")
@@ -275,14 +286,21 @@ def _register_supervisor(registry: ToolRegistry) -> None:
 
             return prompt
 
+        # Merge supervisor tools + decision support tools (map + declarations)
+        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP as _DFM, DECISION_FUNC_DECLS as _DFD
+        sup_tools = ('predict_sla_risk', 'suggest_reassignment')
+        all_func_map.update({k: v for k, v in _DFM.items() if k in sup_tools})
+        all_func_decls = all_func_decls + [d for d in _DFD if d.name in sup_tools]
+
         registry.register("supervisor", ToolSet(
             function_declarations=all_func_decls,
             function_map=all_func_map,
             prompt_fn=composable_prompt_fn,
             artifacts_builder=supervisor_build_artifacts,
-            max_tool_rounds=3,  # More tools = may need 3 rounds
+            max_tool_rounds=3,
             second_call_max_tokens=3072,
             agent_type_label="Supervisor Assistant (composable)",
+            self_reflection_enabled=True,
         ))
         logger.info(
             f"ToolRegistry: supervisor registered with {len(all_func_decls)} tools "
@@ -316,11 +334,18 @@ def _register_entity_agent(registry: ToolRegistry) -> None:
                 current_date=now.strftime("%Y-%m-%d"),
             )
 
+        # Merge entity agent tools + decision support tools (map + declarations)
+        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP, DECISION_FUNC_DECLS
+        entity_tools = ('ai_decision_support', 'assess_request_risk', 'find_similar_cases', 'summarize_request')
+        merged_map = dict(ENTITY_AGENT_FUNCTION_MAP)
+        merged_map.update({k: v for k, v in DECISION_FUNCTION_MAP.items() if k in entity_tools})
+        merged_decls = list(ENTITY_AGENT_FUNC_DECLS) + [d for d in DECISION_FUNC_DECLS if d.name in entity_tools]
+
         registry.register("entity_agent", ToolSet(
-            function_declarations=ENTITY_AGENT_FUNC_DECLS,
-            function_map=ENTITY_AGENT_FUNCTION_MAP,
+            function_declarations=merged_decls,
+            function_map=merged_map,
             prompt_fn=entity_prompt_fn,
-            max_tool_rounds=2,
+            max_tool_rounds=3,
             second_call_max_tokens=2048,
             agent_type_label="Entity Field Agent Assistant",
         ))
@@ -438,6 +463,7 @@ def _register_document_processor(registry: ToolRegistry) -> None:
 
         registry.register("document_processor", ToolSet(
             process_fn=_process,
+            thinking_enabled=False,
             agent_type_label="Gemini Document Processor",
         ))
     except ImportError as e:
@@ -456,6 +482,7 @@ def _register_batch_classifier(registry: ToolRegistry) -> None:
 
         registry.register("batch_classifier", ToolSet(
             process_fn=_process,
+            thinking_enabled=False,
             agent_type_label="Batch Document Classifier",
         ))
     except ImportError as e:
@@ -509,6 +536,7 @@ def _register_routing(registry: ToolRegistry) -> None:
 
         registry.register("routing", ToolSet(
             process_fn=_process,
+            thinking_enabled=False,
             agent_type_label="LLM Routing Service",
         ))
     except ImportError as e:

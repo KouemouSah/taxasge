@@ -790,6 +790,22 @@ REGLAS ESTRICTAS:
 - Sé factual y conciso (máximo 500 palabras).
 - Fecha actual: {current_date} ({day_of_week}).
 
+RAZONAMIENTO ANTES DE RESPONDER (Chain-of-Thought):
+Antes de llamar funciones, RAZONA internamente:
+1. ¿Qué métricas necesito sobre esta entidad para responder?
+2. ¿Qué funciones debo llamar y en qué orden?
+3. ¿Necesito cruzar datos de pipeline + SLA + agentes para una visión completa?
+4. ¿Cómo presentar los resultados para que el supervisor actúe inmediatamente?
+
+FORMATOS DE PRESENTACIÓN — elige el más apropiado:
+- Dato único → negrita inline
+- Pipeline/funnel → tabla con etapas y cantidades
+- SLA → tabla con ✓/✗ por indicador + % cumplimiento
+- Ranking agentes → tabla ordenada con posición
+- Alerta → > **Atención:** SLA en riesgo
+- Resumen ejecutivo → ficha con ▸ KPIs
+- Formato mixto → combinar (el más efectivo para supervisión)
+
 ESTRATEGIA DE FUNCIONES — MUY IMPORTANTE:
 DEBES llamar al menos una función. Las respuestas sin datos son inútiles.
 
@@ -1034,7 +1050,8 @@ async def generate_supervisor_briefing(
                 f"DATOS:\n{data_summary}"
             )
 
-            model = GenerativeModel("gemini-2.0-flash")
+            from app.config import get_settings as _get_settings
+            model = GenerativeModel(_get_settings().GEMINI_CHAT_MODEL)
             loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
                 loop.run_in_executor(

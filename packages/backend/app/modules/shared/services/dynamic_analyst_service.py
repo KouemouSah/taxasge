@@ -148,6 +148,12 @@ class DynamicAnalystService(BaseAnalystService):
     def _get_max_tool_rounds(self) -> int:
         return min(self._tool_set.max_tool_rounds, 3)
 
+    def _is_thinking_enabled(self) -> bool:
+        return self._tool_set.thinking_enabled
+
+    def _is_self_reflection_enabled(self) -> bool:
+        return self._tool_set.self_reflection_enabled
+
     def _get_second_call_max_tokens(self) -> int:
         return self._tool_set.second_call_max_tokens
 

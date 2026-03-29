@@ -32,7 +32,7 @@ class VertexAIManager:
     Usage:
         manager = VertexAIManager()
         manager.initialize()
-        model = manager.create_model("gemini-2.0-flash", system_instruction="...")
+        model = manager.create_model("gemini-2.5-flash", system_instruction="...")
     """
 
     _instance: Optional["VertexAIManager"] = None
@@ -115,7 +115,7 @@ class VertexAIManager:
         """Create a GenerativeModel with consistent project/location.
 
         Args:
-            model_name: Gemini model name (e.g., "gemini-2.0-flash").
+            model_name: Gemini model name (e.g., "gemini-2.5-flash").
             system_instruction: System prompt for the model.
             tools: List of Tool objects for function calling.
 
