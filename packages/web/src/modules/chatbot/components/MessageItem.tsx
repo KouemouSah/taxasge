@@ -211,10 +211,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     try {
       const { chatbotApi } = await import('../services/api')
       await chatbotApi.submitFeedback({
-        conversationId: '',
+        conversationId: message.timestamp || new Date().toISOString(),
         rating: type === 'up' ? 5 : 1,
         feedback: type === 'up' ? 'helpful' : 'not_helpful',
-      })
+      }).catch(() => { /* best-effort */ })
     } catch {
       // Non-blocking — feedback is best-effort
     }

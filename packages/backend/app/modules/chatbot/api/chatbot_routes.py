@@ -312,9 +312,11 @@ async def get_conversation_history(
     if not row:
         return {"messages": [], "conversation_id": conversation_id, "found": False}
 
-    # If authenticated, verify ownership (anonymous conversations accessible by anyone with ID)
-    if current_user and row["user_id"] and str(row["user_id"]) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Access denied to this conversation")
+    # Verify ownership: authenticated users can only access their own conversations
+    # Anonymous users can only access conversations with no user_id (anonymous conversations)
+    if row["user_id"]:
+        if not current_user or str(row["user_id"]) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Access denied to this conversation")
 
     messages = row["messages"]
     if isinstance(messages, str):
@@ -345,7 +347,8 @@ async def chat(
     Interactive AI chat assistance for fiscal services
     """
     # Rate limiting: 30/min authenticated, 10/min per-IP anonymous
-    client_ip = http_request.client.host if http_request.client else "unknown"
+    client_ip = (http_request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                 or (http_request.client.host if http_request.client else "unknown"))
     rate_key = str(current_user.id) if current_user else f"anon:{client_ip}"
     rate_limit = 30 if current_user else 10
     is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat", rate_limit, 60)
@@ -416,7 +419,8 @@ async def chat_stream(
     Streaming AI chat for real-time responses
     """
     # Rate limiting: 30/min authenticated, 10/min per-IP anonymous
-    client_ip = http_request.client.host if http_request.client else "unknown"
+    client_ip = (http_request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                 or (http_request.client.host if http_request.client else "unknown"))
     rate_key = str(current_user.id) if current_user else f"anon:{client_ip}"
     rate_limit = 30 if current_user else 10
     is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat/stream", rate_limit, 60)
@@ -441,9 +445,7 @@ async def chat_stream(
             try:
                 async for chunk in chatbot_service.chat_stream(message, context, language.value, db=db):
                     yield f"data: {json.dumps(chunk)}\n\n"
-
-                # Send completion signal
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                    # chat_stream already yields a 'done' chunk — no need to send another
 
             except Exception as e:
                 logger.error(f"Stream error: {e}")
@@ -765,15 +767,14 @@ async def validate(
 
 @router.get("/stats", response_model=Dict[str, Any])
 async def get_stats(
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """
-    Get AI services usage statistics
-
-    Status: Placeholder until analytics integration
+    Get AI services usage statistics (conversations, feedback, ratings).
     """
     try:
-        stats = await chatbot_service.get_usage_stats()
+        stats = await chatbot_service.get_usage_stats(db=db)
         return stats
 
     except Exception as e:
@@ -789,18 +790,18 @@ async def submit_feedback(
     conversation_id: str = Query(...),
     rating: int = Query(..., ge=1, le=5),
     feedback: Optional[str] = Query(None),
-    current_user: Optional[UserResponse] = Depends(get_current_user_optional)
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """
-    Submit feedback for AI interaction
-
-    Status: Placeholder until feedback DB integration
+    Submit feedback (thumbs up/down) for a chatbot response.
     """
     try:
         await chatbot_service.record_feedback(
+            db=db,
             conversation_id=conversation_id,
             rating=rating,
-            feedback=feedback,
+            feedback_text=feedback,
             user_id=str(current_user.id) if current_user else None
         )
 

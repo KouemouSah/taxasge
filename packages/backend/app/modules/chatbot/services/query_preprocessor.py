@@ -226,27 +226,27 @@ class QueryPreprocessor:
         return expanded
 
     def _extract_entities(self, text: str) -> Dict[str, str]:
-        """Extract cities, commerce types, and workflow references."""
+        """Extract cities, commerce types, and workflow references using word boundaries."""
         entities: Dict[str, str] = {}
         text_lower = text.lower()
 
-        # Detect city → zone
+        # Detect city → zone (word boundary match to avoid "Malabo" in "Malaboria")
         for city, zone_code in CITY_ZONE_MAP.items():
-            if city in text_lower:
+            if re.search(r'\b' + re.escape(city) + r'\b', text_lower):
                 entities['city'] = city
                 entities['zone_code'] = zone_code
                 break
 
-        # Detect commerce type → bundle code
+        # Detect commerce type → bundle code (word boundary to avoid "bar" in "embargo")
         for keyword, bundle_code in COMMERCE_KEYWORDS.items():
-            if keyword in text_lower:
+            if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
                 entities['commerce_keyword'] = keyword
                 entities['commerce_type'] = bundle_code
                 break
 
-        # Detect workflow reference
+        # Detect workflow reference (word boundary)
         for keyword, workflow_ref in WORKFLOW_KEYWORDS.items():
-            if keyword in text_lower:
+            if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
                 entities['workflow_keyword'] = keyword
                 entities['workflow'] = workflow_ref
                 break

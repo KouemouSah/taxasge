@@ -117,7 +117,7 @@ async def get_service_details(db, **kwargs) -> dict:
             LEFT JOIN categories c ON c.id = fs.category_id
             LEFT JOIN sectors s ON s.id = c.sector_id
             LEFT JOIN ministries m ON m.id = s.ministry_id
-            WHERE fs.service_code = $1
+            WHERE fs.service_code = $1 AND fs.status = 'active'
         """, service_code)
     else:
         svc = await db.fetchrow("""

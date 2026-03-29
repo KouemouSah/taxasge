@@ -506,11 +506,6 @@ class ChatbotServiceRAG:
 
             # Step 6: Build structured response
             response_time = (datetime.now() - start_time).total_seconds()
-
-            # Step 6: Self-evaluation — check response quality
-            quality_score = await self._evaluate_response(
-                message, response_message, consolidated_context
-            )
             confidence = max(ai_response.get("confidence", 0.5), quality_score)
             logger.info(f"Response quality: {quality_score:.2f}, confidence: {confidence:.2f}")
 
@@ -1418,7 +1413,7 @@ Keep it helpful and concise."""
                 language=language
             )
             return response.get("message", "Servicios relevantes encontrados.")
-        except:
+        except Exception:
             return "Servicios recomendados basados en tu búsqueda."
 
     def _generate_next_steps(
@@ -1621,7 +1616,7 @@ Keep it helpful and concise."""
         )
 
         summary_message = {
-            "role": "user",
+            "role": "system",
             "content": summary_text,
         }
 
@@ -1739,8 +1734,13 @@ Keep it helpful and concise."""
     ]
 
     def _detect_prompt_injection(self, message: str) -> bool:
-        """Detect common prompt injection patterns in user messages."""
-        msg_lower = message.lower()
+        """Detect prompt injection patterns with unicode normalization."""
+        import unicodedata
+        # Normalize unicode (strip homoglyphs, zero-width chars)
+        normalized = unicodedata.normalize('NFKC', message)
+        # Remove zero-width characters
+        normalized = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', normalized)
+        msg_lower = normalized.lower()
         return any(pattern in msg_lower for pattern in self._INJECTION_PATTERNS)
 
     # ========================================================================

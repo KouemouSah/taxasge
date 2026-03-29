@@ -257,7 +257,7 @@ class SemanticSearchRepository:
                 service = dict(row)
                 similarity = service.get('similarity', 0)
                 all_services.append(service)
-                logger.info(
+                logger.debug(
                     f"RAW result: {service['service_code']} - "
                     f"{service['name_es'][:40] if service['name_es'] else 'N/A'}... "
                     f"(similarity: {similarity:.4f})"
