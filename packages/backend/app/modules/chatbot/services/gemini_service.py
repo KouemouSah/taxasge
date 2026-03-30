@@ -19,81 +19,30 @@ from loguru import logger
 from app.config import settings
 
 # ============================================================================
-# DUAL-BACKEND: Google AI Studio (API key) OR Vertex AI (service account)
-# Priority: GEMINI_API_KEY → Google AI Studio | else → Vertex AI
+# Vertex AI — Single backend for chat, embeddings, and function calling
+# gemini-2.5-flash with native ThinkingConfig support
 # ============================================================================
 
-BACKEND = None  # 'google_ai' or 'vertex_ai'
 VERTEX_AI_AVAILABLE = False
-GOOGLE_AI_AVAILABLE = False
 
-# Try Google AI Studio first (simpler, API key based)
-if settings.GEMINI_API_KEY:
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        GOOGLE_AI_AVAILABLE = True
-        BACKEND = 'google_ai'
-        logger.info("✅ Google AI Studio SDK configured (API key)")
-
-        # Create compatibility aliases for Vertex AI types
-        from google.generativeai.types import HarmCategory, HarmBlockThreshold
-        from google.generativeai.types import GenerationConfig
-        GenerativeModel = genai.GenerativeModel
-        FunctionDeclaration = genai.protos.FunctionDeclaration
-        Tool = genai.protos.Tool
-
-        # Google AI Studio: Content/Part are protos (no .from_text method)
-        _ProtoContent = genai.protos.Content
-        _ProtoPart = genai.protos.Part
-
-        class Content:
-            """Compatibility wrapper for Vertex AI Content class."""
-            def __init__(self, role="user", parts=None):
-                self._proto = _ProtoContent(role=role, parts=[p._proto if hasattr(p, '_proto') else p for p in (parts or [])])
-            @property
-            def _raw(self):
-                return self._proto
-
-        class Part:
-            """Compatibility wrapper for Vertex AI Part class."""
-            def __init__(self, text=None):
-                if text:
-                    self._proto = _ProtoPart(text=text)
-                else:
-                    self._proto = _ProtoPart()
-
-            @staticmethod
-            def from_text(text):
-                return Part(text=text)
-
-            @staticmethod
-            def from_function_response(name, response):
-                return _ProtoPart(function_response=genai.protos.FunctionResponse(name=name, response=response))
-    except ImportError:
-        logger.warning("⚠️ google-generativeai SDK not installed, trying Vertex AI")
-
-# Fallback to Vertex AI
-if not GOOGLE_AI_AVAILABLE:
-    try:
-        from vertexai.generative_models import (
-            GenerativeModel,
-            ChatSession,
-            Content,
-            Part,
-            GenerationConfig,
-            HarmCategory,
-            HarmBlockThreshold,
-            Tool,
-            FunctionDeclaration,
-        )
-        import vertexai
-        VERTEX_AI_AVAILABLE = True
-        BACKEND = 'vertex_ai'
-        logger.info("✅ Vertex AI SDK available")
-    except ImportError:
-        VERTEX_AI_AVAILABLE = False
-        logger.warning("⚠️ No Gemini SDK available (neither google-generativeai nor vertexai)")
+try:
+    from vertexai.generative_models import (
+        GenerativeModel,
+        ChatSession,
+        Content,
+        Part,
+        GenerationConfig,
+        HarmCategory,
+        HarmBlockThreshold,
+        Tool,
+        FunctionDeclaration,
+    )
+    import vertexai
+    VERTEX_AI_AVAILABLE = True
+    logger.info("✅ Vertex AI SDK available")
+except ImportError:
+    VERTEX_AI_AVAILABLE = False
+    logger.warning("⚠️ Vertex AI SDK not installed — Gemini disabled")
 
 
 class GeminiService:
@@ -512,27 +461,20 @@ Principles: concise, each data point on its own line, total in bold, end with su
     }
 
     def __init__(self):
-        """Initialize Gemini service — dual-backend (Google AI Studio or Vertex AI)"""
-        self.backend = BACKEND
+        """Initialize Gemini service via Vertex AI"""
         self.enabled = False
 
-        if not BACKEND:
-            logger.error("❌ No Gemini SDK available - AI disabled")
+        if not VERTEX_AI_AVAILABLE:
+            logger.error("❌ Vertex AI SDK not available - Gemini disabled")
             return
 
         try:
-            if self.backend == 'google_ai':
-                # Google AI Studio — already configured via genai.configure() above
-                self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
-                self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
-            else:
-                # Vertex AI — needs project init
-                vertexai.init(
-                    project=settings.GOOGLE_CLOUD_PROJECT,
-                    location=settings.GOOGLE_CLOUD_LOCATION
-                )
-                self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
-                self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
+            vertexai.init(
+                project=settings.GOOGLE_CLOUD_PROJECT,
+                location=settings.GOOGLE_CLOUD_LOCATION
+            )
+            self.chat_model = GenerativeModel(settings.GEMINI_CHAT_MODEL)
+            self.pro_model = GenerativeModel(settings.GEMINI_PRO_MODEL)
 
             # Generation configuration
             self.generation_config = GenerationConfig(
@@ -837,57 +779,34 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                 "safety_settings": self.safety_settings,
             }
 
-            # Thinking budget — Vertex AI uses SDK, Google AI Studio uses REST API
-            use_rest_for_thinking = False
+            # Thinking budget — Vertex AI native ThinkingConfig
             if thinking_budget is not None and thinking_budget > 0:
                 try:
-                    if self.backend == 'vertex_ai':
-                        from vertexai.generative_models import ThinkingConfig
-                        generate_kwargs["thinking_config"] = ThinkingConfig(thinking_budget=thinking_budget)
-                        logger.debug(f"Thinking budget: {thinking_budget} tokens (Vertex AI)")
-                    else:
-                        # Google AI Studio SDK 0.8.x doesn't support thinking_config
-                        # Use REST API directly instead of SDK for this call
-                        use_rest_for_thinking = True
-                        logger.debug(f"Thinking budget: {thinking_budget} tokens (REST API)")
-                except (ImportError, TypeError, AttributeError) as e:
-                    logger.debug(f"Thinking config fallback: {e}")
-                    if self.backend == 'google_ai':
-                        use_rest_for_thinking = True
+                    from vertexai.generative_models import ThinkingConfig
+                    generate_kwargs["thinking_config"] = ThinkingConfig(thinking_budget=thinking_budget)
+                    logger.debug(f"Thinking budget: {thinking_budget} tokens")
+                except (ImportError, TypeError) as e:
+                    logger.debug(f"ThinkingConfig not available: {e}")
             if function_declarations:
-                if self.backend == 'google_ai':
-                    generate_kwargs["tools"] = function_declarations
-                else:
-                    generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
-                # Force tool use when RAG context is empty/insufficient
+                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
                 if force_tools:
                     try:
-                        if self.backend == 'google_ai':
-                            # Google AI Studio: tool_config via dict
-                            generate_kwargs["tool_config"] = {"function_calling_config": {"mode": "ANY"}}
-                        else:
-                            from vertexai.preview.generative_models import ToolConfig
-                            generate_kwargs["tool_config"] = ToolConfig(
-                                function_calling_config=ToolConfig.FunctionCallingConfig(
-                                    mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
-                                )
+                        from vertexai.preview.generative_models import ToolConfig
+                        generate_kwargs["tool_config"] = ToolConfig(
+                            function_calling_config=ToolConfig.FunctionCallingConfig(
+                                mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
                             )
+                        )
                         logger.info("Forcing tool use (mode=ANY)")
                     except (ImportError, Exception) as e:
                         logger.debug(f"ToolConfig not available: {e}")
 
-            # Generate response — REST API for thinking, SDK otherwise
-            if use_rest_for_thinking and not function_declarations:
-                # REST API call with thinking_config (SDK doesn't support it)
-                response = await self._call_rest_api_with_thinking(
-                    contents, thinking_budget, generate_kwargs.get("generation_config")
-                )
-            else:
-                loop = asyncio.get_event_loop()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: self.chat_model.generate_content(contents, **generate_kwargs)
-                )
+            # Generate response via Vertex AI
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
+            )
 
             # Check for function calls in response
             function_calls = []
@@ -903,11 +822,8 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
             # If Gemini wants to call functions, return them for orchestration
             if function_calls:
                 logger.info(f"Gemini requested {len(function_calls)} function call(s): {[fc['name'] for fc in function_calls]}")
-                # Build chat_history for round 2 (dicts for Google AI, Content for Vertex)
-                if self.backend == 'google_ai':
-                    chat_history = [{"role": "user", "parts": [{"text": full_user_prompt}]}]
-                else:
-                    chat_history = [Content(role="user", parts=[Part.from_text(full_user_prompt)])]
+                # Build chat_history for round 2 (Vertex AI Content objects)
+                chat_history = [Content(role="user", parts=[Part.from_text(full_user_prompt)])]
                 return {
                     "function_calls": function_calls,
                     "round1_response": response,  # Raw response for round 2
@@ -988,42 +904,20 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
         try:
             # 1. Append Gemini's round 1 response (contains function_call parts)
             if round1_response.candidates and round1_response.candidates[0].content:
-                if self.backend == 'google_ai':
-                    # Convert proto to dict for Google AI Studio
-                    r1_content = round1_response.candidates[0].content
-                    r1_parts = []
-                    for p in r1_content.parts:
-                        if hasattr(p, 'function_call') and p.function_call.name:
-                            r1_parts.append({"functionCall": {"name": p.function_call.name, "args": dict(p.function_call.args)}})
-                        elif hasattr(p, 'text') and p.text:
-                            r1_parts.append({"text": p.text})
-                    chat_history.append({"role": "model", "parts": r1_parts})
-                else:
-                    chat_history.append(round1_response.candidates[0].content)
+                chat_history.append(round1_response.candidates[0].content)
 
-            # 2. Build function_response parts
-            if self.backend == 'google_ai':
-                fn_parts = []
-                for fr in function_results_data:
-                    fn_parts.append({
-                        "functionResponse": {
-                            "name": fr["name"],
-                            "response": {"result": json_module.dumps(fr["result"], default=str, ensure_ascii=False)}
-                        }
-                    })
-                chat_history.append({"role": "function", "parts": fn_parts})
-            else:
-                fn_response_parts = []
-                for fr in function_results_data:
-                    fn_response_parts.append(
-                        Part.from_function_response(
-                            name=fr["name"],
-                            response={
-                                "result": json_module.dumps(fr["result"], default=str, ensure_ascii=False)
-                            },
-                        )
+            # 2. Build function_response parts (Vertex AI native)
+            fn_response_parts = []
+            for fr in function_results_data:
+                fn_response_parts.append(
+                    Part.from_function_response(
+                        name=fr["name"],
+                        response={
+                            "result": json_module.dumps(fr["result"], default=str, ensure_ascii=False)
+                        },
                     )
-                chat_history.append(Content(role="user", parts=fn_response_parts))
+                )
+            chat_history.append(Content(role="user", parts=fn_response_parts))
 
             # 3. Generate final response with all accumulated context
             generate_kwargs = {
@@ -1031,10 +925,7 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
                 "safety_settings": self.safety_settings,
             }
             if function_declarations:
-                if self.backend == 'google_ai':
-                    generate_kwargs["tools"] = function_declarations
-                else:
-                    generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
+                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
 
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
