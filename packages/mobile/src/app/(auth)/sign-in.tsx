@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, Image, Pressable, Alert } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, Image, Pressable, Alert, BackHandler } from 'react-native';
 import { Text, TextInput, Button, Surface, HelperText, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
@@ -38,6 +38,15 @@ export default function SignInScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showBiometric, setShowBiometric] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Back button → go to home instead of closing app
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/(tabs)');
+      return true; // prevent default (close app)
+    });
+    return () => handler.remove();
+  }, [router]);
 
   // Check if biometric quick login is available
   useEffect(() => {

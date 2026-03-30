@@ -9,13 +9,14 @@
  * After registration, AuthProvider auto-redirects (tokens already stored).
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import {
   Text,
@@ -48,6 +49,15 @@ export default function SignUpScreen() {
   const { colors, spacing, borderRadius } = useAppTheme();
   const { signUp } = useAuth();
   const router = useRouter();
+
+  // Back button → go to home instead of closing app
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/(tabs)');
+      return true;
+    });
+    return () => handler.remove();
+  }, [router]);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);

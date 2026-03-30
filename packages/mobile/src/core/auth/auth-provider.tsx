@@ -139,14 +139,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // Try cached profile first (instant, no network)
+        // Try cached profile + quick token validation
         const cachedProfile = getUserProfile();
         if (cachedProfile && !cancelled) {
-          // Show app immediately with cached data, refresh in background
+          // Show app immediately with cached data
           setState({ user: cachedProfile, isAuthenticated: true, isLoading: false });
 
-          // Background refresh — non-blocking, updates silently
-          const client = await getApiClient();
+          // Validate token in background — if expired, force logout immediately
+          const client = getApiClient();
           client
             .get<UserProfile>(API_ENDPOINTS.users.profile, { timeout: BOOTSTRAP_TIMEOUT_MS })
             .then((res) => {
@@ -155,15 +155,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setState((prev) => ({ ...prev, user: res.data }));
               }
             })
-            .catch((err) => {
-              // 401/403 = token definitely expired → force logout
+            .catch(async (err) => {
+              if (cancelled) return;
               const status = err?.response?.status;
-              if ((status === 401 || status === 403) && !cancelled) {
-                clearAllAuthData();
-                clearBiometricCredentials();
+              // 401/403 = token expired → force logout
+              // Also logout if refresh token was used and still failed (interceptor clears tokens)
+              if (status === 401 || status === 403) {
+                await clearAllAuthData();
+                await clearBiometricCredentials();
                 setState({ user: null, isAuthenticated: false, isLoading: false });
               }
-              // Network error (timeout, offline) → keep cached profile, retry next time
+              // Network error (timeout, offline) → keep cached profile
             });
           return;
         }

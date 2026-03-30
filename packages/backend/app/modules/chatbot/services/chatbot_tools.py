@@ -29,8 +29,8 @@ VERTEX_AVAILABLE = False
 try:
     from vertexai.generative_models import FunctionDeclaration
     VERTEX_AVAILABLE = True
-    except ImportError:
-        pass
+except ImportError:
+    pass
 
 
 # ============================================================================
