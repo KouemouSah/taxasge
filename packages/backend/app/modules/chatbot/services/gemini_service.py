@@ -494,7 +494,7 @@ Principles: concise, each data point on its own line, total in bold, end with su
 
             self.enabled = True
             logger.info(
-                f"✅ Gemini service initialized via {self.backend} "
+                f"✅ Gemini service initialized via Vertex AI "
                 f"(model: {settings.GEMINI_CHAT_MODEL}, "
                 f"temp: {settings.GEMINI_TEMPERATURE})"
             )
