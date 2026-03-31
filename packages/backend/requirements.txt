@@ -58,8 +58,8 @@ sendgrid>=6.11.0
 
 # ML & AI Support
 # Google Cloud Vertex AI for Gemini (Production RAG)
-google-cloud-aiplatform>=1.38.0
-google-generativeai==0.8.5
+# SDK >=1.74.0 required for gemini-2.5-flash + ThinkingConfig
+google-cloud-aiplatform>=1.74.0
 google-auth>=2.24.0
 langchain-text-splitters>=0.0.1
 
