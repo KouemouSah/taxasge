@@ -1357,20 +1357,32 @@ class ChatbotServiceRAG:
         elif intent_sugg:
             suggestions = intent_sugg[:3]
 
-        # Fallback: service-based suggestions
+        # Fallback: generic service-based suggestions (NO name_es to avoid language mixing)
         if not suggestions and services:
-            top = services[0]
-            name = top.get("name_es", "este servicio")
-            suggestions.append({
-                "es": f"¿Qué documentos necesito para {name}?",
-                "fr": f"Quels documents faut-il pour {name} ?",
-                "en": f"What documents do I need for {name}?",
-            }.get(language, f"What documents do I need for {name}?"))
-            suggestions.append({
-                "es": f"¿Cuánto cuesta {name}?",
-                "fr": f"Combien coûte {name} ?",
-                "en": f"How much does {name} cost?",
-            }.get(language, f"How much does {name} cost?"))
+            # Use workflow_keyword if detected (language-neutral), else generic
+            topic = entities.get('workflow_keyword') or entities.get('commerce_keyword') or ''
+            if topic:
+                suggestions.append({
+                    "es": f"¿Qué documentos necesito para {topic}?",
+                    "fr": f"Quels documents faut-il pour {topic} ?",
+                    "en": f"What documents do I need for {topic}?",
+                }.get(language, f"What documents do I need for {topic}?"))
+                suggestions.append({
+                    "es": f"¿Cuánto cuesta {topic}?",
+                    "fr": f"Combien coûte {topic} ?",
+                    "en": f"How much does {topic} cost?",
+                }.get(language, f"How much does {topic} cost?"))
+            else:
+                suggestions.append({
+                    "es": "¿Qué documentos necesito para este servicio?",
+                    "fr": "Quels documents sont nécessaires pour ce service ?",
+                    "en": "What documents do I need for this service?",
+                }.get(language, "What documents do I need?"))
+                suggestions.append({
+                    "es": "¿Cuánto cuesta este servicio?",
+                    "fr": "Combien coûte ce service ?",
+                    "en": "How much does this service cost?",
+                }.get(language, "How much does it cost?"))
 
         # Topic-based suggestions when no services found (multilingual)
         if not suggestions:

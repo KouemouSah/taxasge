@@ -346,7 +346,7 @@ class SemanticSearchRepository:
                 -- Combined score as "similarity" for downstream compatibility
                 (
                     $3 * (1 - (fs.embedding <=> $1::vector)) +
-                    $4 * ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))
+                    $4 * ts_rank(fs.search_vector, plainto_tsquery('simple', $2))
                 )::FLOAT as similarity,
 
                 -- Keywords
@@ -425,7 +425,7 @@ class SemanticSearchRepository:
             WHERE {where_clause}
                 AND (
                     $3 * (1 - (fs.embedding <=> $1::vector)) +
-                    $4 * ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))
+                    $4 * ts_rank(fs.search_vector, plainto_tsquery('simple', $2))
                 ) >= $5
 
             GROUP BY
