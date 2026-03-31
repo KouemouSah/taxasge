@@ -1078,17 +1078,23 @@ async def reindex_legislacion_pdfs(
             # Fallback: web public (local dev only)
             pdf_folder = os.path.join(os.getcwd(), '..', 'web', 'public', 'documents', 'legislacion')
 
-        pdf_files = sorted(glob.glob(os.path.join(pdf_folder, '*.pdf'))) if os.path.isdir(pdf_folder) else []
-        if not pdf_files:
-            return {"message": f"No PDFs found in {pdf_folder}", "pdf_count": 0}
+        # Find PDFs AND markdown files (for scanned documents converted to text)
+        all_files = []
+        if os.path.isdir(pdf_folder):
+            all_files = sorted(
+                glob.glob(os.path.join(pdf_folder, '*.pdf'))
+                + glob.glob(os.path.join(pdf_folder, '*.md'))
+            )
+        if not all_files:
+            return {"message": f"No files found in {pdf_folder}", "pdf_count": 0}
 
         # Filter by specific document if requested (avoids timeout on large batches)
         if doc:
-            pdf_files = [f for f in pdf_files if doc.lower() in os.path.basename(f).lower()]
-            if not pdf_files:
-                return {"message": f"PDF '{doc}' not found in {pdf_folder}", "pdf_count": 0}
+            all_files = [f for f in all_files if doc.lower() in os.path.basename(f).lower()]
+            if not all_files:
+                return {"message": f"Document '{doc}' not found in {pdf_folder}", "pdf_count": 0}
 
-        logger.info(f"Found {len(pdf_files)} PDF(s) to index")
+        logger.info(f"Found {len(all_files)} file(s) to index (PDF + MD)")
 
         # Import pdfplumber (available in requirements.txt)
         try:
@@ -1102,11 +1108,12 @@ async def reindex_legislacion_pdfs(
 
         total_stats = {"inserted": 0, "updated": 0, "skipped": 0, "failed": 0, "pdfs_processed": 0}
 
-        for pdf_path in pdf_files:
-            filename = os.path.basename(pdf_path)
+        for file_path in all_files:
+            filename = os.path.basename(file_path)
             doc_name = os.path.splitext(filename)[0]
+            is_markdown = filename.endswith('.md')
 
-            # Check existing chunks BEFORE parsing (avoid loading PDF if fully indexed)
+            # Check existing chunks BEFORE parsing
             existing = set()
             if not force:
                 rows = await db.fetch(
@@ -1115,24 +1122,78 @@ async def reindex_legislacion_pdfs(
                 )
                 existing = {r['chunk_id'] for r in rows}
 
-            # Parse PDF PAGE BY PAGE (memory efficient — never loads full PDF)
             page_count = 0
-            chunks_this_pdf = 0
+            chunks_this_file = 0
             try:
-                with pdfplumber.open(pdf_path) as pdf:
-                    page_count = len(pdf.pages)
-                    for page_num, page in enumerate(pdf.pages, 1):
-                        text = page.extract_text() or ''
-                        if not text.strip():
+                if is_markdown:
+                    # Markdown: read as plain text, chunk directly
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        full_text = f.read()
+                    if not full_text.strip():
+                        continue
+                    page_count = 1
+                    step = max(1, chunk_size - chunk_overlap)
+                    for i in range(0, len(full_text), step):
+                        chunk_text = full_text[i:i + chunk_size]
+                        if len(chunk_text.strip()) < 50:
+                            continue
+                        chunk_idx = i // step
+                        page_num = chunk_idx // 3 + 1  # Approximate pages (3 chunks per "page")
+                        chunk_id = f'{doc_name.lower()}_p{page_num}_c{chunk_idx % 3}'
+
+                        if chunk_id in existing and not force:
+                            total_stats['skipped'] += 1
                             continue
 
-                        step = max(1, chunk_size - chunk_overlap)
-                        for i in range(0, len(text), step):
-                            chunk_text = text[i:i + chunk_size]
-                            if len(chunk_text.strip()) < 50:
+                        embedding = await embedding_service.generate_embedding(
+                            chunk_text.strip(),
+                            task_type='RETRIEVAL_DOCUMENT',
+                            title=f"{doc_name} - Section {chunk_idx + 1}",
+                        )
+                        if not embedding:
+                            total_stats['failed'] += 1
+                            continue
+
+                        embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+                        await db.execute(
+                            """
+                            INSERT INTO legislacion_documents
+                                (document_name, page_number, chunk_id, content,
+                                 embedding, embedding_model, embedding_generated_at)
+                            VALUES ($1, $2, $3, $4, $5::vector, $6, NOW())
+                            ON CONFLICT (document_name, chunk_id) DO UPDATE SET
+                                content = EXCLUDED.content,
+                                embedding = EXCLUDED.embedding,
+                                embedding_model = EXCLUDED.embedding_model,
+                                embedding_generated_at = NOW(),
+                                updated_at = NOW()
+                            """,
+                            doc_name, page_num, chunk_id, chunk_text.strip(),
+                            embedding_str, settings.GEMINI_EMBEDDING_MODEL,
+                        )
+
+                        if chunk_id in existing:
+                            total_stats['updated'] += 1
+                        else:
+                            total_stats['inserted'] += 1
+                        chunks_this_file += 1
+
+                else:
+                    # PDF: parse page by page with pdfplumber
+                    with pdfplumber.open(file_path) as pdf:
+                        page_count = len(pdf.pages)
+                        for page_num, page in enumerate(pdf.pages, 1):
+                            text = page.extract_text() or ''
+                            if not text.strip():
                                 continue
-                            chunk_idx = i // step
-                            chunk_id = f'{doc_name.lower()}_p{page_num}_c{chunk_idx}'
+
+                            step = max(1, chunk_size - chunk_overlap)
+                            for i in range(0, len(text), step):
+                                chunk_text = text[i:i + chunk_size]
+                                if len(chunk_text.strip()) < 50:
+                                    continue
+                                chunk_idx = i // step
+                                chunk_id = f'{doc_name.lower()}_p{page_num}_c{chunk_idx}'
 
                             # Skip if already indexed
                             if chunk_id in existing and not force:
@@ -1175,7 +1236,7 @@ async def reindex_legislacion_pdfs(
                                 total_stats['updated'] += 1
                             else:
                                 total_stats['inserted'] += 1
-                            chunks_this_pdf += 1
+                            chunks_this_file += 1
 
                         # Page memory freed when loop moves to next page
 
@@ -1183,17 +1244,17 @@ async def reindex_legislacion_pdfs(
                 logger.error(f"Failed to parse {filename}: {e}")
                 continue
 
-            if chunks_this_pdf == 0 and not existing:
+            if chunks_this_file == 0 and not existing:
                 logger.info(f"  {filename}: no text extracted (possibly scanned PDF)")
                 continue
 
             total_stats['pdfs_processed'] += 1
-            logger.info(f"  {filename}: {page_count} pages, {chunks_this_pdf} new chunks indexed")
+            logger.info(f"  {filename}: {page_count} pages/sections, {chunks_this_file} new chunks indexed")
 
         elapsed = time_module.time() - start_time
         total_stats['elapsed_seconds'] = round(elapsed, 1)
         total_stats['message'] = (
-            f"Indexed {total_stats['pdfs_processed']}/{len(pdf_files)} PDFs: "
+            f"Indexed {total_stats['pdfs_processed']}/{len(all_files)} files: "
             f"+{total_stats['inserted']} new, ~{total_stats['updated']} updated, "
             f"={total_stats['skipped']} skipped, x{total_stats['failed']} failed "
             f"in {elapsed:.1f}s"
