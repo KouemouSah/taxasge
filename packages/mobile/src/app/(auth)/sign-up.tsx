@@ -104,7 +104,7 @@ export default function SignUpScreen() {
       },
       onError: (error) => {
         const apiError = extractApiError(error);
-        setErrorMessage(apiError.message);
+        setErrorMessage(t(apiError.i18nKey));
       },
     });
   }, [emailForm, registerForm, sendCodeMutation]);
@@ -147,7 +147,7 @@ export default function SignUpScreen() {
         router.replace('/(tabs)');
       } catch (error) {
         const apiError = extractApiError(error);
-        setErrorMessage(apiError.message);
+        setErrorMessage(t(apiError.i18nKey));
       } finally {
         setIsRegistering(false);
       }

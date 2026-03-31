@@ -45,6 +45,7 @@ import type {
   WorkflowTariff,
 } from '@/modules/service-requests-admin'
 import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 import SupplementsTabContent from './components/SupplementsTabContent'
 
 // Format currency
@@ -70,6 +71,7 @@ interface WorkflowTariffSummary {
 export default function TariffsPage() {
   const t = useTranslations('admin.serviceRequests.tariffs')
   const tCommon = useTranslations('common')
+  const { tw } = useWorkflowTranslations()
   const [activeTab, setActiveTab] = useState('overview')
 
   // State
@@ -170,12 +172,13 @@ export default function TariffsPage() {
       result = result.filter(
         (ws) =>
           ws.workflow.code.toLowerCase().includes(query) ||
-          ws.workflow.name_es.toLowerCase().includes(query)
+          ws.workflow.name_es.toLowerCase().includes(query) ||
+          tw(workflowNameKey(ws.workflow.code), ws.workflow.name_es).toLowerCase().includes(query)
       )
     }
 
     return result
-  }, [workflowSummaries, statusFilter, categoryFilter, searchQuery])
+  }, [workflowSummaries, statusFilter, categoryFilter, searchQuery, tw])
 
   // Pagination
   const paginatedSummaries = paginateData(filteredSummaries)
@@ -397,7 +400,7 @@ export default function TariffsPage() {
                                 {summary.workflow.code}
                               </code>
                               <div className="text-sm text-muted-foreground mt-1">
-                                {summary.workflow.name_es}
+                                {tw(workflowNameKey(summary.workflow.code), summary.workflow.name_es)}
                               </div>
                             </div>
                           </TableCell>

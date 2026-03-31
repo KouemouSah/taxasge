@@ -75,6 +75,7 @@ import type {
 } from '@/modules/service-requests-admin'
 import { WORKFLOW_CATEGORIES_MAP } from '@/modules/service-requests-admin'
 import { cn } from '@/lib/utils'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 const formatCurrency = (amount: number, currency = 'XAF') => {
   return new Intl.NumberFormat('es-GQ', {
@@ -218,6 +219,9 @@ export default function WorkflowsPage() {
     new Set(WORKFLOW_DOMAINS.map(d => d.id))
   )
 
+  // Workflow translations
+  const { tw } = useWorkflowTranslations()
+
   // Mutations
   const deleteWorkflowMutation = useDeleteWorkflow()
 
@@ -267,7 +271,7 @@ export default function WorkflowsPage() {
         domainWorkflows.sort((a, b) => {
           const orderDiff = (a.display_order || 0) - (b.display_order || 0)
           if (orderDiff !== 0) return orderDiff
-          return a.name_es.localeCompare(b.name_es)
+          return tw(workflowNameKey(a.code), a.name_es).localeCompare(tw(workflowNameKey(b.code), b.name_es))
         })
 
         groups.push({
@@ -280,7 +284,7 @@ export default function WorkflowsPage() {
     })
 
     return groups
-  }, [workflows, tariffs])
+  }, [workflows, tariffs, tw])
 
   // Filter groups based on search and filters
   const filteredGroups = useMemo(() => {
@@ -312,6 +316,7 @@ export default function WorkflowsPage() {
             (wf) =>
               wf.code.toLowerCase().includes(query) ||
               wf.name_es.toLowerCase().includes(query) ||
+              tw(workflowNameKey(wf.code), wf.name_es).toLowerCase().includes(query) ||
               wf.entity_code.toLowerCase().includes(query) ||
               (wf.tags && wf.tags.some((tag) => tag.toLowerCase().includes(query)))
           )
@@ -325,7 +330,7 @@ export default function WorkflowsPage() {
         }
       })
       .filter((group) => group.workflows.length > 0)
-  }, [workflowGroups, categoryFilter, statusFilter, sourceFilter, searchQuery])
+  }, [workflowGroups, categoryFilter, statusFilter, sourceFilter, searchQuery, tw])
 
   // Stats
   const totalWorkflows = workflows?.filter((wf) => wf.is_parent !== true).length || 0
@@ -669,7 +674,7 @@ export default function WorkflowsPage() {
                                     <XCircle className="h-4 w-4 text-red-500" />
                                   )}
                                 </div>
-                                <div className="text-sm font-medium mt-1">{wf.name_es}</div>
+                                <div className="text-sm font-medium mt-1">{tw(workflowNameKey(wf.code), wf.name_es)}</div>
                                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
                                   <span>{wf.entity_code}</span>
                                   <span>•</span>

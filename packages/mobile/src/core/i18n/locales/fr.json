@@ -469,7 +469,10 @@
     "notFound": "Ressource introuvable.",
     "serverError": "Erreur du serveur. Réessayez plus tard.",
     "validation": "Vérifiez les données saisies.",
-    "rateLimit": "Trop de requêtes. Veuillez patienter."
+    "rateLimit": "Trop de requêtes. Veuillez patienter.",
+    "timeout": "La requête a pris trop de temps. Réessayez.",
+    "conflict": "Conflit avec l'état actuel. Réessayez.",
+    "unknown": "Une erreur inattendue s'est produite."
   },
   "wizard": {
     "title": "Nouvelle demande",

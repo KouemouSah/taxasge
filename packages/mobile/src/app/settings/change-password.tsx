@@ -54,7 +54,7 @@ export default function ChangePasswordScreen() {
           setTimeout(() => signOut(), 2000);
         },
         onError: (error) => {
-          setErrorMessage(extractApiError(error).message);
+          setErrorMessage(t(extractApiError(error).i18nKey));
         },
       },
     );

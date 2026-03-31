@@ -100,7 +100,7 @@ export default function SignInScreen() {
       }
     } catch (error) {
       const apiError = extractApiError(error);
-      setErrorMessage(apiError.message);
+      setErrorMessage(t(apiError.i18nKey));
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +126,7 @@ export default function SignInScreen() {
       }
     } catch (error) {
       const apiError = extractApiError(error);
-      setErrorMessage(apiError.message);
+      setErrorMessage(t(apiError.i18nKey));
     } finally {
       setBiometricLoading(false);
     }

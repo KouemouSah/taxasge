@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { UseBatchSessionReturn } from '../../hooks/useBatchSession'
 import type { BatchWorkflowOption } from '../../types'
 import { batchApi } from '../../services/batch-api'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 interface WorkflowSelectionProps {
   hook: UseBatchSessionReturn
@@ -25,6 +26,7 @@ interface WorkflowSelectionProps {
 export function WorkflowSelection({ hook, onSessionCreated }: WorkflowSelectionProps) {
   const { isLoading, createSession } = hook
   const t = useTranslations('batch')
+  const { tw } = useWorkflowTranslations()
   const [workflowCode, setWorkflowCode] = useState('')
   const [solicitudType, setSolicitudType] = useState('')
   const [notes, setNotes] = useState('')
@@ -134,7 +136,7 @@ export function WorkflowSelection({ hook, onSessionCreated }: WorkflowSelectionP
                 <SelectItem key={wf.code} value={wf.code}>
                   <span className="flex items-center gap-2">
                     <span className="text-xs text-gray-400">{catLabel}</span>
-                    <span>{wf.service_name_es}</span>
+                    <span>{tw(workflowNameKey(wf.code), wf.service_name_es)}</span>
                   </span>
                 </SelectItem>
               ))

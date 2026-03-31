@@ -1675,7 +1675,10 @@
       "monitoring": "Operations Center",
       "aiAgents": "AI Agents",
       "paymentInfrastructure": "Payment Infrastructure",
-      "paymentGateways": "Payment Gateways"
+      "paymentGateways": "Payment Gateways",
+      "workflowsConfig": "Flujos de Trabajo",
+      "entities": "Entidades",
+      "entityLocations": "Ubicaciones de Entidades"
     },
     "companyClassification": {
       "title": "Company Classification",
@@ -2475,7 +2478,43 @@
         "batchDeleted": "{succeeded} config(s) deleted",
         "batchDeletedPartial": "{succeeded} deleted, {failed} failed",
         "duplicate": "Duplicate",
-        "duplicated": "Configuration duplicated successfully"
+        "duplicated": "Configuration duplicated successfully",
+        "sectionDescriptions": {
+          "info": "Informations de base de la demande",
+          "extractedData": "Données extraites par OCR",
+          "documents": "Documents joints",
+          "contact": "Coordonnées du demandeur",
+          "appointment": "Détails du rendez-vous",
+          "paymentDetails": "Informations de paiement",
+          "timeline": "Chronologie des événements",
+          "history": "Historique des actions"
+        },
+        "editPage": {
+          "title": "Configuration des Colonnes",
+          "availableColumns": "Colonnes Disponibles",
+          "selectedColumns": "Colonnes Sélectionnées",
+          "searchPlaceholder": "Rechercher une colonne...",
+          "systemColumns": "Colonnes Système",
+          "extractedColumns": "Colonnes Extraites",
+          "noColumnsFound": "Aucune colonne trouvée",
+          "noColumnsSelected": "Aucune colonne sélectionnée",
+          "addColumnHint": "Cliquez sur + pour ajouter des colonnes",
+          "reorderHint": "Réorganisez avec les flèches pour définir votre ordre",
+          "preview": "Aperçu",
+          "previewDescription": "Visualisation dans la liste des demandes",
+          "previewEmpty": "Sélectionnez des colonnes pour voir un aperçu",
+          "sectionsTitle": "Sections du Panneau",
+          "sectionsDescription": "Sections visibles dans le panneau de détail",
+          "unsavedChanges": "Modifications non sauvegardées",
+          "save": "Sauvegarder",
+          "saved": "Configuration sauvegardée",
+          "configNotFound": "Configuration non trouvée",
+          "back": "Retour",
+          "leaveConfirmTitle": "Modifications non sauvegardées",
+          "leaveConfirmMessage": "Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter ?",
+          "leaveConfirmCancel": "Rester",
+          "leaveConfirmLeave": "Quitter sans sauvegarder"
+        }
       }
     },
     "noResults": "No results found",
@@ -2780,7 +2819,8 @@
           "malabo": "Malabo",
           "bata": "Bata",
           "insular": "Insular",
-          "continental": "Continental"
+          "continental": "Continental",
+          "bulkDeleteDescription": "Se eliminarán los horarios seleccionados. Esta acción no se puede deshacer."
         },
         "blocked": {
           "title": "Blocked Dates",
@@ -4136,7 +4176,21 @@
         "ttlHint": "Time in seconds before the notification expires",
         "fieldActive": "Template Active",
         "create": "Create Template",
-        "update": "Update Template"
+        "update": "Update Template",
+        "code": "Código de Plantilla",
+        "codePlaceholder": "ej: PAYMENT_RECEIVED",
+        "nameEs": "Nombre (Español)",
+        "nameFr": "Nombre (Francés)",
+        "nameEn": "Nombre (Inglés)",
+        "titleEs": "Título (Español)",
+        "titleFr": "Título (Francés)",
+        "titleEn": "Título (Inglés)",
+        "bodyEs": "Cuerpo (Español)",
+        "bodyFr": "Cuerpo (Francés)",
+        "bodyEn": "Cuerpo (Inglés)",
+        "platform": "Plataforma",
+        "ttl": "TTL (segundos)",
+        "active": "Activo"
       }
     },
     "smsTemplates": {
@@ -4291,6 +4345,211 @@
         "createWebhook": "Create Webhook",
         "updateWebhook": "Update Webhook",
         "invalidJson": "Invalid JSON format"
+      }
+    },
+    "entities": {
+      "pageTitle": "Gestión de Entidades",
+      "pageSubtitle": "Administrar entidades, ubicaciones y ciudades de Guinea Ecuatorial",
+      "tabs": {
+        "entities": "Entidades",
+        "locations": "Ubicaciones",
+        "cities": "Ciudades"
+      },
+      "title": "Gestión de Entidades",
+      "subtitle": "Administrar entidades, departamentos y asignación de workflows",
+      "listTitle": "Lista de Entidades",
+      "createEntity": "Crear Entidad",
+      "editEntity": "Editar Entidad",
+      "deleteEntity": "Eliminar Entidad",
+      "entityCreated": "Entidad creada exitosamente",
+      "entityUpdated": "Entidad actualizada exitosamente",
+      "entityDeleted": "Entidad eliminada exitosamente",
+      "fieldCode": "Código",
+      "fieldName": "Nombre",
+      "fieldDescription": "Descripción",
+      "fieldType": "Tipo",
+      "fieldParent": "Entidad Padre",
+      "fieldWorkflowCodes": "Códigos de Workflow",
+      "fieldActive": "Activo",
+      "typeEntity": "Entidad",
+      "typeDepartment": "Departamento",
+      "typeTreasury": "Tesoro Público",
+      "noEntitiesFound": "No se encontraron entidades",
+      "entitiesFound": "{count} entidad(es) encontrada(s)",
+      "workflowCodesHint": "Separados por coma o salto de línea",
+      "searchPlaceholder": "Buscar por código, nombre...",
+      "allTypes": "Todos los tipos",
+      "allStatus": "Todos los estados",
+      "createFirstEntity": "Crear primera entidad",
+      "codeAndNameRequired": "Código y nombre son requeridos",
+      "editDescription": "Actualizar información y asignación de workflows",
+      "createDescription": "Crear una nueva entidad o departamento",
+      "selectParent": "Seleccionar entidad padre",
+      "selectWorkflows": "Seleccionar workflows...",
+      "workflowsSelected": "{count} workflow(s) seleccionado(s)",
+      "searchWorkflows": "Buscar workflows...",
+      "noWorkflowsFound": "No se encontraron workflows",
+      "saveChanges": "Guardar cambios",
+      "deleteDescription": "¿Está seguro de eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "fieldMinistry": "Ministerio",
+      "selectMinistry": "Seleccionar ministerio...",
+      "independentEntity": "Independiente (sin padre)",
+      "ministryHint": "Opcional: vincular la entidad a un ministerio para establecer una jerarquía",
+      "fieldParentType": "Tipo de padre",
+      "selectParentType": "Seleccionar tipo de padre...",
+      "parentTypeMinistry": "Ministerio",
+      "parentTypeEntity": "Entidad",
+      "parentTypeHint": "Selecciona si esta entidad está vinculada a un ministerio o a otra entidad",
+      "noMinistriesFound": "No se encontraron ministerios",
+      "mappings": "mappings",
+      "mappingCoverage": "Cobertura de Mappings",
+      "createMapping": "Crear mapping",
+      "table": {
+        "code": "Código",
+        "name": "Nombre",
+        "type": "Tipo",
+        "parent": "Padre",
+        "workflows": "Workflows",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "entityTypes": {
+        "entity": "Entidad (Principal)",
+        "department": "Departamento",
+        "treasury": "Tesoro Público"
+      },
+      "locations": {
+        "title": "Ubicaciones de Entidades",
+        "subtitle": "Gestionar ubicaciones físicas de las entidades",
+        "addLocation": "Agregar Ubicación",
+        "createSuccess": "Ubicación creada exitosamente",
+        "updateSuccess": "Ubicación actualizada exitosamente",
+        "deleteSuccess": "Ubicación eliminada exitosamente",
+        "activated": "Ubicación activada",
+        "deactivated": "Ubicación desactivada",
+        "mainOffice": "Principal",
+        "stats": {
+          "total": "Total Ubicaciones",
+          "active": "activas",
+          "insular": "Insular",
+          "continental": "Continental",
+          "entities": "Entidades",
+          "registeredEntities": "registradas"
+        },
+        "filters": {
+          "city": "Ciudad",
+          "entity": "Entidad",
+          "status": "Estado",
+          "allCities": "Todas las ciudades",
+          "allEntities": "Todas las entidades",
+          "region": "Región",
+          "allRegions": "Todas las regiones",
+          "allStatus": "Todos los estados",
+          "activeOnly": "Solo activas",
+          "inactiveOnly": "Solo inactivas",
+          "searchPlaceholder": "Buscar ubicación..."
+        },
+        "table": {
+          "entity": "Entidad",
+          "city": "Ciudad",
+          "region": "Región",
+          "name": "Nombre",
+          "contact": "Contacto",
+          "status": "Estado",
+          "actions": "Acciones"
+        },
+        "status": {
+          "active": "Activa",
+          "inactive": "Inactiva"
+        },
+        "actions": {
+          "activate": "Activar",
+          "deactivate": "Desactivar"
+        },
+        "empty": {
+          "title": "No hay ubicaciones",
+          "description": "No se encontraron ubicaciones de entidades",
+          "createFirst": "Crear primera ubicación"
+        },
+        "form": {
+          "createTitle": "Crear Ubicación",
+          "createDescription": "Agregar una nueva ubicación para una entidad",
+          "editTitle": "Editar Ubicación",
+          "editDescription": "Modificar los datos de la ubicación"
+        },
+        "deleteConfirm": {
+          "title": "Eliminar Ubicación",
+          "description": "¿Está seguro de eliminar la ubicación \"{name}\" en {city}? Esta acción no se puede deshacer."
+        },
+        "pagination": {
+          "showing": "Mostrando {from} a {to} de {total}",
+          "loading": "Cargando...",
+          "loadMore": "Cargar más"
+        }
+      },
+      "cities": {
+        "title": "Gestión de Ciudades",
+        "subtitle": "Administrar las ciudades de Guinea Ecuatorial",
+        "stats": {
+          "totalCities": "Total Ciudades",
+          "insular": "Insular",
+          "continental": "Continental"
+        },
+        "list": {
+          "title": "Lista de Ciudades",
+          "found": "{count} ciudad(es) encontrada(s)",
+          "addCity": "Añadir Ciudad",
+          "addFirstCity": "Añadir Primera Ciudad",
+          "noCitiesFound": "No se encontraron ciudades",
+          "searchPlaceholder": "Buscar ciudades...",
+          "allRegions": "Todas las Regiones"
+        },
+        "table": {
+          "name": "Nombre",
+          "region": "Región",
+          "description": "Descripción",
+          "status": "Estado",
+          "actions": "Acciones"
+        },
+        "status": {
+          "active": "Activa",
+          "inactive": "Inactiva"
+        },
+        "form": {
+          "addTitle": "Añadir Ciudad",
+          "editTitle": "Editar Ciudad",
+          "addDescription": "Añadir una nueva ciudad",
+          "editDescription": "Actualizar información de la ciudad",
+          "name": "Nombre",
+          "nameRequired": "Nombre *",
+          "namePlaceholder": "ej., Malabo",
+          "region": "Región",
+          "regionRequired": "Región *",
+          "description": "Descripción",
+          "descriptionPlaceholder": "Descripción opcional...",
+          "capitalCity": "Ciudad capital",
+          "active": "Activa",
+          "saveChanges": "Guardar Cambios",
+          "create": "Crear"
+        },
+        "delete": {
+          "title": "Eliminar Ciudad",
+          "description": "¿Está seguro de eliminar \"{name}\"? Esta acción no se puede deshacer.",
+          "button": "Eliminar"
+        },
+        "messages": {
+          "nameRequired": "El nombre de la ciudad es requerido",
+          "createSuccess": "Ciudad creada exitosamente",
+          "updateSuccess": "Ciudad actualizada exitosamente",
+          "deleteSuccess": "Ciudad eliminada exitosamente",
+          "saveError": "Error al guardar la ciudad",
+          "deleteError": "Error al eliminar la ciudad"
+        },
+        "loading": "Cargando..."
       }
     }
   },
@@ -4882,7 +5141,9 @@
     "noResults": "No results",
     "errorGeneric": "An unexpected error occurred",
     "deleteConfirm": "Are you sure you want to delete?",
-    "updated": "Updated"
+    "updated": "Updated",
+    "errorSaving": "Error al guardar",
+    "errorDeleting": "Error al eliminar"
   },
   "dashboard": {
     "actionRequired": "Action required on the following requests",
@@ -5615,7 +5876,9 @@
     "processingAlreadyRunning": "Already processing — please wait",
     "processingIdle": "No active processing",
     "circuitBreakerPause": "Safety pause — too many consecutive errors, retrying...",
-    "seedConfirmDescAuto": "Generation of {count} descriptions will be queued and processing will start automatically with 10 parallel Gemini calls."
+    "seedConfirmDescAuto": "Generation of {count} descriptions will be queued and processing will start automatically with 10 parallel Gemini calls.",
+    "noPending": "Sin borradores pendientes",
+    "generateMinistriesTitle": "Generar Descripciones Ministerios"
   },
   "licenses": {
     "title": "Commercial Licenses",
@@ -5648,7 +5911,45 @@
     "priceRange": "From {min} to {max} XAF depending on zone",
     "print": "Print",
     "loadError": "Failed to load data. Please try again.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "printTitle": "Pricing Sheet — Commercial Licenses",
+    "printSubtitle": "Republic of Equatorial Guinea",
+    "printType": "Type",
+    "printZone": "Zone",
+    "printRef": "Ref.",
+    "printFooterTitle": "FACIL — Fiscal Services Platform",
+    "printFooterCountry": "Republic of Equatorial Guinea",
+    "printDisclaimer": "Informational document. Prices subject to change.",
+    "printVerifyOnline": "Verify online",
+    "noCommerceTypes": "No commerce types available",
+    "installments": "Installments",
+    "subtotalMinistry": "Subtotal {ministry}",
+    "commerceTypes": {
+      "abaceria": "Grocery Stores, Factories and General Commerce",
+      "bar_restaurante": "Bars and Restaurants",
+      "cafeteria_pasteleria": "Cafeterias-Pastry Shops, Bakeries and Snack Bars",
+      "carpinteria": "Carpentry and Woodworking Shops",
+      "clinica_farmacia": "Clinics, Pharmacies and Similar",
+      "discoteca": "Nightclubs and Similar",
+      "ferreteria": "Hardware Stores",
+      "taller_bloqueria": "Workshops and Block-making Facilities",
+      "taller_artesanal": "Artisan Workshops and Shops",
+      "video_club": "Video Clubs and Similar"
+    },
+    "zoneNames": {
+      "A1": "Regional Capitals",
+      "A2": "Regional Capitals (2)",
+      "A3": "Regional Capitals (3)",
+      "B1": "Provincial Capitals",
+      "B2": "Provincial Capitals (2)",
+      "B3": "Provincial Capitals (3)",
+      "C1": "District and Municipal Capitals",
+      "C2": "District and Municipal Capitals (2)",
+      "C3": "District and Municipal Capitals (3)",
+      "D1": "Village Councils",
+      "D2": "Village Councils (2)",
+      "D3": "Village Councils (3)"
+    }
   },
   "profile": {
     "accountInfoDesc": "Your account details and security",
@@ -6124,7 +6425,10 @@
     "nameEnPlaceholder": "Category name in English",
     "descriptionEsPlaceholder": "Category description in Spanish",
     "errorLoadingCategories": "Error loading categories",
-    "retry": "Retry"
+    "retry": "Retry",
+    "createCategory": "Crear Categoría",
+    "ticketClosed": "Ticket cerrado",
+    "ticketClosedMessage": "El ticket ha sido cerrado exitosamente"
   },
   "communications": {
     "smsTemplates": {
@@ -6136,7 +6440,17 @@
       "newTemplate": "New SMS Template",
       "newTemplateDescription": "Create a new SMS message template",
       "editTemplate": "Edit SMS Template",
-      "editTemplateDescription": "Modify an existing SMS message template"
+      "editTemplateDescription": "Modify an existing SMS message template",
+      "form": {
+        "code": "Código de Plantilla",
+        "nameEs": "Nombre (Español)",
+        "contentEs": "Contenido (Español)",
+        "contentFr": "Contenido (Francés)",
+        "contentEn": "Contenido (Inglés)",
+        "category": "Categoría",
+        "maxSegments": "Segmentos Máximos",
+        "active": "Activo"
+      }
     }
   },
   "service_requests": {
@@ -6187,7 +6501,10 @@
       "in_progress": "In Progress",
       "under_review": "Under Review",
       "documents_required": "Documents Required",
-      "cita_scheduled": "Appointment Scheduled"
+      "cita_scheduled": "Appointment Scheduled",
+      "extraction_complete": "Extracción Completa",
+      "validation_pending": "Validación Pendiente",
+      "additional_info": "Info. Adicional Requerida"
     },
     "priority": {
       "low": "Low",
@@ -6630,7 +6947,70 @@
     "verify_data": "Verify data",
     "all_documents_uploaded": "All required documents have been uploaded",
     "documents_pending": "Some documents still need to be uploaded",
-    "continue_to_verification": "Continue to verification"
+    "continue_to_verification": "Continue to verification",
+    "cancel": "Cancelar",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "save": "Guardar",
+    "uploading": "Subiendo",
+    "required": "Requerido",
+    "confidence": "confianza",
+    "step_of": "Paso {current} de {total}",
+    "ready_to_submit": "Listo para enviar",
+    "review_and_submit": "Revise todos los datos y haga clic en Enviar para completar su solicitud",
+    "step_content_placeholder": "Contenido del paso",
+    "error_delete_failed": "Error al eliminar el archivo",
+    "error_retry_failed": "Error al reintentar extracción",
+    "no_extracted_data": "No hay datos extraídos",
+    "extracted_data": "Datos Extraídos",
+    "overall_extraction_confidence": "Confianza general de la extracción",
+    "show_formatted": "Ver formateado",
+    "show_raw": "Ver JSON",
+    "save_changes": "Guardar cambios",
+    "validation_errors": "Errores de validación",
+    "pending_review": "Pendientes de revisión",
+    "approved": "Aprobadas",
+    "rejected": "Rechazadas",
+    "total": "Total",
+    "service_requests": "Solicitudes de Servicio",
+    "all_statuses": "Todos los estados",
+    "applicant": "Solicitante",
+    "date": "Fecha",
+    "showing_of": "Mostrando {start}-{end} de {total}",
+    "page_of": "Página {page} de {total}",
+    "view_details": "Ver detalles",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "request_info": "Solicitar información",
+    "schedule_appointment": "Programar cita",
+    "name": "Nombre",
+    "email": "Correo",
+    "form_data": "Datos del Formulario",
+    "agent_notes": "Notas del Agente",
+    "no_documents": "Sin documentos",
+    "no_validation_results": "Sin resultados de validación",
+    "history_coming_soon": "Historial próximamente",
+    "approve_request": "Aprobar Solicitud",
+    "approve_confirm_message": "¿Está seguro de que desea aprobar esta solicitud?",
+    "notes_optional": "Notas (opcional)",
+    "notes_placeholder": "Agregar notas adicionales...",
+    "confirm_approve": "Confirmar Aprobación",
+    "reject_request": "Rechazar Solicitud",
+    "reject_confirm_message": "¿Está seguro de que desea rechazar esta solicitud?",
+    "rejection_reason": "Motivo de rechazo",
+    "select_reason": "Seleccione un motivo",
+    "confirm_reject": "Confirmar Rechazo",
+    "request_additional_info": "Solicitar Información Adicional",
+    "info_request_message": "Envíe un mensaje al solicitante pidiendo más información",
+    "message_to_applicant": "Mensaje para el solicitante",
+    "info_message_placeholder": "Escriba su mensaje...",
+    "send_request": "Enviar Solicitud",
+    "appointment_message": "Programe una cita para el solicitante",
+    "time": "Hora",
+    "location": "Ubicación",
+    "location_placeholder": "Ej: CNEDOGE Malabo - Oficina 3",
+    "schedule": "Programar"
   },
   "treasury": {
     "pageTitle": "Treasury Dashboard",
@@ -8493,7 +8873,11 @@
       "date": "Date",
       "actions": "Actions",
       "myTransactions": "My Transactions",
-      "assistant": "AI Assistant"
+      "assistant": "AI Assistant",
+      "companies": "Empresas",
+      "companyLookup": "Consultar Empresa",
+      "companyDebt": "Deuda Empresarial",
+      "companiesList": "Lista de Empresas"
     },
     "assistant": {
       "title": "AI Assistant - {entityName}",
@@ -9285,7 +9669,28 @@
       "hasPenaltiesHelp": "Assign only payments that include surcharges or fines",
       "entityLocation": "Office/Site",
       "entityLocationHelp": "Filter by Treasury office (agents at that site)",
-      "allLocations": "All offices"
+      "allLocations": "All offices",
+      "subtitle": "Gestionar reglas de asignación automática",
+      "created": "Regla creada exitosamente",
+      "updated": "Regla actualizada exitosamente",
+      "deleted": "Regla eliminada exitosamente",
+      "activated": "Regla activada",
+      "deactivated": "Regla desactivada",
+      "nameTooLong": "El nombre debe tener menos de 100 caracteres",
+      "invalidCriteria": "Por favor corrija el JSON de criterios",
+      "basicInfo": "Información Básica",
+      "basicInfoDescription": "Configure los ajustes básicos de esta regla",
+      "criteria": "Criterios",
+      "criteriaDescription": "Defina los criterios de coincidencia para esta regla",
+      "noCriteriaNeeded": "No se necesitan criterios adicionales para este tipo de regla.",
+      "roundRobinExplanation": "Round Robin distribuye el trabajo equitativamente entre todos los agentes.",
+      "priorityHelp": "Valores más bajos = mayor prioridad. Las reglas se evalúan en orden de prioridad.",
+      "activeOnCreate": "Activar inmediatamente",
+      "activeOnCreateHelp": "La regla comenzará a procesar asignaciones de inmediato",
+      "createDescription": "Crear una nueva regla de asignación automática",
+      "noRules": "No se encontraron reglas de asignación",
+      "confirmDelete": "¿Está seguro de que desea eliminar esta regla?",
+      "confirmDeleteDescription": "Esta acción archivará la regla. Puede ser restaurada más tarde."
     },
     "manual": {
       "title": "Assignment Center",
@@ -9612,7 +10017,8 @@
       "markAsFraud": "Mark as Fraud",
       "previous": "Previous",
       "next": "Next",
-      "returnToList": "Return to List"
+      "returnToList": "Return to List",
+      "viewDocument": "Ver documento"
     },
     "dialog": {
       "verifyTitle": "Confirm Verification",
@@ -9634,7 +10040,9 @@
       "confidence": "Confidence",
       "expiresAt": "Expires At",
       "source": "Source",
-      "verifiedAt": "Verified At"
+      "verifiedAt": "Verified At",
+      "expired": "EXPIRADO",
+      "expiresSoon": "Expira pronto"
     },
     "identifierTypes": {
       "dni": "DNI",
@@ -9677,7 +10085,46 @@
     "empty": {
       "noIdentifiers": "No identifiers found",
       "noDocuments": "No documents attached"
-    }
+    },
+    "fraud": "Fraude",
+    "allVerified": "Todos los identificadores están verificados",
+    "previousRequest": "Solicitud anterior",
+    "nextRequest": "Siguiente solicitud",
+    "verifyManually": "Verificar manualmente",
+    "verifyAll": "Validar todos los pendientes",
+    "reject": "Rechazar",
+    "markAsFraud": "Marcar como fraude",
+    "confirmVerification": "Confirmar la verificación",
+    "confirmationCheckbox": "He verificado este identificador con la fuente externa",
+    "notes": "Notas",
+    "reason": "Motivo del rechazo",
+    "identifierType": {
+      "dni": "DNI",
+      "pasaporte": "Pasaporte",
+      "permiso_residencia": "Permiso de Residencia",
+      "certificado_conducir": "Certificado de Conducir",
+      "matricula_vehiculo": "Matrícula de Vehículo",
+      "nif": "NIF",
+      "contrato_ornc": "Contrato ORNC",
+      "registro_civil": "Registro Civil",
+      "cuve": "CUVE",
+      "permiso_circulacion": "Permiso de Circulación",
+      "matricula_funcionario": "Matrícula de Funcionario",
+      "numero_nombramiento": "Número de Nombramiento",
+      "carnet_funcionario": "Carnet de Funcionario",
+      "numero_seguridad_social": "N° Seguridad Social"
+    },
+    "sourceDocument": "Documento fuente",
+    "confidence": "Confianza",
+    "expiresAt": "Fecha de expiración",
+    "noExpiration": "Sin expiración",
+    "documents": "Documentos",
+    "extractedData": "Datos extraídos (OCR)",
+    "fraudWarning": "Este identificador será bloqueado permanentemente. Las futuras solicitudes con este número serán rechazadas automáticamente.",
+    "verifySuccess": "Identificador verificado correctamente",
+    "verifyAllSuccess": "Todos los identificadores verificados correctamente",
+    "rejectSuccess": "Identificador rechazado",
+    "fraudSuccess": "Identificador marcado como fraude"
   },
   "history": {
     "title": "Request History",
@@ -9789,7 +10236,16 @@
     "CANCELLED": "Cancelled",
     "DOCUMENTS_VALIDATED": "Documents Validated",
     "READY_FOR_DELIVERY": "Ready for Delivery",
-    "EXPIRED": "Expired"
+    "EXPIRED": "Expired",
+    "TIMBRES_PAID": "Timbres Pagados",
+    "UNDER_REVIEW": "En Revisión",
+    "DOSSIER_VALIDE": "Dossier Validado",
+    "PENDING_NOTA_INGRESO": "Nota de Ingreso Pendiente",
+    "NOTA_UPLOADED": "Nota Subida",
+    "PAYMENT_PROCESSING": "Pago en Proceso",
+    "PAID": "Pagado",
+    "CITA_SCHEDULED": "Cita Programada",
+    "IN_PROGRESS": "En Proceso"
   },
   "public": {
     "annuaire": {

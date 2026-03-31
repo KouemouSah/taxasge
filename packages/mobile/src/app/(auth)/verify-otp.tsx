@@ -85,7 +85,7 @@ export default function VerifyOtpScreen() {
       router.replace('/(tabs)');
     } catch (error) {
       const apiError = extractApiError(error);
-      setErrorMessage(apiError.message);
+      setErrorMessage(t(apiError.i18nKey));
     } finally {
       setIsSubmitting(false);
     }

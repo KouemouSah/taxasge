@@ -4,7 +4,7 @@ Prefix: /api/v1/service-bundles
 """
 
 from decimal import Decimal
-from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
@@ -18,6 +18,7 @@ from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.translations.middleware.language_middleware import detect_language
 from app.modules.fiscal_services.models.bundles import (
     CommerceZoneResponse,
     ServiceBundleCreate,
@@ -86,15 +87,16 @@ async def list_bundles(
     )
 
 
-FEE_TYPE_LABELS_ES = {
-    "tesoro": "TESORO PÚBLICO",
-    "municipal": "AYUNTAMIENTO",
-    "chamber": "CÁMARA DE COMERCIO",
+FEE_TYPE_LABELS = {
+    "tesoro": {"es": "TESORO PÚBLICO", "fr": "TRÉSOR PUBLIC", "en": "PUBLIC TREASURY"},
+    "municipal": {"es": "AYUNTAMIENTO", "fr": "MUNICIPALITÉ", "en": "MUNICIPALITY"},
+    "chamber": {"es": "CÁMARA DE COMERCIO", "fr": "CHAMBRE DE COMMERCE", "en": "CHAMBER OF COMMERCE"},
 }
 
 
 @router.get("/simulator", response_model=SimulatorResponse)
 async def simulate_bundle_pricing(
+    request: Request,
     commerce_type: str = Query(..., max_length=100, description="Commerce type (e.g. bar_restaurante)"),
     zone_code: str = Query(..., max_length=5, description="Zone code (e.g. A1)"),
     db=Depends(get_database),
@@ -103,8 +105,10 @@ async def simulate_bundle_pricing(
 
     Returns bundle info, items grouped by fee_type, totals, documents,
     and installment preview. Used by the /licencias-comerciales public page.
+    Respects Accept-Language header for service/document name translations.
     """
-    result = await BundleService.simulate(db, commerce_type, zone_code)
+    language = detect_language(request).value
+    result = await BundleService.simulate(db, commerce_type, zone_code, language=language)
 
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
@@ -117,7 +121,7 @@ async def simulate_bundle_pricing(
             continue
         fee_groups_list.append(FeeGroupItems(
             fee_type=ft,
-            label_es=FEE_TYPE_LABELS_ES.get(ft, ft.upper()),
+            label_es=FEE_TYPE_LABELS.get(ft, {}).get(language, ft.upper()),
             items=[BundleItemResponse(**i) for i in items_raw],
             subtotal=result["fee_totals"].get(ft, "0"),
         ))

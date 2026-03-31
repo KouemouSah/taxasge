@@ -15,6 +15,8 @@ import { AxiosError } from 'axios';
 export interface ApiError {
   /** Human-readable error message (may be localized by backend). */
   message: string;
+  /** i18n key for displaying translated error to user (e.g. 'errors.network'). */
+  i18nKey: string;
   /** HTTP status code (0 if no response received, e.g. network error). */
   status: number;
   /** Raw detail string from FastAPI response, if available. */
@@ -85,6 +87,7 @@ export function extractApiError(error: unknown): ApiError {
           message: validationErrors.length > 0
             ? validationErrors.map((e) => `${e.field}: ${e.message}`).join('; ')
             : DEFAULT_MESSAGES.validation,
+          i18nKey: 'errors.validation',
           status,
           detail: JSON.stringify(detail),
           validationErrors,
@@ -97,6 +100,7 @@ export function extractApiError(error: unknown): ApiError {
       if (typeof detail === 'string') {
         return {
           message: detail,
+          i18nKey: getErrorI18nKey(status),
           status,
           detail,
           code: typeof (data as Record<string, unknown>).code === 'string'
@@ -112,6 +116,7 @@ export function extractApiError(error: unknown): ApiError {
     const fallbackMessage = extractFallbackMessage(data) ?? getDefaultMessageForStatus(status);
     return {
       message: fallbackMessage,
+      i18nKey: getErrorI18nKey(status),
       status,
       detail: typeof data === 'string' ? data : undefined,
       isNetworkError: false,
@@ -124,6 +129,7 @@ export function extractApiError(error: unknown): ApiError {
     const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED';
     return {
       message: isTimeout ? DEFAULT_MESSAGES.timeout : DEFAULT_MESSAGES.network,
+      i18nKey: isTimeout ? 'errors.timeout' : 'errors.network',
       status: 0,
       detail: error.message,
       isNetworkError: true,
@@ -135,6 +141,7 @@ export function extractApiError(error: unknown): ApiError {
   if (error instanceof Error) {
     return {
       message: error.message || DEFAULT_MESSAGES.unknown,
+      i18nKey: 'errors.unknown',
       status: 0,
       detail: error.message,
       isNetworkError: false,
@@ -145,6 +152,7 @@ export function extractApiError(error: unknown): ApiError {
   // Case 4: Unknown thrown value
   return {
     message: DEFAULT_MESSAGES.unknown,
+    i18nKey: 'errors.unknown',
     status: 0,
     detail: typeof error === 'string' ? error : undefined,
     isNetworkError: false,

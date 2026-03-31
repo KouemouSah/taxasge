@@ -146,25 +146,59 @@ class BundleRepository:
 
     @staticmethod
     async def get_bundle_items(
-        conn, bundle_id: UUID, zone_id: UUID
+        conn, bundle_id: UUID, zone_id: UUID, language: str = "es"
     ) -> List[Dict]:
-        """Get items for a bundle+zone with enriched service/ministry names."""
-        rows = await conn.fetch("""
-            SELECT sbi.id, sbi.bundle_id, sbi.fiscal_service_id, sbi.zone_id,
-                   sbi.ministry_id, sbi.amount, sbi.fee_type,
-                   sbi.is_fixed_across_zones,
-                   sbi.display_order, sbi.notes, sbi.is_active,
-                   sbi.effective_penalty, sbi.effective_deadline,
-                   sbi.config_resolved_at, sbi.requires_document,
-                   sbi.document_template_id,
-                   fs.service_code, fs.name_es as service_name,
-                   m.name_es as ministry_name
-            FROM service_bundle_items sbi
-            JOIN fiscal_services fs ON sbi.fiscal_service_id = fs.id
-            LEFT JOIN ministries m ON sbi.ministry_id = m.id
-            WHERE sbi.bundle_id = $1 AND sbi.zone_id = $2 AND sbi.is_active = true
-            ORDER BY sbi.fee_type, sbi.display_order, fs.service_code
-        """, bundle_id, zone_id)
+        """Get items for a bundle+zone with enriched service/ministry names.
+
+        Joins entity_translations for service and ministry names when language != 'es'.
+        """
+        lang = language if language in ("es", "fr", "en") else "es"
+        if lang == "es":
+            # Fast path: no translation JOINs needed
+            rows = await conn.fetch("""
+                SELECT sbi.id, sbi.bundle_id, sbi.fiscal_service_id, sbi.zone_id,
+                       sbi.ministry_id, sbi.amount, sbi.fee_type,
+                       sbi.is_fixed_across_zones,
+                       sbi.display_order, sbi.notes, sbi.is_active,
+                       sbi.effective_penalty, sbi.effective_deadline,
+                       sbi.config_resolved_at, sbi.requires_document,
+                       sbi.document_template_id,
+                       fs.service_code, fs.name_es as service_name,
+                       m.name_es as ministry_name
+                FROM service_bundle_items sbi
+                JOIN fiscal_services fs ON sbi.fiscal_service_id = fs.id
+                LEFT JOIN ministries m ON sbi.ministry_id = m.id
+                WHERE sbi.bundle_id = $1 AND sbi.zone_id = $2 AND sbi.is_active = true
+                ORDER BY sbi.fee_type, sbi.display_order, fs.service_code
+            """, bundle_id, zone_id)
+        else:
+            rows = await conn.fetch("""
+                SELECT sbi.id, sbi.bundle_id, sbi.fiscal_service_id, sbi.zone_id,
+                       sbi.ministry_id, sbi.amount, sbi.fee_type,
+                       sbi.is_fixed_across_zones,
+                       sbi.display_order, sbi.notes, sbi.is_active,
+                       sbi.effective_penalty, sbi.effective_deadline,
+                       sbi.config_resolved_at, sbi.requires_document,
+                       sbi.document_template_id,
+                       fs.service_code,
+                       COALESCE(et_svc.translation_text, fs.name_es) as service_name,
+                       COALESCE(et_min.translation_text, m.name_es) as ministry_name
+                FROM service_bundle_items sbi
+                JOIN fiscal_services fs ON sbi.fiscal_service_id = fs.id
+                LEFT JOIN ministries m ON sbi.ministry_id = m.id
+                LEFT JOIN entity_translations et_svc ON
+                    et_svc.entity_type = 'service'
+                    AND et_svc.entity_code = fs.service_code
+                    AND et_svc.field_name = 'name'
+                    AND et_svc.language_code = $3
+                LEFT JOIN entity_translations et_min ON
+                    et_min.entity_type = 'ministry'
+                    AND et_min.entity_code = m.ministry_code
+                    AND et_min.field_name = 'name'
+                    AND et_min.language_code = $3
+                WHERE sbi.bundle_id = $1 AND sbi.zone_id = $2 AND sbi.is_active = true
+                ORDER BY sbi.fee_type, sbi.display_order, fs.service_code
+            """, bundle_id, zone_id, lang)
         return [dict(r) for r in rows]
 
     @staticmethod
@@ -246,18 +280,37 @@ class BundleRepository:
     # ------------------------------------------------------------------
 
     @staticmethod
-    async def get_required_documents(conn, bundle_id: UUID) -> List[Dict]:
+    async def get_required_documents(conn, bundle_id: UUID, language: str = "es") -> List[Dict]:
         """Get distinct documents required by all services in the bundle."""
-        rows = await conn.fetch("""
-            SELECT DISTINCT dt.id as document_template_id,
-                   dt.document_name_es, dt.template_code,
-                   sda.is_required_expedition as is_required
-            FROM service_bundle_items sbi
-            JOIN service_document_assignments sda ON sda.fiscal_service_id = sbi.fiscal_service_id
-            JOIN document_templates dt ON dt.id = sda.document_template_id
-            WHERE sbi.bundle_id = $1 AND sbi.is_active = true
-            ORDER BY dt.document_name_es
-        """, bundle_id)
+        lang = language if language in ("es", "fr", "en") else "es"
+        if lang == "es":
+            rows = await conn.fetch("""
+                SELECT DISTINCT dt.id as document_template_id,
+                       dt.document_name_es, dt.template_code,
+                       sda.is_required_expedition as is_required
+                FROM service_bundle_items sbi
+                JOIN service_document_assignments sda ON sda.fiscal_service_id = sbi.fiscal_service_id
+                JOIN document_templates dt ON dt.id = sda.document_template_id
+                WHERE sbi.bundle_id = $1 AND sbi.is_active = true
+                ORDER BY dt.document_name_es
+            """, bundle_id)
+        else:
+            rows = await conn.fetch("""
+                SELECT DISTINCT dt.id as document_template_id,
+                       COALESCE(et_doc.translation_text, dt.document_name_es) as document_name_es,
+                       dt.template_code,
+                       sda.is_required_expedition as is_required
+                FROM service_bundle_items sbi
+                JOIN service_document_assignments sda ON sda.fiscal_service_id = sbi.fiscal_service_id
+                JOIN document_templates dt ON dt.id = sda.document_template_id
+                LEFT JOIN entity_translations et_doc ON
+                    et_doc.entity_type = 'document_template'
+                    AND et_doc.entity_code = dt.template_code
+                    AND et_doc.field_name = 'name'
+                    AND et_doc.language_code = $2
+                WHERE sbi.bundle_id = $1 AND sbi.is_active = true
+                ORDER BY document_name_es
+            """, bundle_id, lang)
         return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------

@@ -469,7 +469,10 @@
     "notFound": "Recurso no encontrado.",
     "serverError": "Error del servidor. Inténtalo más tarde.",
     "validation": "Verifica los datos ingresados.",
-    "rateLimit": "Demasiadas solicitudes. Espera un momento."
+    "rateLimit": "Demasiadas solicitudes. Espera un momento.",
+    "timeout": "La solicitud tardó demasiado. Inténtalo de nuevo.",
+    "conflict": "Conflicto con el estado actual. Inténtalo de nuevo.",
+    "unknown": "Ha ocurrido un error inesperado."
   },
   "wizard": {
     "title": "Nueva solicitud",
@@ -564,8 +567,8 @@
       "selectDay": "Seleccionar día",
       "selectSlot": "Seleccionar horario",
       "noSlots": "No hay horarios disponibles",
-      "slot": "créneau",
-      "slots": "créneaux",
+      "slot": "horario",
+      "slots": "horarios",
       "confirmed": "Cita confirmada",
       "change": "Cambiar cita",
       "errorLocations": "Error al cargar las ubicaciones.",

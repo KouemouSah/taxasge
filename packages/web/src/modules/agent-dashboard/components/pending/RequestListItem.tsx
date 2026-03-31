@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert, ShieldCheck, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations';
 import type { ServiceRequestListItem, SlaStatus, Priority } from '../../services/agent-requests-api';
 
 // =============================================================================
@@ -145,6 +146,7 @@ export function RequestListItem({
 }: RequestListItemProps) {
   const locale = useLocale();
   const t = useTranslations('agent.pending');
+  const { tw } = useWorkflowTranslations();
   const priorityStyle = PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.NORMAL;
   const slaStyle = SLA_STYLES[item.slaStatus] || SLA_STYLES.on_track;
 
@@ -218,7 +220,7 @@ export function RequestListItem({
       {/* Compact line: workflow type + citizen name */}
       {(showColumn('solicitudType') || showColumn('fullName')) && (
         <p className="text-xs text-muted-foreground truncate">
-          {showColumn('solicitudType') && formatWorkflowLabel(item.workflowCode, item.solicitudType, item.motivo)}
+          {showColumn('solicitudType') && tw(workflowNameKey(item.workflowCode), formatWorkflowLabel(item.workflowCode, item.solicitudType, item.motivo))}
           {showColumn('solicitudType') && showColumn('fullName') && ' · '}
           {showColumn('fullName') && item.citizenName}
         </p>

@@ -75,6 +75,7 @@ import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { useWorkflows } from '@/modules/service-requests-admin/hooks'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 import {
   useEntitiesWithDetails,
   useEntitiesSimple,
@@ -161,6 +162,7 @@ export default function EntitiesTabContent() {
   const tCommon = useTranslations('common')
   const { toast } = useToast()
   const locale = useLocale()
+  const { tw } = useWorkflowTranslations()
 
   // Fetch workflow mappings for coverage calculation
   const { data: mappingsData } = useWorkflowMappings({ page_size: 100 })
@@ -213,9 +215,10 @@ export default function EntitiesTabContent() {
     return availableWorkflows.filter(
       (w) =>
         w.code.toLowerCase().includes(search) ||
-        w.name_es.toLowerCase().includes(search)
+        w.name_es.toLowerCase().includes(search) ||
+        tw(workflowNameKey(w.code), w.name_es).toLowerCase().includes(search)
     )
-  }, [availableWorkflows, workflowSearchQuery])
+  }, [availableWorkflows, workflowSearchQuery, tw])
 
   // Toggle workflow code selection
   const handleToggleWorkflowCode = (code: string) => {
@@ -754,7 +757,7 @@ export default function EntitiesTabContent() {
                                   {workflow.code}
                                 </div>
                                 <div className="text-xs text-muted-foreground truncate">
-                                  {workflow.name_es}
+                                  {tw(workflowNameKey(workflow.code), workflow.name_es)}
                                 </div>
                               </div>
                               {!workflow.is_generic && (
@@ -785,7 +788,7 @@ export default function EntitiesTabContent() {
                         <span className="font-mono">{code}</span>
                         {workflow && (
                           <span className="text-muted-foreground max-w-[100px] truncate">
-                            - {workflow.name_es}
+                            - {tw(workflowNameKey(workflow.code), workflow.name_es)}
                           </span>
                         )}
                         <button

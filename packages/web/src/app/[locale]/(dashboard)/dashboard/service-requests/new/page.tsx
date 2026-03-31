@@ -43,6 +43,7 @@ import {
 import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
 import { FEATURE_CACHE_FIRST_WIZARD } from '@/core/config/features'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 // Category display config — must stay aligned with:
 // - Backend: packages/backend/app/modules/service_requests/models/enums.py (WorkflowCategory)
@@ -162,6 +163,7 @@ export default function NewServiceRequestPage() {
   const [isStarting, setIsStarting] = useState(false)
 
   const { loadWorkflows, startWorkflow, isLoading, error, clearError } = useServiceRequests()
+  const { tw } = useWorkflowTranslations()
 
   // Load workflows on mount
   useEffect(() => {
@@ -436,7 +438,7 @@ export default function NewServiceRequestPage() {
                                   onClick={() => handleWorkflowSelect(workflow)}
                                 >
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate">{workflow.serviceNameEs}</p>
+                                    <p className="font-medium truncate">{tw(workflowNameKey(workflow.workflowCode), workflow.serviceNameEs)}</p>
                                     <p className="text-sm text-muted-foreground truncate">{workflow.entityCode}</p>
                                     {features.length > 0 && (
                                       <div className="flex gap-2 mt-1">

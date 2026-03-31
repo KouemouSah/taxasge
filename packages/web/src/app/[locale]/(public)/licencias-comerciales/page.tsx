@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -118,7 +117,7 @@ function CommerceTypeStep({
     return (
       <div className="text-center py-16 text-muted-foreground">
         <Store className="h-12 w-12 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">No hay tipos de comercio disponibles</p>
+        <p className="text-sm">{t('noCommerceTypes')}</p>
       </div>
     )
   }
@@ -143,7 +142,7 @@ function CommerceTypeStep({
 
               {/* Name — flex-1 pushes badge to bottom for alignment */}
               <span className="text-sm font-medium leading-tight group-hover:text-primary transition-colors flex-1 flex items-center">
-                {ct.nameEs}
+                {t.has(`commerceTypes.${ct.commerceType}`) ? t(`commerceTypes.${ct.commerceType}`) : ct.nameEs}
               </span>
 
               {/* Plazos badge — mt-auto anchors all badges to same bottom line */}
@@ -151,7 +150,7 @@ function CommerceTypeStep({
                 {ct.installmentEligible && (
                   <Badge variant="secondary" className="text-[10px] px-2 py-0 font-medium">
                     <CreditCard className="h-3 w-3 mr-0.5" />
-                    Plazos
+                    {t('installments')}
                   </Badge>
                 )}
               </div>
@@ -205,7 +204,7 @@ function ZoneStep({
         </Button>
         <Badge variant="outline" className="text-sm gap-1.5 py-1 px-3">
           <Icon className={`h-4 w-4 ${iconConfig.color}`} strokeWidth={1.8} />
-          {commerceType.nameEs}
+          {t.has(`commerceTypes.${commerceType.commerceType}`) ? t(`commerceTypes.${commerceType.commerceType}`) : commerceType.nameEs}
         </Badge>
       </div>
 
@@ -228,7 +227,7 @@ function ZoneStep({
                     className={`p-3 rounded-lg border-2 text-center transition-all hover:shadow-md active:scale-[0.98] ${ZONE_TIER_COLORS[tier] || 'bg-muted'}`}
                   >
                     <div className="text-lg font-bold">{z.zoneCode}</div>
-                    <div className="text-xs leading-tight mt-0.5">{z.descriptionEs || z.nameEs}</div>
+                    <div className="text-xs leading-tight mt-0.5">{t.has(`zoneNames.${z.zoneCode}`) ? t(`zoneNames.${z.zoneCode}`) : (z.descriptionEs || z.nameEs)}</div>
                   </button>
                 ))}
               </div>
@@ -305,14 +304,14 @@ function PricingResult({
         <div className="flex items-center justify-between border-b-2 border-gray-800 pb-2 mb-2">
           <Image src="/logo.png" alt="FACIL" width={80} height={28} className="h-7 w-auto" />
           <div className="text-right">
-            <h1 className="text-[11pt] font-bold tracking-wide uppercase">Ficha Tarifaria</h1>
-            <p className="text-[7pt] text-gray-600">Licencias Comerciales — República de Guinea Ecuatorial</p>
+            <h1 className="text-[11pt] font-bold tracking-wide uppercase">{t('pricingSheet')}</h1>
+            <p className="text-[7pt] text-gray-600">{t('printTitle')}</p>
           </div>
         </div>
         <div className="flex justify-between text-[7pt] text-gray-700">
-          <span><strong>Tipo:</strong> {commerceType.nameEs}</span>
-          <span><strong>Zona:</strong> {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}</span>
-          <span><strong>Ref.:</strong> {data.bundle.legalReference || 'Decreto Presidencial'}</span>
+          <span><strong>{t('printType')}:</strong> {t.has(`commerceTypes.${commerceType.commerceType}`) ? t(`commerceTypes.${commerceType.commerceType}`) : commerceType.nameEs}</span>
+          <span><strong>{t('printZone')}:</strong> {zone.zoneCode} — {t.has(`zoneNames.${zone.zoneCode}`) ? t(`zoneNames.${zone.zoneCode}`) : (zone.descriptionEs || zone.nameEs)}</span>
+          <span><strong>{t('printRef')}:</strong> {data.bundle.legalReference || 'Decreto Presidencial'}</span>
           <span>{printDate}</span>
         </div>
       </div>
@@ -326,11 +325,11 @@ function PricingResult({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5 py-1 px-3">
             <Icon className={`h-3.5 w-3.5 ${iconConfig.color}`} strokeWidth={1.8} />
-            {commerceType.nameEs}
+            {t.has(`commerceTypes.${commerceType.commerceType}`) ? t(`commerceTypes.${commerceType.commerceType}`) : commerceType.nameEs}
           </Badge>
           <Badge variant="secondary" className="gap-1">
             <MapPin className="h-3 w-3" />
-            {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}
+            {zone.zoneCode} — {t.has(`zoneNames.${zone.zoneCode}`) ? t(`zoneNames.${zone.zoneCode}`) : (zone.descriptionEs || zone.nameEs)}
           </Badge>
         </div>
       </div>
@@ -384,7 +383,7 @@ function PricingResult({
                     {hasMultipleMinistries && mGroup.items.length >= 2 && (
                       <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground print:text-gray-600 print:py-1 print:text-[7pt]">
                         <span className="italic pl-2">
-                          Subtotal {mGroup.ministryName}
+                          {t('subtotalMinistry', { ministry: mGroup.ministryName })}
                         </span>
                         <span className="font-semibold tabular-nums">
                           {formatXAF(mGroup.subtotal, locale)}
@@ -486,15 +485,15 @@ function PricingResult({
       {/* Print footer (hidden on screen) */}
       <div className="hidden print:flex mt-4 pt-2 border-t border-gray-400 items-end justify-between text-[7pt] text-gray-500">
         <div>
-          <p className="font-semibold text-gray-700">FACIL — Plataforma de Servicios Fiscales</p>
-          <p>República de Guinea Ecuatorial</p>
-          <p className="mt-0.5 italic">Documento informativo. Precios sujetos a modificaciones.</p>
+          <p className="font-semibold text-gray-700">{t('printFooterTitle')}</p>
+          <p>{t('printFooterCountry')}</p>
+          <p className="mt-0.5 italic">{t('printDisclaimer')}</p>
           <p>{printDate}</p>
         </div>
         {qrDataUrl && (
           <div className="flex flex-col items-center">
             <Image src={qrDataUrl} alt="QR" width={56} height={56} className="w-14 h-14" unoptimized />
-            <span className="text-[6pt] mt-0.5">Verificar en línea</span>
+            <span className="text-[6pt] mt-0.5">{t('printVerifyOnline')}</span>
           </div>
         )}
       </div>
@@ -514,8 +513,7 @@ function PricingResult({
 // Main page component
 // ============================================================
 function LicenciasContent() {
-  const params = useParams()
-  const locale = (params?.locale as string) || 'es'
+  const locale = useLocale()
   const t = useTranslations('licenses')
   const tNav = useTranslations('nav')
 

@@ -74,6 +74,7 @@ import { useTranslations } from 'next-intl'
 import { useServiceRequests } from '@/modules/service-requests'
 import type { ServiceRequestFilters, WorkflowConfig, WorkflowCategory } from '@/modules/service-requests'
 import { serviceRequestsApi } from '@/modules/service-requests'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 // Status color mapping (kept for badge rendering)
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.ElementType }> = {
@@ -104,6 +105,7 @@ export default function ServiceRequestsPage() {
   const params = useParams()
   const locale = params.locale as string
   const t = useTranslations('service_requests')
+  const { tw } = useWorkflowTranslations()
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState('all')
@@ -401,20 +403,11 @@ export default function ServiceRequestsPage() {
     })
   }
 
-  const getWorkflowName = (code: string): string => {
-    const translationKey = `workflows.${code.toLowerCase()}`
-    try {
-      const translated = t(translationKey)
-      if (translated && translated !== translationKey) {
-        return translated
-      }
-    } catch {
-      // Fallback to formatting
-    }
-    return code
+  const getWorkflowName = (code: string, fallbackEs?: string): string => {
+    return tw(workflowNameKey(code), fallbackEs || code
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ')
+      .join(' '))
   }
 
   const getStatusLabel = (value: string): string => {
@@ -551,7 +544,7 @@ export default function ServiceRequestsPage() {
                     <SelectItem value="all">{t('allTypes') || 'Todos los tipos'}</SelectItem>
                     {filteredWorkflows.map((w) => (
                       <SelectItem key={w.workflowCode} value={w.workflowCode}>
-                        {w.serviceNameEs || getWorkflowName(w.workflowCode)}
+                        {getWorkflowName(w.workflowCode, w.serviceNameEs)}
                       </SelectItem>
                     ))}
                   </SelectContent>

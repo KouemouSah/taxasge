@@ -2200,7 +2200,43 @@
         "batchDeleted": "{succeeded} config(s) eliminada(s)",
         "batchDeletedPartial": "{succeeded} eliminada(s), {failed} con error",
         "duplicate": "Duplicar",
-        "duplicated": "Configuración duplicada exitosamente"
+        "duplicated": "Configuración duplicada exitosamente",
+        "sectionDescriptions": {
+          "info": "Informations de base de la demande",
+          "extractedData": "Données extraites par OCR",
+          "documents": "Documents joints",
+          "contact": "Coordonnées du demandeur",
+          "appointment": "Détails du rendez-vous",
+          "paymentDetails": "Informations de paiement",
+          "timeline": "Chronologie des événements",
+          "history": "Historique des actions"
+        },
+        "editPage": {
+          "title": "Configuration des Colonnes",
+          "availableColumns": "Colonnes Disponibles",
+          "selectedColumns": "Colonnes Sélectionnées",
+          "searchPlaceholder": "Rechercher une colonne...",
+          "systemColumns": "Colonnes Système",
+          "extractedColumns": "Colonnes Extraites",
+          "noColumnsFound": "Aucune colonne trouvée",
+          "noColumnsSelected": "Aucune colonne sélectionnée",
+          "addColumnHint": "Cliquez sur + pour ajouter des colonnes",
+          "reorderHint": "Réorganisez avec les flèches pour définir votre ordre",
+          "preview": "Aperçu",
+          "previewDescription": "Visualisation dans la liste des demandes",
+          "previewEmpty": "Sélectionnez des colonnes pour voir un aperçu",
+          "sectionsTitle": "Sections du Panneau",
+          "sectionsDescription": "Sections visibles dans le panneau de détail",
+          "unsavedChanges": "Modifications non sauvegardées",
+          "save": "Sauvegarder",
+          "saved": "Configuration sauvegardée",
+          "configNotFound": "Configuration non trouvée",
+          "back": "Retour",
+          "leaveConfirmTitle": "Modifications non sauvegardées",
+          "leaveConfirmMessage": "Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter ?",
+          "leaveConfirmCancel": "Rester",
+          "leaveConfirmLeave": "Quitter sans sauvegarder"
+        }
       }
     },
     "entities": {
@@ -3202,7 +3238,8 @@
           "deleteConfirm": {
             "title": "¿Eliminar ubicación?",
             "description": "Se eliminará \"{name}\" en {city}. Esta acción no se puede deshacer."
-          }
+          },
+          "allRegions": "All regions"
         },
         "citiesManagement": {
           "title": "Ciudades y Entidades",
@@ -5874,7 +5911,45 @@
     "priceRange": "Desde {min} hasta {max} XAF según zona",
     "print": "Imprimir",
     "loadError": "No se pudo cargar la información. Por favor, inténtelo de nuevo.",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "printTitle": "Ficha Tarifaria — Licencias Comerciales",
+    "printSubtitle": "República de Guinea Ecuatorial",
+    "printType": "Tipo",
+    "printZone": "Zona",
+    "printRef": "Ref.",
+    "printFooterTitle": "FACIL — Plataforma de Servicios Fiscales",
+    "printFooterCountry": "República de Guinea Ecuatorial",
+    "printDisclaimer": "Documento informativo. Precios sujetos a modificaciones.",
+    "printVerifyOnline": "Verificar en línea",
+    "noCommerceTypes": "No hay tipos de comercio disponibles",
+    "installments": "Plazos",
+    "subtotalMinistry": "Subtotal {ministry}",
+    "commerceTypes": {
+      "abaceria": "Abacerías, Factorías y Comercio en General",
+      "bar_restaurante": "Bares y Restaurantes",
+      "cafeteria_pasteleria": "Cafeterías-Pastelerías, Panaderías y Snack Bar",
+      "carpinteria": "Carpinterías en General",
+      "clinica_farmacia": "Clínicas, Farmacias y Similares",
+      "discoteca": "Discotecas y Similares",
+      "ferreteria": "Ferreterías",
+      "taller_bloqueria": "Talleres y Bloquerías en General",
+      "taller_artesanal": "Talleres y Tiendas Artesanales",
+      "video_club": "Video Clubs y Similares"
+    },
+    "zoneNames": {
+      "A1": "Capitales de Regiones",
+      "A2": "Capitales de Regiones (2)",
+      "A3": "Capitales de Regiones (3)",
+      "B1": "Capitales de Provincias",
+      "B2": "Capitales de Provincias (2)",
+      "B3": "Capitales de Provincias (3)",
+      "C1": "Capitales Distritales y Municipales",
+      "C2": "Capitales Distritales y Municipales (2)",
+      "C3": "Capitales Distritales y Municipales (3)",
+      "D1": "Consejos de Poblados",
+      "D2": "Consejos de Poblados (2)",
+      "D3": "Consejos de Poblados (3)"
+    }
   },
   "profile": {
     "accountInfoDesc": "Detalles y seguridad de su cuenta",
@@ -6447,12 +6522,39 @@
       "expired": "Expirada",
       "under_review": "En Revisión",
       "documents_required": "Documentos Requeridos",
-      "cita_scheduled": "Cita Programada"
+      "cita_scheduled": "Cita Programada",
+      "pending_documents": "Pending Documents",
+      "extraction_completed": "Extraction Completed",
+      "pending_validation": "Pending Validation",
+      "pending_payment": "Pending Payment",
+      "payment_confirmed": "Payment Confirmed",
+      "pending_appointment": "Pending Appointment",
+      "in_review": "In Review"
     },
     "documents": {
       "uploading": "Subiendo...",
       "no_documents": "No hay documentos subidos",
-      "required": "Requerido"
+      "required": "Requerido",
+      "title": "Documents",
+      "upload": "Upload",
+      "upload_documents": "Upload Documents",
+      "drag_drop": "Drag and drop files here",
+      "or_click": "or click to select",
+      "max_size": "Maximum size",
+      "allowed_formats": "Allowed formats",
+      "upload_success": "Document uploaded successfully",
+      "upload_error": "Upload error",
+      "remove": "Remove",
+      "preview": "Preview",
+      "download": "Download",
+      "optional": "Optional",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "extraction_status": "Extraction status",
+      "file_too_large": "File is too large",
+      "invalid_format": "Invalid file format"
     },
     "date": "Fecha",
     "showing_of": "Mostrando {start}-{end} de {total}",
@@ -6464,7 +6566,15 @@
     "schedule_appointment": "Programar cita",
     "back": "Volver",
     "overview": "Resumen",
-    "validation": "Validación",
+    "validation": {
+      "required": "Este campo es obligatorio",
+      "invalid_format": "Formato inválido",
+      "min_length": "Mínimo {min} caracteres",
+      "max_length": "Máximo {max} caracteres",
+      "document_required": "Este documento es obligatorio",
+      "cross_validation_failed": "Error en la validación cruzada",
+      "data_mismatch": "Datos inconsistentes detectados"
+    },
     "history": "Historial",
     "name": "Nombre",
     "email": "Correo",
@@ -6523,13 +6633,25 @@
       "date": "Fecha",
       "amount": "Monto",
       "progress": "Progreso",
-      "shown": "mostradas"
+      "shown": "mostradas",
+      "id": "ID",
+      "citizen": "Citizen",
+      "workflow": "Service",
+      "created": "Created",
+      "updated": "Updated"
     },
     "filters": {
       "pending": "Pendientes",
       "all": "Todas",
       "completed": "Completadas",
-      "rejected": "Rechazadas"
+      "rejected": "Rechazadas",
+      "approved": "Approved",
+      "date_range": "Date Range",
+      "category": "Category",
+      "status": "Status",
+      "priority": "Priority",
+      "entity": "Entity",
+      "clear_filters": "Clear Filters"
     },
     "selectCategory": "Seleccionar Categoría",
     "selectCategorySubtitle": "Elige una categoría de trámite para comenzar",
@@ -6615,7 +6737,10 @@
           "blocking_error": "Error bloqueante",
           "document_mismatch": "El número de documento en la autorización no coincide con el documento subido"
         }
-      }
+      },
+      "step_completed": "Step completed",
+      "step_current": "Current step",
+      "step_pending": "Pending step"
     },
     "newRequestDescription": "Iniciar una nueva solicitud de servicio",
     "selectWorkflow": "Seleccionar trámite",
@@ -6731,13 +6856,161 @@
     "payment": {
       "pay_now": "Proceder al pago",
       "base_tariff": "Tarifa base",
-      "total": "Total"
+      "total": "Total",
+      "title": "Payment",
+      "amount": "Amount",
+      "method": "Payment method",
+      "mobile_money": "Mobile Money",
+      "bank_transfer": "Bank Transfer",
+      "cash": "Cash",
+      "payment_pending": "Payment pending",
+      "payment_confirmed": "Payment confirmed",
+      "payment_failed": "Payment failed",
+      "receipt": "Receipt",
+      "reference": "Reference"
     },
     "documents_tab": "Documentos",
     "verify_data": "Verificar datos",
     "all_documents_uploaded": "Todos los documentos requeridos han sido cargados",
     "documents_pending": "Quedan documentos por cargar",
-    "continue_to_verification": "Continuar a verificacion"
+    "continue_to_verification": "Continuar a verificacion",
+    "noRequests": "No requests found",
+    "noRequestsDescription": "You have no service requests. Start by creating a new one.",
+    "error": "Error",
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "category": {
+      "identidad": "Identity",
+      "extranjeria": "Immigration",
+      "vehiculos": "Vehicles",
+      "conduccion": "Driving License",
+      "contratos": "Contracts",
+      "funcion_publica": "Public Service",
+      "otros": "Other"
+    },
+    "steps": {
+      "identity_verification": "Identity Verification",
+      "document_upload": "Document Upload",
+      "form_filling": "Form Filling",
+      "payment": "Payment",
+      "appointment": "Appointment",
+      "review": "Review",
+      "confirmation": "Confirmation"
+    },
+    "extraction": {
+      "title": "Extracted Data",
+      "subtitle": "Review the information extracted from your documents",
+      "confidence": "Confidence",
+      "high_confidence": "High confidence",
+      "medium_confidence": "Medium confidence",
+      "low_confidence": "Low confidence",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "field": "Field",
+      "value": "Value",
+      "source": "Source",
+      "no_data": "No data extracted",
+      "refresh": "Refresh",
+      "validation_errors": "Validation errors",
+      "validation_passed": "Validation passed"
+    },
+    "appointment": {
+      "title": "Appointment",
+      "schedule": "Schedule",
+      "date": "Date",
+      "time": "Time",
+      "location": "Location",
+      "notes": "Notes",
+      "confirm": "Confirm appointment",
+      "cancel": "Cancel appointment",
+      "reschedule": "Reschedule",
+      "no_slots": "No available slots",
+      "select_date": "Select a date",
+      "select_time": "Select a time"
+    },
+    "agent": {
+      "dashboard": "Agent Dashboard",
+      "pending_requests": "Pending Requests",
+      "my_assignments": "My Assignments",
+      "statistics": "Statistics",
+      "total_requests": "Total Requests",
+      "approved_today": "Approved Today",
+      "rejected_today": "Rejected Today",
+      "pending_review": "Pending Review",
+      "actions": "Actions",
+      "approve": "Approve",
+      "reject": "Reject",
+      "request_info": "Request Info",
+      "schedule_appointment": "Schedule Appointment",
+      "assign_to_me": "Assign to Me",
+      "reassign": "Reassign",
+      "view_details": "View Details",
+      "add_note": "Add Note",
+      "history": "History",
+      "no_pending": "No pending requests",
+      "filter": "Filter",
+      "sort": "Sort",
+      "search": "Search"
+    },
+    "detail": {
+      "title": "Request Detail",
+      "overview": "Overview",
+      "documents": "Documents",
+      "validation": "Validation",
+      "history": "History",
+      "notes": "Notes",
+      "request_id": "Request ID",
+      "workflow": "Workflow",
+      "created_at": "Created at",
+      "updated_at": "Updated at",
+      "assigned_to": "Assigned to",
+      "citizen": "Citizen",
+      "entity": "Entity",
+      "tariff": "Tariff",
+      "back_to_list": "Back to list"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "request_info": "Request Information",
+      "schedule": "Schedule Appointment",
+      "cancel": "Cancel Request",
+      "resubmit": "Resubmit",
+      "confirm": "Confirm",
+      "close": "Close"
+    },
+    "dialogs": {
+      "approve_title": "Approve Request",
+      "approve_message": "Are you sure you want to approve this request?",
+      "reject_title": "Reject Request",
+      "reject_message": "Please provide a reason for rejection",
+      "reject_reason": "Rejection Reason",
+      "reject_reason_placeholder": "Explain why the request is being rejected...",
+      "request_info_title": "Request Information",
+      "request_info_message": "What additional information is needed?",
+      "request_info_placeholder": "Describe the required documents or information...",
+      "cancel_title": "Cancel Request",
+      "cancel_message": "Are you sure you want to cancel this request? This action cannot be undone.",
+      "schedule_title": "Schedule Appointment",
+      "confirm_action": "Confirm",
+      "cancel_action": "Cancel"
+    },
+    "notifications": {
+      "request_created": "Request created successfully",
+      "request_updated": "Request updated",
+      "request_submitted": "Request submitted",
+      "request_approved": "Request approved",
+      "request_rejected": "Request rejected",
+      "document_uploaded": "Document uploaded",
+      "payment_confirmed": "Payment confirmed",
+      "appointment_scheduled": "Appointment scheduled",
+      "error_occurred": "An error occurred"
+    }
   },
   "treasury": {
     "pageTitle": "Panel de Tesoreria",
@@ -9747,13 +10020,21 @@
       "expiresAt": "Expira",
       "verifiedAt": "Verificado",
       "expired": "EXPIRADO",
-      "expiresSoon": "Expira pronto"
+      "expiresSoon": "Expira pronto",
+      "type": "Type",
+      "value": "Value",
+      "document": "Document",
+      "source": "Source"
     },
     "actions": {
       "verify": "Validar",
       "reject": "Rechazar",
       "verifyAll": "Validar todos",
-      "viewDocument": "Ver documento"
+      "viewDocument": "Ver documento",
+      "markAsFraud": "Mark as Fraud",
+      "previous": "Previous",
+      "next": "Next",
+      "returnToList": "Return to List"
     },
     "identifierType": {
       "dni": "DNI",
@@ -9809,7 +10090,41 @@
     "verifySuccess": "Identificador verificado correctamente",
     "verifyAllSuccess": "Todos los identificadores verificados correctamente",
     "rejectSuccess": "Identificador rechazado",
-    "fraudSuccess": "Identificador marcado como fraude"
+    "fraudSuccess": "Identificador marcado como fraude",
+    "verification_failed": "Verification Failed",
+    "partial": "Partial",
+    "in_progress": "In Progress",
+    "not_found": "Not Found",
+    "documentsAttached": "Documents Attached",
+    "citizenInfo": "Citizen Information",
+    "verificationDetails": "Verification Details",
+    "dialog": {
+      "verifyTitle": "Confirm Verification",
+      "verifyDescription": "Are you sure you want to verify this identifier?",
+      "verifyBatchTitle": "Verify All Identifiers",
+      "verifyBatchDescription": "This will verify {count} pending identifier(s). Continue?",
+      "rejectTitle": "Reject Identifier",
+      "rejectDescription": "Please provide a reason for rejection.",
+      "fraudWarning": "Warning: Marking as fraud will permanently disable this identifier in the system.",
+      "fraudCheckbox": "This identifier is fraudulent",
+      "confirmVerify": "I confirm this identifier has been verified",
+      "reasonPlaceholder": "Reason for rejection...",
+      "notesPlaceholder": "Optional notes..."
+    },
+    "success": {
+      "verified": "Identifier verified successfully",
+      "verifiedBatch": "{count} identifier(s) verified successfully",
+      "rejected": "Identifier rejected successfully"
+    },
+    "error": {
+      "loadFailed": "Error loading verification details",
+      "verifyFailed": "Error verifying identifier",
+      "rejectFailed": "Error rejecting identifier"
+    },
+    "empty": {
+      "noIdentifiers": "No identifiers found",
+      "noDocuments": "No documents attached"
+    }
   },
   "history": {
     "title": "Historial de Solicitudes",
@@ -9921,7 +10236,16 @@
     "IN_PROGRESS": "En Proceso",
     "COMPLETED": "Completada",
     "CANCELLED": "Cancelada",
-    "EXPIRED": "Expirada"
+    "EXPIRED": "Expirada",
+    "PAYMENT_RECEIVED": "Payment Received",
+    "PROCESSING": "Processing",
+    "PENDING_REVIEW": "Pending Review",
+    "PENDING_AGENT_REVIEW": "Pending Agent Review",
+    "AGENT_REVIEW": "Agent Review",
+    "APPOINTMENT_SCHEDULED": "Appointment Scheduled",
+    "APPROVED": "Approved",
+    "DOCUMENTS_VALIDATED": "Documents Validated",
+    "READY_FOR_DELIVERY": "Ready for Delivery"
   },
   "public": {
     "annuaire": {

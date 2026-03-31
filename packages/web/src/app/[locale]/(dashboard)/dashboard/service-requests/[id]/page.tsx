@@ -44,6 +44,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { useDetailView } from '@/modules/service-requests/hooks/useWorkflowQueries'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 import { UniversalProgressStepper } from '@/modules/service-requests/components/UniversalProgressStepper'
 import { DynamicDataSections } from '@/modules/service-requests/components/DynamicDataSections'
 import { CitizenNotificationsPanel } from '@/modules/service-requests/components/CitizenNotificationsPanel'
@@ -80,6 +81,7 @@ export default function ServiceRequestDetailPage() {
 
   // Detail view data (single API call)
   const { data: detailView, isLoading, error: queryError, refetch } = useDetailView(requestId)
+  const { tw } = useWorkflowTranslations()
 
   // State
   const [activeTab, setActiveTab] = useState('overview')
@@ -203,7 +205,7 @@ export default function ServiceRequestDetailPage() {
               {request.requestNumber || `#${request.id.slice(0, 8)}`}
             </h1>
             <p className="text-muted-foreground">
-              {detailView.workflow_name_es}
+              {tw(workflowNameKey(request.workflowCode), detailView.workflow_name_es)}
             </p>
           </div>
         </div>

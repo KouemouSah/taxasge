@@ -2204,7 +2204,8 @@
           "deleted": "Configuration supprimée avec succès",
           "createError": "Erreur lors de la création de la configuration",
           "updateError": "Erreur lors de la mise à jour de la configuration",
-          "deleteError": "Erreur lors de la suppression de la configuration"
+          "deleteError": "Erreur lors de la suppression de la configuration",
+          "loadError": "Error al cargar configuración"
         },
         "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette configuration ?",
         "confirmDeleteDescription": "La configuration pour \"{pattern}\" sera définitivement supprimée.",
@@ -3237,7 +3238,8 @@
           "deleteConfirm": {
             "title": "Supprimer l'emplacement ?",
             "description": "\"{name}\" à {city} sera supprimé. Cette action est irréversible."
-          }
+          },
+          "allRegions": "All regions"
         },
         "citiesManagement": {
           "title": "Villes et Entités",
@@ -4379,7 +4381,21 @@
         "ttlHint": "Temps en secondes avant expiration de la notification",
         "fieldActive": "Modèle Actif",
         "create": "Créer Modèle",
-        "update": "Mettre à jour Modèle"
+        "update": "Mettre à jour Modèle",
+        "code": "Código de Plantilla",
+        "codePlaceholder": "ej: PAYMENT_RECEIVED",
+        "nameEs": "Nombre (Español)",
+        "nameFr": "Nombre (Francés)",
+        "nameEn": "Nombre (Inglés)",
+        "titleEs": "Título (Español)",
+        "titleFr": "Título (Francés)",
+        "titleEn": "Título (Inglés)",
+        "bodyEs": "Cuerpo (Español)",
+        "bodyFr": "Cuerpo (Francés)",
+        "bodyEn": "Cuerpo (Inglés)",
+        "platform": "Plataforma",
+        "ttl": "TTL (segundos)",
+        "active": "Activo"
       }
     },
     "smsTemplates": {
@@ -5125,7 +5141,9 @@
     "noResults": "Aucun résultat",
     "errorGeneric": "Une erreur inattendue s'est produite",
     "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ?",
-    "updated": "Mis à jour"
+    "updated": "Mis à jour",
+    "errorSaving": "Error al guardar",
+    "errorDeleting": "Error al eliminar"
   },
   "dashboard": {
     "actionRequired": "Action requise sur les demandes suivantes",
@@ -5858,7 +5876,9 @@
     "processingAlreadyRunning": "Traitement déjà en cours — veuillez patienter",
     "processingIdle": "Aucun traitement actif",
     "circuitBreakerPause": "Pause de sécurité — trop d'erreurs consécutives, nouvelle tentative...",
-    "seedConfirmDescAuto": "La génération de {count} descriptions sera mise en file d'attente et le traitement démarrera automatiquement avec 10 appels Gemini en parallèle."
+    "seedConfirmDescAuto": "La génération de {count} descriptions sera mise en file d'attente et le traitement démarrera automatiquement avec 10 appels Gemini en parallèle.",
+    "noPending": "Sin borradores pendientes",
+    "generateMinistriesTitle": "Generar Descripciones Ministerios"
   },
   "licenses": {
     "title": "Licences Commerciales",
@@ -5891,7 +5911,45 @@
     "priceRange": "De {min} à {max} XAF selon la zone",
     "print": "Imprimer",
     "loadError": "Impossible de charger les données. Veuillez réessayer.",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "printTitle": "Fiche Tarifaire — Licences Commerciales",
+    "printSubtitle": "République de Guinée Équatoriale",
+    "printType": "Type",
+    "printZone": "Zone",
+    "printRef": "Réf.",
+    "printFooterTitle": "FACIL — Plateforme de Services Fiscaux",
+    "printFooterCountry": "République de Guinée Équatoriale",
+    "printDisclaimer": "Document informatif. Prix susceptibles de modifications.",
+    "printVerifyOnline": "Vérifier en ligne",
+    "noCommerceTypes": "Aucun type de commerce disponible",
+    "installments": "Échéances",
+    "subtotalMinistry": "Sous-total {ministry}",
+    "commerceTypes": {
+      "abaceria": "Épiceries, Factoreries et Commerce Général",
+      "bar_restaurante": "Bars et Restaurants",
+      "cafeteria_pasteleria": "Cafétérias-Pâtisseries, Boulangeries et Snack-bars",
+      "carpinteria": "Menuiseries en Général",
+      "clinica_farmacia": "Cliniques, Pharmacies et Similaires",
+      "discoteca": "Discothèques et Similaires",
+      "ferreteria": "Quincailleries",
+      "taller_bloqueria": "Ateliers et Briqueteries en Général",
+      "taller_artesanal": "Ateliers et Boutiques Artisanales",
+      "video_club": "Vidéoclubs et Similaires"
+    },
+    "zoneNames": {
+      "A1": "Capitales de Régions",
+      "A2": "Capitales de Régions (2)",
+      "A3": "Capitales de Régions (3)",
+      "B1": "Capitales de Provinces",
+      "B2": "Capitales de Provinces (2)",
+      "B3": "Capitales de Provinces (3)",
+      "C1": "Capitales de Districts et Municipalités",
+      "C2": "Capitales de Districts et Municipalités (2)",
+      "C3": "Capitales de Districts et Municipalités (3)",
+      "D1": "Conseils de Villages",
+      "D2": "Conseils de Villages (2)",
+      "D3": "Conseils de Villages (3)"
+    }
   },
   "profile": {
     "accountInfoDesc": "Détails et sécurité de votre compte",
@@ -6367,7 +6425,10 @@
     "nameEnPlaceholder": "Nom de la catégorie en anglais",
     "descriptionEsPlaceholder": "Description de la catégorie en espagnol",
     "errorLoadingCategories": "Erreur lors du chargement des catégories",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "createCategory": "Crear Categoría",
+    "ticketClosed": "Ticket cerrado",
+    "ticketClosedMessage": "El ticket ha sido cerrado exitosamente"
   },
   "communications": {
     "smsTemplates": {
@@ -6379,7 +6440,17 @@
       "newTemplate": "Nouveau Modèle SMS",
       "newTemplateDescription": "Créer un nouveau modèle de message SMS",
       "editTemplate": "Modifier Modèle SMS",
-      "editTemplateDescription": "Modifier un modèle de message SMS existant"
+      "editTemplateDescription": "Modifier un modèle de message SMS existant",
+      "form": {
+        "code": "Código de Plantilla",
+        "nameEs": "Nombre (Español)",
+        "contentEs": "Contenido (Español)",
+        "contentFr": "Contenido (Francés)",
+        "contentEn": "Contenido (Inglés)",
+        "category": "Categoría",
+        "maxSegments": "Segmentos Máximos",
+        "active": "Activo"
+      }
     }
   },
   "service_requests": {
@@ -6430,7 +6501,10 @@
       "in_progress": "En cours",
       "under_review": "En revision",
       "documents_required": "Documents requis",
-      "cita_scheduled": "Rendez-vous programme"
+      "cita_scheduled": "Rendez-vous programme",
+      "extraction_complete": "Extracción Completa",
+      "validation_pending": "Validación Pendiente",
+      "additional_info": "Info. Adicional Requerida"
     },
     "priority": {
       "low": "Basse",
@@ -6693,8 +6767,8 @@
       "min_length": "Minimum {min} caractères",
       "max_length": "Maximum {max} caractères",
       "document_required": "Ce document est obligatoire",
-      "cross_validation_failed": "La validation croisée a échoué",
-      "data_mismatch": "Incohérence des données détectée"
+      "cross_validation_failed": "Échec de la validation croisée",
+      "data_mismatch": "Incohérence de données détectée"
     },
     "filters": {
       "all": "Toutes",
@@ -6873,7 +6947,70 @@
     "verify_data": "Verifier les donnees",
     "all_documents_uploaded": "Tous les documents requis sont telecharges",
     "documents_pending": "Il reste des documents a telecharger",
-    "continue_to_verification": "Continuer vers la verification"
+    "continue_to_verification": "Continuer vers la verification",
+    "cancel": "Cancelar",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "save": "Guardar",
+    "uploading": "Subiendo",
+    "required": "Requerido",
+    "confidence": "confianza",
+    "step_of": "Paso {current} de {total}",
+    "ready_to_submit": "Listo para enviar",
+    "review_and_submit": "Revise todos los datos y haga clic en Enviar para completar su solicitud",
+    "step_content_placeholder": "Contenido del paso",
+    "error_delete_failed": "Error al eliminar el archivo",
+    "error_retry_failed": "Error al reintentar extracción",
+    "no_extracted_data": "No hay datos extraídos",
+    "extracted_data": "Datos Extraídos",
+    "overall_extraction_confidence": "Confianza general de la extracción",
+    "show_formatted": "Ver formateado",
+    "show_raw": "Ver JSON",
+    "save_changes": "Guardar cambios",
+    "validation_errors": "Errores de validación",
+    "pending_review": "Pendientes de revisión",
+    "approved": "Aprobadas",
+    "rejected": "Rechazadas",
+    "total": "Total",
+    "service_requests": "Solicitudes de Servicio",
+    "all_statuses": "Todos los estados",
+    "applicant": "Solicitante",
+    "date": "Fecha",
+    "showing_of": "Mostrando {start}-{end} de {total}",
+    "page_of": "Página {page} de {total}",
+    "view_details": "Ver detalles",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "request_info": "Solicitar información",
+    "schedule_appointment": "Programar cita",
+    "name": "Nombre",
+    "email": "Correo",
+    "form_data": "Datos del Formulario",
+    "agent_notes": "Notas del Agente",
+    "no_documents": "Sin documentos",
+    "no_validation_results": "Sin resultados de validación",
+    "history_coming_soon": "Historial próximamente",
+    "approve_request": "Aprobar Solicitud",
+    "approve_confirm_message": "¿Está seguro de que desea aprobar esta solicitud?",
+    "notes_optional": "Notas (opcional)",
+    "notes_placeholder": "Agregar notas adicionales...",
+    "confirm_approve": "Confirmar Aprobación",
+    "reject_request": "Rechazar Solicitud",
+    "reject_confirm_message": "¿Está seguro de que desea rechazar esta solicitud?",
+    "rejection_reason": "Motivo de rechazo",
+    "select_reason": "Seleccione un motivo",
+    "confirm_reject": "Confirmar Rechazo",
+    "request_additional_info": "Solicitar Información Adicional",
+    "info_request_message": "Envíe un mensaje al solicitante pidiendo más información",
+    "message_to_applicant": "Mensaje para el solicitante",
+    "info_message_placeholder": "Escriba su mensaje...",
+    "send_request": "Enviar Solicitud",
+    "appointment_message": "Programe una cita para el solicitante",
+    "time": "Hora",
+    "location": "Ubicación",
+    "location_placeholder": "Ej: CNEDOGE Malabo - Oficina 3",
+    "schedule": "Programar"
   },
   "treasury": {
     "pageTitle": "Tableau de Bord Tresorerie",
@@ -8736,7 +8873,11 @@
       "date": "Date",
       "actions": "Actions",
       "myTransactions": "Mes Transactions",
-      "assistant": "Assistant IA"
+      "assistant": "Assistant IA",
+      "companies": "Empresas",
+      "companyLookup": "Consultar Empresa",
+      "companyDebt": "Deuda Empresarial",
+      "companiesList": "Lista de Empresas"
     },
     "assistant": {
       "title": "Assistant IA - {entityName}",
@@ -9528,7 +9669,28 @@
       "hasPenaltiesHelp": "Assigner uniquement les paiements avec surcharges ou amendes",
       "entityLocation": "Bureau/Site",
       "entityLocationHelp": "Filtrer par bureau du Tresor (agents de ce site)",
-      "allLocations": "Tous les bureaux"
+      "allLocations": "Tous les bureaux",
+      "subtitle": "Gestionar reglas de asignación automática",
+      "created": "Regla creada exitosamente",
+      "updated": "Regla actualizada exitosamente",
+      "deleted": "Regla eliminada exitosamente",
+      "activated": "Regla activada",
+      "deactivated": "Regla desactivada",
+      "nameTooLong": "El nombre debe tener menos de 100 caracteres",
+      "invalidCriteria": "Por favor corrija el JSON de criterios",
+      "basicInfo": "Información Básica",
+      "basicInfoDescription": "Configure los ajustes básicos de esta regla",
+      "criteria": "Criterios",
+      "criteriaDescription": "Defina los criterios de coincidencia para esta regla",
+      "noCriteriaNeeded": "No se necesitan criterios adicionales para este tipo de regla.",
+      "roundRobinExplanation": "Round Robin distribuye el trabajo equitativamente entre todos los agentes.",
+      "priorityHelp": "Valores más bajos = mayor prioridad. Las reglas se evalúan en orden de prioridad.",
+      "activeOnCreate": "Activar inmediatamente",
+      "activeOnCreateHelp": "La regla comenzará a procesar asignaciones de inmediato",
+      "createDescription": "Crear una nueva regla de asignación automática",
+      "noRules": "No se encontraron reglas de asignación",
+      "confirmDelete": "¿Está seguro de que desea eliminar esta regla?",
+      "confirmDeleteDescription": "Esta acción archivará la regla. Puede ser restaurada más tarde."
     },
     "manual": {
       "title": "Centre d'Affectations",
@@ -9855,7 +10017,8 @@
       "markAsFraud": "Marquer comme fraude",
       "previous": "Précédent",
       "next": "Suivant",
-      "returnToList": "Retour à la liste"
+      "returnToList": "Retour à la liste",
+      "viewDocument": "Ver documento"
     },
     "dialog": {
       "verifyTitle": "Confirmer la Vérification",
@@ -9877,7 +10040,9 @@
       "confidence": "Confiance",
       "expiresAt": "Expire le",
       "source": "Source",
-      "verifiedAt": "Vérifié le"
+      "verifiedAt": "Vérifié le",
+      "expired": "EXPIRADO",
+      "expiresSoon": "Expira pronto"
     },
     "identifierTypes": {
       "dni": "DNI",
@@ -9920,7 +10085,46 @@
     "empty": {
       "noIdentifiers": "Aucun identifiant trouvé",
       "noDocuments": "Aucun document joint"
-    }
+    },
+    "fraud": "Fraude",
+    "allVerified": "Todos los identificadores están verificados",
+    "previousRequest": "Solicitud anterior",
+    "nextRequest": "Siguiente solicitud",
+    "verifyManually": "Verificar manualmente",
+    "verifyAll": "Validar todos los pendientes",
+    "reject": "Rechazar",
+    "markAsFraud": "Marcar como fraude",
+    "confirmVerification": "Confirmar la verificación",
+    "confirmationCheckbox": "He verificado este identificador con la fuente externa",
+    "notes": "Notas",
+    "reason": "Motivo del rechazo",
+    "identifierType": {
+      "dni": "DNI",
+      "pasaporte": "Pasaporte",
+      "permiso_residencia": "Permiso de Residencia",
+      "certificado_conducir": "Certificado de Conducir",
+      "matricula_vehiculo": "Matrícula de Vehículo",
+      "nif": "NIF",
+      "contrato_ornc": "Contrato ORNC",
+      "registro_civil": "Registro Civil",
+      "cuve": "CUVE",
+      "permiso_circulacion": "Permiso de Circulación",
+      "matricula_funcionario": "Matrícula de Funcionario",
+      "numero_nombramiento": "Número de Nombramiento",
+      "carnet_funcionario": "Carnet de Funcionario",
+      "numero_seguridad_social": "N° Seguridad Social"
+    },
+    "sourceDocument": "Documento fuente",
+    "confidence": "Confianza",
+    "expiresAt": "Fecha de expiración",
+    "noExpiration": "Sin expiración",
+    "documents": "Documentos",
+    "extractedData": "Datos extraídos (OCR)",
+    "fraudWarning": "Este identificador será bloqueado permanentemente. Las futuras solicitudes con este número serán rechazadas automáticamente.",
+    "verifySuccess": "Identificador verificado correctamente",
+    "verifyAllSuccess": "Todos los identificadores verificados correctamente",
+    "rejectSuccess": "Identificador rechazado",
+    "fraudSuccess": "Identificador marcado como fraude"
   },
   "history": {
     "title": "Historique des Demandes",
@@ -10032,7 +10236,16 @@
     "IN_PROGRESS": "En Cours",
     "COMPLETED": "Terminée",
     "CANCELLED": "Annulée",
-    "EXPIRED": "Expirée"
+    "EXPIRED": "Expirée",
+    "PAYMENT_RECEIVED": "Payment Received",
+    "PROCESSING": "Processing",
+    "PENDING_REVIEW": "Pending Review",
+    "PENDING_AGENT_REVIEW": "Pending Agent Review",
+    "AGENT_REVIEW": "Agent Review",
+    "APPOINTMENT_SCHEDULED": "Appointment Scheduled",
+    "APPROVED": "Approved",
+    "DOCUMENTS_VALIDATED": "Documents Validated",
+    "READY_FOR_DELIVERY": "Ready for Delivery"
   },
   "public": {
     "annuaire": {

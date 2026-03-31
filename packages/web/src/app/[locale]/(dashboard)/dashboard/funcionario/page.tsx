@@ -32,6 +32,7 @@ import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests
 import type { WorkflowConfig } from '@/modules/service-requests'
 import type { User as UserType } from '@/types/auth'
 import { FEATURE_CACHE_FIRST_WIZARD } from '@/core/config/features'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 // Sub-type labels moved to SELECTION steps in each workflow definition.
 // The wizard SELECTION step renders options with labels and descriptions from backend config.
@@ -52,6 +53,7 @@ export default function FuncionarioDashboardPage() {
   const [isStarting, setIsStarting] = useState(false)
 
   const { loadWorkflows, startWorkflow, isLoading, error, clearError } = useServiceRequests()
+  const { tw } = useWorkflowTranslations()
 
   // Check auth and load user
   useEffect(() => {
@@ -298,7 +300,7 @@ export default function FuncionarioDashboardPage() {
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
-                      <CardTitle className="text-lg mt-3">{workflow.serviceNameEs}</CardTitle>
+                      <CardTitle className="text-lg mt-3">{tw(workflowNameKey(workflow.workflowCode), workflow.serviceNameEs)}</CardTitle>
                       <CardDescription>{workflow.entityCode}</CardDescription>
                     </CardHeader>
                     <CardContent>

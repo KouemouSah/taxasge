@@ -112,12 +112,14 @@ import type {
   DocumentReorderItem,
   AppointmentPriority,
 } from '@/modules/service-requests-admin'
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 
 export default function WorkflowDetailPage() {
   const t = useTranslations('admin.serviceRequests.workflows')
   const tTariffs = useTranslations('admin.serviceRequests.tariffs')
   const tDocs = useTranslations('admin.serviceRequests.documents')
   const tCommon = useTranslations('common')
+  const { tw } = useWorkflowTranslations()
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -831,7 +833,7 @@ export default function WorkflowDetailPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">{workflow.name_es}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{tw(workflowNameKey(workflow.code), workflow.name_es)}</h1>
             {isPredefined && (
               <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200">
                 <GitBranch className="h-3 w-3" />
@@ -1230,7 +1232,7 @@ export default function WorkflowDetailPage() {
                         <SelectContent>
                           <SelectItem value="_none">Ninguno</SelectItem>
                           {allWorkflows?.filter(w => w.is_parent && w.code !== workflow.code).map((wf) => (
-                            <SelectItem key={wf.code} value={wf.code}>{wf.name_es}</SelectItem>
+                            <SelectItem key={wf.code} value={wf.code}>{tw(workflowNameKey(wf.code), wf.name_es)}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

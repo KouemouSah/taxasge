@@ -78,6 +78,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations';
 import { useWorkflowCodesGrouped } from '@/modules/admin/hooks/useWorkflowCodes';
 import { sqlLikeToRegex } from '@/core/utils/sql-like';
 import apiClient from '@/core/api/client';
@@ -267,6 +268,7 @@ export function WorkflowMappingForm({
   mode = 'create',
 }: WorkflowMappingFormProps) {
   const t = useTranslations('admin.menuConfig');
+  const { tw } = useWorkflowTranslations();
   const [patternMode, setPatternMode] = useState<'select' | 'custom'>(
     mode === 'edit' ? 'custom' : 'select'
   );
@@ -536,7 +538,7 @@ export function WorkflowMappingForm({
                                   {grouped[category]?.map((wf) => (
                                     <CommandItem
                                       key={wf.code}
-                                      value={`${wf.code} ${wf.name_es}`}
+                                      value={`${wf.code} ${tw(workflowNameKey(wf.code), wf.name_es)}`}
                                       onSelect={() =>
                                         handleWorkflowSelect(wf.code, category)
                                       }
@@ -553,7 +555,7 @@ export function WorkflowMappingForm({
                                         {wf.code}
                                       </span>
                                       <span className="text-muted-foreground text-xs truncate">
-                                        {wf.name_es}
+                                        {tw(workflowNameKey(wf.code), wf.name_es)}
                                       </span>
                                     </CommandItem>
                                   ))}

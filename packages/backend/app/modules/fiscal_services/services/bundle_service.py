@@ -243,14 +243,15 @@ class BundleService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    async def simulate(conn, commerce_type: str, zone_code: str) -> Dict:
+    async def simulate(conn, commerce_type: str, zone_code: str, language: str = "es") -> Dict:
         """Simulate bundle pricing for a commerce_type + zone_code.
 
         Returns bundle + items grouped by fee_type + totals + documents
-        + installment preview — all in 1 call. Cached 1h.
+        + installment preview — all in 1 call. Cached 1h per language.
         """
+        lang = language if language in ("es", "fr", "en") else "es"
         cache = get_services_cache()
-        cache_key = f"bundle:sim:{commerce_type}:{zone_code}"
+        cache_key = f"bundle:sim:{commerce_type}:{zone_code}:{lang}"
         cached = await cache.get(cache_key)
         if cached:
             return cached
@@ -269,8 +270,8 @@ class BundleService:
         zone_id = zone["id"]
 
         # Parallel-safe: all reads, no writes
-        items = await BundleRepository.get_bundle_items(conn, bundle_id, zone_id)
-        documents = await BundleRepository.get_required_documents(conn, bundle_id)
+        items = await BundleRepository.get_bundle_items(conn, bundle_id, zone_id, language=lang)
+        documents = await BundleRepository.get_required_documents(conn, bundle_id, language=lang)
 
         # Group items by fee_type + compute totals
         fee_groups: Dict[str, list] = {"tesoro": [], "municipal": [], "chamber": []}
