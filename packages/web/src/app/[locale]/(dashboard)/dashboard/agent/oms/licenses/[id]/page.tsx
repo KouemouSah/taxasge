@@ -69,15 +69,19 @@ export default function LicenseDetailPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Derived
-  const balance = license ? license.total_amount - license.amount_paid : 0
-  const recoveryPct = license && license.total_amount > 0
-    ? Math.round((license.amount_paid / license.total_amount) * 100) : 0
+  // Derived — compute KPIs from the agent's VISIBLE obligations only (entity-scoped)
+  const totalAmount = obligations.reduce((s, o) => s + (o.amount || 0), 0)
+  const paidAmount = obligations
+    .filter(o => o.status === 'paid' || o.status === 'completed')
+    .reduce((s, o) => s + (o.amount || 0), 0)
+  const balance = totalAmount - paidAmount
+  const recoveryPct = totalAmount > 0
+    ? Math.round((paidAmount / totalAmount) * 100) : 0
 
   const paidCount = obligations.filter(o => o.status === 'paid' || o.status === 'completed').length
   const pendingCount = obligations.filter(o => o.status === 'pending' || o.status === 'processing').length
   const overdueCount = obligations.filter(o => o.status === 'overdue').length
-  const totalPenalties = obligations.reduce((s, o) => s + o.penalty_amount, 0)
+  const totalPenalties = obligations.reduce((s, o) => s + (o.penalty_amount || 0), 0)
 
   // Donut
   const donutData = useMemo(() => {
@@ -184,8 +188,8 @@ export default function LicenseDetailPage() {
             { label: 'Año', value: String(license.fiscal_year) },
           ]} />
         <div className="grid grid-cols-4 gap-2 text-[9pt] my-3 bg-gray-50 p-2 rounded">
-          <div><span className="font-medium">Total:</span><br/>{fmtXAF(license.total_amount, locale)}</div>
-          <div><span className="font-medium">Pagado:</span><br/>{fmtXAF(license.amount_paid, locale)}</div>
+          <div><span className="font-medium">Total:</span><br/>{fmtXAF(totalAmount, locale)}</div>
+          <div><span className="font-medium">Pagado:</span><br/>{fmtXAF(paidAmount, locale)}</div>
           <div><span className="font-medium">Balance:</span><br/>{fmtXAF(balance, locale)}</div>
           <div><span className="font-medium">Recovery:</span><br/>{recoveryPct}%</div>
         </div>
@@ -254,11 +258,11 @@ export default function LicenseDetailPage() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Total</div>
-            <p className="text-xl font-bold">{fmtXAF(license.total_amount, locale)}</p>
+            <p className="text-xl font-bold">{fmtXAF(totalAmount, locale)}</p>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Pagado</div>
-            <p className="text-xl font-bold text-green-700">{fmtXAF(license.amount_paid, locale)}</p>
+            <p className="text-xl font-bold text-green-700">{fmtXAF(paidAmount, locale)}</p>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Balance</div>

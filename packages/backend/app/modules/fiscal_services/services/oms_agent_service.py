@@ -283,20 +283,35 @@ class OmsAgentService:
         obligation = dict(row)
         processing_mode = obligation.pop("license_processing_mode")
 
-        if require_processing and obligation["status"] != "processing":
-            raise ValueError(
-                f"Obligation {obligation_id} is not in 'processing' status "
-                f"(current: {obligation['status']})"
-            )
+        # Status check: actionable statuses depend on context.
+        # Independent agents (CAMARA/AYUNTAMIENTO) process pending/overdue directly.
+        # Ministry agents (MIN_*) process obligations routed to them (processing status).
+        if require_processing:
+            actionable = ("pending", "overdue", "processing")
+            if obligation["status"] not in actionable:
+                raise ValueError(
+                    f"Obligation {obligation_id} is not actionable "
+                    f"(current: {obligation['status']}, expected: {actionable})"
+                )
 
         # IDOR: verify obligation matches agent's scope
         if ctx["is_polyvalent"]:
+            # Polyvalent (TESORO) processes consolidated licenses only
             if processing_mode != "consolidated":
                 raise ValueError(
                     f"Obligation {obligation_id} belongs to a per_line license "
                     f"— polyvalent agents can only process consolidated obligations"
                 )
+        elif ctx["is_independent"]:
+            # Independent agents (CAMARA/AYUNTAMIENTO) validate by fee_type
+            expected_fee = ctx.get("queue_fee_type")
+            if expected_fee and obligation.get("fee_type") != expected_fee:
+                raise ValueError(
+                    f"Obligation {obligation_id} fee_type={obligation.get('fee_type')} "
+                    f"does not match agent scope fee_type={expected_fee}"
+                )
         else:
+            # Ministry agents (MIN_*) process per_line obligations for their ministry
             if processing_mode != "per_line":
                 raise ValueError(
                     f"Obligation {obligation_id} belongs to a consolidated license "

@@ -677,13 +677,13 @@ class LicenseRepository:
 
         row = await conn.fetchrow(f"""
             SELECT
-                COUNT(*) FILTER (WHERE lo.status = 'processing') as pending_count,
+                COUNT(*) FILTER (WHERE lo.status IN ('pending', 'overdue', 'processing')) as pending_count,
                 COUNT(*) FILTER (
                     WHERE lo.status = 'completed'
                     AND lo.updated_at::date = CURRENT_DATE
                 ) as completed_today,
                 COALESCE(SUM(lo.amount) FILTER (
-                    WHERE lo.status = 'processing'
+                    WHERE lo.status IN ('pending', 'overdue', 'processing')
                 ), 0) as total_amount_pending,
                 COALESCE(SUM(lo.amount) FILTER (
                     WHERE lo.status = 'completed'
