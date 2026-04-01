@@ -1574,8 +1574,70 @@ function SelectionStepRenderer({
   const stepConfig = workflowConfig?.steps?.find(s => s.stepId === currentStep.id)
   const cfg = stepConfig?.config as Record<string, unknown> | undefined
 
-  // Extract workflow family for option translation keys (e.g., PASAPORTE_NUEVO → pasaporte)
-  const wfFamily = workflowCode.split('_')[0]?.toLowerCase() || ''
+  // Derive workflow family for translation lookups (mirrors mobile step-selection.tsx)
+  const wfFamily = (() => {
+    const lower = workflowCode.toLowerCase()
+    if (lower.startsWith('pasaporte')) return 'pasaporte'
+    if (lower.startsWith('conducir')) return 'conducir'
+    if (lower.startsWith('contrato')) return 'contrato'
+    if (lower.startsWith('residencia')) return 'residencia'
+    if (lower.startsWith('vehiculo')) return 'vehiculo'
+    if (lower.startsWith('prorroga') || lower.startsWith('visado') || lower.startsWith('permanencia') || lower.startsWith('salida_visado')) return 'visado'
+    if (lower.startsWith('fp_carnet')) return 'carnet'
+    if (lower.startsWith('fp_promocion')) return 'promocion'
+    if (lower.startsWith('fp_permiso')) return 'permiso'
+    if (lower.startsWith('fp_certificado')) return 'certificado'
+    if (lower.startsWith('fp_verificacion')) return 'verificacion'
+    if (lower === 'bundle_payment') return 'bundle'
+    return lower
+  })()
+
+  // Translate option label — tries workflow key → motivo key → applicant key → fallback ES
+  const translateLabel = (labelEs: string | undefined, optionValue?: string): string => {
+    if (!labelEs) return optionValue || ''
+    if (!wfFamily || !optionValue) return tw(stepTitleKey(labelEs), labelEs)
+
+    const optKey = optionLabelKey(wfFamily, optionValue)
+    const result = tw(optKey, '')
+    if (result && result !== optKey) return result
+
+    // Try with clase_ prefix (for license classes: A → clase_A)
+    const claseKey = optionLabelKey(wfFamily, `clase_${optionValue}`)
+    const claseResult = tw(claseKey, '')
+    if (claseResult && claseResult !== claseKey) return claseResult
+
+    // Try motivo key (shared across workflows)
+    const mKey = `workflow.motivo.${optionValue}`
+    const mResult = tw(mKey, '')
+    if (mResult && mResult !== mKey) return mResult
+
+    // Try applicant type key (shared)
+    const appKey = `workflow.option.applicant.${optionValue.toLowerCase()}`
+    const appResult = tw(appKey, '')
+    if (appResult && appResult !== appKey) return appResult
+
+    return labelEs
+  }
+
+  // Translate option description — same fallback chain
+  const translateDesc = (descEs: string | undefined, optionValue?: string): string | undefined => {
+    if (!descEs) return undefined
+    if (!wfFamily || !optionValue) return descEs
+
+    const descKey = optionDescKey(wfFamily, optionValue)
+    const result = tw(descKey, '')
+    if (result && result !== descKey) return result
+
+    const mDescKey = `workflow.motivo.${optionValue}.desc`
+    const mResult = tw(mDescKey, '')
+    if (mResult && mResult !== mDescKey) return mResult
+
+    const appDescKey = `workflow.option.applicant.${optionValue.toLowerCase()}.desc`
+    const appResult = tw(appDescKey, '')
+    if (appResult && appResult !== appDescKey) return appResult
+
+    return descEs
+  }
 
   // Translate step title via translations table, fallback to Spanish from backend
   const rawTitle = stepConfig?.titleEs || currentStep.titleEs || ''
@@ -1651,10 +1713,10 @@ function SelectionStepRenderer({
                     <div key={opt.value} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
                       <RadioGroupItem value={opt.value} id={`${field.key}-${opt.value}`} />
                       <Label htmlFor={`${field.key}-${opt.value}`} className="cursor-pointer flex-1">
-                        <span>{tw(optionLabelKey(wfFamily, opt.value), opt.label_es || opt.value)}</span>
+                        <span>{translateLabel(opt.label_es, opt.value)}</span>
                         {opt.description_es && (
                           <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                            {tw(optionDescKey(wfFamily, opt.value), opt.description_es)}
+                            {translateDesc(opt.description_es, opt.value)}
                           </span>
                         )}
                       </Label>
@@ -1689,10 +1751,10 @@ function SelectionStepRenderer({
               <div key={optValue} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
                 <RadioGroupItem value={optValue} id={`${selectionType}-${optValue}`} />
                 <Label htmlFor={`${selectionType}-${optValue}`} className="cursor-pointer flex-1">
-                  <span className="font-medium">{tw(optionLabelKey(wfFamily, optValue), opt.label_es || optValue)}</span>
+                  <span className="font-medium">{translateLabel(opt.label_es, optValue)}</span>
                   {opt.description_es && (
                     <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                      {tw(optionDescKey(wfFamily, optValue), opt.description_es)}
+                      {translateDesc(opt.description_es, optValue)}
                     </span>
                   )}
                   {opt.tariff !== undefined && opt.tariff > 0 && (
@@ -1750,7 +1812,7 @@ function SelectionStepRenderer({
                       disabled={!isChecked && selected.length >= maxSelection}
                     />
                     <Label className="cursor-pointer flex-1">
-                      <span className="font-medium">{tw(optionLabelKey(wfFamily, opt.id), getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.id)}</span>
+                      <span className="font-medium">{translateLabel(opt.label_es, opt.id)}</span>
                       {opt.min_age && (
                         <span className="text-xs text-muted-foreground ml-2">
                           (min. {opt.min_age} {locale === 'es' ? 'anos' : locale === 'fr' ? 'ans' : 'years'})
