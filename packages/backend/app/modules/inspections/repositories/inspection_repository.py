@@ -674,12 +674,14 @@ class InspectionRepository:
 
     @staticmethod
     async def find_license_by_identifier(conn, identifier: str) -> Optional[Dict]:
-        """Find the current year license by NIF (GE-format) OR registration_number (PE-format).
+        """Find the current year license by NIF, registration_number, or company name.
 
-        Companies have EITHER nif OR registration_number, never both:
-        - Sociétés (SA, SL, ONG): nif = GExxxxxX
-        - Autonomes (bundle): registration_number = PE-xxxxxx
+        Search strategy (in priority order):
+        1. Exact NIF match (GExxxxxX)
+        2. Exact registration_number match (PE-xxxxxx)
+        3. Company name search (ILIKE for partial match)
         """
+        # First: try exact NIF/registration_number match
         row = await conn.fetchrow("""
             SELECT cl.id AS license_id, cl.company_id
             FROM commercial_licenses cl
@@ -690,4 +692,18 @@ class InspectionRepository:
             ORDER BY cl.created_at DESC
             LIMIT 1
         """, identifier)
+        if row:
+            return dict(row)
+
+        # Fallback: search by company name (case-insensitive, partial match)
+        row = await conn.fetchrow("""
+            SELECT cl.id AS license_id, cl.company_id
+            FROM commercial_licenses cl
+            JOIN companies c ON c.id = cl.company_id
+            WHERE c.legal_name ILIKE $1
+              AND cl.fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
+              AND cl.status NOT IN ('closed', 'cancelled')
+            ORDER BY cl.created_at DESC
+            LIMIT 1
+        """, f"%{identifier}%")
         return dict(row) if row else None
