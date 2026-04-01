@@ -442,11 +442,11 @@ export default function OnboardingScreen() {
                   <Text style={[
                     s.titleBig,
                     { color: item.accent },
-                    item.titleBigScale && {
+                    item.titleBigScale ? {
                       fontSize: 100 * item.titleBigScale,
                       lineHeight: 106 * item.titleBigScale,
                       letterSpacing: 4 * item.titleBigScale,
-                    },
+                    } : undefined,
                   ]}>
                     {parts[1]}
                   </Text>
