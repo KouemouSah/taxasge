@@ -70,6 +70,7 @@ import {
 // Hooks
 import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashboard/hooks';
 import useMenuConfig from '@/modules/agent-dashboard/hooks/useMenuConfig';
+import { useAgentDashboard } from '@/modules/agent-dashboard/hooks';
 
 // Split View for pending action
 import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
@@ -152,12 +153,19 @@ export default function UnifiedWorkflowActionPage() {
   const searchParams = useSearchParams();
 
   // Extract route params
-  const entityCode = (params?.entityCode as string) || '';
+  const entityCodeSlug = (params?.entityCode as string) || '';
   const workflowGroup = (params?.workflowGroup as string) || '';
   const action = (params?.action as string) || '';
 
-  // Convert URL slug to database entity code (deterministic: lower-kebab → UPPER_SNAKE)
-  const ENTITY_CODE = slugToEntityCode(entityCode);
+  // Get agent's real entity code from profile (source of truth)
+  const { entityCode: profileEntityCode } = useAgentDashboard();
+
+  // Convert URL slug to database entity code
+  // "oms" is a shared module path, not an entity code — use agent's profile entity instead
+  const urlEntityCode = slugToEntityCode(entityCodeSlug);
+  const ENTITY_CODE = (urlEntityCode === 'OMS' && profileEntityCode)
+    ? profileEntityCode
+    : urlEntityCode;
 
   // Validate action — standard actions get dedicated components, others get GenericFilteredList
   const isStandardAction = STANDARD_ACTIONS.includes(action as ActionType);
@@ -245,7 +253,7 @@ export default function UnifiedWorkflowActionPage() {
   const handleRowClick = (requestId: string) => {
     const requestIds = requests.map(r => r.id);
     sessionStorage.setItem('agent-request-ids', JSON.stringify(requestIds));
-    router.push(`/${locale}/dashboard/agent/${entityCode}/request/${requestId}`);
+    router.push(`/${locale}/dashboard/agent/${entityCodeSlug}/request/${requestId}`);
   };
 
   // Reset filters
@@ -278,7 +286,7 @@ export default function UnifiedWorkflowActionPage() {
     return (
       <ValidationPage
         entityCode={ENTITY_CODE}
-        basePath={`/dashboard/agent/${entityCode}`}
+        basePath={`/dashboard/agent/${entityCodeSlug}`}
         workflowGroup={workflowGroup as string}
       />
     );
@@ -289,7 +297,7 @@ export default function UnifiedWorkflowActionPage() {
     return (
       <EscalationsPage
         entityCode={ENTITY_CODE}
-        basePath={`/dashboard/agent/${entityCode}`}
+        basePath={`/dashboard/agent/${entityCodeSlug}`}
       />
     );
   }
@@ -300,7 +308,7 @@ export default function UnifiedWorkflowActionPage() {
       <HistoryPage
         entityCode={ENTITY_CODE}
         workflowCodes={availableWorkflows.length > 0 ? availableWorkflows : undefined}
-        basePath={`/dashboard/agent/${entityCode}`}
+        basePath={`/dashboard/agent/${entityCodeSlug}`}
       />
     );
   }
@@ -310,7 +318,7 @@ export default function UnifiedWorkflowActionPage() {
     return (
       <GenericFilteredList
         entityCode={ENTITY_CODE}
-        entityUrlCode={entityCode}
+        entityUrlCode={entityCodeSlug}
         action={action}
         searchParams={searchParams}
       />
@@ -366,7 +374,7 @@ export default function UnifiedWorkflowActionPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Link href={`/${locale}/dashboard/agent/${entityCode}`}>
+            <Link href={`/${locale}/dashboard/agent/${entityCodeSlug}`}>
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 {tCommon('back')}
@@ -655,7 +663,7 @@ export default function UnifiedWorkflowActionPage() {
         {STANDARD_ACTIONS.map((actionItem) => (
           <Link
             key={actionItem}
-            href={`/${locale}/dashboard/agent/${entityCode}/${workflowGroup}/${actionItem}`}
+            href={`/${locale}/dashboard/agent/${entityCodeSlug}/${workflowGroup}/${actionItem}`}
           >
             <Card className={`cursor-pointer hover:bg-muted/50 transition-colors ${actionItem === currentAction ? 'border-primary ring-1 ring-primary' : ''}`}>
               <CardContent className="pt-6">
