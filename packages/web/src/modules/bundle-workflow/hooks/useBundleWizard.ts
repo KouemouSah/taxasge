@@ -65,8 +65,8 @@ export interface UseBundleWizardReturn {
   classificationPreview: ClassifyPreviewResponse | null
   selectedZoneId: string | null
   selectedCommerceType: string | null
-  setSelectedZoneId: (id: string) => void
-  setSelectedCommerceType: (type: string) => void
+  setSelectedZoneId: (id: string | null) => void
+  setSelectedCommerceType: (type: string | null) => void
   licenseData: BundleInitiateResponse | null
   isInitiating: boolean
   selectedMode: ProcessingMode

@@ -13,6 +13,7 @@ import type {
   BundlePaymentResult,
   MyCompaniesResponse,
   SearchCompanyResponse,
+  ClassifyPreviewResponse,
 } from '../types'
 
 const BASE = '/bundle-workflow'
