@@ -1,4 +1,4 @@
-export { sendChatMessage } from './services/chatbot-api';
+export { sendChatMessage, submitFeedback } from './services/chatbot-api';
 export { useChatbot } from './services/chatbot-hooks';
 export type {
   ChatMessage,

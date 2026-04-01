@@ -317,6 +317,9 @@
     "placeholder": "Escribe tu pregunta...",
     "welcome": "¡Hola! Soy el asistente de Facil. ¿En qué puedo ayudarte?",
     "typing": "Escribiendo...",
+    "statusSearching": "Buscando en documentos...",
+    "statusAnalyzing": "Analizando resultados...",
+    "statusGenerating": "Preparando respuesta...",
     "errorSending": "Error al enviar. Inténtalo de nuevo.",
     "rateLimited": "Demasiadas preguntas. Espera un momento.",
     "suggestions": {

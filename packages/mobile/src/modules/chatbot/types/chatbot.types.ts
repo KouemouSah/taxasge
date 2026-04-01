@@ -26,6 +26,12 @@ export interface ChatRequest {
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
+export interface FeedbackRequest {
+  conversation_id: string;
+  rating: number;
+  feedback: string;
+}
+
 export interface ChatResponse {
   response: string;
   conversation_id: string;

@@ -8,7 +8,7 @@
 
 import { apiPost } from '@core/api/client';
 import { API_ENDPOINTS } from '@core/api/endpoints';
-import type { ChatRequest, ChatResponse } from '../types/chatbot.types';
+import type { ChatRequest, ChatResponse, FeedbackRequest } from '../types/chatbot.types';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
@@ -37,4 +37,13 @@ export async function sendChatMessage(req: ChatRequest): Promise<ChatResponse> {
   }
 
   throw lastError;
+}
+
+/** POST /chatbot/feedback — best-effort, non-blocking */
+export async function submitFeedback(req: FeedbackRequest): Promise<void> {
+  try {
+    await apiPost('/chatbot/feedback', req);
+  } catch {
+    // Best-effort — never fail the UI
+  }
 }

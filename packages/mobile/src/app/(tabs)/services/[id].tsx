@@ -260,8 +260,9 @@ export default function ServiceDetailScreen() {
             mode="contained"
             onPress={handleStartRequest}
             icon="arrow-right"
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 8, opacity: 0.5 }}
             contentStyle={{ paddingVertical: 4 }}
+            disabled
           >
             {t('services.startRequest')}
           </Button>

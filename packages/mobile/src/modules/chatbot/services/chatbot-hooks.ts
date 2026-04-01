@@ -1,15 +1,27 @@
 /**
- * Chatbot React Hook
+ * Chatbot React Hook — aligned with web useChat.ts
  *
- * Manages conversation state: messages, conversationId, send/loading.
- * Builds history from previous messages for context continuity.
+ * Key alignment points with web:
+ * - History: last 10 messages EXCLUDING current message
+ * - Language: passed directly (no extra instructions — backend handles it)
+ * - ConversationId: undefined on first call, reused after
+ * - Suggestions: extracted from response.suggestions
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { sendChatMessage } from './chatbot-api';
 import type { ChatMessage, ChatResponse } from '../types/chatbot.types';
+
+// Persistence via MMKV (sync, fast)
+let storage: any = null;
+try {
+  const { MMKV } = require('react-native-mmkv');
+  storage = new MMKV({ id: 'chatbot-persistence' });
+} catch {
+  // MMKV not available — persistence disabled
+}
 
 let messageCounter = 0;
 function nextId(): string {
@@ -17,12 +29,32 @@ function nextId(): string {
   return `msg_${Date.now()}_${messageCounter}`;
 }
 
+function loadPersistedMessages(): ChatMessage[] {
+  if (!storage) return [];
+  try {
+    const raw = storage.getString('messages');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch { return []; }
+}
+
+function persistMessages(messages: ChatMessage[], conversationId?: string) {
+  if (!storage) return;
+  try {
+    storage.set('messages', JSON.stringify(messages.slice(-50))); // Keep last 50
+    if (conversationId) storage.set('conversationId', conversationId);
+  } catch { /* best-effort */ }
+}
+
 export function useChatbot() {
   const { i18n } = useTranslation();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedMessages());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const conversationIdRef = useRef<string | undefined>(undefined);
+  const conversationIdRef = useRef<string | undefined>(
+    storage?.getString('conversationId') || undefined
+  );
 
   const send = useCallback(
     async (text: string) => {
@@ -30,7 +62,7 @@ export function useChatbot() {
 
       setError(null);
 
-      // Add user message
+      // Add user message to local state
       const userMsg: ChatMessage = {
         id: nextId(),
         text: text.trim(),
@@ -41,26 +73,25 @@ export function useChatbot() {
       setIsLoading(true);
 
       try {
-        // Build history from last 10 messages for context (omit if empty)
-        const historyItems = messages.slice(-10).map((m) => ({
-          role: (m.isBot ? 'assistant' : 'user') as 'user' | 'assistant',
-          content: m.text,
-        }));
-
         const lang = (i18n.language || 'es') as 'es' | 'fr' | 'en';
 
-        const LANG_INSTRUCTIONS: Record<string, string> = {
-          fr: 'Réponds entièrement en français. Traduis tous les noms de services, catégories et suggestions en français. Ne mélange jamais avec l\'espagnol.',
-          en: 'Reply entirely in English. Translate all service names, categories and suggestions to English. Never mix with Spanish.',
-          es: '',
-        };
+        // Build history: last 10 messages EXCLUDING current (same as web useChat.ts)
+        // Web: history.length > 1 ? history.slice(0, -1) : undefined
+        const allMessages = [...messages, userMsg];
+        const historyRaw = allMessages
+          .slice(-10)
+          .map((m) => ({
+            role: (m.isBot ? 'assistant' : 'user') as 'user' | 'assistant',
+            content: m.text,
+          }));
+        // Exclude the current message (last one) — web does slice(0, -1)
+        const history = historyRaw.length > 1 ? historyRaw.slice(0, -1) : undefined;
 
         const response: ChatResponse = await sendChatMessage({
           message: text.trim(),
-          ...(conversationIdRef.current ? { conversation_id: conversationIdRef.current } : {}),
+          conversation_id: conversationIdRef.current,
           language: lang,
-          ...(historyItems.length > 0 ? { history: historyItems } : {}),
-          ...(LANG_INSTRUCTIONS[lang] ? { context: { language_instruction: LANG_INSTRUCTIONS[lang] } } : {}),
+          history,
         });
 
         // Store conversation_id for continuity
@@ -68,7 +99,7 @@ export function useChatbot() {
           conversationIdRef.current = response.conversation_id;
         }
 
-        // Add bot response
+        // Add bot response with suggestions and related services
         const botMsg: ChatMessage = {
           id: nextId(),
           text: response.response,
@@ -84,11 +115,13 @@ export function useChatbot() {
                 }))
               : undefined,
         };
-        setMessages((prev) => [...prev, botMsg]);
+        setMessages((prev) => {
+          const updated = [...prev, botMsg];
+          persistMessages(updated, conversationIdRef.current);
+          return updated;
+        });
       } catch (err: any) {
         const status = err?.response?.status;
-        const detail = err?.response?.data?.detail || err?.message || 'Unknown error';
-        console.error('[Chatbot] Send error:', status, detail);
         if (status === 429) {
           setError('rate_limited');
         } else {
@@ -105,6 +138,10 @@ export function useChatbot() {
     setMessages([]);
     conversationIdRef.current = undefined;
     setError(null);
+    if (storage) {
+      storage.delete('messages');
+      storage.delete('conversationId');
+    }
   }, []);
 
   return { messages, isLoading, error, send, clearChat };

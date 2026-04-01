@@ -23,15 +23,17 @@ import {
   Platform,
   Image,
   Pressable,
+  Share,
 } from 'react-native';
-import { Text, TextInput, IconButton, Chip, ActivityIndicator } from 'react-native-paper';
+import * as Clipboard from 'expo-clipboard';
+import { Text, TextInput, IconButton, Chip, ActivityIndicator, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import Markdown from 'react-native-markdown-display';
 import { useAppTheme } from '@core/theme';
-import { useChatbot } from '@modules/chatbot';
+import { useChatbot, submitFeedback } from '@modules/chatbot';
 import type { ChatMessage } from '@modules/chatbot';
 
 const BOT_AVATAR = require('../../../assets/images/icon_facil.png');
@@ -56,17 +58,69 @@ function TypingIndicator({ color }: { color: string }) {
 // Message bubble
 // ---------------------------------------------------------------------------
 
+// Full markdown styles matching web renderMarkdown() rules
+const mdStyles = (colors: any) => ({
+  body: { color: colors.onSurface, fontSize: 14, lineHeight: 22 },
+  heading1: { fontSize: 18, fontWeight: '800' as const, color: colors.primary, marginTop: 12, marginBottom: 4 },
+  heading2: { fontSize: 16, fontWeight: '700' as const, color: colors.primary, marginTop: 10, marginBottom: 4 },
+  heading3: { fontSize: 15, fontWeight: '700' as const, color: colors.primary, marginTop: 8, marginBottom: 2 },
+  heading4: { fontSize: 14, fontWeight: '600' as const, color: colors.primary, marginTop: 6, marginBottom: 2 },
+  strong: { fontWeight: '700' as const },
+  em: { fontStyle: 'italic' as const },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { marginVertical: 2 },
+  paragraph: { marginVertical: 3 },
+  code_inline: { backgroundColor: colors.surfaceVariant, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, fontFamily: 'monospace', fontSize: 13 },
+  code_block: { backgroundColor: '#1E1E1E', color: '#D4D4D4', padding: 12, borderRadius: 8, fontFamily: 'monospace', fontSize: 12, marginVertical: 6 },
+  fence: { backgroundColor: '#1E1E1E', color: '#D4D4D4', padding: 12, borderRadius: 8, fontFamily: 'monospace', fontSize: 12, marginVertical: 6 },
+  blockquote: { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 10, marginVertical: 4, opacity: 0.85 },
+  table: { borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: 6, marginVertical: 6 },
+  thead: { backgroundColor: colors.surfaceVariant },
+  th: { padding: 6, fontWeight: '600' as const, fontSize: 12 },
+  td: { padding: 6, fontSize: 12, borderTopWidth: 1, borderTopColor: colors.outlineVariant },
+  link: { color: colors.primary, textDecorationLine: 'underline' as const },
+  hr: { backgroundColor: colors.outlineVariant, height: 1, marginVertical: 8 },
+});
+
 function MessageBubble({
   msg,
   colors,
+  conversationId,
   onSuggestion,
   onServicePress,
+  onCopied,
 }: {
   msg: ChatMessage;
   colors: any;
+  conversationId?: string;
   onSuggestion: (text: string) => void;
   onServicePress: (id: number) => void;
+  onCopied: () => void;
 }) {
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(msg.text);
+    onCopied();
+  };
+
+  const handleFeedback = (type: 'up' | 'down') => {
+    if (feedback) return; // Already rated
+    setFeedback(type);
+    if (conversationId) {
+      submitFeedback({
+        conversation_id: conversationId,
+        rating: type === 'up' ? 5 : 1,
+        feedback: type === 'up' ? 'helpful' : 'not_helpful',
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    await Share.share({ message: msg.text });
+  };
+
   if (msg.isBot) {
     return (
       <View style={s.botGroup}>
@@ -74,18 +128,34 @@ function MessageBubble({
         <View style={s.botRow}>
           <Image source={BOT_AVATAR} style={s.msgAvatar} resizeMode="contain" />
           <View style={[s.botBubble, { backgroundColor: colors.surfaceVariant }]}>
-            <Markdown style={{
-              body: { color: colors.onSurface, fontSize: 14, lineHeight: 22 },
-              heading3: { fontSize: 15, fontWeight: '700', color: colors.primary, marginVertical: 4 },
-              heading2: { fontSize: 16, fontWeight: '700', color: colors.primary, marginVertical: 4 },
-              strong: { fontWeight: '700' },
-              bullet_list: { marginVertical: 4 },
-              list_item: { marginVertical: 2 },
-              paragraph: { marginVertical: 2 },
-            }}>
+            <Markdown style={mdStyles(colors)}>
               {msg.text}
             </Markdown>
           </View>
+        </View>
+
+        {/* Action bar: feedback + copy + share */}
+        <View style={s.msgActions}>
+          <Pressable onPress={() => handleFeedback('up')} style={s.msgActionBtn}>
+            <IconButton
+              icon={feedback === 'up' ? 'thumb-up' : 'thumb-up-outline'}
+              size={16}
+              iconColor={feedback === 'up' ? colors.primary : colors.outline}
+            />
+          </Pressable>
+          <Pressable onPress={() => handleFeedback('down')} style={s.msgActionBtn}>
+            <IconButton
+              icon={feedback === 'down' ? 'thumb-down' : 'thumb-down-outline'}
+              size={16}
+              iconColor={feedback === 'down' ? colors.error : colors.outline}
+            />
+          </Pressable>
+          <Pressable onPress={handleCopy} style={s.msgActionBtn}>
+            <IconButton icon="content-copy" size={16} iconColor={colors.outline} />
+          </Pressable>
+          <Pressable onPress={handleShare} style={s.msgActionBtn}>
+            <IconButton icon="share-variant-outline" size={16} iconColor={colors.outline} />
+          </Pressable>
         </View>
 
         {/* Related services */}
@@ -150,6 +220,32 @@ export default function ChatScreen() {
 
   const { messages, isLoading, error, send, clearChat } = useChatbot();
   const [inputText, setInputText] = useState('');
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState('');
+
+  // Progressive status like web (searching → analyzing → generating)
+  const statusTimersRef = useRef<NodeJS.Timeout[]>([]);
+  const prevLoadingRef = useRef(false);
+
+  if (isLoading && !prevLoadingRef.current) {
+    prevLoadingRef.current = true;
+    const steps = [
+      t('chat.statusSearching') || 'Searching...',
+      t('chat.statusAnalyzing') || 'Analyzing...',
+      t('chat.statusGenerating') || 'Generating...',
+    ];
+    setStatusText(steps[0]);
+    statusTimersRef.current = [
+      setTimeout(() => setStatusText(steps[1]), 1500),
+      setTimeout(() => setStatusText(steps[2]), 4000),
+    ];
+  }
+  if (!isLoading && prevLoadingRef.current) {
+    prevLoadingRef.current = false;
+    statusTimersRef.current.forEach(clearTimeout);
+    statusTimersRef.current = [];
+    setStatusText('');
+  }
 
   const handleSend = useCallback(() => {
     if (!inputText.trim() || isLoading) return;
@@ -191,8 +287,8 @@ export default function ChatScreen() {
           <Text variant="titleMedium" style={{ fontWeight: '600', color: colors.onSurface }}>
             {t('chat.title')}
           </Text>
-          <Text variant="labelSmall" style={{ color: colors.outline }}>
-            {isLoading ? t('chat.typing') : 'Facil AI'}
+          <Text variant="labelSmall" style={{ color: isLoading ? colors.primary : colors.outline }}>
+            {isLoading ? statusText || t('chat.typing') : 'Facil AI'}
           </Text>
         </View>
         {hasMessages && (
@@ -276,6 +372,7 @@ export default function ChatScreen() {
                   colors={colors}
                   onSuggestion={handleSuggestion}
                   onServicePress={handleServicePress}
+                  onCopied={() => setSnackbar(t('common.copied') || 'Copied')}
                 />
               )}
               contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
@@ -321,6 +418,10 @@ export default function ChatScreen() {
           </>
         )}
       </KeyboardAvoidingView>
+
+      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={2000}>
+        {snackbar ?? ''}
+      </Snackbar>
     </SafeAreaView>
   );
 }
@@ -384,6 +485,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+  },
+  msgActions: {
+    flexDirection: 'row',
+    marginLeft: 38,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  msgActionBtn: {
+    marginRight: -8,
   },
   suggestionsRow: {
     flexDirection: 'row',

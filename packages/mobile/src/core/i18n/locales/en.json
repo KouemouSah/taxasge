@@ -317,6 +317,9 @@
     "placeholder": "Type your question...",
     "welcome": "Hello! I'm the Facil assistant. How can I help you?",
     "typing": "Typing...",
+    "statusSearching": "Searching documents...",
+    "statusAnalyzing": "Analyzing results...",
+    "statusGenerating": "Preparing response...",
     "errorSending": "Failed to send. Please try again.",
     "rateLimited": "Too many questions. Please wait a moment.",
     "suggestions": {
