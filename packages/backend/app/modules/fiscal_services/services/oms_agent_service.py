@@ -123,9 +123,10 @@ class OmsAgentService:
             queue_ministry = row["ministry_id"]
             queue_fee_type = None
 
-        # City scope: agents/supervisors only see obligations from their city.
-        # Polyvalent (TESORO) sees all cities (national scope).
-        queue_city_id = None if is_polyvalent else row["city_id"]
+        # City scope: ministry agents see only their city's obligations.
+        # Polyvalent (TESORO) and independent (CAMARA/AYUNTAMIENTO) entities
+        # have national scope — their fees apply to ALL cities.
+        queue_city_id = None if (is_polyvalent or is_independent) else row["city_id"]
 
         return {
             "agent_profile_id": row["agent_profile_id"],
@@ -164,10 +165,17 @@ class OmsAgentService:
         """
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
-        status_filter = [status] if status else ["processing"]
+        # Default: show actionable obligations (pending + overdue).
+        # 'processing' is for obligations actively being worked on.
+        status_filter = [status] if status else ["pending", "overdue"]
 
-        # Supervisors see all; agents see only their assigned obligations
-        agent_profile_id = None if ctx["is_supervisor"] else ctx["agent_profile_id"]
+        # Supervisors see all; independent agents (camara/ayuntamiento) see all
+        # in their fee_type scope (no assignment needed). Ministry agents see
+        # only their assigned obligations.
+        if ctx["is_supervisor"] or ctx["is_independent"]:
+            agent_profile_id = None
+        else:
+            agent_profile_id = ctx["agent_profile_id"]
 
         # Role-scoped fee_type takes priority over user-requested fee_type.
         # Independent agents (ayuntamiento=municipal, camara=chamber) are locked

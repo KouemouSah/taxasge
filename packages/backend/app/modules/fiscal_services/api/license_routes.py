@@ -258,13 +258,32 @@ async def list_obligations(
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
-    """List obligations for a license, with optional fee_type/status filter."""
+    """List obligations for a license, with optional fee_type/status filter.
+
+    Entity scoping: OMS agents automatically see only their entity's fee_type.
+    Admin and citizens see all obligations. Explicit fee_type param overrides.
+    """
     license_row = await LicenseService.get_license(db, license_id)
     if not license_row:
         raise HTTPException(status_code=404, detail="License not found")
 
+    # Auto-scope by agent's fee_type when no explicit filter requested
+    effective_fee_type = fee_type.value if fee_type else None
+    if not effective_fee_type and current_user.role == "agent":
+        try:
+            from app.modules.fiscal_services.services.oms_agent_service import (
+                OmsAgentService,
+            )
+            ctx = await OmsAgentService.resolve_agent_context(
+                db, UUID(current_user.id)
+            )
+            if ctx.get("queue_fee_type"):
+                effective_fee_type = ctx["queue_fee_type"]
+        except (ValueError, Exception):
+            pass  # Not an OMS agent — show all
+
     obligations, total = await LicenseService.list_obligations(
-        db, license_id, fee_type=fee_type.value if fee_type else None,
+        db, license_id, fee_type=effective_fee_type,
         status=status.value if status else None,
         page=page, page_size=page_size,
     )
