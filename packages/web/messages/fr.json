@@ -5730,7 +5730,13 @@
       "obligations": "Obligations",
       "queue": "File de travail",
       "team": "Équipe",
-      "escalations": "Escalades"
+      "escalations": "Escalades",
+      "payments": "Paiements",
+      "pendingValidation": "Validation en attente",
+      "validationHistory": "Historique Validations",
+      "completedObligations": "Obligations terminées",
+      "documents": "Documents",
+      "processor": "Traitement"
     },
     "queue": {
       "title": "File d'Obligations",

@@ -321,7 +321,11 @@ export default function OMSAgentDashboardPage() {
                         <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate max-w-[160px]">{item.company_name || '—'}</span>
                       </div>
-                      {item.zone_code && <span className="text-[10px] text-muted-foreground ml-5">{item.zone_code}</span>}
+                      <div className="ml-5 text-[10px] text-muted-foreground">
+                        {item.company_nif && <span className="font-mono">{item.company_nif}</span>}
+                        {item.company_registration_number && <span className="font-mono">{item.company_registration_number}</span>}
+                        {item.zone_code && <span className="ml-1.5">{item.zone_code}</span>}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs">
                       <Badge variant="outline" className="text-[10px] uppercase">{item.fee_type}</Badge>

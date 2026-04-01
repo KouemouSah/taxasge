@@ -83,6 +83,7 @@ class OmsAgentService:
                 e.code AS entity_code,
                 el.region,
                 el.city_id,
+                COALESCE(el.is_main_office, false) AS is_main_office,
                 r.code AS role_code
             FROM agent_profiles ap
             JOIN entities e ON e.id = ap.entity_id
@@ -123,10 +124,12 @@ class OmsAgentService:
             queue_ministry = row["ministry_id"]
             queue_fee_type = None
 
-        # City scope: ministry agents see only their city's obligations.
-        # Polyvalent (TESORO) and independent (CAMARA/AYUNTAMIENTO) entities
-        # have national scope — their fees apply to ALL cities.
-        queue_city_id = None if (is_polyvalent or is_independent) else row["city_id"]
+        # City scope — UNIVERSAL rule for ALL agents without exception:
+        # - Main office (is_main_office=true): sees all cities of their entity
+        # - Secondary site (is_main_office=false): sees only their city
+        # This applies to TESORO, CAMARA, AYUNTAMIENTO, MIN_* equally.
+        is_main_office = row["is_main_office"]
+        queue_city_id = None if is_main_office else row["city_id"]
 
         return {
             "agent_profile_id": row["agent_profile_id"],
@@ -140,6 +143,7 @@ class OmsAgentService:
             "is_supervisor": is_supervisor,
             "is_polyvalent": is_polyvalent,
             "is_independent": is_independent,
+            "is_main_office": is_main_office,
             "queue_processing_mode": queue_mode,
             "queue_ministry_id": queue_ministry,
             "queue_fee_type": queue_fee_type,
@@ -167,7 +171,9 @@ class OmsAgentService:
 
         # Default: show actionable obligations (pending + overdue).
         # 'processing' is for obligations actively being worked on.
-        status_filter = [status] if status else ["pending", "overdue"]
+        # Default: all actionable statuses (pending from seed data + overdue +
+        # processing from post-payment routing via on_payment_completed)
+        status_filter = [status] if status else ["pending", "overdue", "processing"]
 
         # Supervisors see all; independent agents (camara/ayuntamiento) see all
         # in their fee_type scope (no assignment needed). Ministry agents see

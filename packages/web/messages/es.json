@@ -5730,7 +5730,13 @@
       "obligations": "Obligaciones",
       "queue": "Cola de trabajo",
       "team": "Equipo",
-      "escalations": "Escalaciones"
+      "escalations": "Escalaciones",
+      "payments": "Pagos",
+      "pendingValidation": "Validacion Pendiente",
+      "validationHistory": "Historial Validaciones",
+      "completedObligations": "Obligaciones Completadas",
+      "documents": "Documentos",
+      "processor": "Procesamiento"
     },
     "queue": {
       "title": "Cola de Obligaciones",

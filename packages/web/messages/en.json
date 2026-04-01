@@ -5730,7 +5730,13 @@
       "obligations": "Obligations",
       "queue": "Work queue",
       "team": "Team",
-      "escalations": "Escalations"
+      "escalations": "Escalations",
+      "payments": "Payments",
+      "pendingValidation": "Pending Validation",
+      "validationHistory": "Validation History",
+      "completedObligations": "Completed Obligations",
+      "documents": "Documents",
+      "processor": "Processing"
     },
     "queue": {
       "title": "Obligations Queue",

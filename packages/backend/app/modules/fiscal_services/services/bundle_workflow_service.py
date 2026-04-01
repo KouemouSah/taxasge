@@ -819,13 +819,36 @@ class BundleWorkflowService:
             r["amount"] + r["penalty_amount"] for r in obligations
         )
 
-        # 2. Create service_request
+        # 2. Group obligations by target payment entity (Mode A: per-entity validation)
+        # Routing: chamber→CAMARA, municipal→AYUNTAMIENTO, tesoro→TESORO
+        # Dynamic: uses v_obligation_routing config, no hardcoded entity codes
+        FEE_TO_ENTITY_SQL = """
+            SELECT DISTINCT validates_fee_type, entity_code
+            FROM v_obligation_routing
+            WHERE routing_role = 'payment_validator'
+        """
+        fee_entity_rows = await conn.fetch(FEE_TO_ENTITY_SQL)
+        fee_to_entity = {r["validates_fee_type"]: r["entity_code"] for r in fee_entity_rows}
+        # Fallback: unknown fee_types go to TESORO
+        default_entity = "TESORO"
+
+        # Determine the primary entity (entity with the most obligations = service_request owner)
+        entity_groups: dict = {}  # entity_code -> list of obligations
+        for ob in obligations:
+            target_entity = fee_to_entity.get(ob["fee_type"], default_entity)
+            entity_groups.setdefault(target_entity, []).append(ob)
+
+        # Primary entity = largest group (or TESORO if only tesoro obligations)
+        primary_entity = max(entity_groups, key=lambda e: len(entity_groups[e]))
+
+        # 2b. Create service_request (1 per bundle, primary entity owns it)
         sr_repo = ServiceRequestRepository()
         form_data = {
             "license_id": str(license_id),
             "processing_mode": processing_mode,
             "obligation_ids": [str(oid) for oid in selected_obligation_ids],
             "company_id": str(license_row["company_id"]),
+            "entity_payments": {ec: len(obs) for ec, obs in entity_groups.items()},
         }
 
         sr = await sr_repo.create(
@@ -835,7 +858,7 @@ class BundleWorkflowService:
             solicitud_type="expedicion",
             form_data=form_data,
             company_id=license_row["company_id"],
-            entity_code="TESORO",
+            entity_code=primary_entity,
         )
         service_request_id = sr["id"]
 
@@ -878,121 +901,141 @@ class BundleWorkflowService:
         """, total_amount, service_request_id,
             license_row["bundle_id"], license_row["zone_id"])
 
-        # 4. Create service_payment via processor registry
-        calculation_details = {
-            "obligations": [
-                {
-                    "id": str(ob["id"]),
-                    "fee_type": ob["fee_type"],
-                    "amount": float(ob["amount"]),
-                    "penalty": float(ob["penalty_amount"]),
-                }
-                for ob in obligations
-            ],
-            "processing_mode": processing_mode,
-            "license_id": str(license_id),
-        }
-
-        # Map payment_method string to PaymentMethod enum
+        # 4. Create N service_payments — one per target entity (Mode A split)
+        #    Each entity validates their portion independently.
+        #    Electronic payments (BANGE): all complete simultaneously via webhook.
+        #    Cash/check: each entity validates their payment in their queue.
         from app.modules.payments.models.payment import PaymentMethod
         try:
             pm_enum = PaymentMethod(payment_method)
         except ValueError:
             raise ValueError(f"INVALID_PAYMENT_METHOD:{payment_method}")
 
-        context = PaymentContext(
-            service_request_id=str(service_request_id),
-            user_id=str(user_id),
-            amount=Decimal(str(total_amount)),
-            currency="XAF",
-            payment_method=pm_enum,
-            tariff_breakdown=calculation_details,
-            workflow_code="BUNDLE_PAYMENT",
-            service_name="Pago de Obligaciones Fiscales",
-            user_phone=phone_number,
-        )
-
         registry = PaymentProcessorRegistry()
-        payment_result = await registry.initiate_payment(conn, context)
+        all_payment_ids = []
+        primary_payment_id = None
 
-        if not payment_result.success:
-            raise ValueError(
-                f"PAYMENT_INITIATION_FAILED:{payment_result.error}"
+        for entity_code, entity_obligations in entity_groups.items():
+            entity_amount = sum(
+                ob["amount"] + ob["penalty_amount"] for ob in entity_obligations
+            )
+            entity_ob_ids = [ob["id"] for ob in entity_obligations]
+
+            calculation_details = {
+                "obligations": [
+                    {
+                        "id": str(ob["id"]),
+                        "fee_type": ob["fee_type"],
+                        "amount": float(ob["amount"]),
+                        "penalty": float(ob["penalty_amount"]),
+                    }
+                    for ob in entity_obligations
+                ],
+                "processing_mode": processing_mode,
+                "license_id": str(license_id),
+                "target_entity": entity_code,
+            }
+
+            context = PaymentContext(
+                service_request_id=str(service_request_id),
+                user_id=str(user_id),
+                amount=Decimal(str(entity_amount)),
+                currency="XAF",
+                payment_method=pm_enum,
+                tariff_breakdown=calculation_details,
+                workflow_code="BUNDLE_PAYMENT",
+                service_name=f"Obligaciones Fiscales - {entity_code}",
+                user_phone=phone_number,
             )
 
-        # 5. Update service_payment with fee_type='bundle' + company_id
-        #    Processor INSERT doesn't include OMS-specific fields.
-        #    This UPDATE happens within the same transaction, committed BEFORE
-        #    any external callback (BANGE webhook is a separate HTTP request).
-        #    on_payment_completed() reads fee_type to detect OMS payments.
-        await conn.execute("""
-            UPDATE service_payments
-            SET fee_type = 'bundle',
-                company_id = $2
-            WHERE id = $1::uuid
-        """, payment_result.payment_id, license_row["company_id"])
+            payment_result = await registry.initiate_payment(conn, context)
+            if not payment_result.success:
+                raise ValueError(
+                    f"PAYMENT_INITIATION_FAILED:{entity_code}:{payment_result.error}"
+                )
 
-        # 6. Link obligations to payment
-        updated_rows = await conn.fetch("""
-            UPDATE license_obligations
-            SET payment_id = $1::uuid,
-                status = 'payment_pending',
-                updated_at = NOW()
-            WHERE id = ANY($2::uuid[])
-              AND status IN ('pending', 'overdue')
-            RETURNING id
-        """, payment_result.payment_id, selected_obligation_ids)
-        updated_count = len(updated_rows)
+            # Update service_payment with entity_code + fee_type + company_id
+            await conn.execute("""
+                UPDATE service_payments
+                SET fee_type = 'bundle',
+                    entity_code = $2,
+                    company_id = $3
+                WHERE id = $1::uuid
+            """, payment_result.payment_id, entity_code, license_row["company_id"])
 
-        if updated_count != len(selected_obligation_ids):
-            # Should not happen (already validated), but safety net
-            logger.error(
-                "OMS: Expected %d obligations linked, got %d — race condition",
-                len(selected_obligation_ids),
-                updated_count or 0,
+            # Link this entity's obligations to their payment
+            updated_rows = await conn.fetch("""
+                UPDATE license_obligations
+                SET payment_id = $1::uuid,
+                    status = 'payment_pending',
+                    updated_at = NOW()
+                WHERE id = ANY($2::uuid[])
+                  AND status IN ('pending', 'overdue')
+                RETURNING id
+            """, payment_result.payment_id, entity_ob_ids)
+
+            if len(updated_rows) != len(entity_ob_ids):
+                logger.error(
+                    "OMS: %s — Expected %d obligations linked, got %d",
+                    entity_code, len(entity_ob_ids), len(updated_rows),
+                )
+
+            # Log compliance events per obligation
+            for ob in entity_obligations:
+                await LicenseRepository.log_event(
+                    conn, license_id, "payment_initiated",
+                    event_data={
+                        "payment_id": payment_result.payment_id,
+                        "fee_type": ob["fee_type"],
+                        "amount": float(ob["amount"]),
+                        "payment_method": payment_method,
+                        "target_entity": entity_code,
+                    },
+                    obligation_id=ob["id"],
+                    triggered_by=user_id,
+                )
+
+            all_payment_ids.append(payment_result.payment_id)
+            if entity_code == primary_entity:
+                primary_payment_id = payment_result.payment_id
+
+            logger.info(
+                "OMS: Created payment %s for %s (%d obligations, %s XAF)",
+                payment_result.payment_id, entity_code,
+                len(entity_obligations), entity_amount,
             )
 
-        # 7. Log compliance events
-        for ob in obligations:
-            await LicenseRepository.log_event(
-                conn, license_id, "payment_initiated",
-                event_data={
-                    "payment_id": payment_result.payment_id,
-                    "fee_type": ob["fee_type"],
-                    "amount": float(ob["amount"]),
-                    "payment_method": payment_method,
-                },
-                obligation_id=ob["id"],
-                triggered_by=user_id,
-            )
-
-        # 8. Update service_request with payment_id
+        # 8. Update service_request with primary payment_id
         await conn.execute("""
             UPDATE service_requests
             SET payment_id = $1::uuid,
-                payment_status = $2,
+                payment_status = 'processing',
                 status = 'PAYMENT_PROCESSING'
-            WHERE id = $3
-        """, payment_result.payment_id,
-            payment_result.status.value if payment_result.status else 'processing',
-            service_request_id)
+            WHERE id = $2
+        """, primary_payment_id, service_request_id)
 
-        # 9. Publish event for cash payments (BANGE publishes via webhook callback).
-        #    This triggers: assignment outbox, email notifications, agent queue.
+        # 9. Publish events for cash payments (1 per entity payment)
         if payment_method in ("cash", "check"):
             try:
                 from app.core.events import EventBus, EventType
-                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
-                    "payment_id": payment_result.payment_id,
-                    "user_id": str(user_id),
-                    "service_request_id": str(service_request_id),
-                    "workflow_code": "BUNDLE_PAYMENT",
-                    "payment_method": payment_method,
-                    "amount": float(total_amount),
-                    "entity_code": "TESORO",
-                })
+                for entity_code, entity_obs in entity_groups.items():
+                    entity_payment_id = all_payment_ids[
+                        list(entity_groups.keys()).index(entity_code)
+                    ]
+                    entity_amount = sum(
+                        ob["amount"] + ob["penalty_amount"] for ob in entity_obs
+                    )
+                    EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
+                        "payment_id": entity_payment_id,
+                        "user_id": str(user_id),
+                        "service_request_id": str(service_request_id),
+                        "workflow_code": "BUNDLE_PAYMENT",
+                        "payment_method": payment_method,
+                        "amount": float(entity_amount),
+                        "entity_code": entity_code,
+                    })
             except Exception as e:
-                logger.warning("Failed to publish PAYMENT_MANUAL_PENDING event: %s", e)
+                logger.warning("Failed to publish PAYMENT_MANUAL_PENDING events: %s", e)
 
         # 10. Notify company owner if payment initiated by a third party
         is_owner = await conn.fetchval(
@@ -1027,36 +1070,42 @@ class BundleWorkflowService:
             except Exception as e:
                 logger.warning("Failed to notify owner for third-party payment: %s", e)
 
+        entities_summary = ", ".join(
+            f"{ec}({len(obs)})" for ec, obs in entity_groups.items()
+        )
         logger.info(
             "OMS bundle payment initiated: license=%s, mode=%s, "
-            "method=%s, obligations=%d, amount=%s XAF, payment=%s",
+            "method=%s, obligations=%d, amount=%s XAF, entities=[%s], payments=%d",
             license_id, processing_mode, payment_method,
-            len(obligations), total_amount, payment_result.payment_id,
+            len(obligations), total_amount, entities_summary, len(all_payment_ids),
         )
 
         # Build trilingual messages for the response
         if payment_method in ("cash", "check"):
-            msg_es = "Su solicitud de pago ha sido registrada. Un agente del Tesoro la validará."
-            msg_fr = "Votre demande de paiement a été enregistrée. Un agent du Trésor la validera."
-            msg_en = "Your payment request has been registered. A Treasury agent will validate it."
+            msg_es = "Su solicitud de pago ha sido registrada. Cada entidad validará su parte."
+            msg_fr = "Votre demande de paiement a été enregistrée. Chaque entité validera sa part."
+            msg_en = "Your payment request has been registered. Each entity will validate their portion."
         else:
-            msg_es = payment_result.message_es or "Pago iniciado correctamente."
+            msg_es = "Pago iniciado correctamente."
             msg_fr = "Paiement initié avec succès."
             msg_en = "Payment initiated successfully."
 
         return {
             "success": True,
             "service_request_id": str(service_request_id),
-            "payment_id": payment_result.payment_id,
-            "payment_reference": getattr(
-                payment_result, "external_reference", None
-            ) or payment_result.payment_id,
-            "redirect_url": payment_result.redirect_url,
-            "requires_action": payment_result.requires_action,
-            "action_type": getattr(payment_result, "action_type", None),
+            "payment_id": primary_payment_id,
+            "payment_ids": all_payment_ids,
+            "payment_reference": primary_payment_id,
+            "redirect_url": None,  # Cash/check: no redirect; BANGE: handled per-payment
+            "requires_action": payment_method in ("cash", "check"),
+            "action_type": "agent_validation" if payment_method in ("cash", "check") else None,
             "total_amount": float(total_amount),
             "obligations_count": len(obligations),
             "processing_mode": processing_mode,
+            "entity_payments": {
+                ec: {"count": len(obs), "amount": float(sum(o["amount"] + o["penalty_amount"] for o in obs))}
+                for ec, obs in entity_groups.items()
+            },
             "message_es": msg_es,
             "message_fr": msg_fr,
             "message_en": msg_en,

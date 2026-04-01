@@ -609,6 +609,7 @@ class LicenseRepository:
                    cl.processing_mode,
                    co.legal_name as company_name,
                    co.nif as company_nif,
+                   co.registration_number as company_registration_number,
                    cz.zone_code
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
