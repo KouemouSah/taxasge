@@ -39,6 +39,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, Request
 from loguru import logger
+from app.core.errors import TranslatedException, ErrorCode
 
 from app.modules.auth.dependencies import get_current_user, require_permissions
 from ..models.verificacion import (
@@ -628,9 +629,9 @@ async def get_form_review_data(
     # Verify ownership
     verification = await verificacion_repository.get_by_id(verificacion_id)
     if not verification:
-        raise HTTPException(status_code=404, detail="Verificación no encontrada")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
     if str(verification["user_id"]) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="No autorizado")
+        raise TranslatedException(ErrorCode.UNAUTHORIZED)
 
     verification_data = verification.get("verification_data", {}) or {}
 
@@ -851,13 +852,13 @@ async def preview_document_extraction(
     verification = await verificacion_repository.get_by_id(verificacion_id)
     if not verification:
         logger.warning(f"[Verificacion] Verification {verificacion_id} not found")
-        raise HTTPException(status_code=404, detail="Verificación no encontrada")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
     if str(verification["user_id"]) != str(current_user.id):
         logger.warning(f"[Verificacion] User {current_user.id} not authorized for verification {verificacion_id}")
-        raise HTTPException(status_code=403, detail="No autorizado")
+        raise TranslatedException(ErrorCode.UNAUTHORIZED)
     if verification["status"] != "pendiente":
         logger.warning(f"[Verificacion] Verification {verificacion_id} already processed")
-        raise HTTPException(status_code=400, detail="Verificación ya procesada")
+        raise TranslatedException(ErrorCode.ALREADY_PROCESSED)
 
     # Validate document code
     valid_codes = ["dip"] + [e.value for e in DocumentoTipoPrueba]
@@ -988,13 +989,13 @@ async def validate_and_save_document(
     verification = await verificacion_repository.get_by_id(verificacion_id)
     if not verification:
         logger.warning(f"[Verificacion] Verification {verificacion_id} not found")
-        raise HTTPException(status_code=404, detail="Verificación no encontrada")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
     if str(verification["user_id"]) != str(current_user.id):
         logger.warning(f"[Verificacion] User {current_user.id} not authorized for verification {verificacion_id}")
-        raise HTTPException(status_code=403, detail="No autorizado")
+        raise TranslatedException(ErrorCode.UNAUTHORIZED)
     if verification["status"] != "pendiente":
         logger.warning(f"[Verificacion] Verification {verificacion_id} already processed")
-        raise HTTPException(status_code=400, detail="Verificación ya procesada")
+        raise TranslatedException(ErrorCode.ALREADY_PROCESSED)
 
     # Get preview from cache using correct method name: get()
     preview_data = await preview_cache.get(preview_id)
@@ -1011,7 +1012,7 @@ async def validate_and_save_document(
         raise HTTPException(status_code=400, detail="La vista previa no corresponde a esta verificación")
     if preview_data.get("user_id") != str(current_user.id):
         logger.warning(f"[Verificacion] Preview {preview_id} does not belong to user {current_user.id}")
-        raise HTTPException(status_code=403, detail="No autorizado")
+        raise TranslatedException(ErrorCode.UNAUTHORIZED)
 
     # Parse confirmed data
     try:
@@ -1342,7 +1343,7 @@ async def get_verification_detail(
     """
     verification = await verificacion_service.get_verification(verificacion_id)
     if not verification:
-        raise HTTPException(status_code=404, detail="Verificación no encontrada")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     verification_data = verification.get("verification_data", {}) or {}
     validacion = verification_data.get("validacion_cruzada", {})

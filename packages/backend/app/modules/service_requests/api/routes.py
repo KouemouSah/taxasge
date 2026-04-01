@@ -44,6 +44,7 @@ from ..models.service_request import (
 from ..models.form_config import FormConfigResponse
 from ..models.enums import ServiceRequestStatus
 from fastapi import HTTPException, status
+from app.core.errors import TranslatedException, ErrorCode
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -387,10 +388,7 @@ async def delete_document(
         )
 
     if str(request["user_id"]) != str(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+        raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
     # Only allow deletion in DRAFT status
     if request["status"] != "DRAFT":
@@ -480,10 +478,7 @@ async def get_document_url(
     )
 
     if not is_owner and not has_view_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+        raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
     # Find the document
     doc = await document_repository.find_by_code(db, request_id, document_code)
@@ -752,11 +747,7 @@ async def get_by_reference(
         )
 
     if str(request["user_id"]) != str(current_user.id):
-        from fastapi import HTTPException, status
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+        raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
     return await service_request_service.get_request(
         db=db,
@@ -927,10 +918,7 @@ async def execute_workflow_step(
 
     # Verify ownership
     if str(context.user_id) != str(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+        raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
     # Execute the step
     result = await workflow_engine.execute_step(
@@ -986,10 +974,7 @@ async def get_form_data(
 
         # Verify ownership
         if str(context.user_id) != str(current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+            raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
         # Get workflow
         logger.debug(f"Getting workflow for code: {context.workflow_code}")
@@ -1087,10 +1072,7 @@ async def validate_documents(
 
     # Verify ownership
     if str(context.user_id) != str(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+        raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
     # Get workflow
     workflow = workflow_engine.get_workflow(context.workflow_code)
@@ -1322,10 +1304,7 @@ async def initiate_payment(
         # Verify ownership
         if str(context.user_id) != str(current_user.id):
             logger.error(f"[PAYMENT] Access denied: context.user_id={context.user_id} != current_user.id={current_user.id}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+            raise TranslatedException(ErrorCode.ACCESS_DENIED)
 
         # Verify request is in correct status for payment
         # Accept DRAFT (normal flow) or PAYMENT_PENDING (retry after failed payment)

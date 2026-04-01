@@ -8,6 +8,7 @@ RESTful endpoints for administrators to manage:
 - Appointment Settings
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks, Request
+from app.core.errors import TranslatedException, ErrorCode
 from typing import List, Optional, Dict, Any
 from enum import Enum
 import asyncpg
@@ -1216,10 +1217,7 @@ async def update_document_requirement(
         """, code, doc_code)
 
         if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document requirement not found"
-            )
+            raise TranslatedException(ErrorCode.NOT_FOUND)
 
         return DocumentRequirementResponse(
             id=str(row['id']),
@@ -1246,10 +1244,7 @@ async def update_document_requirement(
     row = await db.fetchrow(query, *params)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Document requirement not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     await _refresh_generic_cache(db, code)
 
@@ -1288,10 +1283,7 @@ async def remove_document_requirement(
     """, code, doc_code)
 
     if 'DELETE 0' in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Document requirement not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     await _refresh_generic_cache(db, code)
 
@@ -1461,10 +1453,7 @@ async def update_tariff(
             "SELECT * FROM workflow_tariffs WHERE id = $1", tariff_id
         )
         if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow tariff not found"
-            )
+            raise TranslatedException(ErrorCode.NOT_FOUND)
         return WorkflowTariffResponse(
             id=row['id'],
             workflow_code=row['workflow_code'],
@@ -1489,10 +1478,7 @@ async def update_tariff(
     row = await db.fetchrow(query, *params)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workflow tariff not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     await _refresh_generic_cache(db, row['workflow_code'])
 
@@ -1533,10 +1519,7 @@ async def delete_tariff(
     )
 
     if 'DELETE 0' in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workflow tariff not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     if wf_code:
         await _refresh_generic_cache(db, wf_code)
@@ -2070,10 +2053,7 @@ async def update_slot_config(
     if not updates:
         row = await fetch_slot_with_location(slot_id)
         if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Slot configuration not found"
-            )
+            raise TranslatedException(ErrorCode.NOT_FOUND)
         return AppointmentSlotConfigResponse(
             id=str(row['id']),
             entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
@@ -2094,10 +2074,7 @@ async def update_slot_config(
     # Resolve final values (updated or existing)
     current_slot = await fetch_slot_with_location(slot_id)
     if not current_slot:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Slot configuration not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     final_location_id = slot_data.get('entity_location_id', current_slot['entity_location_id'])
     final_day = slot_data.get('day_of_week', current_slot['day_of_week'])
@@ -2127,10 +2104,7 @@ async def update_slot_config(
     result = await db.fetchrow(query, *params)
 
     if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Slot configuration not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     # Fetch the updated slot with location details
     row = await fetch_slot_with_location(slot_id)
@@ -2191,10 +2165,7 @@ async def delete_slot_config(
     )
 
     if 'DELETE 0' in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Slot configuration not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return None
 
@@ -2299,10 +2270,7 @@ async def update_blocked_date(
         updates.append(f"is_recurring = ${len(params)}")
 
     if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update"
-        )
+        raise TranslatedException(ErrorCode.NO_FIELDS_TO_UPDATE)
 
     query = f"""
         UPDATE appointment_blocked_dates
@@ -2314,10 +2282,7 @@ async def update_blocked_date(
     row = await db.fetchrow(query, *params)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Blocked date not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return AppointmentBlockedDateResponse(
         id=str(row['id']),
@@ -2345,10 +2310,7 @@ async def remove_blocked_date(
     )
 
     if 'DELETE 0' in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Blocked date not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return None
 
@@ -2450,10 +2412,7 @@ async def update_delay_rule(
         updates.append(f"is_active = ${len(params)}")
 
     if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update"
-        )
+        raise TranslatedException(ErrorCode.NO_FIELDS_TO_UPDATE)
 
     query = f"""
         UPDATE appointment_delay_rules
@@ -2465,10 +2424,7 @@ async def update_delay_rule(
     row = await db.fetchrow(query, *params)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Delay rule not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return AppointmentDelayRuleResponse(
         id=str(row['id']),
@@ -2496,10 +2452,7 @@ async def delete_delay_rule(
     )
 
     if 'DELETE 0' in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Delay rule not found"
-        )
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return None
 
@@ -2722,10 +2675,7 @@ async def update_supplement(
         updates.append(f"is_active = ${len(params)}")
 
     if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update"
-        )
+        raise TranslatedException(ErrorCode.NO_FIELDS_TO_UPDATE)
 
     # Add updated_by and updated_at
     params.append(current_user.id)
@@ -2907,10 +2857,7 @@ async def update_workflow_supplement(
         updates.append(f"is_active = ${len(params)}")
 
     if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update"
-        )
+        raise TranslatedException(ErrorCode.NO_FIELDS_TO_UPDATE)
 
     updates.append("updated_at = now()")
 
@@ -5009,10 +4956,7 @@ async def update_payment_method(
             param_idx += 1
 
     if not updates:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update"
-        )
+        raise TranslatedException(ErrorCode.NO_FIELDS_TO_UPDATE)
 
     updates.append(f"updated_at = NOW()")
     params.append(code)

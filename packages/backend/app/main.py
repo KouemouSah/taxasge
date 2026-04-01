@@ -352,31 +352,56 @@ def get_cors_headers(request: Request) -> dict:
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handle uncaught exceptions and return JSON with proper status code and CORS headers."""
+    """Handle uncaught exceptions with i18n and CORS headers."""
+    from app.core.errors import get_error_message, ErrorCode
     logger.opt(exception=True).error("Unhandled exception: {}", str(exc))
+    lang = "es"
+    try:
+        accept = request.headers.get("Accept-Language", "es")
+        lang = accept[:2] if accept[:2] in ("es", "fr", "en") else "es"
+    except Exception:
+        pass
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "Internal server error",
-            "error_code": "INTERNAL_ERROR",
-            "message_es": "Error interno del servidor. Por favor intente de nuevo."
+            "detail": get_error_message(ErrorCode.SERVER_ERROR, lang),
+            "error_code": ErrorCode.SERVER_ERROR.value,
         },
         headers=get_cors_headers(request)
     )
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions and return JSON response with CORS headers.
+    """Handle HTTP exceptions with auto-translation and CORS headers.
+
+    Translation priority:
+    1. TranslatedException with error_code → already translated at raise site
+    2. Legacy HTTPException → auto-translate via pattern matching
+    3. Unknown messages → pass through as-is with HTTP_xxx code
 
     SECURITY: For 5xx errors, sanitize the detail to prevent leaking internal
     exception messages (str(e)) to clients. Full details are logged server-side.
     """
-    # For 5xx: log the real detail but return generic message to client
+    from app.core.errors import TranslatedException, translate_error_detail, get_error_message, ErrorCode
+
+    # Detect language from request
+    lang = "es"
+    try:
+        if hasattr(request, "state") and hasattr(request.state, "language"):
+            lang = request.state.language.value
+        else:
+            accept = request.headers.get("Accept-Language", "es")
+            lang = accept[:2] if accept[:2] in ("es", "fr", "en") else "es"
+    except Exception:
+        pass
+
+    # For 5xx: log the real detail but return generic translated message
     if exc.status_code >= 500:
         logger.error(f"HTTP {exc.status_code} on {request.method} {request.url.path}: {exc.detail}")
+        error_code = getattr(exc, "error_code", ErrorCode.SERVER_ERROR).value if hasattr(exc, "error_code") else "ERR_SERVER_ERROR"
         content = {
-            "detail": "Internal server error. Please try again.",
-            "error_code": f"HTTP_{exc.status_code}"
+            "detail": get_error_message(ErrorCode.SERVER_ERROR, lang),
+            "error_code": error_code,
         }
         return JSONResponse(
             status_code=exc.status_code,
@@ -384,15 +409,28 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             headers=get_cors_headers(request)
         )
 
-    # For 4xx and below: pass through as-is
+    # For TranslatedException: already has error_code
+    if isinstance(exc, TranslatedException):
+        content = {
+            "detail": exc.detail,
+            "error_code": exc.error_code.value,
+        }
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=content,
+            headers=get_cors_headers(request)
+        )
+
+    # For 4xx and below: auto-translate known patterns
     if isinstance(exc.detail, dict):
         content = exc.detail
         if "error_code" not in content:
             content["error_code"] = f"HTTP_{exc.status_code}"
     else:
+        translated, code = translate_error_detail(exc.detail or "", lang)
         content = {
-            "detail": exc.detail,
-            "error_code": f"HTTP_{exc.status_code}"
+            "detail": translated,
+            "error_code": code or f"HTTP_{exc.status_code}",
         }
     return JSONResponse(
         status_code=exc.status_code,

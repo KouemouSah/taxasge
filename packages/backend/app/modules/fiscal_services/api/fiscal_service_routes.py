@@ -68,6 +68,7 @@ from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
+from app.core.errors import TranslatedException, ErrorCode
 
 router = APIRouter(tags=["Fiscal Services"])
 security = HTTPBearer()
@@ -192,7 +193,7 @@ async def get_fiscal_service(service_id: int, db=Depends(get_database)):
     """Get fiscal service by ID"""
     service = await repository.get_by_id(db, service_id)
     if not service:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise TranslatedException(ErrorCode.SERVICE_NOT_FOUND)
     return FiscalServiceResponse(**service)
 
 
@@ -500,7 +501,7 @@ async def calculate_service_amount(
     # Verify service exists
     service = await repository.get_by_id(db, request.fiscal_service_id)
     if not service:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise TranslatedException(ErrorCode.SERVICE_NOT_FOUND)
 
     try:
         # Calculate
@@ -1455,7 +1456,7 @@ async def update_fiscal_service(
 
     updated = await repository.update(db, service_id, update_data, updated_by=user_id)
     if not updated:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise TranslatedException(ErrorCode.SERVICE_NOT_FOUND)
 
     # Refresh materialized view + invalidate cache
     try:
@@ -1487,7 +1488,7 @@ async def delete_fiscal_service(
 
     deleted = await repository.delete(db, service_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        raise TranslatedException(ErrorCode.SERVICE_NOT_FOUND)
 
     # Refresh materialized view + invalidate cache
     try:

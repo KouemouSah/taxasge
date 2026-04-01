@@ -13,6 +13,7 @@ from datetime import datetime
 from enum import Enum
 from loguru import logger
 from app.config import get_settings
+from app.core.errors import TranslatedException, ErrorCode
 
 from app.core.cache import check_rate_limit
 from app.core.events import EventBus, EventType
@@ -379,10 +380,7 @@ async def request_verification_code(request: RequestVerificationRequest, req: Re
             window_seconds=300,
         )
         if not is_allowed:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many verification code requests. Try again in a few minutes.",
-            )
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
         from app.utils.email_validator import EmailValidator
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
         from app.modules.communications.services.email_service import EmailService
@@ -456,10 +454,7 @@ async def request_verification_code(request: RequestVerificationRequest, req: Re
         raise
     except Exception as e:
         logger.error(f"Error in request_verification_code: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erreur lors de l'envoi du code de vérification"
-        )
+        raise TranslatedException(ErrorCode.SERVER_ERROR)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -499,10 +494,7 @@ async def register(
             window_seconds=900,
         )
         if not is_allowed:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many registration attempts. Try again later.",
-            )
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
 
@@ -511,10 +503,7 @@ async def register(
         is_valid = await pending_repo.verify_code(request.email, request.verification_code)
 
         if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Code de vérification invalide ou expiré"
-            )
+            raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
         # Get client info
         ip_address, user_agent = get_client_info(req)
@@ -634,10 +623,7 @@ async def login(
             window_seconds=900,
         )
         if not is_allowed:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many login attempts. Try again later.",
-            )
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
         # Get client info
         ip_address, user_agent = get_client_info(req)
@@ -669,10 +655,7 @@ async def login(
         raise
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+        raise TranslatedException(ErrorCode.INVALID_CREDENTIALS)
 
 
 @router.post("/login/2fa-verify", response_model=TokenResponse)
@@ -713,7 +696,7 @@ async def verify_2fa_login(
             identifier=ip, endpoint="/auth/login/2fa-verify", max_requests=5, window_seconds=300
         )
         if not is_allowed:
-            raise HTTPException(status_code=429, detail="Too many 2FA attempts. Please wait 5 minutes.")
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
     try:
         # Verify 2FA code via AuthService
@@ -735,10 +718,7 @@ async def verify_2fa_login(
         raise
     except Exception as e:
         logger.error(f"2FA login verification error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="2FA verification failed. Invalid code or expired token.",
-        )
+        raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
 
 @router.post("/refresh")
@@ -796,10 +776,7 @@ async def refresh_token(
         raise
     except Exception as e:
         logger.error(f"Token refresh error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token refresh failed. Please login again.",
-        )
+        raise TranslatedException(ErrorCode.TOKEN_EXPIRED)
 
 
 @router.post("/logout")
@@ -846,10 +823,7 @@ async def logout(
         raise
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Logout failed",
-        )
+        raise TranslatedException(ErrorCode.BAD_REQUEST)
 
 
 @router.get("/profile", response_model=UserResponse)
@@ -877,10 +851,7 @@ async def get_profile(
         user = await user_repo.get_by_id(user_id)
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise TranslatedException(ErrorCode.USER_NOT_FOUND)
 
         # Return user response
         return UserResponse(
@@ -906,10 +877,7 @@ async def get_profile(
         raise
     except Exception as e:
         logger.error(f"Profile fetch error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch user profile",
-        )
+        raise TranslatedException(ErrorCode.SERVER_ERROR)
 
 
 # =============================================================================
@@ -1010,7 +978,7 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest, req: Requ
             identifier=ip, endpoint="/auth/password/reset/confirm", max_requests=5, window_seconds=900
         )
         if not is_allowed:
-            raise HTTPException(status_code=429, detail="Too many reset attempts. Please wait.")
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
     try:
         # Confirm password reset via AuthService
@@ -1034,10 +1002,7 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest, req: Requ
         raise
     except Exception as e:
         logger.error(f"Password reset confirm error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password reset failed. Token may be invalid or expired.",
-        )
+        raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
 
 # =============================================================================
@@ -1079,7 +1044,7 @@ async def change_password(
         identifier=str(user_id_rl), endpoint="/auth/password/change", max_requests=5, window_seconds=900
     )
     if not is_allowed:
-        raise HTTPException(status_code=429, detail="Too many password change attempts. Please wait.")
+        raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
     try:
         # Get user from database
@@ -1089,10 +1054,7 @@ async def change_password(
         user = await user_repo.get_by_id(user_id)
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise TranslatedException(ErrorCode.USER_NOT_FOUND)
 
         # Verify current password
         from app.modules.auth.services.password_service import PasswordService
@@ -1153,10 +1115,7 @@ async def change_password(
         raise
     except Exception as e:
         logger.error(f"Password change error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password change failed. Please try again.",
-        )
+        raise TranslatedException(ErrorCode.SERVER_ERROR)
 
 
 @router.post("/password/change/verify", response_model=PasswordChangeVerifyResponse)
@@ -1191,7 +1150,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest, req: Requ
             identifier=ip, endpoint="/auth/password/change/verify", max_requests=5, window_seconds=300
         )
         if not is_allowed:
-            raise HTTPException(status_code=429, detail="Too many verification attempts. Please wait 5 minutes.")
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
     try:
         # Get pending registration by email
@@ -1202,10 +1161,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest, req: Requ
         is_valid = await pending_repo.verify_code(request.email, request.verification_code)
 
         if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification code",
-            )
+            raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
         # Get user by email (use find_by_email_with_password to get Dict, not UserResponse)
         from app.repositories.user_repository import UserRepository
@@ -1215,10 +1171,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest, req: Requ
         if not user:
             # Clean up pending record even if user not found
             await pending_repo.delete_by_email(request.email)
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise TranslatedException(ErrorCode.USER_NOT_FOUND)
 
         # Hash the new password
         from app.modules.auth.services.password_service import PasswordService
@@ -1229,10 +1182,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest, req: Requ
         success = await user_repo.update_password(user.get("id") if isinstance(user, dict) else user["id"], new_password_hash)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update password",
-            )
+            raise TranslatedException(ErrorCode.SERVER_ERROR)
 
         # Delete pending record
         await pending_repo.delete_by_email(request.email)
@@ -1247,10 +1197,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest, req: Requ
         raise
     except Exception as e:
         logger.error(f"Password change verification error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password change verification failed. Please try again.",
-        )
+        raise TranslatedException(ErrorCode.SERVER_ERROR)
 
 
 # =============================================================================
@@ -1288,7 +1235,7 @@ async def verify_email(request: EmailVerifyRequest, req: Request = None):
             identifier=ip, endpoint="/auth/email/verify", max_requests=5, window_seconds=300
         )
         if not is_allowed:
-            raise HTTPException(status_code=429, detail="Too many verification attempts. Please wait 5 minutes.")
+            raise TranslatedException(ErrorCode.TOO_MANY_ATTEMPTS)
 
     try:
         # Verify email via AuthService
@@ -1298,10 +1245,7 @@ async def verify_email(request: EmailVerifyRequest, req: Request = None):
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email verification failed",
-            )
+            raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
         return EmailVerifyResponse(
             message="Email verified successfully."
@@ -1311,10 +1255,7 @@ async def verify_email(request: EmailVerifyRequest, req: Request = None):
         raise
     except Exception as e:
         logger.error(f"Email verification error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email verification failed",
-        )
+        raise TranslatedException(ErrorCode.INVALID_VERIFICATION)
 
 
 @router.post("/email/resend", response_model=EmailResendResponse)
@@ -1492,10 +1433,7 @@ async def get_sessions(
 
     except Exception as e:
         logger.error(f"Get sessions error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve sessions",
-        )
+        raise TranslatedException(ErrorCode.SERVER_ERROR)
 
 
 # =============================================================================
@@ -1522,7 +1460,7 @@ async def cron_auth_cleanup(req: Request):
 
     if not request_secret or request_secret != cron_secret:
         logger.warning(f"[AuthCleanup] Unauthorized cron attempt from {req.client.host if req.client else 'unknown'}")
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise TranslatedException(ErrorCode.FORBIDDEN)
 
     from app.database.connection import db_manager
 

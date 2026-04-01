@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query, Path
 from typing import List, Optional
 from loguru import logger
 from app.config import get_settings
+from app.core.errors import TranslatedException, ErrorCode
 
 from app.modules.fiscal_services.models.templates import (
     DocumentTemplateCreate,
@@ -974,7 +975,7 @@ async def diagnose_procedure_steps(
     """
     _settings = get_settings()
     if _settings.environment == "production":
-        raise HTTPException(status_code=404, detail="Not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
     try:
         # Total steps
         total_steps = await db.fetchval("SELECT COUNT(*) FROM procedure_template_steps")

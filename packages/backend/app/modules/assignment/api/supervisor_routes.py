@@ -48,6 +48,7 @@ from app.core.cache import get_cache
 
 # Permission middleware - use permission_required dependency instead of decorator
 from app.modules.permissions.middleware import permission_required
+from app.core.errors import TranslatedException, ErrorCode
 
 import json
 import logging
@@ -165,7 +166,7 @@ async def _verify_entity_ownership(
             agent_profile_id if isinstance(agent_profile_id, UUID) else UUID(str(agent_profile_id))
         )
         if not row:
-            raise HTTPException(status_code=404, detail="Agent profile not found")
+            raise TranslatedException(ErrorCode.AGENT_NOT_FOUND)
         if row["entity_id"] != entity_id:
             raise HTTPException(status_code=403, detail="Agent belongs to another entity")
 
@@ -178,7 +179,7 @@ async def _verify_entity_ownership(
             WHERE sr.id = $1
         """, UUID(str(service_request_id)))
         if not row:
-            raise HTTPException(status_code=404, detail="Service request not found")
+            raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
         if row["entity_id"] and row["entity_id"] != entity_id:
             raise HTTPException(status_code=403, detail="Request belongs to another entity")
 
@@ -1450,7 +1451,7 @@ async def assign_escalation(
             "SELECT user_id FROM agent_profiles WHERE id = $1 AND is_active = true", agent_id
         )
         if not target_row:
-            raise HTTPException(status_code=404, detail="Target agent not found")
+            raise TranslatedException(ErrorCode.AGENT_NOT_FOUND)
         target_user_id = target_row['user_id']
     else:
         target_user_id = UUID(current_user.id)
@@ -1539,10 +1540,7 @@ async def resolve_escalation(
     """, queue_id)
 
     if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
     if not request['escalated']:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -1635,10 +1633,7 @@ async def supervisor_approve(
     """, queue_id)
 
     if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
     if not request['escalated']:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -1726,10 +1721,7 @@ async def supervisor_reject(
     """, queue_id)
 
     if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
     if not request['escalated']:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -1894,7 +1886,7 @@ async def bulk_escalation_action(
             "SELECT user_id FROM agent_profiles WHERE id = $1 AND is_active = true", body.agent_id
         )
         if not agent_user_row:
-            raise HTTPException(status_code=404, detail="Target agent not found")
+            raise TranslatedException(ErrorCode.AGENT_NOT_FOUND)
         result = await db.fetch("""
             UPDATE service_requests
             SET assigned_to = $2,
@@ -2086,7 +2078,7 @@ async def rebalance_workload(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     try:
         # Get current workload distribution
@@ -2297,7 +2289,7 @@ async def get_agent_trends(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     # IDOR check: verify agent belongs to supervisor's entity
     if current_user.role != "admin":
@@ -2422,7 +2414,7 @@ async def get_agent_assignments(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     # IDOR check: verify agent belongs to supervisor's entity
     if current_user.role != "admin":
@@ -2464,7 +2456,7 @@ async def bulk_reassign(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     # Verify target agent exists
     target = await db.fetchrow("""
@@ -2475,7 +2467,7 @@ async def bulk_reassign(
     """, body.target_agent_id)
 
     if not target:
-        raise HTTPException(status_code=404, detail="Target agent not found")
+        raise TranslatedException(ErrorCode.AGENT_NOT_FOUND)
 
     performer_id = UUID(current_user.id)
 
@@ -2570,7 +2562,7 @@ async def reassign_request(
     else:
         agent_ctx = await get_agent_context(current_user.id, db)
     if not agent_ctx or not agent_ctx.get("is_supervisor"):
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     # IDOR check: verify request + target agent belong to supervisor's entity
     if current_user.role != "admin":
@@ -2583,7 +2575,7 @@ async def reassign_request(
         body.target_agent_id
     )
     if not target:
-        raise HTTPException(status_code=404, detail="Target agent not found")
+        raise TranslatedException(ErrorCode.AGENT_NOT_FOUND)
 
     # Map reason to valid reassignment_reason_enum value
     reason_comment = body.reason or "supervisor_reassign"
@@ -2648,7 +2640,7 @@ async def export_assignments(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Supervisor access required")
+        raise TranslatedException(ErrorCode.SUPERVISOR_REQUIRED)
 
     try:
         query = """

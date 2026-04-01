@@ -5,6 +5,7 @@ RESTful endpoints for agents to process service requests.
 Includes queue management, approval/rejection, and appointment scheduling.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks
+from app.core.errors import TranslatedException, ErrorCode
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import date, time, datetime
@@ -1043,10 +1044,7 @@ async def get_request_for_review(
     """, request_id)
 
     if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Get base response from service (loads documents + tariff)
     base_response = await service_request_service.get_request(
@@ -1134,7 +1132,7 @@ async def make_decision(
     """, str(request_id), str(current_user.id), request_id)
 
     if not preflight or not preflight['req_id']:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
     if not preflight['queue_id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This request is not assigned to you")
     if preflight.get('decided'):
@@ -1176,10 +1174,7 @@ async def make_decision(
             """, request_id, list(allowed_statuses))
 
             if not locked:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Request status changed by another agent"
-                )
+                raise TranslatedException(ErrorCode.STATUS_CHANGED)
 
             await db.execute("""
                 UPDATE service_requests
@@ -1265,10 +1260,7 @@ async def make_decision(
             """, request_id, list(allowed_statuses))
 
             if not locked:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Request status changed by another agent"
-                )
+                raise TranslatedException(ErrorCode.STATUS_CHANGED)
 
             await db.execute("""
                 UPDATE service_requests
@@ -1342,10 +1334,7 @@ async def make_decision(
             """, request_id, list(allowed_statuses))
 
             if not locked:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Request status changed by another agent"
-                )
+                raise TranslatedException(ErrorCode.STATUS_CHANGED)
 
             await db.execute("""
                 UPDATE service_requests
@@ -1670,10 +1659,7 @@ async def escalate_request(
     """, request_id)
 
     if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     if request['escalated']:
         raise HTTPException(
@@ -1752,7 +1738,7 @@ async def resolve_escalation(
         request_id
     )
     if not request:
-        raise HTTPException(status_code=404, detail="Service request not found")
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
     if not request['escalated']:
         raise HTTPException(status_code=409, detail="Service request is not escalated")
     # Prevent the escalating agent from self-resolving
@@ -1831,10 +1817,7 @@ async def schedule_appointment(
         """, request_id)
 
         if not request:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Service request not found"
-            )
+            raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
         # Reserve new appointment
         reservation = await appointment_scheduler.reserve_appointment(
@@ -2026,7 +2009,7 @@ async def validate_document(
     """, document_id)
 
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise TranslatedException(ErrorCode.DOCUMENT_NOT_FOUND)
 
     if doc["is_valid"] is True:
         raise HTTPException(status_code=400, detail="Document already validated")
@@ -2088,7 +2071,7 @@ async def reject_document(
     """, document_id)
 
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise TranslatedException(ErrorCode.DOCUMENT_NOT_FOUND)
 
     if doc["is_valid"] is False and doc.get("validation_errors") is not None:
         raise HTTPException(status_code=400, detail="Document already rejected")
@@ -2156,7 +2139,7 @@ async def mark_appointment_arrived(
     """, request_id)
 
     if not request:
-        raise HTTPException(status_code=404, detail="Service request not found")
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Update appointment status
     await db.execute("""
@@ -2224,7 +2207,7 @@ async def mark_appointment_no_show(
     """, request_id)
 
     if not request:
-        raise HTTPException(status_code=404, detail="Service request not found")
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Update appointment status
     await db.execute("""
@@ -3321,10 +3304,7 @@ async def update_verification_checklist(
     """, request_id)
 
     if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Prepare verification_details
     current_details = request['verification_details'] or {}
@@ -4634,7 +4614,7 @@ async def get_calendar_week_widget(
     """, entity_code)
 
     if not entity:
-        raise HTTPException(status_code=404, detail="Entity not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     # Handle workflow_codes - ensure it's a list (JSONB can sometimes return as string)
     workflow_codes = entity['workflow_codes'] or []
@@ -5456,7 +5436,7 @@ async def get_my_assigned_for_appointment(
     """, entity_code)
 
     if not entity:
-        raise HTTPException(status_code=404, detail="Entity not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     # Handle workflow_codes - ensure it's a list (JSONB can sometimes return as string)
     workflow_codes = entity['workflow_codes'] or []
@@ -5891,7 +5871,7 @@ async def get_appointment_detail(
     """, reservation_id)
 
     if not row:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     return {
         "id": row['reservation_id'],
@@ -5944,7 +5924,7 @@ async def cancel_appointment_by_reservation(
     """, reservation_id)
 
     if not reservation:
-        raise HTTPException(status_code=404, detail="Appointment reservation not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     if reservation['status'] == 'cancelled':
         raise HTTPException(status_code=409, detail="Appointment already cancelled")
@@ -6027,7 +6007,7 @@ async def complete_appointment_by_reservation(
     """, reservation_id)
 
     if not reservation:
-        raise HTTPException(status_code=404, detail="Appointment reservation not found")
+        raise TranslatedException(ErrorCode.NOT_FOUND)
 
     if reservation['status'] == 'completed':
         raise HTTPException(status_code=409, detail="Appointment already completed")
@@ -6116,10 +6096,7 @@ async def get_request_history(
     )
 
     if not request_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Access control: non-supervisor agents can only see history of requests assigned to them
     has_view_all = await conn.fetchval("""
@@ -6257,10 +6234,7 @@ async def export_request_history(
     )
 
     if not request_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
     # Access control: non-supervisor agents can only export history of requests assigned to them
     has_view_all = await conn.fetchval("""
