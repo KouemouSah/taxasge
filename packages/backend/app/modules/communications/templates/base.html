@@ -22,16 +22,25 @@
             background-color: #ffffff;
         }
 
-        /* Header with logo */
+        /* Header — white background so logo is visible */
         .email-header {
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-            padding: 30px 20px;
+            background-color: #ffffff;
+            padding: 24px 20px 16px;
             text-align: center;
         }
 
         .logo {
-            max-width: 180px;
+            max-width: 140px;
+            max-height: 56px;
             height: auto;
+        }
+
+        /* Green separator between header and body */
+        .header-separator {
+            height: 3px;
+            background: linear-gradient(90deg, #16a34a 0%, #22c55e 50%, #16a34a 100%);
+            margin: 0;
+            border: none;
         }
 
         /* Content area */
@@ -40,7 +49,7 @@
         }
 
         h1, h2 {
-            color: #2563eb;
+            color: #16a34a;
             margin-top: 0;
         }
 
@@ -56,26 +65,26 @@
 
         /* Code/Token display */
         .code-box {
-            background-color: #f3f4f6;
+            background-color: #f0fdf4;
             padding: 25px;
             text-align: center;
             margin: 30px 0;
             border-radius: 8px;
-            border: 2px dashed #d1d5db;
+            border: 2px dashed #86efac;
         }
 
         .code {
             font-size: 36px;
             font-weight: bold;
-            color: #2563eb;
+            color: #16a34a;
             letter-spacing: 8px;
             font-family: 'Courier New', monospace;
         }
 
-        /* Button */
+        /* Button — green */
         .button {
             display: inline-block;
-            background-color: #2563eb;
+            background-color: #16a34a;
             color: #ffffff !important;
             padding: 14px 32px;
             text-decoration: none;
@@ -86,7 +95,7 @@
         }
 
         .button:hover {
-            background-color: #1e40af;
+            background-color: #15803d;
         }
 
         /* Alert boxes */
@@ -98,9 +107,9 @@
         }
 
         .alert-info {
-            background-color: #eff6ff;
-            border-color: #2563eb;
-            color: #1e40af;
+            background-color: #f0fdf4;
+            border-color: #16a34a;
+            color: #15803d;
         }
 
         .alert-warning {
@@ -137,7 +146,7 @@
             background-color: #f9fafb;
             padding: 30px;
             text-align: center;
-            border-top: 1px solid #e5e7eb;
+            border-top: 2px solid #dcfce7;
         }
 
         .email-footer p {
@@ -147,7 +156,7 @@
         }
 
         .email-footer a {
-            color: #2563eb;
+            color: #16a34a;
             text-decoration: none;
         }
 
@@ -176,10 +185,13 @@
 </head>
 <body>
     <div class="email-container">
-        <!-- Header with logo -->
+        <!-- Header with logo — white bg -->
         <div class="email-header">
             <img src="{{ logo_url }}" alt="Facil" class="logo">
         </div>
+
+        <!-- Green separator -->
+        <div class="header-separator"></div>
 
         <!-- Main content -->
         <div class="email-body">
@@ -196,7 +208,7 @@
                 <a href="{{ site_url }}/support">{{ support_text }}</a>
             </p>
             <p style="margin-top: 20px; font-size: 11px;">
-                &copy; {{ current_year }} Facil Platform. {{ rights_reserved }}
+                &copy; {{ current_year }} Facil. {{ rights_reserved }}
             </p>
         </div>
     </div>
