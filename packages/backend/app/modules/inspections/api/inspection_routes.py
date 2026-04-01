@@ -340,7 +340,7 @@ async def verify_license(
     try:
         from app.core.cache import check_rate_limit
         allowed, remaining = await check_rate_limit(
-            current_user.id, "/inspections/verify", limit=30, window_seconds=60
+            current_user.id, "/inspections/verify", 30, 60
         )
         if not allowed:
             raise HTTPException(
