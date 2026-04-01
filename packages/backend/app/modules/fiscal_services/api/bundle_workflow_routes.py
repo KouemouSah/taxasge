@@ -35,12 +35,20 @@ class BundleInitiateRequest(BaseModel):
     fiscal_year: Optional[int] = Field(None, description="Defaults to current year", ge=2020, le=2050)
 
 
+class ClassifyPreviewRequest(BaseModel):
+    extraction: Dict[str, Any] = Field(
+        ..., description="GeminiDocumentProcessor extraction output",
+    )
+
+
 class BundleInitiateFromUploadRequest(BaseModel):
     extraction: Dict[str, Any] = Field(
         ..., description="GeminiDocumentProcessor extraction output (nested dict)",
         max_length=100,  # Max 100 top-level keys
     )
     fiscal_year: Optional[int] = Field(None, description="Defaults to current year", ge=2020, le=2050)
+    zone_id: Optional[str] = Field(None, description="Override zone (if auto-resolution failed)")
+    commerce_type: Optional[str] = Field(None, description="Override commerce type (if auto-classification failed)")
 
 
 class BundleValidateSelectionRequest(BaseModel):
@@ -83,7 +91,7 @@ async def get_my_companies_status(
     No special permission required — scoped to authenticated user.
     """
     from loguru import logger
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
     try:
         result = await BundleWorkflowService.my_companies_status(
             db, user_id, fiscal_year
@@ -107,7 +115,7 @@ async def search_eligible_company(
     No special permission required — any authenticated user can search.
     """
     from loguru import logger
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
     try:
         results = await BundleWorkflowService.search_eligible_companies(
             db, q, user_id, limit
@@ -128,13 +136,38 @@ async def initiate_bundle_workflow(
 
     Main entry point after company selection (Step 0 → Step 2).
     """
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
     try:
         result = await BundleWorkflowService.initiate(
             db,
             company_id=UUID(body.company_id),
             user_id=user_id,
             fiscal_year=body.fiscal_year,
+        )
+        return result
+    except ValueError as e:
+        error_code = str(e).split(":")[0]
+        raise HTTPException(
+            status_code=_error_status(error_code),
+            detail=_error_detail(error_code),
+        )
+
+
+@router.post("/classify-preview")
+async def classify_preview(
+    body: ClassifyPreviewRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Preview classification WITHOUT creating company/license.
+
+    Returns extracted data, resolved zone (or available zones if unresolved),
+    and classification result. Frontend uses this to confirm or manually
+    select zone/category before calling initiate-from-upload.
+    """
+    try:
+        result = await BundleWorkflowService.preview_classification(
+            db, extraction=body.extraction,
         )
         return result
     except ValueError as e:
@@ -156,13 +189,15 @@ async def initiate_from_upload(
     Reuses: map_gemini_extraction_to_company_data + CompanyRepository.create
     + ClassificationAgent.classify_company + BundleWorkflowService.initiate.
     """
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
     try:
         result = await BundleWorkflowService.initiate_from_upload(
             db,
             extraction=body.extraction,
             user_id=user_id,
             fiscal_year=body.fiscal_year,
+            zone_id=UUID(body.zone_id) if body.zone_id else None,
+            commerce_type=body.commerce_type,
         )
         return result
     except ValueError as e:
@@ -213,7 +248,7 @@ async def initiate_bundle_payment(
     For mobile_money: returns redirect_url (BANGE).
     For cash: returns payment reference for agent validation.
     """
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
 
     # Validate phone for mobile_money
     if body.payment_method == "mobile_money":

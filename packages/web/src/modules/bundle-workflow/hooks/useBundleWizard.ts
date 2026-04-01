@@ -18,6 +18,7 @@ import type {
   BundleInitiateResponse,
   BundlePaymentResult,
   ObligationItem,
+  ClassifyPreviewResponse,
 } from '../types'
 import { BundleStep } from '../types'
 import type { ProcessingMode } from '@/types/service-bundle'
@@ -60,7 +61,12 @@ export interface UseBundleWizardReturn {
   uploadDocument: (file: File) => Promise<DocumentPreview | null>
   deleteDocument: () => Promise<void>
 
-  // Step 2: Obligations review
+  // Step 2: Classification preview + Obligations review
+  classificationPreview: ClassifyPreviewResponse | null
+  selectedZoneId: string | null
+  selectedCommerceType: string | null
+  setSelectedZoneId: (id: string) => void
+  setSelectedCommerceType: (type: string) => void
   licenseData: BundleInitiateResponse | null
   isInitiating: boolean
   selectedMode: ProcessingMode
@@ -124,6 +130,11 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   // -- Step 4: Confirmation --
   const [paymentResult, setPaymentResult] = useState<BundlePaymentResult | null>(null)
+
+  // -- Classification preview --
+  const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null)
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null)
 
   // -- Global --
   const [error, setError] = useState<string | null>(null)
@@ -260,9 +271,27 @@ export function useBundleWizard(): UseBundleWizardReturn {
         // Existing company → initiate directly
         result = await bundleWorkflowApi.initiate(selectedCompany.id)
       } else if (documentPreview) {
-        // New company → initiate from upload extraction
         const extraction = documentPreview.extraction || {}
-        result = await bundleWorkflowApi.initiateFromUpload(extraction)
+
+        // Step A: Preview classification (if not already done)
+        if (!classificationPreview) {
+          const preview = await bundleWorkflowApi.classifyPreview(extraction)
+          setClassificationPreview(preview)
+
+          // If zone or category needs manual selection, stop here
+          if (preview.needsManualZone || preview.needsManualCategory) {
+            setIsInitiating(false)
+            return // UI will show selectors, user clicks "Confirm" to retry
+          }
+        }
+
+        // Step B: Initiate with overrides if manually selected
+        const zoneOverride = selectedZoneId || classificationPreview?.zone?.id || undefined
+        const categoryOverride = selectedCommerceType || classificationPreview?.classification?.commerceType || undefined
+
+        result = await bundleWorkflowApi.initiateFromUpload(
+          extraction, undefined, zoneOverride, categoryOverride,
+        )
       } else {
         throw new Error('No company selected and no document uploaded')
       }
@@ -286,7 +315,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
     } finally {
       setIsInitiating(false)
     }
-  }, [companyExists, selectedCompany, documentPreview])
+  }, [companyExists, selectedCompany, documentPreview, classificationPreview, selectedZoneId, selectedCommerceType])
 
   // ── Step 2: Obligation selection ────────────────────────────
 
@@ -446,6 +475,11 @@ export function useBundleWizard(): UseBundleWizardReturn {
     uploadDocument,
     deleteDocument,
 
+    classificationPreview,
+    selectedZoneId,
+    selectedCommerceType,
+    setSelectedZoneId,
+    setSelectedCommerceType,
     licenseData,
     isInitiating,
     selectedMode,

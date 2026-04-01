@@ -96,6 +96,32 @@ export interface ObligationItem {
   paidAt: string | null
 }
 
+// ── Classification Preview Types ─────────────────────────────────
+
+export interface ClassifyPreviewResponse {
+  extractedData: {
+    legalName: string | null
+    registrationNumber: string | null
+    nif: string | null
+    formaJuridica: string | null
+    localidad: string | null
+    provincia: string | null
+    sector: string | null
+    objetoSocial: string | null
+  }
+  zoneResolved: boolean
+  zone: { id: string; code: string; name: string; city: string } | null
+  availableZones: Array<{ id: string; code: string; name: string; cities: string[] }>
+  classification: {
+    regimenFiscal: string | null
+    commerceType: string | null
+    confidence: number
+  }
+  availableCategories: Array<{ commerceType: string; bundleName: string }>
+  needsManualZone: boolean
+  needsManualCategory: boolean
+}
+
 // ── Request Types ───────────────────────────────────────────────
 
 export interface BundleInitiateRequest {
@@ -106,6 +132,8 @@ export interface BundleInitiateRequest {
 export interface BundleInitiateFromUploadRequest {
   extraction: Record<string, unknown>
   fiscalYear?: number
+  zoneId?: string
+  commerceType?: string
 }
 
 export interface BundleValidateSelectionRequest {

@@ -80,16 +80,61 @@ class ConfigRulesService:
     async def update_rule(
         conn, rule_id: UUID, data: Dict, user_id: Optional[UUID] = None
     ) -> Optional[Dict]:
-        """Update a config rule. Invalidates cache after mutation."""
-        # Fetch existing rule to know the bundle_id for cache invalidation
+        """Update a config rule. Validates config shape, then invalidates cache."""
+        # Fetch existing rule to know config_type + bundle_id
         existing = await ConfigRulesRepository.get_rule(conn, rule_id)
         if not existing:
             return None
+
+        # Validate config shape against the existing rule's config_type
+        if "config" in data and data["config"] is not None:
+            config_type = existing.get("config_type")
+            ConfigRulesService._validate_config_shape(config_type, data["config"])
 
         rule = await ConfigRulesRepository.update_rule(conn, rule_id, data, user_id)
         if rule:
             await ConfigRulesService._invalidate_cache(existing.get("bundle_id"))
         return rule
+
+    @staticmethod
+    def _validate_config_shape(config_type: str, config: Dict):
+        """Validate config JSON matches the rule's config_type.
+
+        Same rules as ConfigRuleCreate Pydantic validator, but applied
+        at service level for updates (where config_type is read from DB).
+        """
+        if config_type == "penalty":
+            if "rate" not in config:
+                raise ValueError("Penalty config must include 'rate'")
+            try:
+                rate = float(config["rate"])
+            except (TypeError, ValueError):
+                raise ValueError(f"Penalty rate must be a number, got: {config['rate']}")
+            if rate < 0:
+                raise ValueError("Penalty rate must be >= 0")
+
+        elif config_type == "deadline":
+            if "month" not in config or "day" not in config:
+                raise ValueError("Deadline config must include 'month' and 'day'")
+            try:
+                month = int(config["month"])
+                day = int(config["day"])
+            except (TypeError, ValueError):
+                raise ValueError("Deadline month and day must be integers")
+            if not (1 <= month <= 12):
+                raise ValueError("Deadline month must be 1-12")
+            if not (1 <= day <= 31):
+                raise ValueError("Deadline day must be 1-31")
+
+        elif config_type == "installment":
+            if "max_installments" not in config:
+                raise ValueError("Installment config must include 'max_installments'")
+            try:
+                max_inst = int(config["max_installments"])
+            except (TypeError, ValueError):
+                raise ValueError("max_installments must be an integer")
+            if max_inst < 1:
+                raise ValueError("max_installments must be >= 1")
 
     @staticmethod
     async def delete_rule(conn, rule_id: UUID) -> bool:

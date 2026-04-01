@@ -63,14 +63,25 @@ export const bundleWorkflowApi = {
     post('/initiate', { companyId, fiscalYear }),
 
   /**
+   * Preview classification WITHOUT creating company/license.
+   * Returns extracted data, resolved zone, classification, available options.
+   */
+  classifyPreview: (
+    extraction: Record<string, unknown>,
+  ): Promise<ClassifyPreviewResponse> =>
+    post('/classify-preview', { extraction }),
+
+  /**
    * Create company from OCR extraction, classify, then initiate workflow.
-   * Used when user uploads certificado padrón for a new company.
+   * Accepts optional zone_id/commerce_type overrides if auto-resolution failed.
    */
   initiateFromUpload: (
     extraction: Record<string, unknown>,
     fiscalYear?: number,
+    zoneId?: string,
+    commerceType?: string,
   ): Promise<BundleInitiateResponse> =>
-    post('/initiate-from-upload', { extraction, fiscalYear }),
+    post('/initiate-from-upload', { extraction, fiscalYear, zoneId, commerceType }),
 
   /**
    * Validate mode + obligation selection before payment.

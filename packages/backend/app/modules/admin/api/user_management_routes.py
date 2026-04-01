@@ -173,10 +173,10 @@ async def create_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"L Error creating user: {e}")
+        logger.error(f"Error creating user: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating user"
+            detail="Error creating user. Please try again or contact support."
         )
 
 
@@ -316,6 +316,8 @@ async def update_user(
             )
 
         # Email uniqueness check (UC-USER-002 requirement)
+        email_changed = False
+        new_email = None
         if "email" in update_data and update_data["email"] != target_user.email:
             existing_user = await user_repository.find_by_email(update_data["email"])
             if existing_user:
@@ -323,9 +325,16 @@ async def update_user(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already in use"
                 )
+            email_changed = True
+            new_email = update_data["email"]
 
         if not update_data:
             return target_user
+
+        # If email changed on an active user → set pending_verification
+        target_status = getattr(target_user, 'status', None) or (target_user.get('status') if isinstance(target_user, dict) else None)
+        if email_changed and target_status == 'active':
+            update_data["status"] = "pending_verification"
 
         updated_user = await user_repository.update(user_id, update_data)
         if not updated_user:
@@ -334,12 +343,40 @@ async def update_user(
                 detail="User not found"
             )
 
+        # If email changed on active user → generate verification code + send activation email
+        if email_changed and target_status == 'active' and new_email:
+            try:
+                import secrets
+                from app.repositories.pending_registration_repository import PendingRegistrationRepository
+                from app.modules.communications.services.email_service import EmailService
+                from app.config import get_settings
+
+                verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+                pending_repo = PendingRegistrationRepository()
+                await pending_repo.create(new_email, verification_code, expires_in_minutes=15)
+
+                settings = get_settings()
+                email_service = EmailService(
+                    smtp_host=settings.SMTP_HOST,
+                    smtp_port=settings.SMTP_PORT,
+                    smtp_username=settings.SMTP_USERNAME,
+                    smtp_password=settings.SMTP_PASSWORD,
+                    smtp_use_tls=settings.SMTP_USE_TLS,
+                    smtp_from_email=settings.SMTP_FROM_EMAIL,
+                    smtp_from_name=settings.SMTP_FROM_NAME,
+                )
+                user_name = getattr(target_user, 'full_name', None) or (target_user.get('full_name') if isinstance(target_user, dict) else None)
+                email_service.send_verification_code(new_email, verification_code, user_name)
+                logger.info(f"Email changed for user {user_id}: sent verification to {new_email}")
+            except Exception as email_err:
+                logger.error(f"Failed to send verification email for user {user_id}: {email_err}")
+
         # Log activity
         activity = UserActivity(
             user_id=current_user.id,
             action="update_user",
             resource="user_profile",
-            metadata={"updated_user_id": user_id, "updated_fields": list(update_data.keys())},
+            metadata={"updated_user_id": user_id, "updated_fields": list(update_data.keys()), "email_changed": email_changed},
             timestamp=datetime.utcnow()
         )
         await user_repository.log_user_activity(activity)
@@ -349,10 +386,11 @@ async def update_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"L Error updating user {user_id}: {e}")
+        import traceback
+        logger.error(f"Error updating user {user_id}: {type(e).__name__}: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating user"
+            detail="Error updating user. Please try again or contact support."
         )
 
 
@@ -401,10 +439,10 @@ async def delete_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"L Error deleting user {user_id}: {e}")
+        logger.error(f"Error deleting user {user_id}: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error deleting user"
+            detail="Error deleting user. Please try again or contact support."
         )
 
 

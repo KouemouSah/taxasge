@@ -67,6 +67,18 @@ export function useAgentProfile(profileId: string, enabled = true) {
 }
 
 /**
+ * Hook to get prev/next agent IDs for navigation (lightweight — no full profile list loaded)
+ */
+export function useAgentNeighbors(profileId: string, enabled = true) {
+  return useQuery({
+    queryKey: [...agentQueryKeys.profileDetail(profileId), 'neighbors'] as const,
+    queryFn: () => agentProfilesApi.getNeighbors(profileId),
+    enabled: enabled && !!profileId,
+    staleTime: 5 * 60 * 1000, // 5 minutes — rarely changes
+  });
+}
+
+/**
  * Hook to get agent profile by user ID
  */
 export function useAgentProfileByUser(userId: string, enabled = true) {

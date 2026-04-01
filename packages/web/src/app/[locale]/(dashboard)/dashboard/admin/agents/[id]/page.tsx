@@ -14,7 +14,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
   ArrowLeft,
   Loader2,
   UserCog,
@@ -52,11 +60,14 @@ import {
   PowerOff,
   ChevronLeft,
   ChevronRight,
+  Pencil,
+  Save,
+  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useAgentProfile,
-  useAgentProfiles,
+  useAgentNeighbors,
   useAgentWorkload,
   useAgentPerformance,
   useUpdateAgentProfile,
@@ -64,6 +75,7 @@ import {
   useReactivateAgent,
 } from '@/modules/agents-admin/hooks';
 import { AgentActivityTab } from '@/modules/agents-admin/components';
+import { adminUsersApi } from '@/modules/agents-admin/services/api';
 import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentProfileUpdateRequest } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
@@ -137,9 +149,18 @@ export default function AgentDetailPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(searchParams.get('mode') === 'edit');
   const [deactivateReason, setDeactivateReason] = useState('');
+
+  // Inline edit state for the info bar
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoEmail, setInfoEmail] = useState('');
+  const [infoPhone, setInfoPhone] = useState('');
+  const [infoEntityId, setInfoEntityId] = useState('');
+  const [infoLocationId, setInfoLocationId] = useState('');
+  const [savingInfo, setSavingInfo] = useState(false);
 
   const profileId = params.id as string;
 
@@ -148,12 +169,10 @@ export default function AgentDetailPage() {
   const { data: workload, isLoading: workloadLoading } = useAgentWorkload(profileId, !!profile);
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
 
-  // Agent navigation
-  const { data: allAgentsData, isLoading: agentsListLoading, error: agentsListError } = useAgentProfiles({ page_size: 100 });
-  const allAgents = allAgentsData?.items || [];
-  const currentIndex = allAgents.findIndex(a => a.id === profileId);
-  const prevAgentId = currentIndex > 0 ? allAgents[currentIndex - 1]?.id : null;
-  const nextAgentId = currentIndex < allAgents.length - 1 ? allAgents[currentIndex + 1]?.id : null;
+  // Agent navigation — lightweight endpoint returns only prev/next IDs (no full list)
+  const { data: neighbors, isLoading: neighborsLoading, error: neighborsError } = useAgentNeighbors(profileId, !!profile);
+  const prevAgentId = neighbors?.prev_id ?? null;
+  const nextAgentId = neighbors?.next_id ?? null;
 
   // --- Mutations ---
   const updateMutation = useUpdateAgentProfile();
@@ -317,6 +336,97 @@ export default function AgentDetailPage() {
     }
   };
 
+  // --- Inline info edit helpers ---
+  const startEditingInfo = () => {
+    if (!profile) return;
+    setInfoEmail(profile.user_email || '');
+    setInfoPhone(profile.user_phone || '');
+    setInfoEntityId(profile.entity_id || '');
+    setInfoLocationId(profile.entity_location_id || '');
+    setEditingInfo(true);
+  };
+
+  const cancelEditingInfo = () => {
+    setEditingInfo(false);
+  };
+
+  // Derive entity code for location fetching during inline edit
+  const infoSelectedEntity = entities.find(e => e.id === infoEntityId);
+  const infoSelectedEntityCode = infoSelectedEntity?.code;
+
+  // Fetch locations for the entity selected in the info bar edit
+  const { data: infoEntityLocations, isLoading: isLoadingInfoLocations } = useLocationsByEntity(
+    infoSelectedEntityCode || '',
+    !!infoSelectedEntityCode && editingInfo
+  );
+
+  // Reset location when entity changes in info edit
+  useEffect(() => {
+    if (editingInfo && profile && infoEntityId !== profile.entity_id) {
+      setInfoLocationId('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoEntityId]);
+
+  const emailChanged = editingInfo && profile && infoEmail !== profile.user_email;
+
+  const handleSaveInfo = async () => {
+    if (!profile) return;
+    setSavingInfo(true);
+    try {
+      // Sequential execution: profile first, then email (most risky last)
+      // This prevents inconsistent state if one operation fails.
+
+      // 1) Agent profile update (entity/location) — only if changed
+      const profileChanges: AgentProfileUpdateRequest = {};
+      if (infoEntityId && infoEntityId !== (profile.entity_id || '')) {
+        profileChanges.entity_id = infoEntityId;
+      }
+      const newLocId = infoLocationId || null;
+      const oldLocId = profile.entity_location_id || null;
+      if (newLocId !== oldLocId) {
+        profileChanges.entity_location_id = newLocId;
+      }
+      if (Object.keys(profileChanges).length > 0) {
+        await updateMutation.mutateAsync({ profileId, data: profileChanges });
+      }
+
+      // 2) User update (email/phone) — only if changed (done AFTER profile to avoid
+      //    account deactivation if profile update fails)
+      const userChanges: { email?: string; phone_number?: string } = {};
+      if (infoEmail && infoEmail !== profile.user_email) userChanges.email = infoEmail;
+      if (infoPhone !== (profile.user_phone || '')) userChanges.phone_number = infoPhone || undefined;
+      if (Object.keys(userChanges).length > 0) {
+        await adminUsersApi.updateUser(profile.user_id, userChanges);
+      }
+
+      if (Object.keys(profileChanges).length === 0 && Object.keys(userChanges).length === 0) {
+        setEditingInfo(false);
+        return;
+      }
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['agent-profile', profileId] });
+
+      toast({
+        title: 'Información actualizada',
+        description: emailChanged
+          ? 'Email modificado. La cuenta ha sido desactivada y se ha enviado un nuevo enlace de activación.'
+          : 'Los cambios han sido guardados.',
+      });
+      setEditingInfo(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: message || 'No se pudieron guardar los cambios.',
+      });
+    } finally {
+      setSavingInfo(false);
+    }
+  };
+
   // --- Loading state ---
   if (profileLoading) {
     return (
@@ -394,18 +504,18 @@ export default function AgentDetailPage() {
               variant="outline"
               size="icon"
               onClick={() => prevAgentId && router.push(`/${locale}/dashboard/admin/agents/${prevAgentId}`)}
-              disabled={!prevAgentId || agentsListLoading}
+              disabled={!prevAgentId || neighborsLoading}
               title={prevAgentId ? 'Agent précédent' : "Pas d'agent précédent"}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm text-muted-foreground px-2 min-w-[50px] text-center">
-              {agentsListLoading ? (
+              {neighborsLoading ? (
                 <Loader2 className="h-3 w-3 animate-spin inline" />
-              ) : agentsListError ? (
+              ) : neighborsError ? (
                 <span className="text-destructive" title="Échec du chargement">!</span>
-              ) : currentIndex >= 0 ? (
-                `${currentIndex + 1}/${allAgents.length}`
+              ) : neighbors ? (
+                `${neighbors.position}/${neighbors.total}`
               ) : (
                 '- / -'
               )}
@@ -414,7 +524,7 @@ export default function AgentDetailPage() {
               variant="outline"
               size="icon"
               onClick={() => nextAgentId && router.push(`/${locale}/dashboard/admin/agents/${nextAgentId}`)}
-              disabled={!nextAgentId || agentsListLoading}
+              disabled={!nextAgentId || neighborsLoading}
               title={nextAgentId ? 'Agent suivant' : "Pas d'agent suivant"}
             >
               <ChevronRight className="h-4 w-4" />
@@ -476,23 +586,117 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
-      {/* User Info — compact inline bar */}
-      <div className="rounded-lg border bg-card px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-        <span className="text-muted-foreground">
-          Email: <span className="font-medium text-foreground">{profile.user_email}</span>
-        </span>
-        <span className="text-muted-foreground">
-          Tél: <span className="font-medium text-foreground">{profile.user_phone || '-'}</span>
-        </span>
-        <span className="text-muted-foreground">
-          Organisation: <span className="font-medium text-foreground">{organizationName}</span>
-        </span>
-        {profile.agent_type === AgentType.ENTITY_AGENT && (
-          <span className="text-muted-foreground">
-            Site: <span className="font-medium text-foreground">
-              {profile.location_name || 'Toutes ubicaciones'}
+      {/* User Info — compact inline bar (read / edit) */}
+      <div className="rounded-lg border bg-card px-4 py-2.5">
+        {!editingInfo ? (
+          /* ---- READ MODE ---- */
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+            <span className="text-muted-foreground">
+              Email: <span className="font-medium text-foreground">{profile.user_email}</span>
             </span>
-          </span>
+            <span className="text-muted-foreground">
+              Tél: <span className="font-medium text-foreground">{profile.user_phone || '-'}</span>
+            </span>
+            <span className="text-muted-foreground">
+              Organisation: <span className="font-medium text-foreground">{organizationName}</span>
+            </span>
+            {profile.agent_type === AgentType.ENTITY_AGENT && (
+              <span className="text-muted-foreground">
+                Site: <span className="font-medium text-foreground">
+                  {profile.location_name || 'Todas las ubicaciones'}
+                </span>
+              </span>
+            )}
+            <Button variant="outline" size="sm" className="ml-auto h-8 px-3 text-primary border-primary/30 hover:bg-primary/5" onClick={startEditingInfo}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Editar info
+            </Button>
+          </div>
+        ) : (
+          /* ---- EDIT MODE ---- */
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Email</label>
+                <Input
+                  type="email"
+                  value={infoEmail}
+                  onChange={(e) => setInfoEmail(e.target.value)}
+                  placeholder="email@ejemplo.com"
+                  className="h-8 text-sm"
+                />
+              </div>
+              {/* Teléfono */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Teléfono</label>
+                <Input
+                  value={infoPhone}
+                  onChange={(e) => setInfoPhone(e.target.value)}
+                  placeholder="+240XXXXXXXXX"
+                  className="h-8 text-sm"
+                />
+              </div>
+              {/* Organisation (Entity) */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Organisation</label>
+                <Select value={infoEntityId} onValueChange={(v) => setInfoEntityId(v)}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Seleccionar entidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {entities.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Site (Location) */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Site</label>
+                <Select
+                  value={infoLocationId || 'ALL_SITES'}
+                  onValueChange={(v) => setInfoLocationId(v === 'ALL_SITES' ? '' : v)}
+                  disabled={!infoEntityId || isLoadingInfoLocations}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder={isLoadingInfoLocations ? 'Cargando...' : 'Todas las ubicaciones'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_SITES">Todas las ubicaciones</SelectItem>
+                    {infoEntityLocations?.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.location_name} — {loc.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Warning si email modifié */}
+            {emailChanged && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  La cuenta será desactivada y se enviará un nuevo enlace de activación al nuevo email.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 justify-end">
+              <Button variant="ghost" size="sm" className="h-7" onClick={cancelEditingInfo} disabled={savingInfo}>
+                Cancelar
+              </Button>
+              <Button size="sm" className="h-7" onClick={handleSaveInfo} disabled={savingInfo}>
+                {savingInfo ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                Guardar
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 

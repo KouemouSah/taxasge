@@ -286,17 +286,27 @@ class PendingRegistrationRepository:
                     metadata = metadata.decode('utf-8')
                 try:
                     metadata = json.loads(metadata) if metadata else {}
-                    # Handle double-serialization case
-                    while isinstance(metadata, str):
-                        logger.warning(f"Double-serialized metadata detected, parsing again")
+                    # Handle double-serialization case (max 3 iterations safety)
+                    max_depth = 3
+                    while isinstance(metadata, str) and max_depth > 0:
+                        logger.warning("Double-serialized metadata detected, parsing again")
                         metadata = json.loads(metadata)
+                        max_depth -= 1
                 except json.JSONDecodeError as e:
                     logger.error(f"Failed to parse metadata JSON: {e}, raw: {raw_metadata}")
-                    return {}
+                    raise ValueError(f"Corrupted invitation metadata — cannot parse JSON: {e}")
 
             if not isinstance(metadata, dict):
                 logger.error(f"Metadata is not a dict after parsing: {type(metadata)}")
-                return {}
+                raise ValueError(f"Corrupted invitation metadata — expected dict, got {type(metadata).__name__}")
+
+            # Validate required keys for agent invitations
+            reg_type = metadata.get('registration_type', '')
+            if reg_type == 'agent':
+                agent_data = metadata.get('agent_data', {})
+                if not agent_data or not agent_data.get('agent_type'):
+                    logger.error(f"Agent invitation metadata missing agent_data.agent_type: {list(metadata.keys())}")
+                    raise ValueError("Corrupted invitation metadata — missing agent configuration")
 
             logger.info(f"Parsed metadata keys: {list(metadata.keys()) if metadata else 'empty'}")
             return metadata if metadata else {}

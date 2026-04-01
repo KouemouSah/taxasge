@@ -636,17 +636,20 @@ class AgentProfileService:
         # Send invitation email
         from app.modules.communications.services.email_service import get_email_service
         email_service = get_email_service()
-        try:
-            email_service.send_agent_invitation(
-                to_email=data.user.email.lower(),
-                first_name=data.user.first_name,
-                verification_code=verification_code,
-                language=data.user.preferred_language or 'es'
-            )
-            logger.info(f"Agent invitation email sent to {data.user.email}")
-        except Exception as e:
-            logger.error(f"Failed to send agent invitation email: {e}")
-            # Don't fail the invitation, email can be resent
+        if email_service:
+            try:
+                email_service.send_agent_invitation(
+                    to_email=data.user.email.lower(),
+                    first_name=data.user.first_name,
+                    verification_code=verification_code,
+                    language=data.user.preferred_language or 'es'
+                )
+                logger.info(f"Agent invitation email sent to {data.user.email}")
+            except Exception as e:
+                logger.error(f"Failed to send agent invitation email: {e}")
+                # Don't fail the invitation, email can be resent
+        else:
+            logger.warning("Email service not available — invitation email not sent")
 
         logger.info(
             f"Agent invitation initiated: email={data.user.email}, "
@@ -982,16 +985,19 @@ class AgentProfileService:
         # Send invitation email
         from app.modules.communications.services.email_service import get_email_service
         email_service = get_email_service()
-        try:
-            email_service.send_admin_invitation(
-                to_email=data.email.lower(),
-                first_name=data.first_name,
-                verification_code=verification_code,
-                language=data.preferred_language or 'es'
-            )
-            logger.info(f"Admin invitation email sent to {data.email}")
-        except Exception as e:
-            logger.error(f"Failed to send admin invitation email: {e}")
+        if email_service:
+            try:
+                email_service.send_admin_invitation(
+                    to_email=data.email.lower(),
+                    first_name=data.first_name,
+                    verification_code=verification_code,
+                    language=data.preferred_language or 'es'
+                )
+                logger.info(f"Admin invitation email sent to {data.email}")
+            except Exception as e:
+                logger.error(f"Failed to send admin invitation email: {e}")
+        else:
+            logger.warning("Email service not available — admin invitation email not sent")
 
         logger.info(f"Admin invitation initiated: email={data.email}, created_by={created_by}")
 

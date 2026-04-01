@@ -109,6 +109,108 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
   }
 
   if (!wizard.licenseData) {
+    // Classification preview needs manual zone/category selection
+    const preview = wizard.classificationPreview
+    if (preview && (preview.needsManualZone || preview.needsManualCategory)) {
+      const classLabels = {
+        title: { es: 'Clasificación de la Empresa', fr: "Classification de l'Entreprise", en: 'Company Classification' },
+        extracted: { es: 'Datos extraídos del documento', fr: 'Données extraites du document', en: 'Data extracted from document' },
+        selectZone: { es: 'Seleccione la zona fiscal', fr: 'Sélectionnez la zone fiscale', en: 'Select the fiscal zone' },
+        selectCategory: { es: 'Seleccione la categoría', fr: 'Sélectionnez la catégorie', en: 'Select the category' },
+        confirm: { es: 'Confirmar y continuar', fr: 'Confirmer et continuer', en: 'Confirm and continue' },
+      }
+      const ed = preview.extractedData
+      return (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">{classLabels.title[lang]}</h3>
+
+          {/* Extracted data summary */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-1 text-sm">
+            <p className="text-xs font-medium text-muted-foreground mb-2">{classLabels.extracted[lang]}</p>
+            {ed.legalName && <p><span className="font-medium">Nombre:</span> {ed.legalName}</p>}
+            {ed.registrationNumber && <p><span className="font-medium">N° Registro:</span> {ed.registrationNumber}</p>}
+            {ed.localidad && <p><span className="font-medium">Localidad:</span> {ed.localidad}{ed.provincia ? ` (${ed.provincia})` : ''}</p>}
+            {ed.formaJuridica && <p><span className="font-medium">Forma jurídica:</span> {ed.formaJuridica}</p>}
+          </div>
+
+          {/* Zone selector (if needed) */}
+          {preview.needsManualZone && preview.availableZones.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{classLabels.selectZone[lang]}</label>
+              <select
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={wizard.selectedZoneId || ''}
+                onChange={(e) => wizard.setSelectedZoneId(e.target.value || null)}
+              >
+                <option value="">--</option>
+                {preview.availableZones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.code} — {z.name} ({z.cities.join(', ')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Category selector (if needed and zone selected) */}
+          {preview.needsManualCategory && preview.availableCategories.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{classLabels.selectCategory[lang]}</label>
+              <select
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={wizard.selectedCommerceType || ''}
+                onChange={(e) => wizard.setSelectedCommerceType(e.target.value || null)}
+              >
+                <option value="">--</option>
+                {preview.availableCategories.map((c) => (
+                  <option key={c.commerceType} value={c.commerceType}>
+                    {c.bundleName} ({c.commerceType})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Confirm button */}
+          <Button
+            className="w-full"
+            disabled={
+              (preview.needsManualZone && !wizard.selectedZoneId) ||
+              (preview.needsManualCategory && !wizard.selectedCommerceType)
+            }
+            onClick={() => {
+              wizard.clearError()
+              wizard.loadObligations()
+            }}
+          >
+            {classLabels.confirm[lang]}
+          </Button>
+        </div>
+      )
+    }
+
+    // Show error if obligations failed to load
+    if (wizard.error) {
+      return (
+        <div className="space-y-4">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {wizard.error}
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="outline"
+            onClick={() => {
+              wizard.clearError()
+              wizard.loadObligations()
+            }}
+          >
+            {lang === 'fr' ? 'Réessayer' : lang === 'en' ? 'Retry' : 'Reintentar'}
+          </Button>
+        </div>
+      )
+    }
     return null
   }
 

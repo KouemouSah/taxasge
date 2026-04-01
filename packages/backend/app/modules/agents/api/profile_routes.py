@@ -360,6 +360,45 @@ async def get_profile(
     return AgentProfileWithDetails(**profile)
 
 
+@router.get("/profiles/{profile_id}/neighbors")
+async def get_profile_neighbors(
+    profile_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Get prev/next agent IDs for navigation (lightweight — no full profiles loaded).
+
+    Uses a single SQL window query: O(1) for the DB, returns 3 fields.
+    Ordered by creation date (same as default list order).
+    """
+    query = """
+        WITH ordered AS (
+            SELECT
+                ap.id,
+                ROW_NUMBER() OVER (ORDER BY ap.created_at DESC, ap.id) AS rn,
+                COUNT(*) OVER () AS total
+            FROM agent_profiles ap
+            WHERE ap.is_active = true
+        )
+        SELECT
+            (SELECT id FROM ordered WHERE rn = o.rn - 1) AS prev_id,
+            (SELECT id FROM ordered WHERE rn = o.rn + 1) AS next_id,
+            o.rn AS position,
+            o.total
+        FROM ordered o
+        WHERE o.id = $1
+    """
+    row = await db.fetchrow(query, UUID(profile_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Agent profile not found")
+    return {
+        "prev_id": str(row["prev_id"]) if row["prev_id"] else None,
+        "next_id": str(row["next_id"]) if row["next_id"] else None,
+        "position": row["position"],
+        "total": row["total"],
+    }
+
+
 @router.get("/profiles/user/{user_id}", response_model=AgentProfileWithDetails)
 async def get_profile_by_user(
     user_id: str,
@@ -504,11 +543,15 @@ async def validate_agent(
     try:
         result = await agent_profile_service.validate_agent_data(data)
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Agent validation failed: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Validation failed. Please check your input data.",
+            detail="Validation failed due to an internal error. Please try again.",
         )
 
 
@@ -554,13 +597,19 @@ async def invite_agent(
         return AgentInviteResponse(**result)
 
     except ValueError as e:
-        logger.warning(f"Agent invitation failed for {data.user.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation data")
+        logger.warning(f"Agent invitation validation failed for {data.user.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Agent invitation error for {data.user.email}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(
+            f"Agent invitation error for {data.user.email}: {type(e).__name__}: {e}\n"
+            f"{traceback.format_exc()}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Invitation failed. Please try again."
+            detail="Invitation failed due to an internal error. Please try again or contact support."
         )
 
 
@@ -613,12 +662,18 @@ async def activate_agent(
 
     except ValueError as e:
         logger.warning(f"Agent activation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Agent activation error for {data.email}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(
+            f"Agent activation error for {data.email}: {type(e).__name__}: {e}\n"
+            f"{traceback.format_exc()}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Activation failed. Please try again."
+            detail="Activation failed due to an internal error. Please try again or contact support."
         )
 
 
@@ -697,12 +752,18 @@ async def invite_admin(
 
     except ValueError as e:
         logger.warning(f"Admin invitation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation data")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Admin invitation error for {data.email}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(
+            f"Admin invitation error for {data.email}: {type(e).__name__}: {e}\n"
+            f"{traceback.format_exc()}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Invitation failed. Please try again."
+            detail="Invitation failed due to an internal error. Please try again or contact support."
         )
 
 
@@ -752,12 +813,18 @@ async def activate_admin(
 
     except ValueError as e:
         logger.warning(f"Admin activation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Admin activation error for {data.email}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(
+            f"Admin activation error for {data.email}: {type(e).__name__}: {e}\n"
+            f"{traceback.format_exc()}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Activation failed. Please try again."
+            detail="Activation failed due to an internal error. Please try again or contact support."
         )
 
 

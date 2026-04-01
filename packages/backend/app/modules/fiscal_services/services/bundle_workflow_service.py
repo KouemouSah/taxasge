@@ -183,6 +183,113 @@ class BundleWorkflowService:
         ]
 
     # ================================================================
+    # Step 0b: Classify preview — extraction → zone + classification (no DB writes)
+    # ================================================================
+
+    @staticmethod
+    async def preview_classification(
+        conn, extraction: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Preview classification without creating anything.
+
+        Returns:
+        - extracted_data: key fields from OCR
+        - zone_resolved: bool
+        - zone: {id, code, name} if resolved
+        - available_zones: [{id, code, name}] if not resolved
+        - classification: {regimen_fiscal, commerce_type, confidence}
+        - available_categories: [{commerce_type, bundle_name}] for manual selection
+        """
+        from app.modules.companies.services.classification_agent import ClassificationAgent
+
+        # 1. Map extraction to company data
+        company_data = ClassificationAgent.map_gemini_extraction_to_company_data(extraction)
+
+        # 2. Resolve zone from localidad
+        zone_id = None
+        zone_info = None
+        localidad = company_data.get("localidad", "")
+
+        if localidad:
+            city_row = await conn.fetchrow(
+                "SELECT c.id as city_id, c.zone_id, c.name as city_name, "
+                "cz.zone_code, cz.name_es as zone_name "
+                "FROM cities c LEFT JOIN commerce_zones cz ON cz.id = c.zone_id "
+                "WHERE c.name ILIKE $1",
+                localidad
+            )
+            if city_row and city_row["zone_id"]:
+                zone_id = city_row["zone_id"]
+                zone_info = {
+                    "id": str(city_row["zone_id"]),
+                    "code": city_row["zone_code"],
+                    "name": city_row["zone_name"],
+                    "city": city_row["city_name"],
+                }
+
+        # 3. Get all available zones (for manual selection fallback)
+        available_zones = []
+        if not zone_id:
+            rows = await conn.fetch(
+                "SELECT cz.id, cz.zone_code, cz.name_es, "
+                "array_agg(DISTINCT c.name ORDER BY c.name) as cities "
+                "FROM commerce_zones cz "
+                "JOIN cities c ON c.zone_id = cz.id "
+                "GROUP BY cz.id, cz.zone_code, cz.name_es "
+                "ORDER BY cz.zone_code"
+            )
+            available_zones = [
+                {"id": str(r["id"]), "code": r["zone_code"], "name": r["name_es"], "cities": r["cities"]}
+                for r in rows
+            ]
+
+        # 4. Classify (rules-based, no DB writes)
+        classification_agent = ClassificationAgent()
+        classification = await classification_agent.classify_company(
+            conn, company_data, zone_id=zone_id
+        )
+
+        # 5. Get available bundles/categories for the zone (for manual selection)
+        available_categories = []
+        if zone_id:
+            cat_rows = await conn.fetch(
+                "SELECT DISTINCT sb.commerce_type, sb.name_es as bundle_name "
+                "FROM service_bundles sb "
+                "JOIN service_bundle_items sbi ON sbi.bundle_id = sb.id "
+                "WHERE sbi.zone_id = $1 AND sb.is_active = true "
+                "ORDER BY sb.commerce_type",
+                zone_id
+            )
+            available_categories = [
+                {"commerce_type": r["commerce_type"], "bundle_name": r["bundle_name"]}
+                for r in cat_rows
+            ]
+
+        return {
+            "extracted_data": {
+                "legal_name": company_data.get("legal_name"),
+                "registration_number": company_data.get("registration_number"),
+                "nif": company_data.get("nif"),
+                "forma_juridica": company_data.get("forma_juridica"),
+                "localidad": company_data.get("localidad"),
+                "provincia": company_data.get("provincia"),
+                "sector": company_data.get("sector_actividad"),
+                "objeto_social": company_data.get("objeto_social"),
+            },
+            "zone_resolved": zone_id is not None,
+            "zone": zone_info,
+            "available_zones": available_zones,
+            "classification": {
+                "regimen_fiscal": classification.regimen_fiscal,
+                "commerce_type": classification.commerce_type,
+                "confidence": classification.confidence,
+            },
+            "available_categories": available_categories,
+            "needs_manual_zone": zone_id is None,
+            "needs_manual_category": not classification.commerce_type,
+        }
+
+    # ================================================================
     # Step 1: Initiate from upload — extraction → company → classify → initiate
     # ================================================================
 
@@ -190,6 +297,8 @@ class BundleWorkflowService:
     async def initiate_from_upload(
         conn, extraction: Dict[str, Any], user_id: UUID,
         fiscal_year: Optional[int] = None,
+        zone_id: Optional[UUID] = None,
+        commerce_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create company from OCR extraction, classify, then initiate workflow.
 
@@ -204,6 +313,8 @@ class BundleWorkflowService:
             extraction: GeminiDocumentProcessor extraction output (nested dict)
             user_id: Authenticated user
             fiscal_year: Defaults to current year
+            zone_id: Override zone (from classify-preview manual selection)
+            commerce_type: Override commerce type (from classify-preview manual selection)
 
         Returns:
             BundleInitiateResponse (same as initiate()) + company creation info
@@ -246,10 +357,13 @@ class BundleWorkflowService:
                 return result
 
         # 3. Resolve city/zone from localidad (cities.zone_id → commerce_zones.id)
+        #    Use override zone_id if provided (from classify-preview manual selection)
         localidad = company_data.get("localidad", "")
         city_id = None
-        zone_id = None
-        if localidad:
+        if zone_id:
+            # Admin/user provided zone override — skip localidad lookup
+            logger.info("Upload: using zone override %s", zone_id)
+        elif localidad:
             city_row = await conn.fetchrow(
                 "SELECT id, zone_id FROM cities WHERE name ILIKE $1 LIMIT 1",
                 localidad,
@@ -293,29 +407,45 @@ class BundleWorkflowService:
         )
 
         # 5. Auto-classify (non-blocking — failure doesn't break flow)
+        #    Use commerce_type override if provided (from classify-preview manual selection)
         try:
-            company_full = await conn.fetchrow(
-                "SELECT * FROM companies WHERE id = $1", company_id
-            )
-            classification = await classification_agent.classify_company(
-                conn, dict(company_full), zone_id=zone_id
-            )
-            if classification.regimen_fiscal:
+            if commerce_type:
+                # User overrode classification — set directly, skip LLM inference
                 await conn.execute(
                     """UPDATE companies
-                       SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW()
+                       SET regimen_fiscal = 'bundle', commerce_type = $2, updated_at = NOW()
                        WHERE id = $1""",
                     company_id,
-                    classification.regimen_fiscal,
-                    classification.commerce_type,
+                    commerce_type,
                 )
                 logger.info(
-                    "Upload: classified company %s → %s (commerce=%s, conf=%.0f%%)",
+                    "Upload: using commerce_type override for company %s → bundle (commerce=%s)",
                     company_id,
-                    classification.regimen_fiscal,
-                    classification.commerce_type,
-                    (classification.confidence or 0) * 100,
+                    commerce_type,
                 )
+            else:
+                company_full = await conn.fetchrow(
+                    "SELECT * FROM companies WHERE id = $1", company_id
+                )
+                classification = await classification_agent.classify_company(
+                    conn, dict(company_full), zone_id=zone_id
+                )
+                if classification.regimen_fiscal:
+                    await conn.execute(
+                        """UPDATE companies
+                           SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW()
+                           WHERE id = $1""",
+                        company_id,
+                        classification.regimen_fiscal,
+                        classification.commerce_type,
+                    )
+                    logger.info(
+                        "Upload: classified company %s → %s (commerce=%s, conf=%.0f%%)",
+                        company_id,
+                        classification.regimen_fiscal,
+                        classification.commerce_type,
+                        (classification.confidence or 0) * 100,
+                    )
         except Exception as e:
             logger.warning(
                 "Upload: auto-classification failed for company %s: %s",

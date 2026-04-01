@@ -210,6 +210,19 @@ export const agentProfilesApi = {
   },
 
   /**
+   * Get prev/next agent IDs for navigation (lightweight)
+   * BACKEND: GET /api/v1/agents/profiles/{profile_id}/neighbors
+   */
+  getNeighbors: async (profileId: string): Promise<{
+    prev_id: string | null;
+    next_id: string | null;
+    position: number;
+    total: number;
+  }> => {
+    return fetchClient.get(`${AGENTS_BASE}/profiles/${profileId}/neighbors`);
+  },
+
+  /**
    * Update agent profile
    * BACKEND: PUT /api/v1/agents/profiles/{profile_id}
    */
@@ -417,6 +430,14 @@ export const adminUsersApi = {
   deactivateUser: async (userId: string, reason?: string): Promise<{ message: string; user_id: string; status: string; reason?: string }> => {
     const params = reason ? `?reason=${encodeURIComponent(reason)}` : '';
     return fetchClient.post(`${ADMIN_USERS_BASE}/${userId}/deactivate${params}`);
+  },
+
+  /**
+   * Update user profile (email, phone, etc.)
+   * BACKEND: PUT /api/v1/admin/users/{user_id}
+   */
+  updateUser: async (userId: string, data: { email?: string; phone_number?: string }): Promise<unknown> => {
+    return fetchClient.put(`${ADMIN_USERS_BASE}/${userId}`, data);
   },
 
   /**

@@ -156,10 +156,13 @@ async def update_config_rule(
     config, name_es, description. Scope fields (bundle_id, fee_type,
     ministry_id, item_id) are immutable — delete and recreate instead.
     """
-    rule = await ConfigRulesService.update_rule(
-        db, rule_id, data.model_dump(exclude_unset=True),
-        user_id=UUID(current_user.id),
-    )
+    try:
+        rule = await ConfigRulesService.update_rule(
+            db, rule_id, data.model_dump(exclude_unset=True),
+            user_id=UUID(current_user.id),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     if not rule:
         raise HTTPException(status_code=404, detail="Config rule not found")
     return ConfigRuleResponse(**rule)
