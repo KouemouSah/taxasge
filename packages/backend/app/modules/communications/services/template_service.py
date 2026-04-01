@@ -63,11 +63,19 @@ class TemplateService:
             else:
                 logo_url = "https://taxasge-dev.firebasestorage.app/system-assets/logos/logo.png"
 
+            # Dynamic site URL from settings (never hardcode domain)
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://taxasge.emacsah.com')
+            # Extract domain from URL for display (e.g., "taxasge.emacsah.com")
+            from urllib.parse import urlparse
+            site_domain = urlparse(frontend_url).netloc or frontend_url
+
             # Add common variables
             common_context = {
                 "language": language,
                 "logo_url": logo_url,
                 "current_year": datetime.now().year,
+                "site_url": frontend_url,
+                "site_domain": site_domain,
                 **context,  # User-provided context
             }
 

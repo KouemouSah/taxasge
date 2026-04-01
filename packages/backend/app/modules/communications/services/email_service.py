@@ -63,7 +63,7 @@ class EmailService:
             smtp_password: SMTP password (Gmail App Password)
             smtp_use_tls: Whether to use TLS (default True)
             smtp_from_email: From email address (defaults to smtp_username)
-            smtp_from_name: From name displayed in email (default "TaxasGE Platform")
+            smtp_from_name: From name displayed in email (default "Facil")
         """
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port

@@ -322,7 +322,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: Optional[str] = Field(default=None, env="SMTP_USERNAME")
     SMTP_USE_TLS: bool = Field(default=True, env="SMTP_USE_TLS")
     SMTP_FROM_EMAIL: Optional[str] = Field(default=None, env="SMTP_FROM_EMAIL")
-    SMTP_FROM_NAME: str = Field(default="TaxasGE Platform", env="SMTP_FROM_NAME")
+    SMTP_FROM_NAME: str = Field(default="Facil", env="SMTP_FROM_NAME")
 
     # SMTP_PASSWORD: Load from Secret Manager at startup
     # Will be set by __init__ method below
