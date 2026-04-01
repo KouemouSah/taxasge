@@ -205,6 +205,10 @@ export default function WizardSessionScreen() {
       }
     }
 
+    // Use a microtask delay to let React process any pending state updates
+    // (formValues → steps recalculation) before advancing the index
+    await new Promise((r) => setTimeout(r, 50));
+
     if (safeStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     }

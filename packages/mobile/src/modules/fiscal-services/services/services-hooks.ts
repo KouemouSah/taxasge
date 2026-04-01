@@ -62,13 +62,20 @@ export function useServiceSearch(debounceMs = 300, language = 'es') {
   const [filters, setFilters] = useState<ServiceSearchFilters>({});
   const [results, setResults] = useState<ServiceSearchResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentPageRef = useRef(1);
+  const hasMoreRef = useRef(true);
+  const currentFiltersRef = useRef<ServiceSearchFilters>({});
 
   const search = useCallback(
     (q: string, extraFilters: Partial<ServiceSearchFilters> = {}) => {
       setQuery(q);
       const merged = { ...filters, ...extraFilters, q };
+      currentFiltersRef.current = merged;
+      currentPageRef.current = 1;
+      hasMoreRef.current = true;
 
       if (timerRef.current) clearTimeout(timerRef.current);
 
@@ -85,10 +92,13 @@ export function useServiceSearch(debounceMs = 300, language = 'es') {
             ...merged,
             language: merged.language ?? language,
             include_facets: true,
-            limit: merged.limit ?? 20,
-            page: merged.page ?? 1,
+            limit: 30,
+            page: 1,
           });
           setResults(data);
+          const items = data.results || data.services || [];
+          const total = data.total_results ?? data.total ?? 0;
+          hasMoreRef.current = items.length < total;
         } catch (error) {
           if (__DEV__) {
             console.warn('[ServiceSearch] Search failed:', error);
@@ -99,8 +109,42 @@ export function useServiceSearch(debounceMs = 300, language = 'es') {
         }
       }, debounceMs);
     },
-    [filters, debounceMs],
+    [filters, debounceMs, language],
   );
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMoreRef.current || !results) return;
+    setIsLoadingMore(true);
+    const nextPage = currentPageRef.current + 1;
+    try {
+      const data = await servicesApi.searchServices({
+        ...currentFiltersRef.current,
+        language: currentFiltersRef.current.language ?? language,
+        include_facets: false,
+        limit: 30,
+        page: nextPage,
+      });
+      const newItems = data.results || data.services || [];
+      if (newItems.length === 0) {
+        hasMoreRef.current = false;
+      } else {
+        currentPageRef.current = nextPage;
+        setResults((prev) => {
+          if (!prev) return data;
+          const existingItems = prev.results || prev.services || [];
+          return {
+            ...prev,
+            results: [...existingItems, ...newItems],
+            services: [...existingItems, ...newItems],
+          };
+        });
+      }
+    } catch {
+      // Silently fail on load more
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, results, language]);
 
   const updateFilters = useCallback((newFilters: Partial<ServiceSearchFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -112,5 +156,5 @@ export function useServiceSearch(debounceMs = 300, language = 'es') {
     };
   }, []);
 
-  return { query, search, results, isSearching, searchError, filters, updateFilters };
+  return { query, search, results, isSearching, isLoadingMore, loadMore, searchError, filters, updateFilters };
 }

@@ -79,7 +79,7 @@ export default function ServicesScreen() {
 
   const { data: ministries, isLoading: ministriesLoading } = useMinistries(lang);
   const { data: popularServices } = usePopularServices(10);
-  const { search, results, isSearching } = useServiceSearch(300, lang);
+  const { search, results, isSearching, isLoadingMore, loadMore } = useServiceSearch(300, lang);
 
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
@@ -261,6 +261,9 @@ export default function ServicesScreen() {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderSearchItem}
           contentContainerStyle={{ paddingBottom: 24 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={isLoadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} /> : null}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
               {/* Non-ministry: simple back + count */}
@@ -268,7 +271,7 @@ export default function ServicesScreen() {
                 <Pressable onPress={handleClearSearch} style={styles.backRow}>
                   <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
                   <Text variant="labelMedium" style={{ color: colors.outline, flex: 1, marginLeft: 8 }}>
-                    {t('services.results', { count: results.total })}
+                    {t('services.results', { count: results.total_results ?? results.total ?? 0 })}
                   </Text>
                 </Pressable>
               )}
@@ -277,7 +280,7 @@ export default function ServicesScreen() {
               {isMinistryFilter && (
                 <View style={[styles.innerControls, { marginTop: 8 }]}>
                   <TextInput
-                    placeholder={`${results.total} services — ${t('services.searchWithin')}`}
+                    placeholder={`${results?.total_results ?? results?.total ?? 0} services — ${t('services.searchWithin')}`}
                     value={innerSearch}
                     onChangeText={handleInnerSearch}
                     mode="outlined"

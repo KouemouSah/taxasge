@@ -674,7 +674,7 @@ const s = StyleSheet.create({
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
 
   // Language
-  langContainer: { marginTop: 16 },
+  langContainer: { marginTop: 10 },
   langRow: { flexDirection: 'row', gap: 8 },
   langBtn: {
     flexDirection: 'row', alignItems: 'center',
@@ -702,7 +702,7 @@ const s = StyleSheet.create({
   },
 
   // Last slide buttons
-  lastSlideButtons: { gap: 10 },
+  lastSlideButtons: { gap: 10, paddingBottom: 8 },
   authBtnRow: { flexDirection: 'row', gap: 10 },
   authBtn: { flex: 1, borderRadius: 28 },
   exploreBtn: {
