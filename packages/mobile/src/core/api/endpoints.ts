@@ -90,7 +90,7 @@ export const API_ENDPOINTS = {
     list: '/fiscal-services',
     detail: (id: string) => `/fiscal-services/${id}` as const,
     details: (id: string) => `/fiscal-services/${id}/details` as const,
-    search: '/fiscal-services/search',
+    search: '/homepage/search',
     calculate: '/fiscal-services/calculate',
     popular: '/fiscal-services/popular/list',
     recent: '/fiscal-services/recent/list',

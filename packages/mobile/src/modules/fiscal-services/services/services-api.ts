@@ -21,7 +21,7 @@ export async function getServices(
   return apiGet<FiscalServiceListResponse>(API_ENDPOINTS.fiscalServices.list, params);
 }
 
-/** POST /fiscal-services/search (advanced search with facets) */
+/** POST /homepage/search (public, translated — same endpoint as web) */
 export async function searchServices(
   filters: ServiceSearchFilters,
 ): Promise<ServiceSearchResponse> {

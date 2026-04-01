@@ -94,7 +94,7 @@ export default function ServicesScreen() {
   const activeMinistries = useMemo(() => {
     const filtered = (ministries ?? []).filter((m) => m.is_active !== false);
     if (sortAlpha) {
-      return [...filtered].sort((a, b) => a.name_es.localeCompare(b.name_es));
+      return [...filtered].sort((a, b) => (a.name_es || '').localeCompare(b.name_es || ''));
     }
     return filtered;
   }, [ministries, sortAlpha]);
@@ -150,10 +150,10 @@ export default function ServicesScreen() {
         android_ripple={{ color: colors.primaryContainer }}
       >
         <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600' }} numberOfLines={1}>
-          {item.name_es}
+          {item.name || item.name_es || ''}
         </Text>
         <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700', marginTop: 2 }}>
-          {(item.tasa_expedicion ?? 0) === 0 ? t('services.freeService') : formatCurrency(item.tasa_expedicion ?? 0)}
+          {(item.expedition_price ?? item.tasa_expedicion ?? 0) === 0 ? t('services.freeService') : formatCurrency(item.expedition_price ?? item.tasa_expedicion ?? 0)}
         </Text>
       </Pressable>
     ),
@@ -208,7 +208,7 @@ export default function ServicesScreen() {
         >
           <View style={{ flex: 1 }}>
             <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }} numberOfLines={2}>
-              {item.name_es}
+              {item.name || item.name_es || ''}
             </Text>
             {!isMinistryFilter && item.ministry_name && (
               <Text variant="labelSmall" style={{ color: colors.outline }} numberOfLines={1}>
@@ -218,7 +218,7 @@ export default function ServicesScreen() {
           </View>
           <View style={styles.searchItemRight}>
             <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
-              {(item.tasa_expedicion ?? 0) === 0 ? t('services.freeService') : formatCurrency(item.tasa_expedicion ?? 0)}
+              {(item.expedition_price ?? item.tasa_expedicion ?? 0) === 0 ? t('services.freeService') : formatCurrency(item.expedition_price ?? item.tasa_expedicion ?? 0)}
             </Text>
             <MaterialCommunityIcons name="chevron-right" size={16} color={colors.outline} />
           </View>
@@ -234,17 +234,18 @@ export default function ServicesScreen() {
 
   /** Sort results locally */
   const sortedResults = useMemo(() => {
-    if (!results?.services) return [];
-    const list = [...results.services];
+    const items = results?.results || results?.services;
+    if (!items) return [];
+    const list = [...items];
     // Filter by inner search text
     const filtered = innerSearch
-      ? list.filter((s) => s.name_es.toLowerCase().includes(innerSearch.toLowerCase()))
+      ? list.filter((s) => (s.name || s.name_es || '').toLowerCase().includes(innerSearch.toLowerCase()))
       : list;
     // Sort
     switch (resultSort) {
-      case 'alpha': return filtered.sort((a, b) => a.name_es.localeCompare(b.name_es));
-      case 'price_asc': return filtered.sort((a, b) => (a.tasa_expedicion ?? 0) - (b.tasa_expedicion ?? 0));
-      case 'price_desc': return filtered.sort((a, b) => (b.tasa_expedicion ?? 0) - (a.tasa_expedicion ?? 0));
+      case 'alpha': return filtered.sort((a, b) => (a.name || a.name_es || '').localeCompare(b.name || b.name_es || ''));
+      case 'price_asc': return filtered.sort((a, b) => (a.expedition_price ?? a.tasa_expedicion ?? 0) - (b.expedition_price ?? b.tasa_expedicion ?? 0));
+      case 'price_desc': return filtered.sort((a, b) => (b.expedition_price ?? b.tasa_expedicion ?? 0) - (a.expedition_price ?? a.tasa_expedicion ?? 0));
       default: return filtered;
     }
   }, [results, innerSearch, resultSort]);
@@ -253,7 +254,7 @@ export default function ServicesScreen() {
     if (isSearching) {
       return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
     }
-    if (results && results.services.length > 0) {
+    if (results && (results.results || results.services || []).length > 0) {
       return (
         <FlatList
           data={sortedResults}
@@ -311,7 +312,7 @@ export default function ServicesScreen() {
         />
       );
     }
-    if (results && results.services.length === 0) {
+    if (results && (results.results || results.services || []).length === 0) {
       return (
         <EmptyState
           icon="magnify-close"

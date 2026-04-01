@@ -5,7 +5,9 @@
 export interface FiscalServiceItem {
   id: number;
   service_code: string;
+  name: string;
   name_es: string;
+  description?: string;
   description_es?: string;
   service_type: string;
   calculation_method: string;
@@ -13,7 +15,9 @@ export interface FiscalServiceItem {
   ministry_name?: string;
   sector_name?: string;
   tasa_expedicion?: number;
+  expedition_price?: number;
   tasa_renovacion?: number;
+  renewal_price?: number;
   view_count: number;
   calculation_count: number;
   status: string;
@@ -74,15 +78,19 @@ export interface ServiceSearchResult {
 }
 
 /**
- * Search response — same format as list (backend POST /fiscal-services/search
- * returns FiscalServiceListResponse, NOT SearchDBResponse).
+ * Search response — from POST /homepage/search (public, translated).
+ * Uses 'results' (not 'services') and 'total_results' (not 'total').
  */
 export interface ServiceSearchResponse {
-  services: FiscalServiceItem[];
+  results: FiscalServiceItem[];
+  services?: FiscalServiceItem[];
+  total_results: number;
   total: number;
   page: number;
-  page_size: number;
+  limit: number;
+  page_size?: number;
   total_pages: number;
+  facets?: SearchFacets;
 }
 
 export interface MinistryItem {
