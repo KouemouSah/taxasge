@@ -152,20 +152,18 @@ export default function UnifiedWorkflowActionPage() {
 
   const searchParams = useSearchParams();
 
-  // Extract route params
+  // Extract route params (URL slug only used for navigation, NOT for API calls)
   const entityCodeSlug = (params?.entityCode as string) || '';
   const workflowGroup = (params?.workflowGroup as string) || '';
   const action = (params?.action as string) || '';
 
-  // Get agent's real entity code from profile (source of truth)
+  // Entity code: ALWAYS from agent profile (BD source of truth).
+  // The URL slug is a routing concern only — never sent to backend APIs.
+  // This handles both:
+  //   - /agent/oms/... (shared OMS module, 10 entity roles)
+  //   - /agent/cnedoge-pasaporte/... (entity-specific route)
   const { entityCode: profileEntityCode } = useAgentDashboard();
-
-  // Convert URL slug to database entity code
-  // "oms" is a shared module path, not an entity code — use agent's profile entity instead
-  const urlEntityCode = slugToEntityCode(entityCodeSlug);
-  const ENTITY_CODE = (urlEntityCode === 'OMS' && profileEntityCode)
-    ? profileEntityCode
-    : urlEntityCode;
+  const ENTITY_CODE = profileEntityCode || slugToEntityCode(entityCodeSlug);
 
   // Validate action — standard actions get dedicated components, others get GenericFilteredList
   const isStandardAction = STANDARD_ACTIONS.includes(action as ActionType);
