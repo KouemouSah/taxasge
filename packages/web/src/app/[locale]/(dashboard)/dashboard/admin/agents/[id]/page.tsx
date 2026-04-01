@@ -293,7 +293,7 @@ export default function AgentDetailPage() {
       await updateMutation.mutateAsync({ profileId, data: updateData });
 
       // Also save info bar changes if it's open (unified save)
-      if (editingInfo) {
+      if (editingInfo && profile) {
         const userChanges: { email?: string; phone_number?: string } = {};
         if (infoEmail && infoEmail !== profile.user_email) userChanges.email = infoEmail;
         if (infoPhone !== (profile.user_phone || '')) userChanges.phone_number = infoPhone || undefined;
