@@ -897,8 +897,14 @@ class ServiceRequestService:
         date_to: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
+        language: str = "es",
     ):
-        """List service requests for a user with server-side pagination and filters."""
+        """List service requests for a user with server-side pagination and filters.
+
+        Args:
+            language: ISO 639-1 language code (es/fr/en) for translated entity names.
+                      Currently unused — reserved for future entity name translation.
+        """
         import math
         from ..models.service_request import ServiceRequestListResponse
 

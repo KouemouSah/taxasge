@@ -2,7 +2,7 @@
 API Routes for Service Requests.
 RESTful endpoints following FastAPI conventions.
 """
-from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body, Request, Header
+from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body, Request
 from typing import List, Optional, Any
 from uuid import UUID
 from datetime import datetime
@@ -52,6 +52,22 @@ from ..services.workflow_engine import workflow_engine
 from app.core.events import EventBus, EventType
 
 router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
+
+_SUPPORTED_LANGS = ("es", "fr", "en")
+
+
+def _extract_language(request: Request) -> str:
+    """Extract language from middleware state or Accept-Language header.
+
+    The language middleware sets request.state.language (a LanguageCode enum).
+    Falls back to parsing Accept-Language header, defaulting to 'es'.
+    """
+    try:
+        return request.state.language.value
+    except Exception:
+        accept = request.headers.get("Accept-Language", "es")
+        lang = accept.split(",")[0].split("-")[0].strip().lower()
+        return lang if lang in _SUPPORTED_LANGS else "es"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -578,7 +594,7 @@ async def get_filter_options(
     description="Single endpoint providing all data for the citizen dashboard.",
 )
 async def get_dashboard_summary(
-    accept_language: Optional[str] = Header(None),
+    request: Request,
     db=Depends(get_database),
     current_user=Depends(get_current_user),
 ):
@@ -588,12 +604,8 @@ async def get_dashboard_summary(
 
     user_id = current_user.id
 
-    # Parse locale from Accept-Language header (es, fr, en)
-    locale = "es"
-    if accept_language:
-        lang = accept_language.split(",")[0].split("-")[0].strip().lower()
-        if lang in ("es", "fr", "en"):
-            locale = lang
+    # Extract language from middleware state (set by LanguageMiddleware)
+    locale = _extract_language(request)
 
     # Build workflow_code → display label map from workflow engine registry
     wf_labels: dict[str, str] = {}
@@ -696,6 +708,7 @@ async def get_service_request(
     description="List all service requests for the current user with server-side pagination and filters.",
 )
 async def list_service_requests(
+    request: Request,
     status: Optional[str] = Query(None, description="Filter by status"),
     workflow_code: Optional[str] = Query(None, description="Filter by exact workflow code"),
     category: Optional[str] = Query(None, description="Filter by workflow category (e.g. IDENTIDAD, VEHICULOS)"),
@@ -707,6 +720,7 @@ async def list_service_requests(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
 ):
+    lang = _extract_language(request)
     return await service_request_service.list_requests(
         db=db,
         user_id=current_user.id,
@@ -718,6 +732,7 @@ async def list_service_requests(
         date_to=date_to,
         page=page,
         page_size=page_size,
+        language=lang,  # TODO: pass to repository for entity name translation
     )
 
 
@@ -1459,12 +1474,16 @@ _STATUS_PHASE_MAP = {
     """,
 )
 async def get_request_detail_view(
+    http_request: Request,
     request_id: UUID = Path(..., description="The service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
 ):
     """Get complete detail view for citizen Mi Solicitud page."""
     from ..repositories.service_request_repository import service_request_repository
+
+    # Extract language from middleware state for translated names
+    lang = _extract_language(http_request)
 
     # 1. Get full request (reuse existing service)
     request = await service_request_service.get_request(
@@ -1473,7 +1492,23 @@ async def get_request_detail_view(
 
     # 2. Get workflow
     workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
-    workflow_name = workflow.service_name_es if workflow else request.workflow_code
+    workflow_name_es = workflow.service_name_es if workflow else request.workflow_code
+
+    # 2b. Resolve translated workflow name via entity_translations table
+    # Workflows currently only have service_name_es; FR/EN translations come from
+    # the entity_translations table (entity_type='service') when available.
+    workflow_name_translated = workflow_name_es
+    if lang != "es" and workflow:
+        try:
+            from app.modules.translations.services.entity_translation_service import EntityTranslationService
+            tr_service = EntityTranslationService()
+            tr = await tr_service.get_translation_by_key(
+                db, "service", request.workflow_code, lang, "name"
+            )
+            if tr and tr.get("translation_text"):
+                workflow_name_translated = tr["translation_text"]
+        except Exception as tr_err:
+            logger.debug(f"No {lang} translation for workflow {request.workflow_code}: {tr_err}")
 
     # 3. Build stepper phases from workflow steps
     stepper_phases: list[StepperPhase] = []
@@ -1673,7 +1708,8 @@ async def get_request_detail_view(
         receipt_number=receipt_number,
         appointment=appointment,
         documents=documents,
-        workflow_name_es=workflow_name,
+        workflow_name_es=workflow_name_es,
+        workflow_name=workflow_name_translated,
         solicitud_type_display=solicitud_type_display,
     )
 
@@ -1700,11 +1736,14 @@ async def get_request_detail_view(
     """
 )
 async def get_citizen_summary(
+    http_request: Request,
     request_id: UUID = Path(..., description="The service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user)
 ):
     """Get complete summary for citizen confirmation"""
+    lang = _extract_language(http_request)
+
     # Get full request details
     request = await service_request_service.get_request(
         db=db,
@@ -1712,9 +1751,11 @@ async def get_citizen_summary(
         user_id=current_user.id
     )
 
-    # Get workflow for name
+    # Get workflow for name (Spanish is the base; FR/EN via entity_translations)
     workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
     workflow_name = workflow.service_name_es if workflow else request.workflow_code
+    # TODO: use lang to resolve translated workflow_name from entity_translations
+    #       once workflow entity type is added (same pattern as detail-view)
 
     # Build personal data from form_data (mapped from extraction)
     personal_fields = [

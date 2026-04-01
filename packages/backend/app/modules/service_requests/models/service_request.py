@@ -835,6 +835,7 @@ class DetailViewResponse(BaseModel):
 
     # Workflow metadata
     workflow_name_es: str = ""
+    workflow_name: str = Field(default="", description="Translated workflow name (based on Accept-Language)")
     solicitud_type_display: Optional[str] = None
 
 

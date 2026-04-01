@@ -172,6 +172,9 @@ async def list_fiscal_services(
 ):
     """List fiscal services with server-side filtering, search, sorting, and pagination"""
     offset = (page - 1) * page_size
+    # TODO: repository.list() does not yet accept language for i18n translations
+    # of category_name, sector_name, ministry_name (currently hardcoded to name_es).
+    # Once the repository supports it, pass language=language here.
     services, total = await repository.list(
         db, category_id=category_id, status=status,
         ministry_id=ministry_id, sector_id=sector_id, search=search,
@@ -189,8 +192,15 @@ async def list_fiscal_services(
 
 
 @router.get("/{service_id}", response_model=FiscalServiceResponse)
-async def get_fiscal_service(service_id: int, db=Depends(get_database)):
-    """Get fiscal service by ID"""
+async def get_fiscal_service(
+    service_id: int,
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
+    db=Depends(get_database),
+):
+    """Get fiscal service by ID with i18n support"""
+    # TODO: repository.get_by_id() does not yet accept language for i18n translations
+    # of category_name, sector_name, ministry_name (currently hardcoded to name_es).
+    # Once the repository supports it, pass language=language here.
     service = await repository.get_by_id(db, service_id)
     if not service:
         raise TranslatedException(ErrorCode.SERVICE_NOT_FOUND)

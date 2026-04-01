@@ -196,7 +196,8 @@
     "download": "Descargar",
     "share": "Compartir",
     "copy": "Copiar",
-    "copied": "Copiado al portapapeles"
+    "copied": "Copiado al portapapeles",
+    "generatedBy": "Generado por {{app}} — {{date}}"
   },
   "directory": {
     "title": "Directorio de Empresas",

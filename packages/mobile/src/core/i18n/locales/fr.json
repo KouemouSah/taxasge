@@ -196,7 +196,8 @@
     "download": "Télécharger",
     "share": "Partager",
     "copy": "Copier",
-    "copied": "Copié dans le presse-papier"
+    "copied": "Copié dans le presse-papier",
+    "generatedBy": "Généré par {{app}} — {{date}}"
   },
   "directory": {
     "title": "Annuaire des Entreprises",

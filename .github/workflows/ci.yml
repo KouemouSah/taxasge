@@ -84,6 +84,36 @@ jobs:
         working-directory: packages/web
         run: npm run type-check
 
+      - name: Check i18n key parity (ES/FR/EN)
+        run: |
+          node -e "
+          const es = require('./packages/web/messages/es.json');
+          const fr = require('./packages/web/messages/fr.json');
+          const en = require('./packages/web/messages/en.json');
+          function flat(obj, p='') {
+            let k = [];
+            for (const [key,v] of Object.entries(obj)) {
+              const path = p ? p+'.'+key : key;
+              if (typeof v === 'object' && v !== null && !Array.isArray(v)) k.push(...flat(v, path));
+              else k.push(path);
+            }
+            return k;
+          }
+          const esK = new Set(flat(es)), frK = new Set(flat(fr)), enK = new Set(flat(en));
+          const all = new Set([...esK, ...frK, ...enK]);
+          const mES = [...all].filter(k => !esK.has(k));
+          const mFR = [...all].filter(k => !frK.has(k));
+          const mEN = [...all].filter(k => !enK.has(k));
+          console.log('ES:', esK.size, 'FR:', frK.size, 'EN:', enK.size);
+          if (mES.length || mFR.length || mEN.length) {
+            console.error('MISSING ES:', mES.length, mES.slice(0,5));
+            console.error('MISSING FR:', mFR.length, mFR.slice(0,5));
+            console.error('MISSING EN:', mEN.length, mEN.slice(0,5));
+            process.exit(1);
+          }
+          console.log('All 3 files have identical key sets.');
+          "
+
       - name: Build production
         working-directory: packages/web
         env:

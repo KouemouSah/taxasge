@@ -21,6 +21,7 @@ import QRCode from 'qrcode';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 
 import { useAppTheme } from '@core/theme';
+import { formatCurrency, formatDate } from '@core/utils/format';
 import { AppMenuButton } from '@components/ui/app-menu';
 import { useCommerceTypes, useZones, useSimulate } from '@modules/bundles';
 import type { CommerceType, CommerceZone, SimulatorFeeGroup } from '@modules/bundles';
@@ -39,7 +40,7 @@ const COMMERCE_ICONS: Record<string, string> = {
 };
 
 function formatAmount(n: number): string {
-  return n.toLocaleString('es-GQ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' XAF';
+  return formatCurrency(n);
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +254,7 @@ async function generateQrSvg(url: string): Promise<string> {
 }
 
 async function buildPdfHtml(data: any): Promise<string> {
-  const date = new Date().toLocaleDateString('es-GQ', { year: 'numeric', month: 'long', day: 'numeric' });
+  const date = formatDate(new Date(), 'PPP');
   const verifyUrl = `https://taxasge.emacsah.com/licencias-comerciales?commerce=${data.bundle?.commerce_type}&zone=${data.zone?.zone_code}`;
   const qrSvg = await generateQrSvg(verifyUrl);
 
@@ -334,7 +335,7 @@ async function buildPdfHtml(data: any): Promise<string> {
   </body></html>`;
 }
 
-function buildTextNote(data: any): string {
+function buildTextNote(data: any, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const lines: string[] = [];
   lines.push('📋 FICHA TARIFARIA — FACIL');
   lines.push(`${data.bundle?.name_es}`);
@@ -357,7 +358,8 @@ function buildTextNote(data: any): string {
     }
   }
   lines.push('');
-  lines.push(`Generado por Facil — ${new Date().toLocaleDateString('es-GQ')}`);
+  const date = formatDate(new Date(), 'PP');
+  lines.push(t('licenses.generatedBy', { app: 'Facil', date }));
   return lines.join('\n');
 }
 
@@ -365,7 +367,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await Clipboard.setStringAsync(buildTextNote(data));
+    await Clipboard.setStringAsync(buildTextNote(data, t));
     setCopied(true);
   };
 
@@ -377,7 +379,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });
       }
     } catch (_) {
-      await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data) });
+      await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data, t) });
     }
   };
 
@@ -389,7 +391,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });
       }
     } catch (_) {
-      await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data) });
+      await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data, t) });
     }
   };
 

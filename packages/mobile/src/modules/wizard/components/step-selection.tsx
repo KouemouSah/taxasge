@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { formatCurrency } from '@core/utils/format';
 import type { WorkflowStepConfig } from '../types/wizard.types';
 import {
   useWorkflowTranslations,
@@ -282,7 +283,7 @@ export function StepSelection({
   // -----------------------------------------------------------------------
 
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+    <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl }}>
       {/* Step title */}
       {stepConfig.title_es && (
         <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 4 }}>
@@ -394,7 +395,7 @@ export function StepSelection({
                       {opt.tariff != null && (
                         <Text variant="labelSmall" style={{ color: colors.primary, marginTop: 2 }}>
                           {typeof opt.tariff === 'number'
-                            ? `${opt.tariff.toLocaleString()} FCFA`
+                            ? formatCurrency(opt.tariff)
                             : opt.tariff}
                         </Text>
                       )}
