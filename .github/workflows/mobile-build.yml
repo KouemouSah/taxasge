@@ -73,6 +73,9 @@ jobs:
       - name: 📦 Install dependencies
         run: cd packages/mobile && npm ci
 
+      - name: 🔨 Expo prebuild (generate native resources)
+        run: cd packages/mobile && npx expo prebuild --platform android --clean --no-install
+
       - name: 🔧 Create .env.production
         run: |
           cat > packages/mobile/.env.production << 'EOF'
