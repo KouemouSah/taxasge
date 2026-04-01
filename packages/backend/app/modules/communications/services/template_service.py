@@ -57,14 +57,12 @@ class TemplateService:
             from app.config import get_settings
             settings = get_settings()
 
-            # Determine logo URL based on environment
-            if settings.ENVIRONMENT == "production":
-                logo_url = "https://taxasge-prod.firebasestorage.app/system-assets/logos/logo.png"
-            else:
-                logo_url = "https://taxasge-dev.firebasestorage.app/system-assets/logos/logo.png"
-
             # Dynamic site URL from settings (never hardcode domain)
             frontend_url = getattr(settings, 'FRONTEND_URL', 'https://taxasge.emacsah.com')
+
+            # Logo: served from frontend CDN (Firebase Hosting) — fast, no CORS issues
+            # Fallback to Firebase Storage if FRONTEND_URL is not set
+            logo_url = f"{frontend_url}/logo_hd.png"
             # Extract domain from URL for display (e.g., "taxasge.emacsah.com")
             from urllib.parse import urlparse
             site_domain = urlparse(frontend_url).netloc or frontend_url
