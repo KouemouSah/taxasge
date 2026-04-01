@@ -104,7 +104,25 @@
     "lastNameMax": "Máximo 50 caracteres"
   },
   "home": {
-    "title": "Inicio"
+    "title": "Inicio",
+    "quickActions": {
+      "services": "Servicios",
+      "servicesDesc": "850+ trámites",
+      "licencias": "Licencias",
+      "licenciasDesc": "Simulador comercial",
+      "empresas": "Empresas",
+      "empresasDesc": "Directorio nacional",
+      "calculador": "Calculador",
+      "calculadorDesc": "Calcular impuestos"
+    },
+    "hero": {
+      "hero1": "Nada más fácil para servirle",
+      "hero1Desc": "850+ servicios · Pasaporte · Residencia · Vehículos · Empresas",
+      "hero2": "Asistente IA fiscal",
+      "hero2Desc": "Consulta leyes, tasas y procedimientos al instante",
+      "hero3": "Declaraciones fiscales",
+      "hero3Desc": "Descarga, rellena y envía formularios desde tu móvil"
+    }
   },
   "guide": {
     "title": "Guía",

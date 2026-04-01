@@ -28,6 +28,7 @@ import {
   type ServicesByTypeResponse,
   type ServiceByType,
 } from '@/core/api/homepage';
+import { getLocalizedName } from '@/core/utils/i18n-helpers';
 
 // Service type configuration with icons and colors
 const SERVICE_TYPES: Array<{
@@ -83,11 +84,8 @@ export const ServicesDirectory = () => {
     fetchServices();
   }, [selectedType, locale]);
 
-  const getServiceName = (service: ServiceByType) => {
-    if (locale === 'es') return service.name_es;
-    if (locale === 'fr') return service.name_fr || service.name_es;
-    return service.name_en || service.name_es;
-  };
+  const getServiceName = (service: ServiceByType) =>
+    getLocalizedName(service as unknown as Record<string, unknown>, locale);
 
   const handleTypeClick = (type: ServiceType) => {
     setSelectedType(type);

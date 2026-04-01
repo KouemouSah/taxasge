@@ -104,7 +104,25 @@
     "lastNameMax": "Maximum 50 characters"
   },
   "home": {
-    "title": "Home"
+    "title": "Home",
+    "quickActions": {
+      "services": "Services",
+      "servicesDesc": "850+ procedures",
+      "licencias": "Licenses",
+      "licenciasDesc": "Business simulator",
+      "empresas": "Companies",
+      "empresasDesc": "National directory",
+      "calculador": "Calculator",
+      "calculadorDesc": "Calculate taxes"
+    },
+    "hero": {
+      "hero1": "Nothing easier to serve you",
+      "hero1Desc": "850+ services · Passport · Residence · Vehicles · Companies",
+      "hero2": "Tax AI Assistant",
+      "hero2Desc": "Query laws, taxes and procedures instantly",
+      "hero3": "Tax declarations",
+      "hero3Desc": "Download, fill and submit forms from your phone"
+    }
   },
   "guide": {
     "title": "Guide",

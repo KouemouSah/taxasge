@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
+import { getLocalizedName, getLocalizedField } from '@/core/utils/i18n-helpers';
 
 // ============================================================================
 // CONFIGURATION - Services with calculated prices
@@ -399,23 +400,18 @@ function CalculateurPageContent() {
 
   // Get localized service name
   const getServiceName = useCallback((service: CalculableService): string => {
-    if (locale === 'fr') return service.name_fr;
-    if (locale === 'en') return service.name_en;
-    return service.name_es;
+    return getLocalizedName(service as unknown as Record<string, unknown>, locale);
   }, [locale]);
 
   // Get localized variable label
   const getVariableLabel = useCallback((variable: FormulaVariable): string => {
-    if (locale === 'fr') return variable.label_fr;
-    if (locale === 'en') return variable.label_en;
-    return variable.label_es;
+    return getLocalizedField(variable as unknown as Record<string, unknown>, 'label', locale);
   }, [locale]);
 
   // Get localized variable description
   const getVariableDescription = useCallback((variable: FormulaVariable): string | undefined => {
-    if (locale === 'fr') return variable.description_fr;
-    if (locale === 'en') return variable.description_en;
-    return variable.description_es;
+    const desc = getLocalizedField(variable as unknown as Record<string, unknown>, 'description', locale);
+    return desc || undefined;
   }, [locale]);
 
   // Get localized formula description

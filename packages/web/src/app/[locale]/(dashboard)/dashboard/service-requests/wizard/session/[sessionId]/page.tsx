@@ -83,6 +83,7 @@ import type {
 } from '@/modules/service-requests/types/wizard-session'
 import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
 import { serviceRequestsApi } from '@/modules/service-requests/services/api'
+import { getLocalizedField } from '@/core/utils/i18n-helpers'
 import type { CitizenSummaryResponse } from '@/modules/service-requests/types'
 import { useLocationsByEntity } from '@/modules/entity-locations/hooks'
 
@@ -309,14 +310,17 @@ export default function SessionWizardPage() {
 
         return true
       })
-      .map((s) => ({
-        id: s.stepId,
-        type: s.stepType as string,
-        titleEs: s.titleEs || s.stepId,
-        titleFr: s.titleEs || s.stepId, // Backend sends ES only; translations via i18n module
-        titleEn: s.titleEs || s.stepId,
-        icon: STEP_TYPE_ICONS[s.stepType] || FileText,
-      }))
+      .map((s) => {
+        const title = getLocalizedField(s as unknown as Record<string, unknown>, 'title', locale) || s.stepId
+        return {
+          id: s.stepId,
+          type: s.stepType as string,
+          titleEs: title,
+          titleFr: title,
+          titleEn: title,
+          icon: STEP_TYPE_ICONS[s.stepType] || FileText,
+        }
+      })
 
     // Inject site_selection step for non-appointment workflows.
     // Appointment workflows already handle site selection inside AppointmentSelection.
@@ -1202,7 +1206,7 @@ export default function SessionWizardPage() {
                         key={i}
                         className="flex justify-between text-sm text-muted-foreground"
                       >
-                        <span>{s.label_es}</span>
+                        <span>{getLocalizedField(s as unknown as Record<string, unknown>, 'label', locale)}</span>
                         <span>
                           {s.amount.toLocaleString()} {paymentResult.currency}
                         </span>
@@ -1559,7 +1563,7 @@ function SelectionStepRenderer({
   const cfg = stepConfig?.config as Record<string, unknown> | undefined
 
   // Use step title from backend, or fallback
-  const title = stepConfig?.titleEs || (
+  const title = getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'title', locale) || (
     locale === 'es' ? 'Tipo de solicitud'
       : locale === 'fr' ? 'Type de demande'
         : 'Request type'
@@ -1603,25 +1607,25 @@ function SelectionStepRenderer({
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {stepConfig?.descriptionEs && (
-        <p className="text-sm text-muted-foreground">{stepConfig.descriptionEs}</p>
+      {getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'description', locale) && (
+        <p className="text-sm text-muted-foreground">{getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'description', locale)}</p>
       )}
 
       {/* Format A: sections with fields */}
       {sections && sections.map((section) => (
         <div key={section.id} className="space-y-3">
-          {section.title_es && (
+          {getLocalizedField(section as unknown as Record<string, unknown>, 'title', locale) && (
             <h3 className="text-sm font-medium text-muted-foreground">
-              {section.title_es}
+              {getLocalizedField(section as unknown as Record<string, unknown>, 'title', locale)}
             </h3>
           )}
           {section.fields.map((field) => (
             <div key={field.key} className="space-y-2">
-              {field.label_es && (
-                <Label className="text-sm font-medium">{field.label_es}</Label>
+              {getLocalizedField(field as unknown as Record<string, unknown>, 'label', locale) && (
+                <Label className="text-sm font-medium">{getLocalizedField(field as unknown as Record<string, unknown>, 'label', locale)}</Label>
               )}
-              {field.help_text_es && (
-                <p className="text-xs text-muted-foreground">{field.help_text_es}</p>
+              {getLocalizedField(field as unknown as Record<string, unknown>, 'help_text', locale) && (
+                <p className="text-xs text-muted-foreground">{getLocalizedField(field as unknown as Record<string, unknown>, 'help_text', locale)}</p>
               )}
               {field.type === 'select' && field.options ? (
                 <RadioGroup
@@ -1633,10 +1637,10 @@ function SelectionStepRenderer({
                     <div key={opt.value} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
                       <RadioGroupItem value={opt.value} id={`${field.key}-${opt.value}`} />
                       <Label htmlFor={`${field.key}-${opt.value}`} className="cursor-pointer flex-1">
-                        <span>{opt.label_es || opt.value}</span>
-                        {opt.description_es && (
+                        <span>{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.value}</span>
+                        {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale) && (
                           <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                            {opt.description_es}
+                            {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale)}
                           </span>
                         )}
                       </Label>
@@ -1671,10 +1675,10 @@ function SelectionStepRenderer({
               <div key={optValue} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
                 <RadioGroupItem value={optValue} id={`${selectionType}-${optValue}`} />
                 <Label htmlFor={`${selectionType}-${optValue}`} className="cursor-pointer flex-1">
-                  <span className="font-medium">{opt.label_es || optValue}</span>
-                  {opt.description_es && (
+                  <span className="font-medium">{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || optValue}</span>
+                  {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale) && (
                     <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                      {opt.description_es}
+                      {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale)}
                     </span>
                   )}
                   {opt.tariff !== undefined && opt.tariff > 0 && (
@@ -1732,7 +1736,7 @@ function SelectionStepRenderer({
                       disabled={!isChecked && selected.length >= maxSelection}
                     />
                     <Label className="cursor-pointer flex-1">
-                      <span className="font-medium">{opt.label_es || opt.id}</span>
+                      <span className="font-medium">{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.id}</span>
                       {opt.min_age && (
                         <span className="text-xs text-muted-foreground ml-2">
                           (min. {opt.min_age} {locale === 'es' ? 'anos' : locale === 'fr' ? 'ans' : 'years'})

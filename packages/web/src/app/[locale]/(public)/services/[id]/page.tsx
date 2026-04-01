@@ -23,6 +23,7 @@ import {
 } from "@/core/api/serviceDetails"
 import { bundleApi } from "@/modules/fiscal-services/services/bundle-api"
 import type { ServiceBundleBadge } from "@/types/service-bundle"
+import { getLocalizedName } from '@/core/utils/i18n-helpers'
 
 /**
  * Service Details Page
@@ -247,7 +248,7 @@ export default function ServiceDetailsPage() {
             <Link key={b.id} href={`/${locale}/licencias-comerciales`}>
               <Badge variant="outline" className="cursor-pointer hover:bg-primary/10 transition-colors gap-1">
                 <Package className="h-3 w-3" />
-                {t('includedInBundle', { bundle: b.nameEs })}
+                {t('includedInBundle', { bundle: getLocalizedName(b as unknown as Record<string, unknown>, locale) })}
               </Badge>
             </Link>
           ))}

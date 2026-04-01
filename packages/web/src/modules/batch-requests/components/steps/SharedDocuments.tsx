@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { getLocalizedName } from '@/core/utils/i18n-helpers'
 import { FileUp, Trash2, FileCheck, Loader2, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,7 @@ export function SharedDocuments({ hook }: SharedDocumentsProps) {
     removeSharedDocument,
   } = hook
   const t = useTranslations('batch')
+  const locale = useLocale()
 
   const [selectedCode, setSelectedCode] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -89,9 +91,8 @@ export function SharedDocuments({ hook }: SharedDocumentsProps) {
 
   // Helper to get label for a document code
   const getDocLabel = (code: string): string => {
-    // Fallback: use name_es from workflow config
     const doc = documentOptions.find((d) => d.code === code)
-    if (doc) return doc.name_es
+    if (doc) return getLocalizedName(doc as unknown as Record<string, unknown>, locale) || code
 
     return code
   }

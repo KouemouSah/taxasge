@@ -6,7 +6,8 @@
  */
 
 import { useEffect, useMemo, useCallback, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { getLocalizedField } from '@/core/utils/i18n-helpers'
 import {
   CheckCircle,
   Circle,
@@ -79,12 +80,14 @@ interface StepRenderProps {
 export function WorkflowWizard({
   workflowCode,
   subType,
-  locale = 'es',
+  locale: localeProp = 'es',
   onComplete,
   onCancel,
   renderStep,
 }: WorkflowWizardProps) {
   const t = useTranslations('service_requests')
+  const intlLocale = useLocale()
+  const locale = intlLocale || localeProp
   const [isInitializing, setIsInitializing] = useState(true)
 
   const {
@@ -128,17 +131,15 @@ export function WorkflowWizard({
     return Math.round((currentStepNum / totalSteps) * 100)
   }, [workflow, currentRequest])
 
-  // Get step title - uses Spanish as base, translations via next-intl
+  // Get step title - locale-aware with fallback to Spanish
   const getStepTitle = useCallback((step: WorkflowStep): string => {
-    // TODO: Integrate with translations module for fr/en
-    return step.titleEs
-  }, [])
+    return getLocalizedField(step as unknown as Record<string, unknown>, 'title', locale)
+  }, [locale])
 
-  // Get step description - uses Spanish as base, translations via next-intl
+  // Get step description - locale-aware with fallback to Spanish
   const getStepDescription = useCallback((step: WorkflowStep): string => {
-    // TODO: Integrate with translations module for fr/en
-    return step.descriptionEs || ''
-  }, [])
+    return getLocalizedField(step as unknown as Record<string, unknown>, 'description', locale)
+  }, [locale])
 
   // Handle step submission
   const handleSubmit = useCallback(async (data: Record<string, unknown>) => {
@@ -230,7 +231,7 @@ export function WorkflowWizard({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">
-                {workflow.serviceNameEs}
+                {getLocalizedField(workflow as unknown as Record<string, unknown>, 'serviceName', locale)}
               </CardTitle>
               <CardDescription>
                 {t('step_of', {
@@ -299,7 +300,7 @@ export function WorkflowWizard({
             </div>
             <div>
               <CardTitle>{getStepTitle(currentStep)}</CardTitle>
-              {currentStep.descriptionEs && (
+              {getStepDescription(currentStep) && (
                 <CardDescription>{getStepDescription(currentStep)}</CardDescription>
               )}
             </div>
@@ -324,7 +325,7 @@ export function WorkflowWizard({
                     .filter(v => !v.isValid && v.severity === 'error')
                     .map((v, i) => (
                       <li key={i}>
-                        {v.messageEs}
+                        {getLocalizedField(v as unknown as Record<string, unknown>, 'message', locale)}
                       </li>
                     ))}
                 </ul>
@@ -349,7 +350,7 @@ export function WorkflowWizard({
             <DefaultStepContent
               step={currentStep}
               documents={documents}
-              locale={locale}
+              locale={locale as 'es' | 'fr' | 'en'}
               onSubmit={handleSubmit}
               onUploadDocument={handleUploadDocument}
               isSaving={isSaving}
@@ -409,7 +410,7 @@ interface DefaultStepContentProps {
 function DefaultStepContent({
   step,
   documents,
-  locale: _locale,  // TODO: Use for translations via translations module
+  locale: stepLocale,
   onUploadDocument,
   isSaving,
 }: DefaultStepContentProps) {
@@ -433,14 +434,14 @@ function DefaultStepContent({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">
-                    {doc.documentNameEs}
+                    {getLocalizedField(doc as unknown as Record<string, unknown>, 'documentName', stepLocale)}
                     {doc.isRequired && (
                       <span className="text-red-500 ml-1">*</span>
                     )}
                   </h4>
-                  {doc.instructionsEs && (
+                  {getLocalizedField(doc as unknown as Record<string, unknown>, 'instructions', stepLocale) && (
                     <p className="text-sm text-muted-foreground">
-                      {doc.instructionsEs}
+                      {getLocalizedField(doc as unknown as Record<string, unknown>, 'instructions', stepLocale)}
                     </p>
                   )}
                 </div>

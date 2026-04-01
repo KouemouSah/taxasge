@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getLocalizedField } from '@/core/utils/i18n-helpers'
 import { DynamicField } from './DynamicField'
 import type {
   DynamicFormRendererProps,
@@ -74,11 +75,11 @@ function FormSectionCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{section.title_es}</CardTitle>
+          <CardTitle className="text-lg">{getLocalizedField(section as unknown as Record<string, unknown>, 'title', locale)}</CardTitle>
           {getDocumentBadge(section.source_document, locale)}
         </div>
-        {section.description_es && (
-          <CardDescription>{section.description_es}</CardDescription>
+        {getLocalizedField(section as unknown as Record<string, unknown>, 'description', locale) && (
+          <CardDescription>{getLocalizedField(section as unknown as Record<string, unknown>, 'description', locale)}</CardDescription>
         )}
       </CardHeader>
       <CardContent>
@@ -206,11 +207,11 @@ export function DynamicFormRenderer({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Optional form title */}
-      {config.title_es && (
+      {getLocalizedField(config as unknown as Record<string, unknown>, 'title', locale) && (
         <div className="mb-4">
-          <h2 className="text-xl font-semibold">{config.title_es}</h2>
-          {config.description_es && (
-            <p className="text-muted-foreground mt-1">{config.description_es}</p>
+          <h2 className="text-xl font-semibold">{getLocalizedField(config as unknown as Record<string, unknown>, 'title', locale)}</h2>
+          {getLocalizedField(config as unknown as Record<string, unknown>, 'description', locale) && (
+            <p className="text-muted-foreground mt-1">{getLocalizedField(config as unknown as Record<string, unknown>, 'description', locale)}</p>
           )}
         </div>
       )}

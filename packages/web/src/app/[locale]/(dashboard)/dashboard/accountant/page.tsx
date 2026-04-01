@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   ClientList,
   DeadlineCalendar,
@@ -40,6 +41,7 @@ import { formatCurrency } from '@/core/utils'
  */
 export default function AccountantDashboardPage() {
   const router = useRouter()
+  const t = useTranslations('accountant')
   const [selectedClient, setSelectedClient] = useState<string>()
   const [activeTab, setActiveTab] = useState('overview')
 
@@ -66,9 +68,9 @@ export default function AccountantDashboardPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Panel de Contador</h1>
+          <h1 className="text-3xl font-bold">{t('title')}</h1>
           <p className="text-muted-foreground">
-            Gestione todas sus empresas clientes en un solo lugar
+            {t('subtitle')}
           </p>
         </div>
 
@@ -77,7 +79,7 @@ export default function AccountantDashboardPage() {
           <ClientSwitcher
             value={selectedClient}
             onValueChange={setSelectedClient}
-            placeholder="Seleccionar cliente..."
+            placeholder={t('selectClient')}
           />
         </div>
       </div>
@@ -93,10 +95,10 @@ export default function AccountantDashboardPage() {
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-red-600 mb-1">
-                    {overdueDeadlines.length} vencimiento(s) atrasado(s)
+                    {t('overdueCount', { count: overdueDeadlines.length })}
                   </h3>
                   <p className="text-sm text-red-600">
-                    Hay declaraciones vencidas que requieren atención inmediata.
+                    {t('overdueDescription')}
                   </p>
                 </div>
                 <Button
@@ -105,7 +107,7 @@ export default function AccountantDashboardPage() {
                   onClick={() => setActiveTab('deadlines')}
                   className="border-red-500 text-red-600 hover:bg-red-100"
                 >
-                  Ver detalles
+                  {t('viewDetails')}
                 </Button>
               </div>
             </Card>
@@ -118,10 +120,10 @@ export default function AccountantDashboardPage() {
                 <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-orange-600 mb-1">
-                    {highPriorityTasks.length} tarea(s) de alta prioridad
+                    {t('highPriorityCount', { count: highPriorityTasks.length })}
                   </h3>
                   <p className="text-sm text-orange-600">
-                    Hay tareas urgentes que requieren su revisión.
+                    {t('highPriorityDescription')}
                   </p>
                 </div>
                 <Button
@@ -130,7 +132,7 @@ export default function AccountantDashboardPage() {
                   onClick={() => setActiveTab('tasks')}
                   className="border-orange-500 text-orange-600 hover:bg-orange-100"
                 >
-                  Ver tareas
+                  {t('viewTasks')}
                 </Button>
               </div>
             </Card>
@@ -157,10 +159,10 @@ export default function AccountantDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Clientes Totales</p>
+                <p className="text-sm text-muted-foreground">{t('stats.totalClients')}</p>
                 <p className="text-3xl font-bold">{summary.totalClients}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {summary.activeClients} activos
+                  {t('stats.activeCount', { count: summary.activeClients })}
                 </p>
               </div>
               <div className="p-3 bg-blue-100 dark:bg-blue-950/20 rounded-lg">
@@ -173,12 +175,12 @@ export default function AccountantDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Declaraciones</p>
+                <p className="text-sm text-muted-foreground">{t('stats.declarations')}</p>
                 <p className="text-3xl font-bold">
                   {summary.totalPendingDeclarations}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {summary.totalInReviewDeclarations} en revisión
+                  {t('stats.inReviewCount', { count: summary.totalInReviewDeclarations })}
                 </p>
               </div>
               <div className="p-3 bg-orange-100 dark:bg-orange-950/20 rounded-lg">
@@ -191,10 +193,10 @@ export default function AccountantDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Vencimientos</p>
+                <p className="text-sm text-muted-foreground">{t('stats.deadlines')}</p>
                 <p className="text-3xl font-bold">{summary.upcomingDeadlines}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {summary.dueThisWeekCount} esta semana
+                  {t('stats.dueThisWeek', { count: summary.dueThisWeekCount })}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 dark:bg-purple-950/20 rounded-lg">
@@ -207,12 +209,12 @@ export default function AccountantDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Monto Total</p>
+                <p className="text-sm text-muted-foreground">{t('stats.totalAmount')}</p>
                 <p className="text-3xl font-bold">
                   {formatCurrency(summary.totalAmountDue)}
                 </p>
                 <p className="text-xs text-red-600 mt-1">
-                  {formatCurrency(summary.totalOverdueAmount)} vencido
+                  {t('stats.overdueAmount', { amount: formatCurrency(summary.totalOverdueAmount) })}
                 </p>
               </div>
               <div className="p-3 bg-green-100 dark:bg-green-950/20 rounded-lg">
@@ -226,10 +228,10 @@ export default function AccountantDashboardPage() {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="deadlines">Vencimientos</TabsTrigger>
-          <TabsTrigger value="tasks">Tareas</TabsTrigger>
+          <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="clients">{t('tabs.clients')}</TabsTrigger>
+          <TabsTrigger value="deadlines">{t('tabs.deadlines')}</TabsTrigger>
+          <TabsTrigger value="tasks">{t('tabs.tasks')}</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -238,9 +240,9 @@ export default function AccountantDashboardPage() {
             {/* High Priority Tasks */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Tareas Prioritarias</h3>
+                <h3 className="text-lg font-semibold">{t('priorityTasks')}</h3>
                 <Badge variant="destructive">
-                  {summary?.urgentCount || 0} urgentes
+                  {t('urgentCount', { count: summary?.urgentCount || 0 })}
                 </Badge>
               </div>
               <TaskQueue
@@ -253,13 +255,13 @@ export default function AccountantDashboardPage() {
             {/* Recent Clients Activity */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Clientes Recientes</h3>
+                <h3 className="text-lg font-semibold">{t('recentClients')}</h3>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveTab('clients')}
                 >
-                  Ver todos
+                  {t('viewAll')}
                 </Button>
               </div>
               <ClientList
@@ -274,13 +276,13 @@ export default function AccountantDashboardPage() {
           {/* Upcoming Deadlines */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Próximos Vencimientos</h3>
+              <h3 className="text-lg font-semibold">{t('upcomingDeadlines')}</h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setActiveTab('deadlines')}
               >
-                Ver calendario
+                {t('viewCalendar')}
               </Button>
             </div>
             <DeadlineCalendar

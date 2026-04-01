@@ -25,13 +25,14 @@ import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { agentCreationApi } from "@/modules/agents-admin/services/api"
 import { isPasswordStrong } from "@/core/validations/auth"
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 
 function ActivateAdminContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const locale = useLocale()
+  const t = useTranslations('auth.activateAdmin')
 
   // Form state
   const [email, setEmail] = useState("")
@@ -61,8 +62,8 @@ function ActivateAdminContent() {
     if (!email) {
       toast({
         variant: "destructive",
-        title: "Email requis",
-        description: "Veuillez entrer votre adresse email.",
+        title: t('emailRequired'),
+        description: t('emailRequiredDesc'),
       })
       return false
     }
@@ -70,8 +71,8 @@ function ActivateAdminContent() {
     if (verificationCode.length !== 6) {
       toast({
         variant: "destructive",
-        title: "Code invalide",
-        description: "Le code de verification doit contenir 6 chiffres.",
+        title: t('codeInvalid'),
+        description: t('codeInvalidDesc'),
       })
       return false
     }
@@ -79,8 +80,8 @@ function ActivateAdminContent() {
     if (!isPasswordStrong(password)) {
       toast({
         variant: "destructive",
-        title: "Mot de passe trop faible",
-        description: "Le mot de passe doit contenir au moins 8 caracteres, une majuscule, une minuscule, un chiffre et un caractere special.",
+        title: t('passwordWeak'),
+        description: t('passwordWeakDesc'),
       })
       return false
     }
@@ -88,8 +89,8 @@ function ActivateAdminContent() {
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
-        title: "Mots de passe differents",
-        description: "Les mots de passe ne correspondent pas.",
+        title: t('passwordsMismatch'),
+        description: t('passwordsMismatchDesc'),
       })
       return false
     }
@@ -114,8 +115,8 @@ function ActivateAdminContent() {
       setIsActivated(true)
 
       toast({
-        title: "Compte active!",
-        description: response.message || "Votre compte administrateur a ete active avec succes.",
+        title: t('activationSuccess'),
+        description: response.message || t('activationSuccessDesc'),
       })
 
       // Redirect to login after 2 seconds
@@ -124,10 +125,10 @@ function ActivateAdminContent() {
       }, 2000)
 
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'activation"
+      const errorMessage = error instanceof Error ? error.message : t('activationError')
       toast({
         variant: "destructive",
-        title: "Erreur d'activation",
+        title: t('activationErrorTitle'),
         description: errorMessage,
       })
     } finally {
@@ -154,12 +155,12 @@ function ActivateAdminContent() {
             <div className="flex justify-center mb-4">
               <CheckCircle className="h-16 w-16 text-green-500" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Compte Active!</h1>
+            <h1 className="text-2xl font-bold mb-2">{t('accountActivated')}</h1>
             <p className="text-muted-foreground mb-4">
-              Votre compte administrateur a ete active avec succes. Vous allez etre redirige vers la page de connexion...
+              {t('accountActivatedDesc')}
             </p>
             <Button onClick={() => router.push(`/${locale}/auth`)}>
-              Se connecter maintenant
+              {t('loginNow')}
             </Button>
           </div>
         </main>
@@ -178,28 +179,28 @@ function ActivateAdminContent() {
             <div className="flex justify-center mb-4">
               <ShieldCheck className="h-16 w-16 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold mb-2">Activer votre compte Admin</h1>
+            <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
             <p className="text-muted-foreground">
-              Entrez le code recu par email et choisissez votre mot de passe
+              {t('pageSubtitle')}
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Activation du compte</CardTitle>
+              <CardTitle>{t('cardTitle')}</CardTitle>
               <CardDescription>
-                Completez les informations ci-dessous pour activer votre compte administrateur Facil.
+                {t('cardDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleActivate} className="space-y-4">
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('emailLabel')}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="votre.email@example.com"
+                    placeholder={t('emailPlaceholder')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -210,7 +211,7 @@ function ActivateAdminContent() {
 
                 {/* Verification Code */}
                 <div className="space-y-2">
-                  <Label htmlFor="code">Code de verification</Label>
+                  <Label htmlFor="code">{t('verificationCodeLabel')}</Label>
                   <Input
                     id="code"
                     type="text"
@@ -223,19 +224,19 @@ function ActivateAdminContent() {
                     className="text-center text-2xl tracking-widest"
                   />
                   <p className="text-sm text-muted-foreground">
-                    Code a 6 chiffres recu par email
+                    {t('verificationCodeHint')}
                   </p>
                 </div>
 
                 {/* Password */}
                 <div className="space-y-2">
-                  <Label htmlFor="password">Mot de passe</Label>
+                  <Label htmlFor="password">{t('passwordLabel')}</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="Min. 8 car., majuscule, minuscule, chiffre, special"
+                      placeholder={t('passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -261,13 +262,13 @@ function ActivateAdminContent() {
 
                 {/* Confirm Password */}
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Label htmlFor="confirmPassword">{t('confirmPasswordLabel')}</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="Confirmez votre mot de passe"
+                      placeholder={t('confirmPasswordPlaceholder')}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
@@ -299,12 +300,12 @@ function ActivateAdminContent() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Activation en cours...
+                      {t('activating')}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Activer mon compte
+                      {t('activateButton')}
                     </>
                   )}
                 </Button>
@@ -314,9 +315,9 @@ function ActivateAdminContent() {
 
           {/* Help text */}
           <p className="text-sm text-center text-muted-foreground mt-4">
-            Vous avez deja un compte?{' '}
+            {t('alreadyHaveAccount')}{' '}
             <Button variant="link" className="p-0" onClick={() => router.push(`/${locale}/auth`)}>
-              Se connecter
+              {t('loginLink')}
             </Button>
           </p>
         </div>

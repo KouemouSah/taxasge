@@ -130,19 +130,8 @@ const QUICK_ACTION_ROUTES: Record<string, string> = {
   calculador: '/calculator',
 };
 
-const QUICK_ACTION_LABELS: Record<string, Record<string, string>> = {
-  services: { es: 'Servicios', fr: 'Services', en: 'Services' },
-  licencias: { es: 'Licencias', fr: 'Licences', en: 'Licenses' },
-  empresas: { es: 'Empresas', fr: 'Entreprises', en: 'Companies' },
-  calculador: { es: 'Calculador', fr: 'Calculateur', en: 'Calculator' },
-};
-
-const QUICK_ACTION_DESCS: Record<string, Record<string, string>> = {
-  services_desc: { es: '850+ trámites', fr: '850+ démarches', en: '850+ procedures' },
-  licencias_desc: { es: 'Simulador comercial', fr: 'Simulateur commercial', en: 'Business simulator' },
-  empresas_desc: { es: 'Directorio nacional', fr: 'Annuaire national', en: 'National directory' },
-  calculador_desc: { es: 'Calcular impuestos', fr: 'Calculer impôts', en: 'Calculate taxes' },
-};
+// Quick action labels and descriptions are now in i18n JSON files
+// under home.quickActions.{labelKey} and home.quickActions.{labelKey}Desc
 
 // Hero slides data
 interface HeroSlide {
@@ -157,30 +146,23 @@ const HERO_SLIDES: HeroSlide[] = [
   {
     isLogo: true,
     bgColor: '#0D6E3F', bgEnd: '#1B9E5A',
-    titleKey: 'hero1', descKey: 'hero1_desc',
+    titleKey: 'hero1', descKey: 'hero1Desc',
   },
   {
     mainIcon: 'head-lightbulb-outline',
     smallIcons: ['scale-balance', 'gavel', 'book-open-page-variant-outline'],
     bgColor: '#1565C0', bgEnd: '#42A5F5',
-    titleKey: 'hero2', descKey: 'hero2_desc', badge: 'IA',
+    titleKey: 'hero2', descKey: 'hero2Desc', badge: 'IA',
   },
   {
     mainIcon: 'account-edit-outline',
     smallIcons: ['file-sign', 'calculator-variant', 'send-check-outline'],
     bgColor: '#E65100', bgEnd: '#FF8A65',
-    titleKey: 'hero3', descKey: 'hero3_desc', badge: 'PDF',
+    titleKey: 'hero3', descKey: 'hero3Desc', badge: 'PDF',
   },
 ];
 
-const HERO_I18N: Record<string, Record<string, string>> = {
-  hero1: { es: 'Nada más fácil para servirle', fr: 'Rien de plus facile pour vous servir', en: 'Nothing easier to serve you' },
-  hero1_desc: { es: '850+ servicios · Pasaporte · Residencia · Vehículos · Empresas', fr: '850+ services · Passeport · Résidence · Véhicules · Entreprises', en: '850+ services · Passport · Residence · Vehicles · Companies' },
-  hero2: { es: 'Asistente IA fiscal', fr: 'Assistant IA fiscal', en: 'Tax AI Assistant' },
-  hero2_desc: { es: 'Consulta leyes, tasas y procedimientos al instante', fr: 'Consultez lois, taxes et procédures instantanément', en: 'Query laws, taxes and procedures instantly' },
-  hero3: { es: 'Declaraciones fiscales', fr: 'Déclarations fiscales', en: 'Tax declarations' },
-  hero3_desc: { es: 'Descarga, rellena y envía formularios desde tu móvil', fr: 'Téléchargez, remplissez et envoyez les formulaires', en: 'Download, fill and submit forms from your phone' },
-};
+// Hero translations are now in i18n JSON files under home.hero.{key}
 
 const HERO_WIDTH = Dimensions.get('window').width - 32; // paddingHorizontal 16 each side
 
@@ -274,10 +256,10 @@ function PublicHome() {
                 <View key={i} style={[pubStyles.heroSlideLogo, { width: HERO_WIDTH }]}>
                   <Image source={APP_LOGO} style={pubStyles.heroLogoBig} resizeMode="contain" />
                   <Text style={pubStyles.heroLogoTitle}>
-                    {HERO_I18N[item.titleKey]?.[lang] ?? ''}
+                    {t(`home.hero.${item.titleKey}`)}
                   </Text>
                   <Text style={pubStyles.heroLogoDesc}>
-                    {HERO_I18N[item.descKey]?.[lang] ?? ''}
+                    {t(`home.hero.${item.descKey}`)}
                   </Text>
                 </View>
               ) : (
@@ -294,10 +276,10 @@ function PublicHome() {
                   </View>
                   <View style={pubStyles.heroTextBlock}>
                     <Text style={pubStyles.heroTitle}>
-                      {HERO_I18N[item.titleKey]?.[lang] ?? ''}
+                      {t(`home.hero.${item.titleKey}`)}
                     </Text>
                     <Text style={pubStyles.heroDesc}>
-                      {HERO_I18N[item.descKey]?.[lang] ?? ''}
+                      {t(`home.hero.${item.descKey}`)}
                     </Text>
                     {item.smallIcons && (
                       <View style={pubStyles.heroMiniIcons}>
@@ -341,10 +323,10 @@ function PublicHome() {
                       <MaterialCommunityIcons name={item.icon} size={28} color={item.color} />
                     </View>
                     <Text style={[pubStyles.actionLabel, { color: item.color }]}>
-                      {QUICK_ACTION_LABELS[item.labelKey]?.[lang] ?? item.labelKey}
+                      {t(`home.quickActions.${item.labelKey}`)}
                     </Text>
                     <Text style={{ fontSize: 10, color: item.color, opacity: 0.7, marginTop: 2 }}>
-                      {QUICK_ACTION_DESCS[item.descKey]?.[lang] ?? ''}
+                      {t(`home.quickActions.${item.labelKey}Desc`)}
                     </Text>
                   </Pressable>
                 ))}

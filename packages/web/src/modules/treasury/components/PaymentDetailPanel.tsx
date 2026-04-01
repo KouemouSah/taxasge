@@ -7,7 +7,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { getLocalizedField } from '@/core/utils/i18n-helpers';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -109,6 +110,7 @@ export function PaymentDetailPanel({
   isEscalating = false,
 }: PaymentDetailPanelProps) {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   // Dialog states
   const [comment, setComment] = useState('');
@@ -249,7 +251,7 @@ export function PaymentDetailPanel({
                 {payment.calculationDetails.supplements.map((supp, idx) => (
                   <div key={idx} className="flex justify-between text-xs">
                     <span className="text-muted-foreground truncate mr-2">
-                      {supp.nameEs} x{supp.quantity}
+                      {getLocalizedField(supp as unknown as Record<string, unknown>, 'name', locale)} x{supp.quantity}
                     </span>
                     <span className="shrink-0">{formatCurrency(supp.subtotal)}</span>
                   </div>

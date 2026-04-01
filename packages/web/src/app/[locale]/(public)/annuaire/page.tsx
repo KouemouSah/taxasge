@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   Building2, Search, MapPin, ChevronLeft, ChevronRight, ChevronDown,
   Briefcase, FileText, Users, LayoutGrid, List, X, SlidersHorizontal,
@@ -18,6 +18,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose,
 } from '@/components/ui/sheet'
 import { companyPublicApi } from '@/modules/companies/services/api'
+import { getLocalizedName } from '@/core/utils/i18n-helpers'
 import {
   useAnnuaireSearch,
   useAnnuaireZones,
@@ -69,6 +70,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 // =============================================================================
 
 export default function AnnuairePage() {
+  const locale = useLocale()
   const t = useTranslations('public')
 
   // --- Search & filter state ---
@@ -251,7 +253,7 @@ export default function AnnuairePage() {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">{t('annuaire.allZones')}</SelectItem>
-          {zones.map(z => <SelectItem key={z.id} value={z.id}>{z.zone_code} — {z.name_es}</SelectItem>)}
+          {zones.map(z => <SelectItem key={z.id} value={z.id}>{z.zone_code} — {getLocalizedName(z as unknown as Record<string, unknown>, locale)}</SelectItem>)}
         </SelectContent>
       </Select>
 
@@ -596,7 +598,7 @@ export default function AnnuairePage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('annuaire.allZones')}</SelectItem>
-              {zones.map(z => <SelectItem key={z.id} value={z.id}>{z.zone_code} — {z.name_es}</SelectItem>)}
+              {zones.map(z => <SelectItem key={z.id} value={z.id}>{z.zone_code} — {getLocalizedName(z as unknown as Record<string, unknown>, locale)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

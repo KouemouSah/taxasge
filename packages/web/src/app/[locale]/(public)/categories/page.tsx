@@ -12,6 +12,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory, type CategoryWithServices } from "@/core/api/homepage"
 import Breadcrumb from "@/components/ui/breadcrumb"
+import { getLocalizedName, getLocalizedDescription } from '@/core/utils/i18n-helpers'
 
 type ViewMode = 'kanban' | 'list'
 
@@ -81,29 +82,12 @@ export default function CategoriesPage() {
     router.push(`/${locale}/services?category=${category.category_code}`)
   }
 
-  // Get localized category name based on locale
-  const getCategoryName = (category: CategoryWithServices) => {
-    switch (locale) {
-      case 'fr':
-        return category.name_fr || category.name_es
-      case 'en':
-        return category.name_en || category.name_es
-      default:
-        return category.name_es
-    }
-  }
+  // Get localized category name/description based on locale
+  const getCategoryName = (category: CategoryWithServices) =>
+    getLocalizedName(category as unknown as Record<string, unknown>, locale)
 
-  // Get localized category description based on locale
-  const getCategoryDescription = (category: CategoryWithServices) => {
-    switch (locale) {
-      case 'fr':
-        return category.description_fr || category.description_es
-      case 'en':
-        return category.description_en || category.description_es
-      default:
-        return category.description_es
-    }
-  }
+  const getCategoryDescription = (category: CategoryWithServices) =>
+    getLocalizedDescription(category as unknown as Record<string, unknown>, locale)
 
   return (
     <div className="container mx-auto px-4 py-8 bg-background">
