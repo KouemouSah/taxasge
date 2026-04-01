@@ -39,6 +39,9 @@ class ClassifyPreviewRequest(BaseModel):
     extraction: Dict[str, Any] = Field(
         ..., description="GeminiDocumentProcessor extraction output",
     )
+    zone_id: Optional[str] = Field(
+        None, description="User-selected zone override (UUID). When provided, categories are fetched for this zone.",
+    )
 
 
 class BundleInitiateFromUploadRequest(BaseModel):
@@ -168,6 +171,7 @@ async def classify_preview(
     try:
         result = await BundleWorkflowService.preview_classification(
             db, extraction=body.extraction,
+            override_zone_id=body.zone_id,
         )
         return result
     except ValueError as e:

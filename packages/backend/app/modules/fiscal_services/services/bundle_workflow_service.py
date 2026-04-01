@@ -189,59 +189,103 @@ class BundleWorkflowService:
     @staticmethod
     async def preview_classification(
         conn, extraction: Dict[str, Any],
+        override_zone_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Preview classification without creating anything.
+
+        Args:
+            extraction: OCR extraction data
+            override_zone_id: User-selected zone (overrides OCR detection).
+                When provided, categories are fetched for THIS zone.
 
         Returns:
         - extracted_data: key fields from OCR
         - zone_resolved: bool
         - zone: {id, code, name} if resolved
-        - available_zones: [{id, code, name}] if not resolved
+        - available_zones: ALWAYS returned (user can correct OCR zone)
         - classification: {regimen_fiscal, commerce_type, confidence}
-        - available_categories: [{commerce_type, bundle_name}] for manual selection
+        - available_categories: categories for resolved/override zone
+        - available_commerce_types: ALL commerce_types for manual selection
         """
         from app.modules.companies.services.classification_agent import ClassificationAgent
 
         # 1. Map extraction to company data
         company_data = ClassificationAgent.map_gemini_extraction_to_company_data(extraction)
 
-        # 2. Resolve zone from localidad
+        # 2. Resolve zone: user override > OCR extraction > None
+        #
+        # Zone resolution is TIER-based, not city-based:
+        #   - A city (Malabo) maps to a tier (A = Capitales de Regiones)
+        #   - Within that tier, there are 3 ranks: A1 (centro), A2 (secundario), A3 (periferia)
+        #   - The user must select the specific zone (A1/A2/A3) based on their commerce location
+        #   - The OCR can detect the CITY → TIER, but NOT the rank (1/2/3)
         zone_id = None
         zone_info = None
-        localidad = company_data.get("localidad", "")
+        detected_tier = None  # Tier detected from OCR localidad
+        detected_city = None
 
-        if localidad:
-            city_row = await conn.fetchrow(
-                "SELECT c.id as city_id, c.zone_id, c.name as city_name, "
-                "cz.zone_code, cz.name_es as zone_name "
-                "FROM cities c LEFT JOIN commerce_zones cz ON cz.id = c.zone_id "
-                "WHERE c.name ILIKE $1",
-                localidad
-            )
-            if city_row and city_row["zone_id"]:
-                zone_id = city_row["zone_id"]
-                zone_info = {
-                    "id": str(city_row["zone_id"]),
-                    "code": city_row["zone_code"],
-                    "name": city_row["zone_name"],
-                    "city": city_row["city_name"],
-                }
+        if override_zone_id:
+            # User explicitly selected a zone — use it (final, no ambiguity)
+            from uuid import UUID as _UUID
+            try:
+                zid = _UUID(override_zone_id)
+                zrow = await conn.fetchrow(
+                    "SELECT cz.id, cz.zone_code, cz.zone_tier, cz.name_es "
+                    "FROM commerce_zones cz WHERE cz.id = $1",
+                    zid
+                )
+                if zrow:
+                    zone_id = zrow["id"]
+                    zone_info = {
+                        "id": str(zrow["id"]),
+                        "code": zrow["zone_code"],
+                        "name": zrow["name_es"],
+                        "tier": zrow["zone_tier"],
+                    }
+            except (ValueError, Exception):
+                pass
 
-        # 3. Get all available zones (for manual selection fallback)
-        available_zones = []
         if not zone_id:
-            rows = await conn.fetch(
-                "SELECT cz.id, cz.zone_code, cz.name_es, "
-                "array_agg(DISTINCT c.name ORDER BY c.name) as cities "
-                "FROM commerce_zones cz "
-                "JOIN cities c ON c.zone_id = cz.id "
-                "GROUP BY cz.id, cz.zone_code, cz.name_es "
-                "ORDER BY cz.zone_code"
-            )
-            available_zones = [
-                {"id": str(r["id"]), "code": r["zone_code"], "name": r["name_es"], "cities": r["cities"]}
-                for r in rows
-            ]
+            # Try OCR localidad extraction → resolves to TIER (not specific zone)
+            localidad = company_data.get("localidad", "")
+            if localidad:
+                city_row = await conn.fetchrow(
+                    "SELECT c.id as city_id, c.name as city_name, "
+                    "cz.zone_tier, cz.zone_code, cz.name_es as zone_name "
+                    "FROM cities c "
+                    "LEFT JOIN commerce_zones cz ON cz.id = c.zone_id "
+                    "WHERE c.name ILIKE $1",
+                    localidad.strip()
+                )
+                if city_row and city_row["zone_tier"]:
+                    detected_tier = city_row["zone_tier"]
+                    detected_city = city_row["city_name"]
+                    # Do NOT set zone_id — user must choose specific zone within tier
+
+        # 3. Build available zones — filtered by detected tier if available
+        # If OCR detected city → show only zones of that tier (e.g., A1/A2/A3 for Malabo)
+        # If no city detected → show ALL 12 zones
+        # If user already selected a zone (override) → still show tier zones for reference
+        all_zones = await conn.fetch(
+            "SELECT cz.id, cz.zone_code, cz.zone_tier, cz.zone_rank, cz.name_es, "
+            "cz.description_es "
+            "FROM commerce_zones cz "
+            "ORDER BY cz.zone_code"
+        )
+
+        available_zones = []
+        for r in all_zones:
+            available_zones.append({
+                "id": str(r["id"]),
+                "code": r["zone_code"],
+                "tier": r["zone_tier"],
+                "rank": r["zone_rank"],
+                "name": r["name_es"],
+                "description": r["description_es"] or "",
+            })
+
+        # Zones matching detected tier (for smart pre-filtering in UI)
+        tier_zones = [z for z in available_zones if z["tier"] == detected_tier] if detected_tier else []
 
         # 4. Classify (rules-based, no DB writes)
         classification_agent = ClassificationAgent()
@@ -249,7 +293,7 @@ class BundleWorkflowService:
             conn, company_data, zone_id=zone_id
         )
 
-        # 5. Get available bundles/categories for the zone (for manual selection)
+        # 5. Get available categories FOR the resolved/override zone
         available_categories = []
         if zone_id:
             cat_rows = await conn.fetch(
@@ -265,6 +309,18 @@ class BundleWorkflowService:
                 for r in cat_rows
             ]
 
+        # 6. ALWAYS get all commerce_types (user can select if classification fails)
+        all_types = await conn.fetch(
+            "SELECT DISTINCT sb.commerce_type, sb.name_es as bundle_name "
+            "FROM service_bundles sb "
+            "WHERE sb.is_active = true "
+            "ORDER BY sb.commerce_type"
+        )
+        available_commerce_types = [
+            {"commerce_type": r["commerce_type"], "bundle_name": r["bundle_name"]}
+            for r in all_types
+        ]
+
         return {
             "extracted_data": {
                 "legal_name": company_data.get("legal_name"),
@@ -278,6 +334,9 @@ class BundleWorkflowService:
             },
             "zone_resolved": zone_id is not None,
             "zone": zone_info,
+            "detected_tier": detected_tier,
+            "detected_city": detected_city,
+            "tier_zones": tier_zones,
             "available_zones": available_zones,
             "classification": {
                 "regimen_fiscal": classification.regimen_fiscal,
@@ -285,6 +344,7 @@ class BundleWorkflowService:
                 "confidence": classification.confidence,
             },
             "available_categories": available_categories,
+            "available_commerce_types": available_commerce_types,
             "needs_manual_zone": zone_id is None,
             "needs_manual_category": not classification.commerce_type,
         }

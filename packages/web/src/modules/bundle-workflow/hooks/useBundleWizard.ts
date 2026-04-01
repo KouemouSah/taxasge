@@ -273,19 +273,29 @@ export function useBundleWizard(): UseBundleWizardReturn {
       } else if (documentPreview) {
         const extraction = documentPreview.extraction || {}
 
-        // Step A: Preview classification (if not already done)
-        if (!classificationPreview) {
-          const preview = await bundleWorkflowApi.classifyPreview(extraction)
+        // Step A: Preview classification
+        // Re-call with zone_id when user has selected a zone (to get categories)
+        const needsClassification = !classificationPreview
+          || (selectedZoneId && classificationPreview.needsManualZone)
+          || (selectedZoneId && classificationPreview.availableCategories.length === 0)
+
+        if (needsClassification) {
+          const preview = await bundleWorkflowApi.classifyPreview(
+            extraction, selectedZoneId || undefined,
+          )
           setClassificationPreview(preview)
 
-          // If zone or category needs manual selection, stop here
-          if (preview.needsManualZone || preview.needsManualCategory) {
+          // If STILL needs manual selection (zone or category), stop here
+          const needsZone = preview.needsManualZone && !selectedZoneId
+          const needsCategory = (preview.needsManualCategory || preview.availableCategories.length > 0)
+            && !selectedCommerceType
+          if (needsZone || needsCategory) {
             setIsInitiating(false)
             return // UI will show selectors, user clicks "Confirm" to retry
           }
         }
 
-        // Step B: Initiate with overrides if manually selected
+        // Step B: Initiate with overrides
         const zoneOverride = selectedZoneId || classificationPreview?.zone?.id || undefined
         const categoryOverride = selectedCommerceType || classificationPreview?.classification?.commerceType || undefined
 

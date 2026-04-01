@@ -69,8 +69,9 @@ export const bundleWorkflowApi = {
    */
   classifyPreview: (
     extraction: Record<string, unknown>,
+    zoneId?: string,
   ): Promise<ClassifyPreviewResponse> =>
-    post('/classify-preview', { extraction }),
+    post('/classify-preview', { extraction, zone_id: zoneId || undefined }),
 
   /**
    * Create company from OCR extraction, classify, then initiate workflow.

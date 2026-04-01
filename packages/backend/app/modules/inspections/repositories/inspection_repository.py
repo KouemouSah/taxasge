@@ -595,9 +595,6 @@ class InspectionRepository:
         result = dict(row)
         company_id = result["company_id"]
 
-        # Fix m9: Run 4 sub-queries in parallel with asyncio.gather
-        import asyncio
-
         async def _get_obligations():
             rows = await conn.fetch("""
                 SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
@@ -656,14 +653,12 @@ class InspectionRepository:
             """, company_id)
             return [dict(s) for s in rows]
 
-        obligations, prev_inspections, active_med, seal_history = (
-            await asyncio.gather(
-                _get_obligations(),
-                _get_prev_inspections(),
-                _get_active_med(),
-                _get_seal_history(),
-            )
-        )
+        # Sequential execution — asyncpg does NOT support concurrent queries
+        # on a single connection (InterfaceError: another operation in progress)
+        obligations = await _get_obligations()
+        prev_inspections = await _get_prev_inspections()
+        active_med = await _get_active_med()
+        seal_history = await _get_seal_history()
 
         result["obligations"] = obligations
         result["previous_inspections"] = prev_inspections

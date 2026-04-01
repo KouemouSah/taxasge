@@ -111,15 +111,38 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
   if (!wizard.licenseData) {
     // Classification preview needs manual zone/category selection
     const preview = wizard.classificationPreview
-    if (preview && (preview.needsManualZone || preview.needsManualCategory)) {
+    if (preview) {
       const classLabels = {
         title: { es: 'Clasificación de la Empresa', fr: "Classification de l'Entreprise", en: 'Company Classification' },
         extracted: { es: 'Datos extraídos del documento', fr: 'Données extraites du document', en: 'Data extracted from document' },
-        selectZone: { es: 'Seleccione la zona fiscal', fr: 'Sélectionnez la zone fiscale', en: 'Select the fiscal zone' },
-        selectCategory: { es: 'Seleccione la categoría', fr: 'Sélectionnez la catégorie', en: 'Select the category' },
+        selectZone: { es: 'Zona fiscal', fr: 'Zone fiscale', en: 'Fiscal zone' },
+        detectedZone: { es: 'Zona detectada (puede modificar)', fr: 'Zone détectée (modifiable)', en: 'Detected zone (editable)' },
+        selectCategory: { es: 'Categoría de actividad', fr: "Catégorie d'activité", en: 'Activity category' },
         confirm: { es: 'Confirmar y continuar', fr: 'Confirmer et continuer', en: 'Confirm and continue' },
       }
       const ed = preview.extractedData
+
+      // Zone: user selection > auto-detected
+      const effectiveZoneId = wizard.selectedZoneId || preview.zone?.id || ''
+
+      // Show tier-filtered zones if OCR detected a city, otherwise ALL zones
+      // tierZones = zones matching detected tier (e.g., A1/A2/A3 for Malabo)
+      const primaryZones = preview.tierZones?.length > 0
+        ? preview.tierZones
+        : preview.availableZones
+
+      // Categories: zone-specific if available, otherwise global commerce_types
+      const categoryOptions = preview.availableCategories.length > 0
+        ? preview.availableCategories
+        : (preview.availableCommerceTypes || [])
+
+      // Effective commerce_type: user selection > auto-classification
+      const effectiveCommerceType = wizard.selectedCommerceType || preview.classification?.commerceType || ''
+
+      // Need confirmation
+      const zoneConfirmed = !!effectiveZoneId
+      const categoryConfirmed = !!effectiveCommerceType
+
       return (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">{classLabels.title[lang]}</h3>
@@ -129,40 +152,80 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
             <p className="text-xs font-medium text-muted-foreground mb-2">{classLabels.extracted[lang]}</p>
             {ed.legalName && <p><span className="font-medium">Nombre:</span> {ed.legalName}</p>}
             {ed.registrationNumber && <p><span className="font-medium">N° Registro:</span> {ed.registrationNumber}</p>}
+            {ed.nif && <p><span className="font-medium">NIF:</span> {ed.nif}</p>}
             {ed.localidad && <p><span className="font-medium">Localidad:</span> {ed.localidad}{ed.provincia ? ` (${ed.provincia})` : ''}</p>}
             {ed.formaJuridica && <p><span className="font-medium">Forma jurídica:</span> {ed.formaJuridica}</p>}
+            {ed.sector && <p><span className="font-medium">Sector:</span> {ed.sector}</p>}
           </div>
 
-          {/* Zone selector (if needed) */}
-          {preview.needsManualZone && preview.availableZones.length > 0 && (
+          {/* Zone detected info */}
+          {preview.detectedCity && preview.detectedTier && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+              <p className="font-medium text-blue-800">
+                {preview.detectedCity} — Tier {preview.detectedTier}
+              </p>
+              <p className="text-xs text-blue-600 mt-0.5">
+                {{es: 'Seleccione la zona según la ubicación de su comercio', fr: 'Sélectionnez la zone selon l\'emplacement de votre commerce', en: 'Select the zone based on your commerce location'}[lang]}
+              </p>
+            </div>
+          )}
+
+          {/* Zone selector — ALWAYS shown */}
+          {primaryZones.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium">{classLabels.selectZone[lang]}</label>
               <select
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={wizard.selectedZoneId || ''}
-                onChange={(e) => wizard.setSelectedZoneId(e.target.value || null)}
+                value={effectiveZoneId}
+                onChange={(e) => {
+                  wizard.setSelectedZoneId(e.target.value || null)
+                  wizard.setSelectedCommerceType(null)
+                }}
               >
                 <option value="">--</option>
-                {preview.availableZones.map((z) => (
+                {primaryZones.map((z) => (
                   <option key={z.id} value={z.id}>
-                    {z.code} — {z.name} ({z.cities.join(', ')})
+                    {z.code} — {z.name}{z.description ? ` (${z.description})` : ''}
                   </option>
                 ))}
               </select>
+              {/* Show all zones toggle if only tier zones are shown */}
+              {preview.tierZones?.length > 0 && preview.availableZones.length > preview.tierZones.length && (
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer hover:text-foreground">
+                    {{es: 'Mostrar todas las zonas', fr: 'Afficher toutes les zones', en: 'Show all zones'}[lang]}
+                  </summary>
+                  <select
+                    className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                    value={effectiveZoneId}
+                    onChange={(e) => {
+                      wizard.setSelectedZoneId(e.target.value || null)
+                      wizard.setSelectedCommerceType(null)
+                    }}
+                  >
+                    <option value="">--</option>
+                    {preview.availableZones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.code} — {z.name}{z.description ? ` (${z.description})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </details>
+              )}
             </div>
           )}
 
-          {/* Category selector (if needed and zone selected) */}
-          {preview.needsManualCategory && preview.availableCategories.length > 0 && (
+          {/* Category (commerce_type) selector */}
+          {categoryOptions.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium">{classLabels.selectCategory[lang]}</label>
               <select
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={wizard.selectedCommerceType || ''}
+                value={effectiveCommerceType}
                 onChange={(e) => wizard.setSelectedCommerceType(e.target.value || null)}
               >
                 <option value="">--</option>
-                {preview.availableCategories.map((c) => (
+                {categoryOptions.map((c) => (
                   <option key={c.commerceType} value={c.commerceType}>
                     {c.bundleName} ({c.commerceType})
                   </option>
@@ -174,10 +237,7 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
           {/* Confirm button */}
           <Button
             className="w-full"
-            disabled={
-              (preview.needsManualZone && !wizard.selectedZoneId) ||
-              (preview.needsManualCategory && !wizard.selectedCommerceType)
-            }
+            disabled={!zoneConfirmed || !categoryConfirmed}
             onClick={() => {
               wizard.clearError()
               wizard.loadObligations()

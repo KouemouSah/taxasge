@@ -110,14 +110,18 @@ export interface ClassifyPreviewResponse {
     objetoSocial: string | null
   }
   zoneResolved: boolean
-  zone: { id: string; code: string; name: string; city: string } | null
-  availableZones: Array<{ id: string; code: string; name: string; cities: string[] }>
+  zone: { id: string; code: string; name: string; tier?: string } | null
+  detectedTier: string | null
+  detectedCity: string | null
+  tierZones: Array<{ id: string; code: string; tier: string; rank: number; name: string; description: string }>
+  availableZones: Array<{ id: string; code: string; tier: string; rank: number; name: string; description: string }>
   classification: {
     regimenFiscal: string | null
     commerceType: string | null
     confidence: number
   }
   availableCategories: Array<{ commerceType: string; bundleName: string }>
+  availableCommerceTypes: Array<{ commerceType: string; bundleName: string }>
   needsManualZone: boolean
   needsManualCategory: boolean
 }
