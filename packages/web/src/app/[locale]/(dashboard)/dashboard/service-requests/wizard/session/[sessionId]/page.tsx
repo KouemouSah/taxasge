@@ -84,6 +84,7 @@ import type {
 import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
 import { serviceRequestsApi } from '@/modules/service-requests/services/api'
 import { getLocalizedField } from '@/core/utils/i18n-helpers'
+import { useWorkflowTranslations, stepTitleKey, optionLabelKey, optionDescKey, workflowNameKey } from '@/hooks/use-workflow-translations'
 import type { CitizenSummaryResponse } from '@/modules/service-requests/types'
 import { useLocationsByEntity } from '@/modules/entity-locations/hooks'
 
@@ -250,6 +251,9 @@ export default function SessionWizardPage() {
     enabled: !!session?.workflowCode,
   })
 
+  // Workflow translations (step titles, option labels from translations table)
+  const { tw } = useWorkflowTranslations()
+
   // Load session on mount
   useEffect(() => {
     if (sessionId) {
@@ -311,7 +315,9 @@ export default function SessionWizardPage() {
         return true
       })
       .map((s) => {
-        const title = getLocalizedField(s as unknown as Record<string, unknown>, 'title', locale) || s.stepId
+        // Translate step title via workflow translations table (workflow.step.{normalized_key})
+        const rawTitle = s.titleEs || s.stepId
+        const title = tw(stepTitleKey(rawTitle), rawTitle)
         return {
           id: s.stepId,
           type: s.stepType as string,
@@ -342,7 +348,7 @@ export default function SessionWizardPage() {
     }
 
     return filtered
-  }, [workflowConfig, formValues])
+  }, [workflowConfig, formValues, tw, locale])
 
   // Clamp step index if steps list shrinks (e.g., condition no longer met)
   const safeStepIndex = Math.min(currentStepIndex, Math.max(0, steps.length - 1))
@@ -880,7 +886,7 @@ export default function SessionWizardPage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold">
-              {session.workflowCode.replace(/_/g, ' ')}
+              {tw(workflowNameKey(session.workflowCode), session.workflowCode.replace(/_/g, ' '))}
             </h1>
             <p className="text-sm text-muted-foreground">
               {session.subType || session.solicitudType}
@@ -979,6 +985,8 @@ export default function SessionWizardPage() {
               formValues={formValues}
               onFormChange={handleFormChange}
               locale={locale}
+              tw={tw}
+              workflowCode={session?.workflowCode || ''}
             />
           )}
 
@@ -1552,22 +1560,26 @@ function SelectionStepRenderer({
   formValues,
   onFormChange,
   locale,
+  tw,
+  workflowCode,
 }: {
   currentStep: WizardStepDef
   workflowConfig: import('@/modules/service-requests').WorkflowConfig | undefined
   formValues: Record<string, unknown>
   onFormChange: (key: string, value: unknown) => void
   locale: string
+  tw: (keyCode: string, fallbackEs?: string) => string
+  workflowCode: string
 }) {
   const stepConfig = workflowConfig?.steps?.find(s => s.stepId === currentStep.id)
   const cfg = stepConfig?.config as Record<string, unknown> | undefined
 
-  // Use step title from backend, or fallback
-  const title = getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'title', locale) || (
-    locale === 'es' ? 'Tipo de solicitud'
-      : locale === 'fr' ? 'Type de demande'
-        : 'Request type'
-  )
+  // Extract workflow family for option translation keys (e.g., PASAPORTE_NUEVO → pasaporte)
+  const wfFamily = workflowCode.split('_')[0]?.toLowerCase() || ''
+
+  // Translate step title via translations table, fallback to Spanish from backend
+  const rawTitle = stepConfig?.titleEs || currentStep.titleEs || ''
+  const title = tw(stepTitleKey(rawTitle), rawTitle)
 
   // Format A: config.sections[].fields[] with optional show_when conditions
   const allSections = cfg?.sections as Array<{
@@ -1607,8 +1619,10 @@ function SelectionStepRenderer({
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'description', locale) && (
-        <p className="text-sm text-muted-foreground">{getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'description', locale)}</p>
+      {rawTitle && (
+        <p className="text-sm text-muted-foreground">
+          {tw(stepTitleKey(rawTitle) + '.desc', getLocalizedField(stepConfig as unknown as Record<string, unknown>, 'description', locale) || '')}
+        </p>
       )}
 
       {/* Format A: sections with fields */}
@@ -1637,10 +1651,10 @@ function SelectionStepRenderer({
                     <div key={opt.value} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
                       <RadioGroupItem value={opt.value} id={`${field.key}-${opt.value}`} />
                       <Label htmlFor={`${field.key}-${opt.value}`} className="cursor-pointer flex-1">
-                        <span>{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.value}</span>
-                        {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale) && (
+                        <span>{tw(optionLabelKey(wfFamily, opt.value), opt.label_es || opt.value)}</span>
+                        {opt.description_es && (
                           <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                            {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale)}
+                            {tw(optionDescKey(wfFamily, opt.value), opt.description_es)}
                           </span>
                         )}
                       </Label>
@@ -1675,10 +1689,10 @@ function SelectionStepRenderer({
               <div key={optValue} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
                 <RadioGroupItem value={optValue} id={`${selectionType}-${optValue}`} />
                 <Label htmlFor={`${selectionType}-${optValue}`} className="cursor-pointer flex-1">
-                  <span className="font-medium">{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || optValue}</span>
-                  {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale) && (
+                  <span className="font-medium">{tw(optionLabelKey(wfFamily, optValue), opt.label_es || optValue)}</span>
+                  {opt.description_es && (
                     <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-                      {getLocalizedField(opt as unknown as Record<string, unknown>, 'description', locale)}
+                      {tw(optionDescKey(wfFamily, optValue), opt.description_es)}
                     </span>
                   )}
                   {opt.tariff !== undefined && opt.tariff > 0 && (
@@ -1736,7 +1750,7 @@ function SelectionStepRenderer({
                       disabled={!isChecked && selected.length >= maxSelection}
                     />
                     <Label className="cursor-pointer flex-1">
-                      <span className="font-medium">{getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.id}</span>
+                      <span className="font-medium">{tw(optionLabelKey(wfFamily, opt.id), getLocalizedField(opt as unknown as Record<string, unknown>, 'label', locale) || opt.id)}</span>
                       {opt.min_age && (
                         <span className="text-xs text-muted-foreground ml-2">
                           (min. {opt.min_age} {locale === 'es' ? 'anos' : locale === 'fr' ? 'ans' : 'years'})
