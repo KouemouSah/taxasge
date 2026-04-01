@@ -331,10 +331,11 @@ async def update_user(
         if not update_data:
             return target_user
 
-        # If email changed on an active user → set pending_verification
+        # If email changed → set pending_verification (regardless of current status)
         target_status = getattr(target_user, 'status', None) or (target_user.get('status') if isinstance(target_user, dict) else None)
-        if email_changed and target_status == 'active':
+        if email_changed:
             update_data["status"] = "pending_verification"
+            update_data["email_verified"] = False
 
         updated_user = await user_repository.update(user_id, update_data)
         if not updated_user:
@@ -343,8 +344,9 @@ async def update_user(
                 detail="User not found"
             )
 
-        # If email changed on active user → generate verification code + send activation email
-        if email_changed and target_status == 'active' and new_email:
+        # If email changed → generate verification code + send activation email
+        email_sent = False
+        if email_changed and new_email:
             try:
                 import secrets
                 from app.repositories.pending_registration_repository import PendingRegistrationRepository
@@ -367,9 +369,11 @@ async def update_user(
                 )
                 user_name = getattr(target_user, 'full_name', None) or (target_user.get('full_name') if isinstance(target_user, dict) else None)
                 email_service.send_verification_code(new_email, verification_code, user_name)
+                email_sent = True
                 logger.info(f"Email changed for user {user_id}: sent verification to {new_email}")
             except Exception as email_err:
                 logger.error(f"Failed to send verification email for user {user_id}: {email_err}")
+                # Don't fail the update, but warn in response
 
         # Log activity
         activity = UserActivity(
@@ -380,6 +384,15 @@ async def update_user(
             timestamp=datetime.utcnow()
         )
         await user_repository.log_user_activity(activity)
+
+        # If email changed, enrich response with email_sent status
+        if email_changed:
+            user_dict = updated_user.dict() if hasattr(updated_user, 'dict') else dict(updated_user)
+            user_dict["_email_changed"] = True
+            user_dict["_email_sent"] = email_sent
+            if not email_sent:
+                user_dict["_email_warning"] = "Email updated but verification email could not be sent. Check SMTP configuration."
+            return user_dict
 
         return updated_user
 

@@ -292,6 +292,26 @@ export default function AgentDetailPage() {
 
       await updateMutation.mutateAsync({ profileId, data: updateData });
 
+      // Also save info bar changes if it's open (unified save)
+      if (editingInfo) {
+        const userChanges: { email?: string; phone_number?: string } = {};
+        if (infoEmail && infoEmail !== profile.user_email) userChanges.email = infoEmail;
+        if (infoPhone !== (profile.user_phone || '')) userChanges.phone_number = infoPhone || undefined;
+        if (Object.keys(userChanges).length > 0) {
+          const result = await adminUsersApi.updateUser(profile.user_id, userChanges) as Record<string, unknown>;
+          if (result?._email_changed && !result?._email_sent) {
+            toast({
+              variant: 'destructive',
+              title: 'Email modifié — activation non envoyée',
+              description: "L'email d'activation n'a pas pu être envoyé. Vérifiez la configuration SMTP.",
+            });
+          }
+        }
+        setEditingInfo(false);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['agent-profile', profileId] });
+
       toast({
         title: 'Profil mis à jour',
         description: 'Les modifications ont été enregistrées.',
@@ -396,8 +416,13 @@ export default function AgentDetailPage() {
       const userChanges: { email?: string; phone_number?: string } = {};
       if (infoEmail && infoEmail !== profile.user_email) userChanges.email = infoEmail;
       if (infoPhone !== (profile.user_phone || '')) userChanges.phone_number = infoPhone || undefined;
+
+      let emailSentOk = true;
       if (Object.keys(userChanges).length > 0) {
-        await adminUsersApi.updateUser(profile.user_id, userChanges);
+        const result = await adminUsersApi.updateUser(profile.user_id, userChanges) as Record<string, unknown>;
+        if (result?._email_changed && !result?._email_sent) {
+          emailSentOk = false;
+        }
       }
 
       if (Object.keys(profileChanges).length === 0 && Object.keys(userChanges).length === 0) {
@@ -408,12 +433,20 @@ export default function AgentDetailPage() {
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['agent-profile', profileId] });
 
-      toast({
-        title: 'Información actualizada',
-        description: emailChanged
-          ? 'Email modificado. La cuenta ha sido desactivada y se ha enviado un nuevo enlace de activación.'
-          : 'Los cambios han sido guardados.',
-      });
+      if (emailChanged && !emailSentOk) {
+        toast({
+          variant: 'destructive',
+          title: 'Email modifié — activation non envoyée',
+          description: "L'email a été modifié et le compte désactivé, mais l'email d'activation n'a pas pu être envoyé. Vérifiez la configuration SMTP.",
+        });
+      } else {
+        toast({
+          title: 'Información actualizada',
+          description: emailChanged
+            ? 'Email modificado. La cuenta ha sido desactivada y se ha enviado un nuevo enlace de activación.'
+            : 'Los cambios han sido guardados.',
+        });
+      }
       setEditingInfo(false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '';
@@ -724,7 +757,7 @@ export default function AgentDetailPage() {
                 </CardDescription>
               </div>
               {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)}>Modifier</Button>
+                <Button onClick={() => { setIsEditing(true); if (!editingInfo) startEditingInfo(); }}>Modifier</Button>
               ) : (
                 <Button variant="ghost" onClick={() => setIsEditing(false)}>Annuler</Button>
               )}
