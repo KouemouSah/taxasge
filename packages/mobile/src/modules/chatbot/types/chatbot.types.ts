@@ -22,6 +22,7 @@ export interface ChatRequest {
   message: string;
   conversation_id?: string;
   language: 'es' | 'fr' | 'en';
+  context?: Record<string, unknown>;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 

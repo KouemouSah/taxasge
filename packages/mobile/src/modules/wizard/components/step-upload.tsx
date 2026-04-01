@@ -380,7 +380,7 @@ export function StepUpload({
           <DocumentRow item={info.item} />
         )}
         ItemSeparatorComponent={() => <Divider style={{ marginLeft: 46 }} />}
-        contentContainerStyle={{ paddingBottom: spacing.lg }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl }}
       />
 
       {/* Compression overlay */}

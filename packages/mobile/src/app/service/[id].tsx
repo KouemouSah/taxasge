@@ -35,11 +35,12 @@ import type { RelatedServiceItem, ProcedureDetailItem } from '@modules/fiscal-se
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, spacing } = useAppTheme();
+  const lang = (i18n.language || 'es') as string;
 
   const serviceId = Number(id);
-  const { data: service, isLoading, isError } = useServiceDetail(serviceId, 'es');
+  const { data: service, isLoading, isError } = useServiceDetail(serviceId, lang);
 
   const handleBack = useCallback(() => router.back(), [router]);
   const handleRelatedPress = useCallback((rid: number) => router.push(`/service/${rid}`), [router]);

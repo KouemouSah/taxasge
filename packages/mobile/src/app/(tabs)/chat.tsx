@@ -29,6 +29,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import Markdown from 'react-native-markdown-display';
 import { useAppTheme } from '@core/theme';
 import { useChatbot } from '@modules/chatbot';
 import type { ChatMessage } from '@modules/chatbot';
@@ -73,9 +74,17 @@ function MessageBubble({
         <View style={s.botRow}>
           <Image source={BOT_AVATAR} style={s.msgAvatar} resizeMode="contain" />
           <View style={[s.botBubble, { backgroundColor: colors.surfaceVariant }]}>
-            <Text variant="bodyMedium" style={{ color: colors.onSurface, lineHeight: 22 }}>
+            <Markdown style={{
+              body: { color: colors.onSurface, fontSize: 14, lineHeight: 22 },
+              heading3: { fontSize: 15, fontWeight: '700', color: colors.primary, marginVertical: 4 },
+              heading2: { fontSize: 16, fontWeight: '700', color: colors.primary, marginVertical: 4 },
+              strong: { fontWeight: '700' },
+              bullet_list: { marginVertical: 4 },
+              list_item: { marginVertical: 2 },
+              paragraph: { marginVertical: 2 },
+            }}>
               {msg.text}
-            </Text>
+            </Markdown>
           </View>
         </View>
 

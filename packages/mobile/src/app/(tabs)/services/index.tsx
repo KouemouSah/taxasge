@@ -73,12 +73,13 @@ function getMinistryIcon(name: string): string {
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, spacing } = useAppTheme();
+  const lang = (i18n.language || 'es') as string;
 
-  const { data: ministries, isLoading: ministriesLoading } = useMinistries('es');
+  const { data: ministries, isLoading: ministriesLoading } = useMinistries(lang);
   const { data: popularServices } = usePopularServices(10);
-  const { search, results, isSearching } = useServiceSearch(300);
+  const { search, results, isSearching } = useServiceSearch(300, lang);
 
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');

@@ -57,7 +57,7 @@ export function useServiceDetail(id: number, language = 'es', enabled = true) {
  * Debounced service search hook.
  * Returns search results with facets, auto-triggers after 300ms of inactivity.
  */
-export function useServiceSearch(debounceMs = 300) {
+export function useServiceSearch(debounceMs = 300, language = 'es') {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<ServiceSearchFilters>({});
   const [results, setResults] = useState<ServiceSearchResponse | null>(null);
@@ -83,7 +83,7 @@ export function useServiceSearch(debounceMs = 300) {
         try {
           const data = await servicesApi.searchServices({
             ...merged,
-            language: merged.language ?? 'es',
+            language: merged.language ?? language,
             include_facets: true,
             limit: merged.limit ?? 20,
             page: merged.page ?? 1,

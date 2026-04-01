@@ -49,11 +49,18 @@ export function useChatbot() {
 
         const lang = (i18n.language || 'es') as 'es' | 'fr' | 'en';
 
+        const LANG_INSTRUCTIONS: Record<string, string> = {
+          fr: 'Réponds entièrement en français. Traduis tous les noms de services, catégories et suggestions en français. Ne mélange jamais avec l\'espagnol.',
+          en: 'Reply entirely in English. Translate all service names, categories and suggestions to English. Never mix with Spanish.',
+          es: '',
+        };
+
         const response: ChatResponse = await sendChatMessage({
           message: text.trim(),
           ...(conversationIdRef.current ? { conversation_id: conversationIdRef.current } : {}),
           language: lang,
           ...(historyItems.length > 0 ? { history: historyItems } : {}),
+          ...(LANG_INSTRUCTIONS[lang] ? { context: { language_instruction: LANG_INSTRUCTIONS[lang] } } : {}),
         });
 
         // Store conversation_id for continuity

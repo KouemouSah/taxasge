@@ -15,7 +15,7 @@
  *   custom                  → StepSelection (multi_selection)
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { StyleSheet, View, Alert } from 'react-native';
 import { Text, Button, IconButton, ActivityIndicator, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -122,11 +122,21 @@ export default function WizardSessionScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [paymentResult, setPaymentResult] = useState<InitiatePaymentResult | null>(null);
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
+  const initialFormDataLoadedRef = useRef(false);
+  const isSavingRef = useRef(false);
 
-  // Restore form data from session when loaded
+  // Restore form data from session ONLY on initial load
+  // CRITICAL: Do NOT overwrite formValues after a save — causes race condition
+  // where steps recalculate while step index is advancing, leading to redirects.
   useEffect(() => {
-    if (session?.form_data) {
-      setFormValues((prev) => ({ ...prev, ...session.form_data }));
+    if (session?.form_data && !initialFormDataLoadedRef.current) {
+      initialFormDataLoadedRef.current = true;
+      // Normalize all values to strings to prevent type coercion bugs
+      const normalized: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(session.form_data)) {
+        normalized[k] = v != null && typeof v !== 'object' ? String(v) : v;
+      }
+      setFormValues((prev) => ({ ...prev, ...normalized }));
     }
   }, [session?.form_data]);
 
@@ -312,7 +322,7 @@ export default function WizardSessionScreen() {
   if (!session) return null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Top bar: cancel + title + TTL */}
       <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant }]}>
         <IconButton icon="close" size={22} onPress={handleCancel} />
@@ -475,5 +485,5 @@ const styles = StyleSheet.create({
   centered: { justifyContent: 'center', alignItems: 'center' },
   topBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, paddingRight: 8 },
   stepContent: { flex: 1 },
-  navBar: { flexDirection: 'row', padding: 12, borderTopWidth: 1 },
+  navBar: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, borderTopWidth: 1 },
 });

@@ -49,9 +49,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/logo_hd.png",
-          "imageWidth": 280,
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0D6E3F"
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-secure-store",
@@ -59,6 +59,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "14918b5d-b6e3-4e37-8860-a92d090dd247"
+      }
+    },
+    "owner": "emacsah"
   }
 }
