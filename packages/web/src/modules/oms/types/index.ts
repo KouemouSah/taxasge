@@ -31,6 +31,8 @@ export interface AgentQueueItem {
   service_code: string | null
   ministry_name: string | null
   company_name: string | null
+  company_nif: string | null
+  company_registration_number: string | null
   fiscal_year: number | null
   zone_code: string | null
   processing_mode: string | null
