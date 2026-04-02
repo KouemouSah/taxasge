@@ -231,7 +231,7 @@ export default function LicenseDetailPage() {
             </h1>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
               {license.company_nif && <span className="font-mono">NIF: {license.company_nif}</span>}
-              {license.registration_number && <span className="font-mono">N°: {license.registration_number}</span>}
+              {license.company_registration_number && <span className="font-mono">N°: {license.company_registration_number}</span>}
               {license.zone_code && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{license.zone_code}</span>}
               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Año {license.fiscal_year}</span>
             </div>
