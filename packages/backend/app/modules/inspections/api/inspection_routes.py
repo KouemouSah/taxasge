@@ -73,6 +73,15 @@ async def create_inspection(
             )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        err_str = str(e).lower()
+        if "unique" in err_str or "duplicate" in err_str:
+            raise HTTPException(
+                status_code=409,
+                detail="An inspection already exists for this company today. "
+                       "You can only create one inspection per company per day."
+            )
+        raise
     return InspectionResponse(**result)
 
 

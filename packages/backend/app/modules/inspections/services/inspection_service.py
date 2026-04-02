@@ -684,12 +684,10 @@ class InspectionService:
             conn, entity_id
         )
 
-        # These still need separate queries (JOIN-heavy, list data)
-        pending_seals, recent = await asyncio.gather(
-            InspectionRepository.get_pending_seals(conn, entity_id),
-            InspectionRepository.list_by_entity(
-                conn, entity_id, page=1, page_size=10,
-            ),
+        # Sequential — asyncpg does NOT support concurrent queries on single connection
+        pending_seals = await InspectionRepository.get_pending_seals(conn, entity_id)
+        recent = await InspectionRepository.list_by_entity(
+            conn, entity_id, page=1, page_size=10,
         )
         recent_items = recent[0] if isinstance(recent, tuple) else recent
 
@@ -745,8 +743,20 @@ class InspectionService:
         if not license_id:
             raise ValueError("Either license_id or nif/registration_number is required")
 
+        # Resolve agent's fee_type for obligation filtering
+        agent_fee_type = None
+        try:
+            from app.modules.fiscal_services.services.oms_agent_service import (
+                OmsAgentService,
+            )
+            oms_ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
+            agent_fee_type = oms_ctx.get("queue_fee_type")
+        except (ValueError, Exception):
+            pass  # Not an OMS agent — show all obligations
+
         result = await InspectionRepository.get_license_for_verification(
-            conn, license_id, ctx["entity_id"]
+            conn, license_id, ctx["entity_id"],
+            fee_type=agent_fee_type,
         )
 
         if not result:

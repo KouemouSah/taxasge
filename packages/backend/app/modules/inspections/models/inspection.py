@@ -140,6 +140,18 @@ class InspectionResponse(BaseModel):
     total_obligations_count: int = 0
 
     photos: List[str] = []
+
+    @field_validator("photos", mode="before")
+    @classmethod
+    def parse_photos(cls, v):
+        """Handle photos stored as JSON string in DB (JSONB → text edge case)."""
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                return []
+        return v or []
     gps_latitude: Optional[Decimal] = None
     gps_longitude: Optional[Decimal] = None
     gps_accuracy: Optional[Decimal] = None
@@ -148,6 +160,18 @@ class InspectionResponse(BaseModel):
     mise_en_demeure_issued: bool = False
     mise_en_demeure_deadline: Optional[datetime] = None
     mise_en_demeure_obligations: Optional[List[str]] = None
+
+    @field_validator("mise_en_demeure_obligations", mode="before")
+    @classmethod
+    def parse_med_obligations(cls, v):
+        """Handle JSONB stored as string."""
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                return None
+        return v
 
     seal_applied: bool = False
     seal_reason: Optional[str] = None
@@ -229,6 +253,17 @@ class PendingSealItem(BaseModel):
     seal_proposed_at: Optional[datetime] = None
     agent_name: Optional[str] = None
     photos: List[str] = []
+
+    @field_validator("photos", mode="before")
+    @classmethod
+    def parse_photos(cls, v):
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                return []
+        return v or []
     gps_latitude: Optional[Decimal] = None
     gps_longitude: Optional[Decimal] = None
     unpaid_obligations_amount: Decimal = Decimal("0")

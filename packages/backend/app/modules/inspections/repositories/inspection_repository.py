@@ -571,6 +571,7 @@ class InspectionRepository:
     @staticmethod
     async def get_license_for_verification(
         conn, license_id: UUID, entity_id: UUID,
+        fee_type: Optional[str] = None,
     ) -> Optional[Dict]:
         """Get enriched license data for agent verification."""
         row = await conn.fetchrow("""
@@ -596,7 +597,12 @@ class InspectionRepository:
         company_id = result["company_id"]
 
         async def _get_obligations():
-            rows = await conn.fetch("""
+            fee_filter = ""
+            params = [license_id]
+            if fee_type:
+                fee_filter = "AND lo.fee_type = $2"
+                params.append(fee_type)
+            rows = await conn.fetch(f"""
                 SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
                        lo.due_date, lo.status,
                        fs.name_es AS service_name,
@@ -604,9 +610,9 @@ class InspectionRepository:
                 FROM license_obligations lo
                 LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
                 LEFT JOIN ministries m ON m.id = lo.ministry_id
-                WHERE lo.license_id = $1
+                WHERE lo.license_id = $1 {fee_filter}
                 ORDER BY lo.fee_type, lo.due_date
-            """, license_id)
+            """, *params)
             return [dict(o) for o in rows]
 
         async def _get_prev_inspections():

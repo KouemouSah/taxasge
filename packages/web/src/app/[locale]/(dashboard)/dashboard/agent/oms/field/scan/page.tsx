@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, QrCode, Search, Building2, CheckCircle2, XCircle, AlertTriangle, ClipboardCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,7 @@ export default function ScanPage() {
   const locale = useLocale()
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations('inspection')
   const [nifInput, setNifInput] = useState('')
   const [searching, setSearching] = useState(false)
   const [result, setResult] = useState<LicenseVerification | null>(null)
@@ -37,8 +38,8 @@ export default function ScanPage() {
       const data = await inspectionApi.verifyLicense({ nif: searchNif })
       setResult(data)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'No se encontró ninguna licencia'
-      toast({ title: 'No encontrado', description: msg, variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : t('scan.noLicense')
+      toast({ title: t('scan.notFound'), description: msg, variant: 'destructive' })
     } finally {
       setSearching(false)
     }
@@ -120,7 +121,7 @@ export default function ScanPage() {
         }, 500)
       }
     } catch {
-      setCameraError('No se pudo acceder a la cámara. Verifique los permisos.')
+      setCameraError(t('scan.cameraError'))
     }
   }, [handleSearch]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -147,8 +148,8 @@ export default function ScanPage() {
       })
       router.push(`/${locale}/dashboard/agent/oms/field/inspect?id=${inspection.id}`)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al crear la inspección'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: msg, variant: 'destructive' })
     } finally {
       setCreating(false)
     }
@@ -166,7 +167,7 @@ export default function ScanPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <QrCode className="h-6 w-6 text-blue-600" />
-        <h1 className="text-xl font-bold">Inspección</h1>
+        <h1 className="text-xl font-bold">{t('scan.title')}</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -192,7 +193,7 @@ export default function ScanPage() {
                     className="absolute bottom-2 right-2"
                     onClick={stopCamera}
                   >
-                    Cerrar cámara
+                    {t('scan.closeCamera')}
                   </Button>
                 </div>
               ) : (
@@ -202,7 +203,7 @@ export default function ScanPage() {
                   onClick={startCamera}
                 >
                   <QrCode className="h-8 w-8" />
-                  <span>Escanear QR de licencia</span>
+                  <span>{t('scan.scanQr')}</span>
                 </Button>
               )}
               {cameraError && (
@@ -214,7 +215,7 @@ export default function ScanPage() {
           {/* Manual search */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground px-2">o buscar manualmente</span>
+            <span className="text-xs text-muted-foreground px-2">{t('scan.orManual')}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -228,7 +229,7 @@ export default function ScanPage() {
             />
             <Button onClick={() => handleSearch()} disabled={searching}>
               <Search className="h-4 w-4 mr-1" />
-              {searching ? 'Buscando...' : 'Buscar'}
+              {searching ? t('scan.searching') : t('scan.search')}
             </Button>
           </div>
         </div>
@@ -242,7 +243,7 @@ export default function ScanPage() {
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-gray-600" />
-                    <CardTitle className="text-base">Empresa</CardTitle>
+                    <CardTitle className="text-base">{t('inspect.company')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-1">
@@ -281,7 +282,7 @@ export default function ScanPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">
-                    Obligaciones ({result.obligations.length})
+                    {t('inspect.obligations')} ({result.obligations.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1.5">
@@ -315,7 +316,7 @@ export default function ScanPage() {
                     <>
                       <Separator className="my-2" />
                       <div className="flex justify-between font-medium text-sm">
-                        <span className="text-red-700">Total impago</span>
+                        <span className="text-red-700">{t('inspect.unpaidCount')}</span>
                         <span className="text-red-700">
                           {fmtXAF(
                             unpaidObligations.reduce((s, o) => s + o.amount + (o.penalty_amount || 0), 0),
@@ -353,15 +354,15 @@ export default function ScanPage() {
                 disabled={creating}
               >
                 <ClipboardCheck className="h-5 w-5" />
-                {creating ? 'Creando...' : 'Comenzar Inspección'}
+                {creating ? t('scan.creating') : t('scan.startInspection')}
               </Button>
             </>
           ) : (
             <Card className="flex items-center justify-center h-64">
               <CardContent className="text-center text-muted-foreground">
                 <QrCode className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Escanee un QR o busque por NIF</p>
-                <p className="text-xs mt-1">para ver la información de la empresa</p>
+                <p>{t('scan.scanResult')}</p>
+                <p className="text-xs mt-1">{t('scan.scanResultSub')}</p>
               </CardContent>
             </Card>
           )}
