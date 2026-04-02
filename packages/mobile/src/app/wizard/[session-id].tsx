@@ -196,19 +196,13 @@ export default function WizardSessionScreen() {
   const handleNext = useCallback(async () => {
     if (!session || !currentStep) return;
 
-    // Save selection/custom data before advancing
+    // Save selection/custom data before advancing (aligned with web)
     if (currentStepClass === 'selection' || currentStepClass === 'custom') {
-      try {
-        await wizard.saveFormData(formValues, currentStep.id);
-      } catch {
-        return; // Error shown via hook
-      }
+      const success = await wizard.saveFormData(formValues, currentStep.id);
+      if (!success) return; // Error shown via hook
     }
 
-    // Use a microtask delay to let React process any pending state updates
-    // (formValues → steps recalculation) before advancing the index
-    await new Promise((r) => setTimeout(r, 50));
-
+    // Advance step index (no delay — aligned with web)
     if (safeStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     }

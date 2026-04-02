@@ -14,7 +14,7 @@ import { DynamicFormRenderer } from './dynamic-form-renderer';
 interface StepFormProps {
   stepId: string;
   getFormConfig: (stepId: string) => Promise<FormConfig>;
-  onSaveFormData: (formData: Record<string, unknown>, stepId?: string) => Promise<void>;
+  onSaveFormData: (formData: Record<string, unknown>, stepId?: string) => Promise<boolean>;
   isSaving: boolean;
 }
 

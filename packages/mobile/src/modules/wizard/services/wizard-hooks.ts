@@ -57,7 +57,7 @@ export interface UseWizardSessionReturn {
 
   // Forms
   getFormConfig: (stepId: string) => Promise<FormConfig>;
-  saveFormData: (formData: Record<string, unknown>, stepId?: string) => Promise<void>;
+  saveFormData: (formData: Record<string, unknown>, stepId?: string) => Promise<boolean>;
 
   // Appointments
   getLocations: () => Promise<AppointmentLocationsResponse>;
@@ -283,18 +283,15 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
 
   const saveFormData = useCallback(async (
     formData: Record<string, unknown>, stepId?: string,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     setIsSaving(true);
     try {
-      // Save to backend but do NOT update local session state.
-      // This prevents a race condition where session.form_data update
-      // triggers steps recalculation while step index is advancing.
-      // Local formValues is the source of truth during the wizard.
       await wizardApi.saveFormData(getSessionId(), { form_data: formData, step_id: stepId });
+      return true;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to save form data';
       setError(msg);
-      throw e;
+      return false;
     } finally {
       setIsSaving(false);
     }
