@@ -75,6 +75,7 @@ export interface UseBundleWizardReturn {
   toggleObligation: (id: string) => void
   selectAllObligations: () => void
   deselectAllObligations: () => void
+  loadClassification: () => Promise<void>
   loadObligations: () => Promise<void>
 
   // Step 3: Payment
@@ -261,6 +262,35 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   // ── Step 2: Load obligations ────────────────────────────────
 
+  // ── Step: Classification (zone + category preview) ─────────────
+  const loadClassification = useCallback(async () => {
+    if (!documentPreview) return
+    setIsInitiating(true)
+    setError(null)
+    try {
+      const extraction = documentPreview.extraction || {}
+      const preview = await bundleWorkflowApi.classifyPreview(
+        extraction, selectedZoneId || undefined,
+      )
+      setClassificationPreview(preview)
+
+      // Auto-set zone if resolved and user hasn't manually selected
+      if (preview.zoneResolved && preview.zone && !selectedZoneId) {
+        setSelectedZoneId(preview.zone.id)
+      }
+      // Auto-set commerce_type if classified with high confidence
+      if (preview.classification?.commerceType && !selectedCommerceType) {
+        setSelectedCommerceType(preview.classification.commerceType)
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error loading classification'
+      setError(msg)
+    } finally {
+      setIsInitiating(false)
+    }
+  }, [documentPreview, selectedZoneId, selectedCommerceType])
+
+  // ── Step: Load obligations (initiate workflow) ────────────────
   const loadObligations = useCallback(async () => {
     setIsInitiating(true)
     setError(null)
@@ -273,29 +303,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
       } else if (documentPreview) {
         const extraction = documentPreview.extraction || {}
 
-        // Step A: Preview classification
-        // Re-call with zone_id when user has selected a zone (to get categories)
-        const needsClassification = !classificationPreview
-          || (selectedZoneId && classificationPreview.needsManualZone)
-          || (selectedZoneId && classificationPreview.availableCategories.length === 0)
-
-        if (needsClassification) {
-          const preview = await bundleWorkflowApi.classifyPreview(
-            extraction, selectedZoneId || undefined,
-          )
-          setClassificationPreview(preview)
-
-          // If STILL needs manual selection (zone or category), stop here
-          const needsZone = preview.needsManualZone && !selectedZoneId
-          const needsCategory = (preview.needsManualCategory || preview.availableCategories.length > 0)
-            && !selectedCommerceType
-          if (needsZone || needsCategory) {
-            setIsInitiating(false)
-            return // UI will show selectors, user clicks "Confirm" to retry
-          }
-        }
-
-        // Step B: Initiate with overrides
+        // Zone and category must be selected (from CLASSIFICATION step)
         const zoneOverride = selectedZoneId || classificationPreview?.zone?.id || undefined
         const categoryOverride = selectedCommerceType || classificationPreview?.classification?.commerceType || undefined
 
@@ -414,6 +422,9 @@ export function useBundleWizard(): UseBundleWizardReturn {
         return selectedCompany !== null
       case BundleStep.DOCUMENT_UPLOAD:
         return documentPreview !== null || companyExists
+      case BundleStep.CLASSIFICATION:
+        // Classification step: zone AND category must be selected
+        return !!selectedZoneId && !!selectedCommerceType
       case BundleStep.OBLIGATIONS_REVIEW:
         return licenseData !== null &&
           !licenseData.alreadyComplete &&
@@ -431,7 +442,16 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   const goNext = useCallback(() => {
     if (currentStep === BundleStep.COMPANY_IDENTIFICATION && companyExists) {
-      // Skip document upload for existing companies
+      // Existing company: skip document upload + classification → obligations
+      loadObligations()
+      setCurrentStep(BundleStep.OBLIGATIONS_REVIEW)
+    } else if (currentStep === BundleStep.DOCUMENT_UPLOAD) {
+      // After document upload → load classification preview
+      loadClassification()
+      setCurrentStep(BundleStep.CLASSIFICATION)
+    } else if (currentStep === BundleStep.CLASSIFICATION) {
+      // After zone + category confirmed → load obligations
+      loadObligations()
       setCurrentStep(BundleStep.OBLIGATIONS_REVIEW)
     } else if (currentStep === BundleStep.PAYMENT) {
       // Payment handles its own navigation via submitPayment
@@ -439,12 +459,15 @@ export function useBundleWizard(): UseBundleWizardReturn {
     } else {
       setCurrentStep(prev => Math.min(prev + 1, BundleStep.CONFIRMATION))
     }
-  }, [currentStep, companyExists])
+  }, [currentStep, companyExists, loadObligations, loadClassification])
 
   const goBack = useCallback(() => {
     if (currentStep === BundleStep.OBLIGATIONS_REVIEW && companyExists) {
-      // Skip document upload going back for existing companies
+      // Existing company: skip back to identification
       setCurrentStep(BundleStep.COMPANY_IDENTIFICATION)
+    } else if (currentStep === BundleStep.OBLIGATIONS_REVIEW && !companyExists) {
+      // New company: go back to classification (not document upload)
+      setCurrentStep(BundleStep.CLASSIFICATION)
     } else {
       setCurrentStep(prev => Math.max(prev - 1, BundleStep.COMPANY_IDENTIFICATION))
     }
@@ -498,6 +521,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
     toggleObligation,
     selectAllObligations,
     deselectAllObligations,
+    loadClassification,
     loadObligations,
 
     paymentMethod,

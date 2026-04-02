@@ -59,7 +59,7 @@ export default function BundlePaymentWizardPage() {
   // Determine visible steps (skip doc upload if company exists)
   const visibleSteps = wizard.companyExists
     ? [BundleStep.COMPANY_IDENTIFICATION, BundleStep.OBLIGATIONS_REVIEW, BundleStep.PAYMENT, BundleStep.CONFIRMATION]
-    : [BundleStep.COMPANY_IDENTIFICATION, BundleStep.DOCUMENT_UPLOAD, BundleStep.OBLIGATIONS_REVIEW, BundleStep.PAYMENT, BundleStep.CONFIRMATION]
+    : [BundleStep.COMPANY_IDENTIFICATION, BundleStep.DOCUMENT_UPLOAD, BundleStep.CLASSIFICATION, BundleStep.OBLIGATIONS_REVIEW, BundleStep.PAYMENT, BundleStep.CONFIRMATION]
 
   const currentVisibleIndex = visibleSteps.indexOf(wizard.currentStep)
   const isLastNavStep = wizard.currentStep === BundleStep.PAYMENT
@@ -161,6 +161,9 @@ export default function BundlePaymentWizardPage() {
         )}
         {wizard.currentStep === BundleStep.DOCUMENT_UPLOAD && (
           <CompanyUploadStep wizard={wizard} locale={locale} />
+        )}
+        {wizard.currentStep === BundleStep.CLASSIFICATION && (
+          <ObligationsReviewStep wizard={wizard} locale={locale} />
         )}
         {wizard.currentStep === BundleStep.OBLIGATIONS_REVIEW && (
           <ObligationsReviewStep wizard={wizard} locale={locale} />

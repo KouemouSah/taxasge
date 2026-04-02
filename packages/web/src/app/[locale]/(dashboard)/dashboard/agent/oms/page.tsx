@@ -322,8 +322,7 @@ export default function OMSAgentDashboardPage() {
                         <span className="truncate max-w-[160px]">{item.company_name || '—'}</span>
                       </div>
                       <div className="ml-5 text-[10px] text-muted-foreground">
-                        {item.company_nif && <span className="font-mono">{item.company_nif}</span>}
-                        {item.company_registration_number && <span className="font-mono">{item.company_registration_number}</span>}
+                        <span className="font-mono">{item.company_nif || item.company_registration_number || ''}</span>
                         {item.zone_code && <span className="ml-1.5">{item.zone_code}</span>}
                       </div>
                     </TableCell>

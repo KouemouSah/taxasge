@@ -12,9 +12,10 @@ import type { LicenseStatus, ObligationStatus } from '@/types/commercial-license
 export enum BundleStep {
   COMPANY_IDENTIFICATION = 0,
   DOCUMENT_UPLOAD = 1,
-  OBLIGATIONS_REVIEW = 2,
-  PAYMENT = 3,
-  CONFIRMATION = 4,
+  CLASSIFICATION = 2,
+  OBLIGATIONS_REVIEW = 3,
+  PAYMENT = 4,
+  CONFIRMATION = 5,
 }
 
 export const BUNDLE_STEP_LABELS: Record<BundleStep, { es: string; fr: string; en: string }> = {
@@ -27,6 +28,11 @@ export const BUNDLE_STEP_LABELS: Record<BundleStep, { es: string; fr: string; en
     es: 'Documentos',
     fr: 'Documents',
     en: 'Documents',
+  },
+  [BundleStep.CLASSIFICATION]: {
+    es: 'Zona y Categoria',
+    fr: 'Zone et Categorie',
+    en: 'Zone & Category',
   },
   [BundleStep.OBLIGATIONS_REVIEW]: {
     es: 'Obligaciones',
