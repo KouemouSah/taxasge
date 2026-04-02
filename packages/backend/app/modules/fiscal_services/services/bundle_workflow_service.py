@@ -207,7 +207,7 @@ class BundleWorkflowService:
         - available_categories: categories for resolved/override zone
         - available_commerce_types: ALL commerce_types for manual selection
         """
-        from app.modules.companies.services.classification_agent import ClassificationAgent
+        from app.modules.companies.services.classification_agent import CompanyClassificationAgent as ClassificationAgent
 
         # 1. Map extraction to company data
         company_data = ClassificationAgent.map_gemini_extraction_to_company_data(extraction)
@@ -380,7 +380,7 @@ class BundleWorkflowService:
             BundleInitiateResponse (same as initiate()) + company creation info
         """
         from app.modules.companies.services.classification_agent import (
-            ClassificationAgent,
+            CompanyClassificationAgent as ClassificationAgent,
             classification_agent,
         )
         from app.modules.companies.repositories.company_repository import (
