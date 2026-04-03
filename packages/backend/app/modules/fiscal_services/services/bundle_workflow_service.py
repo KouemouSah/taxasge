@@ -210,7 +210,19 @@ class BundleWorkflowService:
         from app.modules.companies.services.classification_agent import CompanyClassificationAgent as ClassificationAgent
 
         # 1. Map extraction to company data
+        logger.info(
+            "classify-preview: extraction top-level keys=%s, has_empresa=%s, has_ubicacion=%s",
+            list(extraction.keys())[:10],
+            "empresa" in extraction,
+            "ubicacion" in extraction,
+        )
         company_data = ClassificationAgent.map_gemini_extraction_to_company_data(extraction)
+        logger.info(
+            "classify-preview: mapped company_data legal_name=%s, reg=%s, localidad=%s",
+            company_data.get("legal_name"),
+            company_data.get("registration_number"),
+            company_data.get("localidad"),
+        )
 
         # 2. Resolve zone: user override > OCR extraction > None
         #
