@@ -65,8 +65,10 @@ export interface UseBundleWizardReturn {
   classificationPreview: ClassifyPreviewResponse | null
   selectedZoneId: string | null
   selectedCommerceType: string | null
+  editedRegistrationNumber: string | null
   setSelectedZoneId: (id: string | null) => void
   setSelectedCommerceType: (type: string | null) => void
+  setEditedRegistrationNumber: (val: string | null) => void
   licenseData: BundleInitiateResponse | null
   isInitiating: boolean
   selectedMode: ProcessingMode
@@ -136,6 +138,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null)
+  const [editedRegistrationNumber, setEditedRegistrationNumber] = useState<string | null>(null)
 
   // -- Global --
   const [error, setError] = useState<string | null>(null)
@@ -282,6 +285,10 @@ export function useBundleWizard(): UseBundleWizardReturn {
       if (preview.classification?.commerceType && !selectedCommerceType) {
         setSelectedCommerceType(preview.classification.commerceType)
       }
+      // Auto-set registration_number from extraction
+      if (preview.extractedData?.registrationNumber && !editedRegistrationNumber) {
+        setEditedRegistrationNumber(preview.extractedData.registrationNumber)
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error loading classification'
       setError(msg)
@@ -309,7 +316,16 @@ export function useBundleWizard(): UseBundleWizardReturn {
         // Existing company → initiate directly
         result = await bundleWorkflowApi.initiate(selectedCompany.id)
       } else if (documentPreview) {
-        const extraction = documentPreview.extraction || {}
+        const extraction = { ...(documentPreview.extraction || {}) }
+        // Inject user-edited registration_number into extraction
+        // (overrides OCR value if user corrected it)
+        if (editedRegistrationNumber) {
+          if (extraction.empresa) {
+            (extraction.empresa as Record<string, unknown>).numero_registro = editedRegistrationNumber
+          } else {
+            extraction.numero_registro = editedRegistrationNumber
+          }
+        }
 
         // Zone and category must be selected (from CLASSIFICATION step)
         const zoneOverride = selectedZoneId || classificationPreview?.zone?.id || undefined
@@ -431,8 +447,8 @@ export function useBundleWizard(): UseBundleWizardReturn {
       case BundleStep.DOCUMENT_UPLOAD:
         return documentPreview !== null || companyExists
       case BundleStep.CLASSIFICATION:
-        // Classification step: zone AND category must be selected
-        return !!selectedZoneId && !!selectedCommerceType
+        // Classification step: registration_number + zone + category required
+        return !!editedRegistrationNumber && !!selectedZoneId && !!selectedCommerceType
       case BundleStep.OBLIGATIONS_REVIEW:
         return licenseData !== null &&
           !licenseData.alreadyComplete &&
@@ -519,8 +535,10 @@ export function useBundleWizard(): UseBundleWizardReturn {
     classificationPreview,
     selectedZoneId,
     selectedCommerceType,
+    editedRegistrationNumber,
     setSelectedZoneId,
     setSelectedCommerceType,
+    setEditedRegistrationNumber,
     licenseData,
     isInitiating,
     selectedMode,

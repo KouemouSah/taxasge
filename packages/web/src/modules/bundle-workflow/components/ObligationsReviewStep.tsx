@@ -148,14 +148,36 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
           <h3 className="text-lg font-semibold">{classLabels.title[lang]}</h3>
 
           {/* Extracted data summary */}
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-1 text-sm">
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
             <p className="text-xs font-medium text-muted-foreground mb-2">{classLabels.extracted[lang]}</p>
             {ed.legalName && <p><span className="font-medium">Nombre:</span> {ed.legalName}</p>}
-            {ed.registrationNumber && <p><span className="font-medium">N° Registro:</span> {ed.registrationNumber}</p>}
-            {ed.nif && <p><span className="font-medium">NIF:</span> {ed.nif}</p>}
             {ed.localidad && <p><span className="font-medium">Localidad:</span> {ed.localidad}{ed.provincia ? ` (${ed.provincia})` : ''}</p>}
             {ed.formaJuridica && <p><span className="font-medium">Forma jurídica:</span> {ed.formaJuridica}</p>}
             {ed.sector && <p><span className="font-medium">Sector:</span> {ed.sector}</p>}
+            {ed.nif && <p><span className="font-medium">NIF:</span> {ed.nif}</p>}
+          </div>
+
+          {/* Registration number — REQUIRED, editable */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              N° Registro (PE-XXXX) *
+            </label>
+            <input
+              type="text"
+              className={`w-full rounded-md border px-3 py-2 text-sm font-mono ${
+                !wizard.editedRegistrationNumber ? 'border-red-300 bg-red-50' : 'bg-background'
+              }`}
+              value={wizard.editedRegistrationNumber || ''}
+              onChange={(e) => wizard.setEditedRegistrationNumber(e.target.value || null)}
+              placeholder="PE-000000"
+            />
+            {!wizard.editedRegistrationNumber && (
+              <p className="text-xs text-red-600">
+                {{es: 'Este campo es obligatorio. Si no fue extraído, ingréselo manualmente.',
+                  fr: "Ce champ est obligatoire. S'il n'a pas été extrait, saisissez-le manuellement.",
+                  en: 'This field is required. If not extracted, enter it manually.'}[lang]}
+              </p>
+            )}
           </div>
 
           {/* Zone detected info */}
