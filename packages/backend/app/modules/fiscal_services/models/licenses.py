@@ -224,6 +224,18 @@ class ObligationResponse(BaseModel):
     penalty_config: Optional[Dict] = None
     deadline_config: Optional[Dict] = None
 
+    @field_validator("penalty_config", "deadline_config", mode="before")
+    @classmethod
+    def parse_jsonb_config(cls, v):
+        """Handle JSONB stored as string by asyncpg."""
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                return None
+        return v
+
     status: str
     payment_id: Optional[UUID] = None
     paid_at: Optional[datetime] = None
