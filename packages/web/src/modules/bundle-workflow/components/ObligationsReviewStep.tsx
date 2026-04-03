@@ -143,44 +143,97 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
       const zoneConfirmed = !!effectiveZoneId
       const categoryConfirmed = !!effectiveCommerceType
 
+      const f = wizard.editedFields
+      const required = (val: string | null) => !val ? 'border-red-300 bg-red-50' : 'bg-background'
+      const fieldLabels = {
+        legalName: { es: 'Nombre comercial *', fr: 'Nom commercial *', en: 'Trade name *' },
+        registrationNumber: { es: 'N° Registro (PE-XXXX) *', fr: 'N° Registre (PE-XXXX) *', en: 'Registration No. (PE-XXXX) *' },
+        nif: { es: 'NIF (si aplica)', fr: 'NIF (si applicable)', en: 'NIF (if applicable)' },
+        formaJuridica: { es: 'Forma jurídica', fr: 'Forme juridique', en: 'Legal form' },
+        localidad: { es: 'Localidad *', fr: 'Localité *', en: 'City *' },
+        provincia: { es: 'Provincia', fr: 'Province', en: 'Province' },
+        sector: { es: 'Sector', fr: 'Secteur', en: 'Sector' },
+        objetoSocial: { es: 'Objeto social', fr: 'Objet social', en: 'Business activity' },
+        missingRequired: { es: 'Campo obligatorio', fr: 'Champ obligatoire', en: 'Required field' },
+      }
+
       return (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">{classLabels.title[lang]}</h3>
+          <p className="text-xs text-muted-foreground">{classLabels.extracted[lang]}</p>
 
-          {/* Extracted data summary */}
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
-            <p className="text-xs font-medium text-muted-foreground mb-2">{classLabels.extracted[lang]}</p>
-            {ed.legalName && <p><span className="font-medium">Nombre:</span> {ed.legalName}</p>}
-            {ed.localidad && <p><span className="font-medium">Localidad:</span> {ed.localidad}{ed.provincia ? ` (${ed.provincia})` : ''}</p>}
-            {ed.formaJuridica && <p><span className="font-medium">Forma jurídica:</span> {ed.formaJuridica}</p>}
-            {ed.sector && <p><span className="font-medium">Sector:</span> {ed.sector}</p>}
-            {ed.nif && <p><span className="font-medium">NIF:</span> {ed.nif}</p>}
+          {/* ── Company data form (all fields editable) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Legal name — REQUIRED */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.legalName[lang]}</label>
+              <input type="text" className={`w-full rounded-md border px-3 py-2 text-sm ${required(f.legalName)}`}
+                value={f.legalName || ''} onChange={e => wizard.setEditedField('legalName', e.target.value || null)}
+              />
+              {!f.legalName && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
+            </div>
+
+            {/* Registration number — REQUIRED (or NIF) */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.registrationNumber[lang]}</label>
+              <input type="text" className={`w-full rounded-md border px-3 py-2 text-sm font-mono ${required(f.registrationNumber)}`}
+                value={f.registrationNumber || ''} onChange={e => wizard.setEditedField('registrationNumber', e.target.value || null)}
+                placeholder="PE-000000"
+              />
+              {!f.registrationNumber && !f.nif && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
+            </div>
+
+            {/* NIF */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.nif[lang]}</label>
+              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+                value={f.nif || ''} onChange={e => wizard.setEditedField('nif', e.target.value || null)}
+                placeholder="GE00000X"
+              />
+            </div>
+
+            {/* Forma juridica */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.formaJuridica[lang]}</label>
+              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={f.formaJuridica || ''} onChange={e => wizard.setEditedField('formaJuridica', e.target.value || null)}
+              />
+            </div>
+
+            {/* Localidad */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.localidad[lang]}</label>
+              <input type="text" className={`w-full rounded-md border px-3 py-2 text-sm ${required(f.localidad)}`}
+                value={f.localidad || ''} onChange={e => wizard.setEditedField('localidad', e.target.value || null)}
+              />
+            </div>
+
+            {/* Provincia */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.provincia[lang]}</label>
+              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={f.provincia || ''} onChange={e => wizard.setEditedField('provincia', e.target.value || null)}
+              />
+            </div>
+
+            {/* Sector */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.sector[lang]}</label>
+              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={f.sector || ''} onChange={e => wizard.setEditedField('sector', e.target.value || null)}
+              />
+            </div>
+
+            {/* Objeto social */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.objetoSocial[lang]}</label>
+              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={f.objetoSocial || ''} onChange={e => wizard.setEditedField('objetoSocial', e.target.value || null)}
+              />
+            </div>
           </div>
 
-          {/* Registration number — REQUIRED, editable */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              N° Registro (PE-XXXX) *
-            </label>
-            <input
-              type="text"
-              className={`w-full rounded-md border px-3 py-2 text-sm font-mono ${
-                !wizard.editedRegistrationNumber ? 'border-red-300 bg-red-50' : 'bg-background'
-              }`}
-              value={wizard.editedRegistrationNumber || ''}
-              onChange={(e) => wizard.setEditedRegistrationNumber(e.target.value || null)}
-              placeholder="PE-000000"
-            />
-            {!wizard.editedRegistrationNumber && (
-              <p className="text-xs text-red-600">
-                {{es: 'Este campo es obligatorio. Si no fue extraído, ingréselo manualmente.',
-                  fr: "Ce champ est obligatoire. S'il n'a pas été extrait, saisissez-le manuellement.",
-                  en: 'This field is required. If not extracted, enter it manually.'}[lang]}
-              </p>
-            )}
-          </div>
-
-          {/* Zone detected info */}
+          {/* ── Zone detected info ── */}
           {preview.detectedCity && preview.detectedTier && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
               <p className="font-medium text-blue-800">
@@ -192,44 +245,31 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
             </div>
           )}
 
-          {/* Zone selector — ALWAYS shown */}
+          {/* ── Zone selector ── */}
           {primaryZones.length > 0 && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">{classLabels.selectZone[lang]}</label>
-              <select
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              <label className="text-sm font-medium">{classLabels.selectZone[lang]} *</label>
+              <select className={`w-full rounded-md border px-3 py-2 text-sm ${!effectiveZoneId ? 'border-red-300 bg-red-50' : 'bg-background'}`}
                 value={effectiveZoneId}
-                onChange={(e) => {
-                  wizard.setSelectedZoneId(e.target.value || null)
-                  wizard.setSelectedCommerceType(null)
-                }}
+                onChange={(e) => { wizard.setSelectedZoneId(e.target.value || null); wizard.setSelectedCommerceType(null) }}
               >
                 <option value="">--</option>
                 {primaryZones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.code} — {z.name}{z.description ? ` (${z.description})` : ''}
-                  </option>
+                  <option key={z.id} value={z.id}>{z.code} — {z.name}{z.description ? ` (${z.description})` : ''}</option>
                 ))}
               </select>
-              {/* Show all zones toggle if only tier zones are shown */}
               {preview.tierZones?.length > 0 && preview.availableZones.length > preview.tierZones.length && (
                 <details className="text-xs text-muted-foreground">
                   <summary className="cursor-pointer hover:text-foreground">
                     {{es: 'Mostrar todas las zonas', fr: 'Afficher toutes les zones', en: 'Show all zones'}[lang]}
                   </summary>
-                  <select
-                    className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                  <select className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
                     value={effectiveZoneId}
-                    onChange={(e) => {
-                      wizard.setSelectedZoneId(e.target.value || null)
-                      wizard.setSelectedCommerceType(null)
-                    }}
+                    onChange={(e) => { wizard.setSelectedZoneId(e.target.value || null); wizard.setSelectedCommerceType(null) }}
                   >
                     <option value="">--</option>
                     {preview.availableZones.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.code} — {z.name}{z.description ? ` (${z.description})` : ''}
-                      </option>
+                      <option key={z.id} value={z.id}>{z.code} — {z.name}{z.description ? ` (${z.description})` : ''}</option>
                     ))}
                   </select>
                 </details>
@@ -237,12 +277,11 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
             </div>
           )}
 
-          {/* Category (commerce_type) selector */}
+          {/* ── Category (commerce_type) selector ── */}
           {categoryOptions.length > 0 && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">{classLabels.selectCategory[lang]}</label>
-              <select
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              <label className="text-sm font-medium">{classLabels.selectCategory[lang]} *</label>
+              <select className={`w-full rounded-md border px-3 py-2 text-sm ${!effectiveCommerceType ? 'border-red-300 bg-red-50' : 'bg-background'}`}
                 value={effectiveCommerceType}
                 onChange={(e) => wizard.setSelectedCommerceType(e.target.value || null)}
               >

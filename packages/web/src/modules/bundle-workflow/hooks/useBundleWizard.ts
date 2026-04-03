@@ -24,6 +24,24 @@ import { BundleStep } from '../types'
 import type { ProcessingMode } from '@/types/service-bundle'
 import type { DocumentPreview } from '@/modules/service-requests/types/wizard-session'
 
+// ── Editable company fields (form_review pattern) ──────────────
+
+export interface EditableCompanyFields {
+  legalName: string | null
+  registrationNumber: string | null
+  nif: string | null
+  formaJuridica: string | null
+  localidad: string | null
+  provincia: string | null
+  sector: string | null
+  objetoSocial: string | null
+}
+
+const EMPTY_FIELDS: EditableCompanyFields = {
+  legalName: null, registrationNumber: null, nif: null, formaJuridica: null,
+  localidad: null, provincia: null, sector: null, objetoSocial: null,
+}
+
 // ── Return Interface ────────────────────────────────────────────
 
 export interface UseBundleWizardReturn {
@@ -61,14 +79,14 @@ export interface UseBundleWizardReturn {
   uploadDocument: (file: File) => Promise<DocumentPreview | null>
   deleteDocument: () => Promise<void>
 
-  // Step 2: Classification preview + Obligations review
+  // Step 2: Classification form_review (all fields editable)
   classificationPreview: ClassifyPreviewResponse | null
   selectedZoneId: string | null
   selectedCommerceType: string | null
-  editedRegistrationNumber: string | null
+  editedFields: EditableCompanyFields
+  setEditedField: (key: keyof EditableCompanyFields, value: string | null) => void
   setSelectedZoneId: (id: string | null) => void
   setSelectedCommerceType: (type: string | null) => void
-  setEditedRegistrationNumber: (val: string | null) => void
   licenseData: BundleInitiateResponse | null
   isInitiating: boolean
   selectedMode: ProcessingMode
@@ -138,7 +156,11 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null)
-  const [editedRegistrationNumber, setEditedRegistrationNumber] = useState<string | null>(null)
+  const [editedFields, setEditedFields] = useState<EditableCompanyFields>({ ...EMPTY_FIELDS })
+
+  const setEditedField = useCallback((key: keyof EditableCompanyFields, value: string | null) => {
+    setEditedFields(prev => ({ ...prev, [key]: value }))
+  }, [])
 
   // -- Global --
   const [error, setError] = useState<string | null>(null)
@@ -285,9 +307,19 @@ export function useBundleWizard(): UseBundleWizardReturn {
       if (preview.classification?.commerceType && !selectedCommerceType) {
         setSelectedCommerceType(preview.classification.commerceType)
       }
-      // Auto-set registration_number from extraction
-      if (preview.extractedData?.registrationNumber && !editedRegistrationNumber) {
-        setEditedRegistrationNumber(preview.extractedData.registrationNumber)
+      // Auto-fill ALL editable fields from extraction (user can correct)
+      const ed = preview.extractedData
+      if (ed) {
+        setEditedFields(prev => ({
+          legalName: prev.legalName || ed.legalName || null,
+          registrationNumber: prev.registrationNumber || ed.registrationNumber || null,
+          nif: prev.nif || ed.nif || null,
+          formaJuridica: prev.formaJuridica || ed.formaJuridica || null,
+          localidad: prev.localidad || ed.localidad || null,
+          provincia: prev.provincia || ed.provincia || null,
+          sector: prev.sector || ed.sector || null,
+          objetoSocial: prev.objetoSocial || ed.objetoSocial || null,
+        }))
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error loading classification'
@@ -317,15 +349,20 @@ export function useBundleWizard(): UseBundleWizardReturn {
         result = await bundleWorkflowApi.initiate(selectedCompany.id)
       } else if (documentPreview) {
         const extraction = { ...(documentPreview.extraction || {}) }
-        // Inject user-edited registration_number into extraction
-        // (overrides OCR value if user corrected it)
-        if (editedRegistrationNumber) {
-          if (extraction.empresa) {
-            (extraction.empresa as Record<string, unknown>).numero_registro = editedRegistrationNumber
-          } else {
-            extraction.numero_registro = editedRegistrationNumber
-          }
-        }
+        // Inject ALL user-edited fields into extraction
+        // (overrides OCR values with user corrections)
+        const ef = editedFields
+        const empresaObj = (extraction.empresa || extraction) as Record<string, unknown>
+        const ubicacionObj = (extraction.ubicacion || extraction) as Record<string, unknown>
+        const actividadObj = (extraction.actividad || extraction) as Record<string, unknown>
+        if (ef.legalName) empresaObj.denominacion_social = ef.legalName
+        if (ef.registrationNumber) empresaObj.numero_registro = ef.registrationNumber
+        if (ef.nif) empresaObj.nif = ef.nif
+        if (ef.formaJuridica) empresaObj.forma_juridica = ef.formaJuridica
+        if (ef.localidad) ubicacionObj.localidad = ef.localidad
+        if (ef.provincia) ubicacionObj.provincia = ef.provincia
+        if (ef.sector) actividadObj.sector = ef.sector
+        if (ef.objetoSocial) actividadObj.objeto_social = ef.objetoSocial
 
         // Zone and category must be selected (from CLASSIFICATION step)
         const zoneOverride = selectedZoneId || classificationPreview?.zone?.id || undefined
@@ -448,7 +485,9 @@ export function useBundleWizard(): UseBundleWizardReturn {
         return documentPreview !== null || companyExists
       case BundleStep.CLASSIFICATION:
         // Classification step: registration_number + zone + category required
-        return !!editedRegistrationNumber && !!selectedZoneId && !!selectedCommerceType
+        return !!(editedFields.registrationNumber || editedFields.nif)
+          && !!editedFields.legalName
+          && !!selectedZoneId && !!selectedCommerceType
       case BundleStep.OBLIGATIONS_REVIEW:
         return licenseData !== null &&
           !licenseData.alreadyComplete &&
@@ -535,10 +574,10 @@ export function useBundleWizard(): UseBundleWizardReturn {
     classificationPreview,
     selectedZoneId,
     selectedCommerceType,
-    editedRegistrationNumber,
+    editedFields,
+    setEditedField,
     setSelectedZoneId,
     setSelectedCommerceType,
-    setEditedRegistrationNumber,
     licenseData,
     isInitiating,
     selectedMode,
