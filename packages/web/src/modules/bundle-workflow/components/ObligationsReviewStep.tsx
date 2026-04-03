@@ -197,6 +197,7 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
               <input type="text" className={`w-full rounded-md border px-3 py-2 text-sm ${required(f.localidad)}`}
                 value={f.localidad || ''} onChange={e => wizard.setEditedField('localidad', e.target.value || null)}
               />
+              {!f.localidad && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
             </div>
 
             {/* Provincia */}

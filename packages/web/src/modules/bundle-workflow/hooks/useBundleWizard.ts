@@ -487,6 +487,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
         // Classification step: registration_number + zone + category required
         return !!editedFields.registrationNumber
           && !!editedFields.legalName
+          && !!editedFields.localidad
           && !!selectedZoneId && !!selectedCommerceType
       case BundleStep.OBLIGATIONS_REVIEW:
         return licenseData !== null &&
