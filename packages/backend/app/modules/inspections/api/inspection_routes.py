@@ -132,7 +132,11 @@ async def list_inspections(
         items, total = await InspectionRepository.list_by_agent(
             db, UUID(current_user.id),
             inspection_date=inspection_date,
+            date_from=date_from,
+            date_to=date_to,
             status=status,
+            result=result,
+            search=search,
             page=page, page_size=page_size,
         )
 

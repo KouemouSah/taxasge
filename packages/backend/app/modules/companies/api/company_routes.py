@@ -5,6 +5,7 @@ Includes:
 - Admin endpoints (permission-based access)
 """
 
+from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer
 from typing import Dict, Any, List, Optional
@@ -305,7 +306,7 @@ async def list_companies(
 
 @router.get("/{company_id}", response_model=CompanyResponse)
 async def get_company(
-    company_id: str,
+    company_id: UUID,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):

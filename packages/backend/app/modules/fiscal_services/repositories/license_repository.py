@@ -20,6 +20,8 @@ class LicenseRepository:
         row = await conn.fetchrow("""
             SELECT cl.*,
                    co.legal_name as company_name,
+                   COALESCE(co.nif, co.registration_number) as company_nif,
+                   co.registration_number as company_registration_number,
                    sb.name_es as bundle_name,
                    cz.zone_code
             FROM commercial_licenses cl

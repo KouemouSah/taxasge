@@ -169,6 +169,8 @@ class LicenseResponse(BaseModel):
 
     # Enriched (from JOINs)
     company_name: Optional[str] = None
+    company_nif: Optional[str] = None
+    company_registration_number: Optional[str] = None
     bundle_name: Optional[str] = None
     zone_code: Optional[str] = None
 
@@ -190,6 +192,8 @@ class LicenseSummary(BaseModel):
 
     # Enriched
     company_name: Optional[str] = None
+    company_nif: Optional[str] = None
+    company_registration_number: Optional[str] = None
     bundle_name: Optional[str] = None
     zone_code: Optional[str] = None
 
@@ -325,6 +329,8 @@ class AgentQueueItem(BaseModel):
     service_code: Optional[str] = None
     ministry_name: Optional[str] = None
     company_name: Optional[str] = None
+    company_nif: Optional[str] = None
+    company_registration_number: Optional[str] = None
     fiscal_year: Optional[int] = None
     zone_code: Optional[str] = None
     processing_mode: Optional[str] = None

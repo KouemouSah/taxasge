@@ -70,10 +70,14 @@ class InspectionRepository:
     async def list_by_agent(
         conn, agent_id: UUID,
         inspection_date: Optional[date] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
         status: Optional[str] = None,
+        result: Optional[str] = None,
+        search: Optional[str] = None,
         page: int = 1, page_size: int = 20,
     ) -> Tuple[List[Dict], int]:
-        """List inspections for an agent."""
+        """List inspections for an agent with filters."""
         conditions = ["fi.agent_id = $1"]
         params = [agent_id]
         idx = 2
@@ -82,10 +86,30 @@ class InspectionRepository:
             conditions.append(f"fi.inspection_date = ${idx}")
             params.append(inspection_date)
             idx += 1
+        else:
+            # Date range (when no single date specified)
+            if date_from:
+                conditions.append(f"fi.inspection_date >= ${idx}")
+                params.append(date_from)
+                idx += 1
+            if date_to:
+                conditions.append(f"fi.inspection_date <= ${idx}")
+                params.append(date_to)
+                idx += 1
 
         if status:
             conditions.append(f"fi.status = ${idx}")
             params.append(status)
+            idx += 1
+
+        if result:
+            conditions.append(f"fi.result = ${idx}")
+            params.append(result)
+            idx += 1
+
+        if search:
+            conditions.append(f"(c.legal_name ILIKE ${idx} OR COALESCE(c.nif, c.registration_number) ILIKE ${idx})")
+            params.append(f"%{search}%")
             idx += 1
 
         where = " AND ".join(conditions)
