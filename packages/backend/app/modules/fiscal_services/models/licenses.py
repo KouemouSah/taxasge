@@ -227,6 +227,17 @@ class ObligationResponse(BaseModel):
     @field_validator("penalty_config", "deadline_config", mode="before")
     @classmethod
     def parse_jsonb_config(cls, v):
+        if isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                return None
+        return v
+
+    @field_validator("penalty_config", "deadline_config", mode="before")
+    @classmethod
+    def parse_jsonb_config(cls, v):
         """Handle JSONB stored as string by asyncpg."""
         if isinstance(v, str):
             import json

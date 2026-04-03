@@ -5,7 +5,7 @@
  * Completely separate from the generic wizard — aligned with web bundle-workflow module.
  */
 
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Text, Button, ActivityIndicator, ProgressBar, Snackbar, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -70,69 +70,42 @@ export default function BundleWizardScreen() {
               <CompanyUploadStep wizard={wizard} lang={lang} />
             )}
             {wizard.currentStep === BundleStep.CLASSIFICATION && (
-              <View style={{ flex: 1, padding: 16, gap: 14 }}>
+              <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 48 }}>
                 {wizard.classificationPreview ? (
-                  <View style={{ gap: 14 }}>
-                    {/* Extracted data summary */}
-                    {wizard.classificationPreview.extracted_data && (
-                      <View style={{ backgroundColor: colors.surfaceVariant, padding: 12, borderRadius: 8, gap: 4 }}>
-                        {wizard.classificationPreview.extracted_data.legal_name && (
-                          <Text variant="bodySmall"><Text style={{ fontWeight: '600' }}>Nombre: </Text>{String(wizard.classificationPreview.extracted_data.legal_name)}</Text>
-                        )}
-                        {wizard.classificationPreview.extracted_data.nif && (
-                          <Text variant="bodySmall"><Text style={{ fontWeight: '600' }}>NIF: </Text>{String(wizard.classificationPreview.extracted_data.nif)}</Text>
-                        )}
-                        {wizard.classificationPreview.extracted_data.localidad && (
-                          <Text variant="bodySmall"><Text style={{ fontWeight: '600' }}>Localidad: </Text>{String(wizard.classificationPreview.extracted_data.localidad)}</Text>
-                        )}
-                      </View>
-                    )}
+                  <>
+                    {/* Editable company fields — full form review (aligned with web) */}
+                    <TextInput label={lang === 'fr' ? 'Dénomination sociale *' : 'Nombre comercial *'} value={wizard.editedFields.legalName || ''} onChangeText={(v) => wizard.setEditedField('legalName', v || null)} mode="outlined" dense error={!wizard.editedFields.legalName} />
+                    <TextInput label="N° Registro (PE-XXXX) *" value={wizard.editedFields.registrationNumber || ''} onChangeText={(v) => wizard.setEditedField('registrationNumber', v || null)} mode="outlined" dense placeholder="PE-000000" error={!wizard.editedFields.registrationNumber} />
+                    <TextInput label={lang === 'fr' ? 'Localité *' : 'Localidad *'} value={wizard.editedFields.localidad || ''} onChangeText={(v) => wizard.setEditedField('localidad', v || null)} mode="outlined" dense error={!wizard.editedFields.localidad} />
+                    <TextInput label={lang === 'fr' ? 'Province' : 'Provincia'} value={wizard.editedFields.provincia || ''} onChangeText={(v) => wizard.setEditedField('provincia', v || null)} mode="outlined" dense />
+                    <TextInput label={lang === 'fr' ? 'Forme juridique' : 'Forma jurídica'} value={wizard.editedFields.formaJuridica || ''} onChangeText={(v) => wizard.setEditedField('formaJuridica', v || null)} mode="outlined" dense />
+                    <TextInput label={lang === 'fr' ? 'Secteur' : 'Sector'} value={wizard.editedFields.sector || ''} onChangeText={(v) => wizard.setEditedField('sector', v || null)} mode="outlined" dense />
+                    <TextInput label={lang === 'fr' ? 'Objet social' : 'Objeto social'} value={wizard.editedFields.objetoSocial || ''} onChangeText={(v) => wizard.setEditedField('objetoSocial', v || null)} mode="outlined" dense multiline />
 
-                    {/* Registration number — REQUIRED, editable (like web) */}
-                    <View style={{ gap: 4 }}>
-                      <Text variant="labelMedium" style={{ fontWeight: '600' }}>
-                        N° Registro (PE-XXXX) *
-                      </Text>
-                      <TextInput
-                        value={wizard.editedRegistrationNumber || ''}
-                        onChangeText={(v) => wizard.setEditedRegistrationNumber(v || null)}
-                        mode="outlined"
-                        placeholder="PE-000000"
-                        style={{ fontFamily: 'monospace' }}
-                        error={!wizard.editedRegistrationNumber}
-                        dense
-                      />
-                      {!wizard.editedRegistrationNumber && (
-                        <Text variant="labelSmall" style={{ color: colors.error }}>
-                          {lang === 'fr' ? 'Ce champ est obligatoire' : lang === 'en' ? 'This field is required' : 'Este campo es obligatorio'}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* Zone info */}
-                    <View style={{ gap: 4 }}>
-                      <Text variant="labelMedium" style={{ fontWeight: '600' }}>
-                        {lang === 'fr' ? 'Zone fiscale' : lang === 'en' ? 'Fiscal zone' : 'Zona fiscal'}
-                      </Text>
+                    {/* Zone + Commerce type (auto-detected or manual) */}
+                    <View style={{ gap: 4, marginTop: 8 }}>
+                      <Text variant="labelMedium" style={{ fontWeight: '600' }}>{lang === 'fr' ? 'Zone fiscale' : 'Zona fiscal'}</Text>
                       <Text variant="bodyMedium" style={{ color: wizard.selectedZoneId ? colors.onSurface : colors.outline }}>
-                        {wizard.classificationPreview.zone?.name || wizard.selectedZoneId || (lang === 'fr' ? 'Non détectée' : 'Not detected')}
+                        {wizard.classificationPreview.zone?.name || (lang === 'fr' ? 'Non détectée' : 'No detectada')}
+                      </Text>
+                    </View>
+                    <View style={{ gap: 4 }}>
+                      <Text variant="labelMedium" style={{ fontWeight: '600' }}>{lang === 'fr' ? 'Type de commerce' : 'Tipo de comercio'}</Text>
+                      <Text variant="bodyMedium" style={{ color: wizard.selectedCommerceType ? colors.onSurface : colors.outline }}>
+                        {wizard.selectedCommerceType || (lang === 'fr' ? 'Non classifié' : 'No clasificado')}
                       </Text>
                     </View>
 
-                    {/* Commerce type */}
-                    <View style={{ gap: 4 }}>
-                      <Text variant="labelMedium" style={{ fontWeight: '600' }}>
-                        {lang === 'fr' ? 'Type de commerce' : lang === 'en' ? 'Commerce type' : 'Tipo de comercio'}
+                    {(!wizard.editedFields.registrationNumber || !wizard.editedFields.legalName || !wizard.editedFields.localidad) && (
+                      <Text variant="labelSmall" style={{ color: colors.error }}>
+                        {lang === 'fr' ? '* Les champs marqués sont obligatoires' : '* Los campos marcados son obligatorios'}
                       </Text>
-                      <Text variant="bodyMedium" style={{ color: wizard.selectedCommerceType ? colors.onSurface : colors.outline }}>
-                        {wizard.selectedCommerceType || (lang === 'fr' ? 'Non classifié' : 'Not classified')}
-                      </Text>
-                    </View>
-                  </View>
+                    )}
+                  </>
                 ) : (
-                  <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+                  <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
                 )}
-              </View>
+              </ScrollView>
             )}
             {wizard.currentStep === BundleStep.OBLIGATIONS_REVIEW && (
               <ObligationsReviewStep wizard={wizard} lang={lang} />

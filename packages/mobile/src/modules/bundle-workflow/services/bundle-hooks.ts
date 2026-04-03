@@ -39,11 +39,17 @@ export function useBundleWizard() {
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Step 2: Classification
+  // Step 2: Classification — all editable fields (aligned with web EditableCompanyFields)
   const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null);
-  const [editedRegistrationNumber, setEditedRegistrationNumber] = useState<string | null>(null);
+  const [editedFields, setEditedFieldsState] = useState<Record<string, string | null>>({
+    legalName: null, registrationNumber: null, localidad: null,
+    provincia: null, sector: null, objetoSocial: null, formaJuridica: null,
+  });
+  const setEditedField = useCallback((key: string, value: string | null) => {
+    setEditedFieldsState((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   // Step 3: Obligations
   const [licenseData, setLicenseData] = useState<BundleInitiateResponse | null>(null);
@@ -151,11 +157,20 @@ export function useBundleWizard() {
       if (data.classification?.commerce_type && !selectedCommerceType) {
         setSelectedCommerceType(data.classification.commerce_type);
       }
-      // Auto-populate registration number from extraction (like web line 289)
-      const extReg = data.extracted_data?.registration_number || data.extracted_data?.numero_registro;
-      if (extReg && !editedRegistrationNumber) {
-        setEditedRegistrationNumber(String(extReg));
-      }
+      // Auto-populate editable fields from extraction (like web)
+      const ext = data.extracted_data || {};
+      const empresa = ext.empresa || ext;
+      const ubicacion = ext.ubicacion || ext;
+      const actividad = ext.actividad || ext;
+      setEditedFieldsState((prev) => ({
+        legalName: prev.legalName || empresa.denominacion_social || empresa.legal_name || null,
+        registrationNumber: prev.registrationNumber || empresa.numero_registro || empresa.registration_number || null,
+        localidad: prev.localidad || ubicacion.localidad || null,
+        provincia: prev.provincia || ubicacion.provincia || null,
+        sector: prev.sector || actividad.sector || null,
+        objetoSocial: prev.objetoSocial || actividad.objeto_social || null,
+        formaJuridica: prev.formaJuridica || empresa.forma_juridica || null,
+      }));
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Classification failed');
     } finally { setIsLoading(false); }
@@ -179,15 +194,20 @@ export function useBundleWizard() {
       if (companyExists && selectedCompany) {
         data = await bundleApi.initiate(selectedCompany.id);
       } else if (documentPreview?.extraction) {
-        // Inject user-corrected registration number (like web line 322-326)
+        // Inject ALL user-edited fields into extraction (like web lines 354-365)
         const extraction = { ...documentPreview.extraction };
-        if (editedRegistrationNumber) {
-          if (extraction.empresa && typeof extraction.empresa === 'object') {
-            (extraction.empresa as Record<string, unknown>).numero_registro = editedRegistrationNumber;
-          } else {
-            extraction.numero_registro = editedRegistrationNumber;
-          }
-        }
+        const ef = editedFields;
+        const empresaObj = (extraction.empresa || extraction) as Record<string, unknown>;
+        const ubicacionObj = (extraction.ubicacion || extraction) as Record<string, unknown>;
+        const actividadObj = (extraction.actividad || extraction) as Record<string, unknown>;
+        if (ef.legalName) empresaObj.denominacion_social = ef.legalName;
+        if (ef.registrationNumber) empresaObj.numero_registro = ef.registrationNumber;
+        if (ef.formaJuridica) empresaObj.forma_juridica = ef.formaJuridica;
+        if (ef.localidad) ubicacionObj.localidad = ef.localidad;
+        if (ef.provincia) ubicacionObj.provincia = ef.provincia;
+        if (ef.sector) actividadObj.sector = ef.sector;
+        if (ef.objetoSocial) actividadObj.objeto_social = ef.objetoSocial;
+
         data = await bundleApi.initiateFromUpload(
           extraction, undefined, selectedZoneId || undefined, selectedCommerceType || undefined
         );
@@ -267,7 +287,7 @@ export function useBundleWizard() {
     switch (currentStep) {
       case 0: return !!selectedCompany || !companyExists;
       case 1: return !!documentPreview;
-      case 2: return !!editedRegistrationNumber && !!selectedZoneId && !!selectedCommerceType;
+      case 2: return !!editedFields.registrationNumber && !!editedFields.legalName && !!editedFields.localidad && !!selectedZoneId && !!selectedCommerceType;
       case 3: return !!licenseData && !licenseData.already_complete && selectedObligationIds.size > 0;
       case 4: return !!paymentMethod && (paymentMethod !== 'mobile_money' || phoneNumber.length >= 9);
       default: return false;
@@ -339,8 +359,8 @@ export function useBundleWizard() {
     isLoadingCompanies, isSearching,
     loadMyCompanies, searchCompany, selectCompany, clearCompanySelection, requestNewCompany,
     documentPreview, isUploading, uploadDocument, deleteDocument,
-    classificationPreview, selectedZoneId, selectedCommerceType, editedRegistrationNumber,
-    setSelectedZoneId, setSelectedCommerceType, setEditedRegistrationNumber, loadClassification,
+    classificationPreview, selectedZoneId, selectedCommerceType, editedFields,
+    setSelectedZoneId, setSelectedCommerceType, setEditedField, loadClassification,
     licenseData, selectedMode, selectedObligationIds, isInitiating,
     setSelectedMode, toggleObligation, selectAllObligations, deselectAllObligations, loadObligations,
     paymentMethod, phoneNumber, isPaymentProcessing,
