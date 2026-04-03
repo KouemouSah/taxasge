@@ -10467,7 +10467,15 @@
       "nonConforme": "No conformes",
       "collected": "Cobrado",
       "noInspectionsToday": "Ninguna inspección realizada hoy. Pulse \"Nueva Inspección\" para comenzar.",
-      "activeMed": "mise(s) en demeure activa(s)"
+      "activeMed": "mise(s) en demeure activa(s)",
+      "date": "Fecha",
+      "company": "Empresa",
+      "nif": "NIF",
+      "result": "Resultado",
+      "status": "Estado",
+      "amount": "Monto",
+      "loadError": "No se pudieron cargar los datos",
+      "pageOf": "Página {current} de {total}"
     },
     "scan": {
       "title": "Inspección",

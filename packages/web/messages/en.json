@@ -10467,7 +10467,15 @@
       "nonConforme": "Non-compliant",
       "collected": "Collected",
       "noInspectionsToday": "No inspections performed today. Press \"New Inspection\" to start.",
-      "activeMed": "active formal notice(s)"
+      "activeMed": "active formal notice(s)",
+      "date": "Date",
+      "company": "Company",
+      "nif": "NIF",
+      "result": "Result",
+      "status": "Status",
+      "amount": "Amount",
+      "loadError": "Could not load data",
+      "pageOf": "Page {current} of {total}"
     },
     "scan": {
       "title": "Inspection",
