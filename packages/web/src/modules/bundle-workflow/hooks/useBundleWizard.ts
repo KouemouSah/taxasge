@@ -485,7 +485,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
         return documentPreview !== null || companyExists
       case BundleStep.CLASSIFICATION:
         // Classification step: registration_number + zone + category required
-        return !!(editedFields.registrationNumber || editedFields.nif)
+        return !!editedFields.registrationNumber
           && !!editedFields.legalName
           && !!selectedZoneId && !!selectedCommerceType
       case BundleStep.OBLIGATIONS_REVIEW:

@@ -173,23 +173,14 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
               {!f.legalName && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
             </div>
 
-            {/* Registration number — REQUIRED (or NIF) */}
-            <div>
+            {/* Registration number — REQUIRED for AUTONOMO (PE-XXXX) */}
+            <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">{fieldLabels.registrationNumber[lang]}</label>
               <input type="text" className={`w-full rounded-md border px-3 py-2 text-sm font-mono ${required(f.registrationNumber)}`}
                 value={f.registrationNumber || ''} onChange={e => wizard.setEditedField('registrationNumber', e.target.value || null)}
                 placeholder="PE-000000"
               />
-              {!f.registrationNumber && !f.nif && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
-            </div>
-
-            {/* NIF */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">{fieldLabels.nif[lang]}</label>
-              <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
-                value={f.nif || ''} onChange={e => wizard.setEditedField('nif', e.target.value || null)}
-                placeholder="GE00000X"
-              />
+              {!f.registrationNumber && <p className="text-[10px] text-red-600 mt-0.5">{fieldLabels.missingRequired[lang]}</p>}
             </div>
 
             {/* Forma juridica */}
