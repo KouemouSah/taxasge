@@ -71,6 +71,11 @@ build/
 credentials.json
 service-account-*.json
 
+# Android release keystores (NEVER commit — stored in GitHub Secrets)
+*-release.keystore
+*.jks
+!debug.keystore
+
 # Logs
 *.log
 logs/
