@@ -120,6 +120,7 @@ jobs:
             --max-workers=2 \
             -x lint \
             -x test \
+            -PnewArchEnabled=false \
             $GRADLE_PROPS
 
           # Verify APK
