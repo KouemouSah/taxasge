@@ -479,12 +479,24 @@ class CompanyClassificationAgent(LLMAgentMixin):
         - CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL (DGPE — autonomo)
         - CERTIFICADO_REGISTRO_EMPRESARIAL (VUE — SL/SA)
         """
+        # Support both nested (schema-aligned) and flat (Gemini raw) structures.
+        # If empresa/ubicacion keys are missing → Gemini returned flat format,
+        # use the extraction dict itself as fallback for all sections.
         empresa = extraction.get("empresa", {})
         ubicacion = extraction.get("ubicacion", {})
         actividad = extraction.get("actividad", {})
         datos_op = extraction.get("datos_operativos", {})
         certificacion = extraction.get("certificacion", {})
         documento = extraction.get("documento", {})
+
+        # Flat fallback: if nested sections are empty, use extraction root
+        if not empresa and not ubicacion:
+            empresa = extraction
+            ubicacion = extraction
+            actividad = extraction
+            datos_op = extraction
+            certificacion = extraction
+            documento = extraction
 
         # Determine if this is a Padrón (DGPE) or VUE document
         is_padron = (
