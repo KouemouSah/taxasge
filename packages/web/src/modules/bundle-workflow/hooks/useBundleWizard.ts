@@ -290,6 +290,14 @@ export function useBundleWizard(): UseBundleWizardReturn {
     }
   }, [documentPreview, selectedZoneId, selectedCommerceType])
 
+  // Re-fetch classification when user changes zone (to get categories for that zone)
+  useEffect(() => {
+    if (currentStep === BundleStep.CLASSIFICATION && selectedZoneId && documentPreview) {
+      loadClassification()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedZoneId])
+
   // ── Step: Load obligations (initiate workflow) ────────────────
   const loadObligations = useCallback(async () => {
     setIsInitiating(true)

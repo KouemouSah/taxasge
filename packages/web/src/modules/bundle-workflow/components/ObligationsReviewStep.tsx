@@ -234,23 +234,34 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
             </div>
           )}
 
-          {/* Confirm button */}
+          {/* Confirm — goNext handles loadObligations when moving to OBLIGATIONS step */}
           <Button
             className="w-full"
-            disabled={!zoneConfirmed || !categoryConfirmed}
+            disabled={!zoneConfirmed || !categoryConfirmed || wizard.isInitiating}
             onClick={() => {
               wizard.clearError()
-              wizard.loadObligations()
+              wizard.goNext()
             }}
           >
-            {classLabels.confirm[lang]}
+            {wizard.isInitiating
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{classLabels.confirm[lang]}</>
+              : classLabels.confirm[lang]}
           </Button>
         </div>
       )
     }
 
-    // Show error if obligations failed to load
-    if (wizard.error) {
+    // Classification not yet loaded
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-sm text-muted-foreground">{labels.loading[lang]}</p>
+      </div>
+    )
+  }
+
+  // Show error if obligations failed to load
+  if (wizard.error) {
       return (
         <div className="space-y-4">
           <Alert variant="destructive">
