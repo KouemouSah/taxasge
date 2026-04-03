@@ -394,7 +394,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
     } finally {
       setIsInitiating(false)
     }
-  }, [companyExists, selectedCompany, documentPreview, classificationPreview, selectedZoneId, selectedCommerceType])
+  }, [companyExists, selectedCompany, documentPreview, classificationPreview, selectedZoneId, selectedCommerceType, editedFields])
 
   // ── Step 2: Obligation selection ────────────────────────────
 

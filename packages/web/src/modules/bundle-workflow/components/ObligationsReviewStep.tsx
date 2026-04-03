@@ -120,8 +120,6 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
         selectCategory: { es: 'Categoría de actividad', fr: "Catégorie d'activité", en: 'Activity category' },
         confirm: { es: 'Confirmar y continuar', fr: 'Confirmer et continuer', en: 'Confirm and continue' },
       }
-      const ed = preview.extractedData
-
       // Zone: user selection > auto-detected
       const effectiveZoneId = wizard.selectedZoneId || preview.zone?.id || ''
 
