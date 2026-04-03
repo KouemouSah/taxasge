@@ -398,16 +398,17 @@ class LicenseRepository:
         triggered_by: Optional[UUID] = None,
     ) -> Dict:
         """Insert a compliance event (append-only)."""
+        import json as _json
         row = await conn.fetchrow("""
             INSERT INTO license_compliance_events
                 (license_id, obligation_id, event_type, event_data, triggered_by)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4::jsonb, $5)
             RETURNING *
         """,
             license_id,
             obligation_id,
             event_type,
-            event_data or {},
+            _json.dumps(event_data or {}),
             triggered_by,
         )
         return dict(row)
