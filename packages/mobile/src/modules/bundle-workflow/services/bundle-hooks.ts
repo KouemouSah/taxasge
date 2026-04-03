@@ -43,6 +43,7 @@ export function useBundleWizard() {
   const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null);
+  const [editedRegistrationNumber, setEditedRegistrationNumber] = useState<string | null>(null);
 
   // Step 3: Obligations
   const [licenseData, setLicenseData] = useState<BundleInitiateResponse | null>(null);
@@ -150,6 +151,11 @@ export function useBundleWizard() {
       if (data.classification?.commerce_type && !selectedCommerceType) {
         setSelectedCommerceType(data.classification.commerce_type);
       }
+      // Auto-populate registration number from extraction (like web line 289)
+      const extReg = data.extracted_data?.registration_number || data.extracted_data?.numero_registro;
+      if (extReg && !editedRegistrationNumber) {
+        setEditedRegistrationNumber(String(extReg));
+      }
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Classification failed');
     } finally { setIsLoading(false); }
@@ -173,8 +179,17 @@ export function useBundleWizard() {
       if (companyExists && selectedCompany) {
         data = await bundleApi.initiate(selectedCompany.id);
       } else if (documentPreview?.extraction) {
+        // Inject user-corrected registration number (like web line 322-326)
+        const extraction = { ...documentPreview.extraction };
+        if (editedRegistrationNumber) {
+          if (extraction.empresa && typeof extraction.empresa === 'object') {
+            (extraction.empresa as Record<string, unknown>).numero_registro = editedRegistrationNumber;
+          } else {
+            extraction.numero_registro = editedRegistrationNumber;
+          }
+        }
         data = await bundleApi.initiateFromUpload(
-          documentPreview.extraction, undefined, selectedZoneId || undefined, selectedCommerceType || undefined
+          extraction, undefined, selectedZoneId || undefined, selectedCommerceType || undefined
         );
       } else {
         throw new Error('No company or document');
@@ -252,7 +267,7 @@ export function useBundleWizard() {
     switch (currentStep) {
       case 0: return !!selectedCompany || !companyExists;
       case 1: return !!documentPreview;
-      case 2: return !!selectedZoneId && !!selectedCommerceType;
+      case 2: return !!editedRegistrationNumber && !!selectedZoneId && !!selectedCommerceType;
       case 3: return !!licenseData && !licenseData.already_complete && selectedObligationIds.size > 0;
       case 4: return !!paymentMethod && (paymentMethod !== 'mobile_money' || phoneNumber.length >= 9);
       default: return false;
@@ -324,8 +339,8 @@ export function useBundleWizard() {
     isLoadingCompanies, isSearching,
     loadMyCompanies, searchCompany, selectCompany, clearCompanySelection, requestNewCompany,
     documentPreview, isUploading, uploadDocument, deleteDocument,
-    classificationPreview, selectedZoneId, selectedCommerceType,
-    setSelectedZoneId, setSelectedCommerceType, loadClassification,
+    classificationPreview, selectedZoneId, selectedCommerceType, editedRegistrationNumber,
+    setSelectedZoneId, setSelectedCommerceType, setEditedRegistrationNumber, loadClassification,
     licenseData, selectedMode, selectedObligationIds, isInitiating,
     setSelectedMode, toggleObligation, selectAllObligations, deselectAllObligations, loadObligations,
     paymentMethod, phoneNumber, isPaymentProcessing,
