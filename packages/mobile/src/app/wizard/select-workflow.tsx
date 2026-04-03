@@ -110,6 +110,11 @@ export default function SelectWorkflowScreen() {
   }, []);
 
   const handleSelectWorkflow = useCallback((wf: WorkflowInfo) => {
+    // BUNDLE_PAYMENT has its own dedicated wizard (not generic)
+    if (wf.code === 'BUNDLE_PAYMENT') {
+      router.push('/bundle-wizard' as never);
+      return;
+    }
     router.push(`/wizard/create?workflow_code=${wf.code}` as never);
   }, [router]);
 

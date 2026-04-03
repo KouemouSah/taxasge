@@ -107,6 +107,7 @@ function RootNavigator() {
       />
       <Stack.Screen name="settings" />
       <Stack.Screen name="support" />
+      <Stack.Screen name="bundle-wizard" />
       <Stack.Screen name="calculator/index" />
       <Stack.Screen name="calculator/history" />
       <Stack.Screen name="licencias" />
