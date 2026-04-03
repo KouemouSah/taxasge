@@ -304,8 +304,6 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
         </div>
       )
     }
-    return null
-  }
 
   const { licenseData } = wizard
 
