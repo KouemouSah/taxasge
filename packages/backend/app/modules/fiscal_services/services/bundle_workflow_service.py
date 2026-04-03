@@ -416,21 +416,26 @@ class BundleWorkflowService:
                 result["company_already_existed"] = True
                 return result
 
-        # 3. Resolve city/zone from localidad (cities.zone_id → commerce_zones.id)
-        #    Use override zone_id if provided (from classify-preview manual selection)
+        # 3. Resolve city from localidad + use zone_id override if provided
+        #    Zone selection is tier-based: user picks specific zone (A1/A2/A3)
+        #    City resolution is separate: localidad → cities.id (for city_id FK)
         localidad = company_data.get("localidad", "")
         city_id = None
-        if zone_id:
-            # Admin/user provided zone override — skip localidad lookup
-            logger.info("Upload: using zone override %s", zone_id)
-        elif localidad:
+
+        # Always resolve city_id from localidad (regardless of zone override)
+        if localidad:
             city_row = await conn.fetchrow(
                 "SELECT id, zone_id FROM cities WHERE name ILIKE $1 LIMIT 1",
-                localidad,
+                localidad.strip(),
             )
             if city_row:
                 city_id = city_row["id"]
-                zone_id = city_row["zone_id"]  # Direct FK, no pivot table
+                # Only use city's zone_id as fallback if no override provided
+                if not zone_id:
+                    zone_id = city_row["zone_id"]
+
+        if zone_id:
+            logger.info("Upload: zone=%s, city_id=%s, localidad=%s", zone_id, city_id, localidad)
 
         # 4. Create company via repository (adds owner role automatically)
         from app.modules.companies.models.company import CompanyCreate
