@@ -32,8 +32,8 @@ export const API_ENDPOINTS = {
   },
 
   inspections: {
-    list: '/inspections',
-    create: '/inspections',
+    list: '/inspections/',
+    create: '/inspections/',
     detail: (id: string) => `/inspections/${id}` as const,
     update: (id: string) => `/inspections/${id}` as const,
     complete: (id: string) => `/inspections/${id}/complete` as const,
@@ -52,8 +52,8 @@ export const API_ENDPOINTS = {
   },
 
   missions: {
-    list: '/inspections/missions',
-    create: '/inspections/missions',
+    list: '/inspections/missions/',
+    create: '/inspections/missions/',
     suggestZones: '/inspections/missions/suggest-zones',
     agentAvailability: '/inspections/missions/agents/availability',
     detail: (id: string) => `/inspections/missions/${id}` as const,
@@ -74,8 +74,8 @@ export const API_ENDPOINTS = {
   },
 
   filterPresets: {
-    list: '/inspections/filter-presets',
-    create: '/inspections/filter-presets',
+    list: '/inspections/filter-presets/',
+    create: '/inspections/filter-presets/',
     update: (id: string) => `/inspections/filter-presets/${id}` as const,
     delete: (id: string) => `/inspections/filter-presets/${id}` as const,
   },
