@@ -518,13 +518,13 @@ class LicenseService:
 
         # Validate transition
         valid_transitions = {
-            "pending": ["selected", "overdue", "waived", "cancelled"],
+            "pending": ["selected", "overdue", "waived", "cancelled", "completed", "processing"],
             "selected": ["pending", "payment_pending", "cancelled"],
             "payment_pending": ["paid", "pending", "cancelled"],
             "paid": ["processing", "completed"],
             "processing": ["completed", "paid"],
             "completed": [],  # terminal
-            "overdue": ["pending", "paid", "waived", "cancelled"],
+            "overdue": ["pending", "paid", "waived", "cancelled", "completed", "processing"],
             "waived": [],     # terminal
             "cancelled": [],  # terminal
         }
