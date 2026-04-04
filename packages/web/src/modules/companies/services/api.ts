@@ -196,7 +196,7 @@ export const companyMinistryApi = {
   /** National company lookup — ONRC agents */
   lookup: (q: string) =>
     get<{ results: LookupResult[]; count: number; query: string }>(
-      `/lookup?q=${encodeURIComponent(q)}`
+      `/ministry/lookup?q=${encodeURIComponent(q)}`
     ),
 }
 

@@ -21,7 +21,7 @@ from loguru import logger
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
-from app.modules.companies.services.agent_context import get_agent_ministry_id
+from app.modules.companies.services.agent_context import get_agent_ministry_id, get_agent_city_scope
 
 router = APIRouter(tags=["Company Ministry"])
 
@@ -49,10 +49,14 @@ async def get_company_debt_for_my_ministry(
     if not ministry_id:
         raise HTTPException(status_code=403, detail="No ministry assigned to your profile")
 
-    # Company basic info
+    # City scope — main office sees all, secondary site sees only their city
+    city_scope = await get_agent_city_scope(db, current_user.id)
+
+    # Company basic info + city scope check
     company = await db.fetchrow(
         """SELECT c.id, c.legal_name, c.nif, c.registration_number,
                   c.regimen_fiscal, c.commerce_type, c.is_active,
+                  c.city_id,
                   ct.name AS city_name, cz.zone_code
            FROM companies c
            LEFT JOIN cities ct ON c.city_id = ct.id
@@ -62,6 +66,10 @@ async def get_company_debt_for_my_ministry(
     )
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
+
+    # Enforce city scope — secondary site agents can't view companies outside their city
+    if city_scope and company["city_id"] != city_scope:
+        raise HTTPException(status_code=403, detail="Company is outside your zone")
 
     # Obligations for THIS ministry only (strict scoping)
     obligations = await db.fetch(
@@ -100,22 +108,26 @@ async def get_company_debt_for_my_ministry(
 
 # ── ONRC Agent: National Company Lookup (read-only) ─────────────────────────
 
-@router.get("/lookup")
+@router.get("/ministry/lookup")
 async def lookup_company(
     q: str = Query(..., min_length=2, max_length=100, description="NIF, PE-XXXX, or company name"),
     db=Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
     _=Depends(permission_required("company.view")),
 ):
-    """National company lookup — ONRC agents can search ALL companies.
+    """Company lookup scoped to agent's city/zone.
 
     Search by NIF (exact or partial), registration_number (PE-XXXX), or legal_name.
     Returns basic info + existence status. Read-only — no modification possible.
-    No zone filtering (ONRC = national scope).
+    City scope: main office agents see all cities, secondary site agents see their city only.
     """
+    # City scope — main office sees all, secondary site sees only their city
+    city_scope = await get_agent_city_scope(db, current_user.id)
+
     q_trimmed = q.strip()
     q_upper = q_trimmed.upper()
     params: List[Any] = []
+    conditions: List[str] = []
     idx = 1
 
     # NIF pattern: GE#####X or #####XX-## (e.g., GE97811B, 12345AB-01)
@@ -124,16 +136,18 @@ async def lookup_company(
     # Determine search strategy based on input pattern
     if q_upper.startswith("PE-"):
         # Exact Padrón Empresarial registration number
-        where = f"c.registration_number = ${idx}"
+        conditions.append(f"c.registration_number = ${idx}")
         params.append(q_upper)
+        idx += 1
     elif _NIF_RE.match(q_upper):
         # Matches NIF pattern — exact match
-        where = f"c.nif = ${idx}"
+        conditions.append(f"c.nif = ${idx}")
         params.append(q_upper)
+        idx += 1
     else:
         # Name search — use websearch_to_tsquery (proper stemming) + ILIKE fallback
         escaped = q_trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        where = (
+        conditions.append(
             f"(c.search_vector @@ websearch_to_tsquery('spanish', ${idx})"
             f" OR c.legal_name ILIKE ${idx + 1}"
             f" OR c.nif ILIKE ${idx + 1}"
@@ -141,8 +155,15 @@ async def lookup_company(
         )
         params.append(q_trimmed)
         params.append(f"%{escaped}%")
+        idx += 2
 
-    idx = len(params) + 1
+    # City scope filter — secondary site agents see only their city
+    if city_scope:
+        conditions.append(f"c.city_id = ${idx}")
+        params.append(city_scope)
+        idx += 1
+
+    where = " AND ".join(conditions)
 
     rows = await db.fetch(
         f"""SELECT c.id, c.legal_name, c.nif, c.registration_number,

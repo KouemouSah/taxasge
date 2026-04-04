@@ -49,3 +49,24 @@ async def get_agent_entity_id(db: asyncpg.Connection, user_id: str) -> Optional[
         _uid(user_id),
     )
     return str(row["entity_id"]) if row and row["entity_id"] else None
+
+
+async def get_agent_city_scope(db: asyncpg.Connection, user_id: str) -> Optional[UUID]:
+    """Resolve agent's city scope from entity_location.
+
+    Returns:
+        None  — main office agent → sees ALL cities (no filter)
+        UUID  — secondary site agent → sees only this city_id
+    """
+    row = await db.fetchrow(
+        """SELECT el.city_id, COALESCE(el.is_main_office, false) AS is_main_office
+           FROM agent_profiles ap
+           JOIN entity_locations el ON el.id = ap.entity_location_id
+           WHERE ap.user_id = $1 AND ap.is_active = true
+           LIMIT 1""",
+        _uid(user_id),
+    )
+    if not row:
+        return None  # No profile → will be caught by permission check
+    # Main office sees everything; secondary site sees only their city
+    return None if row["is_main_office"] else row["city_id"]
