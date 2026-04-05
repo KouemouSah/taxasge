@@ -155,9 +155,9 @@ jobs:
           echo "Version: ${VERSION}"
 
       - name: Decode keystore
-        if: ${{ secrets.INSPECTOR_KEYSTORE_BASE64 != '' }}
         env:
           INSPECTOR_KEYSTORE_BASE64: ${{ secrets.INSPECTOR_KEYSTORE_BASE64 }}
+        if: ${{ env.INSPECTOR_KEYSTORE_BASE64 != '' }}
         run: |
           echo "$INSPECTOR_KEYSTORE_BASE64" | base64 -d > packages/inspector/android/app/inspector-release.keystore
 
