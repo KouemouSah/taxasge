@@ -11,4 +11,19 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# Hermes engine
+-keep class com.facebook.hermes.unicode.** { *; }
+-keep class com.facebook.jni.** { *; }
+
+# Expo modules
+-keep class expo.modules.** { *; }
+-keepclassmembers class * { @expo.modules.kotlin.* *; }
+
+# React Native
+-keep,allowobfuscation @interface com.facebook.proguard.annotations.DoNotStrip
+-keep,allowobfuscation @interface com.facebook.proguard.annotations.KeepGettersAndSetters
+-keep @com.facebook.proguard.annotations.DoNotStrip class *
+-keepclassmembers class * { @com.facebook.proguard.annotations.DoNotStrip *; }
+
+# Firebase (if using push notifications later)
+-keep class com.google.firebase.** { *; }
