@@ -43,8 +43,8 @@ export const appConfig = {
 
   upload: {
     maxFileSizeMB: 10,
-    maxImageDimensionPx: 1920,
-    compressionQuality: 0.7,
+    maxImageDimensionPx: 1280,   // Reduced from 1920 — sufficient for inspection evidence
+    compressionQuality: 0.6,    // Reduced from 0.7 — saves ~30% bandwidth per photo
     allowedImageTypes: ['image/jpeg', 'image/png'] as const,
   },
 

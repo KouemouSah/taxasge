@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@core/theme';
 import { extractApiError } from '@core/api/errors';
+import { hapticSuccess, hapticError } from '@core/utils/haptics';
 import { formatCurrency } from '@core/utils/format';
 import { appConfig } from '@core/config/app';
 import { LoadingScreen } from '@components/ui/loading-screen';
@@ -77,6 +78,7 @@ export default function CollectPaymentScreen() {
           onPress: async () => {
             try {
               setError('');
+              hapticSuccess();
               await collectMutation.mutateAsync({
                 obligation_ids: Array.from(selectedObligations),
                 method,

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@core/theme';
 import { extractApiError } from '@core/api/errors';
+import { hapticHeavy, hapticError } from '@core/utils/haptics';
 import { appConfig } from '@core/config/app';
 import { LoadingScreen } from '@components/ui/loading-screen';
 import { useInspectionDetail, useInspectionObligations, useMiseEnDemeure } from '@modules/inspections/services/inspections-hooks';
@@ -75,6 +76,7 @@ export default function MiseEnDemeureScreen() {
                 deadline_hours: hours,
                 notes: notes.trim() || undefined,
               });
+              hapticHeavy();
               router.back();
             } catch (err) {
               setError(extractApiError(err).message);

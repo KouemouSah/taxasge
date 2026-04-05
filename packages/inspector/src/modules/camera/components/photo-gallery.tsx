@@ -3,8 +3,8 @@
  * Native Android: simple grid, no fancy animations
  */
 
-import React, { useCallback } from 'react';
-import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -32,6 +32,7 @@ export function PhotoGallery({
   const { t } = useTranslation();
   const { colors } = useAppTheme();
 
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
   const totalPhotos = photos.length + localPhotos.length;
   const canAdd = !readonly && totalPhotos < maxPhotos;
 
@@ -87,11 +88,11 @@ export function PhotoGallery({
         </Text>
       </View>
       <View style={styles.grid}>
-        {/* Remote photos (already uploaded) */}
+        {/* Remote photos (already uploaded) — tap to zoom */}
         {photos.map((uri) => (
-          <View key={uri} style={styles.photoWrapper}>
+          <Pressable key={uri} style={styles.photoWrapper} onPress={() => setZoomUri(uri)}>
             <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
-          </View>
+          </Pressable>
         ))}
         {/* Local photos (not yet uploaded) */}
         {localPhotos.map((photo, i) => (
@@ -124,6 +125,29 @@ export function PhotoGallery({
           </Pressable>
         )}
       </View>
+
+      {/* Fullscreen zoom modal */}
+      <Modal visible={!!zoomUri} transparent animationType="fade" onRequestClose={() => setZoomUri(null)}>
+        <Pressable
+          style={styles.zoomOverlay}
+          onPress={() => setZoomUri(null)}
+        >
+          {zoomUri && (
+            <Image
+              source={{ uri: zoomUri }}
+              style={styles.zoomImage}
+              resizeMode="contain"
+            />
+          )}
+          <IconButton
+            icon="close"
+            size={28}
+            iconColor="#FFF"
+            style={styles.zoomClose}
+            onPress={() => setZoomUri(null)}
+          />
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -157,5 +181,20 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomImage: {
+    width: '100%',
+    height: '80%',
+  },
+  zoomClose: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
   },
 });

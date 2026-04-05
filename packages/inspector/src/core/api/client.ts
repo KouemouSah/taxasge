@@ -28,11 +28,23 @@ import { API_ENDPOINTS } from '@core/api/endpoints';
 const MAX_QUEUE_SIZE = 50;
 const REFRESH_TIMEOUT_MS = 10_000;
 
+// OWASP M5: Enforce HTTPS — reject HTTP in production
+const baseUrl = appConfig.api.baseUrl;
+if (!__DEV__ && !baseUrl.startsWith('https://')) {
+  throw new Error('SECURITY: API base URL must use HTTPS in production');
+}
+
 const apiClient: AxiosInstance = axios.create({
-  baseURL: `${appConfig.api.baseUrl}/api/${appConfig.api.version}`,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: `${baseUrl}/api/${appConfig.api.version}`,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-App-Version': appConfig.app.version,
+    'X-App-Platform': 'inspector-android',
+  },
   timeout: appConfig.api.timeout,
   withCredentials: false,
+  maxContentLength: 10 * 1024 * 1024, // 10MB max response
+  maxBodyLength: 10 * 1024 * 1024,    // 10MB max request
 });
 
 let currentLocale: string = 'es';

@@ -12,6 +12,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '@core/theme';
 import { extractApiError } from '@core/api/errors';
+import { hapticHeavy, hapticError } from '@core/utils/haptics';
 import { LoadingScreen } from '@components/ui/loading-screen';
 import { useInspectionDetail, useProposeSeal } from '@modules/inspections/services/inspections-hooks';
 import type { SealReason } from '@modules/inspections/types/inspection.types';
@@ -64,8 +65,10 @@ export default function SealProposeScreen() {
                 reason,
                 notes: notes.trim() || undefined,
               });
+              hapticHeavy();
               router.back();
             } catch (err) {
+              hapticError();
               setError(extractApiError(err).message);
             }
           },

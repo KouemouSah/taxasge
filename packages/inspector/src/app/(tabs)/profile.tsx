@@ -36,7 +36,7 @@ export default function ProfileScreen() {
           {user?.email}
         </Text>
         <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 4 }}>
-          {user?.role_code} {isSupervisor ? '(Supervisor)' : '(Agent)'}
+          {user?.role_code} {isSupervisor ? `(${t('role.supervisor')})` : `(${t('role.agent')})`}
         </Text>
       </View>
 

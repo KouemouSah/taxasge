@@ -15,6 +15,7 @@ import { useAppTheme } from '@core/theme';
 import { formatDate } from '@core/utils/format';
 import { LoadingScreen } from '@components/ui/loading-screen';
 import { extractApiError } from '@core/api/errors';
+import { hapticSuccess, hapticError } from '@core/utils/haptics';
 import { useInspectionDetail, useCompleteInspection, useUpdateInspection } from '@modules/inspections/services/inspections-hooks';
 import { SignaturePad, type SignatureResult } from '@modules/signature/components/signature-pad';
 
@@ -61,8 +62,10 @@ export default function CompleteInspectionScreen() {
             try {
               setError('');
               await completeMutation.mutateAsync({ notes: notes.trim() || undefined });
+              hapticSuccess();
               router.back();
             } catch (err) {
+              hapticError();
               setError(extractApiError(err).message);
             }
           },

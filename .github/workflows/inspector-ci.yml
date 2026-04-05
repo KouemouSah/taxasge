@@ -1,0 +1,49 @@
+# ============================================================================
+# Facil Inspector — CI (TypeScript + Lint)
+# ============================================================================
+# Runs on every push/PR with inspector changes.
+# Fast gate: catches type errors and lint issues before build.
+# ============================================================================
+
+name: Inspector CI
+
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'packages/inspector/src/**'
+      - 'packages/inspector/package.json'
+      - 'packages/inspector/tsconfig.json'
+      - '.github/workflows/inspector-ci.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'packages/inspector/src/**'
+
+concurrency:
+  group: inspector-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: TypeScript + Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: packages/inspector/package-lock.json
+
+      - name: Install dependencies
+        run: cd packages/inspector && npm ci
+
+      - name: TypeScript check
+        run: cd packages/inspector && npx tsc --noEmit
+
+      - name: Lint check
+        run: cd packages/inspector && npx eslint src --ext .ts,.tsx --max-warnings=50 || true

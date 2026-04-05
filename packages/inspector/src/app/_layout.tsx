@@ -26,10 +26,15 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1_000,
-      gcTime: 10 * 60 * 1_000,
-      retry: 2,
-      refetchOnWindowFocus: false,
+      staleTime: 2 * 60_000,       // 2 min — fresh enough for field work
+      gcTime: 15 * 60_000,         // 15 min — keep cache longer (reduces network)
+      retry: 1,                     // 1 retry only (field agents on slow networks)
+      retryDelay: 2_000,            // 2s between retries
+      refetchOnWindowFocus: false,  // Mobile: no window focus events
+      refetchOnReconnect: true,     // Refetch when network returns
+    },
+    mutations: {
+      retry: 0,                     // Never auto-retry mutations (user re-triggers)
     },
   },
 });

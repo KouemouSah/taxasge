@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, IconButton, Text, TextInput } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -97,11 +97,13 @@ export default function SignInScreen() {
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
-            <Text style={styles.iconText}>FI</Text>
-          </View>
+          <Image
+            source={require('../../../assets/images/icon_facil.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
-            {t('app.name')}
+            FACIL INSPECCION
           </Text>
           <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
             {t('app.tagline')}
@@ -180,12 +182,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
-  iconContainer: {
-    width: 72, height: 72, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
-  },
-  iconText: { color: '#FFFFFF', fontSize: 28, fontWeight: '700' },
-  title: { fontWeight: '700', marginBottom: 4 },
+  logo: { width: 80, height: 80, marginBottom: 16 },
+  title: { fontWeight: '900', marginBottom: 4, letterSpacing: 1 },
   form: { gap: 12 },
   input: { backgroundColor: 'transparent' },
   button: { marginTop: 8, paddingVertical: 4 },

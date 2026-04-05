@@ -14,7 +14,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '@core/theme';
 import { formatDate, formatCurrency } from '@core/utils/format';
 import { StatusBadge } from '@components/ui/status-badge';
-import { LoadingScreen } from '@components/ui/loading-screen';
+import { SkeletonInspectionDetail } from '@components/ui/skeleton';
 import { useInspectionDetail, useUpdateInspection, useUploadPhoto } from '@modules/inspections/services/inspections-hooks';
 import { ActionButtons } from '@modules/inspections/components/action-buttons';
 import { PhotoGallery } from '@modules/camera/components/photo-gallery';
@@ -86,7 +86,7 @@ export default function InspectionDetailScreen() {
     [id, updateMutation],
   );
 
-  if (isLoading || !inspection) return <LoadingScreen />;
+  if (isLoading || !inspection) return <SkeletonInspectionDetail />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

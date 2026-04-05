@@ -25,10 +25,13 @@ export default function TabLayout() {
           tabBarInactiveTintColor: colors.onSurfaceVariant,
           tabBarStyle: {
             backgroundColor: colors.surface,
-            borderTopColor: colors.outline,
-            elevation: 8,
+            borderTopColor: colors.outlineVariant,
+            borderTopWidth: 0.5,
+            elevation: 0,
+            height: 56,
           },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+          tabBarIconStyle: { marginTop: 4 },
         }}
       >
         <Tabs.Screen
