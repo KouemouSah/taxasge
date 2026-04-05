@@ -87,14 +87,6 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    // Force CMake version for New Architecture C++ codegen
-    // 3.22.1 (ubuntu-latest default) fails with "Cannot specify link libraries"
-    externalNativeBuild {
-        cmake {
-            version "3.31.6+"
-        }
-    }
-
     namespace 'com.facil.inspeccion'
     defaultConfig {
         applicationId 'com.facil.inspeccion'
