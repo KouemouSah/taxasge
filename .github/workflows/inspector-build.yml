@@ -118,10 +118,9 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('packages/inspector/android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Install CMake (New Architecture + Reanimated 4)
-        run: |
-          LATEST_CMAKE=$(${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --list 2>/dev/null | grep "cmake;" | tail -1 | awk '{print $1}')
-          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "${LATEST_CMAKE:-cmake;3.31.6}" || true
+      # New Architecture disabled for CI — CMake on ubuntu-latest (3.22) is incompatible
+      # with RN 0.81 C++ codegen. EAS cloud builds use new arch (newer CMake).
+      # Reanimated 4 no longer enforces new arch (assertTask=SKIPPED).
 
       - name: Install dependencies
         run: cd packages/inspector && npm ci
@@ -185,6 +184,7 @@ jobs:
             --max-workers=2 \
             -x lint \
             -x test \
+            -PnewArchEnabled=false \
             $GRADLE_PROPS
 
       # ── Verify APK integrity (6 checks) ──
