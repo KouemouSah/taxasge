@@ -118,9 +118,17 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('packages/inspector/android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # New Architecture disabled for CI — CMake on ubuntu-latest (3.22) is incompatible
-      # with RN 0.81 C++ codegen. EAS cloud builds use new arch (newer CMake).
-      # Reanimated 4 no longer enforces new arch (assertTask=SKIPPED).
+      - name: Setup Android SDK (CMake + NDK for New Architecture)
+        run: |
+          # Remove old CMake that causes "Cannot specify link libraries" error
+          rm -rf ${ANDROID_HOME}/cmake/3.22.1 2>/dev/null || true
+          # Install CMake 3.31+ required for RN 0.81 New Architecture C++ codegen
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
+            "cmake;3.31.6" \
+            "ndk;27.1.12297006" 2>/dev/null || true
+          # Verify installation
+          ls ${ANDROID_HOME}/cmake/*/bin/cmake 2>/dev/null | head -3
+          echo "CMake + NDK ready"
 
       - name: Install dependencies
         run: cd packages/inspector && npm ci
@@ -184,7 +192,6 @@ jobs:
             --max-workers=2 \
             -x lint \
             -x test \
-            -PnewArchEnabled=false \
             $GRADLE_PROPS
 
       # ── Verify APK integrity (6 checks) ──
