@@ -175,6 +175,12 @@
     "active": "Activo",
     "idle": "Inactivo",
     "offline": "Desconectado",
+    "noSeals": "Sin precintos pendientes de revision",
+    "allReconciled": "Todos los cobros de campo reconciliados",
+    "noAgents": "Ningun agente encontrado",
+    "noMissions": "Ninguna mision planificada",
+    "avgDuration": "Prom.",
+    "completeMission": "Completar esta mision?",
     "comingSoon": "Proximamente",
     "comingSoonDescription": "Las herramientas avanzadas de supervision estan en desarrollo",
     "features": {
@@ -202,7 +208,8 @@
     "save": "Guardar",
     "delete": "Eliminar",
     "noData": "Sin datos",
-    "pullToRefresh": "Deslizar para actualizar"
+    "pullToRefresh": "Deslizar para actualizar",
+    "urgent": "URGENTE"
   },
   "errors": {
     "network": "Error de conexion",

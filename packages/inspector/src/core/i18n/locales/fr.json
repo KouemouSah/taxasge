@@ -175,6 +175,12 @@
     "active": "Actif",
     "idle": "Inactif",
     "offline": "Hors ligne",
+    "noSeals": "Aucun scelle en attente de revision",
+    "allReconciled": "Toutes les collectes de terrain reconciliees",
+    "noAgents": "Aucun agent trouve",
+    "noMissions": "Aucune mission planifiee",
+    "avgDuration": "Moy.",
+    "completeMission": "Terminer cette mission?",
     "comingSoon": "Prochainement",
     "comingSoonDescription": "Les outils avances de supervision sont en cours de developpement",
     "features": {
@@ -202,7 +208,8 @@
     "save": "Sauvegarder",
     "delete": "Supprimer",
     "noData": "Aucune donnee",
-    "pullToRefresh": "Tirer pour actualiser"
+    "pullToRefresh": "Tirer pour actualiser",
+    "urgent": "URGENT"
   },
   "errors": {
     "network": "Erreur de connexion",

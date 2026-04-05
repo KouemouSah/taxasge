@@ -16,7 +16,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '@core/theme';
 import { useLocation } from '@core/hooks/use-location';
 import { extractApiError } from '@core/api/errors';
-import { useCreateInspection } from '@modules/inspections/services/inspections-hooks';
+import { useCreateInspection, useUpdateInspection } from '@modules/inspections/services/inspections-hooks';
 
 export default function CreateInspectionScreen() {
   const { t } = useTranslation();
@@ -52,6 +52,20 @@ export default function CreateInspectionScreen() {
         company_id: params.company_id,
         notes: notes.trim() || undefined,
       });
+
+      // Send GPS coordinates via update (create endpoint doesn't accept GPS)
+      if (location) {
+        try {
+          const { inspectionsApi } = await import('@modules/inspections/services/inspections-api');
+          await inspectionsApi.update(result.id, {
+            gps_latitude: location.latitude,
+            gps_longitude: location.longitude,
+            gps_accuracy: location.accuracy ?? undefined,
+          });
+        } catch {
+          // GPS update failure is non-blocking — inspection was created successfully
+        }
+      }
 
       // Navigate to the new inspection detail
       router.replace(`/inspection/${result.id}` as never);

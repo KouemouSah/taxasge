@@ -145,4 +145,15 @@ export const inspectionsApi = {
     apiGet<ReconciliationResponse>(API_ENDPOINTS.inspections.reconcile, {
       ...(targetDate ? { target_date: targetDate } : {}),
     }),
+
+  /** Supervisor: list pending field collections for entity */
+  getSupervisorReconciliation: () =>
+    apiGet<ReconciliationResponse>(API_ENDPOINTS.supervisor.reconcileList),
+
+  /** Supervisor: validate a field cash collection (double-validation) */
+  validateReconciliation: (paymentId: string) =>
+    apiPost<{ payment_id: string; status: string; routed_obligations: number }>(
+      API_ENDPOINTS.supervisor.reconcileValidate(paymentId),
+      {},
+    ),
 };

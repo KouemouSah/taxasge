@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Checkbox, Divider, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@core/theme';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import type { LicenseObligation } from '@modules/inspections/types/inspection.types';
@@ -13,12 +14,13 @@ interface Props {
 }
 
 export function ObligationList({ obligations, selectable = false, selected, onToggle }: Props) {
+  const { t } = useTranslation();
   const { colors, custom } = useAppTheme();
 
   if (obligations.length === 0) {
     return (
       <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, padding: 16 }}>
-        Sin obligaciones pendientes
+        {t('obligations.none')}
       </Text>
     );
   }
@@ -46,7 +48,7 @@ export function ObligationList({ obligations, selectable = false, selected, onTo
                   {ob.service_name ?? ob.fee_type}
                 </Text>
                 <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                  {ob.ministry_name ? `${ob.ministry_name} • ` : ''}Vence: {formatDate(ob.due_date)}
+                  {ob.ministry_name ? `${ob.ministry_name} • ` : ''}{t('obligations.dueDate')}: {formatDate(ob.due_date)}
                 </Text>
               </View>
               <View style={styles.amount}>

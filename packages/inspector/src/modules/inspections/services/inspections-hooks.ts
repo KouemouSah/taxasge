@@ -13,13 +13,15 @@ import {
   type SealApproveRequest,
   type FieldCollectRequest,
 } from './inspections-api';
+import { verificationApi } from '@modules/verification/services/verification-api';
 import { appConfig } from '@core/config/app';
-import type { InspectionListFilters, InspectionListResponse } from '@modules/inspections/types/inspection.types';
+import type { InspectionListFilters, InspectionListResponse, LicenseObligation } from '@modules/inspections/types/inspection.types';
 
 const KEYS = {
   list: ['inspections', 'list'] as const,
   detail: (id: string) => ['inspections', 'detail', id] as const,
   stats: ['inspections', 'stats'] as const,
+  obligations: (licenseId: string) => ['inspections', 'obligations', licenseId] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,24 @@ export function useInspectionDetail(id: string) {
     queryFn: () => inspectionsApi.detail(id),
     enabled: !!id,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Load obligations for an inspection's license.
+ * Uses the verify endpoint which filters by agent's entity fee_type.
+ * Only unpaid obligations are returned (status != 'paid').
+ */
+export function useInspectionObligations(licenseId: string | undefined) {
+  return useQuery({
+    queryKey: KEYS.obligations(licenseId ?? ''),
+    queryFn: async (): Promise<LicenseObligation[]> => {
+      if (!licenseId) return [];
+      const data = await verificationApi.verifyByLicenseId(licenseId);
+      return data.obligations.filter((o) => o.status !== 'paid');
+    },
+    enabled: !!licenseId,
+    staleTime: 60_000,
   });
 }
 
@@ -139,6 +159,30 @@ export function useDeletePhoto(id: string) {
     mutationFn: (photoIndex: number) => inspectionsApi.deletePhoto(id, photoIndex),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Supervisor Reconciliation
+// ---------------------------------------------------------------------------
+
+export function useSupervisorReconciliation(enabled = true) {
+  return useQuery({
+    queryKey: ['supervisor', 'reconciliation'] as const,
+    queryFn: () => inspectionsApi.getSupervisorReconciliation(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useValidateReconciliation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => inspectionsApi.validateReconciliation(paymentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['supervisor'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

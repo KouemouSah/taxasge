@@ -14,7 +14,8 @@ import { extractApiError } from '@core/api/errors';
 import { formatCurrency } from '@core/utils/format';
 import { appConfig } from '@core/config/app';
 import { LoadingScreen } from '@components/ui/loading-screen';
-import { useInspectionDetail, useCollectPayment } from '@modules/inspections/services/inspections-hooks';
+import { useInspectionDetail, useInspectionObligations, useCollectPayment } from '@modules/inspections/services/inspections-hooks';
+import { ObligationList } from '@modules/inspections/components/obligation-list';
 
 export default function CollectPaymentScreen() {
   const { t } = useTranslation();
@@ -23,19 +24,36 @@ export default function CollectPaymentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: inspection, isLoading } = useInspectionDetail(id ?? '');
+  const { data: obligations, isLoading: obligationsLoading } = useInspectionObligations(
+    inspection?.license_id,
+  );
   const collectMutation = useCollectPayment(id ?? '');
 
+  const [selectedObligations, setSelectedObligations] = useState<Set<string>>(new Set());
   const [method, setMethod] = useState<'cash' | 'mobile_money'>('cash');
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState<string>(appConfig.business.phonePrefix);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
+  const toggleObligation = (obId: string) => {
+    setSelectedObligations((prev) => {
+      const next = new Set(prev);
+      if (next.has(obId)) next.delete(obId);
+      else next.add(obId);
+      return next;
+    });
+  };
+
   if (isLoading || !inspection) return <LoadingScreen />;
 
   const parsedAmount = Math.round(parseFloat(amount.replace(/[^0-9]/g, '')));
 
   const handleSubmit = useCallback(() => {
+    if (selectedObligations.size === 0) {
+      setError(t('med.selectObligations'));
+      return;
+    }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setError(t('payment.invalidAmount'));
       return;
@@ -60,7 +78,7 @@ export default function CollectPaymentScreen() {
             try {
               setError('');
               await collectMutation.mutateAsync({
-                obligation_ids: [], // Backend handles obligation resolution
+                obligation_ids: Array.from(selectedObligations),
                 method,
                 amount: parsedAmount,
                 phone_number: method === 'mobile_money' ? phone : undefined,
@@ -74,7 +92,7 @@ export default function CollectPaymentScreen() {
         },
       ],
     );
-  }, [parsedAmount, method, phone, notes, collectMutation, t]);
+  }, [selectedObligations, parsedAmount, method, phone, notes, collectMutation, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -97,8 +115,32 @@ export default function CollectPaymentScreen() {
             {inspection.company_name ?? '—'}
           </Text>
           <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-            Impago: {formatCurrency(inspection.unpaid_obligations_amount)}
+            {t('inspection.unpaidAmount')}: {formatCurrency(inspection.unpaid_obligations_amount)}
           </Text>
+        </View>
+        <Divider />
+
+        {/* Obligations Selection */}
+        <View style={styles.section}>
+          <Text variant="labelLarge" style={[styles.sectionTitle, { color: colors.onSurfaceVariant }]}>
+            {t('med.selectObligations')} ({selectedObligations.size} {t('med.selected')})
+          </Text>
+          {obligationsLoading ? (
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+              {t('common.loading')}
+            </Text>
+          ) : obligations && obligations.length > 0 ? (
+            <ObligationList
+              obligations={obligations}
+              selectable
+              selected={selectedObligations}
+              onToggle={toggleObligation}
+            />
+          ) : (
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+              {t('obligations.none')}
+            </Text>
+          )}
         </View>
         <Divider />
 

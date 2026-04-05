@@ -110,7 +110,7 @@ export function ActionButtons({ inspection }: Props) {
           onPress={() => nav(`/inspection/${id}/seal-review`)}
           style={styles.button}
         >
-          Revisar Precinto
+          {t('seal.reviewTitle')}
         </Button>
       </View>
     );

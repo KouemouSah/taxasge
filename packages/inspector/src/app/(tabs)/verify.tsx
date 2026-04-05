@@ -6,10 +6,10 @@
  * Button to start inspection from verified license.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Divider, HelperText, Snackbar, Text, TextInput } from 'react-native-paper';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -30,8 +30,16 @@ export default function VerifyScreen() {
 
   const [identifier, setIdentifier] = useState('');
   const [error, setError] = useState('');
+  const { openScanner } = useLocalSearchParams<{ openScanner?: string }>();
   const [showScanner, setShowScanner] = useState(false);
   const [snackMessage, setSnackMessage] = useState('');
+
+  // Auto-open scanner when navigated with openScanner=1 (from dashboard quick action)
+  useEffect(() => {
+    if (openScanner === '1') {
+      setShowScanner(true);
+    }
+  }, [openScanner]);
 
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<LicenseVerification | null>(null);
@@ -223,7 +231,7 @@ export default function VerifyScreen() {
                         {ob.service_name ?? ob.fee_type}
                       </Text>
                       <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                        {ob.ministry_name} {ob.due_date ? `\u2022 Vence: ${formatDate(ob.due_date)}` : ''}
+                        {ob.ministry_name} {ob.due_date ? `\u2022 ${t('obligations.dueDate')}: ${formatDate(ob.due_date)}` : ''}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>

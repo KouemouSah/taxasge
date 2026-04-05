@@ -70,7 +70,7 @@ export const inspectionApi = {
     }
     const q = sp.toString()
     return apiClient
-      .get<InspectionListResponse>(`/inspections${q ? `?${q}` : ''}`)
+      .get<InspectionListResponse>(`/inspections/${q ? `?${q}` : ''}`)
       .then(r => r.data)
   },
 

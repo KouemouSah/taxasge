@@ -3,8 +3,9 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@core/theme';
 import type { LiveStatusCounters } from '@modules/inspections/types/inspection.types';
@@ -25,7 +26,11 @@ export function LiveCounters({ counters }: Props) {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <Pressable
+      onPress={() => router.push('/supervisor/agents' as never)}
+      style={[styles.container, { backgroundColor: colors.surface }]}
+      android_ripple={{ color: colors.surfaceVariant }}
+    >
       {items.map((item, i) => (
         <View key={i} style={styles.counterItem}>
           <View style={[styles.dot, { backgroundColor: item.color }]} />
@@ -37,7 +42,7 @@ export function LiveCounters({ counters }: Props) {
           </Text>
         </View>
       ))}
-    </View>
+    </Pressable>
   );
 }
 

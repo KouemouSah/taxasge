@@ -75,7 +75,7 @@ export default function SealReviewScreen() {
             {t('common.cancel')}
           </Button>
           <Text variant="titleMedium" style={{ color: colors.onBackground, fontWeight: '700' }}>
-            Revisar Precinto
+            {t('seal.reviewTitle')}
           </Text>
           <View style={{ width: 60 }} />
         </View>
@@ -91,7 +91,7 @@ export default function SealReviewScreen() {
             {inspection.company_nif} • {formatDate(inspection.inspection_date)}
           </Text>
           <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-            Impago: {formatCurrency(inspection.unpaid_obligations_amount)}
+            {t('inspection.unpaidAmount')}: {formatCurrency(inspection.unpaid_obligations_amount)}
           </Text>
         </View>
         <Divider />

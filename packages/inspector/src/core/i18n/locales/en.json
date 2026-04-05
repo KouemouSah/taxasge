@@ -175,6 +175,12 @@
     "active": "Active",
     "idle": "Idle",
     "offline": "Offline",
+    "noSeals": "No pending seals to review",
+    "allReconciled": "All field collections reconciled",
+    "noAgents": "No agents found",
+    "noMissions": "No missions planned",
+    "avgDuration": "Avg.",
+    "completeMission": "Complete this mission?",
     "comingSoon": "Coming Soon",
     "comingSoonDescription": "Advanced supervisor tools are under development",
     "features": {
@@ -202,7 +208,8 @@
     "save": "Save",
     "delete": "Delete",
     "noData": "No data",
-    "pullToRefresh": "Pull to refresh"
+    "pullToRefresh": "Pull to refresh",
+    "urgent": "URGENT"
   },
   "errors": {
     "network": "Connection error",

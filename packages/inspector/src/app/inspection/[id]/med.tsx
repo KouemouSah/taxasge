@@ -13,9 +13,10 @@ import { useAppTheme } from '@core/theme';
 import { extractApiError } from '@core/api/errors';
 import { appConfig } from '@core/config/app';
 import { LoadingScreen } from '@components/ui/loading-screen';
-import { useInspectionDetail, useMiseEnDemeure } from '@modules/inspections/services/inspections-hooks';
+import { useInspectionDetail, useInspectionObligations, useMiseEnDemeure } from '@modules/inspections/services/inspections-hooks';
 import { ObligationList } from '@modules/inspections/components/obligation-list';
 import { formatDate } from '@core/utils/format';
+import { LoadingScreen as ObligationsLoading } from '@components/ui/loading-screen';
 
 export default function MiseEnDemeureScreen() {
   const { t } = useTranslation();
@@ -24,6 +25,9 @@ export default function MiseEnDemeureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: inspection, isLoading } = useInspectionDetail(id ?? '');
+  const { data: obligations, isLoading: obligationsLoading } = useInspectionObligations(
+    inspection?.license_id,
+  );
   const medMutation = useMiseEnDemeure(id ?? '');
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -32,13 +36,6 @@ export default function MiseEnDemeureScreen() {
   const [error, setError] = useState('');
 
   if (isLoading || !inspection) return <LoadingScreen />;
-
-  // Mock obligations from inspection data (backend provides them via verify endpoint)
-  // For now, we show unpaid count as info
-  const obligations = (inspection as unknown as Record<string, unknown>).obligations as Array<{
-    id: string; fee_type: string; amount: number; penalty_amount: number;
-    due_date: string; status: string; service_name: string | null; ministry_name: string | null;
-  }> | undefined;
 
   const toggleObligation = (obId: string) => {
     setSelected((prev) => {
@@ -58,7 +55,7 @@ export default function MiseEnDemeureScreen() {
     }
     const hours = parseInt(deadlineHours, 10);
     if (isNaN(hours) || hours < appConfig.business.medDeadlineMinHours || hours > appConfig.business.medDeadlineMaxHours) {
-      setError(`Plazo debe estar entre ${appConfig.business.medDeadlineMinHours} y ${appConfig.business.medDeadlineMaxHours} horas`);
+      setError(t('med.deadlineRange', { min: appConfig.business.medDeadlineMinHours, max: appConfig.business.medDeadlineMaxHours }));
       return;
     }
 
@@ -117,9 +114,13 @@ export default function MiseEnDemeureScreen() {
         {/* Obligations selection */}
         <View style={styles.section}>
           <Text variant="labelLarge" style={[styles.sectionTitle, { color: colors.onSurfaceVariant }]}>
-            {t('med.selectObligations')} ({selected.size} seleccionadas)
+            {t('med.selectObligations')} ({selected.size} {t('med.selected')})
           </Text>
-          {obligations && obligations.length > 0 ? (
+          {obligationsLoading ? (
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+              {t('common.loading')}
+            </Text>
+          ) : obligations && obligations.length > 0 ? (
             <ObligationList
               obligations={obligations}
               selectable
@@ -128,7 +129,7 @@ export default function MiseEnDemeureScreen() {
             />
           ) : (
             <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-              {inspection.unpaid_obligations_count} obligaciones pendientes (cargar desde verificacion)
+              {t('obligations.none')}
             </Text>
           )}
         </View>
@@ -144,11 +145,11 @@ export default function MiseEnDemeureScreen() {
             value={deadlineHours}
             onChangeText={setDeadlineHours}
             keyboardType="numeric"
-            right={<TextInput.Affix text="horas" />}
+            right={<TextInput.Affix text="h" />}
             style={{ backgroundColor: 'transparent' }}
           />
           <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 4 }}>
-            Vence: {formatDate(deadlineDate, 'dd/MM/yyyy HH:mm')}
+            {t('obligations.dueDate')}: {formatDate(deadlineDate, 'dd/MM/yyyy HH:mm')}
           </Text>
         </View>
         <Divider />

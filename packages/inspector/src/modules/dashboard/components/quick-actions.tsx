@@ -17,16 +17,16 @@ export function QuickActions() {
     <View style={styles.container}>
       <Button
         mode="contained"
-        icon="plus-circle"
-        onPress={() => router.push('/inspection/create' as never)}
+        icon="qrcode-scan"
+        onPress={() => router.push({ pathname: '/(tabs)/verify', params: { openScanner: '1' } } as never)}
         style={[styles.button, { flex: 1 }]}
         contentStyle={styles.buttonContent}
       >
-        {t('dashboard.newInspection')}
+        {t('scanner.scanLicense')}
       </Button>
       <Button
         mode="outlined"
-        icon="magnify-scan"
+        icon="magnify"
         onPress={() => router.push('/(tabs)/verify' as never)}
         style={[styles.button, { flex: 1 }]}
         contentStyle={styles.buttonContent}
