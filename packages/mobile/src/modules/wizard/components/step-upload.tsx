@@ -1,11 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
   FlatList,
   Alert,
-  Animated,
-  PanResponder,
   type ListRenderItemInfo,
 } from 'react-native';
 import {
@@ -46,8 +44,6 @@ interface StepUploadProps {
 
 const COMPRESS_WIDTH = 1500;
 const COMPRESS_QUALITY = 0.7;
-const SWIPE_THRESHOLD = -80;
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -192,161 +188,61 @@ export function StepUpload({
     [onDeleteDocument, t],
   );
 
-  // ── Row component with swipe-to-delete ───────────────────────────────
+  // ── Row component ────────────────────────────────────────────────────
 
-  const DocumentRow = useCallback(
-    ({ item }: { item: WizardRequiredDocument }) => {
+  const renderRow = useCallback(
+    (item: WizardRequiredDocument) => {
       const isUploading = uploadingDocuments.has(item.code);
       const isDeleting = deletingDocs.has(item.code);
-      const translateX = useRef(new Animated.Value(0)).current;
-
-      const panResponder = useRef(
-        PanResponder.create({
-          onMoveShouldSetPanResponder: (_, gesture) =>
-            item.uploaded && Math.abs(gesture.dx) > 10 && Math.abs(gesture.dy) < 10,
-          onPanResponderMove: (_, gesture) => {
-            if (gesture.dx < 0) {
-              translateX.setValue(gesture.dx);
-            }
-          },
-          onPanResponderRelease: (_, gesture) => {
-            if (gesture.dx < SWIPE_THRESHOLD && item.uploaded) {
-              Animated.spring(translateX, {
-                toValue: SWIPE_THRESHOLD,
-                useNativeDriver: true,
-              }).start();
-            } else {
-              Animated.spring(translateX, {
-                toValue: 0,
-                useNativeDriver: true,
-              }).start();
-            }
-          },
-        }),
-      ).current;
-
-      const resetSwipe = useCallback(() => {
-        Animated.spring(translateX, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }, [translateX]);
 
       return (
-        <View style={styles.rowWrapper}>
-          {/* Delete action behind the row */}
-          {item.uploaded && (
-            <View style={[styles.deleteAction, { backgroundColor: colors.error }]}>
-              <IconButton
-                icon="delete-outline"
-                iconColor={colors.onError}
-                size={20}
-                onPress={() => {
-                  resetSwipe();
-                  handleDelete(item.code);
-                }}
-              />
+        <TouchableRipple
+          onPress={() => !isUploading && !isDeleting && handlePickDocument(item)}
+          style={[
+            styles.row,
+            { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant },
+          ]}
+          disabled={isUploading || isDeleting}
+        >
+          <View style={styles.rowInner}>
+            <MaterialCommunityIcons
+              name={item.uploaded ? 'file-check-outline' : 'file-upload-outline'}
+              size={22}
+              color={item.uploaded ? colors.success : colors.outline}
+              style={{ marginRight: spacing.sm }}
+            />
+            <View style={styles.textContainer}>
+              <Text variant="bodyMedium" style={{ color: colors.onSurface }} numberOfLines={1}>
+                {item.name_es}
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={{ color: item.uploaded ? colors.success : colors.outline, marginTop: 2 }}
+              >
+                {item.uploaded ? t('wizard.upload.uploaded') : t('wizard.upload.pending')}
+              </Text>
             </View>
-          )}
 
-          <Animated.View
-            style={[styles.rowContainer, { transform: [{ translateX }] }]}
-            {...panResponder.panHandlers}
-          >
-            <TouchableRipple
-              onPress={() => !isUploading && !isDeleting && handlePickDocument(item)}
-              style={[
-                styles.row,
-                {
-                  backgroundColor: colors.surface,
-                  borderBottomColor: colors.outlineVariant,
-                },
-              ]}
-              disabled={isUploading || isDeleting}
-            >
-              <View style={styles.rowInner}>
-                {/* Icon */}
-                <MaterialCommunityIcons
-                  name={item.uploaded ? 'file-check-outline' : 'file-upload-outline'}
-                  size={22}
-                  color={item.uploaded ? colors.success : colors.outline}
-                  style={{ marginRight: spacing.sm }}
-                />
-
-                {/* Name + status */}
-                <View style={styles.textContainer}>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: colors.onSurface }}
-                    numberOfLines={1}
-                  >
-                    {item.name_es}
-                  </Text>
-                  <Text
-                    variant="bodySmall"
-                    style={{
-                      color: item.uploaded ? colors.success : colors.outline,
-                      marginTop: 2,
-                    }}
-                  >
-                    {item.uploaded
-                      ? t('wizard.upload.uploaded')
-                      : t('wizard.upload.pending')}
-                  </Text>
-                </View>
-
-                {/* Required badge */}
-                {item.is_required && !item.uploaded && (
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: colors.errorContainer, borderRadius: borderRadius.sm },
-                    ]}
-                  >
-                    <Text variant="labelSmall" style={{ color: colors.error, fontWeight: '600' }}>
-                      {t('wizard.upload.required')}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Loading / check indicator */}
-                {isUploading || isDeleting ? (
-                  <ActivityIndicator
-                    size={18}
-                    color={colors.primary}
-                    style={{ marginLeft: spacing.sm }}
-                  />
-                ) : item.uploaded ? (
-                  <MaterialCommunityIcons
-                    name="check-circle"
-                    size={20}
-                    color={colors.success}
-                    style={{ marginLeft: spacing.sm }}
-                  />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={20}
-                    color={colors.outline}
-                    style={{ marginLeft: spacing.sm }}
-                  />
-                )}
+            {item.is_required && !item.uploaded && (
+              <View style={[styles.badge, { backgroundColor: colors.errorContainer, borderRadius: borderRadius.sm }]}>
+                <Text variant="labelSmall" style={{ color: colors.error, fontWeight: '600' }}>
+                  {t('wizard.upload.required')}
+                </Text>
               </View>
-            </TouchableRipple>
-          </Animated.View>
-        </View>
+            )}
+
+            {isUploading || isDeleting ? (
+              <ActivityIndicator size={18} color={colors.primary} style={{ marginLeft: spacing.sm }} />
+            ) : item.uploaded ? (
+              <MaterialCommunityIcons name="check-circle" size={20} color={colors.success} style={{ marginLeft: spacing.sm }} />
+            ) : (
+              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outline} style={{ marginLeft: spacing.sm }} />
+            )}
+          </View>
+        </TouchableRipple>
       );
     },
-    [
-      uploadingDocuments,
-      deletingDocs,
-      colors,
-      spacing,
-      borderRadius,
-      t,
-      handlePickDocument,
-      handleDelete,
-    ],
+    [uploadingDocuments, deletingDocs, colors, spacing, borderRadius, t, handlePickDocument],
   );
 
   // ── Render ───────────────────────────────────────────────────────────
@@ -376,8 +272,20 @@ export function StepUpload({
       <FlatList
         data={requiredDocuments}
         keyExtractor={(item) => item.code}
-        renderItem={(info: ListRenderItemInfo<WizardRequiredDocument>) => (
-          <DocumentRow item={info.item} />
+        renderItem={({ item }: ListRenderItemInfo<WizardRequiredDocument>) => (
+          <View style={styles.rowWrapper}>
+            {item.uploaded && (
+              <View style={[styles.deleteAction, { backgroundColor: colors.error }]}>
+                <IconButton
+                  icon="delete-outline"
+                  iconColor={colors.onError}
+                  size={20}
+                  onPress={() => handleDelete(item.code)}
+                />
+              </View>
+            )}
+            {renderRow(item)}
+          </View>
         )}
         ItemSeparatorComponent={() => <Divider style={{ marginLeft: 46 }} />}
         contentContainerStyle={{ paddingBottom: spacing.xxl }}
@@ -411,7 +319,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  rowContainer: { backgroundColor: 'transparent' },
   row: { borderBottomWidth: 0 },
   rowInner: {
     flexDirection: 'row',
