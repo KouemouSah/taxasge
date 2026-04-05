@@ -71,11 +71,13 @@ function normalizeTitleToKey(titleEs: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // strip accents
-    .replace(/[()]/g, '')            // remove parens
+    .replace(/[(),.:;]/g, '')        // remove punctuation (parens, commas, dots, etc.)
     .replace(/[/]/g, '_')            // slash to underscore
     .replace(/\s+de\s+la\s+/g, '_')  // "de la" → _
     .replace(/\s+del\s+/g, '_')      // "del" → _
     .replace(/\s+de\s+/g, '_')       // "de" → _
+    .replace(/\s+para\s+/g, '_')     // "para" → _
+    .replace(/\s+en\s+/g, '_')       // "en" → _
     .replace(/\s+y\s+/g, '_')        // "y" → _
     .replace(/\s+/g, '_')            // spaces to underscores
     .replace(/_+/g, '_')             // collapse multiple underscores
