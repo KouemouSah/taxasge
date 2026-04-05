@@ -17,6 +17,7 @@ import { AppLockProvider } from '@core/security/app-lock';
 import { useAuth } from '@core/hooks/use-auth';
 import { secureStorage } from '@core/storage/mmkv';
 import { ErrorBoundary } from '@components/ui/error-boundary';
+import { NetworkBanner } from '@components/ui/network-banner';
 import { useScreenProtection } from '@core/security/use-screen-protection';
 import '@core/i18n';
 
@@ -64,6 +65,7 @@ export default function RootLayout() {
               <AppLockProvider>
                 <ErrorBoundary>
                   <StatusBar style="auto" />
+                  <NetworkBanner />
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="(auth)" />
                     <Stack.Screen name="(tabs)" />

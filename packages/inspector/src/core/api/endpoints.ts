@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     updateProfile: '/users/profile',
     changePassword: '/users/profile/change-password',
     uploadAvatar: '/users/profile/avatar',
+    deviceToken: '/users/profile/device-token',
   },
 
   permissions: {

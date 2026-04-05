@@ -27,12 +27,16 @@ import { RecentInspections } from '@modules/dashboard/components/recent-inspecti
 import { QuickActions } from '@modules/dashboard/components/quick-actions';
 import { SupervisorAlerts } from '@modules/dashboard/components/supervisor-alerts';
 import { LiveCounters } from '@modules/dashboard/components/live-counters';
+import { usePushNotifications } from '@modules/notifications/services/use-push-notifications';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { user, isSupervisor } = useAuth();
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
+
+  // Register push notifications on dashboard mount (main entry point)
+  usePushNotifications();
   const queryClient = useQueryClient();
 
   // Agent data

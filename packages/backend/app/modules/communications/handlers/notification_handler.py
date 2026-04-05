@@ -290,13 +290,13 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
     # Field Inspection Events
     EventType.INSPECTION_COMPLETED: NotificationConfig(
         template_code="inspection_completed",
-        channels=[NotificationChannel.EMAIL],
+        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
         priority="normal",
         subject_key="notifications.inspection.completed.subject",
     ),
     EventType.MISE_EN_DEMEURE_ISSUED: NotificationConfig(
         template_code="mise_en_demeure_issued",
-        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
         subject_key="notifications.inspection.med.subject",
         sms_template_code="MISE_EN_DEMEURE",
@@ -310,11 +310,24 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
     ),
     EventType.SEAL_APPROVED: NotificationConfig(
         template_code="seal_approved",
-        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="critical",
         subject_key="notifications.inspection.seal_approved.subject",
         sms_template_code="SEAL_APPROVED_SMS",
     ),
+}
+
+# Map template_code → push notification type for mobile deep linking
+# Mobile parseNotificationDeepLink expects these type values
+_TEMPLATE_TO_PUSH_TYPE: Dict[str, str] = {
+    "inspection_completed": "INSPECTION_COMPLETED",
+    "mise_en_demeure_issued": "MISE_EN_DEMEURE_ISSUED",
+    "seal_proposed": "SEAL_PROPOSED",
+    "seal_approved": "SEAL_APPROVED",
+    "payment_completed": "PAYMENT_COMPLETED",
+    "request_submitted": "REQUEST_SUBMITTED",
+    "request_approved": "REQUEST_APPROVED",
+    "request_rejected": "REQUEST_REJECTED",
 }
 
 
@@ -547,12 +560,18 @@ class NotificationEventHandler:
                     return False
 
                 async with db_manager.get_connection() as db:
+                    # Map template_code to notification type for mobile deep linking
+                    push_type = _TEMPLATE_TO_PUSH_TYPE.get(
+                        config.template_code, config.template_code.upper()
+                    )
+
                     result = await push_service.send_to_user(
                         db=db,
                         user_id=user_id,
                         title=title,
                         body=body,
                         data={
+                            "type": push_type,
                             "template_code": config.template_code,
                             "priority": config.priority,
                             **{k: str(v) for k, v in context.items() if v is not None and isinstance(v, (str, int, float))}

@@ -5,6 +5,7 @@ Self-service user profile management endpoints
 
 from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from loguru import logger
@@ -245,6 +246,49 @@ async def change_password(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error changing password"
+        )
+
+
+class DeviceTokenRequest(BaseModel):
+    """Register a device push token for mobile notifications."""
+    device_token: str = Field(..., min_length=10, max_length=500)
+    platform: str = Field(..., pattern=r'^(android|ios)$')
+    app: str = Field('inspector', pattern=r'^(citizen|inspector)$')
+
+
+@router.post("/profile/device-token", status_code=status.HTTP_200_OK)
+async def register_device_token(
+    data: DeviceTokenRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Register a device push token (Expo/FCM) for the authenticated user.
+    Called on login from mobile apps. One token per user (last device wins).
+    """
+    try:
+        db = await get_database()
+        await db.execute(
+            """
+            UPDATE users
+            SET device_push_token = $1,
+                device_push_platform = $2,
+                device_push_app = $3,
+                device_push_updated_at = NOW()
+            WHERE id = $4
+            """,
+            data.device_token,
+            data.platform,
+            data.app,
+            current_user.id,
+        )
+        return {"status": "ok", "token_registered": True}
+
+    except Exception as e:
+        logger.error(f"Error registering device token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error registering device token",
         )
 
 

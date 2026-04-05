@@ -399,26 +399,16 @@ class PushSendingService:
             List of FCM device tokens
         """
         try:
-            # Query user_device_tokens table (if exists)
-            # For now, check if user has fcm_token in users table
+            # Query device_push_token from users table (set by mobile app on login)
             query = """
-                SELECT fcm_token
+                SELECT device_push_token
                 FROM users
-                WHERE id = $1 AND fcm_token IS NOT NULL
+                WHERE id = $1 AND device_push_token IS NOT NULL
             """
             row = await db.fetchrow(query, user_id)
 
-            if row and row["fcm_token"]:
-                return [row["fcm_token"]]
-
-            # If we have a separate device_tokens table, query it
-            # query = """
-            #     SELECT token
-            #     FROM user_device_tokens
-            #     WHERE user_id = $1 AND is_active = true
-            # """
-            # rows = await db.fetch(query, user_id)
-            # return [row["token"] for row in rows]
+            if row and row["device_push_token"]:
+                return [row["device_push_token"]]
 
             return []
 
