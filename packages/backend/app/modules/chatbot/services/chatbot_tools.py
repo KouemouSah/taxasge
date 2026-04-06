@@ -866,6 +866,10 @@ from app.modules.chatbot.services.chatbot_tools_authenticated import (
     get_my_requests, get_request_detail, get_my_payments,
     get_my_appointments, get_my_notifications, get_my_profile,
     get_my_next_actions, get_my_documents,
+    # Vault tools (Mes Documents)
+    list_vault_documents, check_readiness, get_expiring_documents,
+    get_vault_stats, suggest_next_uploads, prepare_renewal,
+    get_agent_memory,
 )
 
 CHATBOT_AUTH_FUNCTION_MAP = {
@@ -877,6 +881,14 @@ CHATBOT_AUTH_FUNCTION_MAP = {
     "get_my_profile": get_my_profile,
     "get_my_next_actions": get_my_next_actions,
     "get_my_documents": get_my_documents,
+    # Vault tools (Mes Documents)
+    "list_vault_documents": list_vault_documents,
+    "check_readiness": check_readiness,
+    "get_expiring_documents": get_expiring_documents,
+    "get_vault_stats": get_vault_stats,
+    "suggest_next_uploads": suggest_next_uploads,
+    "prepare_renewal": prepare_renewal,
+    "get_agent_memory": get_agent_memory,
 }
 
 
@@ -1094,6 +1106,68 @@ if VERTEX_AVAILABLE:
                     "reference": {"type": "string", "description": "Referencia de solicitud para filtrar (opcional)"},
                 },
             },
+        ),
+        # ── Vault tools (Mes Documents) ──
+        FunctionDeclaration(
+            name="list_vault_documents",
+            description="Listar documentos del cofre digital del usuario. USAR cuando pregunta por 'mis documentos', 'qué documentos tengo', 'documentos guardados', o quiere ver su cofre digital.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Filtrar por categoría: identity, vehicle, legal, financial, administrative, medical, education, photo, business, employment, other"},
+                    "expiry_status": {"type": "string", "description": "Filtrar por estado de expiración: valid, expiring_soon, expired"},
+                    "workflow_code": {"type": "string", "description": "Filtrar por trámite compatible (ej: pasaporte_nuevo, residencia)"},
+                    "limit": {"type": "integer", "description": "Máximo documentos a mostrar (default 10, max 20)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="check_readiness",
+            description="Verificar si el usuario tiene todos los documentos necesarios para un trámite. USAR cuando pregunta '¿tengo todo para...?', '¿puedo iniciar...?', 'qué me falta para...'.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_code": {"type": "string", "description": "Código del trámite (ej: pasaporte_nuevo, residencia, contrato_onrc)"},
+                },
+                "required": ["workflow_code"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_expiring_documents",
+            description="Ver documentos que expiran pronto. USAR cuando pregunta por 'documentos por vencer', 'qué se me vence', 'renovaciones pendientes'.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days_ahead": {"type": "integer", "description": "Días hacia adelante (default 90, max 365)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_vault_stats",
+            description="Estadísticas del cofre digital: total documentos, espacio usado, expirados. USAR cuando pregunta 'cuántos documentos tengo', 'espacio disponible', 'estadísticas'.",
+            parameters={"type": "object", "properties": {}},
+        ),
+        FunctionDeclaration(
+            name="suggest_next_uploads",
+            description="Sugerir documentos que el usuario debería subir a su cofre para maximizar su preparación. USAR cuando pregunta 'qué debería subir', 'cómo mejorar mi cofre', 'qué documentos me faltan'.",
+            parameters={"type": "object", "properties": {}},
+        ),
+        FunctionDeclaration(
+            name="prepare_renewal",
+            description="Preparar la renovación de un documento que expira. REQUIERE CONFIRMACIÓN del usuario. USAR cuando pide 'renovar mi pasaporte', 'iniciar renovación', o cuando un documento está por vencer y el usuario quiere actuar.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "document_id": {"type": "string", "description": "ID del documento a renovar"},
+                    "workflow_code": {"type": "string", "description": "Código del trámite de renovación (opcional, se deduce del tipo)"},
+                },
+                "required": ["document_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_agent_memory",
+            description="Mostrar lo que el asistente ha aprendido sobre las preferencias del usuario. USAR cuando pregunta 'qué sabes de mí', 'mis preferencias', 'qué has aprendido'.",
+            parameters={"type": "object", "properties": {}},
         ),
     ]
 else:

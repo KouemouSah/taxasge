@@ -503,3 +503,430 @@ async def get_my_documents(db, **kwargs) -> dict:
         ],
         "count": len(rows),
     }
+
+
+# ============================================================================
+# 9. LIST VAULT DOCUMENTS — Coffre-fort personnel
+# ============================================================================
+
+async def list_vault_documents(db, **kwargs) -> dict:
+    """List all documents in user's digital vault with filters."""
+    user_id = kwargs.get("user_id", "")
+    category = kwargs.get("category")
+    expiry_status = kwargs.get("expiry_status")
+    workflow_code = kwargs.get("workflow_code")
+    limit = min(int(kwargs.get("limit", 10)), 20)
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+
+    filters = ["ud.user_id = $1::uuid", "ud.deleted_at IS NULL", "ud.status != 'deleted'"]
+    params = [user_id]
+    idx = 2
+
+    if category:
+        filters.append(f"ud.document_category = ${idx}")
+        params.append(category)
+        idx += 1
+
+    if expiry_status == "valid":
+        filters.append("(ud.expiry_date IS NULL OR ud.expiry_date > CURRENT_DATE + INTERVAL '90 days')")
+    elif expiry_status == "expiring_soon":
+        filters.append("ud.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'")
+    elif expiry_status == "expired":
+        filters.append("ud.expiry_date < CURRENT_DATE")
+
+    if workflow_code:
+        filters.append(f"""EXISTS (
+            SELECT 1 FROM user_document_workflow_tags t
+            WHERE t.user_document_id = ud.id AND t.workflow_code = ${idx}
+        )""")
+        params.append(workflow_code)
+        idx += 1
+
+    where_clause = " AND ".join(filters)
+    params.append(limit)
+
+    rows = await db.fetch(f"""
+        SELECT ud.id, ud.document_type, ud.document_category,
+               ud.file_name, ud.display_name, ud.expiry_date,
+               ud.extraction_confidence, ud.status, ud.source,
+               ud.is_verified, ud.created_at, ud.holder_name,
+               ud.document_number, ud.issue_date,
+               array_agg(DISTINCT udwt.workflow_code)
+                   FILTER (WHERE udwt.workflow_code IS NOT NULL) as workflow_tags
+        FROM user_documents ud
+        LEFT JOIN user_document_workflow_tags udwt ON udwt.user_document_id = ud.id
+        WHERE {where_clause}
+        GROUP BY ud.id
+        ORDER BY ud.created_at DESC
+        LIMIT ${idx}
+    """, *params)
+
+    documents = []
+    for row in rows:
+        doc = dict(row)
+        if doc.get("expiry_date"):
+            from datetime import date
+            days = (doc["expiry_date"] - date.today()).days
+            doc["days_until_expiry"] = days
+            doc["expiry_label"] = (
+                "expirado" if days < 0
+                else "critico" if days < 7
+                else "urgente" if days < 30
+                else "pronto" if days < 90
+                else "vigente"
+            )
+        doc["expiry_date"] = str(doc["expiry_date"]) if doc.get("expiry_date") else None
+        doc["issue_date"] = str(doc["issue_date"]) if doc.get("issue_date") else None
+        doc["created_at"] = str(doc["created_at"])[:16] if doc.get("created_at") else None
+        doc["id"] = str(doc["id"])
+        documents.append(doc)
+
+    return {
+        "documents": documents,
+        "count": len(documents),
+        "summary": f"{len(documents)} documentos en el cofre digital"
+            + (f" (categoría: {category})" if category else "")
+            + (f" (workflow: {workflow_code})" if workflow_code else ""),
+    }
+
+
+# ============================================================================
+# 10. CHECK READINESS — Readiness d'un workflow
+# ============================================================================
+
+async def check_readiness(db, **kwargs) -> dict:
+    """Check if user has all documents needed for a specific workflow."""
+    user_id = kwargs.get("user_id", "")
+    workflow_code = kwargs.get("workflow_code", "")
+    if not user_id or not workflow_code:
+        return {"error": "Se requiere user_id y workflow_code"}
+
+    required = await db.fetch("""
+        SELECT wdr.document_code, wdr.document_name_es, wdr.is_required,
+               wdr.condition_type
+        FROM workflow_document_requirements wdr
+        WHERE wdr.workflow_code = $1 AND wdr.is_active = TRUE
+        ORDER BY wdr.display_order
+    """, workflow_code)
+
+    available = await db.fetch("""
+        SELECT ud.id, ud.document_type, ud.expiry_date, ud.status,
+               udwt.document_code
+        FROM user_documents ud
+        JOIN user_document_workflow_tags udwt ON udwt.user_document_id = ud.id
+        WHERE ud.user_id = $1::uuid AND udwt.workflow_code = $2
+          AND ud.status = 'active' AND ud.deleted_at IS NULL
+    """, user_id, workflow_code)
+
+    available_codes = {r["document_code"] for r in available}
+    ready, missing, expiring = [], [], []
+
+    for req in required:
+        code = req["document_code"]
+        name = req["document_name_es"]
+        if code in available_codes:
+            doc = next((d for d in available if d["document_code"] == code), None)
+            if doc and doc.get("expiry_date"):
+                from datetime import date
+                days = (doc["expiry_date"] - date.today()).days
+                if days < 0:
+                    expiring.append({"code": code, "name": name, "status": "expirado"})
+                elif days < 30:
+                    expiring.append({"code": code, "name": name, "status": "por_vencer", "dias": days})
+                else:
+                    ready.append({"code": code, "name": name})
+            else:
+                ready.append({"code": code, "name": name})
+        elif req["is_required"]:
+            missing.append({"code": code, "name": name})
+
+    total = len(required)
+    available_count = len(ready) + len(expiring)
+    score = round((available_count / total * 100) if total > 0 else 0)
+
+    return {
+        "workflow_code": workflow_code,
+        "readiness_score": score,
+        "total_required": total,
+        "available": available_count,
+        "missing_count": len(missing),
+        "ready": ready,
+        "missing": missing,
+        "expiring": expiring,
+        "can_start": len(missing) == 0 and all(e.get("status") != "expirado" for e in expiring),
+        "summary": f"Preparación {score}% — {available_count}/{total} documentos listos"
+            + (f". Faltan: {', '.join(m['name'] for m in missing[:3])}" if missing else "")
+            + (" ¡Listo para iniciar!" if len(missing) == 0 else ""),
+    }
+
+
+# ============================================================================
+# 11. GET EXPIRING DOCUMENTS
+# ============================================================================
+
+async def get_expiring_documents(db, **kwargs) -> dict:
+    """List documents expiring within N days."""
+    user_id = kwargs.get("user_id", "")
+    days_ahead = min(int(kwargs.get("days_ahead", 90)), 365)
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+
+    rows = await db.fetch("""
+        SELECT id, document_type, display_name, file_name,
+               expiry_date, holder_name, document_category
+        FROM user_documents
+        WHERE user_id = $1::uuid AND expiry_date IS NOT NULL
+          AND expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + $2 * INTERVAL '1 day'
+          AND status = 'active' AND deleted_at IS NULL
+        ORDER BY expiry_date ASC
+        LIMIT 20
+    """, user_id, days_ahead)
+
+    docs = []
+    for row in rows:
+        from datetime import date
+        days = (row["expiry_date"] - date.today()).days
+        docs.append({
+            "id": str(row["id"]),
+            "type": row["document_type"],
+            "name": row["display_name"] or row["file_name"],
+            "category": row["document_category"],
+            "expiry_date": str(row["expiry_date"]),
+            "days_remaining": days,
+            "urgency": "critico" if days < 7 else "alto" if days < 30 else "medio" if days < 60 else "bajo",
+            "action": f"Renovar {row['display_name'] or row['document_type']}",
+        })
+
+    critical = sum(1 for d in docs if d["urgency"] == "critico")
+    return {
+        "expiring_documents": docs,
+        "count": len(docs),
+        "critical_count": critical,
+        "summary": f"{len(docs)} documentos expiran en los próximos {days_ahead} días"
+            + (f" ({critical} urgentes)" if critical else ""),
+    }
+
+
+# ============================================================================
+# 12. GET VAULT STATS
+# ============================================================================
+
+async def get_vault_stats(db, **kwargs) -> dict:
+    """Get vault statistics and quota usage."""
+    user_id = kwargs.get("user_id", "")
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+
+    stats = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'active') as total_active,
+            COUNT(*) FILTER (WHERE source = 'personal') as personal_count,
+            COUNT(*) FILTER (WHERE source = 'wizard_import') as wizard_count,
+            COUNT(*) FILTER (WHERE source = 'platform_generated') as generated_count,
+            COALESCE(SUM(file_size_bytes) FILTER (WHERE source = 'personal' AND deleted_at IS NULL), 0) as quota_used_bytes,
+            COUNT(*) FILTER (WHERE expiry_date < CURRENT_DATE AND status = 'active') as expired_count,
+            COUNT(*) FILTER (WHERE expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND status = 'active') as expiring_count
+        FROM user_documents
+        WHERE user_id = $1::uuid AND deleted_at IS NULL
+    """, user_id)
+
+    quota_max = 100 * 1024 * 1024  # 100 Mo
+    used = int(stats["quota_used_bytes"])
+    pct = round(used / quota_max * 100, 1)
+
+    return {
+        "total_active": stats["total_active"],
+        "personal": stats["personal_count"],
+        "from_wizard": stats["wizard_count"],
+        "generated": stats["generated_count"],
+        "expired": stats["expired_count"],
+        "expiring_soon": stats["expiring_count"],
+        "quota_used_mb": round(used / 1024 / 1024, 1),
+        "quota_max_mb": 100,
+        "quota_percentage": pct,
+        "summary": f"Cofre: {stats['total_active']} documentos, {round(used/1024/1024, 1)}/100 Mo"
+            + (f" — {stats['expiring_count']} por vencer" if stats["expiring_count"] else ""),
+    }
+
+
+# ============================================================================
+# 13. SUGGEST NEXT UPLOADS
+# ============================================================================
+
+async def suggest_next_uploads(db, **kwargs) -> dict:
+    """Suggest documents to upload for maximum workflow readiness."""
+    user_id = kwargs.get("user_id", "")
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+
+    rows = await db.fetch("""
+        WITH popular_workflows AS (
+            SELECT workflow_code, COUNT(*) as usage_count
+            FROM service_requests
+            WHERE user_id = $1::uuid AND workflow_code IS NOT NULL
+            GROUP BY workflow_code
+            ORDER BY usage_count DESC
+            LIMIT 5
+        ),
+        needed_docs AS (
+            SELECT pw.workflow_code, wdr.document_code, wdr.document_name_es
+            FROM popular_workflows pw
+            JOIN workflow_document_requirements wdr ON wdr.workflow_code = pw.workflow_code
+            WHERE wdr.is_active = TRUE AND wdr.is_required = TRUE
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_document_workflow_tags udwt
+                  JOIN user_documents ud ON ud.id = udwt.user_document_id
+                  WHERE udwt.workflow_code = pw.workflow_code
+                    AND udwt.document_code = wdr.document_code
+                    AND ud.user_id = $1::uuid
+                    AND ud.status = 'active' AND ud.deleted_at IS NULL
+              )
+        )
+        SELECT DISTINCT document_code, document_name_es,
+               array_agg(DISTINCT workflow_code) as needed_for_workflows
+        FROM needed_docs
+        GROUP BY document_code, document_name_es
+        ORDER BY array_length(array_agg(DISTINCT workflow_code), 1) DESC NULLS LAST
+        LIMIT 5
+    """, user_id)
+
+    suggestions = [
+        {
+            "document_code": r["document_code"],
+            "name": r["document_name_es"],
+            "needed_for": r["needed_for_workflows"] or [],
+            "priority": "alta" if len(r["needed_for_workflows"] or []) > 2 else "media",
+        }
+        for r in rows
+    ]
+
+    return {
+        "suggestions": suggestions,
+        "count": len(suggestions),
+        "summary": f"{len(suggestions)} documentos recomendados para subir"
+            + (f": {', '.join(s['name'] for s in suggestions[:3])}" if suggestions else "")
+            if suggestions else "¡Su cofre está completo para sus trámites habituales!",
+    }
+
+
+# ============================================================================
+# 14. PREPARE RENEWAL
+# ============================================================================
+
+async def prepare_renewal(db, **kwargs) -> dict:
+    """[Level 1+] Prepare document renewal — requires user confirmation."""
+    user_id = kwargs.get("user_id", "")
+    document_id = kwargs.get("document_id", "")
+    if not user_id or not document_id:
+        return {"error": "Se requiere user_id y document_id"}
+
+    doc = await db.fetchrow("""
+        SELECT id, document_type, display_name, file_name, expiry_date,
+               document_category, holder_name
+        FROM user_documents
+        WHERE id = $1::uuid AND user_id = $2::uuid AND deleted_at IS NULL
+    """, document_id, user_id)
+
+    if not doc:
+        return {"error": "Documento no encontrado"}
+
+    workflow_map = {
+        "dip": "verificacion_funcionario",
+        "dip_gq": "verificacion_funcionario",
+        "pasaporte": "pasaporte_renovacion",
+        "pasaporte_gq": "pasaporte_renovacion",
+        "permiso_residencia": "residencia_renovacion",
+        "licencia_conducir": "certificado_conducir_renovacion",
+        "permiso_conducir": "certificado_conducir_renovacion",
+        "carnet_funcionario": "carnet_funcionario",
+    }
+    doc_type_lower = (doc["document_type"] or "").lower().strip()
+    workflow_code = kwargs.get("workflow_code") or workflow_map.get(doc_type_lower)
+
+    if not workflow_code:
+        return {
+            "status": "no_workflow",
+            "message": f"No hay un trámite de renovación automático para '{doc['document_type']}'. Consulte los servicios disponibles.",
+        }
+
+    readiness = await check_readiness(db, user_id=user_id, workflow_code=workflow_code)
+    name = doc["display_name"] or doc["file_name"]
+    expiry = str(doc["expiry_date"]) if doc["expiry_date"] else "sin fecha"
+
+    return {
+        "status": "prepared",
+        "document_type": doc["document_type"],
+        "document_name": name,
+        "expiry_date": expiry,
+        "workflow_code": workflow_code,
+        "readiness": readiness,
+        "can_start": readiness.get("can_start", False),
+        "requires_confirmation": True,
+        "message": (
+            f"Renovación de '{name}' (expira: {expiry}). "
+            f"Preparación: {readiness.get('readiness_score', 0)}%. "
+            + ("¡Todo listo! ¿Confirma para iniciar el trámite?" if readiness.get("can_start") else
+               f"Faltan documentos: {', '.join(m['name'] for m in readiness.get('missing', [])[:3])}")
+        ),
+    }
+
+
+# ============================================================================
+# 15. GET AGENT MEMORY — Transparence
+# ============================================================================
+
+async def get_agent_memory(db, **kwargs) -> dict:
+    """[Transparency] Show what the assistant has learned about the user."""
+    user_id = kwargs.get("user_id", "")
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+
+    memories = await db.fetch("""
+        SELECT id, memory_type, content, confidence,
+               confirmation_count, rejection_count,
+               created_at, last_used_at
+        FROM user_agent_memory
+        WHERE user_id = $1::uuid AND is_active = TRUE
+        ORDER BY confidence DESC, last_used_at DESC NULLS LAST
+        LIMIT 20
+    """, user_id)
+
+    permissions = await db.fetch("""
+        SELECT permission_type, scope, granted_at, usage_count, level
+        FROM user_agent_permissions
+        WHERE user_id = $1::uuid AND is_active = TRUE
+    """, user_id)
+
+    memory_list = [
+        {
+            "id": str(m["id"]),
+            "type": m["memory_type"],
+            "content": m["content"],
+            "confidence": float(m["confidence"]),
+            "confirmations": m["confirmation_count"],
+            "rejections": m["rejection_count"],
+        }
+        for m in memories
+    ]
+
+    perm_list = [
+        {
+            "type": p["permission_type"],
+            "scope": p["scope"],
+            "level": p["level"],
+            "usage_count": p["usage_count"],
+        }
+        for p in permissions
+    ]
+
+    return {
+        "memories": memory_list,
+        "permissions": perm_list,
+        "memory_count": len(memory_list),
+        "permission_count": len(perm_list),
+        "summary": (
+            f"El asistente ha aprendido {len(memory_list)} cosas sobre sus preferencias"
+            + (f" y tiene {len(perm_list)} permisos activos." if perm_list else ".")
+        ),
+    }

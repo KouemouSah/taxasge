@@ -188,6 +188,23 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+    // Vault - Personal document storage
+    match /user-documents/{userId}/personal/{docId}/{fileName} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isOfficialUser());
+      allow write: if isAuthenticated() && isOwner(userId)
+        && (isValidDocumentType() || isValidImageType())
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.metadata.uploadedBy == request.auth.uid;
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // Vault - Export ZIP files
+    match /user-documents/{userId}/exports/{fileName} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if false; // Only backend (service account) can write exports
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
     // Deny all other requests
     match /{allPaths=**} {
       allow read, write: if false;

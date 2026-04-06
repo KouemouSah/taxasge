@@ -28,11 +28,13 @@ import {
   Lock,
   FileStack,
   Calculator,
+  FolderOpen,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
 import { getAuthData, clearAuthData } from '@/core/auth/storage'
 import { FEATURE_DECLARATIONS } from '@/core/config/features'
+import { useDocumentAlerts } from '@/modules/user-documents/hooks'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Tooltip,
@@ -65,6 +67,12 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
   // Get user info to determine funcionario status
   const authData = getAuthData()
   const user = authData?.user
+
+  // Vault alerts count for badge (unread, non-dismissed)
+  const { unreadCount: vaultUnread } = useDocumentAlerts()
+  const alertsCount = useMemo(() => {
+    return vaultUnread > 0 ? String(vaultUnread) : undefined
+  }, [vaultUnread])
 
   // Check if user is a verified funcionario with active status
   const isVerifiedFuncionario = useMemo(() => {
@@ -108,6 +116,12 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       href: `/${locale}/dashboard/batch-requests`,
       icon: FileStack,
     },
+    {
+      titleKey: 'myDocuments',
+      href: `/${locale}/dashboard/documents`,
+      icon: FolderOpen,
+      badge: alertsCount,
+    },
     // Accountant menu - only visible for accountant role
     {
       titleKey: 'accountant',
@@ -143,7 +157,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       icon: Settings,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [locale, isVerifiedFuncionario, user?.role, t])
+  ], [locale, isVerifiedFuncionario, user?.role, alertsCount, t])
 
   const handleLogout = async () => {
     const authData = getAuthData()

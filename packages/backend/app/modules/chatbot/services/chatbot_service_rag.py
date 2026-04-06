@@ -55,9 +55,9 @@ class ChatbotServiceRAG:
         self.preprocessor = QueryPreprocessor()
 
         if self.enabled:
-            logger.info("✅ ChatbotServiceRAG initialized (RAG mode active)")
+            logger.info("ChatbotServiceRAG initialized successfully (RAG mode active)")
         else:
-            logger.warning("⚠️ ChatbotServiceRAG initialized in fallback mode (AI disabled)")
+            logger.warning("ChatbotServiceRAG initialized (limited mode, AI disabled)")
 
     async def chat(
         self,
@@ -245,6 +245,11 @@ class ChatbotServiceRAG:
                 )
             if user_profile_context:
                 prefix_parts.append(user_profile_context)
+            # Inject vault + memory + permissions context (if authenticated)
+            if is_authenticated and db:
+                vault_memory_context = await self._build_full_agent_context(db, user_id)
+                if vault_memory_context:
+                    prefix_parts.append(vault_memory_context)
             if prefix_parts:
                 consolidated_context = "\n".join(prefix_parts) + "\n" + consolidated_context
 
@@ -591,7 +596,7 @@ class ChatbotServiceRAG:
             confidence = max(ai_response.get("confidence", 0.5), quality_score)
             logger.info(f"Response quality: {quality_score:.2f}, confidence: {confidence:.2f}")
 
-            # Persist conversation + update user preferences (non-blocking, non-fatal)
+            # Persist conversation + update user preferences + learning (non-blocking, non-fatal)
             if db:
                 await self._save_conversation(
                     db, conversation_id, message, response_message,
@@ -601,6 +606,20 @@ class ChatbotServiceRAG:
                     db, user_id, language,
                     processed.entities if processed else {},
                 )
+                # Post-interaction learning — enrich agent memory
+                if user_id:
+                    # Build tool_calls_log from function_results_data (available after tool rounds)
+                    tool_calls_log = []
+                    if tools_used:
+                        try:
+                            tool_calls_log = function_results_data
+                        except NameError:
+                            tool_calls_log = []
+                    await self._post_interaction_learning(
+                        db, user_id, conversation_id,
+                        tool_calls=tool_calls_log,
+                        language=language,
+                    )
 
             final_response = {
                 "message": response_message,
@@ -706,6 +725,30 @@ class ChatbotServiceRAG:
             consolidated_context, context_sources = self._consolidate_context(
                 relevant_docs, relevant_services, bundle_context
             )
+
+            # Inject vault + memory + permissions context (same as chat())
+            user_id = context.get("user_id") if context else None
+            is_authenticated = bool(user_id)
+            prefix_parts = []
+            if is_authenticated:
+                prefix_parts.append("=== USUARIO AUTENTICADO === Puede: iniciar trámites, ver estado de solicitudes, historial personalizado.")
+            else:
+                prefix_parts.append(
+                    "=== USUARIO NO AUTENTICADO (público) === "
+                    "NO puede: consultar estado de solicitudes, acceder a datos personales. "
+                    "Si pregunta por el estado de una solicitud o datos personales, responde: "
+                    "'Para consultar el estado de su solicitud, necesita iniciar sesión en la plataforma Facil.' "
+                    "El botón 'Iniciar en Facil' redirigirá al usuario a la página de connexión."
+                )
+            if is_authenticated and db:
+                try:
+                    vault_memory_context = await self._build_full_agent_context(db, user_id)
+                    if vault_memory_context:
+                        prefix_parts.append(vault_memory_context)
+                except Exception as e:
+                    logger.debug(f"Vault context build failed in stream: {e}")
+            if prefix_parts:
+                consolidated_context = "\n".join(prefix_parts) + "\n" + consolidated_context
 
             # --- Fallback Logic (Suggestion 2 & 6 Implementation for stream) ---
             if len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
@@ -2135,6 +2178,16 @@ Keep it helpful and concise."""
                 user_id if user_id else None)
 
             logger.info(f"Feedback recorded: conv={conversation_id}, rating={rating}")
+
+            # Reinforce or weaken recent memories based on feedback
+            if user_id:
+                try:
+                    delta = 0.1 if rating >= 4 else -0.15 if rating <= 2 else 0
+                    if delta != 0:
+                        await self._reinforce_recent_memories(db, user_id, delta)
+                except Exception as mem_err:
+                    logger.debug(f"Memory reinforcement failed: {mem_err}")
+
             return {"status": "success", "message": "Feedback recorded"}
         except Exception as e:
             logger.error(f"Failed to record feedback: {e}")
@@ -2186,6 +2239,247 @@ Keep it helpful and concise."""
         except Exception as e:
             logger.error(f"Failed to get usage stats: {e}")
             return {"error": str(e)}
+
+    # ========================================================================
+    # AGENT MEMORY — Learning loop + Context builder
+    # ========================================================================
+
+    async def _post_interaction_learning(
+        self,
+        db: asyncpg.Connection,
+        user_id: str,
+        conversation_id: str,
+        tool_calls: list = None,
+        language: str = "es",
+    ):
+        """
+        Post-interaction learning: detect patterns and enrich agent memory.
+        Called after each chat response (non-blocking, non-fatal).
+        """
+        if not user_id or not db:
+            return
+        try:
+            tool_calls = tool_calls or []
+            for tc in tool_calls:
+                name = tc.get("name", "") if isinstance(tc, dict) else str(tc)
+                args = tc.get("args", {}) if isinstance(tc, dict) else {}
+
+                # Pattern: user checked readiness for a workflow
+                if name == "check_readiness" and args.get("workflow_code"):
+                    wf = args["workflow_code"]
+                    await self._learn_memory(db, user_id, {
+                        "type": "behavioral",
+                        "key": f"interested_in_{wf}",
+                        "content": f"Usuario interesado en trámite: {wf}",
+                        "learned_from": "pattern_detected",
+                        "conversation_id": conversation_id,
+                    })
+
+                # Pattern: user listed vault documents for a workflow
+                if name == "list_vault_documents" and args.get("workflow_code"):
+                    wf = args["workflow_code"]
+                    await self._learn_memory(db, user_id, {
+                        "type": "behavioral",
+                        "key": f"docs_for_{wf}",
+                        "content": f"Usuario busca documentos para: {wf}",
+                        "learned_from": "pattern_detected",
+                        "conversation_id": conversation_id,
+                    })
+
+                # Pattern: user prepared a renewal
+                if name == "prepare_renewal":
+                    doc_type = args.get("document_type", "unknown")
+                    await self._learn_memory(db, user_id, {
+                        "type": "capability",
+                        "key": f"renewal_{doc_type}",
+                        "content": f"Asistente preparó renovación de {doc_type}",
+                        "learned_from": "action_confirmed",
+                        "conversation_id": conversation_id,
+                    })
+
+                # Pattern: user checked expiring documents
+                if name == "get_expiring_documents":
+                    await self._learn_memory(db, user_id, {
+                        "type": "behavioral",
+                        "key": "monitors_expiry",
+                        "content": "Usuario monitorea vencimiento de documentos",
+                        "learned_from": "pattern_detected",
+                        "conversation_id": conversation_id,
+                    })
+
+            # Detect language preference
+            if language and language != "es":
+                lang_names = {"fr": "francés", "en": "inglés"}
+                lang_label = lang_names.get(language, language)
+                await self._learn_memory(db, user_id, {
+                    "type": "preference",
+                    "key": "preferred_language",
+                    "content": f"Usuario prefiere comunicarse en {lang_label}",
+                    "learned_from": "preference_detected",
+                    "conversation_id": conversation_id,
+                })
+
+        except Exception as e:
+            logger.debug(f"Post-interaction learning failed: {e}")
+
+    async def _learn_memory(
+        self,
+        db: asyncpg.Connection,
+        user_id: str,
+        memory: dict,
+    ):
+        """Create or reinforce a memory entry (UPSERT)."""
+        try:
+            await db.execute("""
+                INSERT INTO user_agent_memory (
+                    user_id, memory_type, content, content_key,
+                    learned_from, source_conversation_id, confidence
+                ) VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid, 0.5)
+                ON CONFLICT (user_id, content_key)
+                    WHERE is_active = TRUE AND content_key IS NOT NULL
+                DO UPDATE SET
+                    confirmation_count = user_agent_memory.confirmation_count + 1,
+                    confidence = LEAST(user_agent_memory.confidence + 0.1, 1.0),
+                    last_used_at = NOW(),
+                    updated_at = NOW()
+            """,
+                user_id,
+                memory.get("type", "behavioral"),
+                memory["content"],
+                memory.get("key"),
+                memory.get("learned_from", "pattern_detected"),
+                memory.get("conversation_id"),
+            )
+        except Exception as e:
+            logger.debug(f"Learn memory failed: {e}")
+
+    async def _reinforce_recent_memories(
+        self,
+        db: asyncpg.Connection,
+        user_id: str,
+        delta: float,
+    ):
+        """Reinforce or weaken memories used in the last 5 minutes."""
+        try:
+            if delta > 0:
+                await db.execute("""
+                    UPDATE user_agent_memory
+                    SET confidence = LEAST(confidence + $2, 1.0),
+                        confirmation_count = confirmation_count + 1,
+                        last_used_at = NOW(), updated_at = NOW()
+                    WHERE user_id = $1::uuid AND is_active = TRUE
+                      AND last_used_at > NOW() - INTERVAL '5 minutes'
+                """, user_id, abs(delta))
+            else:
+                await db.execute("""
+                    UPDATE user_agent_memory
+                    SET confidence = GREATEST(confidence - $2, 0.0),
+                        rejection_count = rejection_count + 1,
+                        updated_at = NOW()
+                    WHERE user_id = $1::uuid AND is_active = TRUE
+                      AND last_used_at > NOW() - INTERVAL '5 minutes'
+                """, user_id, abs(delta))
+
+            # Deactivate memories with very low confidence + multiple rejections
+            await db.execute("""
+                UPDATE user_agent_memory
+                SET is_active = FALSE, updated_at = NOW()
+                WHERE user_id = $1::uuid AND confidence < 0.2 AND rejection_count >= 3
+            """, user_id)
+        except Exception as e:
+            logger.debug(f"Memory reinforcement failed: {e}")
+
+    async def _build_full_agent_context(
+        self,
+        db: asyncpg.Connection,
+        user_id: str,
+    ) -> str:
+        """
+        Build vault + memory + permissions context for injection into system prompt.
+        Limited to ~1500 tokens to avoid diluting RAG context.
+        """
+        parts = []
+        try:
+            # 1. Vault stats (quick aggregate)
+            vault_stats = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'active') as total,
+                    COUNT(*) FILTER (WHERE expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND status = 'active') as expiring,
+                    COUNT(*) FILTER (WHERE expiry_date < CURRENT_DATE AND status = 'active') as expired,
+                    COALESCE(SUM(file_size_bytes) FILTER (WHERE source = 'personal' AND deleted_at IS NULL), 0) as used_bytes
+                FROM user_documents
+                WHERE user_id = $1::uuid AND deleted_at IS NULL
+            """, user_id)
+
+            if vault_stats and vault_stats["total"] > 0:
+                used_mb = round(int(vault_stats["used_bytes"]) / 1024 / 1024, 1)
+                parts.append(
+                    f"=== COFRE DIGITAL DEL USUARIO ===\n"
+                    f"Documentos: {vault_stats['total']} total"
+                    f" ({vault_stats['expiring']} por vencer, {vault_stats['expired']} expirados)"
+                    f"\nEspacio: {used_mb}/100 Mo"
+                )
+
+            # 2. Learned memories (max 12, confidence >= 0.4)
+            memories = await db.fetch("""
+                SELECT id, content, memory_type, confidence
+                FROM user_agent_memory
+                WHERE user_id = $1::uuid AND is_active = TRUE AND confidence >= 0.4
+                ORDER BY confidence DESC, last_used_at DESC NULLS LAST
+                LIMIT 12
+            """, user_id)
+
+            if memories:
+                # Mark ONLY fetched memories as used (for targeted feedback reinforcement)
+                memory_ids = [m["id"] for m in memories if m.get("id")]
+                if memory_ids:
+                    await db.execute("""
+                        UPDATE user_agent_memory
+                        SET last_used_at = NOW()
+                        WHERE id = ANY($1::uuid[])
+                    """, memory_ids)
+
+                type_marker = {
+                    "preference": "[PREF]", "behavioral": "[PATTERN]",
+                    "correction": "[CORRECTED]", "capability": "[SKILL]", "context": "[CONTEXT]",
+                }
+                lines = [f"=== MEMORIAS APRENDIDAS ({len(memories)}) ==="]
+                for m in memories:
+                    marker = type_marker.get(m["memory_type"], "[INFO]")
+                    lines.append(f"- {marker} {m['content']} ({m['confidence']:.0%})")
+                parts.append("\n".join(lines))
+
+            # 3. Active permissions
+            permissions = await db.fetch("""
+                SELECT permission_type, scope, level
+                FROM user_agent_permissions
+                WHERE user_id = $1::uuid AND is_active = TRUE
+            """, user_id)
+
+            perm_lines = ["=== PERMISOS DEL ASISTENTE ==="]
+            if permissions:
+                for p in permissions:
+                    scope_label = f" ({p['scope']})" if p["scope"] else " (todos)"
+                    level_label = "proactivo" if p["level"] == 2 else "preparación"
+                    perm_lines.append(f"- [GRANTED] {p['permission_type']}{scope_label} — nivel {level_label}")
+            else:
+                perm_lines.append("- Sin permisos especiales. Modo informacional solamente.")
+                perm_lines.append("- Sugerir activación de permisos de forma no intrusiva (máximo 1 vez por sesión).")
+
+            # Always add autonomy rules
+            perm_lines.extend([
+                "\n=== REGLAS DE AUTONOMÍA ===",
+                "- Nivel 0 (siempre): Consultar, informar, guiar. Sin confirmación.",
+                "- Nivel 1 (si permiso): Preparar acciones, presentar resumen. Confirmación REQUERIDA.",
+                "- Nivel 2 (si permiso proactivo): Anticipar y preparar. Confirmar para ejecutar.",
+                "- REGLA INVIOLABLE: NUNCA ejecutar una acción sin confirmación explícita del usuario.",
+            ])
+            parts.append("\n".join(perm_lines))
+
+        except Exception as e:
+            logger.debug(f"Agent context build failed: {e}")
+
+        return "\n\n".join(parts) if parts else ""
 
 
 # ============================================================================

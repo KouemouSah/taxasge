@@ -1426,6 +1426,16 @@ except Exception as e:
     logger.error(f"❌ Chatbot router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load user documents router (Module - Document Vault / Mes Documents)
+try:
+    from app.modules.user_documents import user_documents_router
+    app.include_router(user_documents_router, prefix="/api/v1/user-documents", tags=["user-documents"])
+    routers_loaded.append("user_documents")
+    logger.info("✅ User Documents router loaded (document vault, AI classification, alerts)")
+except Exception as e:
+    logger.error(f"❌ User Documents router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load template routers (Document and Procedure Templates)
 try:
     from app.modules.fiscal_services.api.template_routes import (

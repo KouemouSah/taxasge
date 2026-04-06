@@ -5140,6 +5140,20 @@
     "soundOff": "Sound off",
     "soundOn": "Sound on",
     "suggestions": "Suggestions",
+    "quickActionDescDocuments": "What documents do I need for my tax declaration?",
+    "quickActionDescCosts": "Calculate fees for your tax services",
+    "quickActionDescProcedures": "Learn step-by-step procedures",
+    "quickActionDescServices": "Discover available tax services",
+    "vaultActionsTitle": "My document vault",
+    "vaultActionsDesc": "Quick queries about your documents",
+    "vaultExpiring": "Which documents are expiring soon?",
+    "vaultExpiringDesc": "Check documents that are close to their expiration date",
+    "vaultReadiness": "Am I ready for a procedure?",
+    "vaultReadinessDesc": "Verify you have all the required documents",
+    "vaultStats": "My document vault statistics",
+    "vaultStatsDesc": "Summary of the status of your stored documents",
+    "vaultMissing": "What documents am I missing?",
+    "vaultMissingDesc": "Suggestions for documents you might need",
     "title": "Facil Assistant",
     "typing": "Typing...",
     "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?",
@@ -5302,6 +5316,7 @@
     "viewRequest": "View request",
     "welcomeMessage": "Welcome, {name}!",
     "welcomeSubtitle": "Manage your administrative procedures with ease",
+    "myDocuments": "My Documents",
     "workflow": "Procedure"
   },
   "declarations": {
@@ -6570,6 +6585,8 @@
     "error": "Error",
     "retry": "Retry",
     "drag_drop_or_click": "Drag and drop a file or click to select",
+    "or": "or",
+    "fromVault": "From My Documents",
     "error_file_too_large": "File is too large. Maximum {max}MB",
     "error_invalid_format": "Invalid format. Accepted formats: {formats}",
     "error_upload_failed": "Error uploading file",
@@ -10898,5 +10915,240 @@
     "goToList": "Go to my requests",
     "amount": "Amount",
     "reference": "Reference"
+  },
+  "userDocuments": {
+    "title": "My Documents",
+    "subtitle": "Your personal document vault",
+    "addDocument": "Add a document",
+    "tabs": {
+      "personal": "Personal",
+      "generated": "Generated",
+      "alerts": "Alerts",
+      "readiness": "Readiness"
+    },
+    "stats": {
+      "total": "Total",
+      "personal": "Personal",
+      "generated": "Generated",
+      "expiring": "Expiring",
+      "quota": "Storage",
+      "quotaUsed": "{used} / {max} MB"
+    },
+    "grid": {
+      "search": "Search for a document...",
+      "noResults": "No documents found",
+      "emptyVault": "Your vault is empty",
+      "emptyVaultDesc": "Add your identity documents, permits and other official documents to always have them at hand.",
+      "startUpload": "Add my first document",
+      "loadMore": "Load more",
+      "viewGrid": "Grid view",
+      "viewList": "List view"
+    },
+    "card": {
+      "verified": "Verified",
+      "fromWizard": "Imported",
+      "generated": "Generated",
+      "actions": "Actions",
+      "view": "View",
+      "download": "Download",
+      "reclassify": "Reclassify",
+      "archive": "Archive",
+      "delete": "Delete",
+      "confirmDelete": "Are you sure you want to delete this document?",
+      "deleteSuccess": "Document deleted",
+      "archiveSuccess": "Document archived"
+    },
+    "expiry": {
+      "valid": "Valid",
+      "expiringSoon": "Expiring soon",
+      "expired": "Expired",
+      "permanent": "Permanent",
+      "daysLeft": "{days}d remaining",
+      "daysExpired": "Expired {days}d ago"
+    },
+    "upload": {
+      "title": "Add a document",
+      "dropzone": "Drag a file here or click to select",
+      "dropzoneActive": "Drop the file here",
+      "maxSize": "Maximum size: 10 MB",
+      "formats": "PDF, JPG, PNG, WebP",
+      "typeHint": "Document type (optional)",
+      "notes": "Notes (optional)",
+      "uploading": "Uploading...",
+      "processing": "AI analysis in progress...",
+      "success": "Document added successfully",
+      "duplicate": "This document already exists in your vault",
+      "errorSize": "The file exceeds the maximum size of 10 MB",
+      "errorType": "Unsupported format. Use PDF, JPG, PNG or WebP",
+      "errorQuota": "Insufficient storage space",
+      "cancel": "Cancel",
+      "submit": "Add"
+    },
+    "alerts": {
+      "noAlerts": "No alerts",
+      "noAlertsDesc": "All your documents are up to date",
+      "markRead": "Mark as read",
+      "dismiss": "Dismiss",
+      "severity": {
+        "critical": "Urgent",
+        "warning": "Warning",
+        "info": "Information"
+      }
+    },
+    "readiness": {
+      "title": "Procedure readiness",
+      "subtitle": "Check if your documents are ready for your procedures",
+      "ready": "Ready",
+      "missing": "Missing",
+      "expiring": "To renew",
+      "canStart": "Ready to start",
+      "notReady": "Missing documents",
+      "startProcedure": "Start procedure",
+      "noWorkflows": "Complete your first procedure to see your readiness statistics",
+      "score": "{score}% ready"
+    },
+    "detail": {
+      "title": "Document detail",
+      "metadata": "Metadata",
+      "extraction": "Extracted data",
+      "workflows": "Compatible procedures",
+      "versions": "Version history",
+      "uploadedAt": "Added on",
+      "fileSize": "Size",
+      "mimeType": "Format",
+      "confidence": "AI confidence",
+      "documentNumber": "Number",
+      "holderName": "Holder",
+      "issueDate": "Issue date",
+      "expiryDate": "Expiry date",
+      "issuingAuthority": "Issuing authority",
+      "downloadToView": "Download to view",
+      "type": "Type",
+      "category": "Category",
+      "status": "Status",
+      "noExtractedData": "No extracted data",
+      "noVersions": "No previous versions",
+      "versionDate": "Version from {date}",
+      "showExtractedData": "Show extracted data",
+      "hideExtractedData": "Hide extracted data",
+      "loading": "Loading..."
+    },
+    "categories": {
+      "identity": "Identity",
+      "vehicle": "Vehicle",
+      "legal": "Legal",
+      "financial": "Financial",
+      "administrative": "Administrative",
+      "medical": "Medical",
+      "education": "Education",
+      "photo": "Photo",
+      "business": "Business",
+      "employment": "Employment",
+      "other": "Other"
+    },
+    "generated": {
+      "noDocuments": "No generated documents",
+      "noDocumentsDesc": "Documents generated by the platform (receipts, certificates) will appear here",
+      "types": {
+        "payment_receipt": "Payment receipt",
+        "request_validation": "Request validation",
+        "request_summary": "Request summary",
+        "appointment_confirmation": "Appointment confirmation",
+        "certificate": "Certificate",
+        "notification_letter": "Notification letter"
+      },
+      "download": "Download",
+      "viewRequest": "View request",
+      "verificationCode": "Verification code"
+    },
+    "agent": {
+      "settings": "Assistant settings",
+      "permissions": "Permissions",
+      "memories": "Learned memories",
+      "noMemories": "The assistant has not learned anything yet",
+      "resetMemories": "Reset memories",
+      "resetConfirm": "Are you sure? All assistant memories will be erased.",
+      "resetSuccess": "Memories reset",
+      "permissionTypes": {
+        "prepare_renewal": "Prepare renewals",
+        "prepare_request": "Prepare requests",
+        "suggest_appointments": "Suggest appointments",
+        "proactive_alerts": "Proactive alerts",
+        "auto_classify": "Classify documents"
+      },
+      "levels": {
+        "1": "Preparatory",
+        "2": "Proactive"
+      },
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "proactive": {
+        "prepared": "Renewal prepared",
+        "view": "View",
+        "later": "Later",
+        "dontSuggest": "Don't suggest again"
+      },
+      "confidence": "Confidence"
+    },
+    "onboarding": {
+      "title": "Welcome to My Documents",
+      "description": "Your personal document vault to manage all your official documents.",
+      "feature1": "Securely store your identity documents, permits and certificates",
+      "feature2": "AI automatically classifies and extracts key data from your documents",
+      "feature3": "Receive alerts when your documents are about to expire",
+      "feature4": "Check if your documents are ready before starting a procedure",
+      "start": "Get Started"
+    },
+    "workflows": {
+      "pasaporte_expedicion": "Passport (New Issue)",
+      "pasaporte_renovacion": "Passport (Renewal)",
+      "licencia_conducir": "Driver's License",
+      "contrato_onrc": "ONRC Contract",
+      "residencia": "Residence",
+      "matriculacion_dgt": "DGT Registration",
+      "inspeccion_itve": "ITVE Inspection",
+      "duplicado_vehiculo": "Vehicle Duplicate",
+      "promocion_admin": "Administrative Promotion",
+      "carnet_funcionario": "Civil Servant Card",
+      "verificacion": "Verification",
+      "tramites_visado": "Visa Procedures",
+      "permiso_extraordinario": "Extraordinary Permit",
+      "certificado_admin": "Administrative Certificate",
+      "short": {
+        "pasaporte_expedicion": "Passport",
+        "pasaporte_renovacion": "Passport",
+        "licencia_conducir": "License",
+        "contrato_onrc": "Contract",
+        "residencia": "Residence",
+        "matriculacion_dgt": "Registration",
+        "inspeccion_itve": "Inspection",
+        "duplicado_vehiculo": "Duplicate",
+        "promocion_admin": "Promotion",
+        "carnet_funcionario": "Card",
+        "verificacion": "Verification",
+        "tramites_visado": "Visa",
+        "permiso_extraordinario": "Permit",
+        "certificado_admin": "Certificate"
+      }
+    },
+    "generatedTypes": {
+      "all": "All",
+      "certificate": "Certificates",
+      "receipt": "Receipts",
+      "summary_pdf": "Summaries",
+      "declaration": "Declarations"
+    },
+    "generatedLabels": {
+      "certificate": "Certificate",
+      "receipt": "Receipt",
+      "summary_pdf": "Summary",
+      "declaration": "Declaration"
+    },
+    "vaultPicker": {
+      "title": "Select from My Documents",
+      "empty": "No documents found in your vault",
+      "error": "Error loading documents",
+      "select": "Select"
+    }
   }
 }

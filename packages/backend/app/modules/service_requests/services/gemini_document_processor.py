@@ -81,27 +81,81 @@ RISK_SCORE_LOW = 30
 RISK_SCORE_MEDIUM = 60
 RISK_SCORE_HIGH = 80
 
-# Document category mapping for audit logs
+# Document category mapping for audit logs and vault classification
 DOCUMENT_CATEGORY_MAP: Dict[str, str] = {
-    "dip": "identity", "pasaporte": "identity", "pasaporte_antiguo": "identity",
-    "pasaporte_danado": "identity", "permiso_residencia": "identity",
-    "certificado_nacimiento": "identity", "certificacion_nacimiento": "identity",
-    "declaracion_nacimiento": "identity", "nie": "identity",
+    # Identity
+    "dip": "identity", "dip_gq": "identity",
+    "pasaporte": "identity", "pasaporte_gq": "identity",
+    "pasaporte_antiguo": "identity", "pasaporte_danado": "identity",
+    "pasaporte_entrada": "identity", "pasaporte_international": "identity",
+    "permiso_residencia": "identity", "certificado_nacimiento": "identity",
+    "certificacion_nacimiento": "identity", "declaracion_nacimiento": "identity",
     "carnet_funcionario": "identity", "nombramiento": "identity",
-    "certificado_conducir": "license", "licencia_conducir": "license",
-    "permiso_conducir": "license",
-    "contrato_compraventa": "contract", "contrato_trabajo": "contract",
-    "contrato_onrc": "contract", "contrato_funcionario": "contract",
-    "escritura_constitucion": "contract",
-    "itv": "vehicle", "cuve": "vehicle", "permiso_circulacion": "vehicle",
-    "certificado_registro_vue": "vehicle",
-    "autorizacion_parental": "authorization",
-    "denuncia_policial": "legal",
+    "cedula_personal": "identity", "carnet_empadronamiento": "identity",
+    "acte_naissance": "identity", "nie": "identity",
+    # Vehicle
+    "itv": "vehicle", "itv_antigua": "vehicle", "tarjeta_itv": "vehicle",
+    "cuve": "vehicle", "cuve_antigua": "vehicle",
+    "permiso_circulacion": "vehicle", "certificado_registro_vue": "vehicle",
+    "certificado_reconocimiento_vehiculo": "vehicle",
+    # Legal
+    "contrato": "legal", "contrato_compraventa": "legal",
+    "contrato_onrc": "legal", "escritura_constitucion": "legal",
+    "poder_notarial": "legal", "autorizacion_parental": "legal",
+    "autorizacion_gubernativa": "legal", "declaracion_jurada": "legal",
+    # Financial
+    "certificado_nif": "financial", "solvencia_tributaria": "financial",
+    "nota_ingreso": "financial", "nota_ingreso_dgi": "financial",
+    "nota_ingreso_residencia": "financial", "atestacion_bancaria": "financial",
+    "extracto_bancario": "financial", "nif_autorizacion": "financial",
+    "factura": "financial",
+    # Business
+    "certificado_padron": "business", "licencia_comercio": "business",
+    "licencia_comercio_municipal": "business",
+    "certificado_actualizacion_empresarial": "business",
+    "certificado_conciso_mercantil": "business",
+    "certificado_registro_comercio": "business",
+    "certificado_registro_empresarial": "business",
+    "certificado_registro_onrc": "business",
+    "nif_empresa": "business",
+    # Administrative
+    "instancia_solicitud": "administrative", "oficio_destino": "administrative",
+    "toma_posesion": "administrative", "certificado_administrativo": "administrative",
+    "permiso_extraordinario": "administrative", "promocion_administrativa": "administrative",
+    "certificado_servicios": "administrative", "certificado_reforma": "administrative",
+    "certificado_autenticidad": "administrative", "certificado_actual": "administrative",
+    "solicitud": "administrative",
+    # Employment
+    "contrato_trabajo": "employment", "contrato_funcionario": "employment",
+    "permiso_trabajo": "employment", "nomina_reciente": "employment",
+    "autorizacion_reclutamiento": "employment",
+    # Driving
+    "certificado_conducir": "vehicle", "licencia_conducir": "vehicle",
+    "permiso_conducir": "vehicle", "permiso_actual": "vehicle",
+    "certificado_medico_conducir": "medical",
+    # Police/Legal
+    "denuncia_policial": "legal", "denuncia": "legal",
+    "antecedentes_penales": "legal",
+    "certificado_buena_conducta": "legal",
+    "extrait_casier_judiciaire_international": "legal",
+    "certificado_conducta_policia": "legal",
+    "certificado_conducta_empresa": "legal",
+    # Medical
     "certificado_medico": "medical",
+    # Education
+    "titulo_academico": "education", "titulos_academicos": "education",
+    "matricula_estudios": "education", "calendario_estudios": "education",
+    "homologacion": "education",
+    # Photo
     "photo_carnet": "photo", "foto_carnet": "photo",
-    "certificado_nif": "fiscal", "certificado_registro_comercio": "fiscal",
-    "certificado_registro_empresarial": "fiscal", "certificado_conciso_mercantil": "fiscal",
-    "nota_ingreso": "fiscal",
+    "fotografias": "photo", "foto_biometrica": "photo",
+    # Travel/Visa
+    "visado": "identity", "visado_entrada": "identity",
+    "sello_entrada": "identity", "permanencia_previa": "identity",
+    "visa_control_financiero": "identity",
+    # Certificate defaults
+    "certificado_defuncion": "administrative",
+    "certificado_perdida": "administrative",
 }
 
 
@@ -2941,6 +2995,223 @@ IMPORTANTE: Analiza TODOS los aspectos de seguridad del documento, incluso si pa
             "total_patterns": total_patterns,
             "raw_text_length": len(ocr_result.text)
         }
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # VAULT POST-PROCESSING METHODS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    async def post_process_for_vault(
+        self,
+        extraction_result: Dict[str, Any],
+        document_code: str,
+        user_id: str,
+        db  # asyncpg.Connection
+    ) -> Dict[str, Any]:
+        """
+        Post-process extraction results for the user document vault.
+
+        Takes raw Gemini extraction output and derives structured metadata
+        suitable for vault storage: category, dates, holder info, document
+        number, and workflow tags.
+
+        Args:
+            extraction_result: Raw extraction dict from Gemini (must contain 'extraction' key)
+            document_code: The document type code (e.g., 'dip', 'pasaporte', 'contrato_onrc')
+            user_id: UUID of the document owner
+            db: asyncpg connection for workflow tag derivation
+
+        Returns:
+            Dict with keys: category, expiry_date, issue_date, holder_name,
+            document_number, workflow_tags, detected_type
+        """
+        extraction = extraction_result.get("extraction", {})
+        detected_type = extraction_result.get("document_type", document_code)
+        code_lower = document_code.lower()
+
+        # 1. Category from DOCUMENT_CATEGORY_MAP
+        category = DOCUMENT_CATEGORY_MAP.get(code_lower, "other")
+
+        # 2. Expiry date
+        expiry_date = self._extract_date_from_paths(extraction, [
+            "fecha_caducidad", "fecha_expiracion", "fecha_vencimiento",
+            "validity.fecha_caducidad", "validity.expiry_date",
+            "datos_personales.fecha_caducidad",
+            "vigencia.fecha_fin", "vigencia.hasta",
+            "date_expiration", "expiry_date", "valid_until",
+        ])
+
+        # 3. Issue date
+        issue_date = self._extract_date_from_paths(extraction, [
+            "fecha_expedicion", "fecha_emision", "fecha_otorgamiento",
+            "datos_personales.fecha_expedicion",
+            "vigencia.fecha_inicio", "vigencia.desde",
+            "date_emission", "issue_date", "fecha",
+            "certificacion.fecha", "datos_documento.fecha",
+        ])
+
+        # 4. Holder name
+        holder_name = self._extract_text_from_paths(extraction, [
+            "nombre_completo", "full_name", "titular",
+            "datos_personales.nombre_completo",
+            "datos_personales.apellidos_nombre",
+            "datos_personales.nombres", "datos_personales.apellidos",
+            "nombre", "apellidos_nombre",
+            "contratante.nombre", "solicitante.nombre",
+            "interesado.nombre_completo",
+        ])
+
+        # 5. Document number
+        document_number = self._extract_text_from_paths(extraction, [
+            "numero_documento", "numero", "numero_pasaporte",
+            "datos_personales.numero_documento",
+            "datos_personales.numero_pasaporte",
+            "datos_personales.nie", "datos_personales.nif",
+            "numero_contrato", "numero_certificado",
+            "numero_expediente", "referencia",
+            "matricula", "numero_matricula",
+        ])
+
+        # 6. Workflow tags (which workflows require this document)
+        workflow_tags = await self._derive_workflow_tags(db, document_code, detected_type)
+
+        return {
+            "category": category,
+            "expiry_date": expiry_date.isoformat() if expiry_date else None,
+            "issue_date": issue_date.isoformat() if issue_date else None,
+            "holder_name": holder_name,
+            "document_number": document_number,
+            "workflow_tags": workflow_tags,
+            "detected_type": detected_type,
+        }
+
+    def _extract_date_from_paths(
+        self, extraction: Dict[str, Any], paths: List[str]
+    ) -> Optional[date]:
+        """
+        Try to extract a date from multiple possible field paths in extraction data.
+
+        Supports nested dict access via dot notation (e.g., 'datos_personales.fecha_caducidad').
+        Handles common date formats: DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY, DD.MM.YYYY.
+
+        Returns:
+            A date object if successfully parsed, None otherwise.
+        """
+        for path in paths:
+            value = self._resolve_nested_path(extraction, path)
+            if not value or not isinstance(value, str):
+                continue
+
+            value = value.strip()
+            if not value or value.lower() in ("n/a", "no disponible", "-", ""):
+                continue
+
+            # Try multiple date formats
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d.%m.%Y", "%Y/%m/%d"):
+                try:
+                    parsed = datetime.strptime(value, fmt).date()
+                    # Sanity check: year between 1900 and 2100
+                    if 1900 <= parsed.year <= 2100:
+                        return parsed
+                except ValueError:
+                    continue
+
+            # Try partial date match with regex (e.g., "12 de enero de 2025")
+            match = re.search(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})", value)
+            if match:
+                try:
+                    day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+                    if 1900 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
+                        return date(year, month, day)
+                except (ValueError, OverflowError):
+                    pass
+
+        return None
+
+    def _extract_text_from_paths(
+        self, extraction: Dict[str, Any], paths: List[str]
+    ) -> Optional[str]:
+        """
+        Extract first non-empty text value from multiple possible paths.
+
+        Supports nested dict access via dot notation.
+
+        Returns:
+            The first non-empty string found, or None.
+        """
+        for path in paths:
+            value = self._resolve_nested_path(extraction, path)
+            if value and isinstance(value, str):
+                cleaned = value.strip()
+                if cleaned and cleaned.lower() not in ("n/a", "no disponible", "-"):
+                    return cleaned
+        return None
+
+    @staticmethod
+    def _resolve_nested_path(data: Dict[str, Any], path: str) -> Optional[Any]:
+        """
+        Resolve a dot-separated path in a nested dict.
+
+        Example: _resolve_nested_path({"a": {"b": "val"}}, "a.b") -> "val"
+        """
+        parts = path.split(".")
+        current = data
+        for part in parts:
+            if not isinstance(current, dict):
+                return None
+            current = current.get(part)
+            if current is None:
+                return None
+        return current
+
+    async def _derive_workflow_tags(
+        self,
+        db,
+        document_code: str,
+        detected_type: str
+    ) -> List[Dict[str, str]]:
+        """
+        Derive workflow tags from workflow_document_requirements table.
+
+        Finds all workflows that require a document matching this document_code,
+        returning a list of {workflow_code, workflow_name} dicts.
+
+        Args:
+            db: asyncpg connection
+            document_code: The document type code
+            detected_type: The detected document type from extraction
+
+        Returns:
+            List of dicts with workflow_code and workflow_name keys.
+        """
+        if not db:
+            return []
+
+        try:
+            query = """
+                SELECT DISTINCT
+                    wdr.workflow_code,
+                    wdr.document_code,
+                    wdr.is_required
+                FROM workflow_document_requirements wdr
+                WHERE wdr.is_active = TRUE
+                  AND (wdr.document_code = $1 OR wdr.document_code = $2)
+                ORDER BY wdr.workflow_code
+            """
+            rows = await db.fetch(query, document_code, detected_type)
+            return [
+                {
+                    "workflow_code": row["workflow_code"],
+                    "document_code": row["document_code"],
+                    "is_required": row["is_required"],
+                    "relevance": 1.0,
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            logger.warning(
+                f"Failed to derive workflow tags for {document_code}: {e}"
+            )
+            return []
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

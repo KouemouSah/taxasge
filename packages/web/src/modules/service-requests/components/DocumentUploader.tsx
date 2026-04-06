@@ -16,6 +16,7 @@ import {
   Eye,
   RefreshCw,
   Trash2,
+  FolderOpen,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { VaultDocumentPicker } from '@/modules/user-documents/components'
 
 import type { DocumentRequirement, ServiceRequestDocument, ExtractionStatus } from '../types'
 
@@ -43,6 +45,8 @@ interface DocumentUploaderProps {
   onUpload: (file: File, face?: string) => Promise<void>
   onDelete?: () => Promise<void>
   onRetryExtraction?: () => Promise<void>
+  onSelectFromVault?: (documentId: string, documentName: string) => void
+  workflowCode?: string
   disabled?: boolean
   maxSizeMB?: number
 }
@@ -85,6 +89,8 @@ export function DocumentUploader({
   onUpload,
   onDelete,
   onRetryExtraction,
+  onSelectFromVault,
+  workflowCode,
   disabled = false,
   maxSizeMB = 5,
 }: DocumentUploaderProps) {
@@ -95,6 +101,7 @@ export function DocumentUploader({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [showVaultPicker, setShowVaultPicker] = useState(false)
 
   // Get localized text - uses Spanish as base, translations via translations module
   const getDocumentName = useCallback(() => {
@@ -397,6 +404,29 @@ export function DocumentUploader({
                     : ''}
                   Max {maxSizeMB}MB
                 </p>
+
+                {onSelectFromVault && (
+                  <>
+                    <div className="flex items-center gap-2 mt-3 w-full max-w-[200px]">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground">{t('or')}</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowVaultPicker(true)
+                      }}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                      {t('fromVault')}
+                    </Button>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -421,6 +451,19 @@ export function DocumentUploader({
           )}
         </div>
       </CardContent>
+
+      {/* Vault Document Picker Dialog */}
+      {onSelectFromVault && (
+        <VaultDocumentPicker
+          open={showVaultPicker}
+          onOpenChange={setShowVaultPicker}
+          workflowCode={workflowCode}
+          onSelect={(documentId, documentName) => {
+            onSelectFromVault(documentId, documentName)
+            setShowVaultPicker(false)
+          }}
+        />
+      )}
     </Card>
   )
 }

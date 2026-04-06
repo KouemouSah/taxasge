@@ -5140,6 +5140,20 @@
     "soundOff": "Sonido desactivado",
     "soundOn": "Sonido activado",
     "suggestions": "Sugerencias",
+    "quickActionDescDocuments": "¿Qué documentos necesito para mi declaración de impuestos?",
+    "quickActionDescCosts": "Calcular las tasas de tus servicios fiscales",
+    "quickActionDescProcedures": "Aprende los procedimientos paso a paso",
+    "quickActionDescServices": "Descubre los servicios fiscales disponibles",
+    "vaultActionsTitle": "Mi cofre digital",
+    "vaultActionsDesc": "Consultas rápidas sobre tus documentos",
+    "vaultExpiring": "¿Qué documentos tengo por vencer?",
+    "vaultExpiringDesc": "Consulta los documentos que están próximos a expirar",
+    "vaultReadiness": "¿Estoy preparado para un trámite?",
+    "vaultReadinessDesc": "Verifica si tienes todos los documentos necesarios",
+    "vaultStats": "Estadísticas de mi cofre digital",
+    "vaultStatsDesc": "Resumen del estado de tus documentos almacenados",
+    "vaultMissing": "¿Qué documentos me faltan?",
+    "vaultMissingDesc": "Sugerencias de documentos que podrías necesitar",
     "title": "Asistente Facil",
     "typing": "Escribiendo...",
     "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?",
@@ -5302,6 +5316,7 @@
     "viewRequest": "Ver solicitud",
     "welcomeMessage": "¡Bienvenido, {name}!",
     "welcomeSubtitle": "Gestione sus trámites administrativos con toda simplicidad",
+    "myDocuments": "Mis Documentos",
     "workflow": "Trámite"
   },
   "declarations": {
@@ -6575,6 +6590,8 @@
     "review_and_submit": "Revise todos los datos y haga clic en Enviar para completar su solicitud",
     "step_content_placeholder": "Contenido del paso",
     "drag_drop_or_click": "Arrastre un archivo o haga clic para seleccionar",
+    "or": "o",
+    "fromVault": "Desde Mis Documentos",
     "error_file_too_large": "El archivo es demasiado grande. Máximo {max}MB",
     "error_invalid_format": "Formato no válido. Formatos aceptados: {formats}",
     "error_upload_failed": "Error al subir el archivo",
@@ -10898,5 +10915,240 @@
     "goToList": "Ir a mis solicitudes",
     "amount": "Monto",
     "reference": "Referencia"
+  },
+  "userDocuments": {
+    "title": "Mis Documentos",
+    "subtitle": "Su caja fuerte documental personal",
+    "addDocument": "Agregar un documento",
+    "tabs": {
+      "personal": "Personales",
+      "generated": "Generados",
+      "alerts": "Alertas",
+      "readiness": "Preparacion"
+    },
+    "stats": {
+      "total": "Total",
+      "personal": "Personales",
+      "generated": "Generados",
+      "expiring": "Por vencer",
+      "quota": "Espacio",
+      "quotaUsed": "{used} / {max} MB"
+    },
+    "grid": {
+      "search": "Buscar un documento...",
+      "noResults": "No se encontraron documentos",
+      "emptyVault": "Su caja fuerte esta vacia",
+      "emptyVaultDesc": "Agregue sus documentos de identidad, permisos y otros documentos oficiales para tenerlos siempre a mano.",
+      "startUpload": "Agregar mi primer documento",
+      "loadMore": "Cargar mas",
+      "viewGrid": "Vista cuadricula",
+      "viewList": "Vista lista"
+    },
+    "card": {
+      "verified": "Verificado",
+      "fromWizard": "Importado",
+      "generated": "Generado",
+      "actions": "Acciones",
+      "view": "Ver",
+      "download": "Descargar",
+      "reclassify": "Reclasificar",
+      "archive": "Archivar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Esta seguro de que desea eliminar este documento?",
+      "deleteSuccess": "Documento eliminado",
+      "archiveSuccess": "Documento archivado"
+    },
+    "expiry": {
+      "valid": "Valido",
+      "expiringSoon": "Vence pronto",
+      "expired": "Vencido",
+      "permanent": "Permanente",
+      "daysLeft": "{days}d restantes",
+      "daysExpired": "Vencido hace {days}d"
+    },
+    "upload": {
+      "title": "Agregar un documento",
+      "dropzone": "Arrastre un archivo aqui o haga clic para seleccionar",
+      "dropzoneActive": "Suelte el archivo aqui",
+      "maxSize": "Tamano maximo: 10 MB",
+      "formats": "PDF, JPG, PNG, WebP",
+      "typeHint": "Tipo de documento (opcional)",
+      "notes": "Notas (opcional)",
+      "uploading": "Enviando...",
+      "processing": "Analisis IA en curso...",
+      "success": "Documento agregado con exito",
+      "duplicate": "Este documento ya existe en su caja fuerte",
+      "errorSize": "El archivo supera el tamano maximo de 10 MB",
+      "errorType": "Formato no soportado. Use PDF, JPG, PNG o WebP",
+      "errorQuota": "Espacio de almacenamiento insuficiente",
+      "cancel": "Cancelar",
+      "submit": "Agregar"
+    },
+    "alerts": {
+      "noAlerts": "Sin alertas",
+      "noAlertsDesc": "Todos sus documentos estan al dia",
+      "markRead": "Marcar como leido",
+      "dismiss": "Ocultar",
+      "severity": {
+        "critical": "Urgente",
+        "warning": "Atencion",
+        "info": "Informacion"
+      }
+    },
+    "readiness": {
+      "title": "Preparacion para tramites",
+      "subtitle": "Verifique si sus documentos estan listos para sus tramites",
+      "ready": "Listo",
+      "missing": "Faltante",
+      "expiring": "Por renovar",
+      "canStart": "Listo para iniciar",
+      "notReady": "Documentos faltantes",
+      "startProcedure": "Iniciar el tramite",
+      "noWorkflows": "Realice su primer tramite para ver sus estadisticas de preparacion",
+      "score": "{score}% listo"
+    },
+    "detail": {
+      "title": "Detalle del documento",
+      "metadata": "Metadatos",
+      "extraction": "Datos extraidos",
+      "workflows": "Tramites compatibles",
+      "versions": "Historial de versiones",
+      "uploadedAt": "Agregado el",
+      "fileSize": "Tamano",
+      "mimeType": "Formato",
+      "confidence": "Confianza IA",
+      "documentNumber": "Numero",
+      "holderName": "Titular",
+      "issueDate": "Fecha de emision",
+      "expiryDate": "Fecha de vencimiento",
+      "issuingAuthority": "Autoridad emisora",
+      "downloadToView": "Descargar para ver",
+      "type": "Tipo",
+      "category": "Categoria",
+      "status": "Estado",
+      "noExtractedData": "Sin datos extraidos",
+      "noVersions": "Sin versiones anteriores",
+      "versionDate": "Version del {date}",
+      "showExtractedData": "Mostrar datos extraidos",
+      "hideExtractedData": "Ocultar datos extraidos",
+      "loading": "Cargando..."
+    },
+    "categories": {
+      "identity": "Identidad",
+      "vehicle": "Vehiculo",
+      "legal": "Juridico",
+      "financial": "Financiero",
+      "administrative": "Administrativo",
+      "medical": "Medico",
+      "education": "Educacion",
+      "photo": "Foto",
+      "business": "Empresa",
+      "employment": "Empleo",
+      "other": "Otro"
+    },
+    "generated": {
+      "noDocuments": "Sin documentos generados",
+      "noDocumentsDesc": "Los documentos generados por la plataforma (recibos, certificados) apareceran aqui",
+      "types": {
+        "payment_receipt": "Recibo de pago",
+        "request_validation": "Validacion de solicitud",
+        "request_summary": "Resumen de solicitud",
+        "appointment_confirmation": "Confirmacion de cita",
+        "certificate": "Certificado",
+        "notification_letter": "Carta de notificacion"
+      },
+      "download": "Descargar",
+      "viewRequest": "Ver la solicitud",
+      "verificationCode": "Codigo de verificacion"
+    },
+    "agent": {
+      "settings": "Configuracion del asistente",
+      "permissions": "Permisos",
+      "memories": "Memorias aprendidas",
+      "noMemories": "El asistente aun no ha aprendido nada",
+      "resetMemories": "Reiniciar memorias",
+      "resetConfirm": "Esta seguro? Se borraran todas las memorias del asistente.",
+      "resetSuccess": "Memorias reiniciadas",
+      "permissionTypes": {
+        "prepare_renewal": "Preparar renovaciones",
+        "prepare_request": "Preparar solicitudes",
+        "suggest_appointments": "Sugerir citas",
+        "proactive_alerts": "Alertas proactivas",
+        "auto_classify": "Clasificar documentos"
+      },
+      "levels": {
+        "1": "Preparatorio",
+        "2": "Proactivo"
+      },
+      "confirm": "Confirmar",
+      "reject": "Rechazar",
+      "proactive": {
+        "prepared": "Renovacion preparada",
+        "view": "Ver",
+        "later": "Mas tarde",
+        "dontSuggest": "No sugerir mas"
+      },
+      "confidence": "Confianza"
+    },
+    "onboarding": {
+      "title": "Bienvenido a Mis Documentos",
+      "description": "Su caja fuerte documental personal para gestionar todos sus documentos oficiales.",
+      "feature1": "Almacene sus documentos de identidad, permisos y certificados de forma segura",
+      "feature2": "La IA clasifica y extrae automaticamente los datos clave de sus documentos",
+      "feature3": "Reciba alertas cuando sus documentos esten a punto de vencer",
+      "feature4": "Verifique si sus documentos estan listos antes de iniciar un tramite",
+      "start": "Comenzar"
+    },
+    "workflows": {
+      "pasaporte_expedicion": "Pasaporte (Expedicion)",
+      "pasaporte_renovacion": "Pasaporte (Renovacion)",
+      "licencia_conducir": "Licencia de Conducir",
+      "contrato_onrc": "Contrato ONRC",
+      "residencia": "Residencia",
+      "matriculacion_dgt": "Matriculacion DGT",
+      "inspeccion_itve": "Inspeccion ITVE",
+      "duplicado_vehiculo": "Duplicado Vehiculo",
+      "promocion_admin": "Promocion Administrativa",
+      "carnet_funcionario": "Carne de Funcionario",
+      "verificacion": "Verificacion",
+      "tramites_visado": "Tramites de Visado",
+      "permiso_extraordinario": "Permiso Extraordinario",
+      "certificado_admin": "Certificado Administrativo",
+      "short": {
+        "pasaporte_expedicion": "Pasaporte",
+        "pasaporte_renovacion": "Pasaporte",
+        "licencia_conducir": "Conducir",
+        "contrato_onrc": "Contrato",
+        "residencia": "Residencia",
+        "matriculacion_dgt": "Matriculacion",
+        "inspeccion_itve": "Inspeccion",
+        "duplicado_vehiculo": "Duplicado",
+        "promocion_admin": "Promocion",
+        "carnet_funcionario": "Carne",
+        "verificacion": "Verificacion",
+        "tramites_visado": "Visado",
+        "permiso_extraordinario": "Permiso",
+        "certificado_admin": "Certificado"
+      }
+    },
+    "generatedTypes": {
+      "all": "Todos",
+      "certificate": "Certificados",
+      "receipt": "Recibos",
+      "summary_pdf": "Resumenes",
+      "declaration": "Declaraciones"
+    },
+    "generatedLabels": {
+      "certificate": "Certificado",
+      "receipt": "Recibo",
+      "summary_pdf": "Resumen",
+      "declaration": "Declaracion"
+    },
+    "vaultPicker": {
+      "title": "Seleccionar desde Mis Documentos",
+      "empty": "No se encontraron documentos en su caja fuerte",
+      "error": "Error al cargar los documentos",
+      "select": "Seleccionar"
+    }
   }
 }
