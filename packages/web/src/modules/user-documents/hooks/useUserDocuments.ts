@@ -29,7 +29,6 @@ import type {
   DocumentFilters,
   DocumentUpdateRequest,
   BulkActionRequest,
-  DocumentCategory,
 } from '../types';
 
 // =============================================================================

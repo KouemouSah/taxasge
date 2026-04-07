@@ -18,7 +18,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { userDocumentsApi } from '../services/api';
 import { userDocumentKeys } from './useUserDocuments';
-import type { UploadResult, DocumentCategory } from '../types';
+import type { UploadResult } from '../types';
 
 // =============================================================================
 // CONSTANTS

@@ -112,7 +112,7 @@ function QuotaBar({
   percentage: number;
   isLoading: boolean;
 }) {
-  const t = useTranslations('userDocuments');
+  const _t = useTranslations('userDocuments');
 
   const formatSize = (bytes: number): string => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
