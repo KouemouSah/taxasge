@@ -11017,6 +11017,8 @@
       "notReady": "Missing documents",
       "startProcedure": "Start procedure",
       "noWorkflows": "Complete your first procedure to see your readiness statistics",
+      "emptyTitle": "No readiness data",
+      "emptyDescription": "Complete your first procedure to see your readiness statistics",
       "score": "{score}% ready"
     },
     "detail": {

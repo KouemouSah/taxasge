@@ -11,14 +11,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Bot, Send, Loader2, History, Settings2, Trash2, ArrowDown,
+  Bot, Send, Loader2, History, Trash2, ArrowDown,
   FileText, Calculator, Lightbulb, HelpCircle,
   FolderOpen, Clock, BarChart3, FileSearch,
-  X, MessageSquare, ChevronRight,
+  MessageSquare, ChevronRight,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
@@ -78,7 +77,6 @@ export default function ChatPage() {
   const {
     messages,
     isLoading,
-    isStreaming,
     suggestions,
     sendMessage,
     clearChat,

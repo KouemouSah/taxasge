@@ -10934,14 +10934,14 @@
     "addDocument": "Ajouter un document",
     "tabs": {
       "personal": "Personnels",
-      "generated": "Generés",
+      "generated": "Générés",
       "alerts": "Alertes",
-      "readiness": "Preparation"
+      "readiness": "Préparation"
     },
     "stats": {
       "total": "Total",
       "personal": "Personnels",
-      "generated": "Generés",
+      "generated": "Générés",
       "expiring": "Expirant",
       "quota": "Espace",
       "quotaUsed": "{used} / {max} Mo"
@@ -11017,6 +11017,8 @@
       "notReady": "Documents manquants",
       "startProcedure": "Démarrer la démarche",
       "noWorkflows": "Effectuez votre première démarche pour voir vos statistiques de préparation",
+      "emptyTitle": "Aucune donnée de préparation",
+      "emptyDescription": "Effectuez votre première démarche pour voir vos statistiques de préparation",
       "score": "{score}% prêt"
     },
     "detail": {
@@ -11076,54 +11078,54 @@
     "agent": {
       "settings": "Configuration de l'assistant",
       "permissions": "Permissions",
-      "memories": "Memoires apprises",
+      "memories": "Mémoires apprises",
       "noMemories": "L'assistant n'a encore rien appris",
-      "resetMemories": "Reinitialiser les memoires",
-      "resetConfirm": "Etes-vous sur ? Toutes les memoires de l'assistant seront effacees.",
-      "resetSuccess": "Memoires reinitialisees",
+      "resetMemories": "Réinitialiser les mémoires",
+      "resetConfirm": "Êtes-vous sûr ? Toutes les mémoires de l'assistant seront effacées.",
+      "resetSuccess": "Mémoires réinitialisées",
       "permissionTypes": {
-        "prepare_renewal": "Preparer les renouvellements",
-        "prepare_request": "Preparer les demandes",
-        "suggest_appointments": "Suggerer des rendez-vous",
+        "prepare_renewal": "Préparer les renouvellements",
+        "prepare_request": "Préparer les demandes",
+        "suggest_appointments": "Suggérer des rendez-vous",
         "proactive_alerts": "Alertes proactives",
         "auto_classify": "Classer les documents"
       },
       "levels": {
-        "1": "Preparatoire",
+        "1": "Préparatoire",
         "2": "Proactif"
       },
       "confirm": "Confirmer",
       "reject": "Refuser",
       "proactive": {
-        "prepared": "Renouvellement prepare",
+        "prepared": "Renouvellement préparé",
         "view": "Voir",
         "later": "Plus tard",
-        "dontSuggest": "Ne plus suggerer"
+        "dontSuggest": "Ne plus suggérer"
       },
       "confidence": "Confiance"
     },
     "onboarding": {
       "title": "Bienvenue dans Mes Documents",
-      "description": "Votre coffre-fort documentaire personnel pour gerer tous vos documents officiels.",
-      "feature1": "Stockez vos documents d'identite, permis et certificats en toute securite",
-      "feature2": "L'IA classe et extrait automatiquement les donnees cles de vos documents",
+      "description": "Votre coffre-fort documentaire personnel pour gérer tous vos documents officiels.",
+      "feature1": "Stockez vos documents d'identité, permis et certificats en toute sécurité",
+      "feature2": "L'IA classe et extrait automatiquement les données clés de vos documents",
       "feature3": "Recevez des alertes lorsque vos documents sont sur le point d'expirer",
-      "feature4": "Verifiez si vos documents sont prets avant de demarrer une demarche",
+      "feature4": "Vérifiez si vos documents sont prêts avant de démarrer une démarche",
       "start": "Commencer"
     },
     "workflows": {
-      "pasaporte_expedicion": "Passeport (Expedition)",
+      "pasaporte_expedicion": "Passeport (Expédition)",
       "pasaporte_renovacion": "Passeport (Renouvellement)",
       "licencia_conducir": "Permis de conduire",
       "contrato_onrc": "Contrat ONRC",
-      "residencia": "Residence",
+      "residencia": "Résidence",
       "matriculacion_dgt": "Immatriculation DGT",
       "inspeccion_itve": "Inspection ITVE",
-      "duplicado_vehiculo": "Duplicata Vehicule",
+      "duplicado_vehiculo": "Duplicata Véhicule",
       "promocion_admin": "Promotion Administrative",
       "carnet_funcionario": "Carte de Fonctionnaire",
-      "verificacion": "Verification",
-      "tramites_visado": "Demarches de Visa",
+      "verificacion": "Vérification",
+      "tramites_visado": "Démarches de Visa",
       "permiso_extraordinario": "Permis Extraordinaire",
       "certificado_admin": "Certificat Administratif",
       "short": {
@@ -11131,13 +11133,13 @@
         "pasaporte_renovacion": "Passeport",
         "licencia_conducir": "Permis",
         "contrato_onrc": "Contrat",
-        "residencia": "Residence",
+        "residencia": "Résidence",
         "matriculacion_dgt": "Immatriculation",
         "inspeccion_itve": "Inspection",
         "duplicado_vehiculo": "Duplicata",
         "promocion_admin": "Promotion",
         "carnet_funcionario": "Carte",
-        "verificacion": "Verification",
+        "verificacion": "Vérification",
         "tramites_visado": "Visa",
         "permiso_extraordinario": "Permis",
         "certificado_admin": "Certificat"
@@ -11146,21 +11148,21 @@
     "generatedTypes": {
       "all": "Tous",
       "certificate": "Certificats",
-      "receipt": "Recus",
-      "summary_pdf": "Resumes",
-      "declaration": "Declarations"
+      "receipt": "Reçus",
+      "summary_pdf": "Résumés",
+      "declaration": "Déclarations"
     },
     "generatedLabels": {
       "certificate": "Certificat",
-      "receipt": "Recu",
-      "summary_pdf": "Resume",
-      "declaration": "Declaration"
+      "receipt": "Reçu",
+      "summary_pdf": "Résumé",
+      "declaration": "Déclaration"
     },
     "vaultPicker": {
-      "title": "Selectionner depuis Mes Documents",
-      "empty": "Aucun document trouve dans votre coffre-fort",
+      "title": "Sélectionner depuis Mes Documents",
+      "empty": "Aucun document trouvé dans votre coffre-fort",
       "error": "Erreur lors du chargement des documents",
-      "select": "Selectionner"
+      "select": "Sélectionner"
     }
   }
 }

@@ -98,11 +98,15 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   } = options
 
   // Get current user ID for storage isolation
-  const userId = useMemo(() => {
+  // Re-evaluate on every render to detect session expiry (token cleared)
+  const userId = (() => {
     if (typeof window === 'undefined') return 'guest'
     const authData = getAuthData()
-    return authData?.user?.id || 'guest'
-  }, [])
+    // Only use authenticated ID if token is still present
+    const token = authData?.access_token
+    if (token && authData?.user?.id) return authData.user.id
+    return 'guest'
+  })()
 
   // User-specific storage keys
   const STORAGE_KEYS = useMemo(() => getStorageKeys(userId), [userId])
