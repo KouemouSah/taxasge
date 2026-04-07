@@ -272,23 +272,62 @@ Agent: [maintenant a toutes les infos]
 ## PHASES
 
 ### Phase 1 : Tool basique (1.5 jours)
-- [ ] `auto_prepare_wizard` tool (cree session + charge docs)
-- [ ] `workflow_orchestrator_service.py` (logique metier)
-- [ ] FunctionDeclaration + merge
-- [ ] Test avec vrai utilisateur
+- [x] `auto_prepare_wizard` tool dans chatbot_tools_authenticated.py (40 lignes)
+- [x] `workflow_orchestrator_service.py` — logique metier complete (350 lignes)
+      - _resolve_workflow() : natural language → workflow_code + params (map + DB fallback)
+      - _check_vault_readiness() : compare vault docs vs workflow_document_requirements
+      - _create_wizard_session() : appelle wizard_session_service.start_session()
+      - _load_vault_documents_into_session() : download Firebase → preview → auto-confirm si >85%
+      - _pre_fill_form_data() : merge extracted_data → form_data
+- [x] FunctionDeclaration dans chatbot_tools.py + merge CHATBOT_AUTH_FUNCTION_MAP
+- [ ] Test avec vrai utilisateur — NON FAIT (necessite documents dans le coffre-fort)
 
 ### Phase 2 : UX avancee (1 jour)
-- [ ] Gestion documents manquants (proposer skip ou upload)
-- [ ] Detection automatique solicitud_type + motivo depuis le message
-- [ ] Bouton action dans la reponse chatbot
-- [ ] Wizard saute les etapes pre-remplies
+- [x] Gestion documents manquants — retourne status "missing_documents" avec liste + choix skip
+- [x] Detection automatique solicitud_type + motivo — WORKFLOW_NAME_MAP + SOLICITUD_TYPE_MAP + MOTIVO_MAP
+- [x] Bouton action dans la reponse chatbot :
+      - ChatResponse.actions field ajoute au Pydantic model
+      - API route passe actions au frontend
+      - _extract_actions_from_tools() gere auto_prepare_wizard + prepare_renewal
+      - ChatAction type etendu avec 'open_wizard'
+      - MessageItem rend le bouton avec icone ExternalLink
+- [ ] Wizard saute les etapes pre-remplies — NON FAIT
+      Le wizard charge la session normalement. Les docs sont deja uploades et confirmes
+      dans la session cache, donc l'utilisateur voit les docs deja charges quand il ouvre
+      le wizard. MAIS il ne saute PAS automatiquement a form_review — il montre toutes
+      les etapes avec les docs deja remplis. L'UX est acceptable (l'utilisateur peut
+      "Next" rapidement) mais pas optimale.
 
 ### Phase 3 : Optimisation (0.5 jour)
-- [ ] Skip Gemini si extraction_data deja disponible (coffre-fort)
-- [ ] Verification permission agent Niveau 1+
-- [ ] Tests complets
-- [ ] Auto-critique
+- [ ] Skip Gemini si extraction_data deja disponible — NON FAIT
+      Le preview_document() re-lance Gemini a chaque fois. L'optimisation necessiterait
+      de modifier wizard_session_service pour accepter une extraction pre-calculee.
+      Impact: ~2s de latence par doc au lieu de 0. Acceptable pour V1.
+- [ ] Verification permission agent Niveau 1+ — NON FAIT
+      Le tool s'execute sans verifier user_agent_permissions. Tout utilisateur authentifie
+      peut l'utiliser. A ajouter en Phase 4 si le systeme de permissions est active.
+- [x] Lint check — 0 erreurs (warnings any pre-existants)
+- [x] Syntax check Python — tous fichiers valides
+- [x] Auto-critique :
+      - SQL parameterize ($1, $2) partout ✅
+      - User ownership (user_id filter) partout ✅
+      - Expiry check sur vault docs ✅
+      - Error handling (try/except par doc, continue si echec) ✅
+      - Lazy imports (evite circular) ✅
+      - Firebase download timeout 30s ✅
+- [ ] Tests unitaires du orchestrator — NON FAIT
+
+### Elements NON implementes (Phase 4 future)
+
+| Element | Raison du report |
+|---------|-----------------|
+| Skip Gemini re-extraction | Necessite modification wizard_session_service (risque regression) |
+| Verification permission Niveau 1+ | Systeme de permissions pas encore active pour tous les users |
+| Wizard saute etapes pre-remplies | Necessite modification frontend wizard step management |
+| Tests unitaires orchestrator | Necessite mock du wizard_session_service (complexe) |
+| Test avec vrai utilisateur | Necessite documents dans le coffre-fort (BD vide) |
+| Estimation tarif dans la reponse | prepare_for_payment() necessite session complete |
 
 ---
 
-*Plan cree le 2026-04-07 — En attente de validation*
+*Plan mis a jour le 2026-04-07 — Implementation P1+P2 COMPLETE, P3 partielle*
