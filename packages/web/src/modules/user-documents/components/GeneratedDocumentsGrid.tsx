@@ -190,7 +190,8 @@ export function GeneratedDocumentsGrid() {
       {/* Document grid */}
       {!isLoading && documents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto flex-1 min-h-0 pb-2">
-          {documents.map((doc) => {
+          {documents.filter(Boolean).map((doc) => {
+            if (!doc) return null;
             const genType = doc.generation_type || 'other';
             const style = getTypeStyle(genType);
             const Icon = style.icon;

@@ -5157,6 +5157,12 @@
     "title": "Asistente Facil",
     "typing": "Escribiendo...",
     "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?",
+    "welcomeTitle": "¿En qué puedo ayudarle?",
+    "conversationHistory": "Historial",
+    "currentConversation": "Conversación actual",
+    "active": "Activa",
+    "historyComingSoon": "El historial de conversaciones estará disponible próximamente.",
+    "disclaimer": "Desarrollado por Sah Emac",
     "chatPage": {
       "title": "Asistente Facil",
       "greeting": "¡Hola! Soy tu asistente Facil",

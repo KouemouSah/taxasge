@@ -1787,7 +1787,7 @@ async def _compute_readiness(
     # Get required documents for this workflow from service_document_assignments
     # joined with document_templates for human-readable names
     required_docs = await db.fetch(
-        """SELECT DISTINCT
+        """SELECT
                wdr.document_code AS code,
                COALESCE(wdr.document_name_es, wdr.document_code) AS name,
                wdr.is_required

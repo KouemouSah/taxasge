@@ -5157,6 +5157,12 @@
     "title": "Facil Assistant",
     "typing": "Typing...",
     "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?",
+    "welcomeTitle": "How can I help you?",
+    "conversationHistory": "History",
+    "currentConversation": "Current conversation",
+    "active": "Active",
+    "historyComingSoon": "Multi-conversation history will be available soon.",
+    "disclaimer": "Powered by Sah Emac",
     "chatPage": {
       "title": "Facil Assistant",
       "greeting": "Hello! I'm your Facil assistant",
