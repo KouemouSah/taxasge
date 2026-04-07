@@ -870,6 +870,8 @@ from app.modules.chatbot.services.chatbot_tools_authenticated import (
     list_vault_documents, check_readiness, get_expiring_documents,
     get_vault_stats, suggest_next_uploads, prepare_renewal,
     get_agent_memory,
+    # Workflow orchestrator (Level 2 agent)
+    auto_prepare_wizard,
 )
 
 CHATBOT_AUTH_FUNCTION_MAP = {
@@ -889,6 +891,7 @@ CHATBOT_AUTH_FUNCTION_MAP = {
     "suggest_next_uploads": suggest_next_uploads,
     "prepare_renewal": prepare_renewal,
     "get_agent_memory": get_agent_memory,
+    "auto_prepare_wizard": auto_prepare_wizard,
 }
 
 
@@ -1168,6 +1171,21 @@ if VERTEX_AVAILABLE:
             name="get_agent_memory",
             description="Mostrar lo que el asistente ha aprendido sobre las preferencias del usuario. USAR cuando pregunta 'qué sabes de mí', 'mis preferencias', 'qué has aprendido'.",
             parameters={"type": "object", "properties": {}},
+        ),
+        # ── Workflow Orchestrator (Level 2) ──
+        FunctionDeclaration(
+            name="auto_prepare_wizard",
+            description="Preparar AUTOMATICAMENTE una solicitud de servicio cargando documentos desde el cofre digital del usuario. USAR cuando el usuario dice 'prepárame mi solicitud de...', 'quiero renovar mi...', 'inicia mi trámite de...', 'prepara mi pasaporte', 'quiero sacar residencia'. Este tool CREA una sesión wizard con documentos pre-cargados y formulario pre-rellenado. El usuario solo necesita verificar y pagar.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_name": {"type": "string", "description": "Nombre del trámite en lenguaje natural (ej: pasaporte, residencia, licencia conducir, contrato, carnet funcionario)"},
+                    "solicitud_type": {"type": "string", "description": "Tipo: expedicion, renovacion, duplicado, canje. Si no se indica, se deduce del workflow.", "enum": ["expedicion", "renovacion", "duplicado", "canje", "extension"]},
+                    "motivo": {"type": "string", "description": "Motivo (solo para renovaciones): VENCIMIENTO, PERDIDA, ROBO, DETERIORO", "enum": ["VENCIMIENTO", "PERDIDA", "ROBO", "DETERIORO"]},
+                    "skip_missing_docs": {"type": "boolean", "description": "Continuar aunque falten documentos (el usuario los agregará en el wizard). Default: false."},
+                },
+                "required": ["workflow_name"],
+            },
         ),
     ]
 else:

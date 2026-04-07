@@ -930,3 +930,43 @@ async def get_agent_memory(db, **kwargs) -> dict:
             + (f" y tiene {len(perm_list)} permisos activos." if perm_list else ".")
         ),
     }
+
+
+# ============================================================================
+# 16. AUTO PREPARE WIZARD — Level 2 Agent Orchestration
+# ============================================================================
+
+async def auto_prepare_wizard(db, **kwargs) -> dict:
+    """
+    [LEVEL 2] Auto-prepare a wizard session from vault documents.
+
+    Creates a wizard session, loads documents from the user's digital vault,
+    pre-fills form data, and returns a ready-to-finalize session URL.
+
+    The user saves ~15 minutes by skipping document upload and form filling.
+    """
+    user_id = kwargs.get("user_id", "")
+    workflow_name = kwargs.get("workflow_name", "")
+    solicitud_type = kwargs.get("solicitud_type")
+    motivo = kwargs.get("motivo")
+    skip_missing = kwargs.get("skip_missing_docs", False)
+
+    if not user_id:
+        return {"error": "Autenticación requerida"}
+    if not workflow_name:
+        return {"error": "Indique el trámite que desea preparar (ej: pasaporte, residencia, licencia)"}
+
+    from app.modules.user_documents.services.workflow_orchestrator_service import (
+        workflow_orchestrator_service,
+    )
+
+    result = await workflow_orchestrator_service.prepare_wizard_from_vault(
+        db=db,
+        user_id=user_id,
+        workflow_name=workflow_name,
+        solicitud_type=solicitud_type,
+        motivo=motivo,
+        skip_missing_docs=skip_missing,
+    )
+
+    return result
