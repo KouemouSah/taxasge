@@ -11,7 +11,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Bot, Send, Loader2, History, Trash2, ArrowDown,
+  Send, Loader2, History, Trash2, ArrowDown,
   FileText, Calculator, Lightbulb, HelpCircle,
   FolderOpen, Clock, BarChart3, FileSearch,
   MessageSquare, ChevronRight,
@@ -135,7 +135,7 @@ export default function ChatPage() {
   }, [handleSend]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] -m-4 md:-m-6">
+    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] -m-4 md:-m-6 overflow-hidden">
       {/* ─── HEADER ─── */}
       <div className="flex items-center justify-between px-4 h-12 border-b bg-background/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export default function ChatPage() {
               <ConversationHistory onClose={() => setHistoryOpen(false)} />
             </SheetContent>
           </Sheet>
-          <Bot className="h-5 w-5 text-primary" strokeWidth={1.5} />
+          <img src="/logo_chat.png" alt="Facil" className="h-6 w-6 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
           <span className="font-semibold text-sm">Facil Assistant</span>
         </div>
 
@@ -182,9 +182,7 @@ export default function ChatPage() {
             <div className="max-w-2xl w-full space-y-8">
               {/* Logo + Greeting */}
               <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10">
-                  <Bot className="h-7 w-7 text-primary" strokeWidth={1.5} />
-                </div>
+                <img src="/logo_chat.png" alt="Facil Assistant" className="h-14 w-14 rounded-2xl mx-auto" onError={(e) => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).className = 'hidden' }} />
                 <h1 className="text-2xl font-semibold tracking-tight">
                   {t('welcomeTitle') || tDash('chatAssistant')}
                 </h1>
@@ -220,7 +218,7 @@ export default function ChatPage() {
           </div>
         ) : (
           /* ─── CHAT STATE ─── */
-          <div className="max-w-3xl mx-auto px-4 py-4 space-y-1">
+          <div className="max-w-4xl mx-auto w-full px-4 md:px-8 py-4 space-y-1">
             {messages.map((msg: ChatMessage, i: number) => (
               <MessageItem
                 key={`${msg.timestamp}-${i}`}
@@ -253,7 +251,7 @@ export default function ChatPage() {
       </div>
 
       {/* ─── BOTTOM BAR ─── */}
-      <div className="shrink-0 border-t bg-background/80 backdrop-blur-sm">
+      <div className="shrink-0 bg-background/80 backdrop-blur-sm">
         {/* Suggestion chips */}
         {suggestions.length > 0 && !isLoading && hasMessages && (
           <div className="px-4 pt-2">
@@ -265,7 +263,7 @@ export default function ChatPage() {
         )}
 
         {/* Input area */}
-        <div className="max-w-3xl mx-auto px-4 py-3">
+        <div className="max-w-4xl mx-auto w-full px-4 md:px-8 py-3">
           <div className="flex items-end gap-2">
             <div className="flex-1 relative">
               <textarea
@@ -299,9 +297,7 @@ export default function ChatPage() {
               </Button>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground/50 text-center mt-1.5">
-            Facil Assistant — {t('disclaimer') || 'Powered by Sah Emac'}
-          </p>
+{/* Footer removed — uses dashboard layout footer */}
         </div>
       </div>
     </div>

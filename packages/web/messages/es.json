@@ -10929,9 +10929,20 @@
       "searchPlaceholder": "Buscar un documento...",
       "resultCount": "{count} documentos",
       "emptyTitle": "Sin documentos personales",
-      "emptyDescription": "Agregue sus documentos de identidad, permisos y otros documentos oficiales para tenerlos siempre a mano."
+      "emptyDescription": "Agregue sus documentos de identidad, permisos y otros documentos oficiales para tenerlos siempre a mano.",
+      "emptyFiltered": "Ningún documento coincide con los filtros",
+      "loadingMore": "Cargando...",
+      "loadMore": "Cargar más"
     },
     "addDocument": "Agregar un documento",
+    "downloadToView": "Descargar para ver",
+    "actions": {
+      "view": "Ver",
+      "download": "Descargar",
+      "reclassify": "Reclasificar",
+      "archive": "Archivar",
+      "delete": "Eliminar"
+    },
     "tabs": {
       "personal": "Personales",
       "generated": "Generados",
@@ -10944,7 +10955,8 @@
       "generated": "Generados",
       "expiring": "Por vencer",
       "quota": "Espacio",
-      "quotaUsed": "{used} / {max} MB"
+      "quotaUsed": "{used} / {max} MB",
+      "wizardImported": "Importados"
     },
     "grid": {
       "search": "Buscar un documento...",
@@ -10968,7 +10980,8 @@
       "delete": "Eliminar",
       "confirmDelete": "¿Está seguro de que desea eliminar este documento?",
       "deleteSuccess": "Documento eliminado",
-      "archiveSuccess": "Documento archivado"
+      "archiveSuccess": "Documento archivado",
+      "unverified": "No verificado"
     },
     "expiry": {
       "valid": "Válido",
@@ -10976,7 +10989,8 @@
       "expired": "Vencido",
       "permanent": "Permanente",
       "daysLeft": "{days}d restantes",
-      "daysExpired": "Vencido hace {days}d"
+      "daysExpired": "Vencido hace {days}d",
+      "expiredShort": "Vencido"
     },
     "upload": {
       "title": "Agregar un documento",
@@ -10986,6 +11000,8 @@
       "formats": "PDF, JPG, PNG, WebP",
       "typeHint": "Tipo de documento (opcional)",
       "notes": "Notas (opcional)",
+      "description": "Arrastre un archivo o haga clic para seleccionar",
+      "notesPlaceholder": "Notas opcionales...",
       "uploading": "Enviando...",
       "processing": "Análisis IA en curso...",
       "success": "Documento agregado con éxito",
@@ -11019,7 +11035,10 @@
       "noWorkflows": "Realice su primer trámite para ver sus estadísticas de preparación",
       "emptyTitle": "Sin datos de preparación",
       "emptyDescription": "Realice su primer trámite para ver sus estadísticas de preparación",
-      "score": "{score}% listo"
+      "score": "{score}% listo",
+      "available": "{available}/{total} documentos disponibles",
+      "summary": "Preparación para trámites",
+      "readyCount": "{count} trámites evaluados"
     },
     "detail": {
       "title": "Detalle del documento",
@@ -11073,7 +11092,9 @@
       },
       "download": "Descargar",
       "viewRequest": "Ver la solicitud",
-      "verificationCode": "Código de verificación"
+      "verificationCode": "Código de verificación",
+      "reference": "Referencia",
+      "loadingMore": "Cargando..."
     },
     "agent": {
       "settings": "Configuración del asistente",
@@ -11113,6 +11134,9 @@
       "feature4": "Verifique si sus documentos están listos antes de iniciar un trámite",
       "start": "Comenzar"
     },
+    "workflowTag": {
+      "usableFor": "Utilizable para"
+    },
     "workflows": {
       "pasaporte_expedicion": "Pasaporte (Expedición)",
       "pasaporte_renovacion": "Pasaporte (Renovación)",
@@ -11128,6 +11152,28 @@
       "tramites_visado": "Trámites de Visado",
       "permiso_extraordinario": "Permiso Extraordinario",
       "certificado_admin": "Certificado Administrativo",
+      "conducir_canje": "Licencia de Conducir - Canje",
+      "conducir_duplicado": "Licencia de Conducir - Duplicado",
+      "conducir_extension": "Licencia de Conducir - Extensión",
+      "conducir_nuevo": "Licencia de Conducir - Nuevo",
+      "conducir_renovacion": "Licencia de Conducir - Renovación",
+      "contrato_arrendamiento": "Contrato de Arrendamiento",
+      "contrato_concesion": "Contrato de Concesión",
+      "contrato_joint_venture": "Contrato Joint Venture",
+      "contrato_obra": "Contrato de Obra",
+      "contrato_otro": "Otro Contrato",
+      "contrato_servicio": "Contrato de Servicio",
+      "contrato_suministro": "Contrato de Suministro",
+      "fp_carnet_funcionario": "Carné de Funcionario",
+      "fp_certificado_administrativo": "Certificado Administrativo",
+      "fp_permiso_extraordinario": "Permiso Extraordinario",
+      "fp_promocion_administrativa": "Promoción Administrativa",
+      "fp_verificacion_funcionario": "Verificación de Funcionario",
+      "pasaporte_deterioro": "Pasaporte - Deterioro",
+      "pasaporte_nuevo": "Pasaporte - Nuevo",
+      "pasaporte_perdida": "Pasaporte - Pérdida",
+      "pasaporte_robo": "Pasaporte - Robo",
+      "residencia_renovacion": "Residencia - Renovación",
       "short": {
         "pasaporte_expedicion": "Pasaporte",
         "pasaporte_renovacion": "Pasaporte",
@@ -11142,7 +11188,29 @@
         "verificacion": "Verificación",
         "tramites_visado": "Visado",
         "permiso_extraordinario": "Permiso",
-        "certificado_admin": "Certificado"
+        "certificado_admin": "Certificado",
+        "conducir_canje": "Conducir",
+        "conducir_duplicado": "Conducir",
+        "conducir_extension": "Conducir",
+        "conducir_nuevo": "Conducir",
+        "conducir_renovacion": "Conducir",
+        "contrato_arrendamiento": "Contrato",
+        "contrato_concesion": "Contrato",
+        "contrato_joint_venture": "Contrato",
+        "contrato_obra": "Contrato",
+        "contrato_otro": "Contrato",
+        "contrato_servicio": "Contrato",
+        "contrato_suministro": "Contrato",
+        "fp_carnet_funcionario": "Carné",
+        "fp_certificado_administrativo": "Certificado",
+        "fp_permiso_extraordinario": "Permiso",
+        "fp_promocion_administrativa": "Promoción",
+        "fp_verificacion_funcionario": "Verificación",
+        "pasaporte_deterioro": "Pasaporte",
+        "pasaporte_nuevo": "Pasaporte",
+        "pasaporte_perdida": "Pasaporte",
+        "pasaporte_robo": "Pasaporte",
+        "residencia_renovacion": "Residencia"
       }
     },
     "generatedTypes": {

@@ -10929,9 +10929,20 @@
       "searchPlaceholder": "Search for a document...",
       "resultCount": "{count} documents",
       "emptyTitle": "No personal documents",
-      "emptyDescription": "Add your identity documents, permits and other official documents to keep them always at hand."
+      "emptyDescription": "Add your identity documents, permits and other official documents to keep them always at hand.",
+      "emptyFiltered": "No documents match the filters",
+      "loadingMore": "Loading...",
+      "loadMore": "Load more"
     },
     "addDocument": "Add a document",
+    "downloadToView": "Download to view",
+    "actions": {
+      "view": "View",
+      "download": "Download",
+      "reclassify": "Reclassify",
+      "archive": "Archive",
+      "delete": "Delete"
+    },
     "tabs": {
       "personal": "Personal",
       "generated": "Generated",
@@ -10944,7 +10955,8 @@
       "generated": "Generated",
       "expiring": "Expiring",
       "quota": "Storage",
-      "quotaUsed": "{used} / {max} MB"
+      "quotaUsed": "{used} / {max} MB",
+      "wizardImported": "Imported"
     },
     "grid": {
       "search": "Search for a document...",
@@ -10968,7 +10980,8 @@
       "delete": "Delete",
       "confirmDelete": "Are you sure you want to delete this document?",
       "deleteSuccess": "Document deleted",
-      "archiveSuccess": "Document archived"
+      "archiveSuccess": "Document archived",
+      "unverified": "Unverified"
     },
     "expiry": {
       "valid": "Valid",
@@ -10976,7 +10989,8 @@
       "expired": "Expired",
       "permanent": "Permanent",
       "daysLeft": "{days}d remaining",
-      "daysExpired": "Expired {days}d ago"
+      "daysExpired": "Expired {days}d ago",
+      "expiredShort": "Expired"
     },
     "upload": {
       "title": "Add a document",
@@ -10986,6 +11000,8 @@
       "formats": "PDF, JPG, PNG, WebP",
       "typeHint": "Document type (optional)",
       "notes": "Notes (optional)",
+      "description": "Drag a file or click to select",
+      "notesPlaceholder": "Optional notes...",
       "uploading": "Uploading...",
       "processing": "AI analysis in progress...",
       "success": "Document added successfully",
@@ -11019,7 +11035,10 @@
       "noWorkflows": "Complete your first procedure to see your readiness statistics",
       "emptyTitle": "No readiness data",
       "emptyDescription": "Complete your first procedure to see your readiness statistics",
-      "score": "{score}% ready"
+      "score": "{score}% ready",
+      "available": "{available}/{total} documents available",
+      "summary": "Procedure readiness",
+      "readyCount": "{count} procedures evaluated"
     },
     "detail": {
       "title": "Document detail",
@@ -11073,7 +11092,9 @@
       },
       "download": "Download",
       "viewRequest": "View request",
-      "verificationCode": "Verification code"
+      "verificationCode": "Verification code",
+      "reference": "Reference",
+      "loadingMore": "Loading..."
     },
     "agent": {
       "settings": "Assistant settings",
@@ -11113,6 +11134,9 @@
       "feature4": "Check if your documents are ready before starting a procedure",
       "start": "Get Started"
     },
+    "workflowTag": {
+      "usableFor": "Usable for"
+    },
     "workflows": {
       "pasaporte_expedicion": "Passport (New Issue)",
       "pasaporte_renovacion": "Passport (Renewal)",
@@ -11128,6 +11152,28 @@
       "tramites_visado": "Visa Procedures",
       "permiso_extraordinario": "Extraordinary Permit",
       "certificado_admin": "Administrative Certificate",
+      "conducir_canje": "Driver's License - Exchange",
+      "conducir_duplicado": "Driver's License - Duplicate",
+      "conducir_extension": "Driver's License - Extension",
+      "conducir_nuevo": "Driver's License - New",
+      "conducir_renovacion": "Driver's License - Renewal",
+      "contrato_arrendamiento": "Lease Agreement",
+      "contrato_concesion": "Concession Contract",
+      "contrato_joint_venture": "Joint Venture Contract",
+      "contrato_obra": "Construction Contract",
+      "contrato_otro": "Other Contract",
+      "contrato_servicio": "Service Contract",
+      "contrato_suministro": "Supply Contract",
+      "fp_carnet_funcionario": "Civil Servant Card",
+      "fp_certificado_administrativo": "Administrative Certificate",
+      "fp_permiso_extraordinario": "Extraordinary Permit",
+      "fp_promocion_administrativa": "Administrative Promotion",
+      "fp_verificacion_funcionario": "Civil Servant Verification",
+      "pasaporte_deterioro": "Passport - Damage",
+      "pasaporte_nuevo": "Passport - New",
+      "pasaporte_perdida": "Passport - Loss",
+      "pasaporte_robo": "Passport - Theft",
+      "residencia_renovacion": "Residence - Renewal",
       "short": {
         "pasaporte_expedicion": "Passport",
         "pasaporte_renovacion": "Passport",
@@ -11142,7 +11188,29 @@
         "verificacion": "Verification",
         "tramites_visado": "Visa",
         "permiso_extraordinario": "Permit",
-        "certificado_admin": "Certificate"
+        "certificado_admin": "Certificate",
+        "conducir_canje": "License",
+        "conducir_duplicado": "License",
+        "conducir_extension": "License",
+        "conducir_nuevo": "License",
+        "conducir_renovacion": "License",
+        "contrato_arrendamiento": "Contract",
+        "contrato_concesion": "Contract",
+        "contrato_joint_venture": "Contract",
+        "contrato_obra": "Contract",
+        "contrato_otro": "Contract",
+        "contrato_servicio": "Contract",
+        "contrato_suministro": "Contract",
+        "fp_carnet_funcionario": "Card",
+        "fp_certificado_administrativo": "Certificate",
+        "fp_permiso_extraordinario": "Permit",
+        "fp_promocion_administrativa": "Promotion",
+        "fp_verificacion_funcionario": "Verification",
+        "pasaporte_deterioro": "Passport",
+        "pasaporte_nuevo": "Passport",
+        "pasaporte_perdida": "Passport",
+        "pasaporte_robo": "Passport",
+        "residencia_renovacion": "Residence"
       }
     },
     "generatedTypes": {
