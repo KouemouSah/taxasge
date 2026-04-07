@@ -10919,6 +10919,12 @@
   "userDocuments": {
     "title": "My Documents",
     "subtitle": "Your personal document vault",
+    "personal": {
+      "searchPlaceholder": "Search for a document...",
+      "resultCount": "{count} documents",
+      "emptyTitle": "No personal documents",
+      "emptyDescription": "Add your identity documents, permits and other official documents to keep them always at hand."
+    },
     "addDocument": "Add a document",
     "tabs": {
       "personal": "Personal",

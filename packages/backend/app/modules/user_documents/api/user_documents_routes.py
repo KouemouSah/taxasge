@@ -763,10 +763,12 @@ async def get_readiness_all(
 ):
     """Check document readiness for all popular workflows."""
     popular_workflows = await db.fetch(
-        """SELECT DISTINCT pw.code, pw.name_es
-           FROM predefined_workflows pw
-           WHERE pw.is_active = TRUE
-           ORDER BY pw.name_es
+        """SELECT DISTINCT wdr.workflow_code AS code,
+               COALESCE(w.name_es, wdr.workflow_code) AS name_es
+           FROM workflow_document_requirements wdr
+           LEFT JOIN workflows w ON w.code = wdr.workflow_code
+           WHERE wdr.is_active = TRUE
+           ORDER BY wdr.workflow_code
            LIMIT 20"""
     )
 
@@ -1786,14 +1788,12 @@ async def _compute_readiness(
     # joined with document_templates for human-readable names
     required_docs = await db.fetch(
         """SELECT DISTINCT
-               dt.template_code AS code,
-               COALESCE(dt.document_name_es, dt.template_code) AS name,
-               sda.is_required
-           FROM service_document_assignments sda
-           JOIN document_templates dt ON dt.id = sda.document_template_id
-           JOIN predefined_workflows pw ON pw.code = $1
-           WHERE sda.is_required = TRUE
-           ORDER BY dt.template_code""",
+               wdr.document_code AS code,
+               COALESCE(wdr.document_name_es, wdr.document_code) AS name,
+               wdr.is_required
+           FROM workflow_document_requirements wdr
+           WHERE wdr.workflow_code = $1 AND wdr.is_active = TRUE
+           ORDER BY wdr.display_order, wdr.document_code""",
         workflow_code,
     )
 

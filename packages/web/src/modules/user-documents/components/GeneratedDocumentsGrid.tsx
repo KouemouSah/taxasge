@@ -191,9 +191,10 @@ export function GeneratedDocumentsGrid() {
       {!isLoading && documents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto flex-1 min-h-0 pb-2">
           {documents.map((doc) => {
-            const style = getTypeStyle(doc.generation_type);
+            const genType = doc.generation_type || 'other';
+            const style = getTypeStyle(genType);
             const Icon = style.icon;
-            const typeLabel = t(`generatedLabels.${doc.generation_type}`, { defaultValue: doc.generation_type });
+            const typeLabel = t(`generatedLabels.${genType}`, { defaultValue: genType });
             const title = getTitle(doc);
 
             return (

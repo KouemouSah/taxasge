@@ -10919,6 +10919,12 @@
   "userDocuments": {
     "title": "Mes Documents",
     "subtitle": "Votre coffre-fort documentaire personnel",
+    "personal": {
+      "searchPlaceholder": "Rechercher un document...",
+      "resultCount": "{count} documents",
+      "emptyTitle": "Aucun document personnel",
+      "emptyDescription": "Ajoutez vos documents d'identité, permis et autres documents officiels pour les avoir toujours à portée de main."
+    },
     "addDocument": "Ajouter un document",
     "tabs": {
       "personal": "Personnels",

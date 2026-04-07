@@ -10919,6 +10919,12 @@
   "userDocuments": {
     "title": "Mis Documentos",
     "subtitle": "Su caja fuerte documental personal",
+    "personal": {
+      "searchPlaceholder": "Buscar un documento...",
+      "resultCount": "{count} documentos",
+      "emptyTitle": "Sin documentos personales",
+      "emptyDescription": "Agregue sus documentos de identidad, permisos y otros documentos oficiales para tenerlos siempre a mano."
+    },
     "addDocument": "Agregar un documento",
     "tabs": {
       "personal": "Personales",
