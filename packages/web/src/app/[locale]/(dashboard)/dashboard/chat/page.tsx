@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   Send, Loader2, History, Trash2, ArrowDown, Plus,
@@ -95,11 +96,22 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  const searchParams = useSearchParams();
   const hasMessages = messages.length > 0;
+  const qSentRef = useRef(false);
 
   // Resolve action messages (need t() which is only available in component)
   const generalActions = GENERAL_ACTIONS.map((a) => ({ ...a, message: t(a.titleKey) }));
   const vaultActions = VAULT_ACTIONS.map((a) => ({ ...a, message: t(a.titleKey) }));
+
+  // Auto-send message from ?q= query param (e.g., from "Prepare with assistant" button)
+  useEffect(() => {
+    const q = searchParams?.get('q');
+    if (q && !qSentRef.current && !isLoading) {
+      qSentRef.current = true;
+      sendMessage(q);
+    }
+  }, [searchParams, isLoading, sendMessage]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -137,7 +149,7 @@ export default function ChatPage() {
   }, [handleSend]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] -m-4 md:-m-6 overflow-hidden">
+    <div className="fixed inset-0 left-0 md:left-64 top-16 md:top-0 flex flex-col bg-background z-10">
       {/* ─── HEADER ─── */}
       <div className="flex items-center justify-between px-4 h-12 border-b bg-background/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-2">
@@ -151,7 +163,7 @@ export default function ChatPage() {
               <ConversationHistory onClose={() => setHistoryOpen(false)} />
             </SheetContent>
           </Sheet>
-          <img src="/logo_chat.png" alt="Facil" className="h-6 w-6 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+          <img src="/icon_facil.png" alt="Facil" className="h-6 w-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
           <span className="font-semibold text-sm">Facil Assistant</span>
         </div>
 
@@ -184,7 +196,9 @@ export default function ChatPage() {
             <div className="max-w-2xl w-full space-y-8">
               {/* Logo + Greeting */}
               <div className="text-center space-y-3">
-                <img src="/logo_chat.png" alt="Facil Assistant" className="h-14 w-14 rounded-2xl mx-auto" onError={(e) => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).className = 'hidden' }} />
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white border border-border mx-auto">
+                  <img src="/icon_facil.png" alt="Facil Assistant" className="h-10 w-10 object-contain" />
+                </div>
                 <h1 className="text-2xl font-semibold tracking-tight">
                   {t('welcomeTitle') || tDash('chatAssistant')}
                 </h1>
@@ -264,15 +278,18 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Input area */}
+        {/* Input area — "+" inside input, style Claude.ai */}
         <div className="max-w-4xl mx-auto w-full px-4 md:px-8 py-3">
-          <div className="flex items-end gap-2">
-            {/* Quick actions popover — always visible */}
+          <div className="relative flex items-end rounded-2xl border bg-background focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary">
+            {/* "+" button INSIDE input, left side */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl">
-                  <Plus className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center h-8 w-8 ml-2 mb-2 rounded-full hover:bg-accent transition-colors shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-5 w-5" strokeWidth={1.5} />
+                </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-72 p-2">
                 <p className="text-xs font-medium text-muted-foreground px-2 py-1">{t('suggestions')}</p>
@@ -293,39 +310,40 @@ export default function ChatPage() {
                 </div>
               </PopoverContent>
             </Popover>
-            <div className="flex-1 relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t('inputPlaceholder')}
-                disabled={isLoading}
-                rows={1}
-                className="w-full resize-none rounded-xl border bg-background px-4 py-3 pr-12 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary
-                           disabled:opacity-50 min-h-[48px] max-h-[160px]
-                           placeholder:text-muted-foreground/60"
-                style={{ scrollbarWidth: 'thin' }}
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = 'auto';
-                  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-                }}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={isLoading || !input.trim()}
-                size="icon"
-                className="absolute right-2 bottom-2 h-8 w-8 rounded-lg"
-              >
-                {isLoading
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Send className="h-4 w-4" />
-                }
-              </Button>
-            </div>
+
+            {/* Textarea */}
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('inputPlaceholder')}
+              disabled={isLoading}
+              rows={1}
+              className="flex-1 resize-none bg-transparent px-2 py-3.5 text-sm
+                         focus:outline-none disabled:opacity-50
+                         min-h-[52px] max-h-[160px]
+                         placeholder:text-muted-foreground/60"
+              style={{ scrollbarWidth: 'thin' }}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+              }}
+            />
+
+            {/* Send button INSIDE input, right side */}
+            <Button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              size="icon"
+              className="mr-2 mb-2 h-8 w-8 rounded-lg shrink-0"
+            >
+              {isLoading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Send className="h-4 w-4" />
+              }
+            </Button>
           </div>
-{/* Footer removed — uses dashboard layout footer */}
         </div>
       </div>
     </div>
