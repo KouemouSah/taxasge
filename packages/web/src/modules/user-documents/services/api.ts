@@ -271,6 +271,15 @@ export const userDocumentsApi = {
   },
 
   /**
+   * Permanently delete a document (RGPD right to erasure)
+   * Removes file from Firebase Storage + all DB records. Irreversible.
+   * BACKEND: DELETE /api/v1/user-documents/{id}/permanent
+   */
+  permanentDelete: async (id: string): Promise<void> => {
+    await apiClient.delete(`${BASE}/${id}/permanent`);
+  },
+
+  /**
    * Perform a bulk action on multiple documents
    * BACKEND: POST /api/v1/user-documents/bulk-action
    *

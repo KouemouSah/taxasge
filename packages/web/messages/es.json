@@ -10943,7 +10943,10 @@
       "download": "Descargar",
       "reclassify": "Reclasificar",
       "archive": "Archivar",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "permanentDelete": "Eliminar definitivamente",
+      "confirmPermanentDelete": "Eliminacion definitiva",
+      "permanentDeleteWarning": "Esta accion es irreversible. El documento y todos sus datos seran eliminados definitivamente de Firebase y de la base de datos."
     },
     "tabs": {
       "personal": "Personales",
@@ -11012,7 +11015,15 @@
       "errorType": "Formato no soportado. Use PDF, JPG, PNG o WebP",
       "errorQuota": "Espacio de almacenamiento insuficiente",
       "cancel": "Cancelar",
-      "submit": "Agregar"
+      "submit": "Agregar",
+      "archivedNotice": "{count} version(es) anterior(es) archivada(s) automaticamente"
+    },
+    "archived": {
+      "title": "Documentos archivados",
+      "count": "{count} documento(s) archivado(s)",
+      "empty": "Ningun documento archivado",
+      "deleteAll": "Eliminar todo",
+      "confirmDeleteAll": "Eliminar definitivamente todos los documentos archivados?"
     },
     "alerts": {
       "noAlerts": "Sin alertas",

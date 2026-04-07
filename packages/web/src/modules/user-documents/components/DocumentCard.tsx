@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +119,17 @@ export function DocumentCard({
   const categoryColor = CATEGORY_COLORS[doc.document_category] ?? CATEGORY_COLORS.other;
   const displayName = doc.display_name || doc.file_name;
 
+  // Lazy-load thumbnail URL when thumbnail_path is available
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (doc.thumbnail_path) {
+      userDocumentsApi
+        .getThumbnailUrl(doc.id)
+        .then((res) => setThumbUrl(res.url))
+        .catch(() => {});
+    }
+  }, [doc.id, doc.thumbnail_path]);
+
   // Handle download
   const handleDownload = useCallback(async () => {
     setIsDownloading(true);
@@ -168,10 +179,22 @@ export function DocumentCard({
 
         {/* Top row: icon + title + actions */}
         <div className="flex items-start gap-3">
-          {/* File type icon / thumbnail placeholder */}
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-            <FileIcon className="h-5 w-5 text-muted-foreground" />
-          </div>
+          {/* File type icon / thumbnail */}
+          {thumbUrl ? (
+            <div className="shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-muted">
+              <img
+                src={thumbUrl}
+                alt={displayName}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setThumbUrl(null)}
+              />
+            </div>
+          ) : (
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+              <FileIcon className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
 
           {/* Title + meta */}
           <div className="flex-1 min-w-0">

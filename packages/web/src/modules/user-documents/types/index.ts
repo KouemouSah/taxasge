@@ -242,6 +242,8 @@ export interface UploadResult {
   file_name: string;
   file_size_bytes: number;
   existing_document_id?: string;
+  /** Number of older versions auto-archived during upload */
+  archived_count?: number;
 }
 
 /**

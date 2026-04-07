@@ -541,6 +541,11 @@ class UploadResult(BaseModel):
         None,
         description="Populated when a duplicate hash was detected. Upload still proceeds.",
     )
+    archived_count: int = Field(
+        0,
+        ge=0,
+        description="Number of older versions of the same document type that were auto-archived.",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -550,6 +555,7 @@ class UploadResult(BaseModel):
                 "file_name": "pasaporte_scan.pdf",
                 "file_size_bytes": 1_258_291,
                 "duplicate": None,
+                "archived_count": 0,
             }
         }
     )

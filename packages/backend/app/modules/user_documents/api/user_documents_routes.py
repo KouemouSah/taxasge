@@ -389,6 +389,7 @@ async def upload_document(
     doc_id = row["id"]
 
     # --- Auto-archive older versions of same document type ---
+    archived_count = 0
     if doc_type and doc_type != "unknown":
         try:
             archived_result = await db.execute(
@@ -403,10 +404,10 @@ async def upload_document(
             )
             if archived_result and "UPDATE" in str(archived_result):
                 parts = str(archived_result).split()
-                count = int(parts[-1]) if parts[-1].isdigit() else 0
-                if count > 0:
+                archived_count = int(parts[-1]) if parts[-1].isdigit() else 0
+                if archived_count > 0:
                     logger.info(
-                        f"[UserDocuments] Auto-archived {count} older {doc_type} "
+                        f"[UserDocuments] Auto-archived {archived_count} older {doc_type} "
                         f"document(s) for user {current_user.id}"
                     )
         except Exception as e:
@@ -437,6 +438,7 @@ async def upload_document(
         file_name=file_name,
         file_size_bytes=file_size,
         duplicate=duplicate_info,
+        archived_count=archived_count,
     )
 
 

@@ -16,19 +16,41 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Search,
   Filter,
   FileX,
   Loader2,
+  ChevronDown,
+  ChevronRight,
+  Trash2,
+  Archive as ArchiveIcon,
 } from 'lucide-react';
-import { useUserDocuments } from '../hooks';
+import { useUserDocuments, userDocumentKeys } from '../hooks';
 import { DocumentCard } from './DocumentCard';
 import { DocumentDetailSheet } from './DocumentDetailSheet';
+import { userDocumentsApi } from '../services/api';
 import type { DocumentCategory, DocumentFilters, UserDocumentListItem } from '../types';
 import { CATEGORY_LABELS } from '../types';
 
@@ -224,6 +246,9 @@ export function PersonalDocumentsGrid() {
         </div>
       )}
 
+      {/* Archived documents section */}
+      <ArchivedDocumentsSection />
+
       {/* Document detail sheet */}
       <DocumentDetailSheet
         documentId={selectedDocId}
@@ -233,5 +258,133 @@ export function PersonalDocumentsGrid() {
         }}
       />
     </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Archived Documents Section (collapsible)
+// ---------------------------------------------------------------------------
+
+function ArchivedDocumentsSection() {
+  const t = useTranslations('userDocuments');
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: [...userDocumentKeys.lists(), 'archived'],
+    queryFn: () =>
+      userDocumentsApi.list({ status: 'archived', limit: 50 }),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const items = data?.items ?? [];
+  const count = data?.total_count ?? 0;
+
+  const handlePermanentDelete = useCallback(
+    async (docId: string) => {
+      setDeletingId(docId);
+      try {
+        await userDocumentsApi.permanentDelete(docId);
+        refetch();
+        queryClient.invalidateQueries({ queryKey: userDocumentKeys.stats() });
+      } catch {
+        // Silent fail
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refetch, queryClient]
+  );
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
+      <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+        {open ? (
+          <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronRight className="h-4 w-4" />
+        )}
+        <ArchiveIcon className="h-4 w-4" />
+        {t('archived.title')}
+        {open && count > 0 && (
+          <Badge variant="secondary" className="text-xs ml-1">
+            {count}
+          </Badge>
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {isLoading && (
+          <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {t('detail.loading')}
+          </div>
+        )}
+
+        {!isLoading && items.length === 0 && (
+          <p className="text-xs text-muted-foreground py-3">
+            {t('archived.empty')}
+          </p>
+        )}
+
+        {!isLoading && items.length > 0 && (
+          <div className="space-y-1 py-2">
+            {items.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
+                    {doc.display_name || doc.file_name}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {doc.document_type.replace(/_/g, ' ')} &middot;{' '}
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+                      disabled={deletingId === doc.id}
+                    >
+                      {deletingId === doc.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t('actions.confirmPermanentDelete')}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('actions.permanentDeleteWarning')}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('upload.cancel')}</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => handlePermanentDelete(doc.id)}
+                      >
+                        {t('actions.permanentDelete')}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

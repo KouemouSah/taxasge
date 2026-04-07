@@ -17,6 +17,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
   SheetContent,
@@ -33,6 +34,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Download,
@@ -54,7 +66,7 @@ import {
 import { DocumentPreview } from './DocumentPreview';
 import { ExpiryBadge } from './ExpiryBadge';
 import { WorkflowTagChips } from './WorkflowTagChips';
-import { useUserDocument, useDocumentMutations, useDocumentVersions } from '../hooks';
+import { useUserDocument, useDocumentMutations, useDocumentVersions, userDocumentKeys } from '../hooks';
 import { userDocumentsApi } from '../services/api';
 import type { DocumentCategory, UserDocumentListItem } from '../types';
 import { CATEGORY_LABELS } from '../types';
@@ -135,6 +147,7 @@ export function DocumentDetailSheet({
 }: DocumentDetailSheetProps) {
   const locale = useLocale() as 'es' | 'fr' | 'en';
   const t = useTranslations('userDocuments');
+  const queryClient = useQueryClient();
 
   // Fetch document detail
   const { document: doc, isLoading } = useUserDocument(documentId ?? '');
@@ -156,6 +169,7 @@ export function DocumentDetailSheet({
 
   // Local state
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(undefined);
   const [extractionOpen, setExtractionOpen] = useState(false);
 
@@ -209,6 +223,20 @@ export function DocumentDetailSheet({
     deleteDocument.mutate({ documentId });
     onOpenChange(false);
   }, [documentId, deleteDocument, onOpenChange]);
+
+  const handlePermanentDelete = useCallback(async () => {
+    if (!documentId) return;
+    setIsPermanentDeleting(true);
+    try {
+      await userDocumentsApi.permanentDelete(documentId);
+      queryClient.invalidateQueries({ queryKey: userDocumentKeys.all });
+      onOpenChange(false);
+    } catch {
+      // Silent fail
+    } finally {
+      setIsPermanentDeleting(false);
+    }
+  }, [documentId, queryClient, onOpenChange]);
 
   // Derived values
   const displayName = doc?.display_name || doc?.file_name || '';
@@ -523,7 +551,7 @@ export function DocumentDetailSheet({
             <Separator />
 
             {/* Actions bar */}
-            <div className="px-6 py-4 flex items-center gap-2 shrink-0">
+            <div className="px-6 py-4 flex items-center gap-2 shrink-0 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
@@ -585,6 +613,43 @@ export function DocumentDetailSheet({
                 )}
                 {t('card.delete')}
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    disabled={isPermanentDeleting}
+                  >
+                    {isPermanentDeleting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} />
+                    ) : (
+                      <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+                    )}
+                    {t('actions.permanentDelete')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t('actions.confirmPermanentDelete')}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('actions.permanentDeleteWarning')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('upload.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handlePermanentDelete}
+                    >
+                      {t('actions.permanentDelete')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </>
         )}

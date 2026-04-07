@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 import { userDocumentsApi } from '../services/api';
 import { userDocumentKeys } from './useUserDocuments';
 import type { UploadResult } from '../types';
@@ -147,6 +148,45 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Processing status polling (3s interval, 2min max)
+  // ---------------------------------------------------------------------------
+
+  const pollProcessingStatus = useCallback(
+    (docId: string) => {
+      const pollInterval = setInterval(async () => {
+        try {
+          const doc = await userDocumentsApi.getById(docId);
+          if (
+            doc.extraction_status === 'completed' ||
+            doc.extraction_status === 'failed'
+          ) {
+            clearInterval(pollInterval);
+            // Refresh lists to show updated extraction data
+            queryClient.invalidateQueries({
+              queryKey: userDocumentKeys.lists(),
+            });
+            queryClient.invalidateQueries({
+              queryKey: userDocumentKeys.detail(docId),
+            });
+            if (doc.extraction_status === 'completed') {
+              toast({
+                title: doc.display_name || doc.file_name,
+                description: 'Classification et extraction terminees.',
+              });
+            }
+          }
+        } catch {
+          clearInterval(pollInterval);
+        }
+      }, 3000);
+
+      // Auto-cleanup after 2 minutes
+      setTimeout(() => clearInterval(pollInterval), 120_000);
+    },
+    [queryClient]
+  );
+
+  // ---------------------------------------------------------------------------
   // Single Upload
   // ---------------------------------------------------------------------------
 
@@ -193,6 +233,17 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
         queryClient.invalidateQueries({ queryKey: userDocumentKeys.stats() });
         queryClient.invalidateQueries({ queryKey: userDocumentKeys.alerts() });
 
+        // Show toast if older versions were auto-archived
+        if (result.archived_count && result.archived_count > 0) {
+          toast({
+            title: `${result.archived_count} ancienne(s) version(s) archivee(s)`,
+            description: 'Les versions precedentes ont ete archivees automatiquement.',
+          });
+        }
+
+        // Poll for processing completion (classification + extraction)
+        pollProcessingStatus(result.id);
+
         return result;
       } catch (err) {
         const message =
@@ -208,7 +259,7 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
         }
       }
     },
-    [addFileState, updateFileState, queryClient]
+    [addFileState, updateFileState, queryClient, pollProcessingStatus]
   );
 
   // ---------------------------------------------------------------------------
