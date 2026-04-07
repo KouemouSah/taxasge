@@ -137,10 +137,21 @@ class CollectionService:
                 ministry_id = obl_detail["ministry_id"]
                 fee_type = obl_detail["fee_type"]
 
-        # INSERT service_payment directly (no service_request needed)
+        # Step 1: Create a lightweight service_request (audit trail)
+        # The field inspection IS the service — workflow_code = FIELD_INSPECTION
+        request_id = uuid4()
+        await conn.execute("""
+            INSERT INTO service_requests (
+                id, user_id, company_id, workflow_code,
+                status, created_at, updated_at
+            ) VALUES ($1, $2, $3, 'FIELD_INSPECTION', 'submitted', NOW(), NOW())
+        """, request_id, payment_user_id, company_id)
+
+        # Step 2: Create service_payment linked to the service_request
         await conn.execute("""
             INSERT INTO service_payments (
                 id, payment_reference, user_id, company_id,
+                service_request_id,
                 payment_type, base_amount, penalties, discounts, total_amount,
                 payment_method, currency, status, workflow_status,
                 entity_code, ministry_id, fee_type,
@@ -149,28 +160,30 @@ class CollectionService:
                 created_at, updated_at
             ) VALUES (
                 $1, $2, $3, $4,
-                'full', $5, $6, 0, $7,
-                $8, 'XAF', 'pending', 'field_collected',
-                $9, $10, $11,
-                'field', $12, $13,
-                $14,
+                $5,
+                'full', $6, $7, 0, $8,
+                $9, 'XAF', 'pending', 'field_collected',
+                $10, $11, $12,
+                'field', $13, $14,
+                $15,
                 NOW(), NOW()
             )
         """,
             payment_id,                     # $1
             payment_ref,                    # $2
-            payment_user_id,                # $3 user_id (company owner or agent)
+            payment_user_id,                # $3
             company_id,                     # $4
-            sum(o["amount"] or Decimal("0") for o in obls),  # $5 base_amount
-            sum(o["penalty_amount"] or Decimal("0") for o in obls),  # $6 penalties
-            received,                       # $7 total_amount
-            method,                         # $8 payment_method
-            entity_code,                    # $9
-            ministry_id,                    # $10
-            fee_type,                       # $11
-            user_id,                        # $12 collected_by (agent)
-            inspection_id,                  # $13 field_inspection_id
-            json.dumps({                    # $14 supporting_documents (JSONB)
+            request_id,                     # $5 service_request_id (audit trail)
+            sum(o["amount"] or Decimal("0") for o in obls),  # $6 base_amount
+            sum(o["penalty_amount"] or Decimal("0") for o in obls),  # $7 penalties
+            received,                       # $8 total_amount
+            method,                         # $9 payment_method
+            entity_code,                    # $10
+            ministry_id,                    # $11
+            fee_type,                       # $12
+            user_id,                        # $13 collected_by (agent)
+            inspection_id,                  # $14 field_inspection_id
+            json.dumps({                    # $15 supporting_documents
                 "inspection_id": str(inspection_id),
                 "obligation_ids": [str(oid) for oid in obligation_ids],
                 "phone_number": phone_number,

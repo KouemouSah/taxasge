@@ -1,17 +1,19 @@
--- Migration 287: Allow field payments without service_request_id
--- Field inspections create service_payments directly (no wizard/workflow).
--- The inspection report serves as proof — no service_request needed.
+-- Migration 287: Add FIELD_INSPECTION workflow code for field payment audit trail
+--
+-- Architecture: field inspections create service_payments through a lightweight
+-- service_request (workflow_code = 'FIELD_INSPECTION'). This preserves:
+--   - Full audit trail (inspection → service_request → service_payment)
+--   - chk_service_request_required constraint (unchanged)
+--   - fk_sr_valid_workflow_code constraint (satisfied)
+--
+-- The inspection report serves as the "document" — no wizard steps needed.
 
-ALTER TABLE service_payments
-DROP CONSTRAINT IF EXISTS chk_service_request_required;
+-- 1. Register FIELD_INSPECTION as a valid workflow code
+INSERT INTO valid_workflow_codes (code, base_code, resolution_key, is_active)
+VALUES ('FIELD_INSPECTION', NULL, 'FIELD', TRUE)
+ON CONFLICT (code) DO NOTHING;
 
-ALTER TABLE service_payments
-ADD CONSTRAINT chk_service_request_required
-CHECK (
-    service_request_id IS NOT NULL
-    OR created_at < '2026-01-11'::date
-    OR collection_type = 'field'
-);
-
-COMMENT ON CONSTRAINT chk_service_request_required ON service_payments IS
-'service_request_id required for office/online payments. Field collections (collection_type=field) are exempt — inspection report is the proof.';
+-- 2. Add to workflows table for completeness
+INSERT INTO workflows (code, name_es, is_active, requires_appointment, requires_payment)
+VALUES ('FIELD_INSPECTION', 'Inspeccion de Campo', TRUE, FALSE, TRUE)
+ON CONFLICT (code) DO NOTHING;
