@@ -301,7 +301,7 @@ export interface StreamChunk {
 }
 
 export interface ChatAction {
-  type: 'start_workflow' | 'view_pricing' | 'view_documents'
+  type: 'start_workflow' | 'open_wizard' | 'view_pricing' | 'view_documents'
   label: string
   url?: string
   workflow_code?: string

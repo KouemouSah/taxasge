@@ -76,6 +76,7 @@ class ChatResponse(BaseModel):
     suggestions: List[str] = Field(default_factory=list)
     related_services: List[Dict[str, Any]] = Field(default_factory=list)
     follow_up_actions: List[str] = Field(default_factory=list)
+    actions: List[Dict[str, Any]] = Field(default_factory=list)
     confidence: float = 0.8
     response_time: float = 0.0
     language: LanguageCode

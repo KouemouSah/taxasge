@@ -271,7 +271,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   href={action.url || '#'}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors no-underline"
                 >
-                  {action.type === 'start_workflow' && <ExternalLink className="h-3 w-3" />}
+                  {(action.type === 'start_workflow' || action.type === 'open_wizard') && <ExternalLink className="h-3 w-3" />}
                   {action.label}
                 </a>
               ))}

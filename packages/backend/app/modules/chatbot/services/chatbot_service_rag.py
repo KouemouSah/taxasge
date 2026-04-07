@@ -2130,6 +2130,29 @@ Keep it helpful and concise."""
                     "workflow_code": result.get("workflow_code", ""),
                 })
 
+            # Auto-prepare wizard — Level 2 agent action
+            elif fn_name == "auto_prepare_wizard":
+                if result.get("status") == "prepared" and result.get("action"):
+                    action = result["action"]
+                    actions.append({
+                        "type": action.get("type", "open_wizard"),
+                        "label": action.get("label", "Finalizar solicitud"),
+                        "url": action.get("url", ""),
+                        "workflow_code": result.get("workflow_code", ""),
+                    })
+                elif result.get("status") == "missing_documents" and result.get("requires_user_choice"):
+                    # Don't add action — the response message asks the user to choose
+                    pass
+
+            elif fn_name == "prepare_renewal" and result.get("status") == "prepared":
+                wf_code = result.get("workflow_code", "")
+                actions.append({
+                    "type": "start_workflow",
+                    "label": f"Iniciar renovación",
+                    "url": f"/dashboard/service-requests/new?workflow={wf_code}",
+                    "workflow_code": wf_code,
+                })
+
         return actions
 
     # ========================================================================

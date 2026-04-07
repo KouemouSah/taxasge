@@ -393,6 +393,7 @@ async def chat(
             suggestions=ai_response.get("suggestions", []),
             related_services=ai_response.get("related_services", []),
             follow_up_actions=ai_response.get("follow_up_actions", []),
+            actions=ai_response.get("actions", []),
             confidence=ai_response.get("confidence", 0.5),
             response_time=ai_response.get("response_time", 0),
             language=request.language
