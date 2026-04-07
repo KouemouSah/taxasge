@@ -1125,6 +1125,79 @@ async def get_thumbnail(
 
 
 # =============================================================================
+# SSE — Stream document processing status
+# =============================================================================
+
+@router.get(
+    "/{document_id}/processing-status",
+    summary="Stream document processing status (SSE)",
+)
+async def stream_processing_status(
+    document_id: UUID = Path(...),
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """Stream real-time processing status as Server-Sent Events.
+
+    After uploading a document, the frontend can subscribe to this endpoint
+    to receive live updates on Gemini classification/extraction progress.
+
+    Polls every 2 seconds for up to 2 minutes. Sends 'done' event when
+    extraction reaches a terminal state (completed/failed).
+    """
+    import json as _json
+    from fastapi.responses import StreamingResponse
+    from app.database.connection import get_db_pool
+
+    db_pool = await get_db_pool()
+
+    async def event_stream():
+        max_polls = 60  # Max 2 minutes (60 * 2s)
+        poll_count = 0
+
+        while poll_count < max_polls:
+            async with db_pool.acquire() as conn:
+                doc = await conn.fetchrow(
+                    """SELECT extraction_status, extraction_confidence, document_type,
+                              document_category, thumbnail_path
+                       FROM user_documents WHERE id = $1 AND user_id = $2""",
+                    document_id, current_user.id,
+                )
+
+            if not doc:
+                yield f"data: {_json.dumps({'type': 'error', 'message': 'Document not found'})}\n\n"
+                break
+
+            status_data = {
+                "type": "status",
+                "extraction_status": doc["extraction_status"],
+                "confidence": float(doc["extraction_confidence"] or 0),
+                "document_type": doc["document_type"],
+                "category": doc["document_category"],
+                "has_thumbnail": bool(doc.get("thumbnail_path")),
+            }
+            yield f"data: {_json.dumps(status_data)}\n\n"
+
+            # If terminal state, send done and stop
+            if doc["extraction_status"] in ("completed", "failed"):
+                yield f"data: {_json.dumps({'type': 'done', **status_data})}\n\n"
+                break
+
+            poll_count += 1
+            await asyncio.sleep(2)
+
+        # Timeout
+        if poll_count >= max_polls:
+            yield f"data: {_json.dumps({'type': 'timeout'})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+# =============================================================================
 # VERSIONS — Document version history
 # =============================================================================
 
@@ -1964,35 +2037,53 @@ async def _compute_readiness(
     If user_doc_map is provided, skips the per-user DB query (N+1 optimization).
     """
     from ..models.user_document import ReadinessItem
+    from app.core.cache import get_cache
 
-    # Get required documents for this workflow from service_document_assignments
-    # joined with document_templates for human-readable names
-    required_docs = await db.fetch(
-        """SELECT
-               wdr.document_code AS code,
-               COALESCE(wdr.document_name_es, wdr.document_code) AS name,
-               wdr.is_required
-           FROM workflow_document_requirements wdr
-           WHERE wdr.workflow_code = $1 AND wdr.is_active = TRUE
-           ORDER BY wdr.display_order, wdr.document_code""",
-        workflow_code,
-    )
+    # Cache workflow requirements (1 hour TTL — rarely changes)
+    cache = get_cache()
+    cache_key = f"wf_requirements:{workflow_code}"
 
-    # If no requirements found, try matching via workflow tags
+    required_docs = None
+    if cache:
+        cached_docs = await cache.get(cache_key)
+        if cached_docs is not None:
+            required_docs = cached_docs
+
     if not required_docs:
-        required_docs = await db.fetch(
-            """SELECT DISTINCT
-                   dt.template_code AS code,
-                   COALESCE(dt.document_name_es, dt.template_code) AS name,
-                   TRUE AS is_required
-               FROM user_document_workflow_tags wt
-               JOIN user_documents ud ON ud.id = wt.user_document_id
-               JOIN document_templates dt ON dt.template_code = ud.document_type
-               WHERE wt.workflow_code = $1
-               GROUP BY dt.template_code, dt.document_name_es
-               LIMIT 20""",
+        # Get required documents for this workflow from service_document_assignments
+        # joined with document_templates for human-readable names
+        required_docs_rows = await db.fetch(
+            """SELECT
+                   wdr.document_code AS code,
+                   COALESCE(wdr.document_name_es, wdr.document_code) AS name,
+                   wdr.is_required
+               FROM workflow_document_requirements wdr
+               WHERE wdr.workflow_code = $1 AND wdr.is_active = TRUE
+               ORDER BY wdr.display_order, wdr.document_code""",
             workflow_code,
         )
+        required_docs = [dict(r) for r in required_docs_rows]
+
+        # If no requirements found, try matching via workflow tags
+        if not required_docs:
+            required_docs_rows = await db.fetch(
+                """SELECT DISTINCT
+                       dt.template_code AS code,
+                       COALESCE(dt.document_name_es, dt.template_code) AS name,
+                       TRUE AS is_required
+                   FROM user_document_workflow_tags wt
+                   JOIN user_documents ud ON ud.id = wt.user_document_id
+                   JOIN document_templates dt ON dt.template_code = ud.document_type
+                   WHERE wt.workflow_code = $1
+                   GROUP BY dt.template_code, dt.document_name_es
+                   LIMIT 20""",
+                workflow_code,
+            )
+            required_docs = [dict(r) for r in required_docs_rows]
+
+        # Cache the result for 1 hour (workflow requirements rarely change)
+        if cache and required_docs:
+            await cache.set(cache_key, required_docs, ttl=3600)
 
     # Build user doc map if not pre-fetched (single-workflow call)
     if user_doc_map is None:

@@ -198,6 +198,13 @@ service firebase.storage {
       allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 
+    // Vault - Thumbnails (public read for CDN, write by backend only)
+    match /user-documents/{userId}/thumbnails/{fileName} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isOfficialUser());
+      allow write: if false; // Only backend service account
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
     // Vault - Export ZIP files
     match /user-documents/{userId}/exports/{fileName} {
       allow read: if isAuthenticated() && isOwner(userId);

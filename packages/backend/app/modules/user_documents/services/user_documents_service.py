@@ -404,6 +404,20 @@ class UserDocumentsService:
                         db=conn, doc_id=doc_id, tags=workflow_tags
                     )
 
+            # After extraction update, generate thumbnail (non-critical)
+            try:
+                thumbnail_path = await self._generate_and_upload_thumbnail(
+                    content, mime_type, str(user_id), str(doc_id), db_pool
+                )
+                if thumbnail_path:
+                    async with db_pool.acquire() as conn2:
+                        await conn2.execute(
+                            "UPDATE user_documents SET thumbnail_path = $1, updated_at = NOW() WHERE id = $2",
+                            thumbnail_path, doc_id,
+                        )
+            except Exception as thumb_err:
+                logger.debug(f"Thumbnail generation failed (non-critical): {thumb_err}")
+
             logger.info(
                 f"Vault Gemini processing complete: doc_id={doc_id}, "
                 f"type={classified_type}, confidence={extraction_confidence:.2f}"
@@ -1313,6 +1327,100 @@ class UserDocumentsService:
             doc_id,
         )
         return [r["workflow_code"] for r in rows]
+
+    # ─────────────────────────────────────────────
+    # THUMBNAIL GENERATION
+    # ─────────────────────────────────────────────
+
+    async def _generate_and_upload_thumbnail(
+        self,
+        content: bytes,
+        mime_type: str,
+        user_id: str,
+        doc_id: str,
+        db_pool,
+    ) -> Optional[str]:
+        """Generate a thumbnail and upload to Firebase Storage.
+
+        Supports JPEG/PNG/WebP images (direct resize) and PDF files
+        (first page conversion via pdf2image). Returns the Firebase
+        Storage path on success, or None if generation fails or
+        dependencies are missing.
+
+        The uploaded thumbnail gets CDN cache headers (30 days) for
+        optimal delivery performance.
+        """
+        import io
+
+        try:
+            from PIL import Image
+        except ImportError:
+            logger.debug("Pillow not available, skipping thumbnail")
+            return None
+
+        try:
+            thumb_image = None
+
+            if mime_type in ("image/jpeg", "image/png", "image/webp"):
+                # Image files — resize directly
+                img = Image.open(io.BytesIO(content))
+                img.thumbnail((200, 280), Image.Resampling.LANCZOS)
+                thumb_image = img
+
+            elif mime_type == "application/pdf":
+                # PDF files — convert first page to image
+                try:
+                    from pdf2image import convert_from_bytes
+                    images = convert_from_bytes(
+                        content, first_page=1, last_page=1, dpi=72
+                    )
+                    if images:
+                        images[0].thumbnail((200, 280), Image.Resampling.LANCZOS)
+                        thumb_image = images[0]
+                except Exception as pdf_err:
+                    logger.debug(f"PDF thumbnail failed: {pdf_err}")
+                    return None
+
+            if not thumb_image:
+                return None
+
+            # Convert to JPEG bytes
+            thumb_buffer = io.BytesIO()
+            if thumb_image.mode in ("RGBA", "LA", "P"):
+                thumb_image = thumb_image.convert("RGB")
+            thumb_image.save(
+                thumb_buffer, format="JPEG", quality=75, optimize=True
+            )
+            thumb_bytes = thumb_buffer.getvalue()
+
+            # Upload to Firebase Storage
+            from app.modules.documents.services.storage_service import (
+                firebase_storage_service,
+            )
+            if not firebase_storage_service._initialized:
+                await firebase_storage_service.initialize()
+
+            thumb_path = f"user-documents/{user_id}/thumbnails/{doc_id}.jpg"
+            blob = firebase_storage_service.bucket.blob(thumb_path)
+            blob.metadata = {
+                "uploadedBy": user_id,
+                "uploadedAt": datetime.utcnow().isoformat(),
+                "assetType": "thumbnail",
+            }
+            # Set cache-control for CDN (30 days)
+            blob.cache_control = "public, max-age=2592000"
+            blob.upload_from_string(
+                thumb_bytes, content_type="image/jpeg", timeout=30
+            )
+
+            logger.info(
+                f"Thumbnail generated: {thumb_path} ({len(thumb_bytes)} bytes)"
+            )
+            return thumb_path
+
+        except Exception as e:
+            logger.debug(f"Thumbnail generation error: {e}")
+            return None
 
 
 # Singleton instance
