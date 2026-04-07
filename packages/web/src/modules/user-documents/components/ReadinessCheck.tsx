@@ -12,7 +12,8 @@
 
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import {
   Rocket,
   FileSearch,
   ArrowRight,
+  MessageSquare,
   FolderOpen,
   BookOpen,
   Car,
@@ -117,6 +119,7 @@ function ReadinessItemRow({
 // ---------------------------------------------------------------------------
 
 function ReadinessCard({ result }: { result: ReadinessResult }) {
+  const locale = useLocale();
   const t = useTranslations('userDocuments');
   const WorkflowIcon = WORKFLOW_ICONS[result.workflow_code] ?? FileText;
   const label = t(`workflows.${result.workflow_code.toLowerCase()}`, { defaultValue: result.workflow_code.replace(/_/g, ' ') });
@@ -198,13 +201,27 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
           </div>
         )}
 
-        {/* Action button */}
-        {result.can_start && (
-          <Button variant="outline" size="sm" className="w-full mt-2 text-xs">
-            {t('readiness.startProcedure')}
-            <ArrowRight className="ml-1 h-3 w-3" />
+        {/* Action buttons */}
+        <div className="flex gap-2 mt-2">
+          {result.can_start && (
+            <Button variant="outline" size="sm" className="flex-1 text-xs">
+              {t('readiness.startProcedure')}
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-primary"
+            onClick={() => {
+              const msg = `${t('readiness.askAssistant') || 'Prepárame la demanda de'} ${label}`;
+              window.location.href = `/${locale}/dashboard/chat?q=${encodeURIComponent(msg)}`;
+            }}
+          >
+            <MessageSquare className="mr-1 h-3 w-3" strokeWidth={1.5} />
+            {t('readiness.askAssistant') || 'Assistant'}
           </Button>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

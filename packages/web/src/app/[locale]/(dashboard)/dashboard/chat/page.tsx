@@ -11,15 +11,16 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Send, Loader2, History, Trash2, ArrowDown,
+  Send, Loader2, History, Trash2, ArrowDown, Plus,
   FileText, Calculator, Lightbulb, HelpCircle,
   FolderOpen, Clock, BarChart3, FileSearch,
-  MessageSquare, ChevronRight,
+  MessageSquare, ChevronRight, CreditCard,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
@@ -61,6 +62,7 @@ const VAULT_ACTIONS: QuickAction[] = [
   { icon: FileSearch, titleKey: 'vaultReadiness', message: '', iconColor: 'text-green-600' },
   { icon: BarChart3, titleKey: 'vaultStats', message: '', iconColor: 'text-blue-500' },
   { icon: FolderOpen, titleKey: 'vaultMissing', message: '', iconColor: 'text-purple-500' },
+  { icon: CreditCard, titleKey: 'bundlePayment', message: '', iconColor: 'text-emerald-600' },
 ];
 
 // =============================================================================
@@ -265,6 +267,32 @@ export default function ChatPage() {
         {/* Input area */}
         <div className="max-w-4xl mx-auto w-full px-4 md:px-8 py-3">
           <div className="flex items-end gap-2">
+            {/* Quick actions popover — always visible */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl">
+                  <Plus className="h-4 w-4" strokeWidth={1.5} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-72 p-2">
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1">{t('suggestions')}</p>
+                <div className="space-y-0.5">
+                  {[...generalActions, ...vaultActions].map((action, i) => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => { handleQuickAction(action.message); }}
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm hover:bg-accent transition-colors"
+                      >
+                        <Icon className={`h-4 w-4 shrink-0 ${action.iconColor ?? 'text-primary'}`} strokeWidth={1.5} />
+                        <span className="truncate">{t(action.titleKey)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="flex-1 relative">
               <textarea
                 value={input}
