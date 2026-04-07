@@ -145,7 +145,7 @@ class CollectionService:
                 payment_method, currency, status, workflow_status,
                 entity_code, ministry_id, fee_type,
                 collection_type, collected_by, field_inspection_id,
-                metadata,
+                supporting_documents,
                 created_at, updated_at
             ) VALUES (
                 $1, $2, $3, $4,
@@ -170,7 +170,7 @@ class CollectionService:
             fee_type,                       # $11
             user_id,                        # $12 collected_by (agent)
             inspection_id,                  # $13 field_inspection_id
-            json.dumps({                    # $14 metadata
+            json.dumps({                    # $14 supporting_documents (JSONB)
                 "inspection_id": str(inspection_id),
                 "obligation_ids": [str(oid) for oid in obligation_ids],
                 "phone_number": phone_number,
