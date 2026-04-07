@@ -122,7 +122,6 @@ def _build_document_response(row: Dict[str, Any]) -> UserDocumentResponse:
         status=row.get("status", "active"),
         file_name=row.get("file_name", ""),
         display_name=row.get("display_name"),
-        file_path=row.get("file_path", ""),
         file_size_bytes=row.get("file_size_bytes", 0),
         mime_type=row.get("mime_type", "application/octet-stream"),
         file_hash=row.get("file_hash", ""),
@@ -1015,9 +1014,9 @@ async def get_download_url(
     db: asyncpg.Connection = Depends(get_database),
 ):
     """Generate a temporary signed URL for document download."""
-    # Rate limit: 60 downloads per hour per user
+    # Rate limit: 100 downloads per hour per user
     is_allowed, remaining = await check_rate_limit(
-        str(current_user.id), "/user-documents/download", max_requests=60, window_seconds=3600
+        str(current_user.id), "/user-documents/download", max_requests=100, window_seconds=3600
     )
     if not is_allowed:
         raise HTTPException(

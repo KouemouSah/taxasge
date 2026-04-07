@@ -206,7 +206,6 @@ class UserDocumentResponse(BaseModel):
     # File information
     file_name: str = Field(..., description="Original uploaded file name.")
     display_name: Optional[str] = Field(None, description="User-facing display name.")
-    file_path: str = Field(..., description="Storage path (Supabase / Firebase).")
     file_size_bytes: int = Field(..., description="File size in bytes.")
     mime_type: str = Field(..., description="MIME type of the file.")
     file_hash: str = Field(..., description="SHA-256 hash for deduplication.")

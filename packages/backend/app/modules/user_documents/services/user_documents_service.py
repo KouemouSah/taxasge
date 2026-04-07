@@ -418,6 +418,12 @@ class UserDocumentsService:
             except Exception as thumb_err:
                 logger.debug(f"Thumbnail generation failed (non-critical): {thumb_err}")
 
+            # Async antivirus scan (fire-and-forget)
+            try:
+                asyncio.create_task(self._scan_file_async(doc_id, db_pool))
+            except Exception:
+                pass
+
             logger.info(
                 f"Vault Gemini processing complete: doc_id={doc_id}, "
                 f"type={classified_type}, confidence={extraction_confidence:.2f}"
@@ -441,6 +447,79 @@ class UserDocumentsService:
                     f"Failed to update extraction_status to 'failed': "
                     f"doc_id={doc_id}, error={db_err}"
                 )
+
+    # ─────────────────────────────────────────────
+    # 2b. ASYNC ANTIVIRUS SCAN (VirusTotal hash lookup)
+    # ─────────────────────────────────────────────
+
+    async def _scan_file_async(self, doc_id: UUID, db_pool: asyncpg.Pool) -> None:
+        """
+        Async file scan via SHA-256 hash lookup (VirusTotal API).
+        Does NOT upload the file — only checks the hash against known malware.
+        Flags document in DB if malicious/suspicious.
+
+        Non-blocking, non-critical: failures are silently logged.
+        """
+        try:
+            import httpx
+            from app.config import settings
+
+            vt_api_key = getattr(settings, "VIRUSTOTAL_API_KEY", None)
+            if not vt_api_key:
+                logger.debug("VirusTotal API key not configured, skipping scan")
+                return
+
+            # Fetch file_hash from DB
+            async with db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT file_hash FROM user_documents WHERE id = $1", doc_id
+                )
+                if not row or not row["file_hash"]:
+                    return
+                file_hash = row["file_hash"]
+
+            # VirusTotal file report by hash (free tier: 4 req/min)
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.get(
+                    f"https://www.virustotal.com/api/v3/files/{file_hash}",
+                    headers={"x-apikey": vt_api_key},
+                )
+
+            if response.status_code == 200:
+                data = response.json()
+                stats = data.get("data", {}).get("attributes", {}).get(
+                    "last_analysis_stats", {}
+                )
+                malicious = stats.get("malicious", 0)
+                suspicious = stats.get("suspicious", 0)
+
+                if malicious > 0 or suspicious > 0:
+                    logger.warning(
+                        f"[SECURITY] Suspicious file detected: doc_id={doc_id}, "
+                        f"hash={file_hash}, malicious={malicious}, suspicious={suspicious}"
+                    )
+                    # Flag the document in DB
+                    async with db_pool.acquire() as conn:
+                        await conn.execute(
+                            """
+                            UPDATE user_documents
+                            SET notes = COALESCE(notes, '') || ' [SECURITY: flagged by antivirus scan]',
+                                updated_at = NOW()
+                            WHERE id = $1
+                            """,
+                            doc_id,
+                        )
+                else:
+                    logger.debug(f"File scan clean: doc_id={doc_id}")
+
+            elif response.status_code == 404:
+                # Hash not found in VirusTotal — file is unknown (likely safe, custom document)
+                logger.debug(f"File hash not in VirusTotal: {file_hash[:16]}...")
+            else:
+                logger.debug(f"VirusTotal API error: {response.status_code}")
+
+        except Exception as e:
+            logger.debug(f"Antivirus scan failed (non-critical): {e}")
 
     # ─────────────────────────────────────────────
     # 3. LIST DOCUMENTS
