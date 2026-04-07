@@ -100,6 +100,22 @@ class CollectionService:
         payment_ref = f"FLD-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{seq:05d}"
         payment_id = uuid4()
 
+        # Get license + company info
+        license_row = await conn.fetchrow(
+            "SELECT company_id, processing_mode FROM commercial_licenses WHERE id = $1",
+            inspection["license_id"],
+        )
+        company_id = license_row["company_id"] if license_row else None
+
+        # Get company owner (for user_id on payment)
+        owner = await conn.fetchrow("""
+            SELECT u.id AS user_id FROM user_company_roles ucr
+            JOIN users u ON u.id = ucr.user_id
+            WHERE ucr.company_id = $1 AND ucr.role = 'company_owner' AND ucr.is_active = true
+            LIMIT 1
+        """, company_id)
+        payment_user_id = owner["user_id"] if owner else user_id
+
         # Get entity_code for treasury routing
         entity_code = inspection.get("entity_code")
         if not entity_code:
@@ -109,43 +125,52 @@ class CollectionService:
             )
             entity_code = profile["code"] if profile else None
 
-        # Get ministry_id from first obligation's fee_type
+        # Get ministry_id + fee_type from first obligation
         ministry_id = None
+        fee_type = None
         if obls:
-            ministry_row = await conn.fetchrow(
-                "SELECT ministry_id FROM license_obligations WHERE id = $1",
+            obl_detail = await conn.fetchrow(
+                "SELECT ministry_id, fee_type FROM license_obligations WHERE id = $1",
                 obls[0]["id"],
             )
-            ministry_id = ministry_row["ministry_id"] if ministry_row else None
+            if obl_detail:
+                ministry_id = obl_detail["ministry_id"]
+                fee_type = obl_detail["fee_type"]
 
         # INSERT service_payment directly (no service_request needed)
         await conn.execute("""
             INSERT INTO service_payments (
-                id, amount, payment_method, status, workflow_status,
-                payment_reference, external_reference,
-                entity_code, ministry_id,
+                id, payment_reference, user_id, company_id,
+                payment_type, base_amount, penalties, discounts, total_amount,
+                payment_method, currency, status, workflow_status,
+                entity_code, ministry_id, fee_type,
                 collection_type, collected_by, field_inspection_id,
                 metadata,
                 created_at, updated_at
             ) VALUES (
-                $1, $2, $3, 'pending', 'field_collected',
-                $4, $5,
-                $6, $7,
-                'field', $8, $9,
-                $10,
+                $1, $2, $3, $4,
+                'full', $5, $6, 0, $7,
+                $8, 'XAF', 'pending', 'field_collected',
+                $9, $10, $11,
+                'field', $12, $13,
+                $14,
                 NOW(), NOW()
             )
         """,
             payment_id,                     # $1
-            received,                       # $2
-            method,                         # $3
-            payment_ref,                    # $4
-            payment_ref,                    # $5 external_reference
-            entity_code,                    # $6
-            ministry_id,                    # $7
-            user_id,                        # $8 collected_by
-            inspection_id,                  # $9 field_inspection_id
-            json.dumps({                    # $10 metadata
+            payment_ref,                    # $2
+            payment_user_id,                # $3 user_id (company owner or agent)
+            company_id,                     # $4
+            sum(o["amount"] or Decimal("0") for o in obls),  # $5 base_amount
+            sum(o["penalty_amount"] or Decimal("0") for o in obls),  # $6 penalties
+            received,                       # $7 total_amount
+            method,                         # $8 payment_method
+            entity_code,                    # $9
+            ministry_id,                    # $10
+            fee_type,                       # $11
+            user_id,                        # $12 collected_by (agent)
+            inspection_id,                  # $13 field_inspection_id
+            json.dumps({                    # $14 metadata
                 "inspection_id": str(inspection_id),
                 "obligation_ids": [str(oid) for oid in obligation_ids],
                 "phone_number": phone_number,
