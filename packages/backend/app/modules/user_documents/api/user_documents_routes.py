@@ -796,9 +796,12 @@ async def get_readiness_all(
            LIMIT 20"""
     )
 
+    # Pre-fetch user's active documents ONCE to avoid N+1 queries
+    user_doc_map = await _build_user_doc_map(db, current_user.id)
+
     results: List[ReadinessResult] = []
     for wf in popular_workflows:
-        result = await _compute_readiness(db, current_user.id, wf["code"])
+        result = await _compute_readiness(db, current_user.id, wf["code"], user_doc_map=user_doc_map)
         results.append(result)
 
     return results
@@ -1283,6 +1286,7 @@ async def reclassify_document(
     summary="Archive a document",
 )
 async def archive_document(
+    request: Request,
     document_id: UUID = Path(..., description="Document UUID"),
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
@@ -1294,6 +1298,21 @@ async def archive_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"message": "Document not found or already archived.", "code": "DOCUMENT_NOT_FOUND"},
         )
+
+    # Audit log
+    ip_address, user_agent = _get_client_info(request)
+    try:
+        await user_documents_repository.log_access(
+            db=db,
+            doc_id=document_id,
+            accessed_by=current_user.id,
+            access_type="archive",
+            access_context="vault_archive",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
 
     logger.info(f"[UserDocuments] Document archived: doc={document_id}, user={current_user.id}")
     return {"success": True, "document_id": str(document_id), "status": "archived"}
@@ -1373,6 +1392,7 @@ async def dismiss_alert(
     summary="Soft-delete a document",
 )
 async def delete_document(
+    request: Request,
     document_id: UUID = Path(..., description="Document UUID"),
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
@@ -1385,7 +1405,103 @@ async def delete_document(
             detail={"message": "Document not found.", "code": "DOCUMENT_NOT_FOUND"},
         )
 
+    # Audit log for soft delete
+    ip_address, user_agent = _get_client_info(request)
+    try:
+        await user_documents_repository.log_access(
+            db=db,
+            doc_id=document_id,
+            accessed_by=current_user.id,
+            access_type="delete",
+            access_context="vault_soft_delete",
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+    except Exception:
+        pass
+
     logger.info(f"[UserDocuments] Document soft-deleted: doc={document_id}, user={current_user.id}")
+    return None
+
+
+# =============================================================================
+# PERMANENT DELETE — RGPD right to erasure
+# =============================================================================
+
+@router.delete(
+    "/{document_id}/permanent",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently delete a document (RGPD right to erasure)",
+    description="""
+    Permanently delete a document from the vault: removes the file from
+    Firebase Storage, the thumbnail, and all associated DB records
+    (workflow tags, access log, alerts). This action is irreversible.
+
+    **RGPD Article 17:** Right to erasure ('right to be forgotten').
+    """,
+)
+async def permanent_delete_document(
+    request: Request,
+    document_id: UUID = Path(..., description="Document UUID"),
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """Permanently delete document: Firebase file + all DB records."""
+    # Find document with ownership check
+    doc = await db.fetchrow(
+        "SELECT id, file_path, thumbnail_path FROM user_documents WHERE id = $1 AND user_id = $2",
+        document_id, current_user.id,
+    )
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Document not found", "code": "NOT_FOUND"},
+        )
+
+    # Delete from Firebase Storage
+    try:
+        from app.modules.documents.services.storage_service import firebase_storage_service
+        if doc["file_path"]:
+            blob = firebase_storage_service.bucket.blob(doc["file_path"])
+            if blob.exists():
+                blob.delete()
+        if doc.get("thumbnail_path"):
+            blob = firebase_storage_service.bucket.blob(doc["thumbnail_path"])
+            if blob.exists():
+                blob.delete()
+    except Exception as e:
+        logger.warning(f"[RGPD] Firebase deletion failed (continuing): {e}")
+
+    # Hard delete from DB (order matters for FK constraints)
+    await db.execute(
+        "DELETE FROM user_document_workflow_tags WHERE user_document_id = $1",
+        document_id,
+    )
+    await db.execute(
+        "DELETE FROM user_document_access_log WHERE user_document_id = $1",
+        document_id,
+    )
+    await db.execute(
+        "DELETE FROM user_document_alerts WHERE user_document_id = $1",
+        document_id,
+    )
+    await db.execute(
+        "DELETE FROM user_documents WHERE id = $1 AND user_id = $2",
+        document_id, current_user.id,
+    )
+
+    # Audit log
+    logger.info(f"[RGPD] Permanent delete: doc={document_id}, user={current_user.id}")
+
+    # Invalidate cache
+    try:
+        from app.core.cache import get_cache
+        cache = get_cache()
+        if cache:
+            await cache.delete(f"user_docs_stats:{current_user.id}")
+    except Exception:
+        pass
+
     return None
 
 
@@ -1795,16 +1911,57 @@ def _infer_category(document_type: str) -> str:
     return "other"
 
 
+async def _build_user_doc_map(
+    db: asyncpg.Connection,
+    user_id: UUID,
+) -> Dict[str, Optional[int]]:
+    """Pre-fetch user's active vault documents and build a type -> best expiry days map.
+
+    Uses idx_ud_user_active partial index (status='active' AND deleted_at IS NULL).
+    Called once and reused across multiple readiness checks to avoid N+1 queries.
+    """
+    from datetime import date as date_type
+
+    user_docs = await db.fetch(
+        """SELECT document_type, expiry_date
+           FROM user_documents
+           WHERE user_id = $1 AND status = 'active' AND deleted_at IS NULL""",
+        user_id,
+    )
+
+    user_doc_map: Dict[str, Optional[int]] = {}
+    today = date_type.today()
+    for doc in user_docs:
+        doc_type = doc["document_type"]
+        expiry = doc["expiry_date"]
+        days = None
+        if expiry is not None:
+            if hasattr(expiry, "date"):
+                expiry = expiry.date()
+            days = (expiry - today).days
+
+        # Keep the best (longest) expiry for each type
+        if doc_type not in user_doc_map or (
+            days is not None and (user_doc_map[doc_type] is None or days > user_doc_map[doc_type])
+        ):
+            user_doc_map[doc_type] = days
+
+    return user_doc_map
+
+
 async def _compute_readiness(
     db: asyncpg.Connection,
     user_id: UUID,
     workflow_code: str,
+    user_doc_map: Optional[Dict[str, Optional[int]]] = None,
 ) -> ReadinessResult:
     """Compute document readiness for a specific workflow.
 
     Checks which required documents the user has in their vault,
     compares against the workflow's document requirements,
     and returns a readiness score.
+
+    If user_doc_map is provided, skips the per-user DB query (N+1 optimization).
     """
     from ..models.user_document import ReadinessItem
 
@@ -1837,33 +1994,9 @@ async def _compute_readiness(
             workflow_code,
         )
 
-    # Get user's active vault documents with their types
-    user_docs = await db.fetch(
-        """SELECT document_type, expiry_date
-           FROM user_documents
-           WHERE user_id = $1 AND status = 'active' AND deleted_at IS NULL""",
-        user_id,
-    )
-
-    # Build a map: document_type -> best expiry info
-    user_doc_map: Dict[str, Optional[int]] = {}
-    from datetime import date as date_type
-
-    today = date_type.today()
-    for doc in user_docs:
-        doc_type = doc["document_type"]
-        expiry = doc["expiry_date"]
-        days = None
-        if expiry is not None:
-            if hasattr(expiry, "date"):
-                expiry = expiry.date()
-            days = (expiry - today).days
-
-        # Keep the best (longest) expiry for each type
-        if doc_type not in user_doc_map or (
-            days is not None and (user_doc_map[doc_type] is None or days > user_doc_map[doc_type])
-        ):
-            user_doc_map[doc_type] = days
+    # Build user doc map if not pre-fetched (single-workflow call)
+    if user_doc_map is None:
+        user_doc_map = await _build_user_doc_map(db, user_id)
 
     ready_items: List[ReadinessItem] = []
     missing_items: List[ReadinessItem] = []

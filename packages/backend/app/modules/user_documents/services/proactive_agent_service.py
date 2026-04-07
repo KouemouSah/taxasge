@@ -45,6 +45,7 @@ class ProactiveAgentService:
             "documents_expired": 0,
             "documents_purged": 0,
             "memories_deactivated": 0,
+            "retention_archived": 0,
             "errors": [],
         }
 
@@ -82,6 +83,13 @@ class ProactiveAgentService:
         except Exception as e:
             logger.error(f"[ProactiveAgent] Memory cleanup failed: {e}")
             results["errors"].append(f"cleanup_memories: {str(e)}")
+
+        # 6. Enforce retention policy (auto-archive generated docs > 5 years)
+        try:
+            results["retention_archived"] = await self._enforce_retention_policy(db)
+        except Exception as e:
+            logger.error(f"[ProactiveAgent] Retention policy failed: {e}")
+            results["errors"].append(f"retention_policy: {str(e)}")
 
         logger.info(f"[ProactiveAgent] Daily scan complete: {results}")
         return results
@@ -489,6 +497,83 @@ class ProactiveAgentService:
                 f"[ProactiveAgent] Deactivated {count} stale agent memories "
                 f"(confidence < 0.15, rejection_count >= 3)"
             )
+        return count
+
+    # ─────────────────────────────────────────────────────────────
+    # 6. RETENTION POLICY (5 years for generated documents)
+    # ─────────────────────────────────────────────────────────────
+
+    async def _enforce_retention_policy(self, db: asyncpg.Connection) -> int:
+        """
+        Archive platform-generated documents older than 5 years.
+
+        Retention policy: generated documents (receipts, certificates, attestations)
+        are automatically archived after 5 years. They remain in storage but are
+        moved to 'archived' status and hidden from the active document list.
+
+        Only affects 'active' documents with source='platform_generated'.
+        """
+        result = await db.execute(
+            """
+            UPDATE user_documents
+            SET status = 'archived', archived_at = NOW(), updated_at = NOW()
+            WHERE source = 'platform_generated'
+              AND created_at < NOW() - INTERVAL '5 years'
+              AND status = 'active'
+              AND deleted_at IS NULL
+            """
+        )
+
+        count = 0
+        if result and result.startswith("UPDATE"):
+            try:
+                count = int(result.split()[-1])
+            except (ValueError, IndexError):
+                pass
+
+        if count > 0:
+            logger.info(
+                f"[ProactiveAgent] Retention policy: archived {count} "
+                f"generated documents older than 5 years"
+            )
+
+        return count
+
+    # ─────────────────────────────────────────────────────────────
+    # ACCOUNT PURGE (RGPD — called on account deactivation)
+    # ─────────────────────────────────────────────────────────────
+
+    async def schedule_account_purge(
+        self, db: asyncpg.Connection, user_id: str
+    ) -> int:
+        """
+        Mark all user documents for deletion when an account is deactivated.
+
+        Documents will be purged (Firebase + DB) by the daily CRON
+        after 30 days via _purge_old_deleted().
+
+        This implements the RGPD right to erasure with a 30-day grace period
+        allowing the user to reactivate their account and recover documents.
+        """
+        result = await db.execute(
+            """
+            UPDATE user_documents
+            SET status = 'deleted', deleted_at = NOW(), updated_at = NOW()
+            WHERE user_id = $1::uuid AND deleted_at IS NULL
+            """,
+            user_id,
+        )
+
+        count = 0
+        if result and result.startswith("UPDATE"):
+            try:
+                count = int(result.split()[-1])
+            except (ValueError, IndexError):
+                pass
+
+        logger.info(
+            f"[RGPD] Account purge scheduled: user={user_id}, documents={count}"
+        )
         return count
 
     # ─────────────────────────────────────────────────────────────
