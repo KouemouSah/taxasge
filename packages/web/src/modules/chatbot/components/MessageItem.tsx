@@ -20,7 +20,7 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import createDOMPurify from 'dompurify'
-import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react'
+import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
@@ -272,6 +272,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors no-underline"
                 >
                   {(action.type === 'start_workflow' || action.type === 'open_wizard') && <ExternalLink className="h-3 w-3" />}
+                  {action.type === 'open_settings' && <Settings className="h-3 w-3" />}
                   {action.label}
                 </a>
               ))}

@@ -2143,15 +2143,32 @@ Keep it helpful and concise."""
                 elif result.get("status") == "missing_documents" and result.get("requires_user_choice"):
                     # Don't add action — the response message asks the user to choose
                     pass
+                elif result.get("status") == "permission_required":
+                    perm_type = result.get("permission_type", "prepare_request")
+                    actions.append({
+                        "type": "open_settings",
+                        "label": f"Activar permiso: {perm_type}",
+                        "url": "/dashboard/documents?settings=agent",
+                        "permission_type": perm_type,
+                    })
 
-            elif fn_name == "prepare_renewal" and result.get("status") == "prepared":
-                wf_code = result.get("workflow_code", "")
-                actions.append({
-                    "type": "start_workflow",
-                    "label": f"Iniciar renovación",
-                    "url": f"/dashboard/service-requests/new?workflow={wf_code}",
-                    "workflow_code": wf_code,
-                })
+            elif fn_name == "prepare_renewal":
+                if result.get("status") == "prepared":
+                    wf_code = result.get("workflow_code", "")
+                    actions.append({
+                        "type": "start_workflow",
+                        "label": f"Iniciar renovación",
+                        "url": f"/dashboard/service-requests/new?workflow={wf_code}",
+                        "workflow_code": wf_code,
+                    })
+                elif result.get("status") == "permission_required":
+                    perm_type = result.get("permission_type", "prepare_request")
+                    actions.append({
+                        "type": "open_settings",
+                        "label": f"Activar permiso: {perm_type}",
+                        "url": "/dashboard/documents?settings=agent",
+                        "permission_type": perm_type,
+                    })
 
         return actions
 
@@ -2330,6 +2347,38 @@ Keep it helpful and concise."""
                         "conversation_id": conversation_id,
                     })
 
+                # Pattern: user asked about a specific workflow via get_workflow_guide
+                if name == "get_workflow_guide" and args.get("workflow_code"):
+                    wf = args["workflow_code"]
+                    await self._learn_memory(db, user_id, {
+                        "type": "behavioral",
+                        "key": f"guides_{wf}",
+                        "content": f"Usuario consulto guia de: {wf}",
+                        "learned_from": "pattern_detected",
+                        "conversation_id": conversation_id,
+                    })
+
+                # Pattern: user used start_workflow — they're actively pursuing
+                if name == "start_workflow":
+                    wf = args.get("workflow_name", "")
+                    await self._learn_memory(db, user_id, {
+                        "type": "capability",
+                        "key": f"started_{wf}",
+                        "content": f"Usuario inicio tramite: {wf}",
+                        "learned_from": "action_confirmed",
+                        "conversation_id": conversation_id,
+                    })
+
+                # Pattern: user asked auto_prepare_wizard — they trust the agent
+                if name == "auto_prepare_wizard":
+                    await self._learn_memory(db, user_id, {
+                        "type": "behavioral",
+                        "key": "trusts_agent_preparation",
+                        "content": "Usuario confia en preparacion automatica del agente",
+                        "learned_from": "action_confirmed",
+                        "conversation_id": conversation_id,
+                    })
+
             # Detect language preference
             if language and language != "es":
                 lang_names = {"fr": "francés", "en": "inglés"}
@@ -2470,6 +2519,37 @@ Keep it helpful and concise."""
                 for m in memories:
                     marker = type_marker.get(m["memory_type"], "[INFO]")
                     lines.append(f"- {marker} {m['content']} ({m['confidence']:.0%})")
+
+                # Derive behavioral directives from memories
+                directives = []
+                for m in memories:
+                    content_lower = m["content"].lower()
+                    mtype = m["memory_type"]
+                    conf = float(m["confidence"])
+
+                    if mtype == "correction" and conf >= 0.7:
+                        directives.append(f"CORRECCION ({conf:.0%}): {m['content']}")
+                    elif mtype == "preference" and conf >= 0.6:
+                        directives.append(f"PREFERENCIA ({conf:.0%}): {m['content']}")
+                    elif mtype == "behavioral" and conf >= 0.5:
+                        # Convert behavioral patterns to actionable directives
+                        if "interesado en" in content_lower:
+                            workflow = content_lower.split("interesado en")[-1].strip().rstrip(".")
+                            directives.append(
+                                f"SUGERENCIA: El usuario suele preguntar sobre {workflow}. "
+                                "Proactivamente ofrecer informacion relacionada."
+                            )
+                        elif "renueva" in content_lower or "renovar" in content_lower:
+                            directives.append(
+                                "SUGERENCIA: El usuario tiene historial de renovaciones. "
+                                "Ofrecer auto_prepare_wizard si corresponde."
+                            )
+
+                if directives:
+                    lines.append("\n--- DIRECTIVAS COMPORTAMENTALES ---")
+                    for d in directives:
+                        lines.append(f"-> {d}")
+
                 parts.append("\n".join(lines))
 
             # 3. Active permissions
@@ -2498,6 +2578,42 @@ Keep it helpful and concise."""
                 "- REGLA INVIOLABLE: NUNCA ejecutar una acción sin confirmación explícita del usuario.",
             ])
             parts.append("\n".join(perm_lines))
+
+            # Few-shot examples for better tool selection
+            few_shot_section = (
+                "=== EJEMPLOS DE INTERACCION (FEW-SHOT) ===\n"
+                "\n"
+                "EJEMPLO 1 -- Nivel 1 (Informacional):\n"
+                "Usuario: \"Cual es el estado de mi solicitud de pasaporte?\"\n"
+                "-> Usar herramienta: get_my_requests o get_request_detail\n"
+                "-> Responder con resumen claro + estado actual + proximos pasos\n"
+                "\n"
+                "EJEMPLO 2 -- Nivel 2 (Preparatorio):\n"
+                "Usuario: \"Preparame mi renovacion de pasaporte\"\n"
+                "-> Usar herramienta: auto_prepare_wizard(workflow_name=\"pasaporte renovacion\")\n"
+                "-> Si permiso no activado: sugerir activar permiso con boton\n"
+                "-> Si documentos faltan: listar faltantes + preguntar si continuar\n"
+                "-> Si todo listo: mostrar resumen + boton \"Finalizar mi solicitud\"\n"
+                "\n"
+                "EJEMPLO 3 -- Documentos por vencer:\n"
+                "Usuario: \"Que documentos tengo por vencer?\"\n"
+                "-> Usar herramienta: get_expiring_documents(days_ahead=90)\n"
+                "-> Listar documentos con urgencia (critico < 7j, alto < 30j, medio < 90j)\n"
+                "-> Sugerir renovacion para cada documento critico\n"
+                "\n"
+                "EJEMPLO 4 -- Preparacion demarche:\n"
+                "Usuario: \"Tengo todo para sacar residencia?\"\n"
+                "-> Usar herramienta: check_readiness(workflow_code=\"RESIDENCIA_PRIMERA_VEZ\")\n"
+                "-> Mostrar score + documentos listos + faltantes\n"
+                "-> Si puede iniciar: proponer auto_prepare_wizard\n"
+                "-> Si faltan: sugerir subir documentos faltantes al cofre\n"
+                "\n"
+                "EJEMPLO 5 -- Cofre digital:\n"
+                "Usuario: \"Muestrame mis documentos\"\n"
+                "-> Usar herramienta: list_vault_documents\n"
+                "-> Presentar en formato tabla o lista organizada por categoria"
+            )
+            parts.append(few_shot_section)
 
         except Exception as e:
             logger.debug(f"Agent context build failed: {e}")
