@@ -6,6 +6,7 @@ Fixes: D1 (dynamic roles from BD), H6/H7 (configurable deadlines),
 
 import asyncio
 import hashlib
+import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -346,7 +347,7 @@ class InspectionService:
             "result": "non_conforme",
             "mise_en_demeure_issued": True,
             "mise_en_demeure_deadline": deadline,
-            "mise_en_demeure_obligations": [str(oid) for oid in obligation_ids],
+            "mise_en_demeure_obligations": json.dumps([str(oid) for oid in obligation_ids]),
         }
         if notes:
             update_data["notes"] = notes

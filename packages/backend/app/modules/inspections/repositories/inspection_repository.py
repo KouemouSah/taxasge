@@ -305,11 +305,18 @@ class InspectionRepository:
                 f"Allowed: {InspectionRepository.UPDATABLE_COLUMNS}"
             )
 
+        # JSONB columns must be serialized to JSON string for asyncpg
+        JSONB_COLUMNS = {"photos", "mise_en_demeure_obligations"}
+
         set_clauses = []
         params = []
         idx = 1
 
         for key, value in data.items():
+            # Serialize lists/dicts to JSON for JSONB columns
+            if key in JSONB_COLUMNS and isinstance(value, (list, dict)):
+                import json
+                value = json.dumps(value)
             set_clauses.append(f"{key} = ${idx}")
             params.append(value)
             idx += 1
