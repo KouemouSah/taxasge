@@ -19,8 +19,102 @@ in every WHERE clause).
 8. get_my_documents     — Documents uploaded + missing per request
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 from loguru import logger
+
+
+# ============================================================================
+# TOOL LEVEL DEFINITIONS & PERMISSION ENFORCEMENT
+# ============================================================================
+
+# Tool autonomy levels:
+#   Level 1 — Informational (read-only, no permission check)
+#   Level 2 — Preparatory (modifies state, requires user_agent_permissions)
+#   Level 3 — Executive (future: requires permission + confirmation_code)
+
+TOOL_LEVELS = {
+    # Level 1 — Informational (no permission check needed)
+    "get_my_requests": 1,
+    "get_request_detail": 1,
+    "get_my_payments": 1,
+    "get_my_appointments": 1,
+    "get_my_notifications": 1,
+    "get_my_profile": 1,
+    "get_my_next_actions": 1,
+    "get_my_documents": 1,
+    "list_vault_documents": 1,
+    "check_readiness": 1,
+    "get_expiring_documents": 1,
+    "get_vault_stats": 1,
+    "suggest_next_uploads": 1,
+    "get_agent_memory": 1,
+    # Level 2 — Preparatory (requires permission)
+    "prepare_renewal": 2,
+    "auto_prepare_wizard": 2,
+    # Level 3 — Executive (requires permission + confirmation)
+    # None implemented yet
+}
+
+# Map tool names to permission_type in user_agent_permissions table
+_TOOL_PERMISSION_MAP = {
+    "prepare_renewal": "prepare_renewal",
+    "auto_prepare_wizard": "prepare_request",
+}
+
+
+async def check_tool_level(db, user_id: str, tool_name: str) -> Tuple[bool, str]:
+    """
+    Check if user has permission to use a tool at its required level.
+
+    Returns:
+        (allowed: bool, message: str)
+
+    Level 1: Always allowed (informational)
+    Level 2: Requires permission in user_agent_permissions
+    Level 3: Requires permission + confirmation_code (future)
+    """
+    required_level = TOOL_LEVELS.get(tool_name, 1)
+
+    if required_level <= 1:
+        return True, ""
+
+    if not user_id:
+        return False, "Autenticación requerida para esta acción."
+
+    # Resolve the permission_type for this tool
+    permission_type = _TOOL_PERMISSION_MAP.get(tool_name, "prepare_request")
+
+    try:
+        has_permission = await db.fetchval("""
+            SELECT EXISTS (
+                SELECT 1 FROM user_agent_permissions
+                WHERE user_id = $1::uuid
+                  AND permission_type = $2
+                  AND level >= $3
+                  AND is_active = TRUE
+            )
+        """, user_id, permission_type, required_level)
+    except Exception as e:
+        logger.warning(f"check_tool_level: DB error for user={user_id}, tool={tool_name}: {e}")
+        return False, "Error al verificar permisos. Intente de nuevo."
+
+    if has_permission:
+        # Update usage count and last_used_at
+        try:
+            await db.execute("""
+                UPDATE user_agent_permissions
+                SET usage_count = usage_count + 1, last_used_at = NOW()
+                WHERE user_id = $1::uuid AND permission_type = $2 AND is_active = TRUE
+            """, user_id, permission_type)
+        except Exception as e:
+            logger.warning(f"check_tool_level: failed to update usage count: {e}")
+        return True, ""
+
+    return False, (
+        f"Para usar esta función, necesita activar el permiso '{permission_type}' "
+        f"en la configuración del asistente (nivel {required_level}). "
+        "¿Desea que le explique cómo activarlo?"
+    )
 
 
 # ============================================================================
@@ -815,11 +909,16 @@ async def suggest_next_uploads(db, **kwargs) -> dict:
 # ============================================================================
 
 async def prepare_renewal(db, **kwargs) -> dict:
-    """[Level 1+] Prepare document renewal — requires user confirmation."""
+    """[Level 2] Prepare document renewal — requires user permission + confirmation."""
     user_id = kwargs.get("user_id", "")
     document_id = kwargs.get("document_id", "")
     if not user_id or not document_id:
         return {"error": "Se requiere user_id y document_id"}
+
+    # Level enforcement — requires prepare_renewal permission
+    allowed, msg = await check_tool_level(db, user_id, "prepare_renewal")
+    if not allowed:
+        return {"status": "permission_required", "message": msg, "permission_type": "prepare_renewal", "level": 2}
 
     doc = await db.fetchrow("""
         SELECT id, document_type, display_name, file_name, expiry_date,
@@ -955,6 +1054,11 @@ async def auto_prepare_wizard(db, **kwargs) -> dict:
         return {"error": "Autenticación requerida"}
     if not workflow_name:
         return {"error": "Indique el trámite que desea preparar (ej: pasaporte, residencia, licencia)"}
+
+    # Level enforcement — requires prepare_request permission
+    allowed, msg = await check_tool_level(db, user_id, "auto_prepare_wizard")
+    if not allowed:
+        return {"status": "permission_required", "message": msg, "permission_type": "prepare_request", "level": 2}
 
     from app.modules.user_documents.services.workflow_orchestrator_service import (
         workflow_orchestrator_service,
