@@ -11041,7 +11041,8 @@
       "score": "{score}% listo",
       "available": "{available}/{total} documentos disponibles",
       "summary": "Preparación para trámites",
-      "readyCount": "{count} trámites evaluados"
+      "readyCount": "{count} trámites evaluados",
+      "uploadNow": "Subir ahora"
     },
     "detail": {
       "title": "Detalle del documento",

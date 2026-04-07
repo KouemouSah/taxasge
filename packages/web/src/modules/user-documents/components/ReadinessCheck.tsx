@@ -40,6 +40,7 @@ import {
   FilePlus,
   Building2,
   ClipboardList,
+  Upload,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,8 @@ function ReadinessItemRow({
   item: ReadinessItem;
   status: 'ready' | 'missing' | 'expiring';
 }) {
+  const locale = useLocale();
+  const t = useTranslations('userDocuments');
   const iconMap = {
     ready: <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />,
     missing: <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />,
@@ -101,6 +104,19 @@ function ReadinessItemRow({
     <div className="flex items-center gap-2 py-1">
       {iconMap[status]}
       <span className="text-xs flex-1 truncate">{item.name}</span>
+      {status === 'missing' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs text-primary"
+          onClick={() => {
+            window.location.href = `/${locale}/dashboard/documents?upload=${encodeURIComponent(item.code)}`;
+          }}
+        >
+          <Upload className="mr-1 h-3 w-3" strokeWidth={1.5} />
+          {t('readiness.uploadNow')}
+        </Button>
+      )}
       {status === 'expiring' && item.days !== undefined && (
         <Badge
           variant="outline"

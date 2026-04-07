@@ -11041,7 +11041,8 @@
       "score": "{score}% prêt",
       "available": "{available}/{total} documents disponibles",
       "summary": "Préparation aux démarches",
-      "readyCount": "{count} démarches évaluées"
+      "readyCount": "{count} démarches évaluées",
+      "uploadNow": "Télécharger"
     },
     "detail": {
       "title": "Détail du document",

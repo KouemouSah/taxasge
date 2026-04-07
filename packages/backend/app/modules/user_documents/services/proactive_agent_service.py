@@ -106,6 +106,7 @@ class ProactiveAgentService:
         today = date.today()
 
         # Fetch all documents expiring within 90 days or already expired (up to 30 days ago)
+        # JOIN with users to get email, name, language for notifications
         rows = await db.fetch(
             """
             SELECT
@@ -122,8 +123,12 @@ class ProactiveAgentService:
                     WHEN (ud.expiry_date - $1::date) <= 30 THEN 'expiry_30d'
                     WHEN (ud.expiry_date - $1::date) <= 60 THEN 'expiry_60d'
                     WHEN (ud.expiry_date - $1::date) <= 90 THEN 'expiry_90d'
-                END AS alert_type
+                END AS alert_type,
+                u.email AS user_email,
+                u.full_name AS user_full_name,
+                u.preferred_language AS user_language
             FROM user_documents ud
+            JOIN users u ON u.id = ud.user_id
             WHERE ud.expiry_date IS NOT NULL
               AND ud.status = 'active'
               AND ud.deleted_at IS NULL
@@ -192,6 +197,28 @@ class ProactiveAgentService:
 
             if "INSERT 0 1" in result:
                 alerts_created += 1
+
+                # Send notification via communications module
+                doc_name = (
+                    doc_info.get("display_name")
+                    or doc_info.get("file_name")
+                    or doc_info.get("document_type", "documento")
+                )
+                try:
+                    await self._send_expiry_notification(
+                        db,
+                        user_id=row["user_id"],
+                        user_email=row.get("user_email"),
+                        user_name=row.get("user_full_name") or "Usuario",
+                        preferred_language=row.get("user_language"),
+                        alert_type=alert_type,
+                        severity=messages["severity"],
+                        document_name=doc_name,
+                        expiry_date=str(row["expiry_date"]) if row["expiry_date"] else "",
+                        days_until=days,
+                    )
+                except Exception as notif_err:
+                    logger.debug(f"[ProactiveAgent] Notification send failed (non-critical): {notif_err}")
 
         logger.info(
             f"[ProactiveAgent] Expiration scan: {len(rows)} documents checked, "
@@ -463,6 +490,118 @@ class ProactiveAgentService:
                 f"(confidence < 0.15, rejection_count >= 3)"
             )
         return count
+
+    # ─────────────────────────────────────────────────────────────
+    # EXPIRY NOTIFICATION (EMAIL + PUSH)
+    # ─────────────────────────────────────────────────────────────
+
+    async def _send_expiry_notification(
+        self,
+        db,
+        user_id,
+        user_email: str | None,
+        user_name: str,
+        preferred_language: str | None,
+        alert_type: str,
+        severity: str,
+        document_name: str,
+        expiry_date: str,
+        days_until: int,
+    ):
+        """Send email and/or push notification for document expiration.
+
+        Only sends for 'warning' and 'critical' severity to avoid spam.
+        Email uses synchronous SMTP (smtplib), wrapped for safety.
+        Push uses async FCM via PushSendingService.
+        """
+        if severity not in ("warning", "critical"):
+            return
+
+        lang = preferred_language or "es"
+        expired = days_until <= 0
+
+        # ── Email notification ──
+        if user_email:
+            try:
+                from app.modules.communications.services.email_service import get_email_service
+
+                email_svc = get_email_service()
+
+                subject_map = {
+                    "es": f"{'URGENTE: ' if severity == 'critical' else ''}Su documento {document_name} {'ha expirado' if expired else f'expira en {days_until} días'}",
+                    "fr": f"{'URGENT: ' if severity == 'critical' else ''}Votre document {document_name} {'a expiré' if expired else f'expire dans {days_until} jours'}",
+                    "en": f"{'URGENT: ' if severity == 'critical' else ''}Your document {document_name} {'has expired' if expired else f'expires in {days_until} days'}",
+                }
+
+                body_html_map = {
+                    "es": (
+                        f"<p>Estimado/a {user_name},</p>"
+                        f"<p>Le informamos que su documento <strong>'{document_name}'</strong> "
+                        f"{'ha expirado' if expired else f'expirará el {expiry_date}'}.</p>"
+                        f"<p>Le recomendamos iniciar el trámite de renovación desde la plataforma Facil.</p>"
+                        f"<p>Atentamente,<br>Equipo Facil</p>"
+                    ),
+                    "fr": (
+                        f"<p>Cher/Chère {user_name},</p>"
+                        f"<p>Nous vous informons que votre document <strong>'{document_name}'</strong> "
+                        f"{'a expiré' if expired else f'expirera le {expiry_date}'}.</p>"
+                        f"<p>Nous vous recommandons d'initier le renouvellement depuis la plateforme Facil.</p>"
+                        f"<p>Cordialement,<br>Équipe Facil</p>"
+                    ),
+                    "en": (
+                        f"<p>Dear {user_name},</p>"
+                        f"<p>We inform you that your document <strong>'{document_name}'</strong> "
+                        f"{'has expired' if expired else f'will expire on {expiry_date}'}.</p>"
+                        f"<p>We recommend starting the renewal process from the Facil platform.</p>"
+                        f"<p>Best regards,<br>Facil Team</p>"
+                    ),
+                }
+
+                body_text_map = {
+                    "es": f"Estimado/a {user_name},\n\nLe informamos que su documento '{document_name}' {'ha expirado' if expired else f'expirará el {expiry_date}'}.\n\nLe recomendamos iniciar el trámite de renovación desde la plataforma Facil.\n\nAtentamente,\nEquipo Facil",
+                    "fr": f"Cher/Chère {user_name},\n\nNous vous informons que votre document '{document_name}' {'a expiré' if expired else f'expirera le {expiry_date}'}.\n\nNous vous recommandons d'initier le renouvellement depuis la plateforme Facil.\n\nCordialement,\nÉquipe Facil",
+                    "en": f"Dear {user_name},\n\nWe inform you that your document '{document_name}' {'has expired' if expired else f'will expire on {expiry_date}'}.\n\nWe recommend starting the renewal process from the Facil platform.\n\nBest regards,\nFacil Team",
+                }
+
+                email_svc.send_email(
+                    to_email=user_email,
+                    subject=subject_map.get(lang, subject_map["es"]),
+                    body_html=body_html_map.get(lang, body_html_map["es"]),
+                    body_text=body_text_map.get(lang, body_text_map["es"]),
+                )
+                logger.info(f"[ProactiveAgent] Expiry email sent to {user_email} for {document_name}")
+            except Exception as e:
+                logger.debug(f"[ProactiveAgent] Email notification failed: {e}")
+
+        # ── Push notification (critical only) ──
+        if severity == "critical":
+            try:
+                from app.modules.communications.services.push_sending_service import get_push_sending_service
+
+                push_svc = get_push_sending_service()
+
+                title_map = {
+                    "es": f"Documento por vencer" if not expired else "Documento expirado",
+                    "fr": f"Document expire bientôt" if not expired else "Document expiré",
+                    "en": f"Document expiring soon" if not expired else "Document expired",
+                }
+
+                body_push_map = {
+                    "es": f"Su {document_name} {'ha expirado' if expired else f'expira en {days_until} días'}. Renueve ahora.",
+                    "fr": f"Votre {document_name} {'a expiré' if expired else f'expire dans {days_until} jours'}. Renouvelez maintenant.",
+                    "en": f"Your {document_name} {'has expired' if expired else f'expires in {days_until} days'}. Renew now.",
+                }
+
+                await push_svc.send_to_user(
+                    db=db,
+                    user_id=str(user_id),
+                    title=title_map.get(lang, title_map["es"]),
+                    body=body_push_map.get(lang, body_push_map["es"]),
+                    data={"type": "document_expiry", "alert_type": alert_type},
+                )
+                logger.info(f"[ProactiveAgent] Push notification sent to user {user_id} for {document_name}")
+            except Exception as e:
+                logger.debug(f"[ProactiveAgent] Push notification failed: {e}")
 
     # ─────────────────────────────────────────────────────────────
     # ALERT MESSAGE GENERATION

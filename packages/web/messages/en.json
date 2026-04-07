@@ -11041,7 +11041,8 @@
       "score": "{score}% ready",
       "available": "{available}/{total} documents available",
       "summary": "Procedure readiness",
-      "readyCount": "{count} procedures evaluated"
+      "readyCount": "{count} procedures evaluated",
+      "uploadNow": "Upload now"
     },
     "detail": {
       "title": "Document detail",

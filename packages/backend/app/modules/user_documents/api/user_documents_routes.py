@@ -388,6 +388,30 @@ async def upload_document(
 
     doc_id = row["id"]
 
+    # --- Auto-archive older versions of same document type ---
+    if doc_type and doc_type != "unknown":
+        try:
+            archived_result = await db.execute(
+                """
+                UPDATE user_documents
+                SET status = 'archived', archived_at = NOW(),
+                    replaces_document_id = $1, updated_at = NOW()
+                WHERE user_id = $2 AND document_type = $3
+                  AND id != $1 AND status = 'active' AND deleted_at IS NULL
+                """,
+                doc_id, current_user.id, doc_type,
+            )
+            if archived_result and "UPDATE" in str(archived_result):
+                parts = str(archived_result).split()
+                count = int(parts[-1]) if parts[-1].isdigit() else 0
+                if count > 0:
+                    logger.info(
+                        f"[UserDocuments] Auto-archived {count} older {doc_type} "
+                        f"document(s) for user {current_user.id}"
+                    )
+        except Exception as e:
+            logger.debug(f"[UserDocuments] Auto-archive failed (non-critical): {e}")
+
     # --- Log access ---
     try:
         await user_documents_repository.log_access(
