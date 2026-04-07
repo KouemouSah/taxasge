@@ -246,7 +246,17 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
 // Main Component
 // ---------------------------------------------------------------------------
 
+const QUICK_WORKFLOWS = [
+  { code: 'PASAPORTE_NUEVO', label: 'Pasaporte' },
+  { code: 'PASAPORTE_RENOVACION', label: 'Renovar Pasaporte' },
+  { code: 'RESIDENCIA_PRIMERA_VEZ', label: 'Residencia' },
+  { code: 'CONDUCIR_NUEVO', label: 'Licencia Conducir' },
+  { code: 'FP_CARNET_FUNCIONARIO', label: 'Carnet Funcionario' },
+  { code: 'CONTRATO_SERVICIO', label: 'Contrato ONRC' },
+] as const;
+
 export function ReadinessCheck() {
+  const locale = useLocale();
   const t = useTranslations('userDocuments');
 
   // Fetch all workflows readiness in a single call (no workflowCode = all)
@@ -265,6 +275,33 @@ export function ReadinessCheck() {
 
   return (
     <div className="flex flex-col gap-4 h-full">
+      {/* Launch section */}
+      <div className="mb-2 p-4 border rounded-xl bg-accent/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Rocket className="h-5 w-5 text-primary" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold">{t('readiness.launchTitle') || 'Iniciar un tramite'}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          {t('readiness.launchDesc') || 'El asistente carga sus documentos y pre-rellena el formulario automaticamente.'}
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {QUICK_WORKFLOWS.map((wf) => (
+            <Button
+              key={wf.code}
+              variant="outline"
+              size="sm"
+              className="text-xs justify-start gap-2"
+              onClick={() => {
+                window.location.href = `/${locale}/dashboard/chat?q=${encodeURIComponent(`Prepara mi solicitud de ${wf.label}`)}`;
+              }}
+            >
+              <Rocket className="h-3 w-3 text-primary" strokeWidth={1.5} />
+              {wf.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {/* Header info */}
       {!isLoading && results.length > 0 && (
         <div className="flex items-center gap-2">

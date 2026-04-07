@@ -5156,6 +5156,8 @@
     "vaultMissingDesc": "Suggestions for documents you might need",
     "bundlePayment": "Pay my fiscal obligations",
     "bundlePaymentDesc": "Start a bundled payment for fiscal services",
+    "launchAgent": "Start a procedure",
+    "launchAgentDesc": "The assistant will prepare your request automatically",
     "title": "Facil Assistant",
     "typing": "Typing...",
     "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?",
@@ -11053,7 +11055,9 @@
       "available": "{available}/{total} documents available",
       "summary": "Procedure readiness",
       "readyCount": "{count} procedures evaluated",
-      "uploadNow": "Upload now"
+      "uploadNow": "Upload now",
+      "launchTitle": "Start a procedure",
+      "launchDesc": "The assistant loads your documents and pre-fills the form automatically."
     },
     "detail": {
       "title": "Document detail",

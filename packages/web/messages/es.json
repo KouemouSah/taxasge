@@ -5156,6 +5156,8 @@
     "vaultMissingDesc": "Sugerencias de documentos que podrías necesitar",
     "bundlePayment": "Pagar mis obligaciones fiscales",
     "bundlePaymentDesc": "Iniciar pago agrupado de servicios fiscales",
+    "launchAgent": "Iniciar un tramite",
+    "launchAgentDesc": "El asistente preparara su solicitud automaticamente",
     "title": "Asistente Facil",
     "typing": "Escribiendo...",
     "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?",
@@ -11053,7 +11055,9 @@
       "available": "{available}/{total} documentos disponibles",
       "summary": "Preparación para trámites",
       "readyCount": "{count} trámites evaluados",
-      "uploadNow": "Subir ahora"
+      "uploadNow": "Subir ahora",
+      "launchTitle": "Iniciar un tramite",
+      "launchDesc": "El asistente carga sus documentos y pre-rellena el formulario automaticamente."
     },
     "detail": {
       "title": "Detalle del documento",

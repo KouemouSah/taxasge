@@ -16,6 +16,7 @@ import {
   FileText, Calculator, Lightbulb, HelpCircle,
   FolderOpen, Clock, BarChart3, FileSearch,
   MessageSquare, ChevronRight, CreditCard,
+  Rocket, BookOpen, Home, Car,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,15 @@ const VAULT_ACTIONS: QuickAction[] = [
   { icon: FolderOpen, titleKey: 'vaultMissing', message: '', iconColor: 'text-purple-500' },
   { icon: CreditCard, titleKey: 'bundlePayment', message: '', iconColor: 'text-emerald-600' },
 ];
+
+const WORKFLOW_OPTIONS = [
+  { code: 'PASAPORTE_NUEVO', label: 'Pasaporte - Nueva expedicion', icon: BookOpen, color: 'text-blue-500' },
+  { code: 'PASAPORTE_RENOVACION', label: 'Pasaporte - Renovacion', icon: BookOpen, color: 'text-blue-500' },
+  { code: 'RESIDENCIA_PRIMERA_VEZ', label: 'Residencia - Primera vez', icon: Home, color: 'text-green-600' },
+  { code: 'CONDUCIR_NUEVO', label: 'Licencia de Conducir', icon: Car, color: 'text-orange-500' },
+  { code: 'FP_CARNET_FUNCIONARIO', label: 'Carnet de Funcionario', icon: CreditCard, color: 'text-purple-500' },
+  { code: 'CONTRATO_SERVICIO', label: 'Contrato ONRC', icon: FileText, color: 'text-emerald-500' },
+] as const;
 
 // =============================================================================
 // MAIN PAGE
@@ -307,6 +317,37 @@ export default function ChatPage() {
                       </button>
                     );
                   })}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Agent launch button — between "+" and textarea */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center justify-center h-8 w-8 mb-2 rounded-full hover:bg-accent transition-colors shrink-0 text-muted-foreground hover:text-primary"
+                  title={t('launchAgent') || 'Iniciar un tramite'}
+                >
+                  <Rocket className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-80 p-3">
+                <p className="text-sm font-medium mb-2">{t('launchAgent') || 'Preparar una demarche'}</p>
+                <p className="text-xs text-muted-foreground mb-3">{t('launchAgentDesc') || 'El asistente preparara su solicitud automaticamente'}</p>
+                <div className="space-y-2">
+                  {WORKFLOW_OPTIONS.map((wf) => (
+                    <button
+                      key={wf.code}
+                      onClick={() => {
+                        handleQuickAction(`Prepara mi solicitud de ${wf.label}`);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-sm hover:bg-accent hover:border-primary/30 transition-all"
+                    >
+                      <wf.icon className={`h-4 w-4 shrink-0 ${wf.color}`} strokeWidth={1.5} />
+                      <span className="truncate">{wf.label}</span>
+                    </button>
+                  ))}
                 </div>
               </PopoverContent>
             </Popover>

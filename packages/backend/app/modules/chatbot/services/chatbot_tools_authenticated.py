@@ -8,15 +8,17 @@ SECURITY: All functions require user_id and ONLY return data belonging
 to that user. Cross-user access is impossible by design ($1 = user_id
 in every WHERE clause).
 
-8 authenticated tools:
-1. get_my_requests      — List user's service requests (with status filter)
-2. get_request_detail   — Detailed status + timeline of a specific request
-3. get_my_payments      — User's payments (pending, completed)
-4. get_my_appointments  — Upcoming appointments
-5. get_my_notifications — Recent actions/changes on user's requests
-6. get_my_profile       — User's account info + companies
-7. get_my_next_actions  — Smart: what should the user do next
-8. get_my_documents     — Documents uploaded + missing per request
+10 authenticated tools:
+1. get_my_requests           — List user's service requests (with status filter)
+2. get_request_detail        — Detailed status + timeline of a specific request
+3. get_my_payments           — User's payments (pending, completed)
+4. get_my_appointments       — Upcoming appointments
+5. get_my_notifications      — Recent actions/changes on user's requests
+6. get_my_profile            — User's account info + companies
+7. get_my_next_actions       — Smart: what should the user do next
+8. get_my_documents          — Documents uploaded + missing per request
+9. submit_prepared_request   — [L3] Submit a prepared wizard session
+10. book_appointment          — [L3] Book an appointment for a service request
 """
 
 from typing import Any, Dict, Tuple
@@ -52,13 +54,16 @@ TOOL_LEVELS = {
     "prepare_renewal": 2,
     "auto_prepare_wizard": 2,
     # Level 3 — Executive (requires permission + confirmation)
-    # None implemented yet
+    "submit_prepared_request": 3,
+    "book_appointment": 3,
 }
 
 # Map tool names to permission_type in user_agent_permissions table
 _TOOL_PERMISSION_MAP = {
     "prepare_renewal": "prepare_renewal",
     "auto_prepare_wizard": "prepare_request",
+    "submit_prepared_request": "submit_request",
+    "book_appointment": "book_appointment",
 }
 
 
@@ -1074,3 +1079,133 @@ async def auto_prepare_wizard(db, **kwargs) -> dict:
     )
 
     return result
+
+
+# ============================================================================
+# LEVEL 3 — EXECUTIVE TOOLS (require permission + explicit confirmation)
+# ============================================================================
+
+
+async def submit_prepared_request(db, **kwargs) -> dict:
+    """
+    [LEVEL 3] Submit a prepared wizard session.
+    Calls prepare_for_payment + initiate_payment with the specified method.
+    REQUIRES explicit user confirmation.
+    """
+    user_id = kwargs.get("user_id", "")
+    session_id = kwargs.get("session_id", "")
+    payment_method = kwargs.get("payment_method", "cash")
+
+    if not user_id or not session_id:
+        return {"error": "Se requiere session_id"}
+
+    # Level enforcement
+    allowed, msg = await check_tool_level(db, user_id, "submit_prepared_request")
+    if not allowed:
+        return {"status": "permission_required", "message": msg, "permission_type": "submit_request", "level": 3}
+
+    try:
+        from app.modules.service_requests.services.wizard_session_service import wizard_session_service
+        from uuid import UUID
+
+        # Step 1: Prepare for payment (validate + calculate tariff)
+        prep_result = await wizard_session_service.prepare_for_payment(
+            session_id=session_id,
+            user_id=UUID(user_id),
+            db=db,
+        )
+
+        if not getattr(prep_result, 'ready_for_payment', False):
+            errors = getattr(prep_result, 'errors', [])
+            missing = getattr(prep_result, 'missing_documents', [])
+            return {
+                "status": "not_ready",
+                "message": f"La solicitud no esta lista para envio. {len(errors)} errores, {len(missing)} documentos faltantes.",
+                "errors": errors[:5],
+                "missing_documents": missing[:5],
+            }
+
+        total_amount = getattr(prep_result, 'total_amount', 0)
+
+        # Step 2: Initiate payment
+        pay_result = await wizard_session_service.initiate_payment(
+            session_id=session_id,
+            user_id=UUID(user_id),
+            db=db,
+            payment_method=payment_method,
+        )
+
+        success = getattr(pay_result, 'success', False)
+        if success:
+            return {
+                "status": "submitted",
+                "service_request_id": str(getattr(pay_result, 'service_request_id', '')),
+                "reference": getattr(pay_result, 'reference', ''),
+                "payment_status": getattr(pay_result, 'payment_status', ''),
+                "total_amount": total_amount,
+                "redirect_url": getattr(pay_result, 'redirect_url', None),
+                "message": f"Solicitud enviada exitosamente. Referencia: {getattr(pay_result, 'reference', 'N/A')}. Monto: {total_amount} XAF.",
+                "action": {
+                    "type": "open_wizard",
+                    "url": f"/dashboard/service-requests/{getattr(pay_result, 'service_request_id', '')}",
+                    "label": "Ver mi solicitud",
+                },
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": f"Error al enviar: {getattr(pay_result, 'error', 'Error desconocido')}",
+            }
+    except Exception as e:
+        logger.error(f"submit_prepared_request error: {e}")
+        return {"status": "error", "message": f"Error: {str(e)}"}
+
+
+async def book_appointment(db, **kwargs) -> dict:
+    """
+    [LEVEL 3] Book an appointment for a service request.
+    REQUIRES explicit user confirmation.
+    """
+    user_id = kwargs.get("user_id", "")
+    session_id = kwargs.get("session_id", "")
+    location_id = kwargs.get("location_id", "")
+    appointment_date = kwargs.get("appointment_date", "")
+    appointment_time = kwargs.get("appointment_time", "")
+
+    if not user_id or not session_id:
+        return {"error": "Se requiere session_id"}
+
+    # Level enforcement
+    allowed, msg = await check_tool_level(db, user_id, "book_appointment")
+    if not allowed:
+        return {"status": "permission_required", "message": msg, "permission_type": "book_appointment", "level": 3}
+
+    try:
+        from app.modules.service_requests.services.wizard_session_service import wizard_session_service
+        from uuid import UUID
+        from datetime import date as date_type, time as time_type
+
+        # Parse date and time
+        appt_date = date_type.fromisoformat(appointment_date)
+        appt_time = time_type.fromisoformat(appointment_time) if appointment_time else time_type(8, 0)
+
+        # Save appointment selection
+        await wizard_session_service.save_appointment_selection(
+            session_id=session_id,
+            user_id=UUID(user_id),
+            entity_location_id=UUID(location_id),
+            appointment_date=appt_date,
+            appointment_time=appt_time,
+        )
+
+        return {
+            "status": "booked",
+            "appointment_date": str(appt_date),
+            "appointment_time": str(appt_time),
+            "message": f"Cita reservada para el {appt_date} a las {appt_time}.",
+        }
+    except ValueError as e:
+        return {"status": "error", "message": f"Formato de fecha/hora invalido: {str(e)}"}
+    except Exception as e:
+        logger.error(f"book_appointment error: {e}")
+        return {"status": "error", "message": f"Error al reservar: {str(e)}"}

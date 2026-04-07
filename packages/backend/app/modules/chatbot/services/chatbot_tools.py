@@ -872,6 +872,9 @@ from app.modules.chatbot.services.chatbot_tools_authenticated import (
     get_agent_memory,
     # Workflow orchestrator (Level 2 agent)
     auto_prepare_wizard,
+    # Executive tools (Level 3)
+    submit_prepared_request,
+    book_appointment,
 )
 
 CHATBOT_AUTH_FUNCTION_MAP = {
@@ -892,6 +895,9 @@ CHATBOT_AUTH_FUNCTION_MAP = {
     "prepare_renewal": prepare_renewal,
     "get_agent_memory": get_agent_memory,
     "auto_prepare_wizard": auto_prepare_wizard,
+    # Executive tools (Level 3)
+    "submit_prepared_request": submit_prepared_request,
+    "book_appointment": book_appointment,
 }
 
 
@@ -1185,6 +1191,33 @@ if VERTEX_AVAILABLE:
                     "skip_missing_docs": {"type": "boolean", "description": "Continuar aunque falten documentos (el usuario los agregará en el wizard). Default: false."},
                 },
                 "required": ["workflow_name"],
+            },
+        ),
+        # ── Executive Tools (Level 3) ──
+        FunctionDeclaration(
+            name="submit_prepared_request",
+            description="Enviar una solicitud preparada previamente con auto_prepare_wizard. USAR SOLO cuando el usuario CONFIRMA explicitamente que quiere enviar ('si, envia', 'confirmo', 'adelante'). NUNCA enviar sin confirmacion explicita.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string", "description": "ID de la sesion wizard preparada previamente"},
+                    "payment_method": {"type": "string", "description": "Metodo de pago: cash, mobile_money, card, bank_transfer", "enum": ["cash", "mobile_money", "card", "bank_transfer"]},
+                },
+                "required": ["session_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="book_appointment",
+            description="Reservar una cita para un tramite. USAR SOLO cuando el usuario CONFIRMA fecha y lugar explicitamente.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string", "description": "ID de la sesion wizard"},
+                    "location_id": {"type": "string", "description": "ID de la ubicacion (entity_location)"},
+                    "appointment_date": {"type": "string", "description": "Fecha: YYYY-MM-DD"},
+                    "appointment_time": {"type": "string", "description": "Hora: HH:MM"},
+                },
+                "required": ["session_id", "appointment_date"],
             },
         ),
     ]

@@ -5156,6 +5156,8 @@
     "vaultMissingDesc": "Suggestions de documents dont vous pourriez avoir besoin",
     "bundlePayment": "Payer mes obligations fiscales",
     "bundlePaymentDesc": "Initier un paiement groupé de services fiscaux",
+    "launchAgent": "Lancer une demarche",
+    "launchAgentDesc": "L'assistant preparera votre demande automatiquement",
     "title": "Assistant Facil",
     "typing": "En train d'écrire...",
     "welcomeMessage": "Bonjour ! Je suis votre assistant virtuel Facil. Comment puis-je vous aider aujourd'hui avec vos démarches ?",
@@ -11053,7 +11055,9 @@
       "available": "{available}/{total} documents disponibles",
       "summary": "Préparation aux démarches",
       "readyCount": "{count} démarches évaluées",
-      "uploadNow": "Télécharger"
+      "uploadNow": "Télécharger",
+      "launchTitle": "Lancer une demarche",
+      "launchDesc": "L'assistant charge vos documents et pre-remplit le formulaire automatiquement."
     },
     "detail": {
       "title": "Détail du document",

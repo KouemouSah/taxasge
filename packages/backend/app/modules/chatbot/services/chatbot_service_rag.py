@@ -2152,6 +2152,35 @@ Keep it helpful and concise."""
                         "permission_type": perm_type,
                     })
 
+            elif fn_name == "submit_prepared_request":
+                if result.get("status") == "submitted" and result.get("action"):
+                    action = result["action"]
+                    actions.append({
+                        "type": action.get("type", "open_wizard"),
+                        "label": action.get("label", "Ver solicitud"),
+                        "url": action.get("url", ""),
+                    })
+                elif result.get("status") == "permission_required":
+                    actions.append({
+                        "type": "open_settings",
+                        "label": "Activar permiso de envio",
+                        "url": "/dashboard/documents?settings=agent",
+                    })
+
+            elif fn_name == "book_appointment":
+                if result.get("status") == "booked":
+                    actions.append({
+                        "type": "appointment_booked",
+                        "label": f"Cita reservada: {result.get('appointment_date', '')}",
+                        "url": "",
+                    })
+                elif result.get("status") == "permission_required":
+                    actions.append({
+                        "type": "open_settings",
+                        "label": "Activar permiso de reserva",
+                        "url": "/dashboard/documents?settings=agent",
+                    })
+
             elif fn_name == "prepare_renewal":
                 if result.get("status") == "prepared":
                     wf_code = result.get("workflow_code", "")
