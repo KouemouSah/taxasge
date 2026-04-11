@@ -81,11 +81,12 @@ export const omsLicensesApi = {
   get: (id: string) =>
     apiClient.get<LicenseResponse>(`/licenses/${id}`).then(r => r.data),
 
-  getObligations: (id: string, params?: { fee_type?: string; status?: string; page?: number }) => {
+  getObligations: (id: string, params?: { fee_type?: string; status?: string; page?: number; page_size?: number }) => {
     const sp = new URLSearchParams()
     if (params?.fee_type) sp.set('fee_type', params.fee_type)
     if (params?.status) sp.set('status', params.status)
     if (params?.page) sp.set('page', String(params.page))
+    if (params?.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
     return apiClient.get<ObligationListResponse>(`/licenses/${id}/obligations${q ? `?${q}` : ''}`).then(r => r.data)
   },

@@ -14,6 +14,7 @@ import {
   ArrowLeft, Building2, FileCheck,
   CheckCircle2, Download, RefreshCw,
   XCircle, MapPin, Calendar, History, RotateCcw, Search,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -43,8 +44,12 @@ export default function LicenseDetailPage() {
   const { toast } = useToast()
   const licenseId = params.id as string
 
+  const OB_PAGE_SIZE = 50
+
   const [license, setLicense] = useState<LicenseResponse | null>(null)
   const [obligations, setObligations] = useState<ObligationResponse[]>([])
+  const [obTotal, setObTotal] = useState(0)
+  const [obPage, setObPage] = useState(1)
   const [obligationKpis, setObligationKpis] = useState<{
     total_amount: number; paid_amount: number; penalty_amount: number
     paid_count: number; pending_count: number; overdue_count: number
@@ -53,17 +58,36 @@ export default function LicenseDetailPage() {
   const [loading, setLoading] = useState(true)
   const [showTimeline, setShowTimeline] = useState(false)
 
+  // Fetch obligations page (independent of license/events)
+  const fetchObligations = useCallback(async (pg: number) => {
+    try {
+      const obs = await omsLicensesApi.getObligations(licenseId, { page: pg, page_size: OB_PAGE_SIZE })
+      setObligations(obs.items)
+      setObTotal(obs.total)
+      setObligationKpis({
+        total_amount: Number(obs.total_amount) || 0,
+        paid_amount: Number(obs.paid_amount) || 0,
+        penalty_amount: Number(obs.penalty_amount) || 0,
+        paid_count: obs.paid_count ?? 0,
+        pending_count: obs.pending_count ?? 0,
+        overdue_count: obs.overdue_count ?? 0,
+      })
+    } catch {
+      // Silent — main fetchAll handles error display
+    }
+  }, [licenseId])
+
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const [lic, obs, evts] = await Promise.all([
         omsLicensesApi.get(licenseId),
-        omsLicensesApi.getObligations(licenseId, { page: 1 }),
+        omsLicensesApi.getObligations(licenseId, { page: obPage, page_size: OB_PAGE_SIZE }),
         omsLicensesApi.getEvents(licenseId).catch(() => ({ items: [] })),
       ])
       setLicense(lic)
       setObligations(obs.items)
-      // Server-side KPIs — aggregated from ALL obligations, not just page 1
+      setObTotal(obs.total)
       setObligationKpis({
         total_amount: Number(obs.total_amount) || 0,
         paid_amount: Number(obs.paid_amount) || 0,
@@ -82,9 +106,17 @@ export default function LicenseDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [licenseId, toast, t])
+  }, [licenseId, obPage, toast, t])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Page change — only refetch obligations (not license/events)
+  const handleObPageChange = useCallback((pg: number) => {
+    setObPage(pg)
+    fetchObligations(pg)
+  }, [fetchObligations])
+
+  const obTotalPages = Math.ceil(obTotal / OB_PAGE_SIZE)
 
   // KPIs from backend — aggregated from ALL scoped obligations (no page_size limit)
   const totalAmount = obligationKpis.total_amount
@@ -316,7 +348,7 @@ export default function LicenseDetailPage() {
           <Card className={donutData ? 'lg:col-span-2' : 'lg:col-span-3'}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm flex items-center justify-between">
-                <span>{t('obligations')} ({obligations.length})</span>
+                <span>{t('obligations')} ({obTotal})</span>
                 <div className="flex gap-2 text-[10px] font-normal">
                   <span className="text-green-600">{paidCount} {t('paidObligations')}</span>
                   <span className="text-yellow-600">{pendingCount} {t('pendingObligations')}</span>
@@ -380,6 +412,22 @@ export default function LicenseDetailPage() {
                   })}
                 </TableBody>
               </Table>
+              {/* Obligation pagination */}
+              {obTotalPages > 1 && (
+                <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground">
+                  <span>{obTotal} obligaciones — pag. {obPage}/{obTotalPages}</span>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7"
+                      disabled={obPage <= 1} onClick={() => handleObPageChange(obPage - 1)}>
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-7 w-7"
+                      disabled={obPage >= obTotalPages} onClick={() => handleObPageChange(obPage + 1)}>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
