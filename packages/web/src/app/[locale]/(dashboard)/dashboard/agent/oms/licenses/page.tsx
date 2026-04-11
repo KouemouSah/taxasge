@@ -60,35 +60,40 @@ export default function OMSLicensesPage() {
         omsLicensesApi.list({
           status: statusFilter === 'all' ? undefined : statusFilter,
           fiscal_year: yearFilter,
+          search: search || undefined,
           page,
           page_size: PAGE_SIZE,
         }),
       ])
       if (seq === seqRef.current) { setStats(s); setLicenses(l) }
-    } catch {
-      if (seq === seqRef.current) toast({ title: t('loadError'), variant: 'destructive' })
+    } catch (err: unknown) {
+      if (seq === seqRef.current) {
+        const status = (err as { response?: { status?: number } })?.response?.status
+        toast({
+          title: status === 403 ? t('accessDenied') : t('loadError'),
+          variant: 'destructive',
+        })
+      }
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
-  }, [page, statusFilter, yearFilter, toast, t])
+  }, [page, statusFilter, yearFilter, search, toast, t])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  // Debounce search input → triggers server-side search via fetchAll dependency
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setSearch(searchInput), 300)
+    debounceRef.current = setTimeout(() => {
+      setSearch(searchInput)
+      setPage(1) // Reset to page 1 on new search
+    }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchInput])
 
-  // Client-side search filter + sort
+  // Client-side sort only (search is server-side, sort on current page)
   const filteredItems = (() => {
-    let items = (licenses?.items ?? []).filter(lic => {
-      if (!search) return true
-      const q = search.toLowerCase()
-      return (lic.company_name?.toLowerCase().includes(q)) ||
-             (lic.company_nif?.toLowerCase().includes(q)) ||
-             (lic.zone_code?.toLowerCase().includes(q))
-    })
+    let items = licenses?.items ?? []
     if (sortCol) {
       items = [...items].sort((a, b) => {
         let va: number | string = 0, vb: number | string = 0

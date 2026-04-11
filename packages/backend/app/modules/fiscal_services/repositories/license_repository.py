@@ -60,9 +60,16 @@ class LicenseRepository:
         search: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
+        # Agent scope filters (from OmsAgentService.resolve_agent_context)
+        city_id: Optional[UUID] = None,
+        fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        processing_mode: Optional[str] = None,
     ) -> Tuple[List[Dict], int]:
         """List licenses with filters, paginated.
 
+        Agent scope: city_id filters by license city, fee_type/ministry_id
+        filters by having at least one matching obligation (EXISTS subquery).
         search: ILIKE on company legal_name or bundle name_es.
         """
         conditions = []
@@ -97,26 +104,48 @@ class LicenseRepository:
             params.append(f"%{escaped}%")
             idx += 1
 
+        # --- Agent scope filters ---
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
+            idx += 1
+
+        if processing_mode:
+            conditions.append(f"cl.processing_mode = ${idx}")
+            params.append(processing_mode)
+            idx += 1
+
+        # fee_type / ministry_id: license must have at least one matching obligation
+        if fee_type:
+            conditions.append(f"""EXISTS (
+                SELECT 1 FROM license_obligations lo_scope
+                WHERE lo_scope.license_id = cl.id AND lo_scope.fee_type = ${idx}
+            )""")
+            params.append(fee_type)
+            idx += 1
+
+        if ministry_id is not None:
+            conditions.append(f"""EXISTS (
+                SELECT 1 FROM license_obligations lo_scope
+                WHERE lo_scope.license_id = cl.id AND lo_scope.ministry_id = ${idx}
+            )""")
+            params.append(ministry_id)
+            idx += 1
+
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
 
-        # JOINs needed for both count (when search active) and data
+        # JOINs needed for both count (when search/scope active) and data
         joins = """
             LEFT JOIN companies co ON cl.company_id = co.id
             LEFT JOIN service_bundles sb ON cl.bundle_id = sb.id
             LEFT JOIN commerce_zones cz ON cl.zone_id = cz.id
         """
 
-        # Count — need JOINs when search is active
-        if search:
-            count_row = await conn.fetchrow(
-                f"SELECT COUNT(*) as total FROM commercial_licenses cl {joins} {where}",
-                *params,
-            )
-        else:
-            count_row = await conn.fetchrow(
-                f"SELECT COUNT(*) as total FROM commercial_licenses cl {where}",
-                *params,
-            )
+        # Count — always include JOINs (needed for search and scope filters)
+        count_row = await conn.fetchrow(
+            f"SELECT COUNT(*) as total FROM commercial_licenses cl {joins} {where}",
+            *params,
+        )
         total = count_row["total"]
 
         # Data
@@ -214,11 +243,16 @@ class LicenseRepository:
         conn,
         license_id: UUID,
         fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
         status: Optional[str] = None,
         page: int = 1,
         page_size: int = 100,
     ) -> Tuple[List[Dict], int]:
-        """List obligations for a license with enriched JOINs."""
+        """List obligations for a license with enriched JOINs.
+
+        Agent scope: fee_type filters by obligation fee_type (AYUNTAMIENTO/CAMARA),
+        ministry_id filters by obligation ministry (MIN_* agents).
+        """
         conditions = ["lo.license_id = $1"]
         params = [license_id]
         idx = 2
@@ -228,6 +262,11 @@ class LicenseRepository:
             params.append(fee_type)
             idx += 1
 
+        if ministry_id is not None:
+            conditions.append(f"lo.ministry_id = ${idx}")
+            params.append(ministry_id)
+            idx += 1
+
         if status:
             conditions.append(f"lo.status = ${idx}")
             params.append(status)
@@ -235,12 +274,31 @@ class LicenseRepository:
 
         where = "WHERE " + " AND ".join(conditions)
 
-        count_row = await conn.fetchrow(
-            f"SELECT COUNT(*) as total FROM license_obligations lo {where}",
-            *params,
-        )
-        total = count_row["total"]
+        # Single query for count + KPIs (no page_size limit)
+        agg_row = await conn.fetchrow(f"""
+            SELECT
+                COUNT(*) as total,
+                COALESCE(SUM(lo.amount), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN lo.status IN ('paid', 'completed')
+                    THEN lo.amount ELSE 0 END), 0) as paid_amount,
+                COALESCE(SUM(lo.penalty_amount), 0) as penalty_amount,
+                COUNT(*) FILTER (WHERE lo.status IN ('paid', 'completed')) as paid_count,
+                COUNT(*) FILTER (WHERE lo.status IN ('pending', 'processing')) as pending_count,
+                COUNT(*) FILTER (WHERE lo.status = 'overdue') as overdue_count
+            FROM license_obligations lo
+            {where}
+        """, *params)
+        total = agg_row["total"]
+        kpis = {
+            "total_amount": agg_row["total_amount"],
+            "paid_amount": agg_row["paid_amount"],
+            "penalty_amount": agg_row["penalty_amount"],
+            "paid_count": agg_row["paid_count"],
+            "pending_count": agg_row["pending_count"],
+            "overdue_count": agg_row["overdue_count"],
+        }
 
+        # Paginated data
         offset = (page - 1) * page_size
         params_data = params + [page_size, offset]
         rows = await conn.fetch(f"""
@@ -256,7 +314,7 @@ class LicenseRepository:
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params_data)
 
-        return [dict(r) for r in rows], total
+        return [dict(r) for r in rows], total, kpis
 
     @staticmethod
     async def get_obligation(conn, obligation_id: UUID) -> Optional[Dict]:
@@ -846,35 +904,136 @@ class LicenseRepository:
 
     @staticmethod
     async def get_dashboard_stats(
-        conn, fiscal_year: Optional[int] = None
+        conn,
+        fiscal_year: Optional[int] = None,
+        # Agent scope filters
+        city_id: Optional[UUID] = None,
+        fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        processing_mode: Optional[str] = None,
     ) -> Dict:
-        """Aggregate stats for admin dashboard."""
-        year_filter = ""
-        params = []
-        if fiscal_year:
-            year_filter = "WHERE cl.fiscal_year = $1"
-            params = [fiscal_year]
+        """Aggregate stats scoped by agent context.
 
-        row = await conn.fetchrow(f"""
-            SELECT
-                COUNT(*) as total_licenses,
-                COUNT(*) FILTER (WHERE cl.status IN ('open', 'partial')) as active_licenses,
-                COUNT(*) FILTER (WHERE cl.status = 'open') as open_licenses,
-                COUNT(*) FILTER (WHERE cl.status = 'partial') as partial_licenses,
-                COUNT(*) FILTER (WHERE cl.status = 'complete') as complete_licenses,
-                COUNT(*) FILTER (WHERE cl.status = 'overdue') as overdue_licenses,
-                COALESCE(SUM(cl.total_amount), 0) as total_amount,
-                COALESCE(SUM(cl.amount_paid), 0) as amount_paid,
-                COALESCE(SUM(cl.amount_paid), 0) as total_paid,
-                COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) as total_debt,
-                COALESCE(SUM(cl.penalty_amount), 0) as penalty_amount,
-                CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
-                     THEN ROUND(SUM(cl.amount_paid) * 100.0 / SUM(cl.total_amount), 1)
-                     ELSE 0 END as recovery_rate,
-                COALESCE(AVG(cl.compliance_score), 0) as avg_compliance_score
-            FROM commercial_licenses cl
-            {year_filter}
-        """, *params)
+        When agent scope filters are provided, stats reflect only the
+        licenses/obligations visible to that agent. Uses obligation-level
+        aggregation for fee_type/ministry scoping to show accurate amounts.
+        """
+        conditions = []
+        params: list = []
+        idx = 1
+
+        if fiscal_year:
+            conditions.append(f"cl.fiscal_year = ${idx}")
+            params.append(fiscal_year)
+            idx += 1
+
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
+            idx += 1
+
+        if processing_mode:
+            conditions.append(f"cl.processing_mode = ${idx}")
+            params.append(processing_mode)
+            idx += 1
+
+        # fee_type/ministry scoping: only count licenses that have matching obligations
+        if fee_type:
+            conditions.append(f"""EXISTS (
+                SELECT 1 FROM license_obligations lo_s
+                WHERE lo_s.license_id = cl.id AND lo_s.fee_type = ${idx}
+            )""")
+            params.append(fee_type)
+            idx += 1
+
+        if ministry_id is not None:
+            conditions.append(f"""EXISTS (
+                SELECT 1 FROM license_obligations lo_s
+                WHERE lo_s.license_id = cl.id AND lo_s.ministry_id = ${idx}
+            )""")
+            params.append(ministry_id)
+            idx += 1
+
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+        # When scoped by fee_type or ministry_id, we aggregate from obligations
+        # to show accurate amounts for the agent's scope (not full license totals)
+        if fee_type or ministry_id is not None:
+            # Obligation-level aggregation — parameterized (no string interpolation)
+            ob_conditions = []
+            ob_params = list(params)  # copy existing params
+            ob_idx = idx
+
+            if fee_type:
+                ob_conditions.append(f"lo.fee_type = ${ob_idx}")
+                ob_params.append(fee_type)
+                ob_idx += 1
+            if ministry_id is not None:
+                ob_conditions.append(f"lo.ministry_id = ${ob_idx}")
+                ob_params.append(ministry_id)
+                ob_idx += 1
+
+            ob_filter = " AND " + " AND ".join(ob_conditions) if ob_conditions else ""
+
+            row = await conn.fetchrow(f"""
+                WITH scoped_licenses AS (
+                    SELECT cl.id, cl.status
+                    FROM commercial_licenses cl
+                    {where}
+                ),
+                scoped_amounts AS (
+                    SELECT
+                        lo.license_id,
+                        SUM(lo.amount) as total_amount,
+                        SUM(CASE WHEN lo.status IN ('paid', 'completed') THEN lo.amount ELSE 0 END) as amount_paid,
+                        SUM(COALESCE(lo.penalty_amount, 0)) as penalty_amount
+                    FROM license_obligations lo
+                    JOIN scoped_licenses sl ON sl.id = lo.license_id
+                    WHERE 1=1 {ob_filter}
+                    GROUP BY lo.license_id
+                )
+                SELECT
+                    (SELECT COUNT(*) FROM scoped_licenses) as total_licenses,
+                    (SELECT COUNT(*) FROM scoped_licenses WHERE status IN ('open', 'partial')) as active_licenses,
+                    (SELECT COUNT(*) FROM scoped_licenses WHERE status = 'open') as open_licenses,
+                    (SELECT COUNT(*) FROM scoped_licenses WHERE status = 'partial') as partial_licenses,
+                    (SELECT COUNT(*) FROM scoped_licenses WHERE status = 'complete') as complete_licenses,
+                    (SELECT COUNT(*) FROM scoped_licenses WHERE status = 'overdue') as overdue_licenses,
+                    COALESCE((SELECT SUM(total_amount) FROM scoped_amounts), 0) as total_amount,
+                    COALESCE((SELECT SUM(amount_paid) FROM scoped_amounts), 0) as amount_paid,
+                    COALESCE((SELECT SUM(amount_paid) FROM scoped_amounts), 0) as total_paid,
+                    COALESCE((SELECT SUM(total_amount) FROM scoped_amounts)
+                           - (SELECT SUM(amount_paid) FROM scoped_amounts), 0) as total_debt,
+                    COALESCE((SELECT SUM(penalty_amount) FROM scoped_amounts), 0) as penalty_amount,
+                    CASE WHEN COALESCE((SELECT SUM(total_amount) FROM scoped_amounts), 0) > 0
+                         THEN ROUND(
+                            (SELECT SUM(amount_paid) FROM scoped_amounts) * 100.0
+                            / (SELECT SUM(total_amount) FROM scoped_amounts), 1)
+                         ELSE 0 END as recovery_rate,
+                    0 as avg_compliance_score
+            """, *ob_params)
+        else:
+            # No obligation scoping — use license-level totals (faster)
+            row = await conn.fetchrow(f"""
+                SELECT
+                    COUNT(*) as total_licenses,
+                    COUNT(*) FILTER (WHERE cl.status IN ('open', 'partial')) as active_licenses,
+                    COUNT(*) FILTER (WHERE cl.status = 'open') as open_licenses,
+                    COUNT(*) FILTER (WHERE cl.status = 'partial') as partial_licenses,
+                    COUNT(*) FILTER (WHERE cl.status = 'complete') as complete_licenses,
+                    COUNT(*) FILTER (WHERE cl.status = 'overdue') as overdue_licenses,
+                    COALESCE(SUM(cl.total_amount), 0) as total_amount,
+                    COALESCE(SUM(cl.amount_paid), 0) as amount_paid,
+                    COALESCE(SUM(cl.amount_paid), 0) as total_paid,
+                    COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) as total_debt,
+                    COALESCE(SUM(cl.penalty_amount), 0) as penalty_amount,
+                    CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
+                         THEN ROUND(SUM(cl.amount_paid) * 100.0 / SUM(cl.total_amount), 1)
+                         ELSE 0 END as recovery_rate,
+                    COALESCE(AVG(cl.compliance_score), 0) as avg_compliance_score
+                FROM commercial_licenses cl
+                {where}
+            """, *params)
         return dict(row)
 
     # ==================================================================

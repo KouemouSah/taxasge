@@ -45,6 +45,10 @@ export default function LicenseDetailPage() {
 
   const [license, setLicense] = useState<LicenseResponse | null>(null)
   const [obligations, setObligations] = useState<ObligationResponse[]>([])
+  const [obligationKpis, setObligationKpis] = useState<{
+    total_amount: number; paid_amount: number; penalty_amount: number
+    paid_count: number; pending_count: number; overdue_count: number
+  }>({ total_amount: 0, paid_amount: 0, penalty_amount: 0, paid_count: 0, pending_count: 0, overdue_count: 0 })
   const [events, setEvents] = useState<ComplianceEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [showTimeline, setShowTimeline] = useState(false)
@@ -59,29 +63,40 @@ export default function LicenseDetailPage() {
       ])
       setLicense(lic)
       setObligations(obs.items)
+      // Server-side KPIs — aggregated from ALL obligations, not just page 1
+      setObligationKpis({
+        total_amount: Number(obs.total_amount) || 0,
+        paid_amount: Number(obs.paid_amount) || 0,
+        penalty_amount: Number(obs.penalty_amount) || 0,
+        paid_count: obs.paid_count ?? 0,
+        pending_count: obs.pending_count ?? 0,
+        overdue_count: obs.overdue_count ?? 0,
+      })
       setEvents(evts.items ?? [])
-    } catch {
-      toast({ title: t('loadError'), variant: 'destructive' })
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      toast({
+        title: status === 403 ? t('accessDenied') : t('loadError'),
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
-  }, [licenseId, toast])
+  }, [licenseId, toast, t])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Derived — compute KPIs from the agent's VISIBLE obligations only (entity-scoped)
-  const totalAmount = obligations.reduce((s, o) => s + (o.amount || 0), 0)
-  const paidAmount = obligations
-    .filter(o => o.status === 'paid' || o.status === 'completed')
-    .reduce((s, o) => s + (o.amount || 0), 0)
+  // KPIs from backend — aggregated from ALL scoped obligations (no page_size limit)
+  const totalAmount = obligationKpis.total_amount
+  const paidAmount = obligationKpis.paid_amount
   const balance = totalAmount - paidAmount
   const recoveryPct = totalAmount > 0
     ? Math.round((paidAmount / totalAmount) * 100) : 0
 
-  const paidCount = obligations.filter(o => o.status === 'paid' || o.status === 'completed').length
-  const pendingCount = obligations.filter(o => o.status === 'pending' || o.status === 'processing').length
-  const overdueCount = obligations.filter(o => o.status === 'overdue').length
-  const totalPenalties = obligations.reduce((s, o) => s + (o.penalty_amount || 0), 0)
+  const paidCount = obligationKpis.paid_count
+  const pendingCount = obligationKpis.pending_count
+  const overdueCount = obligationKpis.overdue_count
+  const totalPenalties = obligationKpis.penalty_amount
 
   // Donut
   const donutData = useMemo(() => {

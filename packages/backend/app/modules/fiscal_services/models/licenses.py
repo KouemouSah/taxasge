@@ -271,11 +271,22 @@ class ObligationResponse(BaseModel):
 
 
 class ObligationListResponse(BaseModel):
-    """Paginated list of obligations."""
+    """Paginated list of obligations with server-side aggregated KPIs.
+
+    KPIs are computed from ALL matching obligations (not just the current page),
+    so the frontend can display accurate totals regardless of pagination.
+    """
     items: List[ObligationResponse]
     total: int
     page: int
     page_size: int
+    # Server-side KPIs — aggregated from ALL matching obligations (no page_size limit)
+    total_amount: Decimal = Decimal("0")
+    paid_amount: Decimal = Decimal("0")
+    penalty_amount: Decimal = Decimal("0")
+    paid_count: int = 0
+    pending_count: int = 0
+    overdue_count: int = 0
 
 
 # ============================================================

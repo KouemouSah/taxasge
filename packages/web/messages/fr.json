@@ -5845,6 +5845,7 @@
       "notFound": "Licence non trouvée",
       "back": "Retour",
       "loadError": "Erreur lors du chargement des licences",
+      "accessDenied": "Accès refusé — vous n'avez pas les permissions pour cette section",
       "error": "Erreur lors du traitement",
       "processed": "Obligation traitée",
       "rejected": "Obligation rejetée",

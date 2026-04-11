@@ -10,11 +10,13 @@ import { Clock, Play, CheckCircle2, DollarSign, AlertTriangle, XCircle } from 'l
 // Number formatting
 // =============================================================================
 
-export function fmtXAF(n: number, locale = 'es-GQ'): string {
+export function fmtXAF(n: number | null | undefined, locale = 'es-GQ'): string {
+  if (n == null || isNaN(n)) return '0 XAF'
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' XAF'
 }
 
-export function fmtK(n: number): string {
+export function fmtK(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return '0'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
   return String(n)

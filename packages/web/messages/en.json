@@ -5845,6 +5845,7 @@
       "notFound": "License not found",
       "back": "Back",
       "loadError": "Error loading licenses",
+      "accessDenied": "Access denied — you don't have permissions for this section",
       "error": "Processing error",
       "processed": "Obligation processed",
       "rejected": "Obligation rejected",

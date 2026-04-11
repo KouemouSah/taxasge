@@ -44,11 +44,18 @@ class LicenseService:
         search: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
+        # Agent scope filters
+        city_id: Optional[UUID] = None,
+        fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        processing_mode: Optional[str] = None,
     ) -> Tuple[List[Dict], int]:
         return await LicenseRepository.list_licenses(
             conn, company_id=company_id, bundle_id=bundle_id,
             fiscal_year=fiscal_year, status=status,
             search=search, page=page, page_size=page_size,
+            city_id=city_id, fee_type=fee_type,
+            ministry_id=ministry_id, processing_mode=processing_mode,
         )
 
     # ==================================================================
@@ -461,12 +468,16 @@ class LicenseService:
         conn,
         license_id: UUID,
         fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
         status: Optional[str] = None,
         page: int = 1,
         page_size: int = 100,
-    ) -> Tuple[List[Dict], int]:
+    ) -> Tuple[List[Dict], int, Dict]:
+        """Returns (items, total, kpis) where kpis are aggregated from ALL
+        matching obligations (not just the current page)."""
         return await LicenseRepository.list_obligations(
-            conn, license_id, fee_type=fee_type, status=status,
+            conn, license_id, fee_type=fee_type,
+            ministry_id=ministry_id, status=status,
             page=page, page_size=page_size,
         )
 
@@ -905,9 +916,18 @@ class LicenseService:
 
     @staticmethod
     async def get_dashboard_stats(
-        conn, fiscal_year: Optional[int] = None
+        conn,
+        fiscal_year: Optional[int] = None,
+        city_id: Optional[UUID] = None,
+        fee_type: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        processing_mode: Optional[str] = None,
     ) -> Dict:
-        return await LicenseRepository.get_dashboard_stats(conn, fiscal_year)
+        return await LicenseRepository.get_dashboard_stats(
+            conn, fiscal_year=fiscal_year,
+            city_id=city_id, fee_type=fee_type,
+            ministry_id=ministry_id, processing_mode=processing_mode,
+        )
 
     # ==================================================================
     # Payment Hook — called when service_payment completes

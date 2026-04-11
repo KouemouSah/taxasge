@@ -125,6 +125,13 @@ export interface ObligationListResponse {
   total: number
   page: number
   page_size: number
+  // Server-side KPIs aggregated from ALL matching obligations (not just page)
+  total_amount: number
+  paid_amount: number
+  penalty_amount: number
+  paid_count: number
+  pending_count: number
+  overdue_count: number
 }
 
 // =============================================================================

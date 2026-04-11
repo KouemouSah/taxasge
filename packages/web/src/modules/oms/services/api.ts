@@ -60,12 +60,13 @@ export const omsQueueApi = {
 // ========== Licenses API ==========
 
 export const omsLicensesApi = {
-  list: (params?: { company_id?: string; bundle_id?: string; fiscal_year?: number; status?: string; page?: number; page_size?: number }) => {
+  list: (params?: { company_id?: string; bundle_id?: string; fiscal_year?: number; status?: string; search?: string; page?: number; page_size?: number }) => {
     const sp = new URLSearchParams()
     if (params?.company_id) sp.set('company_id', params.company_id)
     if (params?.bundle_id) sp.set('bundle_id', params.bundle_id)
     if (params?.fiscal_year) sp.set('fiscal_year', String(params.fiscal_year))
     if (params?.status) sp.set('status', params.status)
+    if (params?.search) sp.set('search', params.search)
     if (params?.page) sp.set('page', String(params.page))
     if (params?.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
