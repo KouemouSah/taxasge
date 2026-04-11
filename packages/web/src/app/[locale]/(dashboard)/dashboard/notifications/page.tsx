@@ -19,9 +19,8 @@ import {
   Calendar, XCircle, CreditCard, AlertTriangle, AlertCircle,
   ChevronLeft, ChevronRight, Filter, ExternalLink,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -212,7 +211,7 @@ export default function NotificationsPage() {
                 <div
                   key={notif.id}
                   className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/30 ${
-                    notif.isNew ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
+                    notif.is_new ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
                   }`}
                   onClick={() => setExpandedId(isExpanded ? null : notif.id)}
                 >
@@ -222,7 +221,7 @@ export default function NotificationsPage() {
                       <p className={`text-sm font-medium ${isExpanded ? '' : 'truncate'}`}>
                         {notif.title}
                       </p>
-                      {notif.isNew && (
+                      {notif.is_new && (
                         <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                       )}
                     </div>
@@ -244,7 +243,7 @@ export default function NotificationsPage() {
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
-                    {new Date(notif.performedAt).toLocaleDateString(
+                    {new Date(notif.performed_at).toLocaleDateString(
                       locale === 'es' ? 'es-GQ' : locale === 'fr' ? 'fr-FR' : 'en-US',
                       { day: '2-digit', month: 'short' }
                     )}

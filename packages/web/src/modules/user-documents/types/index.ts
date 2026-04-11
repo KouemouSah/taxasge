@@ -299,6 +299,7 @@ export interface DocumentFilters {
   search?: string;
   cursor?: string;
   limit?: number;
+  offset?: number;
 }
 
 // =============================================================================
