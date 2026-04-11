@@ -5158,6 +5158,14 @@
     "bundlePaymentDesc": "Start a bundled payment for fiscal services",
     "launchAgent": "Start a procedure",
     "launchAgentDesc": "The assistant will prepare your request automatically",
+    "prepareRequest": "Prepare my request for",
+    "newChat": "New chat",
+    "wfPasaporteNuevo": "Passport - New issuance",
+    "wfPasaporteRenovacion": "Passport - Renewal",
+    "wfResidencia": "Residence - First time",
+    "wfConducir": "Driving License",
+    "wfCarnetFuncionario": "Civil Servant Card",
+    "wfContratoOnrc": "ONRC Contract",
     "title": "Facil Assistant",
     "typing": "Typing...",
     "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?",
@@ -11031,6 +11039,8 @@
     "alerts": {
       "noAlerts": "No alerts",
       "noAlertsDesc": "All your documents are up to date",
+      "emptyTitle": "No active alerts",
+      "emptyDescription": "All your documents are up to date. We'll notify you when a document needs your attention.",
       "markRead": "Mark as read",
       "dismiss": "Dismiss",
       "severity": {

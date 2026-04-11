@@ -142,7 +142,7 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
   const progressColor = getProgressColor(result.readiness_score);
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow min-h-[220px]">
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium truncate flex items-center gap-1.5">
@@ -247,12 +247,12 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
 // ---------------------------------------------------------------------------
 
 const QUICK_WORKFLOWS = [
-  { code: 'PASAPORTE_NUEVO', label: 'Pasaporte' },
-  { code: 'PASAPORTE_RENOVACION', label: 'Renovar Pasaporte' },
-  { code: 'RESIDENCIA_PRIMERA_VEZ', label: 'Residencia' },
-  { code: 'CONDUCIR_NUEVO', label: 'Licencia Conducir' },
-  { code: 'FP_CARNET_FUNCIONARIO', label: 'Carnet Funcionario' },
-  { code: 'CONTRATO_SERVICIO', label: 'Contrato ONRC' },
+  { code: 'PASAPORTE_NUEVO', labelKey: 'workflows.pasaporte_nuevo' },
+  { code: 'PASAPORTE_RENOVACION', labelKey: 'workflows.pasaporte_renovacion' },
+  { code: 'RESIDENCIA_PRIMERA_VEZ', labelKey: 'workflows.residencia_primera_vez' },
+  { code: 'CONDUCIR_NUEVO', labelKey: 'workflows.conducir_nuevo' },
+  { code: 'FP_CARNET_FUNCIONARIO', labelKey: 'workflows.fp_carnet_funcionario' },
+  { code: 'CONTRATO_SERVICIO', labelKey: 'workflows.contrato_servicio' },
 ] as const;
 
 export function ReadinessCheck() {
@@ -285,20 +285,23 @@ export function ReadinessCheck() {
           {t('readiness.launchDesc') || 'El asistente carga sus documentos y pre-rellena el formulario automaticamente.'}
         </p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {QUICK_WORKFLOWS.map((wf) => (
-            <Button
-              key={wf.code}
-              variant="outline"
-              size="sm"
-              className="text-xs justify-start gap-2"
-              onClick={() => {
-                window.location.href = `/${locale}/dashboard/chat?q=${encodeURIComponent(`Prepara mi solicitud de ${wf.label}`)}`;
-              }}
-            >
-              <Rocket className="h-3 w-3 text-primary" strokeWidth={1.5} />
-              {wf.label}
-            </Button>
-          ))}
+          {QUICK_WORKFLOWS.map((wf) => {
+            const wfLabel = t(wf.labelKey, { defaultValue: wf.code.replace(/_/g, ' ') });
+            return (
+              <Button
+                key={wf.code}
+                variant="outline"
+                size="sm"
+                className="text-xs justify-start gap-2"
+                onClick={() => {
+                  window.location.href = `/${locale}/dashboard/chat?q=${encodeURIComponent(`${t('readiness.askAssistant')} ${wfLabel}`)}`;
+                }}
+              >
+                <Rocket className="h-3 w-3 text-primary" strokeWidth={1.5} />
+                {wfLabel}
+              </Button>
+            );
+          })}
         </div>
       </div>
 
@@ -359,7 +362,7 @@ export function ReadinessCheck() {
 
       {/* Readiness cards grid */}
       {!isLoading && results.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto flex-1 min-h-0 pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
           {results
             .sort((a, b) => {
               // Sort: can_start first, then by score descending

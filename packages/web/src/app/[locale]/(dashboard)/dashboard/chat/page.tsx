@@ -68,12 +68,12 @@ const VAULT_ACTIONS: QuickAction[] = [
 ];
 
 const WORKFLOW_OPTIONS = [
-  { code: 'PASAPORTE_NUEVO', label: 'Pasaporte - Nueva expedicion', icon: BookOpen, color: 'text-blue-500' },
-  { code: 'PASAPORTE_RENOVACION', label: 'Pasaporte - Renovacion', icon: BookOpen, color: 'text-blue-500' },
-  { code: 'RESIDENCIA_PRIMERA_VEZ', label: 'Residencia - Primera vez', icon: Home, color: 'text-green-600' },
-  { code: 'CONDUCIR_NUEVO', label: 'Licencia de Conducir', icon: Car, color: 'text-orange-500' },
-  { code: 'FP_CARNET_FUNCIONARIO', label: 'Carnet de Funcionario', icon: CreditCard, color: 'text-purple-500' },
-  { code: 'CONTRATO_SERVICIO', label: 'Contrato ONRC', icon: FileText, color: 'text-emerald-500' },
+  { code: 'PASAPORTE_NUEVO', labelKey: 'wfPasaporteNuevo', icon: BookOpen, color: 'text-blue-500' },
+  { code: 'PASAPORTE_RENOVACION', labelKey: 'wfPasaporteRenovacion', icon: BookOpen, color: 'text-blue-500' },
+  { code: 'RESIDENCIA_PRIMERA_VEZ', labelKey: 'wfResidencia', icon: Home, color: 'text-green-600' },
+  { code: 'CONDUCIR_NUEVO', labelKey: 'wfConducir', icon: Car, color: 'text-orange-500' },
+  { code: 'FP_CARNET_FUNCIONARIO', labelKey: 'wfCarnetFuncionario', icon: CreditCard, color: 'text-purple-500' },
+  { code: 'CONTRATO_SERVICIO', labelKey: 'wfContratoOnrc', icon: FileText, color: 'text-emerald-500' },
 ] as const;
 
 // =============================================================================
@@ -183,10 +183,10 @@ export default function ChatPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearChat}>
-                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                    <Plus className="h-4 w-4" strokeWidth={1.5} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('clearChat')}</TooltipContent>
+                <TooltipContent>{t('newChat') || 'Nouveau chat'}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -244,7 +244,7 @@ export default function ChatPage() {
           </div>
         ) : (
           /* ─── CHAT STATE ─── */
-          <div className="max-w-4xl mx-auto w-full px-4 md:px-8 py-4 space-y-1">
+          <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-4 space-y-1">
             {messages.map((msg: ChatMessage, i: number) => (
               <MessageItem
                 key={`${msg.timestamp}-${i}`}
@@ -340,12 +340,12 @@ export default function ChatPage() {
                     <button
                       key={wf.code}
                       onClick={() => {
-                        handleQuickAction(`Prepara mi solicitud de ${wf.label}`);
+                        handleQuickAction(`${t('prepareRequest')} ${t(wf.labelKey)}`);
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-sm hover:bg-accent hover:border-primary/30 transition-all"
                     >
                       <wf.icon className={`h-4 w-4 shrink-0 ${wf.color}`} strokeWidth={1.5} />
-                      <span className="truncate">{wf.label}</span>
+                      <span className="truncate">{t(wf.labelKey)}</span>
                     </button>
                   ))}
                 </div>

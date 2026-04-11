@@ -5158,6 +5158,14 @@
     "bundlePaymentDesc": "Iniciar pago agrupado de servicios fiscales",
     "launchAgent": "Iniciar un tramite",
     "launchAgentDesc": "El asistente preparara su solicitud automaticamente",
+    "prepareRequest": "Prepara mi solicitud de",
+    "newChat": "Nuevo chat",
+    "wfPasaporteNuevo": "Pasaporte - Nueva expedicion",
+    "wfPasaporteRenovacion": "Pasaporte - Renovacion",
+    "wfResidencia": "Residencia - Primera vez",
+    "wfConducir": "Licencia de Conducir",
+    "wfCarnetFuncionario": "Carnet de Funcionario",
+    "wfContratoOnrc": "Contrato ONRC",
     "title": "Asistente Facil",
     "typing": "Escribiendo...",
     "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?",
@@ -11031,6 +11039,8 @@
     "alerts": {
       "noAlerts": "Sin alertas",
       "noAlertsDesc": "Todos sus documentos están al día",
+      "emptyTitle": "Sin alertas activas",
+      "emptyDescription": "Todos sus documentos están al día. Le notificaremos cuando un documento requiera su atención.",
       "markRead": "Marcar como leído",
       "dismiss": "Ocultar",
       "severity": {

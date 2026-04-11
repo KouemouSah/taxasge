@@ -88,10 +88,17 @@ class ChatbotApiClient {
     }
 
     try {
+      // Timeout: 60s for tool-heavy requests (auto_prepare_wizard can be slow)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60_000)
+
       const response = await fetch(url, {
         ...options,
         headers,
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({
@@ -102,6 +109,12 @@ class ChatbotApiClient {
 
       return response.json()
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('La solicitud ha tardado demasiado. Intente de nuevo.')
+      }
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Error de conexión. Verifique su conexión a internet e intente de nuevo.')
+      }
       if (error instanceof Error) {
         throw error
       }
