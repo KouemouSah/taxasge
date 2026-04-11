@@ -124,12 +124,12 @@ class OmsAgentService:
             queue_ministry = row["ministry_id"]
             queue_fee_type = None
 
-        # City scope — UNIVERSAL rule for ALL agents without exception:
-        # - Main office (is_main_office=true): sees all cities of their entity
-        # - Secondary site (is_main_office=false): sees only their city
-        # This applies to TESORO, CAMARA, AYUNTAMIENTO, MIN_* equally.
+        # City scope — agents ALWAYS see only their city.
+        # Only SUPERVISORS at main office get global visibility.
+        # Regular agents at main office are still restricted to their city.
         is_main_office = row["is_main_office"]
-        queue_city_id = None if is_main_office else row["city_id"]
+        has_global_scope = is_supervisor and is_main_office
+        queue_city_id = None if has_global_scope else row["city_id"]
 
         return {
             "agent_profile_id": row["agent_profile_id"],

@@ -55,11 +55,16 @@ async def get_agent_city_scope(db: asyncpg.Connection, user_id: str) -> Optional
     """Resolve agent's city scope from entity_location.
 
     Returns:
-        None  — main office agent → sees ALL cities (no filter)
-        UUID  — secondary site agent → sees only this city_id
+        None  — supervisor at main office → sees ALL cities (no filter)
+        UUID  — all other agents → sees only this city_id
+
+    Rule: only supervisors at main office get global visibility.
+    Regular agents at main office are still restricted to their city.
     """
     row = await db.fetchrow(
-        """SELECT el.city_id, COALESCE(el.is_main_office, false) AS is_main_office
+        """SELECT el.city_id,
+                  COALESCE(el.is_main_office, false) AS is_main_office,
+                  COALESCE(ap.is_supervisor, false) AS is_supervisor
            FROM agent_profiles ap
            JOIN entity_locations el ON el.id = ap.entity_location_id
            WHERE ap.user_id = $1 AND ap.is_active = true
@@ -68,5 +73,6 @@ async def get_agent_city_scope(db: asyncpg.Connection, user_id: str) -> Optional
     )
     if not row:
         return None  # No profile → will be caught by permission check
-    # Main office sees everything; secondary site sees only their city
-    return None if row["is_main_office"] else row["city_id"]
+    # Only supervisors at main office get global scope
+    has_global_scope = row["is_supervisor"] and row["is_main_office"]
+    return None if has_global_scope else row["city_id"]
