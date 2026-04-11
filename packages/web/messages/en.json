@@ -8379,6 +8379,12 @@
     }
   },
   "agent": {
+    "oms": {
+      "nav": {
+        "dashboard": "OMS Dashboard",
+        "licencesoverview": "Licenses Overview"
+      }
+    },
     "companyLookup": {
       "title": "Company Lookup",
       "subtitle": "Search companies by NIF, registration number, or name",

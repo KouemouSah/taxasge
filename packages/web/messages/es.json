@@ -8379,6 +8379,12 @@
     }
   },
   "agent": {
+    "oms": {
+      "nav": {
+        "dashboard": "Panel OMS",
+        "licencesoverview": "Vista General Licencias"
+      }
+    },
     "companyLookup": {
       "title": "Consulta de Empresas",
       "subtitle": "Busque empresas por NIF, numero de registro o nombre",
@@ -9001,6 +9007,8 @@
       "companyLookup": "Consultar Empresa",
       "companyDebt": "Deuda Empresarial",
       "companiesList": "Lista de Empresas",
+      "omsDashboard": "Panel OMS",
+      "licensesOverview": "Vista General Licencias",
       "myEscalations": "Mis Escalaciones",
       "escalate": "Escalar",
       "escalations": "Escalaciones",

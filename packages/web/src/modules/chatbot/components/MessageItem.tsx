@@ -76,6 +76,11 @@ const highlightServiceCodes = (text: string): string => {
 const renderMarkdown = (text: string): string => {
   let html = text
 
+  // Strip raw JSON blocks (e.g., `json{"briefing": "Normal"...}`)
+  // These are internal tool responses that should not be displayed to users
+  html = html.replace(/(?:^|\n)json\s*\{[\s\S]*?\}(?:\n|$)/g, '\n')
+  html = html.replace(/```json\s*\{[\s\S]*?\}```/g, '')
+
   // Code blocks ```code```
   html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-stone-100 dark:bg-stone-800 p-3 rounded-lg text-sm overflow-x-auto my-3 font-mono"><code>$1</code></pre>')
 

@@ -55,7 +55,7 @@ async def get_agent_performance(
     # A04: Rate limit expensive analytics queries
     from app.core.cache import check_rate_limit
     allowed, _ = await check_rate_limit(
-        current_user.id, "/inspections/analytics", limit=20, window_seconds=60,
+        current_user.id, "/inspections/analytics", max_requests=20, window_seconds=60,
     )
     if not allowed:
         raise HTTPException(status_code=429, detail="Rate limit exceeded for analytics")

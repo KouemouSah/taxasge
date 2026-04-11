@@ -8379,6 +8379,12 @@
     }
   },
   "agent": {
+    "oms": {
+      "nav": {
+        "dashboard": "Tableau de Bord OMS",
+        "licencesoverview": "Vue d'Ensemble Licences"
+      }
+    },
     "companyLookup": {
       "title": "Consultation Entreprises",
       "subtitle": "Recherchez des entreprises par NIF, numéro d'enregistrement ou nom",
