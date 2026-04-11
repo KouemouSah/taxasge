@@ -268,6 +268,42 @@ PERMISSIONS = [
         "Liberar elemento de cola",
         False
     ),
+    (
+        "queue.review",
+        "queue",
+        "review",
+        "Revisar elementos de cola (supervisor)",
+        False
+    ),
+
+    # =========================================================================
+    # TEAM & ESCALATION VISIBILITY
+    # =========================================================================
+    (
+        "agent.view_team",
+        "agent",
+        "view_team",
+        "Ver equipo de agentes",
+        False
+    ),
+    (
+        "agent.view_escalations",
+        "agent",
+        "view_escalations",
+        "Ver escalaciones del equipo",
+        False
+    ),
+
+    # =========================================================================
+    # ANALYST (AI-powered agent analytics)
+    # =========================================================================
+    (
+        "analyst.ask",
+        "analyst",
+        "ask",
+        "Consultar el analista IA sobre rendimiento",
+        False
+    ),
 ]
 
 

@@ -12,7 +12,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Send, Loader2, History, Trash2, ArrowDown, Plus,
+  Send, Loader2, History, ArrowDown, Plus,
   FileText, Calculator, Lightbulb, HelpCircle,
   FolderOpen, Clock, BarChart3, FileSearch,
   MessageSquare, ChevronRight, CreditCard,

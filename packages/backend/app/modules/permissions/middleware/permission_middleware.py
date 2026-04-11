@@ -21,14 +21,14 @@ def permission_required(permission_name: str):
         @router.get("/users")
         async def list_users(
             current_user: UserResponse = Depends(get_current_user),
-            _: None = Depends(permission_required("users.view_all"))
+            _: None = Depends(permission_required("user.view_all"))
         ):
             # Route handler code
             ...
         ```
 
     Args:
-        permission_name: Permission name required (e.g., "users.view_all")
+        permission_name: Permission name required (e.g., "user.view_all")
 
     Returns:
         Dependency function that checks permission
@@ -144,7 +144,7 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
     Usage as decorator:
         ```python
         @router.get("/users")
-        @require_permission("users.view_all")
+        @require_permission("user.view_all")
         async def list_users(
             current_user: UserResponse = Depends(get_current_user),
             permission_service: PermissionService = Depends(get_permission_service)
@@ -158,14 +158,14 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
         @router.get("/users")
         async def list_users(
             current_user: UserResponse = Depends(get_current_user),
-            _: None = Depends(require_permission("users.view_all"))
+            _: None = Depends(require_permission("user.view_all"))
         ):
             # Route handler code
             ...
         ```
 
     Args:
-        permission_name: Permission name required (e.g., "users.view_all")
+        permission_name: Permission name required (e.g., "user.view_all")
         raise_on_deny: If True, raises 403 exception on permission denied
 
     Returns:

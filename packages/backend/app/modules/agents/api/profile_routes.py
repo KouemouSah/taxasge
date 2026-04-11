@@ -718,7 +718,7 @@ async def invite_admin(
     data: AdminInviteRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("admins.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """
     Step 1: Invite admin.
@@ -835,7 +835,7 @@ async def create_admin(
     data: AdminCreateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("admins.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """
     [DEPRECATED] Create admin user.

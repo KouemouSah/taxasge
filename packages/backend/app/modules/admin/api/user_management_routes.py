@@ -68,7 +68,7 @@ async def list_users(
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search query"),
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.view_all"))
+    _: None = Depends(permission_required("user.view_all"))
 ):
     """List all users with pagination - Requires users.view_all permission"""
     try:
@@ -132,9 +132,9 @@ async def list_users(
 async def create_user(
     user_create: UserCreate,
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.create"))
+    _: None = Depends(permission_required("user.create"))
 ):
-    """Create new user - Requires users.create permission"""
+    """Create new user (agent, admin, etc.) - Requires user.create permission"""
     try:
         from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
@@ -183,7 +183,7 @@ async def create_user(
 @router.get("/stats", response_model=UserStats)
 async def get_user_stats(
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.view_stats"))
+    _: None = Depends(permission_required("user.view_stats"))
 ):
     """Get user statistics - Requires users.view_stats permission"""
     try:
@@ -411,7 +411,7 @@ async def update_user(
 async def delete_user(
     user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.delete"))
+    _: None = Depends(permission_required("user.delete"))
 ):
     """Delete user by ID - Requires users.delete permission"""
     try:
@@ -467,7 +467,7 @@ async def search_users(
     country: Optional[str] = Query(None, description="Filter by country"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.search"))
+    _: None = Depends(permission_required("user.search"))
 ):
     """Search users - Requires users.search permission"""
     try:

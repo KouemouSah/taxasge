@@ -204,7 +204,7 @@ async def create_email_template(
     template_data: EmailTemplateCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("communications.manage")),
+    _: None = Depends(permission_required("communication.manage")),
 ):
     """
     Create a new email template
@@ -240,7 +240,7 @@ async def update_email_template(
     template_data: EmailTemplateUpdate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("communications.manage")),
+    _: None = Depends(permission_required("communication.manage")),
 ):
     """
     Update an existing email template
@@ -281,7 +281,7 @@ async def delete_email_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("communications.manage")),
+    _: None = Depends(permission_required("communication.manage")),
 ):
     """
     Delete an email template
@@ -324,7 +324,7 @@ async def send_test_email(
     background_tasks: BackgroundTasks,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("communications.manage")),
+    _: None = Depends(permission_required("communication.manage")),
 ):
     """
     Send a test email using a specific template.

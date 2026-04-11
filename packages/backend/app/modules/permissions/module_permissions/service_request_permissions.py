@@ -196,6 +196,20 @@ PERMISSIONS = [
         "Ver historial de acciones",
         False
     ),
+    (
+        "service_request.review",
+        "service_request",
+        "review",
+        "Revisar solicitud de servicio (supervisor)",
+        False
+    ),
+    (
+        "service_request.update",
+        "service_request",
+        "update",
+        "Actualizar solicitud de servicio",
+        False
+    ),
 ]
 
 

@@ -37,7 +37,7 @@ async def create_provider(
     data: ProviderSettingsCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("manage:communications"))
+    _: None = Depends(permission_required("communication.manage"))
 ):
     """
     Create a new communication provider configuration.
@@ -61,7 +61,7 @@ async def list_providers(
     offset: int = Query(0, ge=0),
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("read:communications"))
+    _: None = Depends(permission_required("communication.view"))
 ):
     """
     List all communication provider configurations.
@@ -83,7 +83,7 @@ async def get_provider(
     provider_id: int,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("read:communications"))
+    _: None = Depends(permission_required("communication.view"))
 ):
     """
     Get a provider configuration by ID.
@@ -102,7 +102,7 @@ async def get_provider_by_code(
     provider_code: str,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("read:communications"))
+    _: None = Depends(permission_required("communication.view"))
 ):
     """
     Get a provider configuration by code.
@@ -121,7 +121,7 @@ async def get_default_provider(
     provider_type: CommunicationProviderType,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("read:communications"))
+    _: None = Depends(permission_required("communication.view"))
 ):
     """
     Get the default provider for a specific type.
@@ -141,7 +141,7 @@ async def update_provider(
     data: ProviderSettingsUpdate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("manage:communications"))
+    _: None = Depends(permission_required("communication.manage"))
 ):
     """
     Update a provider configuration.
@@ -160,7 +160,7 @@ async def delete_provider(
     provider_id: int,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("manage:communications"))
+    _: None = Depends(permission_required("communication.manage"))
 ):
     """
     Delete a provider configuration.
@@ -180,7 +180,7 @@ async def test_provider(
     request: ProviderTestRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("manage:communications"))
+    _: None = Depends(permission_required("communication.manage"))
 ):
     """
     Test a provider connection.

@@ -179,7 +179,7 @@ async def create_document_template(
     template: DocumentTemplateCreate,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.create")),
+    _: None = Depends(permission_required("template.create")),
 ):
     """
     Create a new document template
@@ -238,7 +238,7 @@ async def update_document_template(
     template: DocumentTemplateUpdate = ...,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Update a document template
@@ -300,7 +300,7 @@ async def delete_document_template(
     template_id: int = Path(..., description="Template ID"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.delete")),
+    _: None = Depends(permission_required("template.delete")),
 ):
     """
     Delete a document template
@@ -492,7 +492,7 @@ async def create_procedure_template(
     template: ProcedureTemplateCreate,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.create")),
+    _: None = Depends(permission_required("template.create")),
 ):
     """
     Create a new procedure template
@@ -548,7 +548,7 @@ async def update_procedure_template(
     template: ProcedureTemplateUpdate = ...,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Update a procedure template
@@ -610,7 +610,7 @@ async def delete_procedure_template(
     template_id: int = Path(..., description="Template ID"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.delete")),
+    _: None = Depends(permission_required("template.delete")),
 ):
     """
     Delete a procedure template
@@ -741,7 +741,7 @@ async def create_procedure_step(
     step: ProcedureStepCreate = ...,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Create a new procedure step
@@ -809,7 +809,7 @@ async def update_procedure_step(
     step: ProcedureStepUpdate = ...,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Update a procedure step
@@ -872,7 +872,7 @@ async def delete_procedure_step(
     step_id: int = Path(..., description="Step ID"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Delete a procedure step
@@ -915,7 +915,7 @@ async def reorder_procedure_steps(
     step_ids: List[int] = ...,
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("templates.update")),
+    _: None = Depends(permission_required("template.update")),
 ):
     """
     Reorder procedure steps

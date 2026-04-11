@@ -988,7 +988,7 @@ async def get_processing_stats(
 @router.get("/stats/admin", response_model=Dict[str, Any])
 async def get_admin_stats(
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("documents.view_stats"))
+    _: None = Depends(permission_required("document.view_stats"))
 ):
     """Get global processing statistics - Requires documents.view_stats permission"""
     try:

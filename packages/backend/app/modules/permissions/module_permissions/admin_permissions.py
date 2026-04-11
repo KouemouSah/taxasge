@@ -143,6 +143,23 @@ PERMISSIONS = [
         "Impersonar usuario para diagnóstico",
         True  # Very critical - security risk
     ),
+    # =========================================================================
+    # MONITORING & DASHBOARD
+    # =========================================================================
+    (
+        "admin.monitoring",
+        "admin",
+        "monitoring",
+        "Acceder al panel de monitoreo del sistema",
+        False
+    ),
+    (
+        "admin.view_dashboard",
+        "admin",
+        "view_dashboard",
+        "Ver dashboard administrativo global",
+        False
+    ),
 ]
 
 
