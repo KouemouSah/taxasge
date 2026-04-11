@@ -39,4 +39,13 @@ WHERE r.code = 'admin'
   AND p.name IN ('batch_requests.create', 'batch_requests.read', 'batch_requests.manage', 'batch_requests.admin')
 ON CONFLICT DO NOTHING;
 
+-- 4. Grant declaration batch permissions to citizen (parity with business)
+INSERT INTO role_permissions (role_id, permission_id, granted, created_by)
+SELECT r.id, p.id, true, '7c6073e3-66b0-45ba-be8d-80fcf98b7ad2'::uuid
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.code = 'citizen'
+  AND p.name IN ('declaration.batch_create', 'declaration.batch_submit', 'declaration.import_excel')
+ON CONFLICT DO NOTHING;
+
 COMMIT;
