@@ -583,6 +583,51 @@ async def get_filter_options(
 
 
 # ═══════════════════════════════════════════════════════════════
+# CITIZEN NOTIFICATIONS (paginated, must be BEFORE /{request_id})
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/notifications",
+    summary="Get paginated citizen notifications",
+)
+async def get_citizen_notifications(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    action_filter: Optional[str] = Query(None, description="Filter by action type"),
+    db=Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Paginated notifications across all user's service requests.
+
+    Returns humanized notifications with total count for proper pagination.
+    Used by /dashboard/notifications page.
+    """
+    from ..repositories.service_request_repository import service_request_repository
+
+    user_id = current_user.id
+
+    # Reuse existing method with higher limit + offset
+    offset = (page - 1) * page_size
+    notifications, total_unread = await service_request_repository.get_citizen_notifications_paginated(
+        db, user_id, page=page, page_size=page_size, action_filter=action_filter,
+    )
+
+    total_count = notifications[0]["total_count"] if notifications else 0
+
+    # Strip total_count from individual items (was injected for convenience)
+    for n in notifications:
+        n.pop("total_count", None)
+
+    return {
+        "items": notifications,
+        "total": total_count,
+        "total_unread": total_unread,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
 # CITIZEN DASHBOARD SUMMARY (must be BEFORE /{request_id})
 # ═══════════════════════════════════════════════════════════════
 

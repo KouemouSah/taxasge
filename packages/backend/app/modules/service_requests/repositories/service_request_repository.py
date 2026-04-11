@@ -1041,6 +1041,119 @@ class ServiceRequestRepository:
         """, user_id, limit)
         return [dict(row) for row in rows]
 
+    async def get_citizen_notifications_paginated(
+        self, db, user_id: UUID,
+        page: int = 1, page_size: int = 20,
+        action_filter: Optional[str] = None,
+    ) -> tuple:
+        """Get paginated citizen notifications with total count.
+
+        Returns: (notifications_list, total_unread)
+        """
+        placeholders = ", ".join(
+            f"${i+2}" for i in range(len(self.CITIZEN_VISIBLE_ACTIONS))
+        )
+        params = [user_id] + list(self.CITIZEN_VISIBLE_ACTIONS)
+        idx = len(params) + 1
+
+        action_condition = ""
+        if action_filter:
+            if action_filter == "payment":
+                action_condition = " AND h.action IN ('payment_received', 'payment_failed')"
+            elif action_filter == "appointment":
+                action_condition = " AND h.action IN ('cita_scheduled', 'cita_rescheduled', 'cita_cancelled')"
+            elif action_filter == "agent":
+                action_condition = " AND h.action IN ('agent_action_taken', 'comment_added')"
+            elif action_filter in self.CITIZEN_VISIBLE_ACTIONS:
+                action_condition = f" AND h.action = ${idx}"
+                params.append(action_filter)
+                idx += 1
+
+        offset = (page - 1) * page_size
+
+        # Count total matching
+        count_query = f"""
+            SELECT COUNT(*) as cnt
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.service_request_id
+            WHERE sr.user_id = $1
+              AND h.action IN ({placeholders})
+              {action_condition}
+        """
+        count_row = await db.fetchrow(count_query, *params)
+        total_count = count_row["cnt"] if count_row else 0
+
+        # Paginated data
+        query = f"""
+            SELECT
+                h.id, h.action, h.previous_status, h.new_status,
+                h.comment, h.details, h.performed_at,
+                sr.reference as request_reference, sr.id as request_id,
+                sr.workflow_code, sr.citizen_last_viewed_at,
+                CASE
+                    WHEN u.role::text NOT IN ('citizen', 'business', 'accountant') THEN 'agent'
+                    WHEN h.performed_by IS NULL THEN 'system'
+                    ELSE 'citizen'
+                END as performer_role
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.service_request_id
+            LEFT JOIN users u ON u.id = h.performed_by
+            WHERE sr.user_id = $1
+              AND h.action IN ({placeholders})
+              {action_condition}
+            ORDER BY h.performed_at DESC
+            LIMIT {page_size} OFFSET {offset}
+        """
+        rows = await db.fetch(query, *params)
+
+        notifications = []
+        for row in rows:
+            citizen_last_viewed_at = row["citizen_last_viewed_at"]
+            is_new = (
+                citizen_last_viewed_at is None
+                or (row["performed_at"] and row["performed_at"] > citizen_last_viewed_at)
+            )
+            action = row["action"]
+            title = self._ACTION_TITLES.get(action, action)
+
+            message = row["comment"]
+            if not message and action == "status_change" and row["new_status"]:
+                message = f"Estado: {row['new_status']}"
+            elif not message and row.get("details"):
+                details = row["details"] if isinstance(row["details"], dict) else {}
+                message = details.get("message") or details.get("reason")
+
+            notifications.append({
+                "id": str(row["id"]),
+                "action": action,
+                "title": f"{title} - {row['request_reference']}",
+                "message": message,
+                "performed_at": row["performed_at"],
+                "performer_role": row["performer_role"],
+                "is_new": is_new,
+                "new_status": row["new_status"],
+                "request_id": str(row["request_id"]),
+                "total_count": total_count,
+            })
+
+        # Total unread count
+        unread_placeholders = ", ".join(
+            f"${i+2}" for i in range(len(self.CITIZEN_VISIBLE_ACTIONS))
+        )
+        unread_query = f"""
+            SELECT COUNT(*) as cnt
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.service_request_id
+            WHERE sr.user_id = $1
+              AND h.action IN ({unread_placeholders})
+              AND (sr.citizen_last_viewed_at IS NULL OR h.performed_at > sr.citizen_last_viewed_at)
+        """
+        unread_params = [user_id] + list(self.CITIZEN_VISIBLE_ACTIONS)
+        unread_row = await db.fetchrow(unread_query, *unread_params)
+        total_unread = unread_row["cnt"] if unread_row else 0
+
+        return notifications, total_unread
+
     async def get_dashboard_global_notifications(
         self, db, user_id: UUID, limit: int = 10
     ) -> tuple:

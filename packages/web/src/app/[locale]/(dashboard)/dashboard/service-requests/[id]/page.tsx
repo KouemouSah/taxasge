@@ -47,7 +47,7 @@ import { useDetailView } from '@/modules/service-requests/hooks/useWorkflowQueri
 import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
 import { UniversalProgressStepper } from '@/modules/service-requests/components/UniversalProgressStepper'
 import { DynamicDataSections } from '@/modules/service-requests/components/DynamicDataSections'
-import { CitizenNotificationsPanel } from '@/modules/service-requests/components/CitizenNotificationsPanel'
+// CitizenNotificationsPanel removed — notifications moved to dedicated /notifications page
 import { CitizenDocumentPreview } from '@/modules/service-requests/components/CitizenDocumentPreview'
 import { serviceRequestsApi } from '@/modules/service-requests/services/api'
 import type { DetailViewDocumentInfo } from '@/modules/service-requests/types'
@@ -189,7 +189,9 @@ export default function ServiceRequestDetailPage() {
   const { request, stepper_phases, current_phase_index, data_sections, citizen_notifications, unread_notification_count, photo_url, appointment, payment_status, payment_reference, receipt_number, documents: requestDocuments } = detailView
   const statusConfig = getStatusConfig(request.status)
   const StatusIcon = statusConfig.icon
-  const hasNotifications = citizen_notifications.length > 0
+  // citizen_notifications available in detailView but displayed in /notifications page
+  void citizen_notifications
+  void unread_notification_count
 
   return (
     <div className="space-y-6">
@@ -287,7 +289,7 @@ export default function ServiceRequestDetailPage() {
       )}
 
       {/* Main Content: Split layout when notifications exist (desktop) */}
-      <div className={`grid gap-6 ${hasNotifications ? 'lg:grid-cols-[1fr_300px]' : ''}`}>
+      <div className="grid gap-6">
         {/* Left Column: Tabs */}
         <div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -427,28 +429,7 @@ export default function ServiceRequestDetailPage() {
           </Tabs>
         </div>
 
-        {/* Right Column: Notifications Panel (desktop) */}
-        {hasNotifications && (
-          <div className="hidden lg:block">
-            <CitizenNotificationsPanel
-              notifications={citizen_notifications}
-              unreadCount={unread_notification_count}
-              locale={locale}
-            />
-          </div>
-        )}
       </div>
-
-      {/* Mobile: Notifications below content */}
-      {hasNotifications && (
-        <div className="lg:hidden">
-          <CitizenNotificationsPanel
-            notifications={citizen_notifications}
-            unreadCount={unread_notification_count}
-            locale={locale}
-          />
-        </div>
-      )}
 
       {/* Bottom Actions */}
       <div className="flex justify-between">

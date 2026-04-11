@@ -11031,7 +11031,8 @@
     },
     "archived": {
       "title": "Documents archivés",
-      "count": "{count} document(s) archivé(s)",
+      "count": "{count} document(s)",
+      "search": "Rechercher dans les archives...",
       "empty": "Aucun document archivé",
       "deleteAll": "Tout supprimer",
       "confirmDeleteAll": "Supprimer définitivement tous les documents archivés ?"
@@ -11262,5 +11263,17 @@
       "error": "Erreur lors du chargement des documents",
       "select": "Sélectionner"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "total": "notifications",
+    "unread": "non lues",
+    "empty": "Aucune notification",
+    "viewRequest": "Voir la demande",
+    "filterAll": "Toutes",
+    "filterStatus": "Changements de statut",
+    "filterPayment": "Paiements",
+    "filterAppointment": "Rendez-vous",
+    "filterAgent": "Actions de l'agent"
   }
 }

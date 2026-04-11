@@ -11031,7 +11031,8 @@
     },
     "archived": {
       "title": "Documentos archivados",
-      "count": "{count} documento(s) archivado(s)",
+      "count": "{count} documento(s)",
+      "search": "Buscar en archivos...",
       "empty": "Ningun documento archivado",
       "deleteAll": "Eliminar todo",
       "confirmDeleteAll": "Eliminar definitivamente todos los documentos archivados?"
@@ -11262,5 +11263,17 @@
       "error": "Error al cargar los documentos",
       "select": "Seleccionar"
     }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "total": "notificaciones",
+    "unread": "no leidas",
+    "empty": "No tiene notificaciones",
+    "viewRequest": "Ver demanda",
+    "filterAll": "Todas",
+    "filterStatus": "Cambios de estado",
+    "filterPayment": "Pagos",
+    "filterAppointment": "Citas",
+    "filterAgent": "Acciones del agente"
   }
 }

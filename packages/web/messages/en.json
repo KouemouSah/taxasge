@@ -11031,7 +11031,8 @@
     },
     "archived": {
       "title": "Archived documents",
-      "count": "{count} archived document(s)",
+      "count": "{count} document(s)",
+      "search": "Search archives...",
       "empty": "No archived documents",
       "deleteAll": "Delete all",
       "confirmDeleteAll": "Permanently delete all archived documents?"
@@ -11262,5 +11263,17 @@
       "error": "Error loading documents",
       "select": "Select"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "total": "notifications",
+    "unread": "unread",
+    "empty": "No notifications",
+    "viewRequest": "View request",
+    "filterAll": "All",
+    "filterStatus": "Status changes",
+    "filterPayment": "Payments",
+    "filterAppointment": "Appointments",
+    "filterAgent": "Agent actions"
   }
 }

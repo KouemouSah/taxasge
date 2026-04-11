@@ -44,8 +44,11 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Trash2,
   Archive as ArchiveIcon,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useUserDocuments, userDocumentKeys } from '../hooks';
 import { DocumentCard } from './DocumentCard';
@@ -271,17 +274,30 @@ function ArchivedDocumentsSection() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [archivePage, setArchivePage] = useState(1);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const ARCHIVE_PAGE_SIZE = 20;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: [...userDocumentKeys.lists(), 'archived'],
+    queryKey: [...userDocumentKeys.lists(), 'archived', archivePage],
     queryFn: () =>
-      userDocumentsApi.list({ status: 'archived', limit: 50 }),
+      userDocumentsApi.list({ status: 'archived', limit: ARCHIVE_PAGE_SIZE, offset: (archivePage - 1) * ARCHIVE_PAGE_SIZE }),
     enabled: open,
     staleTime: 30_000,
   });
 
-  const items = data?.items ?? [];
+  const allItems = data?.items ?? [];
   const count = data?.total_count ?? 0;
+  const totalPages = Math.ceil(count / ARCHIVE_PAGE_SIZE);
+
+  // Client-side search within loaded page
+  const items = archiveSearch
+    ? allItems.filter(d => {
+        const q = archiveSearch.toLowerCase();
+        return (d.display_name || d.file_name || '').toLowerCase().includes(q)
+          || (d.document_type || '').toLowerCase().includes(q);
+      })
+    : allItems;
 
   const handlePermanentDelete = useCallback(
     async (docId: string) => {
@@ -299,6 +315,12 @@ function ArchivedDocumentsSection() {
     [refetch, queryClient]
   );
 
+  const getFileIcon = (doc: UserDocumentListItem) => {
+    const mime = doc.mime_type || '';
+    if (mime.startsWith('image/')) return ImageIcon;
+    return FileText;
+  };
+
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
       <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
@@ -309,7 +331,7 @@ function ArchivedDocumentsSection() {
         )}
         <ArchiveIcon className="h-4 w-4" />
         {t('archived.title')}
-        {open && count > 0 && (
+        {count > 0 && (
           <Badge variant="secondary" className="text-xs ml-1">
             {count}
           </Badge>
@@ -323,65 +345,103 @@ function ArchivedDocumentsSection() {
           </div>
         )}
 
-        {!isLoading && items.length === 0 && (
+        {!isLoading && count === 0 && (
           <p className="text-xs text-muted-foreground py-3">
             {t('archived.empty')}
           </p>
         )}
 
-        {!isLoading && items.length > 0 && (
-          <div className="space-y-1 py-2">
-            {items.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {doc.display_name || doc.file_name}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {doc.document_type.replace(/_/g, ' ')} &middot;{' '}
-                    {new Date(doc.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
-                      disabled={deletingId === doc.id}
-                    >
-                      {deletingId === doc.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {t('actions.confirmPermanentDelete')}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t('actions.permanentDeleteWarning')}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('upload.cancel')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => handlePermanentDelete(doc.id)}
-                      >
-                        {t('actions.permanentDelete')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+        {!isLoading && count > 0 && (
+          <div className="py-2 space-y-3">
+            {/* Search + count */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder={t('archived.search') || 'Buscar archivo...'}
+                  value={archiveSearch}
+                  onChange={(e) => setArchiveSearch(e.target.value)}
+                  className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                />
               </div>
-            ))}
+              <span className="text-xs text-muted-foreground">
+                {t('archived.count', { count })}
+              </span>
+            </div>
+
+            {/* Grid compacte 4 colonnes */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {items.map((doc) => {
+                const Icon = getFileIcon(doc);
+                return (
+                  <div
+                    key={doc.id}
+                    className="group relative flex flex-col items-center gap-1 rounded-lg border p-2.5 hover:bg-accent/50 transition-colors text-center"
+                  >
+                    <Icon className="h-8 w-8 text-muted-foreground/60 shrink-0" strokeWidth={1} />
+                    <p className="text-[11px] font-medium truncate w-full leading-tight">
+                      {doc.display_name || doc.file_name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate w-full">
+                      {doc.document_type.replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">
+                      {new Date(doc.created_at).toLocaleDateString()}
+                    </p>
+                    {/* Delete button (hover) */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive transition-opacity"
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('actions.confirmPermanentDelete')}</AlertDialogTitle>
+                          <AlertDialogDescription>{t('actions.permanentDeleteWarning')}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('upload.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handlePermanentDelete(doc.id)}
+                          >
+                            {t('actions.permanentDelete')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                <span>{archivePage}/{totalPages}</span>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="icon" className="h-7 w-7"
+                    disabled={archivePage <= 1} onClick={() => setArchivePage(p => p - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-7 w-7"
+                    disabled={archivePage >= totalPages} onClick={() => setArchivePage(p => p + 1)}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CollapsibleContent>
