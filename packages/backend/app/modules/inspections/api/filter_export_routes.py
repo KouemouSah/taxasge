@@ -142,7 +142,7 @@ async def export_inspections_csv(
     # A04: Rate limit expensive export operations (5 per minute)
     from app.core.cache import check_rate_limit
     allowed, _ = await check_rate_limit(
-        current_user.id, "/inspections/export", limit=5, window_seconds=60,
+        current_user.id, "/inspections/export", max_requests=5, window_seconds=60,
     )
     if not allowed:
         raise HTTPException(status_code=429, detail="Rate limit exceeded for export")
