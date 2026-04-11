@@ -9024,7 +9024,9 @@
       "companies": "Entreprises",
       "companyLookup": "Consulter Entreprise",
       "companyDebt": "Dette Entreprise",
-      "companiesList": "Liste des Entreprises"
+      "companiesList": "Liste des Entreprises",
+      "omsDashboard": "Tableau de Bord OMS",
+      "licensesOverview": "Vue d'Ensemble Licences"
     },
     "assistant": {
       "title": "Assistant IA - {entityName}",

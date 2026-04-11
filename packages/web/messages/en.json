@@ -9024,7 +9024,9 @@
       "companies": "Companies",
       "companyLookup": "Lookup Company",
       "companyDebt": "Company Debt",
-      "companiesList": "Companies List"
+      "companiesList": "Companies List",
+      "omsDashboard": "OMS Dashboard",
+      "licensesOverview": "Licenses Overview"
     },
     "assistant": {
       "title": "AI Assistant - {entityName}",
