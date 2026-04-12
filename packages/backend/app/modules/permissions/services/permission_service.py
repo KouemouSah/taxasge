@@ -187,13 +187,8 @@ class PermissionService:
                 return True
 
             # Check if permission module is in supervisor's role modules
-            # Also check compound prefixes: treasury_stat → treasury is in role_modules
             role_modules = result.get('role_modules') or []
             if perm_prefix in role_modules:
-                return True
-            # Compound prefix match: 'treasury_stat' → base 'treasury' in modules
-            base_prefix = perm_prefix.split('_')[0] if '_' in perm_prefix else None
-            if base_prefix and base_prefix in role_modules:
                 return True
 
             # Supervisors can also access service_requests if they have any entity

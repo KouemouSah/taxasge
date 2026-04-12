@@ -70,4 +70,29 @@ COMMENT ON COLUMN agent_executive_audit_log.args_hash IS
     'SHA-256 of canonical JSON of tool arguments (excluding user_id and '
     'confirmation_code). Re-computed at redemption to detect tampering.';
 
+-- Cross-reference comments on user_agent_permissions (migration 287) so any
+-- DBA inspecting that table understands why Level 3 is NOT stored there.
+-- Moved inline here (instead of a separate migration 293) to avoid collision
+-- with migrations created in parallel sessions. COMMENT ON is idempotent —
+-- safe to re-run.
+COMMENT ON TABLE user_agent_permissions IS
+    'Persistent agent autonomy consents (Level 1 informational and '
+    'Level 2 preparatory). Level 3 executive tools are handled by the '
+    'separate confirmation_code mechanism — see agent_executive_audit_log '
+    '(this migration 292) and '
+    'app/modules/chatbot/services/executive_consent.py.';
+
+COMMENT ON COLUMN user_agent_permissions.level IS
+    'Autonomy level: 1 = informational consent, 2 = preparatory (agent can '
+    'modify state within user scope). Level 3 (executive) is NOT stored '
+    'here — it uses per-action consent via Redis codes + audit log '
+    '(see agent_executive_audit_log).';
+
+COMMENT ON COLUMN user_agent_permissions.permission_type IS
+    'Permission scope for Level 1-2 tools. The five allowed values match '
+    'the frontend catalog exposed by GET /user-documents/agent/'
+    'permission-catalog. Tools submit_prepared_request and book_appointment '
+    'are Level 3 and are NOT listed here — they require confirmation_code '
+    'redemption (see agent_executive_audit_log).';
+
 COMMIT;
