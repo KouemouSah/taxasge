@@ -108,6 +108,9 @@ async def get_zone_analytics(
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Zone analytics error: {e}")
+        return ZoneAnalyticsResponse(items=[], total_zones=0, covered_zones=0, stale_zones=0)
     return ZoneAnalyticsResponse(**result)
 
 

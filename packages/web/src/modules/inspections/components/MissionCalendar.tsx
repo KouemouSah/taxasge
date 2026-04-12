@@ -224,7 +224,7 @@ export function MissionCalendar({
     const day = formatDayNumber(weekStart)
     const month = formatMonthShort(weekStart)
     const year = weekStart.getFullYear()
-    return `${t('mission.weekOf')} ${day} ${month} ${year}`
+    return t('mission.weekOf', { date: `${day} ${month} ${year}` })
   }, [weekStart, t])
 
   // -----------------------------------------------------------------------
