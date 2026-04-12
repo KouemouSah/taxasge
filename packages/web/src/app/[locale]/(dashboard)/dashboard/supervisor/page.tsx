@@ -70,10 +70,20 @@ export default function SupervisorDashboardPage() {
   useEffect(() => {
     if (!agentProfile) return;
     const entityCode = agentProfile.entity_code as string;
-    // TESORO supervisors stay on treasury dashboard
-    // All others redirect to their OMS team dashboard (entity-scoped)
-    if (entityCode && entityCode !== 'TESORO') {
-      router.replace(`/${locale}/dashboard/supervisor/oms/team`);
+    if (!entityCode || entityCode === 'TESORO') return; // Stay on treasury dashboard
+
+    // OMS supervisors (CAMARA, AYUNTAMIENTO, MIN_*) → entity-dashboard
+    const omsEntities = [
+      'CAMARA_COMERCIO', 'AYUNTAMIENTO',
+      'MIN_HACIENDA', 'MIN_COMERCIO', 'MIN_INFORMACION',
+      'MIN_TURISMO', 'MIN_AGRICULTURA', 'MIN_ELECTRICIDAD',
+    ];
+    if (omsEntities.includes(entityCode) || entityCode.startsWith('MIN_')) {
+      router.replace(`/${locale}/dashboard/supervisor/entity-dashboard`);
+    } else {
+      // Service Request supervisors (CNEDOGE, DGT, etc.) → their agent dashboard
+      const slug = entityCode.toLowerCase().replace(/_/g, '-');
+      router.replace(`/${locale}/dashboard/agent/${slug}`);
     }
   }, [agentProfile, locale, router]);
 

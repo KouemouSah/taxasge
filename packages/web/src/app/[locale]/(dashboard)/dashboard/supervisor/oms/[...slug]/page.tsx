@@ -18,7 +18,7 @@ export default function SupervisorOmsCatchAll() {
   const locale = useLocale()
 
   useEffect(() => {
-    router.replace(`/${locale}/dashboard/supervisor/oms/team`)
+    router.replace(`/${locale}/dashboard/supervisor/entity-dashboard`)
   }, [router, locale])
 
   return (
