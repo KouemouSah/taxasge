@@ -2330,7 +2330,15 @@ async def grant_agent_permission(
         )
 
     # Upsert: INSERT with ON CONFLICT DO UPDATE
-    # The unique constraint is on (user_id, permission_type, COALESCE(scope, '__null__'))
+    # IMPORTANT: the unique index idx_uap_unique is PARTIAL —
+    #   CREATE UNIQUE INDEX ... WHERE (is_active = TRUE)
+    # PostgreSQL requires the ON CONFLICT clause to repeat the partial
+    # index's WHERE predicate to infer the right index. Without it,
+    # the INSERT raises `InvalidColumnReference: no unique or exclusion
+    # constraint matching the ON CONFLICT specification` and every
+    # grantPermission request fails silently at the backend.
+    # This was a pre-existing bug — confirmed by direct DB query showing
+    # zero rows in user_agent_permissions since migration 287 shipped.
     row = await db.fetchrow(
         """
         INSERT INTO user_agent_permissions (
@@ -2338,6 +2346,7 @@ async def grant_agent_permission(
         )
         VALUES ($1, $2, $3, $4, TRUE, NOW())
         ON CONFLICT (user_id, permission_type, COALESCE(scope, '__null__'))
+            WHERE is_active = TRUE
         DO UPDATE SET
             level = EXCLUDED.level,
             is_active = TRUE,
