@@ -1114,7 +1114,7 @@ class LicenseRepository:
                 u.first_name || ' ' || u.last_name as agent_name,
                 r.code as role_code,
                 e.code as entity_code,
-                ap.availability,
+                COALESCE(aw.availability, 'available') as availability,
                 COUNT(a.id) as obligations_assigned,
                 COUNT(a.id) FILTER (
                     WHERE a.status = 'completed'
@@ -1135,12 +1135,13 @@ class LicenseRepository:
             JOIN license_obligations lo ON lo.id = a.item_id
             JOIN commercial_licenses cl ON cl.id = lo.license_id
             JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
             JOIN users u ON u.id = ap.user_id AND u.status = 'active'
             JOIN roles r ON r.id = u.role_id
             JOIN entities e ON e.id = ap.entity_id
             {where}
             GROUP BY ap.id, u.first_name, u.last_name, r.code,
-                     e.code, ap.availability
+                     e.code, aw.availability
             ORDER BY obligations_completed DESC
         """, *params)
 
