@@ -11,7 +11,7 @@ import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import HTTPException, UploadFile, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import base64
 import hashlib
@@ -58,8 +58,10 @@ FILE_MAGIC_BYTES = {
     b'RIFF': 'image/webp',               # WebP starts with RIFF
 }
 
-# Preview expiry time (30 minutes)
-PREVIEW_EXPIRY_MINUTES = 30
+# Preview expiry time — configurable via settings.PREVIEW_EXPIRY_MINUTES
+# (default 30 min). Plan P2 — externalized from hardcoded constant.
+from app.config import get_settings as _get_settings
+PREVIEW_EXPIRY_MINUTES = _get_settings().PREVIEW_EXPIRY_MINUTES
 PREVIEW_EXPIRY_SECONDS = PREVIEW_EXPIRY_MINUTES * 60
 
 # Import preview cache (supports Redis or in-memory)
@@ -734,47 +736,116 @@ class ServiceRequestService:
     async def cleanup_abandoned_requests(
         self,
         db: asyncpg.Connection,
-        max_age_hours: int = 2
+        max_age_hours: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Clean up abandoned service requests that have been in DRAFT status
-        for longer than the specified time.
+        for longer than the threshold.
 
-        This helps prevent orphan data from accumulating when users abandon
-        their sessions without completing or canceling their requests.
+        Bundle workflows (BUNDLE_PAYMENT, FIELD_INSPECTION) and licence-linked
+        requests are ALWAYS excluded (Plan P2 — INSPECTION_BUNDLE_P2_DETAIL.md).
+        Triple exclusion (defense in depth):
+          1. workflow_code NOT IN ('BUNDLE_PAYMENT', 'FIELD_INSPECTION')
+          2. source NOT IN ('field_inspection', 'admin_import')
+          3. commercial_license_id IS NULL
+
+        Plus a paranoid safety check verifies no commercial_license references
+        the candidate IDs before deletion.
 
         Args:
             db: Database connection
-            max_age_hours: Maximum age in hours for DRAFT requests (default: 2)
+            max_age_hours: Optional override. If None, uses
+                settings.DRAFT_CLEANUP_MAX_HOURS (default 2h).
 
         Returns:
             Dict with cleanup statistics:
-            - deleted_requests: Number of requests deleted
+            - deleted_requests: Number of SRs deleted
             - deleted_documents: Number of documents deleted
             - deleted_files: Number of files deleted from storage
+            - skipped_bundle: Number of bundle DRAFTs found and protected
+            - max_age_hours: Effective threshold used (from param or settings)
             - errors: List of any errors encountered
         """
-        stats = {
+        # Read from settings if not explicitly provided (Plan P2 — D3)
+        effective_hours = (
+            max_age_hours
+            if max_age_hours is not None
+            else _get_settings().DRAFT_CLEANUP_MAX_HOURS
+        )
+
+        stats: Dict[str, Any] = {
             "deleted_requests": 0,
             "deleted_documents": 0,
             "deleted_files": 0,
-            "errors": []
+            "skipped_bundle": 0,
+            "max_age_hours": effective_hours,
+            "errors": [],
         }
 
         try:
-            # Find abandoned DRAFT requests older than max_age_hours
-            cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+            # Use timezone-aware UTC to avoid mismatch with TIMESTAMPTZ columns
+            # (naive datetime would be interpreted as client local time by asyncpg,
+            # causing timezone-related off-by-1h bugs in cleanup windows).
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=effective_hours)
 
+            # Count bundle DRAFT candidates (for metrics/anomaly detection).
+            # These are NEVER deleted — just reported.
+            skipped_bundle = await db.fetchval(
+                """
+                SELECT COUNT(*)
+                FROM service_requests sr
+                WHERE sr.status = 'DRAFT'
+                  AND sr.created_at < $1
+                  AND (
+                      sr.workflow_code IN ('BUNDLE_PAYMENT', 'FIELD_INSPECTION')
+                      OR sr.source IN ('field_inspection', 'admin_import')
+                      OR sr.commercial_license_id IS NOT NULL
+                  )
+                """,
+                cutoff_time,
+            )
+            stats["skipped_bundle"] = int(skipped_bundle or 0)
+
+            # Find abandoned non-bundle DRAFTs (Plan P2 — D1 triple exclusion)
             query = """
                 SELECT sr.id, sr.reference, sr.user_id, sr.created_at
                 FROM service_requests sr
                 WHERE sr.status = 'DRAFT'
                   AND sr.created_at < $1
+                  AND sr.workflow_code NOT IN ('BUNDLE_PAYMENT', 'FIELD_INSPECTION')
+                  AND sr.source NOT IN ('field_inspection', 'admin_import')
+                  AND sr.commercial_license_id IS NULL
                 ORDER BY sr.created_at ASC
             """
             abandoned_requests = await db.fetch(query, cutoff_time)
 
-            logger.info(f"Found {len(abandoned_requests)} abandoned DRAFT requests older than {max_age_hours}h")
+            logger.info(
+                "Cleanup found %d abandoned DRAFT requests (bundle protected: %d, threshold: %dh)",
+                len(abandoned_requests), stats["skipped_bundle"], effective_hours,
+            )
+
+            # Paranoid safety check (Plan P2 — D5): verify no commercial_license
+            # references any of the candidates. This is belt-and-suspenders on
+            # top of the WHERE filter above — if both diverge due to a bug, we
+            # abort rather than silently destroy data.
+            if abandoned_requests:
+                candidate_ids = [r["id"] for r in abandoned_requests]
+                linked_count = await db.fetchval(
+                    """
+                    SELECT COUNT(*)
+                    FROM commercial_licenses
+                    WHERE service_request_id = ANY($1::uuid[])
+                    """,
+                    candidate_ids,
+                )
+                if linked_count and linked_count > 0:
+                    msg = (
+                        f"Cleanup safety check FAILED: {linked_count} commercial_licenses "
+                        f"reference {len(candidate_ids)} candidate SRs. Aborting cleanup to "
+                        f"prevent data loss. Investigate filter/link inconsistency."
+                    )
+                    logger.error(msg)
+                    raise RuntimeError(msg)
 
             for request in abandoned_requests:
                 request_id = request["id"]
@@ -815,14 +886,18 @@ class ServiceRequestService:
                     logger.error(error_msg)
                     stats["errors"].append(error_msg)
 
+        except RuntimeError:
+            # Safety check aborted cleanup — re-raise to signal the operator
+            raise
         except Exception as e:
             error_msg = f"Cleanup job failed: {str(e)}"
             logger.error(error_msg, exc_info=True)
             stats["errors"].append(error_msg)
 
         logger.info(
-            f"Cleanup completed: {stats['deleted_requests']} requests, "
-            f"{stats['deleted_documents']} documents, {stats['deleted_files']} files deleted"
+            "Cleanup completed: deleted=%d docs=%d files=%d skipped_bundle=%d max_age_hours=%d errors=%d",
+            stats["deleted_requests"], stats["deleted_documents"], stats["deleted_files"],
+            stats["skipped_bundle"], stats["max_age_hours"], len(stats["errors"]),
         )
         return stats
 

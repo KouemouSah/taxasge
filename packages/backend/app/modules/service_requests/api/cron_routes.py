@@ -160,6 +160,64 @@ async def cleanup_expired_holds(
 
 
 @router.post(
+    "/cleanup-abandoned-requests",
+    summary="Cleanup abandoned DRAFT service requests (bundle excluded)",
+    description="""
+    Called hourly by Cloud Scheduler to delete abandoned DRAFT service requests.
+
+    **Always EXCLUDED from deletion (bundle dossiers):**
+    - `workflow_code IN ('BUNDLE_PAYMENT', 'FIELD_INSPECTION')`
+    - `source IN ('field_inspection', 'admin_import')`
+    - `commercial_license_id IS NOT NULL`
+
+    These are commercial licence dossiers that must remain active until
+    explicitly closed (plan P2 — INSPECTION_BUNDLE_P2_DETAIL.md).
+
+    Uses `settings.DRAFT_CLEANUP_MAX_HOURS` (default 2h, env-configurable).
+
+    **Anomaly signal**: if `skipped_bundle > 0`, some bundle DRAFTs are
+    accumulating — this should never happen with the P1 CollectionService
+    which inserts bundle SRs directly in SUBMITTED status.
+    """
+)
+async def cron_cleanup_abandoned_requests(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Delete abandoned DRAFT service_requests older than configured threshold."""
+    from app.modules.service_requests.services.service_request_service import (
+        service_request_service,
+    )
+
+    stats = await service_request_service.cleanup_abandoned_requests(db=db)
+
+    logger.info(
+        "Cron cleanup_abandoned_requests: deleted={} docs={} files={} "
+        "skipped_bundle={} max_age_hours={} errors={}",
+        stats["deleted_requests"],
+        stats["deleted_documents"],
+        stats["deleted_files"],
+        stats["skipped_bundle"],
+        stats["max_age_hours"],
+        len(stats["errors"]),
+    )
+
+    # Anomaly alert: bundle DRAFTs should never accumulate
+    if stats["skipped_bundle"] > 0:
+        logger.warning(
+            "ANOMALY: {} bundle DRAFT requests found during cleanup (should be 0 — "
+            "bundles should always be in SUBMITTED/other non-DRAFT status). "
+            "Investigate CollectionService flow or manual DRAFT inserts.",
+            stats["skipped_bundle"],
+        )
+
+    return {
+        "message": "Cleanup completed",
+        **stats,
+    }
+
+
+@router.post(
     "/payment-sla-check",
     summary="Check payment SLA and send notifications",
     description="""

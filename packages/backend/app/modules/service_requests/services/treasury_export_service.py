@@ -84,8 +84,10 @@ except ImportError:
 class TreasuryExportService:
     """Service for generating treasury export files."""
 
-    # Export storage directory (configurable via env)
-    EXPORT_DIR = Path("/tmp/treasury_exports")
+    # Export storage directory (cross-platform via tempfile)
+    # Plan P2 hotfix: previously hardcoded "/tmp/treasury_exports" which broke
+    # on Windows. Now uses platform's temp dir (Linux /tmp, Windows %TEMP%).
+    EXPORT_DIR = Path(tempfile.gettempdir()) / "treasury_exports"
 
     # Chart color palette (professional navy/blue scale)
     CHART_COLORS = [

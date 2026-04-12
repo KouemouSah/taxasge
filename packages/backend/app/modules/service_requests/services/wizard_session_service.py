@@ -55,7 +55,10 @@ from ..models.enums import ServiceRequestStatus, SolicitudType, WorkflowCode
 # CONSTANTS
 # =============================================================================
 
-WIZARD_SESSION_TTL_SECONDS = 1800  # 30 minutes
+# Wizard session TTL — configurable via settings.WIZARD_SESSION_TTL_SECONDS
+# (default 1800s = 30 min). Plan P2 — externalized from hardcoded constant.
+from app.config import get_settings as _get_settings
+WIZARD_SESSION_TTL_SECONDS = _get_settings().WIZARD_SESSION_TTL_SECONDS
 WIZARD_SESSION_PREFIX = "wizard_session_"
 MAX_DOCUMENT_SIZE_MB = 10
 ALLOWED_MIME_TYPES = {
