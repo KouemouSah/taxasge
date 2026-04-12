@@ -763,9 +763,12 @@ class LicenseRepository:
         conn,
         fiscal_year: int,
         ministry_id: Optional[int] = None,
+        city_id: Optional[UUID] = None,
+        fee_type: Optional[str] = None,
     ) -> List[Dict]:
         """Aggregated compliance summary by fee_type for a fiscal year.
 
+        Agent scope: city_id filters licenses by city, fee_type limits to agent's scope.
         Single query using LATERAL JOIN for overdue companies — no N+1.
         Returns 1 row per fee_type with: counts, amounts, recovery %, overdue companies.
         """
@@ -778,6 +781,16 @@ class LicenseRepository:
         if ministry_id is not None:
             conditions.append(f"lo.ministry_id = ${idx}")
             params.append(ministry_id)
+            idx += 1
+
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
+            idx += 1
+
+        if fee_type:
+            conditions.append(f"lo.fee_type = ${idx}")
+            params.append(fee_type)
             idx += 1
 
         where = "WHERE " + " AND ".join(conditions)

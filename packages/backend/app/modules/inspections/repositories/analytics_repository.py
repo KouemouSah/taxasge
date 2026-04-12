@@ -25,22 +25,40 @@ class AnalyticsRepository:
         conn, entity_id: UUID,
         date_from: date, date_to: date,
         page: int = 1, page_size: int = 50,
+        city_id: Optional[UUID] = None,
     ) -> Tuple[List[Dict], int]:
         """Aggregate inspection metrics per agent for an entity and date range.
 
+        city_id: if provided, filters inspections by entity_location's city.
+        Only supervisors at main office pass city_id=None (global scope).
+
         Returns paginated list of agent stats + total count.
         """
+        # Build city filter
+        city_join = ""
+        city_cond = ""
+        params_base = [entity_id, date_from, date_to]
+        if city_id is not None:
+            city_join = "JOIN entity_locations el ON el.id = fi.entity_location_id"
+            city_cond = f"AND el.city_id = ${len(params_base) + 1}"
+            params_base.append(city_id)
+
         # Count distinct agents first
-        count_row = await conn.fetchrow("""
+        count_row = await conn.fetchrow(f"""
             SELECT COUNT(DISTINCT fi.agent_id)
             FROM field_inspections fi
+            {city_join}
             WHERE fi.entity_id = $1
               AND fi.inspection_date BETWEEN $2 AND $3
               AND fi.status != 'cancelled'
-        """, entity_id, date_from, date_to)
+              {city_cond}
+        """, *params_base)
         total = count_row["count"]
 
-        rows = await conn.fetch("""
+        idx = len(params_base) + 1
+        params_data = params_base + [page_size, (page - 1) * page_size]
+
+        rows = await conn.fetch(f"""
             WITH agent_stats AS (
                 SELECT
                     fi.agent_id,
@@ -59,9 +77,11 @@ class AnalyticsRepository:
                 FROM field_inspections fi
                 JOIN users u ON u.id = fi.agent_id
                 JOIN entities e ON e.id = fi.entity_id
+                {city_join}
                 WHERE fi.entity_id = $1
                   AND fi.inspection_date BETWEEN $2 AND $3
                   AND fi.status != 'cancelled'
+                  {city_cond}
                 GROUP BY fi.agent_id, u.full_name, e.code
             )
             SELECT
@@ -77,8 +97,8 @@ class AnalyticsRepository:
                 avg_duration_minutes, zones_covered, days_active
             FROM agent_stats
             ORDER BY inspections_total DESC
-            LIMIT $4 OFFSET $5
-        """, entity_id, date_from, date_to, page_size, (page - 1) * page_size)
+            LIMIT ${idx} OFFSET ${idx + 1}
+        """, *params_data)
 
         return [dict(r) for r in rows], total
 
@@ -229,6 +249,7 @@ class AnalyticsRepository:
     async def get_zone_analytics(
         conn, entity_id: UUID,
         date_from: date, date_to: date,
+        city_id: Optional[UUID] = None,
     ) -> List[Dict]:
         """Zone-level analytics using mv_inspection_zone_analytics (if available).
 
@@ -350,6 +371,7 @@ class AnalyticsRepository:
         conn, entity_id: UUID,
         date_from: date, date_to: date,
         granularity: str = "weekly",
+        city_id: Optional[UUID] = None,
     ) -> List[Dict]:
         """Time series of inspection metrics with gap-filling via generate_series.
 
@@ -388,9 +410,11 @@ class AnalyticsRepository:
                     COUNT(*) FILTER (WHERE fi.mise_en_demeure_issued)::INT AS med_count,
                     COUNT(*) FILTER (WHERE fi.seal_applied)::INT AS seal_count
                 FROM field_inspections fi
+                {"JOIN entity_locations el ON el.id = fi.entity_location_id" if city_id else ""}
                 WHERE fi.entity_id = $1
                   AND fi.inspection_date BETWEEN $2 AND $3
                   AND fi.status != 'cancelled'
+                  {"AND el.city_id = $4" if city_id else ""}
                 GROUP BY DATE_TRUNC('{trunc}', fi.inspection_date)::DATE
             )
             SELECT
@@ -411,7 +435,7 @@ class AnalyticsRepository:
             FROM series s
             LEFT JOIN agg a ON a.period_start = s.period_start
             ORDER BY s.period_start ASC
-        """, entity_id, date_from, date_to)
+        """, entity_id, date_from, date_to, *([city_id] if city_id else []))
 
         return [dict(r) for r in rows]
 

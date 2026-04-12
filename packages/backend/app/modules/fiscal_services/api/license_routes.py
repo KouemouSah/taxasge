@@ -190,11 +190,12 @@ async def cron_obligation_reminders(
 async def get_compliance_summary(
     fiscal_year: int = Query(..., ge=2020, le=2100),
     db=Depends(get_database),
-    current_user: UserResponse = Depends(get_current_user),
+    scope: AgentScope = Depends(get_agent_scope),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Pre-aggregated compliance summary by fee_type for a fiscal year.
 
+    Agent scope: filters by agent's fee_type/city_id/ministry_id.
     Returns 1 row per fee_type with counts, amounts, recovery %, and
     overdue companies list. Replaces N+1 client-side aggregation.
     """
@@ -202,7 +203,11 @@ async def get_compliance_summary(
         LicenseRepository,
     )
 
-    result = await LicenseRepository.get_compliance_summary(db, fiscal_year)
+    result = await LicenseRepository.get_compliance_summary(
+        db, fiscal_year,
+        city_id=scope.city_id,
+        fee_type=scope.fee_type,
+    )
     return {"items": result, "fiscal_year": fiscal_year}
 
 

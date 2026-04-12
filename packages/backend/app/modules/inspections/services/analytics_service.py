@@ -71,6 +71,7 @@ class AnalyticsService:
 
         items, total = await AnalyticsRepository.get_agent_performance(
             conn, ctx["entity_id"], dt_from, dt_to, page, page_size,
+            city_id=ctx.get("queue_city_id"),
         )
 
         return {
@@ -137,6 +138,7 @@ class AnalyticsService:
 
         items = await AnalyticsRepository.get_zone_analytics(
             conn, ctx["entity_id"], dt_from, dt_to,
+            city_id=ctx.get("queue_city_id"),
         )
 
         # Compute summary totals
@@ -183,6 +185,7 @@ class AnalyticsService:
 
         data = await AnalyticsRepository.get_trends(
             conn, ctx["entity_id"], dt_from, dt_to, granularity,
+            city_id=ctx.get("queue_city_id"),
         )
 
         return {

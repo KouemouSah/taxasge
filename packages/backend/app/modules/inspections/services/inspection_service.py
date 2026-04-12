@@ -87,6 +87,11 @@ class InspectionService:
                 f"Role '{role_code}' does not have inspection permissions"
             )
 
+        # City scope: only supervisors at main office get global visibility
+        is_main_office = row["is_main_office"]
+        has_global_scope = is_supervisor and is_main_office
+        queue_city_id = None if has_global_scope else row["city_id"]
+
         return {
             "agent_profile_id": row["agent_profile_id"],
             "entity_id": row["entity_id"],
@@ -94,9 +99,11 @@ class InspectionService:
             "entity_code": row["entity_code"],
             "region": row["region"],
             "city_id": row["city_id"],
-            "is_main_office": row["is_main_office"],
+            "queue_city_id": queue_city_id,
+            "is_main_office": is_main_office,
             "role_code": role_code,
             "is_supervisor": is_supervisor,
+            "has_global_scope": has_global_scope,
         }
 
     # ============================================================
