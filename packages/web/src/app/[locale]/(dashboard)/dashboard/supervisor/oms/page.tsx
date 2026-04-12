@@ -1,11 +1,12 @@
 'use client'
 
 /**
- * /supervisor/oms → redirect to /supervisor (main supervisor dashboard)
+ * /supervisor/oms → redirect to /supervisor/oms/team
  *
- * OMS supervisor menu links resolve to /supervisor/oms/... which don't exist
- * as standalone pages. The main supervisor dashboard at /supervisor handles
- * all OMS supervisor functionality via tabs.
+ * The OMS supervisor team page shows per-agent performance
+ * scoped by the supervisor's entity (CAMARA, AYUNTAMIENTO, etc.).
+ * It uses OMS endpoints that are already entity-scoped,
+ * NOT the treasury admin endpoints.
  */
 
 import { useEffect } from 'react'
@@ -18,7 +19,7 @@ export default function SupervisorOmsRedirect() {
   const locale = useLocale()
 
   useEffect(() => {
-    router.replace(`/${locale}/dashboard/supervisor`)
+    router.replace(`/${locale}/dashboard/supervisor/oms/team`)
   }, [router, locale])
 
   return (

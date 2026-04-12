@@ -14,7 +14,8 @@
  *   Row 5: AgentWorkload + SLAAlerts + RecentActivity (1/3 each)
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -54,6 +55,27 @@ export default function SupervisorDashboardPage() {
   const tTreasury = useTranslations('treasury');
   const tCommon = useTranslations('common');
   const queryClient = useQueryClient();
+  const router = useRouter();
+
+  // Detect supervisor entity — redirect non-TESORO to their OMS dashboard
+  const { data: agentProfile } = useQuery({
+    queryKey: ['agent-profile-redirect'],
+    queryFn: async () => {
+      const res = await apiClient.get('/agents/profiles/me');
+      return res.data;
+    },
+    staleTime: 300_000,
+  });
+
+  useEffect(() => {
+    if (!agentProfile) return;
+    const entityCode = agentProfile.entity_code as string;
+    // TESORO supervisors stay on treasury dashboard
+    // All others redirect to their OMS team dashboard (entity-scoped)
+    if (entityCode && entityCode !== 'TESORO') {
+      router.replace(`/${locale}/dashboard/supervisor/oms/team`);
+    }
+  }, [agentProfile, locale, router]);
 
   // Supervisor team stats
   const {
@@ -177,6 +199,7 @@ export default function SupervisorDashboardPage() {
         </div>
       </div>
 
+      {/* Error State */}
       {/* Error State */}
       {(statsError || overviewError) && (
         <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
