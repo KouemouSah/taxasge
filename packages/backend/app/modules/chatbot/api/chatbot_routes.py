@@ -411,7 +411,7 @@ async def chat(
 class ExecuteConfirmedRequest(BaseModel):
     """Body for POST /chatbot/execute-confirmed (Phase 5 executive tools)."""
     confirmation_code: str = Field(..., min_length=16, max_length=128)
-    locale: LanguageCode = LanguageCode.ES
+    locale: LanguageCode = LanguageCode.SPANISH
 
 
 @router.post(

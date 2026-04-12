@@ -1244,18 +1244,75 @@ async def submit_prepared_request(db, **kwargs) -> dict:
 async def _submit_prepared_request_exec(db, args: dict) -> dict:
     """Real execution logic for submit_prepared_request.
 
-    Phase 5 ships a stub so the consent flow can be tested end-to-end.
-    Phase 5.5 will restore the full logic that existed pre-Phase 4
-    (wizard_session_service.prepare_for_payment + initiate_payment).
-    That logic is preserved in git history at commit 14b165b2~1.
+    Called from `submit_prepared_request` AFTER the confirmation_code has
+    been redeemed (single-use Redis delete + audit 'redeemed'). This is
+    the original pre-Phase 4 logic restored from git commit 3b702166,
+    guarded now by the per-action confirmation mechanism of Phase 5.
     """
+    from app.modules.service_requests.services.wizard_session_service import (
+        wizard_session_service,
+    )
+    from uuid import UUID
+
+    user_id = args.get("user_id", "")
+    session_id = args.get("session_id", "")
+    payment_method = args.get("payment_method", "cash")
+
+    if not user_id or not session_id:
+        return {"status": "error", "message": "Se requiere session_id"}
+
+    # Step 1: Prepare for payment (validate docs + compute tariff, no DB writes)
+    prep_result = await wizard_session_service.prepare_for_payment(
+        session_id=session_id,
+        user_id=UUID(user_id),
+        db=db,
+    )
+
+    if not getattr(prep_result, "ready_for_payment", False):
+        errors = getattr(prep_result, "errors", [])
+        missing = getattr(prep_result, "missing_documents", [])
+        return {
+            "status": "not_ready",
+            "message": (
+                f"La solicitud no está lista para envío. "
+                f"{len(errors)} errores, {len(missing)} documentos faltantes."
+            ),
+            "errors": errors[:5],
+            "missing_documents": missing[:5],
+        }
+
+    total_amount = getattr(prep_result, "total_amount", 0)
+
+    # Step 2: Atomic persist + payment initiation (full DB transaction)
+    pay_result = await wizard_session_service.initiate_payment(
+        session_id=session_id,
+        user_id=UUID(user_id),
+        db=db,
+        payment_method=payment_method,
+    )
+
+    if not getattr(pay_result, "success", False):
+        return {
+            "status": "failed",
+            "message": (
+                f"Error al enviar: "
+                f"{getattr(pay_result, 'error', 'Error desconocido')}"
+            ),
+        }
+
+    service_request_id = getattr(pay_result, "service_request_id", "")
+    reference = getattr(pay_result, "reference", "")
     return {
-        "status": "executed_stub",
+        "status": "submitted",
+        "service_request_id": str(service_request_id),
+        "reference": reference,
+        "payment_status": getattr(pay_result, "payment_status", ""),
+        "total_amount": total_amount,
+        "redirect_url": getattr(pay_result, "redirect_url", None),
         "message": (
-            "Execution stub — Phase 5.5 will restore the full "
-            "prepare_for_payment + initiate_payment logic."
+            f"Solicitud enviada exitosamente. Referencia: "
+            f"{reference or 'N/A'}. Monto: {total_amount} XAF."
         ),
-        "args": args,
     }
 
     try:
@@ -1374,14 +1431,71 @@ async def book_appointment(db, **kwargs) -> dict:
 
 
 async def _book_appointment_exec(db, args: dict) -> dict:
-    """Real execution logic for book_appointment (stub — see Phase 5.5)."""
+    """Real execution logic for book_appointment.
+
+    Adapted from the pre-Phase 4 code to use the current service API
+    `save_appointment_data(session_id, user_id, appointment_data_dict)`
+    (the old `save_appointment_selection` signature no longer exists).
+
+    NOTE: this only SAVES the user's appointment choice in the wizard
+    session cache — the actual slot hold is created atomically during
+    payment (`initiate_payment`), per the project's appointment
+    architecture documented in memory/project_wizard_appointments.md.
+    """
+    from app.modules.service_requests.services.wizard_session_service import (
+        wizard_session_service,
+    )
+    from uuid import UUID
+    from datetime import date as date_type, time as time_type
+
+    user_id = args.get("user_id", "")
+    session_id = args.get("session_id", "")
+    location_id = args.get("location_id", "")
+    appointment_date_str = args.get("appointment_date", "")
+    appointment_time_str = args.get("appointment_time", "")
+    location_name = args.get("location_name", "")
+
+    if not user_id or not session_id or not location_id or not appointment_date_str:
+        return {
+            "status": "error",
+            "message": "Se requiere session_id, location_id y appointment_date",
+        }
+
+    try:
+        appt_date = date_type.fromisoformat(appointment_date_str)
+        appt_time = (
+            time_type.fromisoformat(appointment_time_str)
+            if appointment_time_str
+            else time_type(8, 0)
+        )
+    except ValueError as exc:
+        return {
+            "status": "error",
+            "message": f"Formato de fecha/hora inválido: {exc}",
+        }
+
+    appointment_data = {
+        "location_id": location_id,
+        "location_name": location_name,
+        "appointment_date": str(appt_date),
+        "appointment_time": str(appt_time),
+    }
+
+    await wizard_session_service.save_appointment_data(
+        session_id=session_id,
+        user_id=UUID(user_id),
+        appointment_data=appointment_data,
+    )
+
     return {
-        "status": "executed_stub",
+        "status": "booked",
+        "appointment_date": str(appt_date),
+        "appointment_time": str(appt_time),
+        "location_id": location_id,
         "message": (
-            "Execution stub — Phase 5.5 will restore the full "
-            "wizard_session_service.save_appointment_selection logic."
+            f"Cita seleccionada para el {appt_date} a las {appt_time}. "
+            "El cupo se confirmará atómicamente al iniciar el pago."
         ),
-        "args": args,
     }
 
     try:
