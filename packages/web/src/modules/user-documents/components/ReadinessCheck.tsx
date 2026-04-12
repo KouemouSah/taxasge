@@ -13,6 +13,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -135,6 +136,7 @@ function ReadinessItemRow({
 
 function ReadinessCard({ result }: { result: ReadinessResult }) {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations('userDocuments');
   const WorkflowIcon = WORKFLOW_ICONS[result.workflow_code] ?? FileText;
   const label = t(`workflows.${result.workflow_code.toLowerCase()}`, { defaultValue: result.workflow_code.replace(/_/g, ' ') });
@@ -219,7 +221,16 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
         {/* Action buttons */}
         <div className="flex gap-2 mt-2">
           {result.can_start && (
-            <Button variant="outline" size="sm" className="flex-1 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={() => {
+                router.push(
+                  `/${locale}/dashboard/service-requests/new?workflow=${encodeURIComponent(result.workflow_code)}`,
+                );
+              }}
+            >
               {t('readiness.startProcedure')}
               <ArrowRight className="ml-1 h-3 w-3" />
             </Button>

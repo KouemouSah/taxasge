@@ -6,8 +6,8 @@
  * UX: Category-first collapsible approach
  */
 
-import { useState, useEffect, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -151,6 +151,7 @@ const CATEGORY_CONFIG: Record<
 export default function NewServiceRequestPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const locale = (params.locale as string) || 'es'
   const t = useTranslations('service_requests')
 
@@ -161,6 +162,8 @@ export default function NewServiceRequestPage() {
   // Dialog state removed — SELECTION step in wizard handles sub_type choice
   // Dialog state removed — SELECTION step in wizard handles sub_type choice
   const [isStarting, setIsStarting] = useState(false)
+  // Guard: auto-start wizard only once per mount when ?workflow=CODE deep-link present
+  const hasAutoStartedRef = useRef(false)
 
   const { loadWorkflows, startWorkflow, isLoading, error, clearError } = useServiceRequests()
   const { tw } = useWorkflowTranslations()
@@ -309,6 +312,19 @@ export default function NewServiceRequestPage() {
   }
 
   const categoriesWithWorkflows = Object.keys(filteredWorkflowsByCategory)
+
+  // Auto-start wizard when ?workflow=CODE deep-link is present.
+  // Sources: ReadinessCheck "Démarrer la démarche" button, chatbot backend actions
+  // (chatbot_service_rag.py:2115, 2129, 2190). Guard prevents re-firing on
+  // re-renders or back-button navigation while the same query param is live.
+  useEffect(() => {
+    if (hasAutoStartedRef.current) return
+    const prefilledWorkflow = searchParams.get('workflow')
+    if (!prefilledWorkflow) return
+    hasAutoStartedRef.current = true
+    startNewRequest(prefilledWorkflow)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
     <div className="space-y-6">
