@@ -254,6 +254,19 @@ class PermissionRegistry:
 
         logger.info(f"Syncing role_permissions for {len(all_role_perms)} roles...")
 
+        # Set session user for audit trigger (audit_role_permissions_change)
+        # Without this, the trigger uses 00000000-... which violates FK on users
+        try:
+            admin_row = await db_connection.fetchrow(
+                "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
+            )
+            if admin_row:
+                await db_connection.execute(
+                    f"SET LOCAL app.current_user_id = '{admin_row['id']}'"
+                )
+        except Exception:
+            pass  # Best effort — trigger may still fail on some DBs
+
         for role_code, permission_names in all_role_perms.items():
             try:
                 # Get role by code

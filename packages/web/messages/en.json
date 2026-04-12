@@ -5097,6 +5097,18 @@
     "title": "Categories"
   },
   "chatbot": {
+    "actions": {
+      "activatePermission": "Enable: {permission}",
+      "activateSubmitPermission": "Enable automatic submission",
+      "activateBookPermission": "Enable automatic booking",
+      "startWorkflow": "Start {workflow} on Facil",
+      "startInFacil": "Start on Facil",
+      "startRenewal": "Start renewal",
+      "finalize": "Finalize request",
+      "viewRequest": "View request",
+      "appointmentBooked": "Appointment: {date}",
+      "viewPricing": "View prices by zone"
+    },
     "askAboutCosts": "How much does... cost?",
     "askAboutDocuments": "What documents do I need?",
     "askAboutProcedures": "What are the steps for...?",
@@ -10939,7 +10951,20 @@
       "pendingCount": "{count} pend.",
       "selectPlaceholder": "Select...",
       "item1": "{type} 1",
-      "item2": "{type} 2"
+      "item2": "{type} 2",
+      "agentPerformance": "Agent Performance",
+      "agentPerformanceDesc": "Performance metrics per agent",
+      "totalAgents": "Total agents",
+      "totalCompleted": "Compliant",
+      "avgRate": "Average rate",
+      "avgTime": "Average time",
+      "agentList": "Agent list",
+      "agent": "Agent",
+      "assigned": "Inspections",
+      "completed": "Compliant",
+      "rate": "Rate",
+      "status": "Status",
+      "noAgents": "No agents with inspections"
     },
     "live": {
       "title": "Real-time status",

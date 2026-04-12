@@ -5097,6 +5097,18 @@
     "title": "Catégories"
   },
   "chatbot": {
+    "actions": {
+      "activatePermission": "Activer : {permission}",
+      "activateSubmitPermission": "Activer l'envoi automatique",
+      "activateBookPermission": "Activer la réservation automatique",
+      "startWorkflow": "Démarrer {workflow} sur Facil",
+      "startInFacil": "Démarrer sur Facil",
+      "startRenewal": "Démarrer le renouvellement",
+      "finalize": "Finaliser la demande",
+      "viewRequest": "Voir la demande",
+      "appointmentBooked": "Rendez-vous : {date}",
+      "viewPricing": "Voir les tarifs par zone"
+    },
     "askAboutCosts": "Combien coûte...?",
     "askAboutDocuments": "Quels documents ai-je besoin?",
     "askAboutProcedures": "Quelles sont les étapes pour...?",
@@ -10939,7 +10951,20 @@
       "pendingCount": "{count} en att.",
       "selectPlaceholder": "Sélectionner...",
       "item1": "{type} 1",
-      "item2": "{type} 2"
+      "item2": "{type} 2",
+      "agentPerformance": "Performance des Agents",
+      "agentPerformanceDesc": "Métriques de performance par agent",
+      "totalAgents": "Total agents",
+      "totalCompleted": "Conformes",
+      "avgRate": "Taux moyen",
+      "avgTime": "Durée moyenne",
+      "agentList": "Liste des agents",
+      "agent": "Agent",
+      "assigned": "Inspections",
+      "completed": "Conformes",
+      "rate": "Taux",
+      "status": "Statut",
+      "noAgents": "Aucun agent avec des inspections"
     },
     "live": {
       "title": "Statut en temps réel",
