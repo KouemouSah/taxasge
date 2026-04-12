@@ -485,7 +485,11 @@ export default function SupervisorInspectionDashboard() {
                   {data.recent_inspections.slice(0, 8).map((item) => {
                     const cfg = INSPECTION_STATUS_CONFIG[item.status] || { color: '', bgColor: '' }
                     return (
-                      <div key={item.id} className="flex items-center justify-between p-1.5 rounded border text-sm">
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-1.5 rounded border text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => router.push(`/${locale}/dashboard/supervisor/inspections/${item.id}`)}
+                      >
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[10px] text-muted-foreground w-10 shrink-0 tabular-nums">
                             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

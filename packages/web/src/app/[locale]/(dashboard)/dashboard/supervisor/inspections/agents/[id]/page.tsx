@@ -354,7 +354,11 @@ export default function AgentDetailPage() {
                         const resultCfg = RESULT_COLORS[row.result] ?? RESULT_COLORS.pending
                         const statusCfg = INSPECTION_STATUS_CONFIG[row.status as InspectionStatus]
                         return (
-                          <TableRow key={row.id}>
+                          <TableRow
+                            key={row.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.push(`/${locale}/dashboard/supervisor/inspections/${row.id}`)}
+                          >
                             <TableCell className="whitespace-nowrap text-xs tabular-nums">
                               {fmtDate(row.inspection_date, locale)}
                             </TableCell>
