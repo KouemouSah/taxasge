@@ -44,6 +44,7 @@ from uuid import UUID, uuid4
 import asyncpg
 
 from app.core.events import EventBus, EventType
+from app.modules.fiscal_services.services.oms_agent_service import OmsAgentService
 from app.modules.inspections.repositories.inspection_repository import (
     InspectionRepository,
 )
@@ -271,6 +272,35 @@ class CollectionService:
                 raise ValueError(
                     f"Obligations must be pending/overdue. "
                     f"Invalid: {[str(o['id']) for o in uncollectable]}"
+                )
+
+            # Plan P3 — D2: agent fee_type/ministry scope check (OWASP A04)
+            # Prevents an agent from collecting obligations outside their
+            # entity's responsibility (ex: MIN_AGRICULTURA cannot collect
+            # municipal obligations, only AYUNTAMIENTO can).
+            try:
+                oms_ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
+            except ValueError as exc:
+                raise PermissionError(
+                    f"User {user_id} is not an OMS agent, cannot collect bundle payments: {exc}"
+                ) from exc
+
+            allowed_fee_types, required_ministry_id = (
+                OmsAgentService.compute_collection_scope(oms_ctx)
+            )
+            forbidden_obligations = OmsAgentService.check_obligations_in_scope(
+                obls, allowed_fee_types, required_ministry_id,
+            )
+            if forbidden_obligations:
+                forbidden_ids = [f["id"] for f in forbidden_obligations]
+                logger.warning(
+                    "Field collection blocked — agent %s (role=%s) out of scope for "
+                    "obligations %s",
+                    user_id, oms_ctx.get("role_code"), forbidden_ids,
+                )
+                raise PermissionError(
+                    f"Agent (role={oms_ctx.get('role_code')}) cannot collect these "
+                    f"obligations out of fee_type/ministry scope: {forbidden_ids}"
                 )
 
             # OWASP A03: Amount must exactly match obligations

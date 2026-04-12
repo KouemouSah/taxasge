@@ -636,6 +636,7 @@ class InspectionRepository:
             rows = await conn.fetch(f"""
                 SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
                        lo.due_date, lo.status,
+                       lo.ministry_id,
                        fs.name_es AS service_name,
                        m.name_es AS ministry_name
                 FROM license_obligations lo

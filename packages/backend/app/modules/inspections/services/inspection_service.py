@@ -733,7 +733,22 @@ class InspectionService:
         license_id: Optional[UUID] = None,
         nif: Optional[str] = None,
     ) -> Dict:
-        """Get enriched license data for agent field verification."""
+        """Get enriched license data for agent field verification.
+
+        Plan P3 — INSPECTION_BUNDLE_P3_DETAIL.md §3 P3.E:
+          Returns all obligations of the licence (unfiltered) plus computed
+          fields that let the mobile UI show which ones the agent may collect:
+
+            - existing_dossier: {service_request_id, reference, source, status,
+                                 created_at} | None (if SR already linked)
+            - has_pending_citizen_payment: bool
+            - pending_payment_info: {payment_reference, ...} | None
+            - obligations[*].agent_restricted: bool per obligation
+            - restricted_obligations: [UUID] list of blocked ones
+            - agent_can_collect_all: bool
+            - agent_scope: {allowed_fee_types, required_ministry_id,
+                            is_polyvalent, is_independent, role_code}
+        """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
         if not license_id and nif:
@@ -751,24 +766,135 @@ class InspectionService:
         if not license_id:
             raise ValueError("Either license_id or nif/registration_number is required")
 
-        # Resolve agent's fee_type for obligation filtering
-        agent_fee_type = None
-        try:
-            from app.modules.fiscal_services.services.oms_agent_service import (
-                OmsAgentService,
-            )
-            oms_ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
-            agent_fee_type = oms_ctx.get("queue_fee_type")
-        except (ValueError, Exception):
-            pass  # Not an OMS agent — show all obligations
-
+        # Fetch unfiltered licence + obligations. Agent scope filtering is
+        # done post-query so we can return restricted_obligations metadata.
         result = await InspectionRepository.get_license_for_verification(
             conn, license_id, ctx["entity_id"],
-            fee_type=agent_fee_type,
+            fee_type=None,  # No filter — caller computes restricted_obligations
         )
 
         if not result:
             raise ValueError(f"License {license_id} not found")
+
+        # Resolve OMS agent scope (Plan P3 — D2/D3)
+        # Wrap in try/except so non-OMS users (ex: legacy staff) still get
+        # license data for read-only consultation (no collection rights).
+        from app.modules.fiscal_services.services.oms_agent_service import (
+            OmsAgentService,
+        )
+        try:
+            oms_ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
+            allowed_fee_types, required_ministry_id = (
+                OmsAgentService.compute_collection_scope(oms_ctx)
+            )
+            agent_scope = {
+                "role_code": oms_ctx.get("role_code"),
+                "allowed_fee_types": (
+                    sorted(allowed_fee_types) if allowed_fee_types else None
+                ),
+                "required_ministry_id": required_ministry_id,
+                "is_polyvalent": bool(oms_ctx.get("is_polyvalent")),
+                "is_independent": bool(oms_ctx.get("is_independent")),
+                "is_supervisor": bool(oms_ctx.get("is_supervisor")),
+            }
+        except ValueError:
+            oms_ctx = None
+            allowed_fee_types = set()
+            required_ministry_id = None
+            agent_scope = {
+                "role_code": None,
+                "allowed_fee_types": [],
+                "required_ministry_id": None,
+                "is_polyvalent": False,
+                "is_independent": False,
+                "is_supervisor": False,
+            }
+
+        # Mark each obligation with agent_restricted flag
+        obligations = result.get("obligations", [])
+        restricted_ids: List[str] = []
+        for o in obligations:
+            obl_fee_type = o.get("fee_type")
+            obl_ministry_id = o.get("ministry_id")
+            is_restricted = False
+            reason = None
+
+            if oms_ctx is None:
+                is_restricted = True
+                reason = "non_oms_user"
+            elif allowed_fee_types is not None and obl_fee_type not in allowed_fee_types:
+                is_restricted = True
+                reason = f"fee_type_{obl_fee_type}_not_in_scope"
+            elif required_ministry_id is not None and obl_ministry_id != required_ministry_id:
+                is_restricted = True
+                reason = f"ministry_{obl_ministry_id}_not_agent_ministry"
+
+            o["agent_restricted"] = is_restricted
+            o["agent_restricted_reason"] = reason
+            if is_restricted:
+                restricted_ids.append(str(o["id"]))
+
+        result["restricted_obligations"] = restricted_ids
+        result["agent_can_collect_all"] = len(restricted_ids) == 0
+        result["agent_scope"] = agent_scope
+
+        # Existing dossier (lazy-created SR linked to the licence) — Plan P3 D4
+        dossier_row = await conn.fetchrow(
+            """
+            SELECT sr.id, sr.reference, sr.source, sr.status::text AS status,
+                   sr.created_at
+            FROM commercial_licenses cl
+            JOIN service_requests sr ON sr.id = cl.service_request_id
+            WHERE cl.id = $1
+              AND cl.service_request_id IS NOT NULL
+            """,
+            license_id,
+        )
+        if dossier_row:
+            result["existing_dossier"] = {
+                "service_request_id": str(dossier_row["id"]),
+                "reference": dossier_row["reference"],
+                "source": dossier_row["source"],
+                "status": dossier_row["status"],
+                "created_at": dossier_row["created_at"].isoformat()
+                              if dossier_row["created_at"] else None,
+            }
+        else:
+            result["existing_dossier"] = None
+
+        # Pending citizen payment (Plan P3 D5) — signals active online payment
+        pending_row = await conn.fetchrow(
+            """
+            SELECT sp.payment_reference, sp.payment_method,
+                   sp.total_amount, sp.workflow_status::text AS workflow_status,
+                   sp.created_at
+            FROM commercial_licenses cl
+            JOIN service_requests sr ON sr.id = cl.service_request_id
+            JOIN service_payments sp ON sp.service_request_id = sr.id
+            WHERE cl.id = $1
+              AND sp.workflow_status NOT IN (
+                  'completed', 'rejected_by_agent', 'expired',
+                  'cancelled_by_user', 'cancelled_by_agent'
+              )
+            ORDER BY sp.created_at DESC
+            LIMIT 1
+            """,
+            license_id,
+        )
+        if pending_row:
+            result["has_pending_citizen_payment"] = True
+            result["pending_payment_info"] = {
+                "payment_reference": pending_row["payment_reference"],
+                "payment_method": pending_row["payment_method"],
+                "total_amount": float(pending_row["total_amount"])
+                                if pending_row["total_amount"] is not None else None,
+                "workflow_status": pending_row["workflow_status"],
+                "created_at": pending_row["created_at"].isoformat()
+                              if pending_row["created_at"] else None,
+            }
+        else:
+            result["has_pending_citizen_payment"] = False
+            result["pending_payment_info"] = None
 
         return result
 

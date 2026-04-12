@@ -78,22 +78,32 @@ async def conn():
 async def test_data(conn):
     """Fetch a real license + user + agent from the DB for test usage.
 
-    We DON'T create new rows to avoid FK issues; we use existing orphan
-    licenses. All mutations will be rolled back.
+    Plan P3: the picked agent must be scope-compatible with the licence's
+    obligations (new fee_type/ministry check in collect_field_payment).
+    Strategy: pick a licence that has at least one tesoro obligation, then
+    pick a ministry agent whose ministry_id matches. Obligations used in
+    tests are filtered to that same ministry to keep the flow successful.
     """
-    # Get one orphan license
+    # Step 1: find a licence with tesoro obligations + the ministry_id
     lic = await conn.fetchrow(
         """
-        SELECT id, company_id, bundle_id, fiscal_year
-        FROM commercial_licenses
-        WHERE service_request_id IS NULL
+        SELECT cl.id, cl.company_id, cl.bundle_id, cl.fiscal_year,
+               lo.ministry_id AS scope_ministry_id
+        FROM commercial_licenses cl
+        JOIN license_obligations lo ON lo.license_id = cl.id
+        WHERE cl.service_request_id IS NULL
+          AND lo.fee_type = 'tesoro'
+          AND lo.status IN ('pending', 'overdue')
+          AND lo.ministry_id IS NOT NULL
         LIMIT 1
         """
     )
     if not lic:
-        pytest.skip("No orphan commercial_license available for test")
+        pytest.skip("No orphan commercial_license with tesoro pending obligations")
 
-    # Get an agent with inspection.collect_payment + active agent_profile
+    scope_ministry_id = lic["scope_ministry_id"]
+
+    # Step 2: find a ministry agent matching the ministry + has collect permission
     agent_row = await conn.fetchrow(
         """
         SELECT u.id AS user_id, ap.id AS agent_profile_id,
@@ -104,11 +114,28 @@ async def test_data(conn):
         JOIN role_permissions rp ON rp.role_id = r.id
         JOIN permissions p ON p.id = rp.permission_id
         WHERE p.name = 'inspection.collect_payment'
+          AND ap.ministry_id = $1
+          AND r.code LIKE 'agent_min_%'
         LIMIT 1
-        """
+        """,
+        scope_ministry_id,
     )
+
     if not agent_row:
-        pytest.skip("No agent with collect_payment permission + agent_profile")
+        # Fallback: polyvalent agent (accepts any tesoro obligation)
+        agent_row = await conn.fetchrow(
+            """
+            SELECT u.id AS user_id, ap.id AS agent_profile_id,
+                   ap.entity_id, ap.entity_location_id
+            FROM users u
+            JOIN agent_profiles ap ON ap.user_id = u.id AND ap.is_active = true
+            JOIN roles r ON r.id = u.role_id
+            WHERE r.code = 'agent_oms_polyvalent'
+            LIMIT 1
+            """
+        )
+    if not agent_row:
+        pytest.skip("No scope-compatible agent available for tesoro obligations")
 
     # Get a company owner (any user — we'll use the agent itself if no owner)
     owner = await conn.fetchrow(
@@ -128,6 +155,7 @@ async def test_data(conn):
         "company_id": lic["company_id"],
         "bundle_id": lic["bundle_id"],
         "fiscal_year": lic["fiscal_year"],
+        "scope_ministry_id": scope_ministry_id,
         "agent_id": agent_row["user_id"],
         "agent_profile_id": agent_row["agent_profile_id"],
         "entity_id": agent_row["entity_id"],
@@ -476,9 +504,11 @@ async def test_collect_payment_amount_mismatch_raises(conn, test_data):
         SELECT id, amount, penalty_amount
         FROM license_obligations
         WHERE license_id = $1 AND status IN ('pending', 'overdue')
+          AND fee_type = 'tesoro'
+          AND ministry_id = $2
         LIMIT 2
         """,
-        test_data["license_id"],
+        test_data["license_id"], test_data["scope_ministry_id"],
     )
     if not obls:
         pytest.skip("License has no pending/overdue obligations")
@@ -512,9 +542,11 @@ async def test_collect_payment_full_flow_happy_path(conn, test_data):
         SELECT id, amount, penalty_amount, fee_type, status
         FROM license_obligations
         WHERE license_id = $1 AND status IN ('pending', 'overdue')
+          AND fee_type = 'tesoro'
+          AND ministry_id = $2
         LIMIT 3
         """,
-        test_data["license_id"],
+        test_data["license_id"], test_data["scope_ministry_id"],
     )
     if len(obls) < 1:
         pytest.skip("License has no pending/overdue obligations")
@@ -591,9 +623,11 @@ async def test_collect_payment_double_charge_rejected(conn, test_data):
         SELECT id, amount, penalty_amount
         FROM license_obligations
         WHERE license_id = $1 AND status IN ('pending', 'overdue')
+          AND fee_type = 'tesoro'
+          AND ministry_id = $2
         LIMIT 1
         """,
-        test_data["license_id"],
+        test_data["license_id"], test_data["scope_ministry_id"],
     )
     if not obls:
         pytest.skip("No pending obligations available")

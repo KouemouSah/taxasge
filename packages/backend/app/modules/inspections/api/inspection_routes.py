@@ -10,8 +10,13 @@ from typing import Optional
 from uuid import UUID
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 
+from app.core.idempotency import (
+    check_idempotency_or_replay,
+    store_idempotency_result,
+)
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
@@ -59,15 +64,33 @@ from app.core.cron_auth import verify_cron_auth  # noqa: F401 — used as Depend
 @router.post("/", response_model=InspectionResponse, status_code=201)
 async def create_inspection(
     data: InspectionCreate,
+    request: Request,
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.create")),
 ):
-    """Create a new field inspection for a commercial license."""
+    """Create a new field inspection for a commercial license.
+
+    Plan P3: Idempotency-Key header supported (secondary defense — primary
+    protection is the UNIQUE(agent_id, company_id, inspection_date) constraint).
+    """
+    user_uuid = UUID(current_user.id)
+
+    # Idempotency replay guard
+    cached = await check_idempotency_or_replay(
+        request, user_uuid, endpoint_key="create_inspection",
+    )
+    if cached is not None:
+        return JSONResponse(
+            content=cached,
+            headers={"Idempotency-Replay": "true"},
+            status_code=201,
+        )
+
     try:
         async with db.transaction():
             result = await InspectionService.create_inspection(
-                db, UUID(current_user.id),
+                db, user_uuid,
                 data.license_id, data.company_id,
                 notes=data.notes,
             )
@@ -82,6 +105,13 @@ async def create_inspection(
                        "You can only create one inspection per company per day."
             )
         raise
+
+    # Store result for future replay (24h)
+    # Serialize Pydantic response once for JSON caching
+    response_body = InspectionResponse(**result).model_dump(mode="json")
+    await store_idempotency_result(
+        request, user_uuid, endpoint_key="create_inspection", result=response_body,
+    )
     return InspectionResponse(**result)
 
 
@@ -584,27 +614,68 @@ async def approve_seal(
 async def collect_payment(
     inspection_id: UUID,
     data: FieldCollectRequest,
+    request: Request,
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.collect_payment")),
 ):
-    """Collect field payment (cash or mobile money)."""
+    """Collect field payment (cash or mobile money).
+
+    Plan P3 — INSPECTION_BUNDLE_P3_DETAIL.md:
+      - Idempotency-Key header supported (24h replay window) — OWASP A04
+      - Rate-limited 20/min/user (defense in depth, field network retries)
+      - Fee_type/ministry scope enforced in CollectionService (OWASP A04)
+    """
     from app.modules.inspections.services.collection_service import (
         CollectionService,
     )
 
+    user_uuid = UUID(current_user.id)
+
+    # Rate limit (Plan P3 Q4 revised): 20 collect calls / min / user
+    try:
+        from app.core.cache import check_rate_limit
+        allowed, _remaining = await check_rate_limit(
+            current_user.id, "/inspections/collect", 20, 60
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded for field collection. Retry in 1 minute.",
+                headers={"Retry-After": "60"},
+            )
+    except ImportError:
+        pass  # Cache not available in dev mode
+
+    # Idempotency: replay guard (Plan P3 — D1)
+    cached = await check_idempotency_or_replay(
+        request, user_uuid, endpoint_key="collect_payment",
+    )
+    if cached is not None:
+        return JSONResponse(
+            content=cached,
+            headers={"Idempotency-Replay": "true"},
+        )
+
     try:
         async with db.transaction():
             result = await CollectionService.collect_field_payment(
-                db, inspection_id, UUID(current_user.id),
+                db, inspection_id, user_uuid,
                 obligation_ids=data.obligation_ids,
                 method=data.method,
                 amount=data.amount,
                 phone_number=data.phone_number,
                 notes=data.notes,
             )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+    # Store result for future replay (24h)
+    await store_idempotency_result(
+        request, user_uuid, endpoint_key="collect_payment", result=result,
+    )
     return result
 
 

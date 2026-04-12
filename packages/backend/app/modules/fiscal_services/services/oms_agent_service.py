@@ -5,7 +5,7 @@ Payment validation is handled by the existing treasury pipeline — NOT by this 
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
 from app.modules.fiscal_services.repositories.license_repository import (
@@ -149,6 +149,106 @@ class OmsAgentService:
             "queue_fee_type": queue_fee_type,
             "queue_city_id": queue_city_id,
         }
+
+    # ==================================================================
+    # Field Collection Scope (Plan P3 — INSPECTION_BUNDLE_P3_DETAIL.md)
+    # ==================================================================
+
+    @staticmethod
+    def compute_collection_scope(
+        oms_ctx: Dict,
+    ) -> Tuple[Optional[Set[str]], Optional[int]]:
+        """
+        Compute the field collection scope for an OMS agent.
+
+        Returns (allowed_fee_types, required_ministry_id):
+          - allowed_fee_types: Set of fee_types the agent may collect.
+                               None = no restriction (supervisor_tesoro only
+                               in very specific cases, currently unused).
+          - required_ministry_id: int if the agent must collect only obligations
+                                  matching a specific ministry_id (ministry agents).
+                                  None if no ministry filter (polyvalent,
+                                  independent, or ministry_id undefined).
+
+        Rules (Addendum 3 applied):
+          - is_polyvalent (agent_oms_polyvalent, supervisor_tesoro):
+              → ({'tesoro'}, None)
+              Polyvalent collects tesoro across all ministries. Municipal and
+              chamber obligations are ALWAYS independent (ayuntamiento/camara
+              only), never collectible by polyvalent.
+          - is_independent (agent_ayuntamiento → 'municipal',
+                            agent_camara → 'chamber', + supervisors):
+              → ({queue_fee_type}, None)
+              Strict single fee_type, no ministry filter.
+          - Ministry agent (agent_min_*, supervisor_min_*):
+              → ({'tesoro'}, ministry_id)
+              Can collect tesoro obligations of their own ministry only.
+        """
+        if oms_ctx.get("is_polyvalent"):
+            # Addendum 3: polyvalent tesoro only (municipal/chamber always independent)
+            return ({"tesoro"}, None)
+        if oms_ctx.get("is_independent"):
+            fee_type = oms_ctx.get("queue_fee_type")
+            if not fee_type:
+                # Defensive: independent role without fee_type mapping is a bug
+                return (set(), None)
+            return ({fee_type}, None)
+        # Ministry agent (or supervisor ministry) — tesoro scoped to own ministry
+        ministry_id = oms_ctx.get("ministry_id")
+        return ({"tesoro"}, ministry_id)
+
+    @staticmethod
+    def check_obligations_in_scope(
+        obligations: List[Dict],
+        allowed_fee_types: Optional[Set[str]],
+        required_ministry_id: Optional[int],
+    ) -> List[Dict]:
+        """
+        Return the list of obligations that are OUT of the agent's scope.
+
+        Each item has keys: {id, reason, fee_type, ministry_id}.
+
+        Args:
+            obligations: List of obligation rows (dict-like) with at least
+                         'id', 'fee_type', 'ministry_id' keys.
+            allowed_fee_types: Set of allowed fee_types (None = no filter).
+            required_ministry_id: Required ministry_id for tesoro agents
+                                  (None = no ministry filter).
+
+        Returns:
+            List of forbidden obligations with reason metadata.
+            Empty list = all obligations are collectible.
+        """
+        forbidden: List[Dict] = []
+        for o in obligations:
+            obl_fee_type = o.get("fee_type")
+            obl_ministry_id = o.get("ministry_id")
+
+            # fee_type check
+            if allowed_fee_types is not None and obl_fee_type not in allowed_fee_types:
+                forbidden.append({
+                    "id": str(o["id"]),
+                    "fee_type": obl_fee_type,
+                    "ministry_id": obl_ministry_id,
+                    "reason": (
+                        f"fee_type '{obl_fee_type}' not in agent scope "
+                        f"(allowed: {sorted(allowed_fee_types) if allowed_fee_types else 'none'})"
+                    ),
+                })
+                continue
+
+            # ministry check (only meaningful for ministry agents with required_ministry_id)
+            if required_ministry_id is not None and obl_ministry_id != required_ministry_id:
+                forbidden.append({
+                    "id": str(o["id"]),
+                    "fee_type": obl_fee_type,
+                    "ministry_id": obl_ministry_id,
+                    "reason": (
+                        f"ministry_id {obl_ministry_id} != agent scope "
+                        f"ministry_id {required_ministry_id}"
+                    ),
+                })
+        return forbidden
 
     # ==================================================================
     # Queue — Read
