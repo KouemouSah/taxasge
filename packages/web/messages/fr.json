@@ -5114,7 +5114,11 @@
       "confirmTitle": "Confirmer l'action de l'assistant",
       "defaultSummary": "L'assistant va exécuter une action importante en votre nom. Veuillez confirmer pour continuer.",
       "cancel": "Annuler",
-      "confirmButton": "Confirmer"
+      "confirmButton": "Confirmer",
+      "executedStub": "Action en préparation",
+      "executedSuccess": "Action exécutée avec succès",
+      "executedError": "Échec de l'action",
+      "executedGeneric": "Action traitée"
     },
     "askAboutCosts": "Combien coûte...?",
     "askAboutDocuments": "Quels documents ai-je besoin?",
@@ -10863,7 +10867,6 @@
       "prevWeek": "Semaine précédente",
       "nextWeek": "Semaine suivante",
       "thisWeek": "Cette semaine",
-      "weekOf": "Semaine du",
       "missionDate": "Date",
       "title": "Titre",
       "notes": "Notes",

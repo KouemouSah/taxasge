@@ -87,6 +87,7 @@ export default function ChatPage() {
   const locale = useLocale();
   const t = useTranslations('chatbot');
   const tDash = useTranslations('dashboard');
+  const tExec = useTranslations('chatbot.executive');
 
   useChatSettings({ persistToStorage: true });
 
@@ -95,6 +96,7 @@ export default function ChatPage() {
     isLoading,
     suggestions,
     sendMessage,
+    pushAssistantMessage,
     clearChat,
     statusText,
     statusStep,
@@ -134,22 +136,30 @@ export default function ChatPage() {
   }, []);
 
   // Called from the modal when the user clicks Confirm. POSTs directly to
-  // /chatbot/execute-confirmed (bypassing Gemini) and sends the result
-  // back through the chat via a synthetic user message so the assistant
-  // acknowledges the execution in the conversation flow.
+  // /chatbot/execute-confirmed which redeems the single-use code in Redis
+  // and runs the tool. Gemini is NOT re-invoked — we push the result as
+  // an assistant message so the user sees it inline without burning tokens.
   const handleExecuteConfirmed = useCallback(
-    async (code: string, toolName: string) => {
+    async (code: string, _toolName: string) => {
       const response = await chatbotApi.executeConfirmed(code, locale);
-      const resultPayload = response.result ?? {};
-      const statusLabel =
-        (resultPayload as { status?: string }).status ?? 'unknown';
-      // Push a short confirmation message into the chat so the user sees
-      // what happened. Gemini isn't re-invoked; we just replay the result.
-      await sendMessage(
-        `[${toolName}] ${statusLabel}: ${JSON.stringify(resultPayload).slice(0, 400)}`,
-      );
+      const resultPayload = (response.result ?? {}) as {
+        status?: string;
+        message?: string;
+      };
+      const statusLabel = resultPayload.status ?? 'unknown';
+      const details = resultPayload.message ?? '';
+      // Localized line varies by status — the modal already displayed the
+      // summary pre-confirmation, so here we just acknowledge the outcome.
+      const headerByStatus: Record<string, string> = {
+        executed_stub: tExec('executedStub'),
+        submitted: tExec('executedSuccess'),
+        booked: tExec('executedSuccess'),
+        error: tExec('executedError'),
+      };
+      const header = headerByStatus[statusLabel] ?? tExec('executedGeneric');
+      pushAssistantMessage(`**${header}**\n\n${details}`.trim());
     },
-    [locale, sendMessage],
+    [locale, pushAssistantMessage, tExec],
   );
 
   // Resolve action messages (need t() which is only available in component)

@@ -20,13 +20,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { chatbotApi } from '../services/api'
 import { getAuthData } from '@/core/auth/storage'
+import { MessageRole } from '../types'
 import type {
+  ChatAction,
   ChatMessage,
   ChatRequest,
   ChatResponse,
   ServiceReference,
   LanguageCode,
-  MessageRole,
 } from '../types'
 
 // =============================================================================
@@ -60,6 +61,14 @@ export interface UseChatReturn {
 
   // Actions
   sendMessage: (message: string, context?: Record<string, any>) => Promise<void>
+  /**
+   * Push an assistant message directly into the conversation without
+   * round-tripping through Gemini. Used by out-of-band flows like the
+   * Level 3 executive confirmation modal, where the tool result comes
+   * from a dedicated endpoint and the user should see it in the chat
+   * without paying for another LLM call.
+   */
+  pushAssistantMessage: (content: string, actions?: ChatAction[]) => void
   clearChat: () => void
   retry: () => Promise<void>
   loadHistory: (conversationId: string) => Promise<void>
@@ -407,6 +416,25 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   )
 
   /**
+   * Push an assistant message directly into the conversation. Used by the
+   * Level 3 executive confirmation flow which calls a dedicated endpoint
+   * (POST /chatbot/execute-confirmed) and wants to surface the result in
+   * the chat without re-invoking Gemini.
+   */
+  const pushAssistantMessage = useCallback(
+    (content: string, actions?: ChatAction[]) => {
+      const assistantMessage: ChatMessage = {
+        role: MessageRole.ASSISTANT,
+        content,
+        timestamp: new Date().toISOString(),
+        ...(actions && actions.length > 0 ? { actions } : {}),
+      }
+      setMessages((prev) => [...prev, assistantMessage])
+    },
+    [],
+  )
+
+  /**
    * Clear the entire chat
    */
   const clearChat = useCallback(() => {
@@ -504,6 +532,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
     // Actions
     sendMessage,
+    pushAssistantMessage,
     clearChat,
     retry,
     loadHistory,

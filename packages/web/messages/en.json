@@ -5114,7 +5114,11 @@
       "confirmTitle": "Confirm assistant action",
       "defaultSummary": "The assistant is about to execute an important action on your behalf. Please confirm to continue.",
       "cancel": "Cancel",
-      "confirmButton": "Confirm"
+      "confirmButton": "Confirm",
+      "executedStub": "Action being prepared",
+      "executedSuccess": "Action executed successfully",
+      "executedError": "Action failed",
+      "executedGeneric": "Action processed"
     },
     "askAboutCosts": "How much does... cost?",
     "askAboutDocuments": "What documents do I need?",
@@ -10863,7 +10867,6 @@
       "prevWeek": "Previous week",
       "nextWeek": "Next week",
       "thisWeek": "This week",
-      "weekOf": "Week of",
       "missionDate": "Date",
       "title": "Title",
       "notes": "Notes",
