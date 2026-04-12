@@ -11214,6 +11214,8 @@
         "1": "Preparatorio",
         "2": "Proactivo"
       },
+      "comingSoon": "Pronto",
+      "comingSoonTooltip": "Esta función estará disponible próximamente. Se le notificará cuando se active.",
       "confirm": "Confirmar",
       "reject": "Rechazar",
       "proactive": {

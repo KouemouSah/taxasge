@@ -322,6 +322,26 @@ export interface AgentPermission {
 }
 
 /**
+ * Single entry in the authoritative agent permission catalog returned
+ * by `GET /user-documents/agent/permission-catalog`. This is the source
+ * of truth — the frontend renders `AgentSettingsPanel` rows from this
+ * list instead of a hardcoded array.
+ *
+ * `status === 'coming_soon'` → the permission exists in the BD schema
+ * but no backend tool is wired to it yet; the UI renders a disabled
+ * toggle with a "coming soon" badge to keep user trust.
+ */
+export interface AgentPermissionCatalogEntry {
+  key: string;
+  status: 'available' | 'coming_soon';
+  tool_name: string | null;
+  max_level: number;
+  /** Lucide icon name, resolved to a LucideIcon by the frontend registry. */
+  icon: string;
+  always_on: boolean;
+}
+
+/**
  * Agent learned memory entry from user interactions
  * BACKEND: AgentMemoryResponse
  */

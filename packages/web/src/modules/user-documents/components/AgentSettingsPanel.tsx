@@ -69,20 +69,29 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userDocumentsApi } from '../services/api';
-import type { AgentPermission, AgentMemory } from '../types';
+import type {
+  AgentPermission,
+  AgentMemory,
+  AgentPermissionCatalogEntry,
+} from '../types';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-/** Permission type definitions in display order */
-const PERMISSION_TYPES: ReadonlyArray<{ key: string; icon: LucideIcon; alwaysOn: boolean }> = [
-  { key: 'prepare_renewal', icon: RotateCcw, alwaysOn: false },
-  { key: 'prepare_request', icon: ClipboardList, alwaysOn: false },
-  { key: 'suggest_appointments', icon: CalendarDays, alwaysOn: false },
-  { key: 'proactive_alerts', icon: Bell, alwaysOn: false },
-  { key: 'auto_classify', icon: FolderOpen, alwaysOn: false },
-];
+/**
+ * Registry mapping the backend-emitted icon names (strings) to Lucide
+ * icon components. Unknown names fall back to `Shield`. Extend this
+ * registry whenever the backend catalog adds a new entry with a new icon.
+ */
+const ICON_REGISTRY: Record<string, LucideIcon> = {
+  RotateCcw,
+  ClipboardList,
+  CalendarDays,
+  Bell,
+  FolderOpen,
+  Shield,
+};
 
 /** Memory type icon map — aligned with backend CHECK constraint */
 const MEMORY_TYPE_ICON: Record<string, LucideIcon> = {
@@ -100,6 +109,7 @@ const MEMORY_TYPE_ICON: Record<string, LucideIcon> = {
 const agentKeys = {
   permissions: ['user-documents', 'agent', 'permissions'] as const,
   memories: ['user-documents', 'agent', 'memories'] as const,
+  catalog: ['user-documents', 'agent', 'permission-catalog'] as const,
 };
 
 // =============================================================================
@@ -128,6 +138,8 @@ function PermissionRow({
   permission,
   isToggling,
   highlighted,
+  status,
+  maxLevel,
   onToggle,
   onLevelChange,
 }: {
@@ -137,11 +149,14 @@ function PermissionRow({
   permission: AgentPermission | undefined;
   isToggling: boolean;
   highlighted?: boolean;
+  status: 'available' | 'coming_soon';
+  maxLevel: number;
   onToggle: (type: string, active: boolean) => void;
   onLevelChange: (type: string, level: number) => void;
 }) {
   const t = useTranslations('userDocuments.agent');
-  const isActive = alwaysOn || permission?.is_active || false;
+  const isComingSoon = status === 'coming_soon';
+  const isActive = !isComingSoon && (alwaysOn || permission?.is_active || false);
   const currentLevel = permission?.level ?? 1;
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -154,18 +169,32 @@ function PermissionRow({
     return () => window.clearTimeout(timer);
   }, [highlighted]);
 
+  // Build the list of selectable levels from backend-supplied max (1..maxLevel)
+  const levelOptions = Array.from({ length: Math.max(1, maxLevel) }, (_, i) => i + 1);
+
   return (
     <div
       ref={rowRef}
       className={`flex items-center gap-3 py-2.5 transition-colors ${
         highlighted ? 'bg-primary/10 rounded -mx-2 px-2 ring-1 ring-primary/30' : ''
-      }`}
+      } ${isComingSoon ? 'opacity-60' : ''}`}
     >
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">
-          {t(`permissionTypes.${permissionKey}`)}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium truncate">
+            {t(`permissionTypes.${permissionKey}`)}
+          </p>
+          {isComingSoon && (
+            <Badge
+              variant="outline"
+              className="text-[9px] h-4 px-1.5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900"
+              title={t('comingSoonTooltip')}
+            >
+              {t('comingSoon')}
+            </Badge>
+          )}
+        </div>
         {isActive && (
           <div className="flex items-center gap-2 mt-1">
             <Select
@@ -177,12 +206,11 @@ function PermissionRow({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">
-                  <span className="text-xs">{t('levels.1')}</span>
-                </SelectItem>
-                <SelectItem value="2">
-                  <span className="text-xs">{t('levels.2')}</span>
-                </SelectItem>
+                {levelOptions.map((lvl) => (
+                  <SelectItem key={lvl} value={String(lvl)}>
+                    <span className="text-xs">{t(`levels.${lvl}`)}</span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {permission?.usage_count != null && permission.usage_count > 0 && (
@@ -196,7 +224,7 @@ function PermissionRow({
       <Switch
         checked={isActive}
         onCheckedChange={(checked) => onToggle(permissionKey, checked)}
-        disabled={alwaysOn || isToggling}
+        disabled={alwaysOn || isToggling || isComingSoon}
         aria-label={t(`permissionTypes.${permissionKey}`)}
       />
     </div>
@@ -280,6 +308,18 @@ export function AgentSettingsPanel({
   // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------
+
+  // Authoritative permission catalog — single source of truth from backend.
+  // Cached 1h on client (matches backend Redis TTL for the same data).
+  const {
+    data: catalog = [],
+    isLoading: catalogLoading,
+  } = useQuery({
+    queryKey: agentKeys.catalog,
+    queryFn: userDocumentsApi.getAgentPermissionCatalog,
+    enabled: open,
+    staleTime: 60 * 60 * 1000,
+  });
 
   const {
     data: permissions = [],
@@ -425,7 +465,7 @@ export function AgentSettingsPanel({
                 {t('permissions')}
               </h3>
 
-              {permissionsLoading ? (
+              {catalogLoading || permissionsLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -437,19 +477,24 @@ export function AgentSettingsPanel({
                 </div>
               ) : (
                 <div className="divide-y">
-                  {PERMISSION_TYPES.map((pt) => (
-                    <PermissionRow
-                      key={pt.key}
-                      permissionKey={pt.key}
-                      icon={pt.icon}
-                      alwaysOn={pt.alwaysOn}
-                      permission={permissionMap[pt.key]}
-                      isToggling={togglingType === pt.key}
-                      highlighted={activeHighlight === pt.key}
-                      onToggle={handleToggle}
-                      onLevelChange={handleLevelChange}
-                    />
-                  ))}
+                  {catalog.map((entry: AgentPermissionCatalogEntry) => {
+                    const IconComponent = ICON_REGISTRY[entry.icon] ?? Shield;
+                    return (
+                      <PermissionRow
+                        key={entry.key}
+                        permissionKey={entry.key}
+                        icon={IconComponent}
+                        alwaysOn={entry.always_on}
+                        permission={permissionMap[entry.key]}
+                        isToggling={togglingType === entry.key}
+                        highlighted={activeHighlight === entry.key}
+                        status={entry.status}
+                        maxLevel={entry.max_level}
+                        onToggle={handleToggle}
+                        onLevelChange={handleLevelChange}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </section>

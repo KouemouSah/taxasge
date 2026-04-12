@@ -2205,6 +2205,49 @@ VALID_PERMISSION_TYPES = {
 }
 
 
+# =============================================================================
+# AGENT PERMISSIONS — Catalog (source of truth for frontend)
+# =============================================================================
+
+@router.get(
+    "/agent/permission-catalog",
+    response_model=Dict[str, Any],
+    summary="List the authoritative agent permission catalog",
+    description="""
+    Return the authoritative catalog of agent permissions.
+
+    This endpoint is the single source of truth consumed by the frontend
+    `AgentSettingsPanel`. Each entry carries a `status` flag
+    (`available` | `coming_soon`) so the UI renders disabled toggles with a
+    clear "coming soon" badge for features whose backend tool is not wired
+    yet — avoiding dead toggles that erode user trust.
+
+    Derived from the BD CHECK constraint on `user_agent_permissions.permission_type`
+    (migration 287_user_documents_vault.sql). Level 3 executive tools use a
+    separate confirmation_code mechanism (Phase 5) and are NOT listed here.
+    """,
+)
+async def get_agent_permission_catalog(
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Return the static agent permission catalog.
+
+    Backed by `AGENT_PERMISSION_CATALOG` in chatbot_tools_authenticated so
+    there is no duplication between frontend and backend. Cached at the
+    CDN/HTTP layer via standard response headers (the catalog is static
+    per release).
+    """
+    from app.modules.chatbot.services.chatbot_tools_authenticated import (
+        AGENT_PERMISSION_CATALOG,
+    )
+
+    return {
+        "catalog": AGENT_PERMISSION_CATALOG,
+        "total": len(AGENT_PERMISSION_CATALOG),
+    }
+
+
 @router.get(
     "/agent/permissions",
     response_model=List[AgentPermissionResponse],

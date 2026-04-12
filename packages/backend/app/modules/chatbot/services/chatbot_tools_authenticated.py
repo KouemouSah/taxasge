@@ -58,13 +58,70 @@ TOOL_LEVELS = {
     "book_appointment": 3,
 }
 
-# Map tool names to permission_type in user_agent_permissions table
+# Map tool names to permission_type in user_agent_permissions table.
+#
+# IMPORTANT: The BD CHECK constraint on user_agent_permissions.permission_type
+# (migration 287_user_documents_vault.sql:303-307) accepts EXACTLY these 5 values:
+#   prepare_renewal, prepare_request, suggest_appointments,
+#   proactive_alerts, auto_classify
+# And level CHECK IN (1, 2) — level 3 does NOT exist.
+#
+# Level 3 executive tools (submit_prepared_request, book_appointment) therefore
+# CANNOT be granted via this table. They use a separate confirmation_code
+# mechanism (Phase 5) and are temporarily marked as feature_coming_soon.
 _TOOL_PERMISSION_MAP = {
     "prepare_renewal": "prepare_renewal",
     "auto_prepare_wizard": "prepare_request",
-    "submit_prepared_request": "submit_request",
-    "book_appointment": "book_appointment",
 }
+
+
+# Authoritative catalog of agent permissions exposed to the frontend.
+# Derived from the BD CHECK constraint (single source of truth).
+# Each entry declares whether an actual tool is wired to the permission, so
+# the UI can render a "coming soon" badge on placeholders instead of hiding
+# them. This keeps user trust — no dead toggles, no silent features.
+AGENT_PERMISSION_CATALOG = [
+    {
+        "key": "prepare_request",
+        "status": "available",
+        "tool_name": "auto_prepare_wizard",
+        "max_level": 2,
+        "icon": "ClipboardList",
+        "always_on": False,
+    },
+    {
+        "key": "prepare_renewal",
+        "status": "available",
+        "tool_name": "prepare_renewal",
+        "max_level": 2,
+        "icon": "RotateCcw",
+        "always_on": False,
+    },
+    {
+        "key": "auto_classify",
+        "status": "coming_soon",
+        "tool_name": None,  # Implementation planned for a dedicated phase
+        "max_level": 2,
+        "icon": "FolderOpen",
+        "always_on": False,
+    },
+    {
+        "key": "suggest_appointments",
+        "status": "coming_soon",
+        "tool_name": None,
+        "max_level": 2,
+        "icon": "CalendarDays",
+        "always_on": False,
+    },
+    {
+        "key": "proactive_alerts",
+        "status": "coming_soon",
+        "tool_name": None,
+        "max_level": 2,
+        "icon": "Bell",
+        "always_on": False,
+    },
+]
 
 
 async def check_tool_level(db, user_id: str, tool_name: str) -> Tuple[bool, str]:
@@ -1088,21 +1145,23 @@ async def auto_prepare_wizard(db, **kwargs) -> dict:
 
 async def submit_prepared_request(db, **kwargs) -> dict:
     """
-    [LEVEL 3] Submit a prepared wizard session.
-    Calls prepare_for_payment + initiate_payment with the specified method.
-    REQUIRES explicit user confirmation.
+    [LEVEL 3 — COMING SOON] Submit a prepared wizard session.
+
+    The BD CHECK constraint on `user_agent_permissions` (migration 287)
+    rejects level=3 AND the `submit_request` permission_type, so this tool
+    cannot be activated through the standard permission flow. Phase 5 will
+    introduce a confirmation_code single-use mechanism (dedicated table,
+    Redis TTL, per-action consent) for executive tools. Until then this
+    function returns a clean coming_soon status.
     """
-    user_id = kwargs.get("user_id", "")
-    session_id = kwargs.get("session_id", "")
-    payment_method = kwargs.get("payment_method", "cash")
-
-    if not user_id or not session_id:
-        return {"error": "Se requiere session_id"}
-
-    # Level enforcement
-    allowed, msg = await check_tool_level(db, user_id, "submit_prepared_request")
-    if not allowed:
-        return {"status": "permission_required", "message": msg, "permission_type": "submit_request", "level": 3}
+    return {
+        "status": "feature_coming_soon",
+        "message": (
+            "L'envoi automatique de demandes sera disponible prochainement. "
+            "En attendant, vous pouvez finaliser votre demande manuellement "
+            "depuis l'assistant de préparation."
+        ),
+    }
 
     try:
         from app.modules.service_requests.services.wizard_session_service import wizard_session_service
@@ -1163,22 +1222,21 @@ async def submit_prepared_request(db, **kwargs) -> dict:
 
 async def book_appointment(db, **kwargs) -> dict:
     """
-    [LEVEL 3] Book an appointment for a service request.
-    REQUIRES explicit user confirmation.
+    [LEVEL 3 — COMING SOON] Book an appointment for a service request.
+
+    Same constraints as submit_prepared_request: BD rejects level=3 and the
+    `book_appointment` permission_type. Phase 5 will rewire this via the
+    confirmation_code mechanism so users can book appointments with per-
+    action consent (no persistent toggle — safer for government procedures).
     """
-    user_id = kwargs.get("user_id", "")
-    session_id = kwargs.get("session_id", "")
-    location_id = kwargs.get("location_id", "")
-    appointment_date = kwargs.get("appointment_date", "")
-    appointment_time = kwargs.get("appointment_time", "")
-
-    if not user_id or not session_id:
-        return {"error": "Se requiere session_id"}
-
-    # Level enforcement
-    allowed, msg = await check_tool_level(db, user_id, "book_appointment")
-    if not allowed:
-        return {"status": "permission_required", "message": msg, "permission_type": "book_appointment", "level": 3}
+    return {
+        "status": "feature_coming_soon",
+        "message": (
+            "La réservation automatique de rendez-vous sera disponible "
+            "prochainement. En attendant, vous pouvez sélectionner votre "
+            "créneau directement depuis l'étape rendez-vous du wizard."
+        ),
+    }
 
     try:
         from app.modules.service_requests.services.wizard_session_service import wizard_session_service

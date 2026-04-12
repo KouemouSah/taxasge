@@ -46,6 +46,7 @@
  */
 
 import apiClient from '@/core/api/client';
+import type { AgentPermissionCatalogEntry } from '../types';
 import type {
   UserDocument,
   UserDocumentListItem,
@@ -502,6 +503,21 @@ export const userDocumentsApi = {
   // ===========================================================================
   // AGENT PERMISSIONS
   // ===========================================================================
+
+  /**
+   * Fetch the authoritative permission catalog from the backend.
+   * This is the source of truth — the frontend no longer hardcodes the list
+   * of permission types. Each entry carries a status flag so the UI can
+   * render disabled "coming soon" toggles for features not yet wired.
+   * BACKEND: GET /api/v1/user-documents/agent/permission-catalog
+   */
+  getAgentPermissionCatalog: async (): Promise<AgentPermissionCatalogEntry[]> => {
+    const response = await apiClient.get<{
+      catalog: AgentPermissionCatalogEntry[];
+      total: number;
+    }>(`${BASE}/agent/permission-catalog`);
+    return response.data.catalog;
+  },
 
   /**
    * List agent permissions for the current user
