@@ -2088,22 +2088,52 @@ Keep it helpful and concise."""
     # ACTION BUTTONS EXTRACTION
     # ========================================================================
 
+    def _build_permission_action(
+        self, perm_type: str, label_key: str = "activatePermission"
+    ) -> Dict[str, Any]:
+        """
+        Build an `open_settings` action for permission refusals.
+
+        Emits both the legacy `label` (Spanish, for backward compat with
+        older frontends) and the new `label_key`/`label_params` pair for
+        i18n-aware frontends. The URL carries `permission` so the
+        DocumentVault reader can auto-scroll to the target row.
+        """
+        return {
+            "type": "open_settings",
+            "label": f"Activar permiso: {perm_type}",  # legacy Spanish fallback
+            "label_key": f"chatbot.actions.{label_key}",
+            "label_params": {"permission_key": perm_type},
+            "url": f"/dashboard/documents?settings=agent&permission={perm_type}",
+            "permission_type": perm_type,
+        }
+
     def _extract_actions_from_tools(
         self,
         tools_used: List[str],
         function_results_data: List[Dict],
-    ) -> List[Dict[str, str]]:
-        """Extract action buttons from tool execution results."""
-        actions = []
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract action buttons from tool execution results.
+
+        Every action emits both a legacy `label` (Spanish) and an i18n
+        `label_key` (+ optional `label_params`). The frontend prefers the
+        key when present, falls back to the literal label. This dual-write
+        lets us ship backend and frontend independently.
+        """
+        actions: List[Dict[str, Any]] = []
 
         for fr in function_results_data:
             fn_name = fr.get("name", "")
             result = fr.get("result", {})
 
             if fn_name == "start_workflow" and result.get("wizard_url"):
+                workflow_name = result.get("workflow_name", "trámite")
                 actions.append({
                     "type": "start_workflow",
-                    "label": f"Iniciar {result.get('workflow_name', 'trámite')} en Facil",
+                    "label": f"Iniciar {workflow_name} en Facil",
+                    "label_key": "chatbot.actions.startWorkflow",
+                    "label_params": {"workflow": workflow_name},
                     "url": result["wizard_url"],
                     "workflow_code": result.get("workflow_code", ""),
                 })
@@ -2111,7 +2141,8 @@ Keep it helpful and concise."""
             elif fn_name == "get_workflow_guide" and result.get("workflow_code"):
                 actions.append({
                     "type": "start_workflow",
-                    "label": f"Iniciar en Facil",
+                    "label": "Iniciar en Facil",
+                    "label_key": "chatbot.actions.startInFacil",
                     "url": f"/dashboard/service-requests/new?workflow={result['workflow_code']}",
                     "workflow_code": result["workflow_code"],
                 })
@@ -2120,12 +2151,14 @@ Keep it helpful and concise."""
                 actions.append({
                     "type": "view_pricing",
                     "label": "Ver todos los precios por zona",
+                    "label_key": "chatbot.actions.viewPricing",
                 })
 
             elif fn_name == "get_document_checklist" and result.get("documents"):
                 actions.append({
                     "type": "start_workflow",
                     "label": "Iniciar trámite en Facil",
+                    "label_key": "chatbot.actions.startInFacil",
                     "url": f"/dashboard/service-requests/new?workflow={result.get('workflow_code', '')}",
                     "workflow_code": result.get("workflow_code", ""),
                 })
@@ -2137,6 +2170,7 @@ Keep it helpful and concise."""
                     actions.append({
                         "type": action.get("type", "open_wizard"),
                         "label": action.get("label", "Finalizar solicitud"),
+                        "label_key": "chatbot.actions.finalize",
                         "url": action.get("url", ""),
                         "workflow_code": result.get("workflow_code", ""),
                     })
@@ -2145,12 +2179,7 @@ Keep it helpful and concise."""
                     pass
                 elif result.get("status") == "permission_required":
                     perm_type = result.get("permission_type", "prepare_request")
-                    actions.append({
-                        "type": "open_settings",
-                        "label": f"Activar permiso: {perm_type}",
-                        "url": "/dashboard/documents?settings=agent",
-                        "permission_type": perm_type,
-                    })
+                    actions.append(self._build_permission_action(perm_type))
 
             elif fn_name == "submit_prepared_request":
                 if result.get("status") == "submitted" and result.get("action"):
@@ -2158,46 +2187,51 @@ Keep it helpful and concise."""
                     actions.append({
                         "type": action.get("type", "open_wizard"),
                         "label": action.get("label", "Ver solicitud"),
+                        "label_key": "chatbot.actions.viewRequest",
                         "url": action.get("url", ""),
                     })
                 elif result.get("status") == "permission_required":
-                    actions.append({
-                        "type": "open_settings",
-                        "label": "Activar permiso de envio",
-                        "url": "/dashboard/documents?settings=agent",
-                    })
+                    actions.append(
+                        self._build_permission_action(
+                            result.get("permission_type", "submit_request"),
+                            label_key="activateSubmitPermission",
+                        )
+                    )
 
             elif fn_name == "book_appointment":
                 if result.get("status") == "booked":
+                    appointment_date = result.get("appointment_date", "")
                     actions.append({
                         "type": "appointment_booked",
-                        "label": f"Cita reservada: {result.get('appointment_date', '')}",
+                        "label": f"Cita reservada: {appointment_date}",
+                        "label_key": "chatbot.actions.appointmentBooked",
+                        "label_params": {"date": appointment_date},
                         "url": "",
                     })
                 elif result.get("status") == "permission_required":
-                    actions.append({
-                        "type": "open_settings",
-                        "label": "Activar permiso de reserva",
-                        "url": "/dashboard/documents?settings=agent",
-                    })
+                    actions.append(
+                        self._build_permission_action(
+                            result.get("permission_type", "book_appointment"),
+                            label_key="activateBookPermission",
+                        )
+                    )
 
             elif fn_name == "prepare_renewal":
                 if result.get("status") == "prepared":
                     wf_code = result.get("workflow_code", "")
                     actions.append({
                         "type": "start_workflow",
-                        "label": f"Iniciar renovación",
+                        "label": "Iniciar renovación",
+                        "label_key": "chatbot.actions.startRenewal",
                         "url": f"/dashboard/service-requests/new?workflow={wf_code}",
                         "workflow_code": wf_code,
                     })
                 elif result.get("status") == "permission_required":
-                    perm_type = result.get("permission_type", "prepare_request")
-                    actions.append({
-                        "type": "open_settings",
-                        "label": f"Activar permiso: {perm_type}",
-                        "url": "/dashboard/documents?settings=agent",
-                        "permission_type": perm_type,
-                    })
+                    actions.append(
+                        self._build_permission_action(
+                            result.get("permission_type", "prepare_renewal")
+                        )
+                    )
 
         return actions
 

@@ -23,7 +23,7 @@ import createDOMPurify from 'dompurify'
 import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
-import type { ChatMessage } from '../types'
+import type { ChatMessage, ChatAction } from '../types'
 
 /**
  * Sanitize HTML output from renderMarkdown to prevent XSS.
@@ -53,6 +53,13 @@ export interface MessageItemProps {
   message: ChatMessage
   locale?: string
   className?: string
+  /**
+   * When provided (authenticated chat only), clicking an `open_settings`
+   * action opens the AgentSettingsPanel in place via this callback
+   * instead of navigating to the DocumentVault page. The public chat
+   * omits this prop and falls back to the legacy `<a href>` behavior.
+   */
+  onOpenAgentPanel?: (permissionType?: string) => void
 }
 
 // =============================================================================
@@ -169,13 +176,41 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   message,
   locale = 'es',
   className = '',
+  onOpenAgentPanel,
 }) => {
   const t = useTranslations('chatbot')
+  // Separate namespaces so we can resolve action labels AND permission-type
+  // human names independently (e.g. "prepare_request" → "Préparer les demandes").
+  const tActions = useTranslations('chatbot.actions')
+  const tPermTypes = useTranslations('userDocuments.agent.permissionTypes')
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
 
   const isUser = message.role === 'user'
   const isBot = message.role === 'assistant'
+
+  /**
+   * Resolve an action's label: prefer backend-supplied i18n key, otherwise
+   * fall back to the legacy literal. When `permission_key` is present in
+   * label_params, replace it with the localized permission type name.
+   */
+  const resolveActionLabel = (action: ChatAction): string => {
+    if (!action.label_key) return action.label
+    const params: Record<string, string | number> = { ...(action.label_params ?? {}) }
+    if (typeof params.permission_key === 'string') {
+      try {
+        params.permission = tPermTypes(params.permission_key as string)
+      } catch {
+        params.permission = params.permission_key
+      }
+      delete params.permission_key
+    }
+    try {
+      return tActions(action.label_key.replace(/^chatbot\.actions\./, ''), params)
+    } catch {
+      return action.label
+    }
+  }
 
   // =============================================================================
   // HANDLERS
@@ -268,19 +303,44 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {/* Action Buttons — inline CTAs from tool results */}
           {isBot && message.actions && message.actions.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-stone-200/50 dark:border-stone-700/50">
-              {message.actions
-                .filter((a: { url?: string }) => !a.url || a.url.startsWith('/'))
-                .map((action: { type: string; label: string; url?: string }, i: number) => (
-                <a
-                  key={i}
-                  href={action.url || '#'}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors no-underline"
-                >
-                  {(action.type === 'start_workflow' || action.type === 'open_wizard') && <ExternalLink className="h-3 w-3" />}
-                  {action.type === 'open_settings' && <Settings className="h-3 w-3" />}
-                  {action.label}
-                </a>
-              ))}
+              {message.actions.map((action: ChatAction, i: number) => {
+                const labelText = resolveActionLabel(action)
+
+                // `open_settings` with a live handler → in-place panel (authenticated chat)
+                if (action.type === 'open_settings' && onOpenAgentPanel) {
+                  return (
+                    <Button
+                      key={i}
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => onOpenAgentPanel(action.permission_type)}
+                    >
+                      <Settings className="h-3 w-3" strokeWidth={1.5} />
+                      {labelText}
+                    </Button>
+                  )
+                }
+
+                // Everything else → <a href> (skip actions without valid URL to
+                // avoid dead links, e.g. the pure-informational `appointment_booked`)
+                if (!action.url || !action.url.startsWith('/')) return null
+
+                return (
+                  <a
+                    key={i}
+                    href={action.url}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors no-underline"
+                  >
+                    {(action.type === 'start_workflow' || action.type === 'open_wizard') && (
+                      <ExternalLink className="h-3 w-3" />
+                    )}
+                    {action.type === 'open_settings' && <Settings className="h-3 w-3" />}
+                    {labelText}
+                  </a>
+                )
+              })}
             </div>
           )}
 

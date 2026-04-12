@@ -35,6 +35,7 @@ import { useChat, useChatSettings } from '@/modules/chatbot/hooks';
 import { MessageItem } from '@/modules/chatbot/components/MessageItem';
 import { TypingIndicator } from '@/modules/chatbot/components/TypingIndicator';
 import { SuggestionChips } from '@/modules/chatbot/components/SuggestionChips';
+import { AgentSettingsPanel } from '@/modules/user-documents/components/AgentSettingsPanel';
 import type { ChatMessage } from '@/modules/chatbot/types';
 
 // =============================================================================
@@ -103,12 +104,22 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  // AgentSettingsPanel state — opened from chat action buttons or gear icon
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [highlightPerm, setHighlightPerm] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const searchParams = useSearchParams();
   const hasMessages = messages.length > 0;
   const qSentRef = useRef(false);
+
+  // Handler passed down to MessageItem: clicking "Activate permission"
+  // opens the panel in-place without losing conversation context.
+  const openAgentPanel = useCallback((permType?: string) => {
+    setHighlightPerm(permType);
+    setAgentPanelOpen(true);
+  }, []);
 
   // Resolve action messages (need t() which is only available in component)
   const generalActions = GENERAL_ACTIONS.map((a) => ({ ...a, message: t(a.titleKey) }));
@@ -250,6 +261,7 @@ export default function ChatPage() {
                 key={`${msg.timestamp}-${i}`}
                 message={msg}
                 locale={locale}
+                onOpenAgentPanel={openAgentPanel}
               />
             ))}
 
@@ -387,6 +399,16 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* ─── Agent Settings Panel — opened from MessageItem action buttons ─── */}
+      <AgentSettingsPanel
+        open={agentPanelOpen}
+        onOpenChange={(open) => {
+          setAgentPanelOpen(open);
+          if (!open) setHighlightPerm(undefined);
+        }}
+        initialHighlightPermission={highlightPerm}
+      />
     </div>
   );
 }

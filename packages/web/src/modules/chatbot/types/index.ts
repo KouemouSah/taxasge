@@ -301,8 +301,23 @@ export interface StreamChunk {
 }
 
 export interface ChatAction {
-  type: 'start_workflow' | 'open_wizard' | 'open_settings' | 'view_pricing' | 'view_documents'
+  type:
+    | 'start_workflow'
+    | 'open_wizard'
+    | 'open_settings'
+    | 'view_pricing'
+    | 'view_documents'
+    | 'appointment_booked'
+  /** Legacy Spanish label kept as fallback when label_key is absent. */
   label: string
+  /**
+   * i18n key resolved by the frontend (e.g. "chatbot.actions.activatePermission").
+   * When present, the frontend translates it using `label_params`; otherwise
+   * it falls back to the literal `label` string above.
+   */
+  label_key?: string
+  /** Parameters injected into the translated string (ICU placeholders). */
+  label_params?: Record<string, string | number>
   url?: string
   workflow_code?: string
   permission_type?: string
