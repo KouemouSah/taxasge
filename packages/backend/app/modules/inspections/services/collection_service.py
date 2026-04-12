@@ -1,23 +1,37 @@
-"""Collection Service — Field payment with unified dossier per licence/year.
+"""Collection Service — Field payment with unified dossier per commercial_license.
 
-ARCHITECTURE:
-1 licence/year = 1 service_request (dossier) = N payments (terrain + citizen + office)
+ARCHITECTURE (migration 291 — plan INSPECTION_BUNDLE_P1_DETAIL.md):
+  1 commercial_license ↔ 1 service_request (1:1 lazy-create)
+  1 service_request   ↔ N service_payments (citizen + field + office)
 
 Field collection flow:
-  1. Find existing service_request for company+fiscal_year (CTE query)
-  2. If found → reuse (citizen/field payments share the same dossier)
-  3. If not found → create (source='field_inspection', workflow='FIELD_INSPECTION')
-  4. INSERT service_payment linked to the dossier
-  5. Emit PAYMENT_CASH_PENDING event for notifications
-  6. Log audit trail
+  1. Validate inspection ownership + obligations (UPPERCASE enum)
+  2. SET LOCAL lock_timeout + statement_timeout (D5)
+  3. SELECT commercial_licenses FOR UPDATE (root lock, D5)
+  4. Find company owner for service_request.user_id
+  5. Find or lazy-create service_request via _find_or_create_bundle_dossier
+  6. INSERT service_payment (chk_service_request_required satisfied)
+  7. UPDATE license_obligations SET status='payment_pending' (D2 — NOT paid)
+  8. UPDATE field_inspections
+  9. INSERT license_compliance_events (event_type='payment_initiated')
+ 10. POST-TRANSACTION: EventBus + audit_logs (best-effort)
+ 11. Supervisor validates via POST /inspections/reconcile/supervisor/{id}/validate
+    → LicenseService.on_payment_completed → payment_pending → paid → routing
 
 OWASP compliance:
   A01: agent_id == inspection.agent_id (access control)
   A03: Decimal amount == sum(obligations) (injection prevention)
   A04: payment_collected check prevents double payment
-  A05: service_request_id always set (FK constraint satisfied)
+  A04: Double validation — agent collects, supervisor approves
+  A05: service_request_id always set (FK constraint satisfied via lazy-create)
   A08: SHA integrity not applicable (cash, not digital signature)
-  A09: audit_logs + EventBus for full traceability
+  A09: audit_logs + license_compliance_events + EventBus for full traceability
+
+Concurrency:
+  - Root lock on commercial_licenses (FOR UPDATE) — serializes all agents
+  - Safety net: partial UNIQUE index idx_sr_commercial_license_unique
+  - UniqueViolationError recovery is deterministic (no retry/backoff — D3)
+  - Transaction-scoped timeouts: lock_timeout=3s, statement_timeout=5s
 """
 
 import json
@@ -26,6 +40,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
+
+import asyncpg
 
 from app.core.events import EventBus, EventType
 from app.modules.inspections.repositories.inspection_repository import (
@@ -43,54 +59,146 @@ def _normalize_amount(val) -> Decimal:
 
 
 class CollectionService:
-    """Field payment collection with unified dossier per licence/year."""
+    """Field payment collection with 1:1 unified dossier per commercial_license."""
+
+    # ═══════════════════════════════════════════════════════════════
+    # HELPERS
+    # ═══════════════════════════════════════════════════════════════
 
     @staticmethod
-    async def _find_or_create_service_request(
-        conn,
-        company_id: UUID,
-        user_id: UUID,
-        fiscal_year: int,
+    async def _resolve_agent_entity_code(
+        conn: asyncpg.Connection, user_id: UUID,
+    ) -> Optional[str]:
+        """Fetch the entity_code of the agent's active profile."""
+        row = await conn.fetchrow(
+            """
+            SELECT e.code
+            FROM agent_profiles ap
+            JOIN entities e ON e.id = ap.entity_id
+            WHERE ap.user_id = $1 AND ap.is_active = true
+            LIMIT 1
+            """,
+            user_id,
+        )
+        return row["code"] if row else None
+
+    @staticmethod
+    async def _find_or_create_bundle_dossier(
+        conn: asyncpg.Connection,
+        license_id: UUID,
+        company_owner_user_id: UUID,
     ) -> UUID:
         """
-        Find existing service_request for this company/year, or create one.
+        Find or lazy-create service_request for a commercial_license (1:1).
 
-        CTE query searches for any active dossier (citizen or field).
-        If none found, creates a new one with source='field_inspection'.
+        Must be called inside an active transaction where commercial_licenses
+        has already been locked via SELECT FOR UPDATE by the caller (D5).
 
-        Returns: service_request UUID
+        The UNIQUE partial index `idx_sr_commercial_license_unique` (migration 291)
+        is a safety net against race conditions. Recovery on UniqueViolationError
+        is deterministic — no retry/backoff (D3).
+
+        Args:
+            conn: active asyncpg connection (must be inside transaction
+                  with commercial_licenses row already locked)
+            license_id: commercial_licenses.id
+            company_owner_user_id: user_id of company_owner (NOT the agent)
+
+        Returns:
+            service_request UUID (existing or newly created)
+
+        Raises:
+            ValueError: if license not found
         """
-        # Search for existing active dossier for this company + fiscal year
-        existing = await conn.fetchval("""
-            SELECT sr.id
-            FROM service_requests sr
-            WHERE sr.company_id = $1
-              AND EXTRACT(YEAR FROM sr.created_at) = $2
-              AND sr.status NOT IN ('cancelled', 'rejected')
-            ORDER BY sr.created_at DESC
-            LIMIT 1
-        """, company_id, fiscal_year)
+        # The license row MUST already be locked by the caller via FOR UPDATE
+        # (see collect_field_payment step 3). We re-read it here to access
+        # bundle_id / fiscal_year / service_request_id without re-locking.
+        row = await conn.fetchrow(
+            """
+            SELECT id, company_id, bundle_id, fiscal_year, service_request_id
+            FROM commercial_licenses
+            WHERE id = $1
+            """,
+            license_id,
+        )
+        if not row:
+            raise ValueError(f"License {license_id} not found")
 
-        if existing:
-            logger.info(f"Reusing existing service_request {existing} for company {company_id}")
+        # Reuse existing dossier (1:1 lazy)
+        if row["service_request_id"]:
+            logger.info(
+                "Reusing existing service_request %s for license %s",
+                row["service_request_id"], license_id,
+            )
+            return row["service_request_id"]
+
+        # Lazy create — reference auto-generated by trigger trg_sr_auto_reference
+        # (patched in migration 291 → will produce 'FLD-YYYY-NNNNN')
+        new_id = uuid4()
+        try:
+            await conn.execute(
+                """
+                INSERT INTO service_requests (
+                    id, user_id, company_id,
+                    workflow_code, status, source,
+                    commercial_license_id, bundle_id, fiscal_year,
+                    created_at, updated_at
+                ) VALUES (
+                    $1, $2, $3,
+                    'FIELD_INSPECTION', 'SUBMITTED', 'field_inspection',
+                    $4, $5, $6,
+                    NOW(), NOW()
+                )
+                """,
+                new_id, company_owner_user_id, row["company_id"],
+                license_id, row["bundle_id"], row["fiscal_year"],
+            )
+        except asyncpg.UniqueViolationError:
+            # Safety net per D3: UNIQUE partial index idx_sr_commercial_license_unique
+            # caught a concurrent insert. Recover deterministically (no retry).
+            existing = await conn.fetchval(
+                """
+                SELECT id FROM service_requests
+                WHERE commercial_license_id = $1
+                LIMIT 1
+                """,
+                license_id,
+            )
+            if existing is None:
+                # Different unique violation — not our partial index
+                raise
+            logger.warning(
+                "UniqueViolationError recovered for license %s → existing SR %s",
+                license_id, existing,
+            )
             return existing
 
-        # No dossier exists — create one
-        new_id = uuid4()
-        await conn.execute("""
-            INSERT INTO service_requests (
-                id, user_id, company_id,
-                workflow_code, status, source,
-                created_at, updated_at
-            ) VALUES ($1, $2, $3, 'FIELD_INSPECTION', 'submitted', 'field_inspection', NOW(), NOW())
-        """, new_id, user_id, company_id)
+        # Link back from commercial_licenses (also enforced by trigger
+        # trg_sync_license_sr_id, but explicit here for defensive clarity)
+        await conn.execute(
+            """
+            UPDATE commercial_licenses
+            SET service_request_id = $1, updated_at = NOW()
+            WHERE id = $2
+            """,
+            new_id, license_id,
+        )
 
-        logger.info(f"Created new service_request {new_id} (FIELD_INSPECTION) for company {company_id}")
+        logger.info(
+            "Created service_request %s for license %s (company=%s, bundle=%s, year=%d)",
+            new_id, license_id, row["company_id"], row["bundle_id"], row["fiscal_year"],
+        )
         return new_id
+
+    # ═══════════════════════════════════════════════════════════════
+    # MAIN ENTRY POINT
+    # ═══════════════════════════════════════════════════════════════
 
     @staticmethod
     async def collect_field_payment(
-        conn, inspection_id: UUID, user_id: UUID,
+        conn: asyncpg.Connection,
+        inspection_id: UUID,
+        user_id: UUID,
         obligation_ids: List[UUID],
         method: str,
         amount: Decimal,
@@ -98,16 +206,12 @@ class CollectionService:
         notes: Optional[str] = None,
     ) -> dict:
         """
-        Collect field payment and attach to unified dossier.
+        Collect field payment and attach to unified 1:1 dossier.
 
-        Flow:
-          1. Validate inspection ownership + obligations
-          2. Find or create service_request (unified dossier)
-          3. Create service_payment
-          4. Update inspection
-          5. Emit event + audit log
+        Full flow per plan §2.2 / §2.3 (INSPECTION_BUNDLE_P1_DETAIL.md).
+        Transaction-scoped timeouts prevent indefinite blocking (D5).
         """
-        # ── Step 1: Validate ──────────────────────────────────────────
+        # ── Step 1: Validate (outside transaction, read-only) ─────────
 
         inspection = await InspectionRepository.get_by_id(conn, inspection_id)
         if not inspection:
@@ -124,142 +228,215 @@ class CollectionService:
         if inspection.get("payment_collected"):
             raise ValueError("Payment already collected for this inspection")
 
-        # Validate obligations exist and are payable
-        obls = await conn.fetch("""
-            SELECT lo.id, lo.status, lo.amount, lo.penalty_amount, lo.fee_type,
-                   lo.license_id, lo.ministry_id
-            FROM license_obligations lo
-            WHERE lo.id = ANY($1::uuid[])
-              AND lo.license_id = $2
-            ORDER BY lo.fee_type
-        """, obligation_ids, inspection["license_id"])
-
-        if len(obls) != len(obligation_ids):
-            found_ids = {o["id"] for o in obls}
-            missing = [str(oid) for oid in obligation_ids if oid not in found_ids]
-            raise ValueError(f"Obligations not found: {missing}")
-
-        uncollectable = [o for o in obls if o["status"] not in ("pending", "overdue")]
-        if uncollectable:
-            raise ValueError(
-                f"Obligations must be pending/overdue. "
-                f"Invalid: {[str(o['id']) for o in uncollectable]}"
-            )
-
-        # OWASP A03: Amount must exactly match obligations
-        base_amount = sum(_normalize_amount(o["amount"]) for o in obls)
-        penalties = sum(_normalize_amount(o["penalty_amount"]) for o in obls)
-        expected = base_amount + penalties
-        received = _normalize_amount(amount)
-
-        if received != expected:
-            raise ValueError(
-                f"Amount mismatch: expected {expected} XAF, received {received} XAF"
-            )
-
         if method == "mobile_money" and not phone_number:
             raise ValueError("Phone number required for mobile money")
 
-        # ── Step 2: Find or create dossier ────────────────────────────
-
-        license_row = await conn.fetchrow(
-            "SELECT company_id, fiscal_year FROM commercial_licenses WHERE id = $1",
-            inspection["license_id"],
-        )
-        if not license_row:
-            raise ValueError("License not found")
-
-        company_id = license_row["company_id"]
-        fiscal_year = license_row["fiscal_year"]
-
-        # Company owner (for service_request user_id + notifications)
-        owner = await conn.fetchrow("""
-            SELECT u.id AS user_id, u.email, u.full_name, u.phone_number
-            FROM user_company_roles ucr
-            JOIN users u ON u.id = ucr.user_id
-            WHERE ucr.company_id = $1
-              AND ucr.role = 'company_owner' AND ucr.is_active = true
-            LIMIT 1
-        """, company_id)
-        payment_user_id = owner["user_id"] if owner else user_id
-
-        service_request_id = await CollectionService._find_or_create_service_request(
-            conn, company_id, payment_user_id, fiscal_year,
-        )
-
-        # ── Step 3: Create service_payment ────────────────────────────
+        # ── Transactional section ─────────────────────────────────────
 
         payment_id = uuid4()
-        seq = await conn.fetchval("SELECT nextval('field_receipt_seq')")
-        payment_ref = f"FLD-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{seq:05d}"
+        payment_ref: str = ""
+        service_request_id: UUID
+        base_amount: Decimal
+        penalties: Decimal
+        received: Decimal
+        company_id: UUID
+        fee_type: Optional[str] = None
+        ministry_id: Optional[int] = None
 
-        # Entity + ministry for treasury routing
-        entity_code = inspection.get("entity_code")
-        if not entity_code:
-            profile = await conn.fetchrow(
-                "SELECT e.code FROM agent_profiles ap JOIN entities e ON e.id = ap.entity_id WHERE ap.user_id = $1",
+        async with conn.transaction():
+            # D5: Transaction-scoped timeouts
+            await conn.execute("SET LOCAL lock_timeout = '3s'")
+            await conn.execute("SET LOCAL statement_timeout = '5s'")
+
+            # ── Step 2: Validate obligations are payable ──────────────
+            obls = await conn.fetch(
+                """
+                SELECT lo.id, lo.status, lo.amount, lo.penalty_amount, lo.fee_type,
+                       lo.license_id, lo.ministry_id
+                FROM license_obligations lo
+                WHERE lo.id = ANY($1::uuid[])
+                  AND lo.license_id = $2
+                ORDER BY lo.fee_type
+                """,
+                obligation_ids, inspection["license_id"],
+            )
+
+            if len(obls) != len(obligation_ids):
+                found_ids = {o["id"] for o in obls}
+                missing = [str(oid) for oid in obligation_ids if oid not in found_ids]
+                raise ValueError(f"Obligations not found: {missing}")
+
+            uncollectable = [o for o in obls if o["status"] not in ("pending", "overdue")]
+            if uncollectable:
+                raise ValueError(
+                    f"Obligations must be pending/overdue. "
+                    f"Invalid: {[str(o['id']) for o in uncollectable]}"
+                )
+
+            # OWASP A03: Amount must exactly match obligations
+            base_amount = sum(
+                (_normalize_amount(o["amount"]) for o in obls),
+                start=Decimal("0.00"),
+            )
+            penalties = sum(
+                (_normalize_amount(o["penalty_amount"]) for o in obls),
+                start=Decimal("0.00"),
+            )
+            expected = base_amount + penalties
+            received = _normalize_amount(amount)
+
+            if received != expected:
+                raise ValueError(
+                    f"Amount mismatch: expected {expected} XAF, received {received} XAF"
+                )
+
+            ministry_id = obls[0]["ministry_id"]
+            fee_type = obls[0]["fee_type"]
+
+            # ── Step 3: LOCK commercial_licenses (D5 root lock) ────────
+            license_row = await conn.fetchrow(
+                """
+                SELECT id, company_id, bundle_id, fiscal_year
+                FROM commercial_licenses
+                WHERE id = $1
+                FOR UPDATE
+                """,
+                inspection["license_id"],
+            )
+            if not license_row:
+                raise ValueError("License not found")
+            company_id = license_row["company_id"]
+
+            # ── Step 4: Find company owner ────────────────────────────
+            owner = await conn.fetchrow(
+                """
+                SELECT u.id AS user_id, u.email, u.full_name, u.phone_number
+                FROM user_company_roles ucr
+                JOIN users u ON u.id = ucr.user_id
+                WHERE ucr.company_id = $1
+                  AND ucr.role = 'company_owner'
+                  AND ucr.is_active = true
+                LIMIT 1
+                """,
+                company_id,
+            )
+            payment_user_id = owner["user_id"] if owner else user_id
+
+            # ── Step 5: Lazy-create or reuse 1:1 dossier ──────────────
+            service_request_id = await CollectionService._find_or_create_bundle_dossier(
+                conn,
+                license_id=license_row["id"],
+                company_owner_user_id=payment_user_id,
+            )
+
+            # ── Step 6: INSERT service_payment ────────────────────────
+            seq = await conn.fetchval("SELECT nextval('field_receipt_seq')")
+            payment_ref = f"FLD-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{seq:05d}"
+
+            entity_code = inspection.get("entity_code")
+            if not entity_code:
+                entity_code = await CollectionService._resolve_agent_entity_code(
+                    conn, user_id,
+                )
+
+            await conn.execute(
+                """
+                INSERT INTO service_payments (
+                    id, payment_reference, user_id, company_id,
+                    service_request_id,
+                    payment_type, base_amount, penalties, discounts, total_amount,
+                    payment_method, currency, status, workflow_status,
+                    entity_code, ministry_id, fee_type,
+                    collection_type, collected_by, field_inspection_id,
+                    supporting_documents,
+                    created_at, updated_at
+                ) VALUES (
+                    $1, $2, $3, $4,
+                    $5,
+                    'full', $6, $7, 0, $8,
+                    $9, 'XAF', 'pending', 'field_collected',
+                    $10, $11, $12,
+                    'field', $13, $14,
+                    $15,
+                    NOW(), NOW()
+                )
+                """,
+                payment_id,           # $1
+                payment_ref,          # $2
+                payment_user_id,      # $3
+                company_id,           # $4
+                service_request_id,   # $5 ← unified 1:1 dossier
+                base_amount,          # $6
+                penalties,            # $7
+                received,             # $8
+                method,               # $9
+                entity_code,          # $10
+                ministry_id,          # $11
+                fee_type,             # $12
+                user_id,              # $13 collected_by
+                inspection_id,        # $14 field_inspection_id
+                json.dumps({          # $15 supporting_documents
+                    "inspection_id": str(inspection_id),
+                    "obligation_ids": [str(oid) for oid in obligation_ids],
+                    "phone_number": phone_number,
+                    "notes": notes,
+                    "fee_types": list({o["fee_type"] for o in obls}),
+                }),
+            )
+
+            # ── Step 7: Obligations → payment_pending (D2) ────────────
+            # Agent creates in payment_pending; supervisor validates to 'paid'
+            # via POST /inspections/reconcile/supervisor/{payment_id}/validate
+            # which calls LicenseService.on_payment_completed() → paid → routing.
+            await conn.execute(
+                """
+                UPDATE license_obligations
+                SET status = 'payment_pending',
+                    payment_id = $1,
+                    updated_at = NOW()
+                WHERE id = ANY($2::uuid[])
+                  AND status IN ('pending', 'overdue')
+                """,
+                payment_id, obligation_ids,
+            )
+
+            # ── Step 8: Update inspection ─────────────────────────────
+            await InspectionRepository.update(conn, inspection_id, {
+                "payment_collected": True,
+                "payment_amount": amount,
+                "payment_id": payment_id,
+                "payment_receipt_number": payment_ref,
+            })
+
+            # ── Step 9: Compliance event (audit trail bundle) ─────────
+            await conn.execute(
+                """
+                INSERT INTO license_compliance_events (
+                    license_id, event_type, event_data,
+                    triggered_by, created_at
+                ) VALUES (
+                    $1, 'payment_initiated', $2::jsonb,
+                    $3, NOW()
+                )
+                """,
+                license_row["id"],
+                json.dumps({
+                    "source": "field_inspection",
+                    "inspection_id": str(inspection_id),
+                    "service_request_id": str(service_request_id),
+                    "payment_id": str(payment_id),
+                    "payment_reference": payment_ref,
+                    "obligation_ids": [str(oid) for oid in obligation_ids],
+                    "amount": float(received),
+                    "method": method,
+                    "collected_by": str(user_id),
+                }),
                 user_id,
             )
-            entity_code = profile["code"] if profile else None
 
-        ministry_id = obls[0]["ministry_id"] if obls else None
-        fee_type = obls[0]["fee_type"] if obls else None
+        # ── Post-transaction: non-atomic side effects ─────────────────
 
-        await conn.execute("""
-            INSERT INTO service_payments (
-                id, payment_reference, user_id, company_id,
-                service_request_id,
-                payment_type, base_amount, penalties, discounts, total_amount,
-                payment_method, currency, status, workflow_status,
-                entity_code, ministry_id, fee_type,
-                collection_type, collected_by, field_inspection_id,
-                supporting_documents,
-                created_at, updated_at
-            ) VALUES (
-                $1, $2, $3, $4,
-                $5,
-                'full', $6, $7, 0, $8,
-                $9, 'XAF', 'pending', 'field_collected',
-                $10, $11, $12,
-                'field', $13, $14,
-                $15,
-                NOW(), NOW()
-            )
-        """,
-            payment_id,           # $1
-            payment_ref,          # $2
-            payment_user_id,      # $3
-            company_id,           # $4
-            service_request_id,   # $5 ← unified dossier
-            base_amount,          # $6
-            penalties,            # $7
-            received,             # $8
-            method,               # $9
-            entity_code,          # $10
-            ministry_id,          # $11
-            fee_type,             # $12
-            user_id,              # $13 collected_by
-            inspection_id,        # $14 field_inspection_id
-            json.dumps({          # $15 supporting_documents
-                "inspection_id": str(inspection_id),
-                "obligation_ids": [str(oid) for oid in obligation_ids],
-                "phone_number": phone_number,
-                "notes": notes,
-                "fee_types": list({o["fee_type"] for o in obls}),
-            }),
-        )
-
-        # ── Step 4: Update inspection ─────────────────────────────────
-
-        await InspectionRepository.update(conn, inspection_id, {
-            "payment_collected": True,
-            "payment_amount": amount,
-            "payment_id": payment_id,
-            "payment_receipt_number": payment_ref,
-        })
-
-        # ── Step 5: Event + Audit ─────────────────────────────────────
-
+        # OWASP A09: EventBus notification (best-effort)
         try:
             EventBus.publish_nowait(EventType.PAYMENT_CASH_PENDING, {
                 "payment_id": str(payment_id),
@@ -269,33 +446,40 @@ class CollectionService:
                 "company_name": inspection.get("company_name"),
                 "amount": float(received),
                 "method": method,
-                "user_id": str(payment_user_id),
+                "user_id": str(payment_user_id) if owner else None,
                 "user_email": owner["email"] if owner else None,
                 "user_name": owner["full_name"] if owner else None,
             })
         except Exception as e:
             logger.warning(f"Field collection event emission failed: {e}")
 
-        # OWASP A09: Audit trail
+        # OWASP A09: Legacy audit_logs (parallel to license_compliance_events)
+        # Uses new_values JSONB column (not 'details' — verified BD 2026-04-11)
         try:
-            await conn.execute("""
-                INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
-                VALUES ($1, 'FIELD_COLLECTION', 'service_payment', $2, $3, NOW())
-            """, user_id, str(payment_id), json.dumps({
-                "inspection_id": str(inspection_id),
-                "amount": float(received),
-                "method": method,
-                "obligation_count": len(obligation_ids),
-                "service_request_id": str(service_request_id),
-                "payment_reference": payment_ref,
-            }))
+            await conn.execute(
+                """
+                INSERT INTO audit_logs (
+                    user_id, action, entity_type, entity_id, new_values, created_at
+                ) VALUES (
+                    $1, 'FIELD_COLLECTION', 'service_payment', $2, $3, NOW()
+                )
+                """,
+                user_id, str(payment_id), json.dumps({
+                    "inspection_id": str(inspection_id),
+                    "amount": float(received),
+                    "method": method,
+                    "obligation_count": len(obligation_ids),
+                    "service_request_id": str(service_request_id),
+                    "payment_reference": payment_ref,
+                }),
+            )
         except Exception as e:
             logger.warning(f"Audit log failed (non-blocking): {e}")
 
         logger.info(
-            f"Field collection OK: {payment_ref} — "
-            f"{received} XAF ({method}), {len(obligation_ids)} obls, "
-            f"dossier={service_request_id}, inspection={inspection_id}"
+            "Field collection OK: %s — %s XAF (%s), %d obls, dossier=%s, inspection=%s",
+            payment_ref, received, method, len(obligation_ids),
+            service_request_id, inspection_id,
         )
 
         return {

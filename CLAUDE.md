@@ -310,6 +310,30 @@ const schema = z.object({
 });
 ```
 
+### Lock Ordering — Bundle / Field Payment (100+ concurrent agents)
+
+For any transaction touching commercial licences AND field payments,
+follow this canonical lock order to prevent deadlocks:
+
+1. **`commercial_licenses`** — `SELECT ... FOR UPDATE` (the only explicit lock — root)
+2. **`service_requests`** — `INSERT` only (optimistic via partial UNIQUE index `idx_sr_commercial_license_unique`, no `FOR UPDATE`)
+3. **`license_obligations`** — `UPDATE` batch (locks acquired automatically by the update)
+4. **`service_payments`** — `INSERT` final
+
+**Always** set transaction-scoped timeouts at the start:
+```sql
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '5s';
+```
+
+**Never** take `FOR UPDATE` on `service_requests` — concurrency is handled by
+the partial unique index `idx_sr_commercial_license_unique` (migration 291)
+plus `try/except asyncpg.UniqueViolationError` recovery (deterministic SELECT
+by `commercial_license_id`, no retry/backoff).
+
+Canonical implementation: `app/modules/inspections/services/collection_service.py::CollectionService.collect_field_payment`.
+Plan reference: `.claude/plans/INSPECTION_BUNDLE_P1_DETAIL.md`.
+
 ## Authentication
 
 - JWT tokens (access: 30min, refresh: 30 days)
