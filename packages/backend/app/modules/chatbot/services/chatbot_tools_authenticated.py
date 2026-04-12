@@ -99,8 +99,13 @@ AGENT_PERMISSION_CATALOG = [
     },
     {
         "key": "auto_classify",
-        "status": "coming_soon",
-        "tool_name": None,  # Implementation planned for a dedicated phase
+        "status": "available",
+        # Not a Gemini chat tool — this permission gates a server-side
+        # upload hook (see user_documents/services/auto_classify_service.py)
+        # that runs BatchDocumentClassifier on any vault document uploaded
+        # without a type hint. Kept in the catalog so the UI can show a
+        # proper toggle + usage counter.
+        "tool_name": "auto_classify_on_upload",
         "max_level": 2,
         "icon": "FolderOpen",
         "always_on": False,

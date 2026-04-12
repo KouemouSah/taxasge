@@ -431,6 +431,36 @@ async def upload_document(
         f"user={current_user.id}, type={doc_type}, size={file_size}"
     )
 
+    # --- Auto-classify hook (Phase 6) ---
+    # If the user uploaded without a type hint AND has the auto_classify
+    # permission active, spawn a fire-and-forget background task that
+    # calls Gemini to tag the document. Never blocks the upload response.
+    if not document_type_hint:
+        try:
+            from app.modules.user_documents.services.auto_classify_service import (
+                has_auto_classify_permission,
+                auto_classify_background,
+            )
+            if await has_auto_classify_permission(db, current_user.id):
+                pool = await get_db_pool()
+                asyncio.create_task(
+                    auto_classify_background(
+                        doc_id=doc_id,
+                        user_id=current_user.id,
+                        content=file_content,
+                        mime_type=mime_type,
+                        file_name=file_name,
+                        db_pool=pool,
+                    )
+                )
+                logger.info(
+                    f"[UserDocuments] Auto-classify task spawned for doc={doc_id}"
+                )
+        except Exception as exc:
+            logger.debug(
+                f"[UserDocuments] Auto-classify spawn failed (non-critical): {exc}"
+            )
+
     return UploadResult(
         id=doc_id,
         status="processing",
