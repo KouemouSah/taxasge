@@ -2190,6 +2190,19 @@ Keep it helpful and concise."""
                         "label_key": "chatbot.actions.viewRequest",
                         "url": action.get("url", ""),
                     })
+                elif result.get("status") == "confirmation_required":
+                    # Phase 5 — executive tool needs per-action consent.
+                    # Frontend opens a destructive modal with the summary,
+                    # user confirms → POST /chatbot/execute-confirmed with
+                    # the code, which dispatches to the real execution.
+                    actions.append({
+                        "type": "confirm_executive",
+                        "label": "Confirmer et envoyer",
+                        "label_key": "chatbot.actions.confirmAndSubmit",
+                        "confirmation_code": result.get("confirmation_code", ""),
+                        "summary": result.get("summary", ""),
+                        "tool_name": result.get("tool_name", "submit_prepared_request"),
+                    })
                 elif result.get("status") == "permission_required":
                     actions.append(
                         self._build_permission_action(
@@ -2207,6 +2220,15 @@ Keep it helpful and concise."""
                         "label_key": "chatbot.actions.appointmentBooked",
                         "label_params": {"date": appointment_date},
                         "url": "",
+                    })
+                elif result.get("status") == "confirmation_required":
+                    actions.append({
+                        "type": "confirm_executive",
+                        "label": "Confirmer la réservation",
+                        "label_key": "chatbot.actions.confirmAndSubmit",
+                        "confirmation_code": result.get("confirmation_code", ""),
+                        "summary": result.get("summary", ""),
+                        "tool_name": result.get("tool_name", "book_appointment"),
                     })
                 elif result.get("status") == "permission_required":
                     actions.append(

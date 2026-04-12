@@ -5107,7 +5107,14 @@
       "finalize": "Finaliser la demande",
       "viewRequest": "Voir la demande",
       "appointmentBooked": "Rendez-vous : {date}",
-      "viewPricing": "Voir les tarifs par zone"
+      "viewPricing": "Voir les tarifs par zone",
+      "confirmAndSubmit": "Confirmer et exécuter"
+    },
+    "executive": {
+      "confirmTitle": "Confirmer l'action de l'assistant",
+      "defaultSummary": "L'assistant va exécuter une action importante en votre nom. Veuillez confirmer pour continuer.",
+      "cancel": "Annuler",
+      "confirmButton": "Confirmer"
     },
     "askAboutCosts": "Combien coûte...?",
     "askAboutDocuments": "Quels documents ai-je besoin?",
@@ -10734,7 +10741,9 @@
     "common": {
       "cancel": "Annuler",
       "error": "Erreur",
-      "loading": "Chargement..."
+      "loading": "Chargement...",
+      "refresh": "Actualiser",
+      "back": "Retour"
     },
     "export": {
       "title": "Exporter",
@@ -10854,6 +10863,7 @@
       "prevWeek": "Semaine précédente",
       "nextWeek": "Semaine suivante",
       "thisWeek": "Cette semaine",
+      "weekOf": "Semaine du",
       "missionDate": "Date",
       "title": "Titre",
       "notes": "Notes",

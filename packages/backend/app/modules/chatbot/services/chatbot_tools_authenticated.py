@@ -1143,24 +1143,119 @@ async def auto_prepare_wizard(db, **kwargs) -> dict:
 # ============================================================================
 
 
+def _build_submit_summary(args: dict) -> str:
+    """Human-readable summary shown in the executive confirmation modal."""
+    session_id = args.get("session_id", "—")
+    payment_method = args.get("payment_method", "—")
+    return (
+        "Soumettre la demande préparée :\n"
+        f"  • Session : {session_id}\n"
+        f"  • Mode de paiement : {payment_method}\n\n"
+        "Cette action est irréversible. Une fois confirmée, la demande "
+        "sera envoyée au traitement et le paiement initialisé."
+    )
+
+
+def _build_appointment_summary(args: dict) -> str:
+    """Human-readable summary for book_appointment confirmations."""
+    session_id = args.get("session_id", "—")
+    location_id = args.get("location_id", "—")
+    date = args.get("appointment_date", "—")
+    time = args.get("appointment_time", "—")
+    return (
+        "Réserver le rendez-vous :\n"
+        f"  • Session : {session_id}\n"
+        f"  • Lieu : {location_id}\n"
+        f"  • Date : {date}\n"
+        f"  • Heure : {time}\n\n"
+        "Le créneau sera verrouillé atomiquement. Si un autre utilisateur "
+        "vient de le prendre, la réservation échouera."
+    )
+
+
 async def submit_prepared_request(db, **kwargs) -> dict:
     """
-    [LEVEL 3 — COMING SOON] Submit a prepared wizard session.
+    [LEVEL 3] Submit a prepared wizard session.
 
-    The BD CHECK constraint on `user_agent_permissions` (migration 287)
-    rejects level=3 AND the `submit_request` permission_type, so this tool
-    cannot be activated through the standard permission flow. Phase 5 will
-    introduce a confirmation_code single-use mechanism (dedicated table,
-    Redis TTL, per-action consent) for executive tools. Until then this
-    function returns a clean coming_soon status.
+    Two-step flow (Phase 5):
+    1. First call (no confirmation_code) → issue a single-use code, return
+       `confirmation_required` status so the frontend can show a modal.
+    2. Second call (confirmation_code present) → redeem + execute. The
+       actual execution logic is restored in Phase 5.5 — for now we return
+       an `executed_stub` status so the wiring can be tested end-to-end.
+
+    Feature-flagged via `FEATURE_EXECUTIVE_TOOLS` (default OFF). When off,
+    we short-circuit to `feature_coming_soon` so existing chat sessions
+    don't suddenly start prompting for confirmation.
+    """
+    from app.config import get_settings
+    from app.modules.chatbot.services.executive_consent import (
+        issue_confirmation_code,
+        redeem_confirmation_code,
+        record_execution_failure,
+    )
+
+    settings = get_settings()
+    if not settings.FEATURE_EXECUTIVE_TOOLS:
+        return {
+            "status": "feature_coming_soon",
+            "message": (
+                "L'envoi automatique de demandes sera disponible "
+                "prochainement. En attendant, vous pouvez finaliser votre "
+                "demande manuellement depuis l'assistant de préparation."
+            ),
+        }
+
+    user_id = kwargs.get("user_id", "")
+    session_id = kwargs.get("session_id", "")
+    confirmation_code = kwargs.get("confirmation_code")
+
+    if not user_id or not session_id:
+        return {"error": "Se requiere session_id"}
+
+    # Step 1: no code → issue one
+    if not confirmation_code:
+        summary = _build_submit_summary(kwargs)
+        code, err = await issue_confirmation_code(
+            db, user_id, "submit_prepared_request", kwargs, summary
+        )
+        if err:
+            return {"status": "error", "error_key": err}
+        return {
+            "status": "confirmation_required",
+            "confirmation_code": code,
+            "summary": summary,
+            "tool_name": "submit_prepared_request",
+        }
+
+    # Step 2: code present → redeem + execute
+    payload, err = await redeem_confirmation_code(db, user_id, confirmation_code)
+    if err:
+        return {"status": "error", "error_key": err}
+
+    try:
+        return await _submit_prepared_request_exec(db, payload["args"])
+    except Exception as exc:
+        logger.error(f"_submit_prepared_request_exec failed: {exc}")
+        await record_execution_failure(db, user_id, confirmation_code, str(exc))
+        return {"status": "error", "message": f"Execution échouée: {exc}"}
+
+
+async def _submit_prepared_request_exec(db, args: dict) -> dict:
+    """Real execution logic for submit_prepared_request.
+
+    Phase 5 ships a stub so the consent flow can be tested end-to-end.
+    Phase 5.5 will restore the full logic that existed pre-Phase 4
+    (wizard_session_service.prepare_for_payment + initiate_payment).
+    That logic is preserved in git history at commit 14b165b2~1.
     """
     return {
-        "status": "feature_coming_soon",
+        "status": "executed_stub",
         "message": (
-            "L'envoi automatique de demandes sera disponible prochainement. "
-            "En attendant, vous pouvez finaliser votre demande manuellement "
-            "depuis l'assistant de préparation."
+            "Execution stub — Phase 5.5 will restore the full "
+            "prepare_for_payment + initiate_payment logic."
         ),
+        "args": args,
     }
 
     try:
@@ -1222,20 +1317,71 @@ async def submit_prepared_request(db, **kwargs) -> dict:
 
 async def book_appointment(db, **kwargs) -> dict:
     """
-    [LEVEL 3 — COMING SOON] Book an appointment for a service request.
+    [LEVEL 3] Book an appointment for a service request.
 
-    Same constraints as submit_prepared_request: BD rejects level=3 and the
-    `book_appointment` permission_type. Phase 5 will rewire this via the
-    confirmation_code mechanism so users can book appointments with per-
-    action consent (no persistent toggle — safer for government procedures).
+    Same two-step confirmation flow as `submit_prepared_request`.
+    Feature-flagged via `FEATURE_EXECUTIVE_TOOLS` (default OFF).
     """
+    from app.config import get_settings
+    from app.modules.chatbot.services.executive_consent import (
+        issue_confirmation_code,
+        redeem_confirmation_code,
+        record_execution_failure,
+    )
+
+    settings = get_settings()
+    if not settings.FEATURE_EXECUTIVE_TOOLS:
+        return {
+            "status": "feature_coming_soon",
+            "message": (
+                "La réservation automatique de rendez-vous sera disponible "
+                "prochainement. En attendant, vous pouvez sélectionner votre "
+                "créneau directement depuis l'étape rendez-vous du wizard."
+            ),
+        }
+
+    user_id = kwargs.get("user_id", "")
+    session_id = kwargs.get("session_id", "")
+    confirmation_code = kwargs.get("confirmation_code")
+
+    if not user_id or not session_id:
+        return {"error": "Se requiere session_id"}
+
+    if not confirmation_code:
+        summary = _build_appointment_summary(kwargs)
+        code, err = await issue_confirmation_code(
+            db, user_id, "book_appointment", kwargs, summary
+        )
+        if err:
+            return {"status": "error", "error_key": err}
+        return {
+            "status": "confirmation_required",
+            "confirmation_code": code,
+            "summary": summary,
+            "tool_name": "book_appointment",
+        }
+
+    payload, err = await redeem_confirmation_code(db, user_id, confirmation_code)
+    if err:
+        return {"status": "error", "error_key": err}
+
+    try:
+        return await _book_appointment_exec(db, payload["args"])
+    except Exception as exc:
+        logger.error(f"_book_appointment_exec failed: {exc}")
+        await record_execution_failure(db, user_id, confirmation_code, str(exc))
+        return {"status": "error", "message": f"Execution échouée: {exc}"}
+
+
+async def _book_appointment_exec(db, args: dict) -> dict:
+    """Real execution logic for book_appointment (stub — see Phase 5.5)."""
     return {
-        "status": "feature_coming_soon",
+        "status": "executed_stub",
         "message": (
-            "La réservation automatique de rendez-vous sera disponible "
-            "prochainement. En attendant, vous pouvez sélectionner votre "
-            "créneau directement depuis l'étape rendez-vous du wizard."
+            "Execution stub — Phase 5.5 will restore the full "
+            "wizard_session_service.save_appointment_selection logic."
         ),
+        "args": args,
     }
 
     try:

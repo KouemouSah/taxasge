@@ -35,8 +35,10 @@ import { useChat, useChatSettings } from '@/modules/chatbot/hooks';
 import { MessageItem } from '@/modules/chatbot/components/MessageItem';
 import { TypingIndicator } from '@/modules/chatbot/components/TypingIndicator';
 import { SuggestionChips } from '@/modules/chatbot/components/SuggestionChips';
+import { ExecutiveConfirmModal } from '@/modules/chatbot/components/ExecutiveConfirmModal';
+import { chatbotApi } from '@/modules/chatbot/services/api';
 import { AgentSettingsPanel } from '@/modules/user-documents/components/AgentSettingsPanel';
-import type { ChatMessage } from '@/modules/chatbot/types';
+import type { ChatMessage, ChatAction } from '@/modules/chatbot/types';
 
 // =============================================================================
 // TYPES
@@ -107,6 +109,10 @@ export default function ChatPage() {
   // AgentSettingsPanel state — opened from chat action buttons or gear icon
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [highlightPerm, setHighlightPerm] = useState<string | undefined>(undefined);
+  // ExecutiveConfirmModal state — opened by clicking a `confirm_executive`
+  // action (Level 3 tools require per-action consent)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<ChatAction | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +126,31 @@ export default function ChatPage() {
     setHighlightPerm(permType);
     setAgentPanelOpen(true);
   }, []);
+
+  // Handler for Level 3 executive confirmation actions
+  const handleConfirmExecutive = useCallback((action: ChatAction) => {
+    setPendingAction(action);
+    setConfirmModalOpen(true);
+  }, []);
+
+  // Called from the modal when the user clicks Confirm. POSTs directly to
+  // /chatbot/execute-confirmed (bypassing Gemini) and sends the result
+  // back through the chat via a synthetic user message so the assistant
+  // acknowledges the execution in the conversation flow.
+  const handleExecuteConfirmed = useCallback(
+    async (code: string, toolName: string) => {
+      const response = await chatbotApi.executeConfirmed(code, locale);
+      const resultPayload = response.result ?? {};
+      const statusLabel =
+        (resultPayload as { status?: string }).status ?? 'unknown';
+      // Push a short confirmation message into the chat so the user sees
+      // what happened. Gemini isn't re-invoked; we just replay the result.
+      await sendMessage(
+        `[${toolName}] ${statusLabel}: ${JSON.stringify(resultPayload).slice(0, 400)}`,
+      );
+    },
+    [locale, sendMessage],
+  );
 
   // Resolve action messages (need t() which is only available in component)
   const generalActions = GENERAL_ACTIONS.map((a) => ({ ...a, message: t(a.titleKey) }));
@@ -262,6 +293,7 @@ export default function ChatPage() {
                 message={msg}
                 locale={locale}
                 onOpenAgentPanel={openAgentPanel}
+                onConfirmExecutive={handleConfirmExecutive}
               />
             ))}
 
@@ -408,6 +440,19 @@ export default function ChatPage() {
           if (!open) setHighlightPerm(undefined);
         }}
         initialHighlightPermission={highlightPerm}
+      />
+
+      {/* ─── Executive Confirm Modal — Level 3 per-action consent ─── */}
+      <ExecutiveConfirmModal
+        open={confirmModalOpen}
+        onOpenChange={(open) => {
+          setConfirmModalOpen(open);
+          if (!open) setPendingAction(null);
+        }}
+        summary={pendingAction?.summary}
+        confirmationCode={pendingAction?.confirmation_code}
+        toolName={pendingAction?.tool_name}
+        onConfirm={handleExecuteConfirmed}
       />
     </div>
   );

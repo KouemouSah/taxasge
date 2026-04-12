@@ -142,6 +142,25 @@ const client = new ChatbotApiClient(`${API_BASE_URL}${API_VERSION}${CHATBOT_BASE
 
 export const chatbotApi = {
   /**
+   * POST /api/v1/chatbot/execute-confirmed
+   * Redeem a Level 3 executive confirmation code and run the tool
+   * directly (bypasses Gemini). Returns the tool's result envelope.
+   */
+  executeConfirmed: async (
+    confirmationCode: string,
+    locale: string = 'es',
+  ): Promise<{
+    status: string
+    tool_name: string
+    result: Record<string, unknown>
+  }> => {
+    return client.post('/execute-confirmed', {
+      confirmation_code: confirmationCode,
+      locale,
+    })
+  },
+
+  /**
    * GET /api/v1/chatbot/conversations/{conversationId}
    * Load conversation history from database (persisted across sessions)
    */

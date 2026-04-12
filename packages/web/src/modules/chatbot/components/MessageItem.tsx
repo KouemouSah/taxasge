@@ -20,7 +20,7 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import createDOMPurify from 'dompurify'
-import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink, Settings } from 'lucide-react'
+import { User, Copy, Check, Download, FileText, ThumbsUp, ThumbsDown, ExternalLink, Settings, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage, ChatAction } from '../types'
@@ -60,6 +60,13 @@ export interface MessageItemProps {
    * omits this prop and falls back to the legacy `<a href>` behavior.
    */
   onOpenAgentPanel?: (permissionType?: string) => void
+  /**
+   * Phase 5 — clicking a `confirm_executive` action opens the
+   * ExecutiveConfirmModal via this callback. Only wired in the
+   * authenticated chat page. Without it, the action is skipped silently
+   * (no fallback — executive tools require the confirmation flow).
+   */
+  onConfirmExecutive?: (action: ChatAction) => void
 }
 
 // =============================================================================
@@ -177,6 +184,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   locale = 'es',
   className = '',
   onOpenAgentPanel,
+  onConfirmExecutive,
 }) => {
   const t = useTranslations('chatbot')
   // Separate namespaces so we can resolve action labels AND permission-type
@@ -318,6 +326,25 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       onClick={() => onOpenAgentPanel(action.permission_type)}
                     >
                       <Settings className="h-3 w-3" strokeWidth={1.5} />
+                      {labelText}
+                    </Button>
+                  )
+                }
+
+                // `confirm_executive` → Level 3 per-action consent modal
+                // (authenticated chat only; silently skipped if no handler)
+                if (action.type === 'confirm_executive') {
+                  if (!onConfirmExecutive || !action.confirmation_code) return null
+                  return (
+                    <Button
+                      key={i}
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => onConfirmExecutive(action)}
+                    >
+                      <AlertTriangle className="h-3 w-3" strokeWidth={1.5} />
                       {labelText}
                     </Button>
                   )

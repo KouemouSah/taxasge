@@ -6,6 +6,7 @@ Migrated from app/api/v1/ai_services.py to modern module architecture
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request, status, UploadFile, File
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, AsyncGenerator
 from loguru import logger
 import json
@@ -405,6 +406,92 @@ async def chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error processing chat request"
         )
+
+
+class ExecuteConfirmedRequest(BaseModel):
+    """Body for POST /chatbot/execute-confirmed (Phase 5 executive tools)."""
+    confirmation_code: str = Field(..., min_length=16, max_length=128)
+    locale: LanguageCode = LanguageCode.ES
+
+
+@router.post(
+    "/execute-confirmed",
+    response_model=Dict[str, Any],
+    summary="Redeem a Level 3 executive confirmation code and run the tool",
+    description=(
+        "Consume a single-use `confirmation_code` issued by a Level 3 "
+        "executive tool (`submit_prepared_request`, `book_appointment`) and "
+        "dispatch directly to that tool for execution — bypassing Gemini to "
+        "save tokens and avoid re-parsing risk. Protected by: (1) "
+        "authentication, (2) rate limit 20/min/user, (3) single-use Redis "
+        "cache, (4) args_hash tamper detection, (5) audit log. "
+        "See `app/modules/chatbot/services/executive_consent.py`."
+    ),
+)
+async def execute_confirmed(
+    body: ExecuteConfirmedRequest,
+    http_request: Request,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Probe + dispatch for executive confirmation codes."""
+    from app.modules.chatbot.services.executive_consent import (
+        peek_confirmation_code,
+        ALLOWED_TOOLS,
+    )
+    from app.modules.chatbot.services.chatbot_tools import CHATBOT_AUTH_FUNCTION_MAP
+
+    # Rate limit: normal usage is ≤ 1-2 confirmations/min; 20 gives headroom
+    allowed, _ = await check_rate_limit(
+        str(current_user.id), "/chatbot/execute-confirmed", 20, 60
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Try again in 60 seconds.",
+        )
+
+    # Probe Redis for the payload WITHOUT consuming it — the tool itself
+    # redeems the code inside its own critical section.
+    stored = await peek_confirmation_code(
+        str(current_user.id), body.confirmation_code
+    )
+    if not stored:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "CODE_EXPIRED_OR_INVALID",
+                "message": "Le code de confirmation est expiré ou invalide.",
+            },
+        )
+
+    tool_name = stored.get("tool", "")
+    if tool_name not in ALLOWED_TOOLS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "TOOL_NOT_ALLOWED"},
+        )
+
+    tool_fn = CHATBOT_AUTH_FUNCTION_MAP.get(tool_name)
+    if not tool_fn:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "TOOL_NOT_FOUND"},
+        )
+
+    # Re-inject user_id + confirmation_code so the tool redeems + executes
+    full_args = {
+        **stored.get("args", {}),
+        "user_id": str(current_user.id),
+        "confirmation_code": body.confirmation_code,
+    }
+    result = await tool_fn(db, **full_args)
+
+    logger.info(
+        f"execute_confirmed dispatched tool={tool_name} "
+        f"user={current_user.id} outcome={result.get('status', 'unknown')}"
+    )
+    return {"status": "ok", "tool_name": tool_name, "result": result}
 
 
 @router.post("/chat/stream")

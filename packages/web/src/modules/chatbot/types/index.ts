@@ -308,6 +308,7 @@ export interface ChatAction {
     | 'view_pricing'
     | 'view_documents'
     | 'appointment_booked'
+    | 'confirm_executive'
   /** Legacy Spanish label kept as fallback when label_key is absent. */
   label: string
   /**
@@ -321,6 +322,10 @@ export interface ChatAction {
   url?: string
   workflow_code?: string
   permission_type?: string
+  /** Phase 5 — executive tool confirmation payload. */
+  confirmation_code?: string
+  summary?: string
+  tool_name?: string
 }
 
 // =============================================================================

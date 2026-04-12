@@ -5107,7 +5107,14 @@
       "finalize": "Finalize request",
       "viewRequest": "View request",
       "appointmentBooked": "Appointment: {date}",
-      "viewPricing": "View prices by zone"
+      "viewPricing": "View prices by zone",
+      "confirmAndSubmit": "Confirm and execute"
+    },
+    "executive": {
+      "confirmTitle": "Confirm assistant action",
+      "defaultSummary": "The assistant is about to execute an important action on your behalf. Please confirm to continue.",
+      "cancel": "Cancel",
+      "confirmButton": "Confirm"
     },
     "askAboutCosts": "How much does... cost?",
     "askAboutDocuments": "What documents do I need?",
@@ -10734,7 +10741,9 @@
     "common": {
       "cancel": "Cancel",
       "error": "Error",
-      "loading": "Loading..."
+      "loading": "Loading...",
+      "refresh": "Refresh",
+      "back": "Back"
     },
     "export": {
       "title": "Export",
@@ -10854,6 +10863,7 @@
       "prevWeek": "Previous week",
       "nextWeek": "Next week",
       "thisWeek": "This week",
+      "weekOf": "Week of",
       "missionDate": "Date",
       "title": "Title",
       "notes": "Notes",

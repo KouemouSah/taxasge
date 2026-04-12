@@ -440,6 +440,13 @@ class Settings(BaseSettings):
     SCORING_SITE_MATCH: float = Field(default=100.0, env="SCORING_SITE_MATCH")
     SCORING_SITE_NEUTRAL: float = Field(default=50.0, env="SCORING_SITE_NEUTRAL")
 
+    # Agent Executive Tools (Phase 5) — submit_prepared_request, book_appointment.
+    # Uses a confirmation_code single-use mechanism (Redis TTL 5min) orthogonal
+    # to user_agent_permissions because migration 287 CHECK rejects level=3.
+    # Default OFF — flip to True only after Phase 5.5 restores the execution
+    # logic that was removed in Phase 4.
+    FEATURE_EXECUTIVE_TOOLS: bool = Field(default=False, env="FEATURE_EXECUTIVE_TOOLS")
+
     # LLM Routing (Gemini-augmented assignment)
     FEATURE_LLM_ROUTING_ENABLED: bool = Field(default=False, env="FEATURE_LLM_ROUTING_ENABLED")
     LLM_ROUTING_SCORE_GAP_THRESHOLD: float = Field(default=5.0, env="LLM_ROUTING_SCORE_GAP_THRESHOLD")
@@ -464,6 +471,23 @@ class Settings(BaseSettings):
     # Specialist definition
     SPECIALIST_MIN_COMPLETIONS: int = Field(default=3, env="SPECIALIST_MIN_COMPLETIONS")
     SPECIALIST_MIN_SUCCESS_RATE: float = Field(default=60.0, env="SPECIALIST_MIN_SUCCESS_RATE")
+
+    # ========================================================================
+    # CLEANUP & EXPIRATION (Plan P2 — INSPECTION_BUNDLE_P2_DETAIL.md)
+    # ========================================================================
+
+    # DRAFT service_requests cleanup threshold (hours).
+    # Bundle workflows (BUNDLE_PAYMENT, FIELD_INSPECTION) are ALWAYS excluded
+    # from cleanup regardless of this value. Normal DRAFTs older than this
+    # are deleted by the hourly cron /cron/cleanup-abandoned-requests.
+    DRAFT_CLEANUP_MAX_HOURS: int = Field(default=2, env="DRAFT_CLEANUP_MAX_HOURS")
+
+    # Gemini extraction preview cache TTL (minutes).
+    # User must confirm the preview within this window.
+    PREVIEW_EXPIRY_MINUTES: int = Field(default=30, env="PREVIEW_EXPIRY_MINUTES")
+
+    # Wizard session TTL (seconds) — Redis cache for in-progress wizards.
+    WIZARD_SESSION_TTL_SECONDS: int = Field(default=1800, env="WIZARD_SESSION_TTL_SECONDS")
 
     # ========================================================================
     # RATE LIMITING
