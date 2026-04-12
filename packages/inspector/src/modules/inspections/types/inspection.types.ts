@@ -192,7 +192,35 @@ export interface InspectionListFilters {
   page_size?: number;
 }
 
-/** License verification response */
+/** P4: Existing service_request dossier linked to a licence (P3 backend) */
+export interface ExistingDossier {
+  service_request_id: string;
+  reference: string;
+  source: 'citizen_wizard' | 'field_inspection' | 'admin_import' | 'batch';
+  status: string;
+  created_at: string;
+}
+
+/** P4: Pending citizen online payment info (P3 backend) */
+export interface PendingPaymentInfo {
+  payment_reference: string;
+  payment_method: string | null;
+  total_amount: number | null;
+  workflow_status: string;
+  created_at: string;
+}
+
+/** P4: Agent collection scope computed server-side (P3 backend) */
+export interface AgentScope {
+  role_code: string | null;
+  allowed_fee_types: string[] | null;
+  required_ministry_id: number | null;
+  is_polyvalent: boolean;
+  is_independent: boolean;
+  is_supervisor: boolean;
+}
+
+/** License verification response — enriched in P3/P4 */
 export interface LicenseVerification {
   license_id: string;
   company_id: string;
@@ -212,6 +240,14 @@ export interface LicenseVerification {
   previous_inspections: InspectionListItem[];
   active_mise_en_demeure: ActiveMiseEnDemeure | null;
   seal_history: SealHistoryItem[];
+
+  // P3/P4: enriched fields (additive, backward-compatible)
+  existing_dossier?: ExistingDossier | null;
+  has_pending_citizen_payment?: boolean;
+  pending_payment_info?: PendingPaymentInfo | null;
+  restricted_obligations?: string[];
+  agent_can_collect_all?: boolean;
+  agent_scope?: AgentScope;
 }
 
 export interface LicenseObligation {
@@ -223,6 +259,11 @@ export interface LicenseObligation {
   status: string;
   service_name: string | null;
   ministry_name: string | null;
+  // P3/P4: added ministry_id (was missing — bug latent corrected in backend)
+  ministry_id?: number | null;
+  // P3/P4: agent scope flag (server computes whether this agent may collect)
+  agent_restricted?: boolean;
+  agent_restricted_reason?: string | null;
 }
 
 export interface ActiveMiseEnDemeure {

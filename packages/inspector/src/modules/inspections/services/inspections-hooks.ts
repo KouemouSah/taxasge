@@ -84,10 +84,15 @@ function useInvalidateAll(id?: string) {
   };
 }
 
-export function useCreateInspection() {
+/**
+ * Create inspection mutation.
+ * @param idempotencyKey Optional — pass a stable UUID (useRef) for safe retries.
+ */
+export function useCreateInspection(idempotencyKey?: string) {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (data: CreateInspectionRequest) => inspectionsApi.create(data),
+    mutationFn: (data: CreateInspectionRequest) =>
+      inspectionsApi.create(data, idempotencyKey),
     onSuccess: invalidate,
   });
 }
@@ -134,10 +139,16 @@ export function useApproveSeal(id: string) {
   });
 }
 
-export function useCollectPayment(id: string) {
+/**
+ * Collect payment mutation.
+ * @param idempotencyKey CRITICAL — pass a stable UUID (useRef) to make retries
+ *   safe against double-charge on unstable field networks (OWASP A04).
+ */
+export function useCollectPayment(id: string, idempotencyKey?: string) {
   const invalidate = useInvalidateAll(id);
   return useMutation({
-    mutationFn: (data: FieldCollectRequest) => inspectionsApi.collect(id, data),
+    mutationFn: (data: FieldCollectRequest) =>
+      inspectionsApi.collect(id, data, idempotencyKey),
     onSuccess: invalidate,
   });
 }

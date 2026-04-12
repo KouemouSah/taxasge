@@ -137,6 +137,28 @@ export function isNetworkError(error: unknown): boolean {
   return isAxiosError(error) && !error.response;
 }
 
+/** P4: detect HTTP 403 PermissionError (fee_type / ministry scope check). */
+export function isPermissionError(error: unknown): boolean {
+  return isHttpStatus(error, 403);
+}
+
+/** P4: detect HTTP 429 Rate-limit responses. */
+export function isRateLimitError(error: unknown): boolean {
+  return isHttpStatus(error, 429);
+}
+
+/**
+ * P4: extract Retry-After seconds from a 429 response.
+ * Falls back to 60s if header is missing or unparseable.
+ */
+export function getRetryAfterSeconds(error: unknown): number {
+  if (!isAxiosError(error) || !error.response) return 60;
+  const raw = (error.response.headers as Record<string, unknown>)?.['retry-after'];
+  if (typeof raw !== 'string' && typeof raw !== 'number') return 60;
+  const parsed = parseInt(String(raw), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+}
+
 function isAxiosError(error: unknown): error is AxiosError {
   return (
     typeof error === 'object' &&

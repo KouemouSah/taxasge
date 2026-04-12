@@ -2,7 +2,7 @@
  * Collect Payment Screen — Cash or mobile money in field
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Divider, RadioButton, Text, TextInput } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,7 +10,14 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@core/theme';
-import { extractApiError } from '@core/api/errors';
+import {
+  extractApiError,
+  isPermissionError,
+  isRateLimitError,
+  getRetryAfterSeconds,
+} from '@core/api/errors';
+import { useNetwork } from '@core/hooks/use-network';
+import { generateIdempotencyKey } from '@core/api/idempotency';
 import { hapticSuccess, hapticError } from '@core/utils/haptics';
 import { formatCurrency } from '@core/utils/format';
 import { appConfig } from '@core/config/app';
@@ -28,7 +35,16 @@ export default function CollectPaymentScreen() {
   const { data: obligations, isLoading: obligationsLoading } = useInspectionObligations(
     inspection?.license_id,
   );
-  const collectMutation = useCollectPayment(id ?? '');
+
+  // P4: Stable Idempotency-Key for the whole screen lifetime.
+  // A retry (screen re-render, network blip) reuses the same key → server replay,
+  // preventing double-charge (OWASP A04).
+  const idempotencyKeyRef = useRef<string>(generateIdempotencyKey());
+  const collectMutation = useCollectPayment(id ?? '', idempotencyKeyRef.current);
+
+  // P4: Hard block on offline — no local queue for field payments (user decision).
+  // The agent must wait for network before collecting cash. Safer than sync-risk.
+  const { isConnected } = useNetwork();
 
   const [selectedObligations, setSelectedObligations] = useState<Set<string>>(new Set());
   const [method, setMethod] = useState<'cash' | 'mobile_money'>('cash');
@@ -46,10 +62,11 @@ export default function CollectPaymentScreen() {
     });
   };
 
-  if (isLoading || !inspection) return <LoadingScreen />;
-
   const parsedAmount = Math.round(parseFloat(amount.replace(/[^0-9]/g, '')));
 
+  // P4 lint fix: hooks must be called in the same order every render.
+  // handleSubmit is declared BEFORE the early return so useCallback is
+  // always invoked (react-hooks/rules-of-hooks).
   const handleSubmit = useCallback(() => {
     if (selectedObligations.size === 0) {
       setError(t('med.selectObligations'));
@@ -88,13 +105,31 @@ export default function CollectPaymentScreen() {
               });
               router.back();
             } catch (err) {
-              setError(extractApiError(err).message);
+              hapticError();
+              // P4: specialised error handling (403 out-of-scope, 429 rate limit)
+              if (isPermissionError(err)) {
+                const apiError = extractApiError(err);
+                setError(t('collect.errorOutOfScope', {
+                  defaultValue: apiError.message || 'Action not allowed by agent scope',
+                }));
+              } else if (isRateLimitError(err)) {
+                const retrySeconds = getRetryAfterSeconds(err);
+                setError(t('collect.errorRateLimit', {
+                  defaultValue: `Too many attempts. Retry in ${retrySeconds}s`,
+                  seconds: retrySeconds,
+                }));
+              } else {
+                setError(extractApiError(err).message);
+              }
             }
           },
         },
       ],
     );
   }, [selectedObligations, parsedAmount, method, phone, notes, collectMutation, t]);
+
+  // P4 lint fix: early return AFTER all hooks
+  if (isLoading || !inspection) return <LoadingScreen />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -206,13 +241,24 @@ export default function CollectPaymentScreen() {
           <Text variant="bodyMedium" style={{ color: colors.error, paddingHorizontal: 16 }}>{error}</Text>
         ) : null}
 
+        {/* P4: Offline warning — hard block without local queue (user decision). */}
+        {isConnected === false && (
+          <View style={styles.section}>
+            <Text variant="bodyMedium" style={{ color: colors.error, fontWeight: '600' }}>
+              {t('collect.offlineBlock', {
+                defaultValue: 'No network — wait for connection before collecting a payment.',
+              })}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.submitSection}>
           <Button
             mode="contained"
             icon="cash"
             onPress={handleSubmit}
             loading={collectMutation.isPending}
-            disabled={collectMutation.isPending || !amount}
+            disabled={collectMutation.isPending || !amount || isConnected === false}
             style={styles.submitButton}
             contentStyle={{ paddingVertical: 6 }}
           >

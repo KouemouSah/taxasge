@@ -5,7 +5,7 @@
  * Captures GPS on mount, agent adds notes, confirms.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Button, Divider, Text, TextInput } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -16,6 +16,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '@core/theme';
 import { useLocation } from '@core/hooks/use-location';
 import { extractApiError } from '@core/api/errors';
+import { generateIdempotencyKey } from '@core/api/idempotency';
 import { useCreateInspection, useUpdateInspection } from '@modules/inspections/services/inspections-hooks';
 
 export default function CreateInspectionScreen() {
@@ -29,7 +30,11 @@ export default function CreateInspectionScreen() {
   }>();
 
   const { location, isLoading: gpsLoading, requestLocation } = useLocation();
-  const createInspection = useCreateInspection();
+
+  // P4: Stable Idempotency-Key for the lifetime of this screen.
+  // If the user retries (network glitch), the same key is reused → backend replay.
+  const idempotencyKeyRef = useRef<string>(generateIdempotencyKey());
+  const createInspection = useCreateInspection(idempotencyKeyRef.current);
 
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');

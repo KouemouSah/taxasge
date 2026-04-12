@@ -90,12 +90,63 @@ function processQueue(error: Error | null, token: string | null = null): void {
   });
 }
 
+/**
+ * P4: Automatic retry for transient network errors on safe requests.
+ * Only retries if:
+ *   - No response (network/timeout) OR 5xx OR 429
+ *   - Method is GET, OR request has Idempotency-Key header (safe to replay)
+ *   - Retry count not exceeded (_retryCount < MAX_NETWORK_RETRIES)
+ * Uses exponential backoff (500ms, 1500ms).
+ */
+const MAX_NETWORK_RETRIES = 2;
+
+async function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableError(error: AxiosError): boolean {
+  if (!error.config) return false;
+  // Network errors (no response)
+  if (!error.response) return true;
+  const status = error.response.status;
+  // 5xx server errors are safe to retry
+  if (status >= 500 && status < 600) return true;
+  // 429 rate limit — caller should observe Retry-After; skip auto-retry here
+  return false;
+}
+
+function isIdempotentRequest(config: InternalAxiosRequestConfig): boolean {
+  const method = (config.method ?? 'get').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
+  // For mutations, only retry if the caller opted in with an Idempotency-Key
+  const headers = (config.headers ?? {}) as Record<string, unknown>;
+  return Boolean(headers['Idempotency-Key'] || headers['idempotency-key']);
+}
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as (InternalAxiosRequestConfig & {
+      _retry?: boolean;
+      _retryCount?: number;
+    }) | undefined;
 
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    // Auto-retry transient errors for idempotent / idempotency-keyed requests
+    if (
+      originalRequest
+      && isRetryableError(error)
+      && isIdempotentRequest(originalRequest)
+    ) {
+      const count = originalRequest._retryCount ?? 0;
+      if (count < MAX_NETWORK_RETRIES) {
+        originalRequest._retryCount = count + 1;
+        const delay = 500 * Math.pow(3, count); // 500ms, 1500ms
+        await wait(delay);
+        return apiClient(originalRequest);
+      }
+    }
+
+    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
@@ -172,13 +223,52 @@ export async function apiGet<T>(url: string, params?: Record<string, unknown>): 
   return response.data;
 }
 
-export async function apiPost<T>(url: string, data?: unknown): Promise<T> {
-  const response = await apiClient.post<T>(url, data);
+/**
+ * Options accepted by mutation helpers (P4 — plan P4.B).
+ * - headers: passed as Axios request headers (e.g. Idempotency-Key)
+ * - timeout: per-request timeout (ms) overriding the global default
+ */
+export interface ApiRequestOptions {
+  headers?: Record<string, string>;
+  timeout?: number;
+}
+
+export async function apiPost<T>(
+  url: string,
+  data?: unknown,
+  options?: ApiRequestOptions,
+): Promise<T> {
+  const response = await apiClient.post<T>(url, data, {
+    headers: options?.headers,
+    timeout: options?.timeout,
+  });
   return response.data;
 }
 
-export async function apiPut<T>(url: string, data?: unknown): Promise<T> {
-  const response = await apiClient.put<T>(url, data);
+/**
+ * Same as apiPost but also returns the Axios response so callers can inspect
+ * custom headers (e.g. Idempotency-Replay). Use when replay detection is needed.
+ */
+export async function apiPostRaw<T>(
+  url: string,
+  data?: unknown,
+  options?: ApiRequestOptions,
+): Promise<AxiosResponse<T>> {
+  return apiClient.post<T>(url, data, {
+    headers: options?.headers,
+    timeout: options?.timeout,
+  });
+}
+
+export async function apiPut<T>(
+  url: string,
+  data?: unknown,
+  options?: ApiRequestOptions,
+): Promise<T> {
+  const response = await apiClient.put<T>(url, data, {
+    headers: options?.headers,
+    timeout: options?.timeout,
+  });
   return response.data;
 }
 

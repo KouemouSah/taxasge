@@ -6,6 +6,7 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '@core/api/client';
 import { API_ENDPOINTS } from '@core/api/endpoints';
+import { withIdempotencyKey } from '@core/api/idempotency';
 import type {
   InspectionDetail,
   InspectionListResponse,
@@ -103,8 +104,18 @@ export const inspectionsApi = {
   detail: (id: string) =>
     apiGet<InspectionDetail>(API_ENDPOINTS.inspections.detail(id)),
 
-  create: (data: CreateInspectionRequest) =>
-    apiPost<InspectionDetail>(API_ENDPOINTS.inspections.create, data),
+  /**
+   * Create a field inspection.
+   * @param idempotencyKey Client-generated UUID (useRef) to make retries safe.
+   *   Forwarded as `Idempotency-Key` header. Secondary defense — primary
+   *   protection is the UNIQUE(agent_id, company_id, inspection_date) constraint.
+   */
+  create: (data: CreateInspectionRequest, idempotencyKey?: string) =>
+    apiPost<InspectionDetail>(
+      API_ENDPOINTS.inspections.create,
+      data,
+      idempotencyKey ? { headers: withIdempotencyKey(idempotencyKey) } : undefined,
+    ),
 
   update: (id: string, data: UpdateInspectionRequest) =>
     apiPut<InspectionDetail>(API_ENDPOINTS.inspections.update(id), data),
@@ -126,8 +137,18 @@ export const inspectionsApi = {
   sealApprove: (id: string, data: SealApproveRequest) =>
     apiPost<InspectionDetail>(API_ENDPOINTS.inspections.sealApprove(id), data),
 
-  collect: (id: string, data: FieldCollectRequest) =>
-    apiPost<Record<string, unknown>>(API_ENDPOINTS.inspections.collect(id), data),
+  /**
+   * Collect a field payment. CRITICAL — Idempotency-Key is strongly recommended
+   * for retry safety on unstable field networks (OWASP A04).
+   * @param idempotencyKey Client-generated UUID (useRef). If present, the
+   *   backend will replay the cached response on retry within 24h.
+   */
+  collect: (id: string, data: FieldCollectRequest, idempotencyKey?: string) =>
+    apiPost<Record<string, unknown>>(
+      API_ENDPOINTS.inspections.collect(id),
+      data,
+      idempotencyKey ? { headers: withIdempotencyKey(idempotencyKey) } : undefined,
+    ),
 
   // --- Photos ---
 

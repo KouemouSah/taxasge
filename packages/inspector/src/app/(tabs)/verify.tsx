@@ -217,43 +217,132 @@ export default function VerifyScreen() {
             </View>
           </View>
 
+          {/* P4: Existing dossier banner (info blue) */}
+          {result.existing_dossier && (
+            <View style={[styles.infoBanner, { backgroundColor: `${colors.primary}15` }]}>
+              <MaterialCommunityIcons name="folder-open" size={20} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text variant="labelMedium" style={{ color: colors.primary }}>
+                  {t('verify.existingDossier')}
+                </Text>
+                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                  {result.existing_dossier.reference} • {result.existing_dossier.source}
+                  {' • '}{formatDate(result.existing_dossier.created_at)}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* P4: Pending citizen payment warning (orange) */}
+          {result.has_pending_citizen_payment && result.pending_payment_info && (
+            <View style={[styles.warningBanner, { backgroundColor: `${custom.status.miseEnDemeure}15` }]}>
+              <MaterialCommunityIcons name="clock-alert" size={20} color={custom.status.miseEnDemeure} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text variant="labelMedium" style={{ color: custom.status.miseEnDemeure }}>
+                  {t('verify.pendingPayment')}
+                </Text>
+                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                  {result.pending_payment_info.payment_reference}
+                  {result.pending_payment_info.total_amount !== null
+                    ? ` • ${formatCurrency(result.pending_payment_info.total_amount)}`
+                    : ''}
+                  {' • '}{result.pending_payment_info.workflow_status}
+                </Text>
+                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 2 }}>
+                  {t('verify.pendingPaymentHint')}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Obligations */}
           {result.obligations.length > 0 && (
             <View style={styles.section}>
-              <Text variant="labelLarge" style={[styles.sectionTitle, { color: colors.onSurfaceVariant }]}>
-                {t('inspection.obligations')} ({result.obligations.length})
-              </Text>
-              {result.obligations.map((ob: LicenseObligation, i: number) => (
-                <React.Fragment key={ob.id}>
-                  <View style={styles.obligationItem}>
-                    <View style={{ flex: 1 }}>
-                      <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
-                        {ob.service_name ?? ob.fee_type}
-                      </Text>
-                      <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                        {ob.ministry_name} {ob.due_date ? `\u2022 ${t('obligations.dueDate')}: ${formatDate(ob.due_date)}` : ''}
-                      </Text>
+              <View style={styles.obligationsHeader}>
+                <Text variant="labelLarge" style={[styles.sectionTitle, { color: colors.onSurfaceVariant }]}>
+                  {t('inspection.obligations')} ({result.obligations.length})
+                </Text>
+                {/* P4: collectible badge */}
+                {result.restricted_obligations !== undefined && (() => {
+                  const collectible = result.obligations.length - (result.restricted_obligations?.length ?? 0);
+                  return (
+                    <Text
+                      variant="bodySmall"
+                      style={{
+                        color: result.agent_can_collect_all
+                          ? custom.status.conforme
+                          : custom.status.miseEnDemeure,
+                        fontWeight: '600',
+                      }}
+                    >
+                      {collectible}/{result.obligations.length} {t('verify.collectible')}
+                    </Text>
+                  );
+                })()}
+              </View>
+              {result.obligations.map((ob: LicenseObligation, i: number) => {
+                const restricted = ob.agent_restricted === true;
+                return (
+                  <React.Fragment key={ob.id}>
+                    <View style={[styles.obligationItem, restricted && styles.obligationRestricted]}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                        {restricted && (
+                          <MaterialCommunityIcons
+                            name="lock"
+                            size={16}
+                            color={colors.onSurfaceVariant}
+                            style={{ marginRight: 6 }}
+                          />
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
+                            {ob.service_name ?? ob.fee_type}
+                          </Text>
+                          <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                            {ob.ministry_name} {ob.due_date ? `\u2022 ${t('obligations.dueDate')}: ${formatDate(ob.due_date)}` : ''}
+                          </Text>
+                          {restricted && ob.agent_restricted_reason && (
+                            <Text variant="bodySmall" style={{ color: custom.status.miseEnDemeure, marginTop: 2 }}>
+                              {t('verify.outOfScope')}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text
+                          variant="titleSmall"
+                          style={{
+                            color: ob.status === 'paid'
+                              ? custom.status.conforme
+                              : custom.status.nonConforme,
+                          }}
+                        >
+                          {formatCurrency(ob.amount + (ob.penalty_amount ?? 0))}
+                        </Text>
+                        <StatusBadge
+                          status={ob.status === 'paid' ? 'completed' : 'in_progress'}
+                          label={ob.status}
+                        />
+                      </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text
-                        variant="titleSmall"
-                        style={{
-                          color: ob.status === 'paid'
-                            ? custom.status.conforme
-                            : custom.status.nonConforme,
-                        }}
-                      >
-                        {formatCurrency(ob.amount + (ob.penalty_amount ?? 0))}
-                      </Text>
-                      <StatusBadge
-                        status={ob.status === 'paid' ? 'completed' : 'in_progress'}
-                        label={ob.status}
-                      />
-                    </View>
-                  </View>
-                  {i < result.obligations.length - 1 && <Divider style={{ marginLeft: 16 }} />}
-                </React.Fragment>
-              ))}
+                    {i < result.obligations.length - 1 && <Divider style={{ marginLeft: 16 }} />}
+                  </React.Fragment>
+                );
+              })}
+              {/* P4: Footer info if agent cannot collect all */}
+              {result.agent_can_collect_all === false && (
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: colors.onSurfaceVariant,
+                    marginTop: 8,
+                    fontStyle: 'italic',
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  {t('verify.restrictedHint')}
+                </Text>
+              )}
             </View>
           )}
 
@@ -353,6 +442,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 4,
+  },
+  obligationRestricted: {
+    opacity: 0.55,
+  },
+  obligationsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  warningBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   prevItem: {
     flexDirection: 'row',
