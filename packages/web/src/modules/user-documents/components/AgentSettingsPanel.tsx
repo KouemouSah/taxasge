@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Sheet,
@@ -109,6 +109,11 @@ const agentKeys = {
 interface AgentSettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Scroll to and highlight a specific permission row when the panel opens.
+   * Used for deep-link ?permission=X flow from chatbot actions / ReadinessCheck.
+   */
+  initialHighlightPermission?: string;
 }
 
 // =============================================================================
@@ -122,6 +127,7 @@ function PermissionRow({
   alwaysOn,
   permission,
   isToggling,
+  highlighted,
   onToggle,
   onLevelChange,
 }: {
@@ -130,15 +136,31 @@ function PermissionRow({
   alwaysOn: boolean;
   permission: AgentPermission | undefined;
   isToggling: boolean;
+  highlighted?: boolean;
   onToggle: (type: string, active: boolean) => void;
   onLevelChange: (type: string, level: number) => void;
 }) {
   const t = useTranslations('userDocuments.agent');
   const isActive = alwaysOn || permission?.is_active || false;
   const currentLevel = permission?.level ?? 1;
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!highlighted || !rowRef.current) return;
+    // Defer to let Sheet animation settle (~250ms) before scrolling into view
+    const timer = window.setTimeout(() => {
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [highlighted]);
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div
+      ref={rowRef}
+      className={`flex items-center gap-3 py-2.5 transition-colors ${
+        highlighted ? 'bg-primary/10 rounded -mx-2 px-2 ring-1 ring-primary/30' : ''
+      }`}
+    >
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">
@@ -237,11 +259,23 @@ function MemoryRow({
 // MAIN COMPONENT
 // =============================================================================
 
-export function AgentSettingsPanel({ open, onOpenChange }: AgentSettingsPanelProps) {
+export function AgentSettingsPanel({
+  open,
+  onOpenChange,
+  initialHighlightPermission,
+}: AgentSettingsPanelProps) {
   const t = useTranslations('userDocuments.agent');
   const queryClient = useQueryClient();
   const [togglingType, setTogglingType] = useState<string | null>(null);
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
+  // Row highlight for deep-link ?permission=X flow; cleared when panel closes
+  const [activeHighlight, setActiveHighlight] = useState<string | undefined>(
+    initialHighlightPermission,
+  );
+  useEffect(() => {
+    if (open) setActiveHighlight(initialHighlightPermission);
+    else setActiveHighlight(undefined);
+  }, [open, initialHighlightPermission]);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -411,6 +445,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: AgentSettingsPanelPro
                       alwaysOn={pt.alwaysOn}
                       permission={permissionMap[pt.key]}
                       isToggling={togglingType === pt.key}
+                      highlighted={activeHighlight === pt.key}
                       onToggle={handleToggle}
                       onLevelChange={handleLevelChange}
                     />

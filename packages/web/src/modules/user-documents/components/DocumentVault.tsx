@@ -18,7 +18,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import {
   FolderOpen,
   AlertTriangle,
   HardDrive,
+  Settings2,
 } from 'lucide-react';
 import { useDocumentStats, useDocumentAlerts } from '../hooks';
 import { PersonalDocumentsGrid } from './PersonalDocumentsGrid';
@@ -43,6 +45,7 @@ import { AlertsTab } from './AlertsTab';
 import { ReadinessCheck } from './ReadinessCheck';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { AgentOnboarding } from './AgentOnboarding';
+import { AgentSettingsPanel } from './AgentSettingsPanel';
 
 // ---------------------------------------------------------------------------
 // Stats Card sub-component
@@ -148,10 +151,54 @@ function QuotaBar({
 
 export function DocumentVault() {
   const t = useTranslations('userDocuments');
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: stats, isLoading: statsLoading } = useDocumentStats();
   const { unreadCount } = useDocumentAlerts();
   const [activeTab, setActiveTab] = useState('personal');
   const [uploadOpen, setUploadOpen] = useState(false);
+  // Agent settings panel (opened via gear icon OR ?settings=agent deep-link)
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [highlightPerm, setHighlightPerm] = useState<string | undefined>(undefined);
+  // Prevents the URL reader from re-firing on re-renders or after cleanup
+  const hasHandledUrlRef = useRef(false);
+
+  // Read deep-link query params from chatbot actions / ReadinessCheck buttons.
+  // Supported params:
+  //   ?settings=agent                            → open AgentSettingsPanel
+  //   ?settings=agent&permission=prepare_request → also scroll/highlight the row
+  //   ?upload=CODE                               → open DocumentUploadDialog
+  // After consumption we strip the params via router.replace so a refresh
+  // doesn't re-open the panels and the back button behaves naturally.
+  useEffect(() => {
+    if (hasHandledUrlRef.current) return;
+    const settings = searchParams.get('settings');
+    const permission = searchParams.get('permission');
+    const upload = searchParams.get('upload');
+
+    let handled = false;
+
+    if (settings === 'agent') {
+      setAgentPanelOpen(true);
+      if (permission) setHighlightPerm(permission);
+      handled = true;
+    }
+
+    if (upload) {
+      setUploadOpen(true);
+      handled = true;
+    }
+
+    if (handled) {
+      hasHandledUrlRef.current = true;
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('settings');
+      clean.searchParams.delete('permission');
+      clean.searchParams.delete('upload');
+      const nextSearch = clean.searchParams.toString();
+      router.replace(`${clean.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   return (
     <div className="flex flex-col h-full gap-4 p-4 md:p-6">
@@ -165,10 +212,21 @@ export function DocumentVault() {
             {t('subtitle')}
           </p>
         </div>
-        <Button onClick={() => setUploadOpen(true)}>
-          <Upload className="mr-2 h-4 w-4" />
-          {t('addDocument')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setAgentPanelOpen(true)}
+            aria-label={t('agent.settings')}
+            title={t('agent.settings')}
+          >
+            <Settings2 className="h-4 w-4" strokeWidth={1.5} />
+          </Button>
+          <Button onClick={() => setUploadOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            {t('addDocument')}
+          </Button>
+        </div>
       </div>
 
       {/* ── Stats Summary Bar ──────────────────────────────── */}
@@ -275,6 +333,16 @@ export function DocumentVault() {
 
       {/* ── First-visit Onboarding ───────────────────────── */}
       <AgentOnboarding />
+
+      {/* ── Agent Settings Panel (gear icon or ?settings=agent deep-link) ── */}
+      <AgentSettingsPanel
+        open={agentPanelOpen}
+        onOpenChange={(open) => {
+          setAgentPanelOpen(open);
+          if (!open) setHighlightPerm(undefined);
+        }}
+        initialHighlightPermission={highlightPerm}
+      />
     </div>
   );
 }
