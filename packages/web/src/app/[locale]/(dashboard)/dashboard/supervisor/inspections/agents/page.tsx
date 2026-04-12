@@ -22,7 +22,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { inspectionApi } from '@/modules/inspections/services/api'
-import type { AgentPerformanceResponse } from '@/modules/inspections/types'
+import type { AgentPerformanceResponse, AgentPerformanceItem } from '@/modules/inspections/types'
 
 export default function AgentPerformancePage() {
   const locale = useLocale()
@@ -84,14 +84,14 @@ export default function AgentPerformancePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card className="p-3">
               <div className="text-xs text-muted-foreground">{t('analytics.totalAgents')}</div>
-              <p className="text-xl font-bold">{data.agents?.length ?? 0}</p>
+              <p className="text-xl font-bold">{data.items?.length ?? 0}</p>
             </Card>
             <Card className="p-3">
               <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />{t('analytics.totalCompleted')}
               </div>
               <p className="text-xl font-bold text-green-700">
-                {data.agents?.reduce((s, a) => s + (a.completed_count ?? 0), 0) ?? 0}
+                {data.items?.reduce((s: number, a: AgentPerformanceItem) => s + (a.conforme ?? 0), 0) ?? 0}
               </p>
             </Card>
             <Card className="p-3">
@@ -99,8 +99,8 @@ export default function AgentPerformancePage() {
                 <TrendingUp className="h-3 w-3" />{t('analytics.avgRate')}
               </div>
               <p className="text-xl font-bold">
-                {data.agents?.length
-                  ? Math.round(data.agents.reduce((s, a) => s + (a.completion_rate ?? 0), 0) / data.agents.length)
+                {data.items?.length
+                  ? Math.round(data.items.reduce((s: number, a: AgentPerformanceItem) => s + (a.conformity_rate ?? 0), 0) / data.items.length)
                   : 0}%
               </p>
             </Card>
@@ -109,8 +109,8 @@ export default function AgentPerformancePage() {
                 <Clock className="h-3 w-3" />{t('analytics.avgTime')}
               </div>
               <p className="text-xl font-bold">
-                {data.agents?.length
-                  ? Math.round(data.agents.reduce((s, a) => s + (a.avg_duration_minutes ?? 0), 0) / data.agents.length)
+                {data.items?.length
+                  ? Math.round(data.items.reduce((s: number, a: AgentPerformanceItem) => s + (a.avg_duration_minutes ?? 0), 0) / data.items.length)
                   : 0} min
               </p>
             </Card>
@@ -134,28 +134,28 @@ export default function AgentPerformancePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(!data.agents || data.agents.length === 0) ? (
+                  {(!data.items || data.items.length === 0) ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         {t('analytics.noAgents')}
                       </TableCell>
                     </TableRow>
-                  ) : data.agents.map((agent) => (
+                  ) : data.items.map((agent) => (
                     <TableRow
                       key={agent.agent_id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => router.push(`/${locale}/dashboard/supervisor/inspections/agents/${agent.agent_id}`)}
                     >
                       <TableCell className="text-sm font-medium">{agent.agent_name}</TableCell>
-                      <TableCell className="text-sm text-center">{agent.assigned_count ?? 0}</TableCell>
-                      <TableCell className="text-sm text-center font-mono">{agent.completed_count ?? 0}</TableCell>
+                      <TableCell className="text-sm text-center">{agent.inspections_total ?? 0}</TableCell>
+                      <TableCell className="text-sm text-center font-mono">{agent.conforme ?? 0}</TableCell>
                       <TableCell className="text-sm text-center">
                         <Badge variant="outline" className={
-                          (agent.completion_rate ?? 0) >= 80 ? 'bg-green-50 text-green-700' :
-                          (agent.completion_rate ?? 0) >= 50 ? 'bg-yellow-50 text-yellow-700' :
+                          (agent.conformity_rate ?? 0) >= 80 ? 'bg-green-50 text-green-700' :
+                          (agent.conformity_rate ?? 0) >= 50 ? 'bg-yellow-50 text-yellow-700' :
                           'bg-red-50 text-red-700'
                         }>
-                          {Math.round(agent.completion_rate ?? 0)}%
+                          {Math.round(agent.conformity_rate ?? 0)}%
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-center font-mono">
@@ -163,7 +163,7 @@ export default function AgentPerformancePage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {agent.status ?? 'active'}
+                          {agent.days_active > 0 ? 'active' : 'inactive'}
                         </Badge>
                       </TableCell>
                     </TableRow>

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 import {
   ArrowLeft, Building2, User, Calendar, MapPin, Camera,
   FileText, CheckCircle2, XCircle, AlertTriangle, Clock,
-  Shield, Download, MessageSquare, Eye, RefreshCw,
+  Shield, MessageSquare, Eye, RefreshCw,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
