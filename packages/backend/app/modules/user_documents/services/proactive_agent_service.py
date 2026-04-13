@@ -45,10 +45,6 @@ class ProactiveAgentService:
     # stuck cron, runaway state, or unexpected data migration).
     MAX_ALERTS_WARNING_THRESHOLD = 10_000
 
-    # Concurrency cap on the notification dispatcher — prevents us from
-    # blowing up SMTP/FCM quotas on a large scan run.
-    NOTIFY_CONCURRENCY = 50
-
     # Dedup window for missing_for_workflow alerts: once we alert a
     # user about a specific request, we don't re-nag for 7 days.
     MISSING_DOCS_DEDUP_DAYS = 7
