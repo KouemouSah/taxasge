@@ -875,6 +875,23 @@ class BundleWorkflowService:
         if license_row["status"] in ("suspended", "closed", "complete"):
             raise ValueError("LICENSE_NOT_PAYABLE")
 
+        # Audit: log third-party bundle payments (user paying for a company
+        # they don't own). Consistent with BundleWorkflowService.initiate:
+        # GE policy allows a citizen to pay for a family/acquaintance's
+        # obligations. We log for traceability, we DO NOT block.
+        is_company_member = await conn.fetchval(
+            "SELECT 1 FROM user_company_roles "
+            "WHERE company_id = $1 AND user_id = $2 AND is_active = true",
+            license_row["company_id"], user_id,
+        )
+        if not is_company_member:
+            logger.info(
+                "AUDIT: third-party bundle payment — user=%s license=%s "
+                "company=%s processing_mode=%s amount_obligations=%d",
+                user_id, license_id, license_row["company_id"],
+                processing_mode, len(selected_obligation_ids),
+            )
+
         # Check for existing in-flight payment on this license
         existing_payment = await conn.fetchval("""
             SELECT sp.id FROM service_payments sp

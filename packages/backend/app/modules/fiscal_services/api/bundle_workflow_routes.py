@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.database.connection import get_database
+from app.core.rate_limit import rate_limit_dep
 from app.modules.auth.dependencies import get_current_user
 from app.modules.fiscal_services.services.bundle_workflow_service import (
     BundleWorkflowService,
@@ -129,7 +130,13 @@ async def search_eligible_company(
         raise
 
 
-@router.post("/initiate")
+@router.post(
+    "/initiate",
+    dependencies=[rate_limit_dep(
+        endpoint="bundle_initiate",
+        user_max=20, user_window=60, ip_max=60, ip_window=60,
+    )],
+)
 async def initiate_bundle_workflow(
     body: BundleInitiateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -156,7 +163,13 @@ async def initiate_bundle_workflow(
         )
 
 
-@router.post("/classify-preview")
+@router.post(
+    "/classify-preview",
+    dependencies=[rate_limit_dep(
+        endpoint="bundle_classify_preview",
+        user_max=20, user_window=60, ip_max=60, ip_window=60,
+    )],
+)
 async def classify_preview(
     body: ClassifyPreviewRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -182,7 +195,13 @@ async def classify_preview(
         )
 
 
-@router.post("/initiate-from-upload")
+@router.post(
+    "/initiate-from-upload",
+    dependencies=[rate_limit_dep(
+        endpoint="bundle_initiate_from_upload",
+        user_max=10, user_window=60, ip_max=30, ip_window=60,
+    )],
+)
 async def initiate_from_upload(
     body: BundleInitiateFromUploadRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -240,7 +259,13 @@ async def validate_bundle_selection(
         )
 
 
-@router.post("/initiate-payment")
+@router.post(
+    "/initiate-payment",
+    dependencies=[rate_limit_dep(
+        endpoint="bundle_initiate_payment",
+        user_max=10, user_window=60, ip_max=30, ip_window=60,
+    )],
+)
 async def initiate_bundle_payment(
     body: BundleInitiatePaymentRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
