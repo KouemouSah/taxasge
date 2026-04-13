@@ -620,49 +620,84 @@ DECISION_FUNCTION_MAP = {
 # FUNCTION DECLARATIONS — for Gemini function-calling
 # ============================================================================
 
-DECISION_FUNC_DECLS = []
+# Source-of-truth: list of (name, FunctionDeclaration) tuples. Both
+# DECISION_FUNC_DECLS (list, consumed by Gemini Tool config) and
+# DECISION_FUNC_DECLS_BY_NAME (dict, used by tool_registry.py for O(1)
+# name lookup) are derived from this single source so they can never
+# desynchronize.
+#
+# Why a dict by name? `vertexai.generative_models.FunctionDeclaration`
+# is a proto-plus wrapper whose `.name` attribute is NOT exposed as a
+# Python property in some SDK versions. Introspecting it crashes with
+# `'FunctionDeclaration' object has no attribute 'name'`. We keep the
+# name we passed at construction time in a separate dict to bypass the
+# protobuf access entirely.
+_DECISION_DECLS_SOURCE: List[Any] = []  # list of (name, declaration) tuples
+DECISION_FUNC_DECLS_BY_NAME: Dict[str, Any] = {}
+DECISION_FUNC_DECLS: List[Any] = []
+
 try:
     from vertexai.generative_models import FunctionDeclaration as _FD
 
-    DECISION_FUNC_DECLS = [
-        _FD(name="ai_decision_support",
+    _DECISION_DECLS_SOURCE = [
+        ("ai_decision_support", _FD(
+            name="ai_decision_support",
             description="Análisis IA profundo de un dossier con recomendación de aprobación/rechazo. Usa cuando el agente pregunta '¿debo aprobar?', 'analiza este dossier', 'qué opinas de esta solicitud'.",
-            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier (SR-xxxx)"}}, "required": ["reference"]}),
-        _FD(name="assess_request_risk",
+            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier (SR-xxxx)"}}, "required": ["reference"]},
+        )),
+        ("assess_request_risk", _FD(
+            name="assess_request_risk",
             description="Evaluación de riesgo IA con score 0-100 y factores. Usa cuando se pregunta 'riesgo de esta solicitud', 'es sospechosa', 'hay anomalías'.",
-            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier"}}, "required": ["reference"]}),
-        _FD(name="find_similar_cases",
+            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier"}}, "required": ["reference"]},
+        )),
+        ("find_similar_cases", _FD(
+            name="find_similar_cases",
             description="Buscar casos similares pasados con análisis de patrones. Usa cuando se pregunta 'casos similares', 'precedentes', 'qué se hizo antes'.",
-            parameters={"type": "object", "properties": {"workflow_code": {"type": "string", "description": "Código del workflow"}, "status": {"type": "string", "description": "Filtrar por estado (COMPLETED/REJECTED)"}}, "required": ["workflow_code"]}),
-        _FD(name="summarize_request",
+            parameters={"type": "object", "properties": {"workflow_code": {"type": "string", "description": "Código del workflow"}, "status": {"type": "string", "description": "Filtrar por estado (COMPLETED/REJECTED)"}}, "required": ["workflow_code"]},
+        )),
+        ("summarize_request", _FD(
+            name="summarize_request",
             description="Resumen ejecutivo IA de un dossier para revisión rápida. Usa cuando se pide 'resumen del dossier', 'resume esta solicitud', 'qué contiene'.",
-            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier"}}, "required": ["reference"]}),
-        _FD(name="predict_sla_risk",
+            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia del dossier"}}, "required": ["reference"]},
+        )),
+        ("predict_sla_risk", _FD(
+            name="predict_sla_risk",
             description="Predicción IA de qué dossiers van a incumplir el SLA. Usa cuando se pregunta 'SLA en riesgo', 'qué va a vencer', 'urgencias'.",
-            parameters={"type": "object", "properties": {"entity_code": {"type": "string", "description": "Código entidad (opcional)"}}}),
-        _FD(name="suggest_reassignment",
+            parameters={"type": "object", "properties": {"entity_code": {"type": "string", "description": "Código entidad (opcional)"}}},
+        )),
+        ("suggest_reassignment", _FD(
+            name="suggest_reassignment",
             description="Recomendación IA de reasignación con análisis de carga y especialización. Usa cuando se pide 'reasignar', 'a quién darle este dossier'.",
-            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia de la solicitud"}}, "required": ["reference"]}),
-        _FD(name="get_system_health",
+            parameters={"type": "object", "properties": {"reference": {"type": "string", "description": "Referencia de la solicitud"}}, "required": ["reference"]},
+        )),
+        ("get_system_health", _FD(
+            name="get_system_health",
             description="Salud del sistema con detección de anomalías IA. Usa cuando se pregunta 'estado del sistema', 'cómo va todo', 'hay problemas'.",
-            parameters={"type": "object", "properties": {}}),
-        _FD(name="optimize_workload",
+            parameters={"type": "object", "properties": {}},
+        )),
+        ("optimize_workload", _FD(
+            name="optimize_workload",
             description="Sugerencias IA de reequilibrio de carga entre agentes. Usa cuando se pide 'optimizar carga', 'redistribuir trabajo', 'equilibrar agentes'.",
-            parameters={"type": "object", "properties": {}}),
+            parameters={"type": "object", "properties": {}},
+        )),
     ]
 except ImportError:
     try:
         from google.generativeai.types import FunctionDeclaration as _FD2
 
-        DECISION_FUNC_DECLS = [
-            _FD2(name="ai_decision_support", description="Análisis IA de dossier con recomendación.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]}),
-            _FD2(name="assess_request_risk", description="Evaluación de riesgo IA.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]}),
-            _FD2(name="find_similar_cases", description="Buscar casos similares.", parameters={"type": "object", "properties": {"workflow_code": {"type": "string"}}, "required": ["workflow_code"]}),
-            _FD2(name="summarize_request", description="Resumen ejecutivo IA.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]}),
-            _FD2(name="predict_sla_risk", description="Predicción SLA.", parameters={"type": "object", "properties": {}}),
-            _FD2(name="suggest_reassignment", description="Sugerencia reasignación.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]}),
-            _FD2(name="get_system_health", description="Salud del sistema.", parameters={"type": "object", "properties": {}}),
-            _FD2(name="optimize_workload", description="Optimizar carga.", parameters={"type": "object", "properties": {}}),
+        _DECISION_DECLS_SOURCE = [
+            ("ai_decision_support", _FD2(name="ai_decision_support", description="Análisis IA de dossier con recomendación.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]})),
+            ("assess_request_risk", _FD2(name="assess_request_risk", description="Evaluación de riesgo IA.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]})),
+            ("find_similar_cases", _FD2(name="find_similar_cases", description="Buscar casos similares.", parameters={"type": "object", "properties": {"workflow_code": {"type": "string"}}, "required": ["workflow_code"]})),
+            ("summarize_request", _FD2(name="summarize_request", description="Resumen ejecutivo IA.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]})),
+            ("predict_sla_risk", _FD2(name="predict_sla_risk", description="Predicción SLA.", parameters={"type": "object", "properties": {}})),
+            ("suggest_reassignment", _FD2(name="suggest_reassignment", description="Sugerencia reasignación.", parameters={"type": "object", "properties": {"reference": {"type": "string"}}, "required": ["reference"]})),
+            ("get_system_health", _FD2(name="get_system_health", description="Salud del sistema.", parameters={"type": "object", "properties": {}})),
+            ("optimize_workload", _FD2(name="optimize_workload", description="Optimizar carga.", parameters={"type": "object", "properties": {}})),
         ]
     except ImportError:
-        pass
+        _DECISION_DECLS_SOURCE = []
+
+# Derive both collections from the single source (cannot drift)
+DECISION_FUNC_DECLS_BY_NAME = dict(_DECISION_DECLS_SOURCE)
+DECISION_FUNC_DECLS = [decl for _, decl in _DECISION_DECLS_SOURCE]

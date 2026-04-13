@@ -203,12 +203,22 @@ def _register_admin(registry: ToolRegistry) -> None:
             SYSTEM_PROMPT as ADMIN_SYSTEM_PROMPT,
         )
 
-        # Merge admin tools + decision support tools (map + declarations)
-        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP as _ADFM, DECISION_FUNC_DECLS as _ADFD
+        # Merge admin tools + decision support tools (map + declarations).
+        # IMPORTANT: do NOT iterate `_ADFD` and call `.name` on each item —
+        # vertexai.generative_models.FunctionDeclaration is a proto-plus
+        # wrapper that crashes with AttributeError on `.name` access in
+        # some SDK versions. Use the BY_NAME dict (single source of truth)
+        # for an O(1), introspection-free lookup instead.
+        from app.modules.shared.services.agent_decision_tools import (
+            DECISION_FUNCTION_MAP as _ADFM,
+            DECISION_FUNC_DECLS_BY_NAME as _ADFD_BY_NAME,
+        )
         admin_tools = ('get_system_health', 'optimize_workload')
         admin_merged_map = dict(ADMIN_FUNCTION_MAP)
         admin_merged_map.update({k: v for k, v in _ADFM.items() if k in admin_tools})
-        admin_merged_decls = list(ADMIN_TOOL_FUNCTIONS) + [d for d in _ADFD if d.name in admin_tools]
+        admin_merged_decls = list(ADMIN_TOOL_FUNCTIONS) + [
+            _ADFD_BY_NAME[name] for name in admin_tools if name in _ADFD_BY_NAME
+        ]
 
         registry.register("admin", ToolSet(
             function_declarations=admin_merged_decls,
@@ -286,11 +296,17 @@ def _register_supervisor(registry: ToolRegistry) -> None:
 
             return prompt
 
-        # Merge supervisor tools + decision support tools (map + declarations)
-        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP as _DFM, DECISION_FUNC_DECLS as _DFD
+        # Merge supervisor tools + decision support tools (map + declarations).
+        # See _register_admin for why we use BY_NAME instead of .name access.
+        from app.modules.shared.services.agent_decision_tools import (
+            DECISION_FUNCTION_MAP as _DFM,
+            DECISION_FUNC_DECLS_BY_NAME as _DFD_BY_NAME,
+        )
         sup_tools = ('predict_sla_risk', 'suggest_reassignment')
         all_func_map.update({k: v for k, v in _DFM.items() if k in sup_tools})
-        all_func_decls = all_func_decls + [d for d in _DFD if d.name in sup_tools]
+        all_func_decls = all_func_decls + [
+            _DFD_BY_NAME[name] for name in sup_tools if name in _DFD_BY_NAME
+        ]
 
         registry.register("supervisor", ToolSet(
             function_declarations=all_func_decls,
@@ -334,12 +350,18 @@ def _register_entity_agent(registry: ToolRegistry) -> None:
                 current_date=now.strftime("%Y-%m-%d"),
             )
 
-        # Merge entity agent tools + decision support tools (map + declarations)
-        from app.modules.shared.services.agent_decision_tools import DECISION_FUNCTION_MAP, DECISION_FUNC_DECLS
+        # Merge entity agent tools + decision support tools (map + declarations).
+        # See _register_admin for why we use BY_NAME instead of .name access.
+        from app.modules.shared.services.agent_decision_tools import (
+            DECISION_FUNCTION_MAP,
+            DECISION_FUNC_DECLS_BY_NAME,
+        )
         entity_tools = ('ai_decision_support', 'assess_request_risk', 'find_similar_cases', 'summarize_request')
         merged_map = dict(ENTITY_AGENT_FUNCTION_MAP)
         merged_map.update({k: v for k, v in DECISION_FUNCTION_MAP.items() if k in entity_tools})
-        merged_decls = list(ENTITY_AGENT_FUNC_DECLS) + [d for d in DECISION_FUNC_DECLS if d.name in entity_tools]
+        merged_decls = list(ENTITY_AGENT_FUNC_DECLS) + [
+            DECISION_FUNC_DECLS_BY_NAME[name] for name in entity_tools if name in DECISION_FUNC_DECLS_BY_NAME
+        ]
 
         registry.register("entity_agent", ToolSet(
             function_declarations=merged_decls,
