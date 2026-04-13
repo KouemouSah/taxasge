@@ -414,16 +414,33 @@ class WorkflowOrchestratorService:
                 preview_confidence = getattr(preview_result, 'confidence', 0) or 0
 
                 if preview_confidence >= 0.85 or vault_confidence >= 0.85:
-                    extraction = (
+                    # Resolve extraction from 3 sources, then VALIDATE shape.
+                    # `doc["extraction_data"]` may be double-JSON-encoded
+                    # (string of JSON) or already a parsed dict; we need
+                    # the final result to be a dict otherwise downstream
+                    # identity checks crash with `'str' object has no
+                    # attribute 'get'` on the next preview call.
+                    raw_extraction = (
                         getattr(preview_result, 'extraction', {}) or
-                        (json.loads(doc["extraction_data"]) if isinstance(doc["extraction_data"], str) else doc["extraction_data"]) or
+                        (
+                            json.loads(doc["extraction_data"])
+                            if isinstance(doc["extraction_data"], str)
+                            else doc["extraction_data"]
+                        ) or
                         {}
                     )
+                    if not isinstance(raw_extraction, dict):
+                        logger.warning(
+                            f"Vault doc {doc['document_code']} extraction is "
+                            f"{type(raw_extraction).__name__}, not dict — "
+                            f"using empty dict to avoid downstream crashes"
+                        )
+                        raw_extraction = {}
                     await wizard_session_service.confirm_document(
                         session_id=session_id,
                         user_id=UUID(user_id),
                         document_code=doc["document_code"],
-                        confirmed_data=extraction,
+                        confirmed_data=raw_extraction,
                         user_notes="Auto-loaded from vault",
                     )
 

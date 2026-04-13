@@ -1021,6 +1021,19 @@ class RiskAnalyzer:
             if doc_code.lower() == document_code.lower():
                 continue
 
+            # Defensive: existing_documents values must be dicts. Older code
+            # paths (workflow_orchestrator passing through json.loads of a
+            # potentially double-JSON-encoded extraction_data) could leave
+            # a bare string in the dict. Skip + warn instead of crashing
+            # the whole identity check (and therefore the entire wizard
+            # auto_prepare flow).
+            if not isinstance(doc_data, dict):
+                logger.warning(
+                    f"Identity check skipping {doc_code}: doc_data is "
+                    f"{type(doc_data).__name__}, expected dict"
+                )
+                continue
+
             # Support both formats:
             # Legacy/DB flow: {"extraction": {"apellidos": ...}, "confidence": ...}
             # Cache-first wizard: {"apellidos": ...} (flat, no wrapper)
@@ -1028,8 +1041,11 @@ class RiskAnalyzer:
             if existing_extraction is None:
                 # Flat format from wizard session - doc_data IS the extraction
                 existing_extraction = doc_data
-            if not existing_extraction:
-                logger.warning(f"No extraction found for {doc_code}")
+            if not existing_extraction or not isinstance(existing_extraction, dict):
+                logger.warning(
+                    f"No usable extraction for {doc_code} "
+                    f"(type={type(existing_extraction).__name__})"
+                )
                 continue
 
             logger.info(f"Comparing {document_code} with {doc_code}")
