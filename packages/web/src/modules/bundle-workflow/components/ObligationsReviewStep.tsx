@@ -9,6 +9,7 @@ import { FEE_TYPE_LABELS } from '@/types/service-bundle'
 import { CompanyInfoCard } from './CompanyInfoCard'
 import { PaymentModeSwitcher } from './PaymentModeSwitcher'
 import { ObligationRow } from './ObligationRow'
+import { BundleErrorAlert } from './BundleErrorAlert'
 import type { UseBundleWizardReturn } from '../hooks/useBundleWizard'
 import type { ObligationItem } from '../types'
 
@@ -311,28 +312,23 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
     )
   }
 
-  // Show error if obligations failed to load
-  if (wizard.error) {
-      return (
-        <div className="space-y-4">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {wizard.error}
-            </AlertDescription>
-          </Alert>
-          <Button
-            variant="outline"
-            onClick={() => {
-              wizard.clearError()
-              wizard.loadObligations()
-            }}
-          >
-            {lang === 'fr' ? 'Réessayer' : lang === 'en' ? 'Retry' : 'Reintentar'}
-          </Button>
-        </div>
-      )
-    }
+  // Show error if obligations failed to load — retry invokes loadObligations
+  if (wizard.apiError) {
+    return (
+      <div className="space-y-4">
+        <BundleErrorAlert
+          error={wizard.apiError}
+          locale={locale}
+          onRetry={() => {
+            wizard.clearError()
+            wizard.loadObligations()
+          }}
+          onBack={wizard.goBack}
+          onClear={wizard.clearError}
+        />
+      </div>
+    )
+  }
 
   const { licenseData } = wizard
 

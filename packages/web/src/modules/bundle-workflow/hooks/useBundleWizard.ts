@@ -10,7 +10,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWizardSession } from '@/modules/service-requests/hooks'
+import { extractApiError, type StructuredApiError } from '@/core/api/errors'
 import { bundleWorkflowApi } from '../services/bundle-workflow-api'
+import { getBundleErrorEntry } from '../constants/error-catalog'
 import type {
   CompanySummary,
   CompanySearchResult,
@@ -23,6 +25,12 @@ import type {
 import { BundleStep } from '../types'
 import type { ProcessingMode } from '@/types/service-bundle'
 import type { DocumentPreview } from '@/modules/service-requests/types/wizard-session'
+
+function readBrowserLocale(): 'es' | 'fr' | 'en' {
+  if (typeof window === 'undefined') return 'es'
+  const seg = window.location.pathname.split('/')[1]
+  return seg === 'fr' ? 'fr' : seg === 'en' ? 'en' : 'es'
+}
 
 // ── Editable company fields (form_review pattern) ──────────────
 
@@ -112,7 +120,11 @@ export interface UseBundleWizardReturn {
   // Global
   isLoading: boolean
   error: string | null
+  /** Structured API error with metier code + localized message + CTA hint */
+  apiError: StructuredApiError | null
   clearError: () => void
+  /** Re-runs the last payment attempt; respects the catalog retry cooldown. */
+  retryPayment: () => Promise<BundlePaymentResult | null>
 }
 
 // ── Hook ────────────────────────────────────────────────────────
@@ -164,6 +176,17 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   // -- Global --
   const [error, setError] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<StructuredApiError | null>(null)
+  const lastRetryAtRef = useRef<number>(0)
+
+  // Convert any caught error into a StructuredApiError and populate both
+  // the legacy `error: string` state (backwards compat) and the new
+  // `apiError` state (structured, used by BundleErrorAlert).
+  const reportError = useCallback((e: unknown) => {
+    const structured = extractApiError(e, readBrowserLocale())
+    setApiError(structured)
+    setError(structured.message)
+  }, [])
 
   // ── Session lifecycle ───────────────────────────────────────
 
@@ -293,6 +316,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
     setIsInitiating(true)
     setError(null)
     try {
+      setApiError(null)
       const extraction = documentPreview.extraction || {}
       const preview = await bundleWorkflowApi.classifyPreview(
         extraction, selectedZoneId || undefined,
@@ -322,12 +346,11 @@ export function useBundleWizard(): UseBundleWizardReturn {
         }))
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error loading classification'
-      setError(msg)
+      reportError(e)
     } finally {
       setIsInitiating(false)
     }
-  }, [documentPreview, selectedZoneId, selectedCommerceType])
+  }, [documentPreview, selectedZoneId, selectedCommerceType, reportError])
 
   // Re-fetch classification when user changes zone (to get categories for that zone)
   useEffect(() => {
@@ -341,6 +364,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const loadObligations = useCallback(async () => {
     setIsInitiating(true)
     setError(null)
+    setApiError(null)
     try {
       let result: BundleInitiateResponse
 
@@ -389,12 +413,11 @@ export function useBundleWizard(): UseBundleWizardReturn {
         setCompanyExists(true)
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error loading obligations'
-      setError(msg)
+      reportError(e)
     } finally {
       setIsInitiating(false)
     }
-  }, [companyExists, selectedCompany, documentPreview, classificationPreview, selectedZoneId, selectedCommerceType, editedFields])
+  }, [companyExists, selectedCompany, documentPreview, classificationPreview, selectedZoneId, selectedCommerceType, editedFields, reportError])
 
   // ── Step 2: Obligation selection ────────────────────────────
 
@@ -440,6 +463,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
     setIsPaymentProcessing(true)
     setError(null)
+    setApiError(null)
 
     try {
       const result = await bundleWorkflowApi.initiatePayment({
@@ -463,8 +487,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
       setCurrentStep(BundleStep.CONFIRMATION)
       return result
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error initiating payment'
-      setError(msg)
+      reportError(e)
       return null
     } finally {
       setIsPaymentProcessing(false)
@@ -473,7 +496,25 @@ export function useBundleWizard(): UseBundleWizardReturn {
   }, [
     licenseData, paymentMethod, selectedMode,
     selectedObligationIds, phoneNumber, wizardSession.session,
+    reportError,
   ])
+
+  const retryPayment = useCallback(async (): Promise<BundlePaymentResult | null> => {
+    // Enforce the catalog cooldown — catalogs like PAYMENT_ALREADY_IN_PROGRESS
+    // have 5s cooldowns so users don't hammer the server.
+    if (apiError) {
+      const entry = getBundleErrorEntry(apiError.code)
+      const cooldown = entry.retryCooldownMs ?? 0
+      const elapsed = Date.now() - lastRetryAtRef.current
+      if (cooldown > 0 && elapsed < cooldown) {
+        // Silently no-op until the cooldown expires — the UI button stays
+        // enabled and the catalog hint already communicates the wait.
+        return null
+      }
+    }
+    lastRetryAtRef.current = Date.now()
+    return submitPayment()
+  }, [apiError, submitPayment])
 
   // ── Navigation ──────────────────────────────────────────────
 
@@ -537,7 +578,10 @@ export function useBundleWizard(): UseBundleWizardReturn {
     }
   }, [currentStep, companyExists])
 
-  const clearError = useCallback(() => setError(null), [])
+  const clearError = useCallback(() => {
+    setError(null)
+    setApiError(null)
+  }, [])
 
   // ── Return ──────────────────────────────────────────────────
 
@@ -601,6 +645,8 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
     isLoading: wizardSession.isLoading || isLoadingCompanies || isInitiating || isPaymentProcessing,
     error: error || wizardSession.error,
+    apiError,
     clearError,
+    retryPayment,
   }
 }

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CompanyInfoCard } from './CompanyInfoCard'
+import { BundleErrorAlert } from './BundleErrorAlert'
 import type { UseBundleWizardReturn } from '../hooks/useBundleWizard'
 
 interface BundlePaymentStepProps {
@@ -208,12 +208,14 @@ export function BundlePaymentStep({ wizard, locale }: BundlePaymentStepProps) {
         </div>
       )}
 
-      {/* Error */}
-      {wizard.error && (
-        <Alert variant="destructive">
-          <AlertDescription>{wizard.error}</AlertDescription>
-        </Alert>
-      )}
+      {/* Error — structured actionable alert (retry / back / support) */}
+      <BundleErrorAlert
+        error={wizard.apiError}
+        locale={locale}
+        onRetry={wizard.retryPayment}
+        onBack={wizard.goBack}
+        onClear={wizard.clearError}
+      />
 
       {/* Pay button */}
       <Button

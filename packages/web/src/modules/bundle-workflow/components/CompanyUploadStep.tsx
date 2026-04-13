@@ -1,9 +1,10 @@
 'use client'
 
-import { Upload, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react'
+import { Upload, CheckCircle2, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CompanyInfoCard } from './CompanyInfoCard'
+import { BundleErrorAlert } from './BundleErrorAlert'
 import type { UseBundleWizardReturn } from '../hooks/useBundleWizard'
 
 interface CompanyUploadStepProps {
@@ -167,12 +168,16 @@ export function CompanyUploadStep({ wizard, locale }: CompanyUploadStepProps) {
         />
       </div>
 
-      {wizard.error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{wizard.error}</AlertDescription>
-        </Alert>
-      )}
+      <BundleErrorAlert
+        error={wizard.apiError}
+        locale={locale}
+        onRetry={() => {
+          wizard.clearError()
+          if (wizard.documentPreview) wizard.loadClassification()
+        }}
+        onBack={wizard.goBack}
+        onClear={wizard.clearError}
+      />
     </div>
   )
 }
