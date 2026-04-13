@@ -872,6 +872,8 @@ from app.modules.chatbot.services.chatbot_tools_authenticated import (
     get_agent_memory,
     # Workflow orchestrator (Level 2 agent)
     auto_prepare_wizard,
+    # Appointment suggestions (Level 2, Phase 7)
+    suggest_appointment_slots,
     # Executive tools (Level 3)
     submit_prepared_request,
     book_appointment,
@@ -895,6 +897,8 @@ CHATBOT_AUTH_FUNCTION_MAP = {
     "prepare_renewal": prepare_renewal,
     "get_agent_memory": get_agent_memory,
     "auto_prepare_wizard": auto_prepare_wizard,
+    # Appointment suggestions (Level 2, Phase 7)
+    "suggest_appointment_slots": suggest_appointment_slots,
     # Executive tools (Level 3)
     "submit_prepared_request": submit_prepared_request,
     "book_appointment": book_appointment,
@@ -1177,6 +1181,31 @@ if VERTEX_AVAILABLE:
             name="get_agent_memory",
             description="Mostrar lo que el asistente ha aprendido sobre las preferencias del usuario. USAR cuando pregunta 'qué sabes de mí', 'mis preferencias', 'qué has aprendido'.",
             parameters={"type": "object", "properties": {}},
+        ),
+        # ── Appointment Suggestions (Level 2) ──
+        FunctionDeclaration(
+            name="suggest_appointment_slots",
+            description=(
+                "Sugerir citas disponibles para un trámite específico. USAR cuando "
+                "el usuario dice 'cuándo hay cita para...', 'qué citas tienes para "
+                "mi pasaporte', 'proponme fechas de cita', 'necesito una cita'. "
+                "Este tool LEE únicamente — no reserva nada. Requiere el permiso "
+                "'suggest_appointments' en los ajustes del asistente (Level 2)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflow_code": {
+                        "type": "string",
+                        "description": (
+                            "Código del trámite para el que buscar citas (ej: "
+                            "PASAPORTE_NUEVO, CONDUCIR_RENOVACION, "
+                            "VEHICULO_PRIMERA_MATRICULACION)."
+                        ),
+                    },
+                },
+                "required": ["workflow_code"],
+            },
         ),
         # ── Workflow Orchestrator (Level 2) ──
         FunctionDeclaration(

@@ -53,6 +53,7 @@ TOOL_LEVELS = {
     # Level 2 — Preparatory (requires permission)
     "prepare_renewal": 2,
     "auto_prepare_wizard": 2,
+    "suggest_appointment_slots": 2,
     # Level 3 — Executive (requires permission + confirmation)
     "submit_prepared_request": 3,
     "book_appointment": 3,
@@ -72,6 +73,7 @@ TOOL_LEVELS = {
 _TOOL_PERMISSION_MAP = {
     "prepare_renewal": "prepare_renewal",
     "auto_prepare_wizard": "prepare_request",
+    "suggest_appointment_slots": "suggest_appointments",
 }
 
 
@@ -112,8 +114,8 @@ AGENT_PERMISSION_CATALOG = [
     },
     {
         "key": "suggest_appointments",
-        "status": "coming_soon",
-        "tool_name": None,
+        "status": "available",
+        "tool_name": "suggest_appointment_slots",
         "max_level": 2,
         "icon": "CalendarDays",
         "always_on": False,
@@ -1176,6 +1178,154 @@ def _build_appointment_summary(args: dict) -> str:
         "Le créneau sera verrouillé atomiquement. Si un autre utilisateur "
         "vient de le prendre, la réservation échouera."
     )
+
+
+# ============================================================================
+# LEVEL 2 — SUGGEST APPOINTMENT SLOTS (Phase 7)
+# ============================================================================
+
+
+async def suggest_appointment_slots(db, **kwargs) -> dict:
+    """[LEVEL 2] Suggest available appointment slots for a workflow.
+
+    Read-only: fetches 6 candidate slots via the existing
+    `appointment_service.get_available_slots` function, scoped to the
+    entity_location derived from the workflow. Honours the user's
+    `chatbot_user_preferences.preferred_city` when choosing which of
+    several locations to present first.
+
+    Gated by Level 2 → requires an active `suggest_appointments`
+    permission in user_agent_permissions. Never writes to DB.
+    """
+    user_id = kwargs.get("user_id", "")
+    workflow_code = kwargs.get("workflow_code", "")
+
+    if not user_id:
+        return {"error": "Autenticación requerida para esta acción."}
+    if not workflow_code:
+        return {"error": "Se requiere workflow_code"}
+
+    allowed, msg = await check_tool_level(db, user_id, "suggest_appointment_slots")
+    if not allowed:
+        return {
+            "status": "permission_required",
+            "message": msg,
+            "permission_type": "suggest_appointments",
+            "level": 2,
+        }
+
+    from app.modules.service_requests.services.appointment_service import (
+        appointment_service,
+    )
+
+    # Step 1: workflow → entity_code (3-level resolution)
+    entity_code = await appointment_service.get_entity_code_for_workflow(
+        db, workflow_code
+    )
+    if not entity_code:
+        return {
+            "status": "no_appointments",
+            "message": f"El trámite {workflow_code} no requiere cita.",
+            "workflow_code": workflow_code,
+        }
+
+    # Step 2: user's preferred city (best-effort, can be null)
+    preferred_city = await db.fetchval(
+        "SELECT preferred_city FROM chatbot_user_preferences WHERE user_id = $1::uuid",
+        user_id,
+    )
+
+    # Step 3: pick the best active location (preferred city first, else any)
+    location = None
+    if preferred_city:
+        location = await db.fetchrow(
+            """
+            SELECT el.id, el.location_name, el.city, el.location_address
+            FROM entity_locations el
+            INNER JOIN appointment_slot_configs sc
+                ON sc.entity_location_id = el.id
+            WHERE el.entity_code = $1
+              AND el.city = $2
+              AND el.is_active = TRUE
+              AND sc.is_active = TRUE
+            LIMIT 1
+            """,
+            entity_code,
+            preferred_city,
+        )
+    if not location:
+        location = await db.fetchrow(
+            """
+            SELECT el.id, el.location_name, el.city, el.location_address
+            FROM entity_locations el
+            INNER JOIN appointment_slot_configs sc
+                ON sc.entity_location_id = el.id
+            WHERE el.entity_code = $1
+              AND el.is_active = TRUE
+              AND sc.is_active = TRUE
+            ORDER BY el.city, el.location_name
+            LIMIT 1
+            """,
+            entity_code,
+        )
+    if not location:
+        return {
+            "status": "no_locations",
+            "message": f"No hay oficinas activas para {entity_code}.",
+            "entity_code": entity_code,
+            "workflow_code": workflow_code,
+        }
+
+    # Step 4: fetch 6 upcoming slots via the existing PostgreSQL function
+    try:
+        slots = await appointment_service.get_available_slots(
+            db=db,
+            entity_location_id=location["id"],
+            limit=6,
+        )
+    except Exception as exc:
+        logger.error(f"suggest_appointment_slots get_available_slots failed: {exc}")
+        return {
+            "status": "error",
+            "message": "No pude obtener las citas disponibles en este momento.",
+            "workflow_code": workflow_code,
+        }
+
+    if not slots:
+        return {
+            "status": "no_slots",
+            "message": (
+                f"No hay citas disponibles en los próximos días en "
+                f"{location['location_name']}. Intenta más tarde."
+            ),
+            "workflow_code": workflow_code,
+            "location_id": str(location["id"]),
+            "location_name": location["location_name"],
+            "city": location["city"],
+        }
+
+    return {
+        "status": "suggested",
+        "workflow_code": workflow_code,
+        "entity_code": entity_code,
+        "location_id": str(location["id"]),
+        "location_name": location["location_name"],
+        "location_address": location["location_address"],
+        "city": location["city"],
+        "suggested_slots": [
+            {
+                "date": str(s.slot_date),
+                "time": str(s.slot_time),
+                "slots_remaining": s.slots_remaining,
+            }
+            for s in slots
+        ],
+        "count": len(slots),
+        "message": (
+            f"Tengo {len(slots)} citas disponibles para {workflow_code} "
+            f"en {location['location_name']}."
+        ),
+    }
 
 
 async def submit_prepared_request(db, **kwargs) -> dict:
