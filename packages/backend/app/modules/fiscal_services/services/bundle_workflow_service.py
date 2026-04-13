@@ -892,12 +892,14 @@ class BundleWorkflowService:
                 processing_mode, len(selected_obligation_ids),
             )
 
-        # Check for existing in-flight payment on this license
+        # Check for existing in-flight payment on this license.
+        # sr.workflow_code='BUNDLE_PAYMENT' is the only reliable bundle marker;
+        # sp.fee_type has a domain-constrained value (tesoro/municipal/chamber)
+        # so filtering on it would miss bundle payments entirely.
         existing_payment = await conn.fetchval("""
             SELECT sp.id FROM service_payments sp
             JOIN service_requests sr ON sp.service_request_id = sr.id
             WHERE sr.company_id = $1
-              AND sp.fee_type = 'bundle'
               AND sp.status IN ('pending', 'processing')
               AND sr.workflow_code = 'BUNDLE_PAYMENT'
             LIMIT 1
@@ -1080,14 +1082,27 @@ class BundleWorkflowService:
                     f"PAYMENT_INITIATION_FAILED:{entity_code}:{payment_result.error}"
                 )
 
-            # Update service_payment with entity_code + fee_type + company_id
-            await conn.execute("""
+            # Update service_payment with entity_code + fee_type + company_id.
+            # fee_type MUST be one of tesoro/municipal/chamber (CHECK constraint
+            # service_payments_fee_type_check). Because entity_groups are built
+            # from v_obligation_routing which maps fee_type <-> entity_code 1:1,
+            # every obligation in entity_obligations shares the same fee_type
+            # as the entity_code — so taking the first one is safe and
+            # semantically correct.
+            entity_fee_type = entity_obligations[0]["fee_type"]
+            await conn.execute(
+                """
                 UPDATE service_payments
-                SET fee_type = 'bundle',
-                    entity_code = $2,
-                    company_id = $3
+                SET fee_type = $2,
+                    entity_code = $3,
+                    company_id = $4
                 WHERE id = $1::uuid
-            """, payment_result.payment_id, entity_code, license_row["company_id"])
+                """,
+                payment_result.payment_id,
+                entity_fee_type,
+                entity_code,
+                license_row["company_id"],
+            )
 
             # Link this entity's obligations to their payment
             updated_rows = await conn.fetch("""
