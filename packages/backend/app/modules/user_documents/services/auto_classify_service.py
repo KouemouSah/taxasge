@@ -27,8 +27,11 @@ from uuid import UUID
 import asyncpg
 from loguru import logger
 
+from app.modules.user_documents.utils.category_inference import infer_category
+
 
 AUTO_CLASSIFY_TIMEOUT_SECONDS = 30
+AUTO_CLASSIFY_RATE_LIMIT_PER_HOUR = 20
 
 
 async def has_auto_classify_permission(db: asyncpg.Connection, user_id: UUID) -> bool:
@@ -46,6 +49,34 @@ async def has_auto_classify_permission(db: asyncpg.Connection, user_id: UUID) ->
             user_id,
         )
     )
+
+
+async def should_spawn_classify(db: asyncpg.Connection, user_id: UUID) -> bool:
+    """Decide whether to spawn an auto-classify task for this upload.
+
+    Combines the persistent permission check with a per-user hourly
+    rate limit so a single user cannot trigger runaway Gemini costs
+    even while opted-in (at 1M users scale, a compromised account
+    uploading in a loop would otherwise drain our quota).
+    """
+    if not await has_auto_classify_permission(db, user_id):
+        return False
+
+    # Rate limit: 20 classifications / user / hour. Upload endpoint
+    # already caps uploads at 10/min/user, so this adds a second layer.
+    from app.core.cache import check_rate_limit
+    is_allowed, _remaining = await check_rate_limit(
+        str(user_id),
+        "auto_classify_upload",
+        AUTO_CLASSIFY_RATE_LIMIT_PER_HOUR,
+        3600,
+    )
+    if not is_allowed:
+        logger.info(
+            f"[AutoClassify] Rate limit exceeded for user={user_id} — "
+            f"skipping classification"
+        )
+    return bool(is_allowed)
 
 
 async def auto_classify_background(
@@ -127,7 +158,7 @@ async def _auto_classify_impl(
         )
         return
 
-    category = _infer_category(result.document_type)
+    category = infer_category(result.document_type)
 
     async with db_pool.acquire() as conn:
         # Idempotency guard: only overwrite if the row is still marked
@@ -180,20 +211,5 @@ async def _auto_classify_impl(
     )
 
 
-def _infer_category(doc_type: str) -> Optional[str]:
-    """Map a Gemini-classified document_type to a coarse category enum.
-
-    Mirrors the private `_infer_category` helper from
-    `user_documents_routes.py` but kept local here to avoid a circular
-    import between services and the routes module.
-    """
-    t = (doc_type or "").lower()
-    if any(k in t for k in ("pasaporte", "dip", "nie", "nif", "identidad", "cedula")):
-        return "identity"
-    if any(k in t for k in ("vehicul", "carnet_conducir", "permis", "itv", "matric")):
-        return "vehicle"
-    if any(k in t for k in ("contrato", "acta", "certificado", "legaliza")):
-        return "legal"
-    if any(k in t for k in ("factura", "recibo", "nota_ingreso", "solvencia")):
-        return "financial"
-    return None
+# _infer_category extracted to utils/category_inference.infer_category
+# — shared with user_documents_routes.py so the two callers can't drift.

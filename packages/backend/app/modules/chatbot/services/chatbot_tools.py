@@ -1188,8 +1188,10 @@ if VERTEX_AVAILABLE:
             description=(
                 "Sugerir citas disponibles para un trámite específico. USAR cuando "
                 "el usuario dice 'cuándo hay cita para...', 'qué citas tienes para "
-                "mi pasaporte', 'proponme fechas de cita', 'necesito una cita'. "
-                "Este tool LEE únicamente — no reserva nada. Requiere el permiso "
+                "mi pasaporte', 'proponme fechas', 'necesito una cita la semana "
+                "que viene'. Retorna hasta 3 oficinas activas con hasta 4 citas "
+                "cada una (máx 12 citas), priorizando la ciudad preferida del "
+                "usuario. LEE únicamente — no reserva nada. Requiere el permiso "
                 "'suggest_appointments' en los ajustes del asistente (Level 2)."
             ),
             parameters={
@@ -1198,9 +1200,36 @@ if VERTEX_AVAILABLE:
                     "workflow_code": {
                         "type": "string",
                         "description": (
-                            "Código del trámite para el que buscar citas (ej: "
-                            "PASAPORTE_NUEVO, CONDUCIR_RENOVACION, "
-                            "VEHICULO_PRIMERA_MATRICULACION)."
+                            "Código del trámite para el que buscar citas. "
+                            "Debe ser uno de los valores de la enum — el asistente "
+                            "debe traducir la pregunta del usuario al código "
+                            "correspondiente (ej: 'pasaporte nuevo' → "
+                            "PASAPORTE_NUEVO)."
+                        ),
+                        "enum": [
+                            "PASAPORTE_NUEVO",
+                            "PASAPORTE_RENOVACION",
+                            "PASAPORTE_PERDIDA",
+                            "PASAPORTE_ROBO",
+                            "PASAPORTE_DETERIORO",
+                            "CONDUCIR_NUEVO",
+                            "CONDUCIR_RENOVACION",
+                            "CONDUCIR_CANJE",
+                            "CONDUCIR_EXTENSION",
+                            "CONDUCIR_DUPLICADO",
+                            "RESIDENCIA_PRIMERA_VEZ",
+                            "RESIDENCIA_RENOVACION",
+                            "FP_CARNET_FUNCIONARIO",
+                        ],
+                    },
+                    "from_date": {
+                        "type": "string",
+                        "description": (
+                            "Fecha mínima a partir de la cual buscar citas, "
+                            "en formato ISO YYYY-MM-DD. Opcional — por defecto "
+                            "usa la fecha mínima según la regla de delay de la "
+                            "entidad. Usar cuando el usuario dice 'a partir "
+                            "del 20', 'la semana que viene', 'después del lunes'."
                         ),
                     },
                 },

@@ -433,15 +433,16 @@ async def upload_document(
 
     # --- Auto-classify hook (Phase 6) ---
     # If the user uploaded without a type hint AND has the auto_classify
-    # permission active, spawn a fire-and-forget background task that
-    # calls Gemini to tag the document. Never blocks the upload response.
+    # permission active AND is within their hourly rate limit, spawn a
+    # fire-and-forget background task that calls Gemini to tag the
+    # document. Never blocks the upload response.
     if not document_type_hint:
         try:
             from app.modules.user_documents.services.auto_classify_service import (
-                has_auto_classify_permission,
+                should_spawn_classify,
                 auto_classify_background,
             )
-            if await has_auto_classify_permission(db, current_user.id):
+            if await should_spawn_classify(db, current_user.id):
                 pool = await get_db_pool()
                 asyncio.create_task(
                     auto_classify_background(
@@ -1972,47 +1973,12 @@ async def download_export(
 # INTERNAL HELPERS
 # =============================================================================
 
-def _infer_category(document_type: str) -> str:
-    """Infer document category from document type hint.
-
-    Returns a sensible default category based on the type string.
-    Gemini classification will refine this later.
-    """
-    type_lower = document_type.lower() if document_type else ""
-
-    identity_types = {
-        "passport", "pasaporte", "national_id", "dip", "nif", "cedula",
-        "birth_certificate", "acta_nacimiento", "dni",
-    }
-    vehicle_types = {"matricula", "permiso_conducir", "vehicle_registration", "driving_license"}
-    financial_types = {"bank_statement", "receipt", "invoice", "tax_return", "factura"}
-    legal_types = {"contract", "contrato", "notarial", "poder", "escritura"}
-    medical_types = {"medical", "certificado_medico", "health", "vacunacion"}
-    education_types = {"diploma", "titulo", "certificado_academico", "education"}
-    photo_types = {"photo", "foto", "photograph"}
-    business_types = {"business_license", "licencia_comercial", "registro_mercantil"}
-    employment_types = {"employment", "contrato_trabajo", "nomina", "payslip"}
-
-    if type_lower in identity_types or any(t in type_lower for t in identity_types):
-        return "identity"
-    if type_lower in vehicle_types or any(t in type_lower for t in vehicle_types):
-        return "vehicle"
-    if type_lower in financial_types or any(t in type_lower for t in financial_types):
-        return "financial"
-    if type_lower in legal_types or any(t in type_lower for t in legal_types):
-        return "legal"
-    if type_lower in medical_types or any(t in type_lower for t in medical_types):
-        return "medical"
-    if type_lower in education_types or any(t in type_lower for t in education_types):
-        return "education"
-    if type_lower in photo_types or any(t in type_lower for t in photo_types):
-        return "photo"
-    if type_lower in business_types or any(t in type_lower for t in business_types):
-        return "business"
-    if type_lower in employment_types or any(t in type_lower for t in employment_types):
-        return "employment"
-
-    return "other"
+# NOTE: The previous local `_infer_category` helper was extracted during
+# Phase 6 hardening into `app/modules/user_documents/utils/category_inference.py`
+# so auto_classify_service.py can share the exact same mapping.
+from app.modules.user_documents.utils.category_inference import (
+    infer_category as _infer_category,
+)
 
 
 async def _build_user_doc_map(

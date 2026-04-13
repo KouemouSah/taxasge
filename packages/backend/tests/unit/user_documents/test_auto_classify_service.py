@@ -95,32 +95,80 @@ class TestHasAutoClassifyPermission:
         assert result is False
 
 
+class TestShouldSpawnClassify:
+    """Combines permission check + rate limit (Phase 6 hardening)."""
+
+    @pytest.mark.asyncio
+    async def test_no_permission_skips_rate_check(self):
+        db = AsyncMock()
+        db.fetchval = AsyncMock(return_value=False)
+        with patch(
+            "app.core.cache.check_rate_limit",
+            new=AsyncMock(return_value=(True, 20)),
+        ) as rate_mock:
+            result = await auto_classify_service.should_spawn_classify(db, uuid4())
+        assert result is False
+        rate_mock.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_permission_granted_rate_limit_ok(self):
+        db = AsyncMock()
+        db.fetchval = AsyncMock(return_value=True)
+        with patch(
+            "app.core.cache.check_rate_limit",
+            new=AsyncMock(return_value=(True, 15)),
+        ):
+            result = await auto_classify_service.should_spawn_classify(db, uuid4())
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_permission_granted_but_rate_limited_returns_false(self):
+        db = AsyncMock()
+        db.fetchval = AsyncMock(return_value=True)
+        with patch(
+            "app.core.cache.check_rate_limit",
+            new=AsyncMock(return_value=(False, 0)),
+        ):
+            result = await auto_classify_service.should_spawn_classify(db, uuid4())
+        assert result is False
+
+
 class TestInferCategory:
+    """The inference helper now lives in utils.category_inference
+    (extracted during Phase 6 hardening so routes + service share one
+    implementation). Returns "other" for unknowns (the enum fallback)
+    instead of None."""
+
     def test_identity_documents(self):
-        assert auto_classify_service._infer_category("pasaporte") == "identity"
-        assert auto_classify_service._infer_category("DIP") == "identity"
-        assert auto_classify_service._infer_category("nie_extranjero") == "identity"
-        assert auto_classify_service._infer_category("CEDULA_DE_IDENTIDAD") == "identity"
+        from app.modules.user_documents.utils.category_inference import infer_category
+        assert infer_category("pasaporte") == "identity"
+        assert infer_category("DIP") == "identity"
+        assert infer_category("nie_extranjero") == "identity"
+        assert infer_category("CEDULA_DE_IDENTIDAD") == "identity"
 
     def test_vehicle_documents(self):
-        assert auto_classify_service._infer_category("carnet_conducir") == "vehicle"
-        assert auto_classify_service._infer_category("itv_certificate") == "vehicle"
-        assert auto_classify_service._infer_category("matriculacion_vehiculo") == "vehicle"
+        from app.modules.user_documents.utils.category_inference import infer_category
+        assert infer_category("carnet_conducir") == "vehicle"
+        assert infer_category("itv_certificate") == "vehicle"
+        assert infer_category("matriculacion_vehiculo") == "vehicle"
 
     def test_legal_documents(self):
-        assert auto_classify_service._infer_category("contrato_onrc") == "legal"
-        assert auto_classify_service._infer_category("certificado_residencia") == "legal"
-        assert auto_classify_service._infer_category("acta_notarial") == "legal"
+        from app.modules.user_documents.utils.category_inference import infer_category
+        assert infer_category("contrato_onrc") == "legal"
+        assert infer_category("certificado_residencia") == "legal"
+        assert infer_category("acta_notarial") == "legal"
 
     def test_financial_documents(self):
-        assert auto_classify_service._infer_category("solvencia") == "financial"
-        assert auto_classify_service._infer_category("nota_ingreso_tesoro") == "financial"
-        assert auto_classify_service._infer_category("factura_cliente") == "financial"
+        from app.modules.user_documents.utils.category_inference import infer_category
+        assert infer_category("solvencia") == "financial"
+        assert infer_category("nota_ingreso_tesoro") == "financial"
+        assert infer_category("factura_cliente") == "financial"
 
-    def test_unknown_returns_none(self):
-        assert auto_classify_service._infer_category("random_type") is None
-        assert auto_classify_service._infer_category("") is None
-        assert auto_classify_service._infer_category(None) is None  # type: ignore[arg-type]
+    def test_unknown_returns_other(self):
+        from app.modules.user_documents.utils.category_inference import infer_category
+        assert infer_category("random_type") == "other"
+        assert infer_category("") == "other"
+        assert infer_category(None) == "other"
 
 
 def _make_pool_with_conn(conn: AsyncMock) -> MagicMock:

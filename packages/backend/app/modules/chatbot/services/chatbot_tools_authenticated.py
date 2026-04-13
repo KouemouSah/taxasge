@@ -1185,25 +1185,62 @@ def _build_appointment_summary(args: dict) -> str:
 # ============================================================================
 
 
+SUGGEST_SLOTS_MAX_LOCATIONS = 3
+SUGGEST_SLOTS_PER_LOCATION = 4
+SUGGEST_SLOTS_RATE_LIMIT_PER_MINUTE = 10
+
+
 async def suggest_appointment_slots(db, **kwargs) -> dict:
     """[LEVEL 2] Suggest available appointment slots for a workflow.
 
-    Read-only: fetches 6 candidate slots via the existing
-    `appointment_service.get_available_slots` function, scoped to the
-    entity_location derived from the workflow. Honours the user's
-    `chatbot_user_preferences.preferred_city` when choosing which of
-    several locations to present first.
+    Read-only: delegates to `appointment_service.get_available_slots`
+    (backed by the set-based PostgreSQL function `get_available_slots_v3`).
+    Returns up to `SUGGEST_SLOTS_MAX_LOCATIONS` active locations, each
+    carrying up to `SUGGEST_SLOTS_PER_LOCATION` upcoming slots, with the
+    user's preferred city (`chatbot_user_preferences.preferred_city`)
+    surfaced first.
+
+    Parameters (kwargs):
+    - user_id (str, required): authenticated user UUID.
+    - workflow_code (str, required): target workflow code.
+    - from_date (str, optional): ISO 8601 date (YYYY-MM-DD). Slots
+      before this date are excluded. Defaults to the service's
+      entity-specific minimum delay.
 
     Gated by Level 2 → requires an active `suggest_appointments`
-    permission in user_agent_permissions. Never writes to DB.
+    permission. Rate-limited at `SUGGEST_SLOTS_RATE_LIMIT_PER_MINUTE`
+    requests per user per minute to prevent abusive Gemini loops.
     """
+    from datetime import date as date_type
+
     user_id = kwargs.get("user_id", "")
     workflow_code = kwargs.get("workflow_code", "")
+    from_date_raw = kwargs.get("from_date")
 
     if not user_id:
         return {"error": "Autenticación requerida para esta acción."}
     if not workflow_code:
         return {"error": "Se requiere workflow_code"}
+
+    # Per-user rate limit to bound Gemini call loops + DB read volume.
+    # Keep the budget tight (10/min) — the tool is read-only, but at 1M
+    # users a malicious loop could still stress the appointment_slot_configs
+    # JOIN on every call.
+    from app.core.cache import check_rate_limit
+    is_allowed, _remaining = await check_rate_limit(
+        user_id,
+        "suggest_appointment_slots",
+        SUGGEST_SLOTS_RATE_LIMIT_PER_MINUTE,
+        60,
+    )
+    if not is_allowed:
+        return {
+            "status": "rate_limited",
+            "message": (
+                "Has pedido muchas sugerencias de citas en poco tiempo. "
+                "Intenta de nuevo en un minuto."
+            ),
+        }
 
     allowed, msg = await check_tool_level(db, user_id, "suggest_appointment_slots")
     if not allowed:
@@ -1213,6 +1250,18 @@ async def suggest_appointment_slots(db, **kwargs) -> dict:
             "permission_type": "suggest_appointments",
             "level": 2,
         }
+
+    # Parse optional from_date — reject obviously invalid input.
+    from_date_parsed = None
+    if from_date_raw:
+        try:
+            from_date_parsed = date_type.fromisoformat(from_date_raw)
+        except (TypeError, ValueError):
+            return {
+                "status": "error",
+                "message": "Formato de fecha inválido. Usa YYYY-MM-DD.",
+                "workflow_code": workflow_code,
+            }
 
     from app.modules.service_requests.services.appointment_service import (
         appointment_service,
@@ -1229,46 +1278,41 @@ async def suggest_appointment_slots(db, **kwargs) -> dict:
             "workflow_code": workflow_code,
         }
 
-    # Step 2: user's preferred city (best-effort, can be null)
+    # Step 2: user's preferred city (best-effort, can be NULL)
     preferred_city = await db.fetchval(
         "SELECT preferred_city FROM chatbot_user_preferences WHERE user_id = $1::uuid",
         user_id,
     )
 
-    # Step 3: pick the best active location (preferred city first, else any)
-    location = None
-    if preferred_city:
-        location = await db.fetchrow(
-            """
-            SELECT el.id, el.location_name, el.city, el.location_address
-            FROM entity_locations el
-            INNER JOIN appointment_slot_configs sc
-                ON sc.entity_location_id = el.id
-            WHERE el.entity_code = $1
-              AND el.city = $2
-              AND el.is_active = TRUE
-              AND sc.is_active = TRUE
-            LIMIT 1
-            """,
-            entity_code,
-            preferred_city,
-        )
-    if not location:
-        location = await db.fetchrow(
-            """
-            SELECT el.id, el.location_name, el.city, el.location_address
-            FROM entity_locations el
-            INNER JOIN appointment_slot_configs sc
-                ON sc.entity_location_id = el.id
-            WHERE el.entity_code = $1
-              AND el.is_active = TRUE
-              AND sc.is_active = TRUE
-            ORDER BY el.city, el.location_name
-            LIMIT 1
-            """,
-            entity_code,
-        )
-    if not location:
+    # Step 3: fetch up to N active locations in a single query, with the
+    # preferred city bubbled to the top of the ordering.
+    location_rows = await db.fetch(
+        """
+        SELECT DISTINCT ON (el.id)
+            el.id,
+            el.location_name,
+            el.city,
+            el.location_address,
+            (el.city = $2) AS is_preferred
+        FROM entity_locations el
+        INNER JOIN appointment_slot_configs sc ON sc.entity_location_id = el.id
+        WHERE el.entity_code = $1
+          AND el.is_active = TRUE
+          AND sc.is_active = TRUE
+        ORDER BY el.id, is_preferred DESC, el.city, el.location_name
+        LIMIT $3
+        """,
+        entity_code,
+        preferred_city,
+        SUGGEST_SLOTS_MAX_LOCATIONS,
+    )
+    # Re-order: preferred city first (DISTINCT ON constrained the ORDER BY,
+    # so we post-sort in Python to keep the is_preferred=TRUE rows on top).
+    locations = sorted(
+        location_rows,
+        key=lambda r: (not r["is_preferred"], r["city"] or "", r["location_name"] or ""),
+    )
+    if not locations:
         return {
             "status": "no_locations",
             "message": f"No hay oficinas activas para {entity_code}.",
@@ -1276,54 +1320,80 @@ async def suggest_appointment_slots(db, **kwargs) -> dict:
             "workflow_code": workflow_code,
         }
 
-    # Step 4: fetch 6 upcoming slots via the existing PostgreSQL function
-    try:
-        slots = await appointment_service.get_available_slots(
-            db=db,
-            entity_location_id=location["id"],
-            limit=6,
-        )
-    except Exception as exc:
-        logger.error(f"suggest_appointment_slots get_available_slots failed: {exc}")
-        return {
-            "status": "error",
-            "message": "No pude obtener las citas disponibles en este momento.",
-            "workflow_code": workflow_code,
-        }
+    # Step 4: fetch slots for each location in parallel.
+    async def _fetch_slots_for(location_row):
+        try:
+            return await appointment_service.get_available_slots(
+                db=db,
+                entity_location_id=location_row["id"],
+                from_date=from_date_parsed,
+                limit=SUGGEST_SLOTS_PER_LOCATION,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"suggest_appointment_slots: fetch slots failed for "
+                f"location={location_row['id']}: {exc}"
+            )
+            return []
 
-    if not slots:
+    # Sequential on the same connection — asyncpg forbids parallel queries
+    # on a single Connection, so we await one after the other. The slot
+    # query is fast (set-based PG function), total ≤ 3 × ~20ms.
+    per_location_slots = []
+    total_slots = 0
+    for loc in locations:
+        slots = await _fetch_slots_for(loc)
+        per_location_slots.append((loc, slots))
+        total_slots += len(slots)
+
+    if total_slots == 0:
+        first = locations[0]
         return {
             "status": "no_slots",
             "message": (
                 f"No hay citas disponibles en los próximos días en "
-                f"{location['location_name']}. Intenta más tarde."
+                f"{first['location_name']} ni otras oficinas activas."
             ),
             "workflow_code": workflow_code,
-            "location_id": str(location["id"]),
-            "location_name": location["location_name"],
-            "city": location["city"],
+            "entity_code": entity_code,
+            "locations": [
+                {
+                    "id": str(loc["id"]),
+                    "location_name": loc["location_name"],
+                    "city": loc["city"],
+                }
+                for loc, _ in per_location_slots
+            ],
         }
 
     return {
         "status": "suggested",
         "workflow_code": workflow_code,
         "entity_code": entity_code,
-        "location_id": str(location["id"]),
-        "location_name": location["location_name"],
-        "location_address": location["location_address"],
-        "city": location["city"],
-        "suggested_slots": [
+        "preferred_city": preferred_city,
+        "from_date": str(from_date_parsed) if from_date_parsed else None,
+        "locations": [
             {
-                "date": str(s.slot_date),
-                "time": str(s.slot_time),
-                "slots_remaining": s.slots_remaining,
+                "id": str(loc["id"]),
+                "location_name": loc["location_name"],
+                "city": loc["city"],
+                "location_address": loc["location_address"],
+                "is_preferred": bool(loc["is_preferred"]),
+                "slots": [
+                    {
+                        "date": str(s.slot_date),
+                        "time": str(s.slot_time),
+                        "slots_remaining": s.slots_remaining,
+                    }
+                    for s in slots
+                ],
             }
-            for s in slots
+            for loc, slots in per_location_slots
         ],
-        "count": len(slots),
+        "total_slots": total_slots,
         "message": (
-            f"Tengo {len(slots)} citas disponibles para {workflow_code} "
-            f"en {location['location_name']}."
+            f"Tengo {total_slots} citas disponibles para {workflow_code} "
+            f"en {len(per_location_slots)} oficina(s)."
         ),
     }
 
