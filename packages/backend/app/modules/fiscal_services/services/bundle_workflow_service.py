@@ -24,6 +24,8 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
+import asyncpg
+
 logger = logging.getLogger(__name__)
 
 
@@ -850,6 +852,12 @@ class BundleWorkflowService:
             LicenseRepository,
         )
 
+        # Transaction-scoped timeouts — CLAUDE.md lock ordering requirement.
+        # Prevents deadlock fan-out when many agents/users touch the same
+        # commercial_license / service_requests / license_obligations chain.
+        await conn.execute("SET LOCAL lock_timeout = '3s'")
+        await conn.execute("SET LOCAL statement_timeout = '5s'")
+
         # 1. Re-validate within transaction (race protection)
         # NOWAIT: fail immediately if another transaction is locking this license
         # (prevents blocking during BANGE API call which holds the lock 2-5s)
@@ -918,7 +926,10 @@ class BundleWorkflowService:
         # Primary entity = largest group (or TESORO if only tesoro obligations)
         primary_entity = max(entity_groups, key=lambda e: len(entity_groups[e]))
 
-        # 2b. Create service_request (1 per bundle, primary entity owns it)
+        # 2b. Create service_request (1 per bundle, primary entity owns it).
+        # Bundle workflow requires commercial_license_id + fiscal_year (migration 291,
+        # trigger fn_enforce_bundle_sr_integrity). bundle_id + zone_id are inserted in
+        # the same INSERT to avoid a redundant UPDATE round-trip on the critical path.
         sr_repo = ServiceRequestRepository()
         form_data = {
             "license_id": str(license_id),
@@ -928,15 +939,36 @@ class BundleWorkflowService:
             "entity_payments": {ec: len(obs) for ec, obs in entity_groups.items()},
         }
 
-        sr = await sr_repo.create(
-            db=conn,
-            user_id=user_id,
-            workflow_code="BUNDLE_PAYMENT",
-            solicitud_type="expedicion",
-            form_data=form_data,
-            company_id=license_row["company_id"],
-            entity_code=primary_entity,
-        )
+        try:
+            sr = await sr_repo.create(
+                db=conn,
+                user_id=user_id,
+                workflow_code="BUNDLE_PAYMENT",
+                solicitud_type="expedicion",
+                form_data=form_data,
+                company_id=license_row["company_id"],
+                entity_code=primary_entity,
+                commercial_license_id=license_id,
+                fiscal_year=license_row["fiscal_year"],
+                bundle_id=license_row["bundle_id"],
+                zone_id=license_row["zone_id"],
+                source="citizen_wizard",
+            )
+        except asyncpg.UniqueViolationError:
+            # Safety net per migration 291 partial UNIQUE index
+            # idx_sr_commercial_license_unique. A previous in-flight bundle SR
+            # exists for this license — treat as concurrent duplicate and bail
+            # with a deterministic error (no retry, the caller should resume).
+            raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
+        except asyncpg.CheckViolationError as ex:
+            # Defensive: fn_enforce_bundle_sr_integrity fired despite our
+            # fail-fast guard in sr_repo.create(). Surface a clear metier code
+            # instead of leaking a 500 to the client.
+            logger.error(
+                "Bundle SR integrity trigger fired unexpectedly: %s (license=%s)",
+                ex, license_id,
+            )
+            raise ValueError("BUNDLE_INTEGRITY_ERROR")
         service_request_id = sr["id"]
 
         # 2b. Persist documents from wizard session cache to Firebase (if provided)
@@ -958,25 +990,25 @@ class BundleWorkflowService:
                     wizard_session_id, e,
                 )
 
-        # 3. Update license with service_request_id + processing_mode
+        # 3. Update license with processing_mode chosen by citizen.
+        # service_request_id is synced automatically by trigger trg_sync_license_sr_id
+        # (AFTER INSERT on service_requests, migration 291) — do NOT write it here.
         await conn.execute("""
             UPDATE commercial_licenses
-            SET service_request_id = $1,
-                processing_mode = $2,
+            SET processing_mode = $1,
                 updated_at = NOW()
-            WHERE id = $3
-        """, service_request_id, processing_mode, license_id)
+            WHERE id = $2
+        """, processing_mode, license_id)
 
-        # Update service_request amounts
+        # Update service_request amounts and mark as SUBMITTED.
+        # bundle_id / zone_id were already set at INSERT time above.
         await conn.execute("""
             UPDATE service_requests
             SET total_amount = $1, base_amount = $1,
                 currency = 'XAF', status = 'SUBMITTED',
-                submitted_at = NOW(),
-                bundle_id = $3, zone_id = $4
+                submitted_at = NOW()
             WHERE id = $2
-        """, total_amount, service_request_id,
-            license_row["bundle_id"], license_row["zone_id"])
+        """, total_amount, service_request_id)
 
         # 4. Create N service_payments — one per target entity (Mode A split)
         #    Each entity validates their portion independently.

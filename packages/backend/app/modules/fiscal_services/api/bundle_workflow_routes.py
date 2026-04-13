@@ -401,6 +401,26 @@ _error_messages = {
         "fr": "L'entreprise a été enregistrée mais le flux de paiement n'a pas pu être initié",
         "en": "The company was registered but the payment flow could not be initiated",
     },
+    "BUNDLE_SR_MISSING_LICENSE_ID": {
+        "es": "Error interno: la solicitud del paquete no está vinculada a una licencia",
+        "fr": "Erreur interne : la demande du forfait n'est pas liée à une licence",
+        "en": "Internal error: bundle request is not linked to a license",
+    },
+    "BUNDLE_SR_MISSING_FISCAL_YEAR": {
+        "es": "Error interno: falta el año fiscal en la solicitud del paquete",
+        "fr": "Erreur interne : année fiscale manquante dans la demande du forfait",
+        "en": "Internal error: fiscal year missing from bundle request",
+    },
+    "BUNDLE_INTEGRITY_ERROR": {
+        "es": "La solicitud del paquete no cumple con las reglas de integridad. Contacte el soporte",
+        "fr": "La demande du forfait ne respecte pas les règles d'intégrité. Contactez le support",
+        "en": "Bundle request does not meet integrity rules. Contact support",
+    },
+    "DATABASE_CONSTRAINT_VIOLATION": {
+        "es": "La operación viola una regla de la base de datos",
+        "fr": "L'opération viole une règle de la base de données",
+        "en": "The operation violates a database rule",
+    },
 }
 
 
@@ -431,4 +451,12 @@ def _error_status(code: str) -> int:
         return 409
     if code == "PAYMENT_INITIATION_FAILED":
         return 503
+    # Bundle integrity issues = server-side bugs (missing link at creation time).
+    # Surface as 500 so Sentry/Cloud Error Reporting picks them up for alerting,
+    # but the body still carries a clean metier code + trilingual message.
+    if code in ("BUNDLE_SR_MISSING_LICENSE_ID",
+                "BUNDLE_SR_MISSING_FISCAL_YEAR",
+                "BUNDLE_INTEGRITY_ERROR",
+                "DATABASE_CONSTRAINT_VIOLATION"):
+        return 500
     return 422

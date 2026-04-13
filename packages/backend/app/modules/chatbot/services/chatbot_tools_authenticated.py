@@ -122,8 +122,14 @@ AGENT_PERMISSION_CATALOG = [
     },
     {
         "key": "proactive_alerts",
-        "status": "coming_soon",
-        "tool_name": None,
+        "status": "available",
+        # Not a Gemini chat tool — this permission gates the daily CRON
+        # scan in user_documents.services.proactive_agent_service.py.
+        # With consent active, users receive email+push for all expiry
+        # tiers (30d/60d/90d) + missing-docs alerts. Without consent,
+        # critical tiers (expired/expiry_7d) are still delivered as a
+        # safety net (GDPR Recital 47 legitimate interest).
+        "tool_name": "proactive_scan_background",
         "max_level": 2,
         "icon": "Bell",
         "always_on": False,

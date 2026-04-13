@@ -31,6 +31,70 @@ class ProactiveAgentService:
     """
 
     # ─────────────────────────────────────────────────────────────
+    # TUNABLES (Phase 8 hardening)
+    # ─────────────────────────────────────────────────────────────
+
+    # Alert types that are ALWAYS delivered via email/push because they
+    # represent safety-net notifications (legitimate interest under
+    # GDPR Recital 47 — imminent expiry of legal identity documents).
+    # Non-critical tiers require explicit `proactive_alerts` consent.
+    CRITICAL_ALERT_TYPES = frozenset({"expired", "expiry_7d"})
+
+    # Ops WARNING threshold: if a single scan creates more than this
+    # many alerts we log a WARNING so oncall can inspect (possible
+    # stuck cron, runaway state, or unexpected data migration).
+    MAX_ALERTS_WARNING_THRESHOLD = 10_000
+
+    # Concurrency cap on the notification dispatcher — prevents us from
+    # blowing up SMTP/FCM quotas on a large scan run.
+    NOTIFY_CONCURRENCY = 50
+
+    # Dedup window for missing_for_workflow alerts: once we alert a
+    # user about a specific request, we don't re-nag for 7 days.
+    MISSING_DOCS_DEDUP_DAYS = 7
+
+    # ─────────────────────────────────────────────────────────────
+    # PERMISSION HELPER (Phase 8)
+    # ─────────────────────────────────────────────────────────────
+
+    async def _has_proactive_alerts_permission(
+        self, db: asyncpg.Connection, user_id
+    ) -> bool:
+        """Check whether `user_id` opted in to proactive push/email delivery.
+
+        Creating in-app alert rows is UNCONDITIONAL (safety net for a
+        government platform). External delivery (email + push) for
+        non-critical tiers is OPT-IN via the `proactive_alerts`
+        permission to satisfy GDPR Article 7 explicit-consent rules.
+        """
+        return bool(
+            await db.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM user_agent_permissions
+                    WHERE user_id = $1::uuid
+                      AND permission_type = 'proactive_alerts'
+                      AND is_active = TRUE
+                )
+                """,
+                user_id,
+            )
+        )
+
+    def _should_deliver_external(
+        self, alert_type: str, has_consent: bool
+    ) -> bool:
+        """Tier-aware delivery gate.
+
+        - Critical tiers (expired / expiry_7d) → always delivered
+          (legitimate interest, safety net).
+        - Everything else → requires explicit `proactive_alerts` consent.
+        """
+        if alert_type in self.CRITICAL_ALERT_TYPES:
+            return True
+        return has_consent
+
+    # ─────────────────────────────────────────────────────────────
     # MAIN ENTRY POINT
     # ─────────────────────────────────────────────────────────────
 
@@ -42,6 +106,7 @@ class ProactiveAgentService:
         results: Dict[str, Any] = {
             "alerts_created": 0,
             "proactive_preparations": 0,
+            "missing_workflow_alerts": 0,
             "documents_expired": 0,
             "documents_purged": 0,
             "memories_deactivated": 0,
@@ -62,6 +127,17 @@ class ProactiveAgentService:
         except Exception as e:
             logger.error(f"[ProactiveAgent] Proactive preparations failed: {e}")
             results["errors"].append(f"proactive_preparations: {str(e)}")
+
+        # 2b. Scan in-progress service_requests for missing docs (Phase 8)
+        try:
+            results["missing_workflow_alerts"] = (
+                await self._scan_missing_documents_for_workflow(db)
+            )
+        except Exception as e:
+            logger.error(
+                f"[ProactiveAgent] Missing-workflow scan failed: {e}"
+            )
+            results["errors"].append(f"missing_workflow: {str(e)}")
 
         # 3. Update status of newly expired documents
         try:
@@ -206,27 +282,51 @@ class ProactiveAgentService:
             if "INSERT 0 1" in result:
                 alerts_created += 1
 
-                # Send notification via communications module
-                doc_name = (
-                    doc_info.get("display_name")
-                    or doc_info.get("file_name")
-                    or doc_info.get("document_type", "documento")
+                # Tier-aware + consent-gated external delivery:
+                # - Critical tiers (expired, expiry_7d) → always sent
+                #   (legitimate interest, safety net for legal ID docs).
+                # - Non-critical tiers (30d / 60d / 90d) → require
+                #   explicit `proactive_alerts` consent.
+                has_consent = await self._has_proactive_alerts_permission(
+                    db, row["user_id"]
                 )
-                try:
-                    await self._send_expiry_notification(
-                        db,
-                        user_id=row["user_id"],
-                        user_email=row.get("user_email"),
-                        user_name=row.get("user_full_name") or "Usuario",
-                        preferred_language=row.get("user_language"),
-                        alert_type=alert_type,
-                        severity=messages["severity"],
-                        document_name=doc_name,
-                        expiry_date=str(row["expiry_date"]) if row["expiry_date"] else "",
-                        days_until=days,
+                if self._should_deliver_external(alert_type, has_consent):
+                    doc_name = (
+                        doc_info.get("display_name")
+                        or doc_info.get("file_name")
+                        or doc_info.get("document_type", "documento")
                     )
-                except Exception as notif_err:
-                    logger.debug(f"[ProactiveAgent] Notification send failed (non-critical): {notif_err}")
+                    try:
+                        await self._send_expiry_notification(
+                            db,
+                            user_id=row["user_id"],
+                            user_email=row.get("user_email"),
+                            user_name=row.get("user_full_name") or "Usuario",
+                            preferred_language=row.get("user_language"),
+                            alert_type=alert_type,
+                            severity=messages["severity"],
+                            document_name=doc_name,
+                            expiry_date=str(row["expiry_date"]) if row["expiry_date"] else "",
+                            days_until=days,
+                        )
+                    except Exception as notif_err:
+                        logger.debug(
+                            f"[ProactiveAgent] Notification send failed "
+                            f"(non-critical): {notif_err}"
+                        )
+                else:
+                    logger.debug(
+                        f"[ProactiveAgent] External delivery skipped for "
+                        f"user={row['user_id']} tier={alert_type} "
+                        f"(no proactive_alerts consent)"
+                    )
+
+        if alerts_created > self.MAX_ALERTS_WARNING_THRESHOLD:
+            logger.warning(
+                f"[ProactiveAgent] High alert volume: {alerts_created} "
+                f"expiry alerts created in a single scan run — investigate "
+                f"(threshold={self.MAX_ALERTS_WARNING_THRESHOLD})"
+            )
 
         logger.info(
             f"[ProactiveAgent] Expiration scan: {len(rows)} documents checked, "
@@ -355,6 +455,283 @@ class ProactiveAgentService:
             f"{preparations_created} preparations created"
         )
         return preparations_created
+
+    # ─────────────────────────────────────────────────────────────
+    # 2b. MISSING DOCUMENTS FOR IN-PROGRESS WORKFLOW (Phase 8)
+    # ─────────────────────────────────────────────────────────────
+
+    async def _scan_missing_documents_for_workflow(
+        self, db: asyncpg.Connection
+    ) -> int:
+        """
+        Detect users who have a service_request in DRAFT / DOCUMENTS_REQUIRED
+        but are missing documents required for the workflow, and create
+        `missing_for_workflow` alerts + push/email notifications.
+
+        Fully gated by `proactive_alerts` consent — this scan only runs
+        for opted-in users because the entire intent is proactive outreach
+        (not a safety net).
+
+        Dedup: once an alert is created for a given (user, request) pair,
+        no new alert fires for `MISSING_DOCS_DEDUP_DAYS` (default 7 days).
+        Users can still see the in-progress alert in the AlertsTab.
+        """
+        # Only scan users who opted in + requests still accepting docs
+        # (DRAFT = user assembling, DOCUMENTS_REQUIRED = reviewer sent back)
+        rows = await db.fetch(
+            """
+            SELECT DISTINCT ON (sr.id)
+                sr.id AS request_id,
+                sr.user_id,
+                sr.workflow_code,
+                sr.status::text AS request_status,
+                sr.created_at,
+                u.email AS user_email,
+                u.full_name AS user_full_name,
+                u.preferred_language AS user_language
+            FROM service_requests sr
+            JOIN users u ON u.id = sr.user_id
+            JOIN user_agent_permissions uap
+                ON uap.user_id = sr.user_id
+                AND uap.permission_type = 'proactive_alerts'
+                AND uap.is_active = TRUE
+            WHERE sr.status::text IN ('DRAFT', 'DOCUMENTS_REQUIRED')
+              AND sr.created_at >= NOW() - INTERVAL '30 days'
+            ORDER BY sr.id, sr.created_at DESC
+            """
+        )
+
+        if not rows:
+            logger.info("[ProactiveAgent] No in-progress requests for missing-docs scan")
+            return 0
+
+        # Reuse the existing readiness service to compute missing docs —
+        # keeps the "required documents" logic in one place and cached.
+        from app.modules.user_documents.services.user_documents_service import (
+            user_documents_service,
+        )
+
+        alerts_created = 0
+        for row in rows:
+            try:
+                readiness = await user_documents_service.get_readiness(
+                    db=db,
+                    user_id=row["user_id"],
+                    workflow_code=row["workflow_code"],
+                )
+            except Exception as exc:
+                logger.debug(
+                    f"[ProactiveAgent] Readiness check failed for "
+                    f"request={row['request_id']}: {exc}"
+                )
+                continue
+
+            missing = readiness.get("missing", []) or []
+            if not missing:
+                continue
+
+            # Dedup: skip if we already created an alert for THIS request
+            # in the last MISSING_DOCS_DEDUP_DAYS.
+            existing = await db.fetchval(
+                """
+                SELECT 1 FROM user_document_alerts
+                WHERE user_id = $1::uuid
+                  AND alert_type = 'missing_for_workflow'
+                  AND (action_params->>'request_id') = $2::text
+                  AND created_at >= NOW() - ($3 || ' days')::interval
+                  AND is_dismissed = FALSE
+                LIMIT 1
+                """,
+                row["user_id"],
+                str(row["request_id"]),
+                str(self.MISSING_DOCS_DEDUP_DAYS),
+            )
+            if existing:
+                continue
+
+            missing_names = [
+                (m.get("name") or m.get("code") or "documento")
+                for m in missing[:5]
+            ]
+            missing_count = len(missing)
+            workflow_code = row["workflow_code"]
+            missing_list_str = ", ".join(missing_names)
+
+            action_params_json = json.dumps({
+                "request_id": str(row["request_id"]),
+                "workflow_code": workflow_code,
+                "missing_codes": [m.get("code") for m in missing[:10]],
+            })
+
+            await db.execute(
+                """
+                INSERT INTO user_document_alerts (
+                    user_id, alert_type, severity,
+                    title_es, title_fr, title_en,
+                    message_es, message_fr, message_en,
+                    suggested_action, action_params, trigger_date
+                )
+                VALUES (
+                    $1, 'missing_for_workflow', 'warning',
+                    $2, $3, $4, $5, $6, $7,
+                    'upload_document', $8::jsonb, CURRENT_DATE
+                )
+                """,
+                row["user_id"],
+                f"Faltan {missing_count} documento(s) para completar su trámite {workflow_code}",
+                f"Il manque {missing_count} document(s) pour finaliser votre démarche {workflow_code}",
+                f"{missing_count} document(s) missing to complete your {workflow_code} request",
+                (
+                    f"Su solicitud {workflow_code} requiere los siguientes documentos "
+                    f"que aún no están en su coffre: {missing_list_str}. "
+                    f"Súbalos desde su coffre para continuar."
+                ),
+                (
+                    f"Votre demande {workflow_code} nécessite les documents suivants "
+                    f"qui ne sont pas encore dans votre coffre : {missing_list_str}. "
+                    f"Ajoutez-les pour poursuivre."
+                ),
+                (
+                    f"Your {workflow_code} request requires the following documents "
+                    f"not yet in your vault: {missing_list_str}. "
+                    f"Upload them to continue."
+                ),
+                action_params_json,
+            )
+            alerts_created += 1
+
+            # External delivery — all consent-gated users get it for this
+            # tier because the whole scan is already opt-in.
+            try:
+                await self._send_missing_docs_notification(
+                    db=db,
+                    user_id=row["user_id"],
+                    user_email=row.get("user_email"),
+                    user_name=row.get("user_full_name") or "Usuario",
+                    preferred_language=row.get("user_language"),
+                    workflow_code=workflow_code,
+                    missing_count=missing_count,
+                    missing_names=missing_names,
+                )
+            except Exception as notif_err:
+                logger.debug(
+                    f"[ProactiveAgent] Missing-docs notification failed "
+                    f"(non-critical): {notif_err}"
+                )
+
+        if alerts_created > self.MAX_ALERTS_WARNING_THRESHOLD:
+            logger.warning(
+                f"[ProactiveAgent] High missing-docs volume: {alerts_created} "
+                f"alerts created in a single scan run — investigate"
+            )
+
+        logger.info(
+            f"[ProactiveAgent] Missing-workflow scan: {len(rows)} in-progress "
+            f"requests checked, {alerts_created} alerts created"
+        )
+        return alerts_created
+
+    async def _send_missing_docs_notification(
+        self,
+        db: asyncpg.Connection,
+        *,
+        user_id,
+        user_email,
+        user_name: str,
+        preferred_language,
+        workflow_code: str,
+        missing_count: int,
+        missing_names: list,
+    ) -> None:
+        """Best-effort email + push for missing-docs alerts. Never raises."""
+        lang = (preferred_language or "es").lower()
+        if lang not in ("es", "fr", "en"):
+            lang = "es"
+        missing_list_str = ", ".join(missing_names)
+
+        # Email (opt-in guaranteed by caller — this scan only runs for
+        # consented users)
+        if user_email:
+            try:
+                from app.modules.communications.services.email_service import (
+                    get_email_service,
+                )
+                email_svc = get_email_service()
+                subject_map = {
+                    "es": f"Faltan documentos para su trámite {workflow_code}",
+                    "fr": f"Documents manquants pour votre démarche {workflow_code}",
+                    "en": f"Missing documents for your {workflow_code} request",
+                }
+                body_html_map = {
+                    "es": (
+                        f"<p>Estimado/a {user_name},</p>"
+                        f"<p>Su solicitud <strong>{workflow_code}</strong> "
+                        f"requiere {missing_count} documento(s) adicional(es): "
+                        f"<em>{missing_list_str}</em>.</p>"
+                        f"<p>Subalos desde su coffre digital para poder continuar.</p>"
+                        f"<p>Atentamente,<br>Equipo Facil</p>"
+                    ),
+                    "fr": (
+                        f"<p>Cher/Chère {user_name},</p>"
+                        f"<p>Votre démarche <strong>{workflow_code}</strong> "
+                        f"nécessite {missing_count} document(s) supplémentaire(s) : "
+                        f"<em>{missing_list_str}</em>.</p>"
+                        f"<p>Ajoutez-les depuis votre coffre digital pour continuer.</p>"
+                        f"<p>Cordialement,<br>Équipe Facil</p>"
+                    ),
+                    "en": (
+                        f"<p>Dear {user_name},</p>"
+                        f"<p>Your <strong>{workflow_code}</strong> request "
+                        f"needs {missing_count} more document(s): "
+                        f"<em>{missing_list_str}</em>.</p>"
+                        f"<p>Upload them from your digital vault to continue.</p>"
+                        f"<p>Best regards,<br>Facil Team</p>"
+                    ),
+                }
+                email_svc.send_email(
+                    to_email=user_email,
+                    subject=subject_map[lang],
+                    body_html=body_html_map[lang],
+                )
+                logger.info(
+                    f"[ProactiveAgent] Missing-docs email sent to {user_email} "
+                    f"for {workflow_code}"
+                )
+            except Exception as exc:
+                logger.debug(
+                    f"[ProactiveAgent] Missing-docs email failed: {exc}"
+                )
+
+        # Push
+        try:
+            from app.modules.communications.services.push_sending_service import (
+                get_push_sending_service,
+            )
+            push_svc = get_push_sending_service()
+            title_map = {
+                "es": "Documentos faltantes",
+                "fr": "Documents manquants",
+                "en": "Missing documents",
+            }
+            body_map = {
+                "es": f"Su trámite {workflow_code} requiere {missing_count} documento(s) más.",
+                "fr": f"Votre démarche {workflow_code} nécessite {missing_count} document(s) de plus.",
+                "en": f"Your {workflow_code} request needs {missing_count} more document(s).",
+            }
+            await push_svc.send_to_user(
+                db=db,
+                user_id=str(user_id),
+                title=title_map[lang],
+                body=body_map[lang],
+                data={
+                    "type": "missing_for_workflow",
+                    "workflow_code": workflow_code,
+                },
+            )
+        except Exception as exc:
+            logger.debug(
+                f"[ProactiveAgent] Missing-docs push failed: {exc}"
+            )
 
     # ─────────────────────────────────────────────────────────────
     # 3. MARK EXPIRED DOCUMENTS
