@@ -31,7 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import {
   Users, FileCheck, AlertTriangle, TrendingUp,
-  ClipboardList, RefreshCw, Building2, ChevronRight,
+  ClipboardList, RefreshCw, ChevronRight,
   DollarSign, CheckCircle2, Clock, MapPin, Shield,
 } from 'lucide-react'
 import apiClient from '@/core/api/client'

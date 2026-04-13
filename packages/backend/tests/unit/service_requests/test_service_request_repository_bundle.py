@@ -215,6 +215,39 @@ async def test_create_non_bundle_workflow_without_license_id_succeeds(
 
 
 # ═══════════════════════════════════════════════════════════════
+# T5b — Regression: batch path cannot accidentally create a bundle SR
+# (Phase 2 audit: batch_persist_service passes workflow_code dynamically;
+#  prove that a BUNDLE_PAYMENT code leaking into batch flow is rejected
+#  by the Phase 1 fail-fast guard BEFORE hitting the DB trigger.)
+# ═══════════════════════════════════════════════════════════════
+
+
+async def test_batch_path_cannot_create_bundle_sr_without_fields(
+    conn, bundle_fixture
+):
+    """
+    Simulates a malformed batch call with workflow_code=BUNDLE_PAYMENT
+    but only batch_id + company_id + entity fields (no license/fiscal_year).
+    The Phase 1 guard must reject it immediately with a clear metier code.
+    """
+    repo = ServiceRequestRepository()
+
+    with pytest.raises(ValueError, match="BUNDLE_SR_MISSING_LICENSE_ID"):
+        await repo.create(
+            db=conn,
+            user_id=bundle_fixture["user_id"],
+            workflow_code="BUNDLE_PAYMENT",
+            solicitud_type="expedicion",
+            form_data={"from": "batch"},
+            # Simulate what batch_persist_service passes — everything except
+            # the bundle-only fields. The guard must fire before the SQL runs.
+            batch_id=bundle_fixture["license_id"],  # fake batch_id — harmless
+            company_id=bundle_fixture["company_id"],
+            entity_code="TESORO",
+        )
+
+
+# ═══════════════════════════════════════════════════════════════
 # T6 — Partial UNIQUE index idx_sr_commercial_license_unique
 #      prevents two bundle SRs pointing to the same license
 # ═══════════════════════════════════════════════════════════════
