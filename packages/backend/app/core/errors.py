@@ -73,6 +73,17 @@ class ErrorCode(str, Enum):
     NOT_MEMBER = "ERR_NOT_MEMBER"
     PROVIDER_NOT_CONFIGURED = "ERR_PROVIDER_NOT_CONFIGURED"
 
+    # --- Database (asyncpg mapping, Phase 4) ---
+    DB_UNIQUE_VIOLATION = "ERR_DB_UNIQUE_VIOLATION"
+    DB_CHECK_VIOLATION = "ERR_DB_CHECK_VIOLATION"
+    DB_FK_VIOLATION = "ERR_DB_FK_VIOLATION"
+    DB_NOT_NULL_VIOLATION = "ERR_DB_NOT_NULL_VIOLATION"
+    DB_SERIALIZATION_FAILURE = "ERR_DB_SERIALIZATION"
+    DB_DEADLOCK = "ERR_DB_DEADLOCK"
+    DB_LOCK_TIMEOUT = "ERR_DB_LOCK_TIMEOUT"
+    DB_STATEMENT_TIMEOUT = "ERR_DB_STATEMENT_TIMEOUT"
+    DB_CONNECTION_ERROR = "ERR_DB_CONNECTION"
+
 
 # ---------------------------------------------------------------------------
 # Multilingual message catalog
@@ -287,6 +298,53 @@ ERROR_CATALOG: dict[ErrorCode, _T] = {
         "es": "Proveedor no configurado",
         "fr": "Fournisseur non configuré",
         "en": "Provider not configured",
+    },
+
+    # Database (Phase 4) — generic messages that NEVER leak table/constraint names
+    ErrorCode.DB_UNIQUE_VIOLATION: {
+        "es": "Ya existe un registro con estos datos",
+        "fr": "Un enregistrement avec ces données existe déjà",
+        "en": "A record with these data already exists",
+    },
+    ErrorCode.DB_CHECK_VIOLATION: {
+        "es": "Los datos no cumplen las reglas de validación",
+        "fr": "Les données ne respectent pas les règles de validation",
+        "en": "The data do not meet the validation rules",
+    },
+    ErrorCode.DB_FK_VIOLATION: {
+        "es": "Referencia a un registro inexistente",
+        "fr": "Référence à un enregistrement inexistant",
+        "en": "Reference to a non-existent record",
+    },
+    ErrorCode.DB_NOT_NULL_VIOLATION: {
+        "es": "Falta un campo obligatorio",
+        "fr": "Un champ obligatoire est manquant",
+        "en": "A required field is missing",
+    },
+    ErrorCode.DB_SERIALIZATION_FAILURE: {
+        "es": "La transacción entró en conflicto con otra. Reintente.",
+        "fr": "La transaction est entrée en conflit avec une autre. Réessayez.",
+        "en": "The transaction conflicted with another one. Please retry.",
+    },
+    ErrorCode.DB_DEADLOCK: {
+        "es": "Conflicto de bloqueo detectado. Reintente.",
+        "fr": "Conflit de verrouillage détecté. Réessayez.",
+        "en": "Lock conflict detected. Please retry.",
+    },
+    ErrorCode.DB_LOCK_TIMEOUT: {
+        "es": "El recurso está siendo utilizado. Reintente en unos segundos.",
+        "fr": "La ressource est en cours d'utilisation. Réessayez dans quelques secondes.",
+        "en": "The resource is currently in use. Retry in a few seconds.",
+    },
+    ErrorCode.DB_STATEMENT_TIMEOUT: {
+        "es": "La operación tardó demasiado. Reintente.",
+        "fr": "L'opération a pris trop de temps. Réessayez.",
+        "en": "The operation took too long. Please retry.",
+    },
+    ErrorCode.DB_CONNECTION_ERROR: {
+        "es": "No se pudo conectar a la base de datos. Inténtelo más tarde.",
+        "fr": "Impossible de se connecter à la base de données. Réessayez plus tard.",
+        "en": "Could not connect to the database. Please try again later.",
     },
 }
 

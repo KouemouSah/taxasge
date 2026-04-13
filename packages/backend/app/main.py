@@ -350,6 +350,32 @@ def get_cors_headers(request: Request) -> dict:
         }
     return {}
 
+import asyncpg as _asyncpg  # noqa: E402 — used by DB error handlers below
+from app.core.db_error_handler import build_db_error_response  # noqa: E402
+
+
+@app.exception_handler(_asyncpg.exceptions.PostgresError)
+async def asyncpg_postgres_error_handler(
+    request: Request, exc: _asyncpg.exceptions.PostgresError,
+):
+    """Map asyncpg PostgresError subclasses (23505, 23514, 40001, ...) to
+    structured API responses with trilingual messages and metier codes.
+    See app/core/db_error_handler.py for the full mapping table.
+    """
+    return build_db_error_response(request, exc)
+
+
+@app.exception_handler(_asyncpg.exceptions.InterfaceError)
+async def asyncpg_interface_error_handler(
+    request: Request, exc: _asyncpg.exceptions.InterfaceError,
+):
+    """asyncpg InterfaceError is NOT a PostgresError subclass but still
+    represents a database-layer failure (connection lost, pool exhausted,
+    protocol mismatch). Route it through the same sanitizer.
+    """
+    return build_db_error_response(request, exc)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle uncaught exceptions with i18n and CORS headers."""
