@@ -5792,6 +5792,7 @@
       "validationHistory": "Historique Validations",
       "completedObligations": "Obligations terminées",
       "documents": "Documents",
+      "inspections": "Inspections",
       "processor": "Traitement"
     },
     "queue": {
@@ -5848,6 +5849,11 @@
       "partial": "Partielles",
       "overdue": "En retard",
       "complete": "Complètes",
+      "totalLicenses": "Total licences",
+      "paid": "Paye",
+      "debt": "Dette",
+      "recovery": "Recouvrement",
+      "noData": "Aucune donnee disponible",
       "year": "Année",
       "company": "Entreprise",
       "nif": "NIF",
@@ -9607,7 +9613,9 @@
       "companyDebt": "Dette Entreprise",
       "ministryDashboard": "Tableau de Bord Ministère",
       "siteDashboard": "Dashboard de Zone",
-      "classification": "Classification"
+      "classification": "Classification",
+      "viewAll": "Voir tout",
+      "noAgents": "Aucun agent actif"
     },
     "companies": {
       "title": "Entreprises de mon Entité",
