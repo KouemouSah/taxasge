@@ -668,6 +668,19 @@ class WizardSessionService:
                 "DOCUMENT_NOT_FOUND"
             )
 
+        # Defensive contract: extracted_data MUST be a dict-of-dicts so
+        # downstream identity-comparison code (gemini_document_processor)
+        # can call `.get()` on each entry. Reject non-dict input here at
+        # the boundary instead of letting bad data propagate into the
+        # session cache and crash the next preview call.
+        if not isinstance(confirmed_data, dict):
+            logger.warning(
+                f"[WizardSession] confirm_document rejecting non-dict "
+                f"confirmed_data ({type(confirmed_data).__name__}) for "
+                f"{document_code} — coercing to empty dict"
+            )
+            confirmed_data = {}
+
         now = datetime.utcnow()
 
         # Update document with confirmed data

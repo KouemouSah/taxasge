@@ -5792,6 +5792,7 @@
       "validationHistory": "Validation History",
       "completedObligations": "Completed Obligations",
       "documents": "Documents",
+      "inspections": "Inspections",
       "processor": "Processing"
     },
     "queue": {
@@ -5848,6 +5849,11 @@
       "partial": "Partial",
       "overdue": "Overdue",
       "complete": "Complete",
+      "totalLicenses": "Total licenses",
+      "paid": "Paid",
+      "debt": "Debt",
+      "recovery": "Recovery",
+      "noData": "No data available",
       "year": "Year",
       "company": "Company",
       "nif": "NIF",
@@ -9607,7 +9613,9 @@
       "companyDebt": "Company Debt",
       "ministryDashboard": "Ministry Dashboard",
       "siteDashboard": "Zone Dashboard",
-      "classification": "Classification"
+      "classification": "Classification",
+      "viewAll": "View all",
+      "noAgents": "No active agents"
     },
     "companies": {
       "title": "My Entity's Companies",

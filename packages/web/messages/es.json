@@ -5792,6 +5792,7 @@
       "validationHistory": "Historial Validaciones",
       "completedObligations": "Obligaciones Completadas",
       "documents": "Documentos",
+      "inspections": "Inspecciones",
       "processor": "Procesamiento"
     },
     "queue": {
@@ -5848,6 +5849,11 @@
       "partial": "Parciales",
       "overdue": "Vencidas",
       "complete": "Completas",
+      "totalLicenses": "Total licencias",
+      "paid": "Pagado",
+      "debt": "Deuda",
+      "recovery": "Recouvrement",
+      "noData": "Sin datos disponibles",
       "year": "Año",
       "company": "Empresa",
       "nif": "NIF",
@@ -9607,7 +9613,9 @@
       "companyDebt": "Deuda Empresarial",
       "ministryDashboard": "Panel del Ministerio",
       "siteDashboard": "Dashboard de Zona",
-      "classification": "Clasificación"
+      "classification": "Clasificación",
+      "viewAll": "Ver todo",
+      "noAgents": "Sin agentes activos"
     },
     "companies": {
       "title": "Empresas de mi Entidad",
