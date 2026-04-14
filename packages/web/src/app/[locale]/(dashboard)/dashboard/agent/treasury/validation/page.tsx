@@ -54,6 +54,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { usePendingPayments, usePaymentActions, useTreasuryLocations } from '@/modules/treasury/hooks';
+import { useMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
 import {
   PaymentMethodBadge,
   WorkflowStatusBadge,
@@ -207,6 +208,7 @@ export default function TreasuryValidationPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { menuItems } = useMenuConfig();
 
   // Workflow name helper
   const getWorkflowName = useCallback((code: string | undefined): string => {
@@ -400,7 +402,12 @@ export default function TreasuryValidationPage() {
   };
 
   const goToDashboard = () => {
-    router.push(`/${locale}/dashboard/agent/treasury`);
+    // Resolve the caller's actual dashboard from menu_config (single source of truth
+    // seeded by migration 153). Agent tesoro → /dashboard/agent/tesoro; supervisor_*
+    // → their supervisor landing. Hardcoding `/dashboard/agent/treasury` was a
+    // supervisor-only page that 403-ed for agents (regressed in commit 3fdce698).
+    const dashboardHref = menuItems.find((m) => m.id === 'dashboard')?.href;
+    router.push(dashboardHref ?? `/${locale}/dashboard/agent/treasury/validation`);
   };
 
   // --- Batch action handlers ---
