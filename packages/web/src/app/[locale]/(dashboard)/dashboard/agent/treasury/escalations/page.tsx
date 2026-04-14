@@ -28,6 +28,7 @@ import {
 } from '@/modules/treasury/components';
 import { treasuryApi } from '@/modules/treasury/services/api';
 import type { PendingPayment } from '@/modules/treasury/types';
+import { useMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
 
 function getEscalationLevelVariant(
   level: string | undefined
@@ -62,6 +63,7 @@ export default function TreasuryEscalationsPage() {
   const t = useTranslations('treasury');
   const locale = useLocale();
   const router = useRouter();
+  const { menuItems } = useMenuConfig();
 
   // Fetch escalated payments
   const {
@@ -132,9 +134,12 @@ export default function TreasuryEscalationsPage() {
     );
   };
 
-  // Navigate back to dashboard
+  // Navigate back to dashboard — resolve href from menu_config (source of truth
+  // seeded by migration 153). Hardcoding `/dashboard/agent/treasury` was a
+  // supervisor-only page that 403-ed for agents (regressed in commit 3fdce698).
   const goToDashboard = () => {
-    router.push(`/${locale}/dashboard/agent/treasury`);
+    const dashboardHref = menuItems.find((m) => m.id === 'dashboard')?.href;
+    router.push(dashboardHref ?? `/${locale}/dashboard/agent/treasury/validation`);
   };
 
   return (
