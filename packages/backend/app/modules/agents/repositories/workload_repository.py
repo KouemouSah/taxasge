@@ -497,19 +497,21 @@ class WorkloadRepository:
         agent_profile_id: str,
         sla_respected: bool,
     ) -> None:
-        """Update SLA statistics"""
+        """Update SLA statistics.
+
+        sla_respect_percentage is a GENERATED ALWAYS column (computed by
+        Postgres from sla_respected_count + sla_missed_count). Writing to
+        it raises GeneratedAlwaysError, so we only bump the raw counters
+        and let the DB derive the percentage.
+        """
         await self.ensure_performance_stats(conn, agent_profile_id)
         field = "sla_respected_count" if sla_respected else "sla_missed_count"
         await conn.execute(f"""
             UPDATE agent_performance_stats
             SET {field} = {field} + 1,
-                sla_respect_percentage = (
-                    (sla_respected_count + CASE WHEN $2 THEN 1 ELSE 0 END)::numeric /
-                    (sla_respected_count + sla_missed_count + 1)::numeric
-                ) * 100,
                 updated_at = NOW()
             WHERE agent_profile_id = $1::uuid
-        """, agent_profile_id, sla_respected)
+        """, agent_profile_id)
 
     async def get_top_performers(
         self,
@@ -541,7 +543,13 @@ class WorkloadRepository:
         self,
         conn: asyncpg.Connection,
     ) -> int:
-        """Reset monthly statistics (run at month start)"""
+        """Reset monthly statistics (run at month start).
+
+        sla_respect_percentage is a GENERATED ALWAYS column — Postgres
+        recomputes it automatically from sla_respected_count +
+        sla_missed_count. Resetting the raw counters to 0 sets the
+        percentage to 0 via the CASE WHEN (count=0) branch.
+        """
         query = """
             UPDATE agent_performance_stats
             SET current_month_processed = 0,
@@ -550,7 +558,6 @@ class WorkloadRepository:
                 current_month_escalated = 0,
                 sla_respected_count = 0,
                 sla_missed_count = 0,
-                sla_respect_percentage = NULL,
                 stats_period_start = CURRENT_DATE,
                 stats_period_end = NULL,
                 updated_at = NOW()
