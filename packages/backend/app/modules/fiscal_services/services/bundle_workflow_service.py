@@ -1074,6 +1074,14 @@ class BundleWorkflowService:
                 workflow_code="BUNDLE_PAYMENT",
                 service_name=f"Obligaciones Fiscales - {entity_code}",
                 user_phone=phone_number,
+                metadata={
+                    # Tells PaymentAssignmentHandler which entity's agents
+                    # should validate THIS split (TESORO / AYUNTAMIENTO /
+                    # CAMARA_COMERCIO). Without this the handler falls back
+                    # to TESORO and every bundle split ends up in the
+                    # Treasury queue regardless of fee_type.
+                    "target_entity_code": entity_code,
+                },
             )
 
             payment_result = await registry.initiate_payment(conn, context)

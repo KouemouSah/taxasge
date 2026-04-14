@@ -104,7 +104,12 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 f"for service_request {context.service_request_id}"
             )
 
-            # Publish PAYMENT_MANUAL_PENDING event for notifications and auto-assignment
+            # Publish PAYMENT_MANUAL_PENDING event for notifications and auto-assignment.
+            # For bundle workflows, the caller passes target_entity_code in
+            # context.metadata so the assignment handler routes to the correct
+            # entity (TESORO / AYUNTAMIENTO / CAMARA_COMERCIO) instead of
+            # hardcoding TESORO — otherwise ALL bundle payments (including
+            # municipal and chamber) end up in the Treasury queue.
             try:
                 EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
                     "payment_id": payment_id,
@@ -118,6 +123,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "user_phone": context.user_phone,
                     "preferred_language": "es",
                     "treasury_location_id": context.metadata.get("treasury_location_id"),
+                    "target_entity_code": context.metadata.get("target_entity_code"),
                 })
                 logger.info(f"PAYMENT_MANUAL_PENDING event published for payment {payment_id}")
             except Exception as e:
@@ -223,7 +229,13 @@ class ManualValidationProcessor(PaymentProcessorBase):
         from app.modules.payments.services.receipt_service import receipt_service
 
         try:
-            # 0. Resolve user_id from agent_profile_id (validated_by_agent_id stores user_id, NOT profile id)
+            # 0. Resolve the underlying user_id from agent_profile_id.
+            # IMPORTANT: validated_by_agent_id is a FK to agent_profiles(id)
+            # (constraint service_payments_validated_by_agent_profile_id_fkey) —
+            # it stores the agent_profile_id, NOT the user_id. We still need
+            # the user_id separately for receipt metadata, log messages, and
+            # the OMS hook (LicenseService.on_payment_completed expects a
+            # users.id). Keep the two IDs explicitly distinct.
             agent_user_id = await db.fetchval(
                 "SELECT user_id FROM agent_profiles WHERE id = $1::uuid",
                 agent_profile_id
@@ -297,7 +309,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                         "phone": agent_data.get("treasury_phone"),
                     }
 
-            # 6. Update payment status (validated_by_agent_id = user_id, NOT profile id)
+            # 6. Update payment status. validated_by_agent_id stores agent_profiles.id
+            # (FK to agent_profiles — enforced by
+            # service_payments_validated_by_agent_profile_id_fkey).
             paid_at = datetime.utcnow()
             update_query = """
                 UPDATE service_payments
@@ -315,7 +329,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 update_query,
                 payment_id,
                 paid_at,
-                agent_user_id,
+                agent_profile_id,
                 validation_comment
             )
 
@@ -458,12 +472,14 @@ class ManualValidationProcessor(PaymentProcessorBase):
             PaymentStatusResult with updated status
         """
         try:
-            # Resolve user_id from agent_profile_id (validated_by_agent_id stores user_id)
+            # Resolve underlying user_id for logging/notifications only —
+            # the validated_by_agent_id column is a FK to agent_profiles(id)
+            # and receives agent_profile_id directly (see validate_payment).
             agent_user_id = await db.fetchval(
                 "SELECT user_id FROM agent_profiles WHERE id = $1::uuid",
                 agent_profile_id
             )
-            agent_user_id = str(agent_user_id) if agent_user_id else agent_profile_id
+            agent_user_id = str(agent_user_id) if agent_user_id else None
 
             # Get payment with user data for notification
             payment = await self._get_payment(db, payment_id)
@@ -488,7 +504,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             updated = await db.fetchrow(
                 query,
                 payment_id,
-                agent_user_id,
+                agent_profile_id,
                 rejection_reason
             )
 

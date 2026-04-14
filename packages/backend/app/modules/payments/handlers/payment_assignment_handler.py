@@ -25,18 +25,25 @@ logger = logging.getLogger(__name__)
 
 class PaymentAssignmentHandler:
     """
-    Event handler that auto-assigns manual payments to Treasury agents.
+    Event handler that auto-assigns manual payments to validator agents.
 
     This handler listens to:
     - PAYMENT_MANUAL_PENDING: Triggered when Cash/Check payment is created
 
     When triggered:
-    - Finds available Treasury agents (entity_code = 'TESORO')
-    - Selects the agent with lowest workload
+    - Uses target_entity_code from the payload if present (bundle flow:
+      TESORO / AYUNTAMIENTO / CAMARA_COMERCIO per obligation group)
+    - Falls back to TESORO for legacy non-bundle manual payments where the
+      producer does not propagate target_entity_code
+    - Selects the agent with lowest workload within that entity
     - Creates assignment with item_type = 'payment_validation'
     """
 
-    TREASURY_ENTITY_CODE = "TESORO"
+    # Fallback for legacy non-bundle manual payments that do not propagate
+    # their validator entity in the event payload. Bundle flows MUST pass
+    # target_entity_code via context.metadata to avoid misrouting municipal
+    # and chamber payments to the Treasury queue.
+    DEFAULT_VALIDATOR_ENTITY_CODE = "TESORO"
 
     def __init__(self):
         """Initialize the payment assignment handler."""
@@ -79,6 +86,10 @@ class PaymentAssignmentHandler:
         service_request_id = payload.get("service_request_id")
         payment_method = payload.get("payment_method", "unknown")
         amount = payload.get("amount", 0)
+        target_entity_code = (
+            payload.get("target_entity_code")
+            or self.DEFAULT_VALIDATOR_ENTITY_CODE
+        )
 
         if not payment_id:
             logger.warning(
@@ -88,7 +99,8 @@ class PaymentAssignmentHandler:
 
         logger.info(
             f"Processing PAYMENT_MANUAL_PENDING for payment={payment_id}, "
-            f"service_request={service_request_id}, method={payment_method}, amount={amount}"
+            f"service_request={service_request_id}, method={payment_method}, "
+            f"amount={amount}, target_entity={target_entity_code}"
         )
 
         conn = None
@@ -105,12 +117,14 @@ class PaymentAssignmentHandler:
                 logger.info(f"Payment {payment_id} already assigned, skipping")
                 return
 
-            # 2. Resolve TESORO location (explicit choice > city auto-resolution > fallback)
-            treasury_location_id = payload.get("treasury_location_id")
+            # 2. Resolve target entity location (explicit > city auto > fallback).
+            # For bundle workflows, target_entity_code is TESORO, AYUNTAMIENTO
+            # or CAMARA_COMERCIO depending on which entity_group the payment
+            # belongs to — the location lookup must respect that.
+            target_location_id = payload.get("treasury_location_id")
 
-            if not treasury_location_id and service_request_id:
-                # Auto-resolve: SR's entity_location → city_id → matching TESORO location
-                treasury_location_id = await conn.fetchval("""
+            if not target_location_id and service_request_id:
+                target_location_id = await conn.fetchval("""
                     SELECT tel.id
                     FROM service_requests sr
                     JOIN entity_locations sr_el ON sr_el.id = sr.entity_location_id
@@ -119,11 +133,12 @@ class PaymentAssignmentHandler:
                         AND tel.is_active = true
                     WHERE sr.id = $1::uuid
                     LIMIT 1
-                """, service_request_id, self.TREASURY_ENTITY_CODE)
+                """, service_request_id, target_entity_code)
 
-            if treasury_location_id:
+            if target_location_id:
                 logger.info(
-                    f"TESORO location resolved: {treasury_location_id} "
+                    f"{target_entity_code} location resolved: "
+                    f"{target_location_id} "
                     f"(explicit={'treasury_location_id' in (payload or {})})"
                 )
 
@@ -134,15 +149,15 @@ class PaymentAssignmentHandler:
                 item_id=UUID(str(payment_id)),
                 item_type="payment_validation",
                 item_data={"amount": amount, "payment_method": payment_method},
-                entity_code=self.TREASURY_ENTITY_CODE,
-                entity_location_id=treasury_location_id,
+                entity_code=target_entity_code,
+                entity_location_id=target_location_id,
                 priority_level=5,
             )
 
             if not assignment:
                 logger.warning(
-                    f"No available Treasury agents for payment {payment_id}. "
-                    f"Payment will remain unassigned in the queue."
+                    f"No available {target_entity_code} agents for payment "
+                    f"{payment_id}. Payment will remain unassigned in the queue."
                 )
                 return
 
@@ -158,9 +173,10 @@ class PaymentAssignmentHandler:
             """, agent_profile_id, payment_id)
 
             logger.info(
-                f"Payment {payment_id} auto-assigned to Treasury agent "
-                f"(agent_profile_id: {agent_profile_id}). "
-                f"Assignment ID: {assignment.id}, treasury_location_id: {treasury_location_id}"
+                f"Payment {payment_id} auto-assigned to {target_entity_code} "
+                f"agent (agent_profile_id: {agent_profile_id}). "
+                f"Assignment ID: {assignment.id}, "
+                f"location_id: {target_location_id}"
             )
 
         except Exception as e:
