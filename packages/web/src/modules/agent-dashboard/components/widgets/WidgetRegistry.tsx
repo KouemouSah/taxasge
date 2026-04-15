@@ -92,6 +92,30 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   completed_payments: ({ className }) => (
     <PendingPaymentsWidget className={className} statusFilter="completed" titleKey="widgets.completedPayments" />
   ),
+
+  // OMS / bundle collection widgets (agent_ayuntamiento, agent_camara, agent_min_*)
+  // These IDs exist in roles.dashboard_config but were missing from the registry,
+  // so the dashboard rendered nothing and every stat card fell back to 0.
+  // Aliased to PendingPaymentsWidget with the appropriate statusFilter so each
+  // entity-scoped agent sees their own assigned payments — the backend
+  // /dashboard/widgets/pending-payments endpoint already filters by
+  // assigned_agent_id (P8.2-B1.4).
+  oms_pending_validations: ({ className }) => (
+    <PendingPaymentsWidget className={className} titleKey="widgets.omsPendingValidations" />
+  ),
+  oms_validated_today: ({ className }) => (
+    <PendingPaymentsWidget
+      className={className}
+      statusFilter="completed"
+      titleKey="widgets.omsValidatedToday"
+    />
+  ),
+  oms_overdue_alerts: ({ entityCode, className }) => (
+    <AlertsWidget entityCode={entityCode} className={className} />
+  ),
+  oms_compliance_summary: ({ entityCode, className }) => (
+    <AlertsWidget entityCode={entityCode} className={className} />
+  ),
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />
   ),

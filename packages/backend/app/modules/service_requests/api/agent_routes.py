@@ -311,7 +311,7 @@ async def get_queue(
     "/queue/stats",
     response_model=QueueStatsResponse,
     summary="Get queue statistics",
-    description="Get statistics about the current queue status. Uses service_requests as source of truth."
+    description="Get statistics about the current queue status. Uses service_requests for workflow-based entities and service_payments for bundle collection entities."
 )
 async def get_queue_stats(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
@@ -319,24 +319,116 @@ async def get_queue_stats(
     agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view_queue_stats"))
 ):
-    # Build conditions: entity workflows + site scope
+    # Resolve entity's workflow_codes to decide routing:
+    #   - Bundle collection entity (workflow_codes == ['BUNDLE_PAYMENT']):
+    #     count service_payments scoped by entity_code + agent (P8.2-B2).
+    #     A bundle SR has a single primary_entity so the legacy
+    #     service_requests-based path cannot attribute splits to AYUNT /
+    #     CAMARA / MIN_* — every entity ends up seeing the same 4 bundle SRs.
+    #   - Workflow-based entity (CNEDOGE_PASAPORTE, DGT, etc.): unchanged,
+    #     count service_requests by workflow_code.
+    entity_workflows: list = []
+    if entity_code:
+        raw = await db.fetchval(
+            "SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true",
+            entity_code
+        )
+        if raw:
+            if isinstance(raw, str):
+                import json as _json
+                entity_workflows = _json.loads(raw)
+            else:
+                entity_workflows = list(raw)
+
+    is_bundle_entity = (
+        entity_code is not None
+        and entity_workflows == ["BUNDLE_PAYMENT"]
+    )
+
+    if is_bundle_entity:
+        # ─────────────────────────────────────────────────────────────────
+        # Bundle collection entity path: count sp rows
+        # ─────────────────────────────────────────────────────────────────
+        sp_where = ["sp.entity_code = $1"]
+        sp_params: list = [entity_code]
+        agent_user_id_param = None
+
+        # Non-supervisor agent: restrict to own assigned payments only
+        if not agent_ctx.has_global_scope and not agent_ctx.is_supervisor:
+            sp_where.append(
+                "sp.assigned_agent_id IN ("
+                "SELECT id FROM agent_profiles WHERE user_id = $2::uuid"
+                ")"
+            )
+            sp_params.append(agent_ctx.user_id)
+            agent_user_id_param = 2
+        elif not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
+            # Entity-scoped supervisor: restrict to payments of agents at
+            # their own site (already bounded by sp.entity_code = $1).
+            sp_where.append(
+                f"sp.assigned_agent_id IN ("
+                f"SELECT id FROM agent_profiles "
+                f"WHERE entity_location_id = ${len(sp_params) + 1}::uuid)"
+            )
+            sp_params.append(agent_ctx.entity_location_id)
+
+        sp_where_sql = " AND ".join(sp_where)
+
+        stats = await db.fetchrow(f"""
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE sp.workflow_status = 'pending_agent_review'
+                ) AS pending,
+                COUNT(*) FILTER (
+                    WHERE sp.workflow_status IN ('agent_reviewing', 'locked_by_agent')
+                ) AS assigned,
+                COUNT(*) FILTER (
+                    WHERE sp.workflow_status = 'completed'
+                      AND sp.validated_at > NOW() - INTERVAL '24 hours'
+                ) AS completed_today,
+                COUNT(*) FILTER (
+                    WHERE sp.sla_escalated = true
+                      AND sp.workflow_status NOT IN ('completed', 'cancelled_by_agent',
+                          'cancelled_by_user', 'expired')
+                ) AS escalated,
+                COUNT(*) FILTER (
+                    WHERE sp.sla_target_date IS NOT NULL
+                      AND sp.sla_target_date < NOW()
+                      AND sp.workflow_status NOT IN ('completed', 'cancelled_by_agent',
+                          'cancelled_by_user', 'expired')
+                ) AS sla_violations,
+                COALESCE(AVG(
+                    EXTRACT(EPOCH FROM (sp.validated_at - sp.created_at)) / 3600
+                ) FILTER (
+                    WHERE sp.workflow_status = 'completed'
+                      AND sp.validated_at IS NOT NULL
+                      AND sp.validated_at > NOW() - INTERVAL '30 days'
+                ), 0) AS avg_processing_hours
+            FROM service_payments sp
+            WHERE {sp_where_sql}
+        """, *sp_params)
+
+        return QueueStatsResponse(
+            pending=stats['pending'] or 0,
+            assigned=stats['assigned'] or 0,
+            completed_today=stats['completed_today'] or 0,
+            escalated=stats['escalated'] or 0,
+            sla_violations=stats['sla_violations'] or 0,
+            avg_processing_hours=round(float(stats['avg_processing_hours'] or 0), 2)
+        )
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Legacy path: workflow-based entity (CNEDOGE, DGT, ITV, etc.)
+    # Unchanged — preserves behaviour for non-bundle flows per project rule.
+    # ─────────────────────────────────────────────────────────────────────
     conditions = ["sr.status::text NOT IN ('DRAFT', 'CANCELLED')"]
     params: list = []
     param_idx = 1
 
-    if entity_code:
-        # Filter by entity's workflow codes
-        entity_workflows = await db.fetchval(
-            "SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true",
-            entity_code
-        )
-        if entity_workflows:
-            if isinstance(entity_workflows, str):
-                import json as _json
-                entity_workflows = _json.loads(entity_workflows)
-            conditions.append(f"sr.workflow_code = ANY(${param_idx})")
-            params.append(entity_workflows)
-            param_idx += 1
+    if entity_workflows:
+        conditions.append(f"sr.workflow_code = ANY(${param_idx})")
+        params.append(entity_workflows)
+        param_idx += 1
 
     # Site scope: only global-scope supervisors see all sites
     if not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
