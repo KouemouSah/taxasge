@@ -1126,10 +1126,33 @@ class BundleWorkflowService:
             # Doing the assignment inline eliminates the cross-transaction race
             # entirely: both the INSERT assignments row and the UPDATE
             # service_payments run in T1 with full row visibility.
+            #
+            # Location routing (P8.2-B1.3): the SR created here has no
+            # entity_location_id of its own (bundle does not pick a site), so
+            # we derive the target entity_location from the commercial_license
+            # city. Without this, auto_assign_item has no city preference and
+            # picks agents "at random" across all the entity's sites — a bundle
+            # for a Malabo license was being routed to Bata agents and vice
+            # versa. Fall back to no-location filter if the entity has no
+            # active location in that city.
             try:
                 from app.modules.assignment.services.auto_assignment_service import (
                     AutoAssignmentService,
                 )
+
+                target_location_id = None
+                if license_row.get("city_id"):
+                    target_location_id = await conn.fetchval("""
+                        SELECT el.id
+                        FROM entity_locations el
+                        JOIN entities e ON e.id = el.entity_id
+                        WHERE e.code = $1
+                          AND el.city_id = $2
+                          AND el.is_active = true
+                        ORDER BY el.is_main_office DESC NULLS LAST
+                        LIMIT 1
+                    """, entity_code, license_row["city_id"])
+
                 assignment_service = AutoAssignmentService()
                 assignment = await assignment_service.auto_assign_item(
                     db=conn,
@@ -1140,6 +1163,7 @@ class BundleWorkflowService:
                         "payment_method": payment_method,
                     },
                     entity_code=entity_code,
+                    entity_location_id=target_location_id,
                     priority_level=5,
                 )
                 if assignment:
