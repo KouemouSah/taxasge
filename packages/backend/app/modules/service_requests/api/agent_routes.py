@@ -4347,83 +4347,81 @@ async def get_pending_payments_widget(
     _=Depends(permission_required("treasury.view_payment"))
 ):
     """
-    Get payment validations for treasury widget.
-    Without workflow_status: uses v_pending_payment_validations filtered to pending_agent_review.
-    With workflow_status: queries service_payments directly for that status.
+    Get payment validations for the dashboard widget.
+
+    Scope (P8.2-B1.4 — fix cross-entity leak observed on dashboard while the
+    validation list was correctly scoped):
+
+      - Regular agent: only own assigned payments (assigned_agent_id = me)
+      - Entity supervisor: own entity only (sp.entity_code = my entity)
+      - Global (treasury.view_all): all entities
+
+    Previously this widget used `v_pending_payment_validations` with no
+    filter, so every treasury agent saw every pending payment regardless
+    of assignment or entity. That caused tesoreria.ge and tesorobata to
+    both see the full set of 3 bundle splits in their agent dashboard.
     """
+    from app.modules.service_requests.api.admin_routes import _get_treasury_context
+
     conn = db
 
-    if workflow_status:
-        # Direct query for specific status (in_progress, completed, etc.)
-        base_query = """
-            SELECT
-                sp.id::text AS payment_id,
-                sp.payment_reference,
-                sr.reference AS request_reference,
-                sr.workflow_code,
-                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) AS user_name,
-                sp.payment_method::text,
-                sp.total_amount,
-                sp.currency,
-                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
-                NULL AS assigned_to_name,
-                sp.created_at
-            FROM service_payments sp
-            LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN users u ON u.id = sp.user_id
-            WHERE sp.workflow_status = $1
-        """
-        params: list = [workflow_status]
-        param_idx = 2
+    tctx = await _get_treasury_context(conn, current_user.id)
+    is_global = tctx.has_global_scope
+    is_supervisor = is_global or tctx.is_supervisor
 
-        if workflow_code:
-            base_query += f" AND sr.workflow_code = ${param_idx}"
-            params.append(workflow_code)
-            param_idx += 1
+    # Build WHERE clauses common to all branches
+    where_parts: list = []
+    params: list = []
 
-        base_query += f" ORDER BY sp.created_at DESC LIMIT ${param_idx}"
-        params.append(limit)
+    effective_status = workflow_status or "pending_agent_review"
+    where_parts.append(f"sp.workflow_status = ${len(params) + 1}")
+    params.append(effective_status)
 
-        rows = await conn.fetch(base_query, *params)
-    elif workflow_code:
-        rows = await conn.fetch("""
-            SELECT
-                payment_id::text,
-                payment_reference,
-                request_reference,
-                workflow_code,
-                user_name,
-                payment_method::text,
-                total_amount,
-                currency,
-                hours_waiting,
-                assigned_to_name,
-                created_at
-            FROM v_pending_payment_validations
-            WHERE workflow_status = 'pending_agent_review'
-              AND workflow_code = $1
-            ORDER BY hours_waiting DESC NULLS LAST
-            LIMIT $2
-        """, workflow_code, limit)
-    else:
-        rows = await conn.fetch("""
-            SELECT
-                payment_id::text,
-                payment_reference,
-                request_reference,
-                workflow_code,
-                user_name,
-                payment_method::text,
-                total_amount,
-                currency,
-                hours_waiting,
-                assigned_to_name,
-                created_at
-            FROM v_pending_payment_validations
-            WHERE workflow_status = 'pending_agent_review'
-            ORDER BY hours_waiting DESC NULLS LAST
-            LIMIT $1
-        """, limit)
+    if workflow_code:
+        where_parts.append(f"sr.workflow_code = ${len(params) + 1}")
+        params.append(workflow_code)
+
+    # Entity / agent scoping
+    if not is_supervisor:
+        # Regular agent: only own assigned payments
+        if not tctx.profile_id:
+            return PendingPaymentsWidgetResponse(
+                items=[], total_pending=0, total_amount=None, avg_waiting_hours=None,
+            )
+        where_parts.append(f"sp.assigned_agent_id = ${len(params) + 1}::uuid")
+        params.append(tctx.profile_id)
+    elif not is_global and tctx.entity_code:
+        # Entity supervisor: own entity only (by payment ownership, not assignee)
+        where_parts.append(f"sp.entity_code = ${len(params) + 1}")
+        params.append(tctx.entity_code)
+    # Global scope: no extra filter
+
+    where_sql = " AND ".join(where_parts)
+
+    base_query = f"""
+        SELECT
+            sp.id::text AS payment_id,
+            sp.payment_reference,
+            sr.reference AS request_reference,
+            sr.workflow_code,
+            COALESCE(u.full_name, u.first_name || ' ' || u.last_name) AS user_name,
+            sp.payment_method::text,
+            sp.total_amount,
+            sp.currency,
+            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
+            COALESCE(au.full_name, au.first_name || ' ' || au.last_name) AS assigned_to_name,
+            sp.created_at
+        FROM service_payments sp
+        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+        LEFT JOIN users u ON u.id = sp.user_id
+        LEFT JOIN agent_profiles ap ON ap.id = sp.assigned_agent_id
+        LEFT JOIN users au ON au.id = ap.user_id
+        WHERE {where_sql}
+        ORDER BY sp.created_at DESC
+        LIMIT ${len(params) + 1}
+    """
+    params.append(limit)
+    rows = await conn.fetch(base_query, *params)
 
     items = []
     total_amt = 0
