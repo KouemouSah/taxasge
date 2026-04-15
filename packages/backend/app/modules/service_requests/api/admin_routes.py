@@ -9,7 +9,7 @@ RESTful endpoints for administrators to manage:
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks, Request
 from app.core.errors import TranslatedException, ErrorCode
-from typing import List, Optional, Dict, Any
+from typing import List, Mapping, Optional, Dict, Any
 from enum import Enum
 import asyncpg
 import json
@@ -3088,6 +3088,50 @@ async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgen
     )
 
 
+def _authorize_payment_action(tctx: TreasuryAgentContext, payment: Mapping) -> None:
+    """Raise 403 if the current agent cannot act (validate/reject/escalate) on
+    this payment.
+
+    Authorization matrix (P8.2-B1 security hotfix — closes the hole exploited
+    on 2026-04-14 where tesoreria.ge validated 2 AYUNT payments worth 583 650
+    XAF despite being a TESORO agent without global scope):
+
+        1. Global scope (treasury.view_all): any payment, any entity
+        2. Entity supervisor: payments of own entity_code
+        3. Assigned agent: only own assigned payments
+
+    Permission check (treasury.validate_payment) is already applied via the
+    FastAPI dependency. This helper adds the per-payment scope check that the
+    endpoints previously lacked.
+    """
+    if tctx.has_global_scope:
+        return
+
+    payment_entity = payment.get("entity_code")
+    assigned_agent_id = payment.get("assigned_agent_id")
+
+    # Entity supervisor: sees/acts on anything in own entity
+    if tctx.is_supervisor and payment_entity and tctx.entity_code == payment_entity:
+        return
+
+    # Regular agent: only own assigned payments
+    if (
+        tctx.profile_id
+        and assigned_agent_id
+        and str(assigned_agent_id) == str(tctx.profile_id)
+    ):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=(
+            f"Not authorized: payment entity {payment_entity!r} is outside "
+            f"your scope (role entity {tctx.entity_code!r}, "
+            f"assigned={assigned_agent_id is not None})"
+        ),
+    )
+
+
 # Backward-compat wrappers (used by endpoints not yet migrated)
 async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional[str]:
     """Get agent_profile_id from user_id. Prefer _get_treasury_context for new code."""
@@ -3295,12 +3339,15 @@ async def get_pending_payments(
 
             # Cross-entity scoping: only view_all holders see other entities.
             # Entity-scoped supervisors (AYUNT, CAMARA, site tesoro) are pinned
-            # to their own entity via assigned_ap.entity_id.
-            if not tctx.has_global_scope and tctx.entity_id:
-                where_clauses.append(f"assigned_ap.entity_id = ${param_idx}::uuid")
-                params.append(tctx.entity_id)
+            # to the payment's own entity via sp.entity_code (ownership), not
+            # via assigned_ap.entity_id (current assignee). This prevents
+            # visibility loss when a payment gets cross-entity reassigned and
+            # keeps the filter based on the economic owner of the payment.
+            if not tctx.has_global_scope and tctx.entity_code:
+                where_clauses.append(f"sp.entity_code = ${param_idx}")
+                params.append(tctx.entity_code)
                 param_idx += 1
-                logger.info(f"[Treasury] Entity-scoped supervisor: entity_id={tctx.entity_id} ({tctx.entity_code})")
+                logger.info(f"[Treasury] Entity-scoped supervisor: entity_code={tctx.entity_code}")
 
             # Supervisor can filter by specific agent or see all
             if agent_profile_id:
@@ -3763,14 +3810,21 @@ async def validate_payment(
         no_agent_profile()
     agent_profile_id = tctx.profile_id
 
-    # Get payment with workflow status
+    # Get payment with workflow status + authorization fields
     payment = await db.fetchrow(
-        "SELECT id, service_request_id, workflow_status, sla_target_date FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, service_request_id, workflow_status, sla_target_date, "
+        "assigned_agent_id, entity_code "
+        "FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
+
+    # P8.2-B1 security: scope check. Without this, any user with the
+    # treasury.validate_payment permission could validate any pending payment
+    # by providing its UUID — regardless of assignment or entity.
+    _authorize_payment_action(tctx, payment)
 
     # With auto-assignment architecture, agent validates directly
     # Only pending_agent_review payments can be validated
@@ -4051,14 +4105,18 @@ async def reject_payment(
         no_agent_profile()
     agent_profile_id = tctx.profile_id
 
-    # Get payment with workflow status
+    # Get payment with workflow status + authorization fields
     payment = await db.fetchrow(
-        "SELECT id, workflow_status, sla_target_date FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, workflow_status, sla_target_date, assigned_agent_id, entity_code "
+        "FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
+
+    # P8.2-B1 security: same scope check as validate_payment
+    _authorize_payment_action(tctx, payment)
 
     # With auto-assignment architecture, agent rejects directly
     # Only pending_agent_review payments can be rejected
@@ -4590,12 +4648,16 @@ async def escalate_payment(
     try:
         # 1. Verify payment exists and is in escalatable state
         payment = await db.fetchrow("""
-            SELECT id, workflow_status, service_request_id
+            SELECT id, workflow_status, service_request_id,
+                   assigned_agent_id, entity_code
             FROM service_payments WHERE id = $1::uuid
         """, payment_id)
 
         if not payment:
             payment_not_found(payment_id)
+
+        # P8.2-B1 security: scope check (same rules as validate/reject)
+        _authorize_payment_action(tctx, payment)
 
         escalatable_statuses = ("pending_agent_review", "agent_reviewing")
         if payment["workflow_status"] not in escalatable_statuses:
@@ -5520,16 +5582,18 @@ async def get_treasury_dashboard_stats(
         """, agent_id)
     else:
         # Supervisor branch — build entity + location filter dynamically.
-        # Cross-entity scope requires explicit treasury.view_all; otherwise
-        # supervisor is pinned to own entity via assigned_ap.entity_id.
+        # Entity filter uses sp.entity_code (payment ownership) for stable
+        # visibility even if the payment gets cross-entity reassigned.
+        # Location filter still uses assigned_ap (the agent processing the
+        # payment) because location is about where the work is physically
+        # happening, not where the money is owed.
         filter_clauses = []
         filter_params: list = []
         needs_join_ap = False
 
-        if not tctx.has_global_scope and tctx.entity_id:
-            filter_clauses.append(f"assigned_ap.entity_id = ${len(filter_params) + 1}::uuid")
-            filter_params.append(tctx.entity_id)
-            needs_join_ap = True
+        if not tctx.has_global_scope and tctx.entity_code:
+            filter_clauses.append(f"sp.entity_code = ${len(filter_params) + 1}")
+            filter_params.append(tctx.entity_code)
 
         if location_filter_id:
             filter_clauses.append(f"assigned_ap.entity_location_id = ${len(filter_params) + 1}::uuid")
