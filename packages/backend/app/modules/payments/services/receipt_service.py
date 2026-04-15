@@ -490,6 +490,68 @@ class ReceiptService:
                 "currency": currency,
             }
 
+        # Bundle payment detection (P8.2 X8 fix).
+        # Bundle calc_details has a different shape than the legacy
+        # TariffBreakdown: {obligations:[...], target_entity, processing_mode,
+        # license_id} instead of {base_amount, supplements, total_amount, ...}.
+        # Without this branch every bundle receipt PDF rendered every amount
+        # as 0 XAF because legacy keys do not exist — the user observed
+        # recibo_REC-2026-000011 showing 0 for a 353 250 XAF validated split,
+        # which is a legal risk (false official document). We preserve the
+        # legacy path untouched for non-bundle workflows.
+        is_bundle = (
+            "obligations" in calculation_details
+            and "target_entity" in calculation_details
+        )
+
+        if is_bundle:
+            obligations = calculation_details.get("obligations") or []
+            target_entity = calculation_details.get("target_entity") or ""
+
+            base_total = sum(float(ob.get("amount", 0) or 0) for ob in obligations)
+            penalties_total = sum(float(ob.get("penalty", 0) or 0) for ob in obligations)
+            grand_total = base_total + penalties_total
+
+            supplements_list: List[Dict[str, Any]] = []
+            for ob in obligations:
+                amt = float(ob.get("amount", 0) or 0)
+                fee_type = ob.get("fee_type") or ""
+                ob_id = str(ob.get("id") or "")
+                supplements_list.append({
+                    "code": ob_id[:8] if ob_id else "",
+                    "name_es": f"Obligacion {fee_type}".strip() or "Obligacion",
+                    "unit_price": amt,
+                    "unit_price_formatted": self._format_amount(amt, currency),
+                    "quantity": 1,
+                    "subtotal": amt,
+                    "subtotal_formatted": self._format_amount(amt, currency),
+                })
+
+            return {
+                "has_breakdown": True,
+                # Section header row: show a label but empty amount cell so it
+                # acts visually as a section heading above the itemized list.
+                "base_amount": 0,
+                "base_description": (
+                    f"Paquete fiscal - {target_entity} ({len(obligations)} items)"
+                    if target_entity
+                    else f"Paquete de obligaciones fiscales ({len(obligations)} items)"
+                ),
+                "base_amount_formatted": "",
+                "supplements": supplements_list,
+                "supplements_total": base_total,
+                "supplements_total_formatted": self._format_amount(base_total, currency),
+                "penalties_amount": penalties_total,
+                "penalty_reason": "Recargos" if penalties_total > 0 else None,
+                "penalties_formatted": self._format_amount(penalties_total, currency),
+                "total_amount": grand_total,
+                "total_formatted": self._format_amount(grand_total, currency),
+                "currency": currency,
+                "tariff_type": "BUNDLE",
+                "workflow_code": "BUNDLE_PAYMENT",
+                "solicitud_type": None,
+            }
+
         base_amount = calculation_details.get("base_amount", 0)
         supplements = calculation_details.get("supplements", [])
         supplements_total = calculation_details.get("supplements_total", 0)
