@@ -2979,13 +2979,21 @@ from dataclasses import dataclass as _dataclass
 class TreasuryAgentContext:
     """Treasury agent profile resolved once per HTTP request.
 
-    Combines agent_profiles lookup + treasury.view_all permission check in 1 query.
-    Scoping rules (same as AgentContext in agent_routes.py):
-    - has_global_scope (supervisor + main_office) → sees ALL sites
-    - supervisor + NOT main_office → site-level supervisor: forced to own site
-    - regular agent → own assignments only, own site
+    Scoping hierarchy (strict, enforced after P8.2 refactor):
+      - has_global_scope (treasury.view_all perm): see ALL entities + ALL sites
+      - has_entity_global_scope (main-office supervisor, no view_all): see OWN
+        entity + ALL its sites (filter UI may restrict)
+      - site supervisor (is_supervisor, not main_office): OWN entity + OWN site
+      - regular agent: OWN assignments only, OWN site
+
+    Historical note: pre-P8.2 the `has_global_scope` property returned true for
+    any (supervisor AND main_office) regardless of permission. That leaked data
+    cross-entity for AYUNT/CAMARA supervisors once those entities started using
+    the treasury validation flow (X2 bug). The property is now strict.
     """
     profile_id: Optional[str]
+    entity_id: Optional[str]
+    entity_code: Optional[str]
     entity_location_id: Optional[str]
     is_supervisor: bool
     is_main_office: bool
@@ -2998,25 +3006,44 @@ class TreasuryAgentContext:
 
     @property
     def has_global_scope(self) -> bool:
-        """Supervisor at main office OR has treasury.view_all permission."""
-        return (self.is_supervisor and self.is_main_office) or self.has_treasury_view_all
+        """Cross-entity global view. Granted ONLY via explicit treasury.view_all
+        permission (admin, super_admin, supervisor_tesoro)."""
+        return self.has_treasury_view_all
+
+    @property
+    def has_entity_global_scope(self) -> bool:
+        """Main-office supervisor without global perm: sees ALL sites of own
+        entity. The entity filter must be applied by callers; only the
+        auto-site-scoping is relaxed here."""
+        return (
+            self.is_supervisor
+            and self.is_main_office
+            and not self.has_treasury_view_all
+        )
 
     def get_effective_location(self, explicit_location_id: Optional[str] = None) -> Optional[str]:
         """Resolve effective entity_location_id for site-scoping.
 
-        - Non-global supervisor: ALWAYS auto-scoped to own site (ignore explicit param)
-        - Global supervisor/admin: use explicit param if provided, otherwise None (all sites)
+        - Global scope (treasury.view_all): explicit param wins, else None (all).
+        - Entity-global scope (main-office supervisor): explicit param wins,
+          else None (all sites of own entity; entity filter applied separately).
+        - Site-level supervisor / regular agent: ALWAYS own site (explicit param
+          ignored — users cannot escape their site).
         """
-        if not self.has_global_scope and self.entity_location_id:
+        if self.has_global_scope or self.has_entity_global_scope:
+            return explicit_location_id or None
+        if self.entity_location_id:
             return self.entity_location_id
         return explicit_location_id or None
 
 
 async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgentContext:
-    """Resolve treasury agent context in 1 SQL query (profile + permission check)."""
+    """Resolve treasury agent context in 1 SQL query (profile + entity + permission)."""
     row = await db.fetchrow("""
         SELECT
             ap.id::text AS profile_id,
+            ap.entity_id::text AS entity_id,
+            e.code AS entity_code,
             ap.entity_location_id::text,
             COALESCE(ap.is_supervisor, false) AS is_supervisor,
             COALESCE(el.is_main_office, false) AS is_main_office,
@@ -3032,6 +3059,7 @@ async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgen
                 WHERE u2.id = ap.user_id AND p.name = 'treasury.view_all'
             ) AS has_treasury_view_all
         FROM agent_profiles ap
+        LEFT JOIN entities e ON e.id = ap.entity_id
         LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
         WHERE ap.user_id = $1::uuid AND ap.is_active = true
         LIMIT 1
@@ -3040,6 +3068,8 @@ async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgen
     if row:
         return TreasuryAgentContext(
             profile_id=row['profile_id'],
+            entity_id=row['entity_id'],
+            entity_code=row['entity_code'],
             entity_location_id=row['entity_location_id'],
             is_supervisor=row['is_supervisor'],
             is_main_office=row['is_main_office'],
@@ -3048,6 +3078,8 @@ async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgen
         )
     return TreasuryAgentContext(
         profile_id=None,
+        entity_id=None,
+        entity_code=None,
         entity_location_id=None,
         is_supervisor=False,
         is_main_office=False,
@@ -3252,8 +3284,23 @@ async def get_pending_payments(
             param_idx += 1
 
         # Agent-based filtering + site scoping (uses pre-resolved tctx)
+        # Scope hierarchy (P8.2 refactor):
+        #   - Global (treasury.view_all): all entities, all sites, filterable
+        #   - Entity-global (main-office supervisor, no view_all): own entity, all
+        #     its sites, filterable by site
+        #   - Site-level supervisor: own entity, own site (forced)
+        #   - Regular agent: own assignments only
         if is_supervisor:
             effective_location_id = tctx.get_effective_location(entity_location_id)
+
+            # Cross-entity scoping: only view_all holders see other entities.
+            # Entity-scoped supervisors (AYUNT, CAMARA, site tesoro) are pinned
+            # to their own entity via assigned_ap.entity_id.
+            if not tctx.has_global_scope and tctx.entity_id:
+                where_clauses.append(f"assigned_ap.entity_id = ${param_idx}::uuid")
+                params.append(tctx.entity_id)
+                param_idx += 1
+                logger.info(f"[Treasury] Entity-scoped supervisor: entity_id={tctx.entity_id} ({tctx.entity_code})")
 
             # Supervisor can filter by specific agent or see all
             if agent_profile_id:
@@ -3261,12 +3308,12 @@ async def get_pending_payments(
                 params.append(agent_profile_id)
                 param_idx += 1
                 logger.info(f"[Treasury] Supervisor filtering by agent_profile_id: {agent_profile_id}")
-            # Filter by TESORO agent location (NOT sr.entity_location_id which is the workflow entity)
+            # Filter by agent location (NOT sr.entity_location_id which is the workflow entity)
             if effective_location_id:
                 where_clauses.append(f"assigned_ap.entity_location_id = ${param_idx}::uuid")
                 params.append(effective_location_id)
                 param_idx += 1
-                logger.info(f"[Treasury] Filtering by TESORO agent location: {effective_location_id}")
+                logger.info(f"[Treasury] Filtering by agent location: {effective_location_id}")
         else:
             # Regular agent sees only their assigned payments
             if current_agent_profile_id:
@@ -3397,29 +3444,32 @@ async def get_pending_payments(
 
         logger.info(f"[Treasury] Successfully built {len(payments)} payment responses")
 
-        # For supervisors, include agent list for reassign dropdown
-        # Site supervisors only see agents at their location
+        # For supervisors, include agent list for reassign dropdown.
+        # Scope:
+        #   - Global supervisor (treasury.view_all): all entities (no filter)
+        #   - Entity-scoped supervisor: only agents of own entity
+        #   - Site supervisor: additionally restricted to own site
         agents_list = None
         if is_supervisor:
+            dropdown_params: list = []
+            dropdown_where = ["ap.is_active = true", "ap.is_supervisor = false"]
+
+            if not tctx.has_global_scope and tctx.entity_id:
+                dropdown_where.append(f"ap.entity_id = ${len(dropdown_params) + 1}::uuid")
+                dropdown_params.append(tctx.entity_id)
+
             if tctx.has_profile and not tctx.is_main_office and tctx.entity_location_id:
-                agent_rows = await db.fetch("""
-                    SELECT ap.id, u.full_name
-                    FROM agent_profiles ap
-                    JOIN users u ON u.id = ap.user_id
-                    JOIN entities e ON e.id = ap.entity_id
-                    WHERE e.code = 'TESORO' AND ap.is_active = true AND ap.is_supervisor = false
-                      AND ap.entity_location_id = $1::uuid
-                    ORDER BY u.full_name
-                """, str(tctx.entity_location_id))
-            else:
-                agent_rows = await db.fetch("""
-                    SELECT ap.id, u.full_name
-                    FROM agent_profiles ap
-                    JOIN users u ON u.id = ap.user_id
-                    JOIN entities e ON e.id = ap.entity_id
-                    WHERE e.code = 'TESORO' AND ap.is_active = true AND ap.is_supervisor = false
-                    ORDER BY u.full_name
-                """)
+                dropdown_where.append(f"ap.entity_location_id = ${len(dropdown_params) + 1}::uuid")
+                dropdown_params.append(str(tctx.entity_location_id))
+
+            dropdown_sql = f"""
+                SELECT ap.id, u.full_name
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                WHERE {' AND '.join(dropdown_where)}
+                ORDER BY u.full_name
+            """
+            agent_rows = await db.fetch(dropdown_sql, *dropdown_params)
             agents_list = [{"id": str(r["id"]), "name": r["full_name"]} for r in agent_rows]
 
         response = PendingPaymentsListResponse(
@@ -4138,15 +4188,18 @@ class PaymentReassignRequest(BaseModel):
 
 @router.post(
     "/treasury/payments/{payment_id}/reassign",
-    summary="Reassign payment to another treasury agent",
+    summary="Reassign payment to another agent (supervisor only)",
     description="""
-    Supervisor-only: reassign a pending payment to a different Treasury agent.
+    Supervisor-only: reassign a pending payment to a different agent within the
+    same entity as the calling supervisor.
 
     Updates both:
     - assignments table (agent_profile_id)
     - service_payments table (assigned_agent_id, assigned_at)
 
-    **Permissions:** treasury.view_all (supervisor only)
+    **Permissions:** treasury.validate_payment + is_supervisor flag.
+    **Scope:** target agent must belong to the caller's own entity (global
+    supervisors with treasury.view_all may reassign across entities).
     """
 )
 async def reassign_payment(
@@ -4154,11 +4207,16 @@ async def reassign_payment(
     body: PaymentReassignRequest = ...,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.view_all"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
-    """Reassign a payment to another treasury agent."""
+    """Reassign a payment to another agent within the caller's entity."""
     # Resolve supervisor context upfront (before transaction)
     tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.is_supervisor and not tctx.has_global_scope:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only supervisors can reassign payments"
+        )
     supervisor_profile_id = tctx.profile_id  # may be None if admin without agent profile
 
     # Verify payment exists and is in actionable status
@@ -4183,18 +4241,30 @@ async def reassign_payment(
             detail="Payment is already assigned to this agent"
         )
 
-    # Verify target agent is active TESORO agent
-    target = await db.fetchrow("""
-        SELECT ap.id, ap.user_id, u.full_name
-        FROM agent_profiles ap
-        JOIN users u ON u.id = ap.user_id
-        JOIN entities e ON e.id = ap.entity_id
-        WHERE ap.id = $1::uuid
-          AND ap.is_active = true
-          AND e.code = 'TESORO'
-    """, body.target_agent_profile_id)
+    # Verify target agent is active and within caller's entity scope.
+    # Global supervisor (treasury.view_all): may pick any entity.
+    # Non-global supervisor: target must belong to same entity as caller.
+    if tctx.has_global_scope:
+        target = await db.fetchrow("""
+            SELECT ap.id, ap.user_id, u.full_name
+            FROM agent_profiles ap
+            JOIN users u ON u.id = ap.user_id
+            WHERE ap.id = $1::uuid AND ap.is_active = true
+        """, body.target_agent_profile_id)
+    else:
+        target = await db.fetchrow("""
+            SELECT ap.id, ap.user_id, u.full_name
+            FROM agent_profiles ap
+            JOIN users u ON u.id = ap.user_id
+            WHERE ap.id = $1::uuid
+              AND ap.is_active = true
+              AND ap.entity_id = $2::uuid
+        """, body.target_agent_profile_id, tctx.entity_id)
     if not target:
-        raise HTTPException(status_code=404, detail="Target treasury agent not found or inactive")
+        raise HTTPException(
+            status_code=404,
+            detail="Target agent not found, inactive, or outside your entity scope"
+        )
 
     async with db.transaction():
         # Update assignment record
@@ -4490,12 +4560,12 @@ async def validate_batch_payments(
     response_model=PaymentActionResponse,
     summary="Escalate payment to supervisor",
     description="""
-    Manually escalate a payment to the TESORO supervisor.
+    Manually escalate a payment to the caller's entity supervisor.
 
     **Behavior:**
     - Sets workflow_status to 'escalated_supervisor'
     - Records escalation reason, level, and timestamp
-    - Assigns to TESORO supervisor
+    - Assigns to the supervisor of the caller's own entity (site-preferred)
 
     **Permissions:**
     - Requires 'treasury.validate_payment' permission
@@ -4539,33 +4609,36 @@ async def escalate_payment(
         valid_levels = ("low", "medium", "high", "critical")
         level = body.level if body.level in valid_levels else "medium"
 
-        # 3. Find TESORO supervisor — prefer supervisor at the SAME SITE as the escalating agent
-        # This ensures site-local escalation (agent at TGE BATA → supervisor at TGE BATA)
-        # entity_location_id already resolved by _get_treasury_context (no extra SQL)
+        # 3. Find supervisor of the caller's own entity — prefer same site as the
+        # escalating agent to keep escalations site-local (TGE BATA agent → TGE
+        # BATA supervisor). Falls back to main office supervisor of same entity.
         agent_location_id = tctx.entity_location_id
         supervisor_id = None
-        if agent_location_id:
-            # Try same-site supervisor first
+        if tctx.entity_id and agent_location_id:
+            # Try same-site supervisor first (entity + location match)
             supervisor_id = await db.fetchval("""
                 SELECT ap.id FROM agent_profiles ap
-                JOIN entities e ON e.id = ap.entity_id
-                WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
-                  AND ap.entity_location_id = $1
+                WHERE ap.entity_id = $1::uuid
+                  AND ap.is_supervisor = true AND ap.is_active = true
+                  AND ap.entity_location_id = $2::uuid
                 LIMIT 1
-            """, agent_location_id)
-        if not supervisor_id:
-            # Fallback: any TESORO supervisor, prefer main office
+            """, tctx.entity_id, agent_location_id)
+        if not supervisor_id and tctx.entity_id:
+            # Fallback: any supervisor of same entity, prefer main office
             supervisor_id = await db.fetchval("""
                 SELECT ap.id FROM agent_profiles ap
-                JOIN entities e ON e.id = ap.entity_id
                 LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-                WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
+                WHERE ap.entity_id = $1::uuid
+                  AND ap.is_supervisor = true AND ap.is_active = true
                 ORDER BY COALESCE(el.is_main_office, false) DESC
                 LIMIT 1
-            """)
+            """, tctx.entity_id)
 
         if not supervisor_id:
-            logger.warning("[Treasury] No active TESORO supervisor found for escalation")
+            logger.warning(
+                f"[Treasury] No active supervisor found for escalation "
+                f"(entity={tctx.entity_code})"
+            )
 
         # 4. Update payment
         await db.execute("""
@@ -5417,6 +5490,11 @@ async def get_treasury_dashboard_stats(
     location_filter_id = tctx.get_effective_location(entity_location_id)
 
     # Build scoped queries
+    # Scope hierarchy (P8.2 refactor — prevents cross-entity leak):
+    #   - Regular agent: own assigned payments only
+    #   - Global supervisor (treasury.view_all): all entities + all sites
+    #   - Non-global supervisor: own entity (via assigned_ap.entity_id) +
+    #     optional site filter
     if not is_supervisor and current_agent_profile_id:
         # Non-supervisor agent: scope by assigned_agent_id (their own payments only)
         agent_id = current_agent_profile_id
@@ -5440,49 +5518,52 @@ async def get_treasury_dashboard_stats(
               AND validated_at < CURRENT_DATE + INTERVAL '1 day'
               AND assigned_agent_id = $1::uuid
         """, agent_id)
-    elif location_filter_id:
-        # Supervisor with location filter
-        loc_id = str(location_filter_id)
-        logger.info(f"[Treasury Stats] Scoping by location: {location_filter_id}")
+    else:
+        # Supervisor branch — build entity + location filter dynamically.
+        # Cross-entity scope requires explicit treasury.view_all; otherwise
+        # supervisor is pinned to own entity via assigned_ap.entity_id.
+        filter_clauses = []
+        filter_params: list = []
+        needs_join_ap = False
 
-        pending_count = await db.fetchval("""
+        if not tctx.has_global_scope and tctx.entity_id:
+            filter_clauses.append(f"assigned_ap.entity_id = ${len(filter_params) + 1}::uuid")
+            filter_params.append(tctx.entity_id)
+            needs_join_ap = True
+
+        if location_filter_id:
+            filter_clauses.append(f"assigned_ap.entity_location_id = ${len(filter_params) + 1}::uuid")
+            filter_params.append(str(location_filter_id))
+            needs_join_ap = True
+
+        join_sql = "JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id" if needs_join_ap else ""
+        where_extra = (" AND " + " AND ".join(filter_clauses)) if filter_clauses else ""
+
+        logger.info(
+            f"[Treasury Stats] Supervisor scope: entity_id={tctx.entity_id}, "
+            f"location={location_filter_id}, global={tctx.has_global_scope}"
+        )
+
+        pending_count = await db.fetchval(f"""
             SELECT COUNT(*)
             FROM service_payments sp
-            JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id
+            {join_sql}
             WHERE sp.workflow_status IN ('pending_agent_review', 'docs_resubmitted')
               AND sp.requires_agent_validation = true
-              AND sr_loc.entity_location_id = $1::uuid
-        """, loc_id)
+              {where_extra}
+        """, *filter_params)
 
-        today_stats = await db.fetchrow("""
+        today_stats = await db.fetchrow(f"""
             SELECT
                 COUNT(*) AS validated_count,
                 COALESCE(SUM(sp.total_amount), 0) AS validated_amount
             FROM service_payments sp
-            JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id
+            {join_sql}
             WHERE sp.workflow_status IN ('approved_by_agent', 'completed')
               AND sp.validated_at >= CURRENT_DATE
               AND sp.validated_at < CURRENT_DATE + INTERVAL '1 day'
-              AND sr_loc.entity_location_id = $1::uuid
-        """, loc_id)
-    else:
-        # Supervisor without filter: global stats
-        pending_count = await db.fetchval("""
-            SELECT COUNT(*)
-            FROM service_payments
-            WHERE workflow_status IN ('pending_agent_review', 'docs_resubmitted')
-              AND requires_agent_validation = true
-        """)
-
-        today_stats = await db.fetchrow("""
-            SELECT
-                COUNT(*) AS validated_count,
-                COALESCE(SUM(total_amount), 0) AS validated_amount
-            FROM service_payments
-            WHERE workflow_status IN ('approved_by_agent', 'completed')
-              AND validated_at >= CURRENT_DATE
-              AND validated_at < CURRENT_DATE + INTERVAL '1 day'
-        """)
+              {where_extra}
+        """, *filter_params)
 
     # Unreconciled bank transactions — supervisor-only metric
     if is_supervisor:
@@ -5510,22 +5591,39 @@ async def get_treasury_dashboard_stats(
 
 @router.get(
     "/treasury/locations",
-    summary="Get TESORO entity locations",
-    description="List active entity_locations for TESORO entity (for site filter dropdowns).",
+    summary="Get entity locations for site filter",
+    description="""
+    List active entity_locations for the caller's entity (for site filter dropdowns).
+
+    Scope:
+      - Global supervisor (treasury.view_all): all active entity_locations across all entities
+      - Non-global supervisor / agent: locations of own entity only
+    """,
 )
 async def get_treasury_locations(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury.validate_payment"))
 ):
-    """Get active entity locations for the TESORO entity."""
-    rows = await db.fetch("""
-        SELECT el.id, el.location_name, el.city
-        FROM entity_locations el
-        JOIN entities e ON e.id = el.entity_id
-        WHERE e.code = 'TESORO' AND el.is_active = true
-        ORDER BY el.city, el.location_name
-    """)
+    """Get active entity locations scoped to caller's entity (or all if global)."""
+    tctx = await _get_treasury_context(db, current_user.id)
+
+    if tctx.has_global_scope:
+        rows = await db.fetch("""
+            SELECT el.id, el.location_name, el.city, el.entity_id
+            FROM entity_locations el
+            WHERE el.is_active = true
+            ORDER BY el.city, el.location_name
+        """)
+    elif tctx.entity_id:
+        rows = await db.fetch("""
+            SELECT el.id, el.location_name, el.city, el.entity_id
+            FROM entity_locations el
+            WHERE el.entity_id = $1::uuid AND el.is_active = true
+            ORDER BY el.city, el.location_name
+        """, tctx.entity_id)
+    else:
+        rows = []
     return [dict(r) for r in rows]
 
 
