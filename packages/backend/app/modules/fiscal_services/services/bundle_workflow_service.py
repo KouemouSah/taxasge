@@ -1112,6 +1112,72 @@ class BundleWorkflowService:
                 license_row["company_id"],
             )
 
+            # Inline auto-assignment INSIDE the transaction.
+            # Rationale (P8.2-B1.2): the previous flow relied on an async event
+            # handler (PaymentAssignmentHandler → PAYMENT_MANUAL_PENDING) to do
+            # the assignment. That handler runs on a different connection (its
+            # own pool slot) while this transaction is still open, which means
+            # it cannot see the just-INSERTed service_payments row in its MVCC
+            # snapshot. The handler's `UPDATE service_payments ... WHERE id=X`
+            # silently returned `UPDATE 0` and the row stayed
+            # assigned_agent_id=NULL. Observed on 2026-04-15 as the
+            # CAMARA_COMERCIO split of LIC-2026-00001 staying unassigned while
+            # AYUNT/TESORO got assigned by pure timing luck.
+            # Doing the assignment inline eliminates the cross-transaction race
+            # entirely: both the INSERT assignments row and the UPDATE
+            # service_payments run in T1 with full row visibility.
+            try:
+                from app.modules.assignment.services.auto_assignment_service import (
+                    AutoAssignmentService,
+                )
+                assignment_service = AutoAssignmentService()
+                assignment = await assignment_service.auto_assign_item(
+                    db=conn,
+                    item_id=UUID(str(payment_result.payment_id)),
+                    item_type="payment_validation",
+                    item_data={
+                        "amount": float(entity_amount),
+                        "payment_method": payment_method,
+                    },
+                    entity_code=entity_code,
+                    priority_level=5,
+                )
+                if assignment:
+                    await conn.execute(
+                        """
+                        UPDATE service_payments
+                        SET assigned_agent_id = $1::uuid,
+                            assigned_at = NOW(),
+                            updated_at = NOW()
+                        WHERE id = $2::uuid
+                        """,
+                        str(assignment.agent_profile_id),
+                        payment_result.payment_id,
+                    )
+                    logger.info(
+                        "OMS: Payment %s inline-assigned to agent_profile %s "
+                        "(entity=%s)",
+                        payment_result.payment_id,
+                        assignment.agent_profile_id,
+                        entity_code,
+                    )
+                else:
+                    logger.warning(
+                        "OMS: No %s agent available for payment %s; remains "
+                        "unassigned (PaymentAssignmentHandler fallback may "
+                        "still pick it up post-commit)",
+                        entity_code,
+                        payment_result.payment_id,
+                    )
+            except Exception as assign_err:
+                # Non-fatal: log and continue. PaymentAssignmentHandler will
+                # receive its event and retry the assignment after commit.
+                logger.error(
+                    "OMS: Inline auto-assignment failed for payment %s "
+                    "(%s): %s. Falling back to event-based handler.",
+                    payment_result.payment_id, entity_code, assign_err,
+                )
+
             # Link this entity's obligations to their payment
             updated_rows = await conn.fetch("""
                 UPDATE license_obligations

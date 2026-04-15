@@ -105,29 +105,40 @@ class ManualValidationProcessor(PaymentProcessorBase):
             )
 
             # Publish PAYMENT_MANUAL_PENDING event for notifications and auto-assignment.
-            # For bundle workflows, the caller passes target_entity_code in
-            # context.metadata so the assignment handler routes to the correct
-            # entity (TESORO / AYUNTAMIENTO / CAMARA_COMERCIO) instead of
-            # hardcoding TESORO — otherwise ALL bundle payments (including
-            # municipal and chamber) end up in the Treasury queue.
-            try:
-                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
-                    "payment_id": payment_id,
-                    "user_id": context.user_id,
-                    "service_request_id": context.service_request_id,
-                    "amount": float(context.amount),
-                    "currency": context.currency,
-                    "payment_method": context.payment_method.value,
-                    "payment_reference": payment_reference,
-                    "user_email": context.user_email,
-                    "user_phone": context.user_phone,
-                    "preferred_language": "es",
-                    "treasury_location_id": context.metadata.get("treasury_location_id"),
-                    "target_entity_code": context.metadata.get("target_entity_code"),
-                })
-                logger.info(f"PAYMENT_MANUAL_PENDING event published for payment {payment_id}")
-            except Exception as e:
-                logger.error(f"Failed to publish PAYMENT_MANUAL_PENDING event: {e}")
+            #
+            # Bundle workflow special case (P8.2-B1.2): for BUNDLE_PAYMENT we
+            # SKIP the publish here because `bundle_workflow_service` now does
+            # the auto-assignment INLINE inside its own transaction. Publishing
+            # would race: the async handler runs on a separate connection that
+            # cannot see the just-INSERTed service_payments row (MVCC), silently
+            # fails its UPDATE, and leaves the row assigned_agent_id=NULL.
+            # The notification side-effect (email/SMS) still happens later via
+            # the usual validation/success events.
+            is_bundle = context.workflow_code == "BUNDLE_PAYMENT"
+            if is_bundle:
+                logger.info(
+                    f"Skipping PAYMENT_MANUAL_PENDING publish for bundle "
+                    f"payment {payment_id} (inline assignment by bundle_workflow_service)"
+                )
+            else:
+                try:
+                    EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
+                        "payment_id": payment_id,
+                        "user_id": context.user_id,
+                        "service_request_id": context.service_request_id,
+                        "amount": float(context.amount),
+                        "currency": context.currency,
+                        "payment_method": context.payment_method.value,
+                        "payment_reference": payment_reference,
+                        "user_email": context.user_email,
+                        "user_phone": context.user_phone,
+                        "preferred_language": "es",
+                        "treasury_location_id": context.metadata.get("treasury_location_id"),
+                        "target_entity_code": context.metadata.get("target_entity_code"),
+                    })
+                    logger.info(f"PAYMENT_MANUAL_PENDING event published for payment {payment_id}")
+                except Exception as e:
+                    logger.error(f"Failed to publish PAYMENT_MANUAL_PENDING event: {e}")
 
             return PaymentInitResult(
                 success=True,
