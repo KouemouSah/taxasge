@@ -907,13 +907,19 @@ class BundleWorkflowService:
         if existing_payment:
             raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
 
-        # Verify obligations are still payable
+        # Verify obligations are still payable. JOIN fiscal_services so the
+        # calculation_details snapshot carries a human-readable name per
+        # obligation — surfaced later in the receipt PDF (P8.2-X8 follow-up).
         obligations = await conn.fetch("""
-            SELECT id, fee_type, amount, penalty_amount, license_id, ministry_id
-            FROM license_obligations
-            WHERE id = ANY($1::uuid[])
-              AND license_id = $2
-              AND status IN ('pending', 'overdue')
+            SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
+                   lo.license_id, lo.ministry_id, lo.fiscal_service_id,
+                   fs.name_es AS fiscal_service_name,
+                   fs.code AS fiscal_service_code
+            FROM license_obligations lo
+            LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+            WHERE lo.id = ANY($1::uuid[])
+              AND lo.license_id = $2
+              AND lo.status IN ('pending', 'overdue')
         """, selected_obligation_ids, license_id)
 
         if len(obligations) != len(selected_obligation_ids):
@@ -1056,6 +1062,11 @@ class BundleWorkflowService:
                         "fee_type": ob["fee_type"],
                         "amount": float(ob["amount"]),
                         "penalty": float(ob["penalty_amount"]),
+                        # Human-readable name for receipts / citizen summaries.
+                        # Falls back to fee_type label if the fiscal_service link
+                        # is missing (legacy data).
+                        "name": ob.get("fiscal_service_name") or None,
+                        "code": ob.get("fiscal_service_code") or None,
                     }
                     for ob in entity_obligations
                 ],

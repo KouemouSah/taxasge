@@ -512,14 +512,30 @@ class ReceiptService:
             penalties_total = sum(float(ob.get("penalty", 0) or 0) for ob in obligations)
             grand_total = base_total + penalties_total
 
+            # Human-readable fee_type fallback for obligations without a
+            # resolved fiscal_service name (legacy calc_details).
+            fee_type_labels = {
+                "tesoro": "Obligacion al Tesoro",
+                "municipal": "Tasa Municipal (Ayuntamiento)",
+                "chamber": "Cuota Camara de Comercio",
+            }
+
             supplements_list: List[Dict[str, Any]] = []
             for ob in obligations:
                 amt = float(ob.get("amount", 0) or 0)
-                fee_type = ob.get("fee_type") or ""
+                fee_type = (ob.get("fee_type") or "").lower()
                 ob_id = str(ob.get("id") or "")
+                # Prefer the fiscal_service name snapshotted at bundle creation
+                # (P8.2-X8 follow-up). Fall back to the fee_type label so older
+                # bundle calc_details generated before the snapshot still render
+                # a meaningful row instead of a bare "Obligacion" string.
+                ob_name = ob.get("name")
+                if not ob_name:
+                    ob_name = fee_type_labels.get(fee_type) or "Obligacion"
+                code = ob.get("code") or (ob_id[:8] if ob_id else "")
                 supplements_list.append({
-                    "code": ob_id[:8] if ob_id else "",
-                    "name_es": f"Obligacion {fee_type}".strip() or "Obligacion",
+                    "code": code,
+                    "name_es": ob_name,
                     "unit_price": amt,
                     "unit_price_formatted": self._format_amount(amt, currency),
                     "quantity": 1,
