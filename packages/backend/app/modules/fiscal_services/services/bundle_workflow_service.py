@@ -1163,28 +1163,16 @@ class BundleWorkflowService:
             WHERE id = $2
         """, primary_payment_id, service_request_id)
 
-        # 9. Publish events for cash payments (1 per entity payment)
-        if payment_method in ("cash", "check"):
-            try:
-                from app.core.events import EventBus, EventType
-                for entity_code, entity_obs in entity_groups.items():
-                    entity_payment_id = all_payment_ids[
-                        list(entity_groups.keys()).index(entity_code)
-                    ]
-                    entity_amount = sum(
-                        ob["amount"] + ob["penalty_amount"] for ob in entity_obs
-                    )
-                    EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
-                        "payment_id": entity_payment_id,
-                        "user_id": str(user_id),
-                        "service_request_id": str(service_request_id),
-                        "workflow_code": "BUNDLE_PAYMENT",
-                        "payment_method": payment_method,
-                        "amount": float(entity_amount),
-                        "entity_code": entity_code,
-                    })
-            except Exception as e:
-                logger.warning("Failed to publish PAYMENT_MANUAL_PENDING events: %s", e)
+        # 9. (removed in P8.2-B1) We no longer re-publish PAYMENT_MANUAL_PENDING
+        # here. `manual_processor.initiate` (called by registry.initiate_payment
+        # above) already publishes the event once per split with the correct
+        # `target_entity_code` taken from PaymentContext.metadata. The previous
+        # second publish used the wrong key ("entity_code" instead of
+        # "target_entity_code"), which caused PaymentAssignmentHandler to fall
+        # back to DEFAULT_VALIDATOR_ENTITY_CODE="TESORO" and route AYUNTAMIENTO
+        # and CAMARA_COMERCIO splits to the Treasury queue — observed on
+        # 2026-04-15 as the assignment inversion where tesoreria.ge was handed
+        # the AYUNT/CAMARA splits while the TESORO split ended up unassigned.
 
         # 10. Notify company owner if payment initiated by a third party
         is_owner = await conn.fetchval(
