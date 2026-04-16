@@ -914,7 +914,7 @@ class BundleWorkflowService:
             SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
                    lo.license_id, lo.ministry_id, lo.fiscal_service_id,
                    fs.name_es AS fiscal_service_name,
-                   fs.code AS fiscal_service_code
+                   fs.service_code AS fiscal_service_code
             FROM license_obligations lo
             LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
             WHERE lo.id = ANY($1::uuid[])
