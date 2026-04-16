@@ -50,6 +50,8 @@ export interface AgentQueueStats {
   completed_today: number
   total_amount_pending: number
   total_amount_completed_today: number
+  awaiting_document: number
+  not_started: number
 }
 
 // =============================================================================

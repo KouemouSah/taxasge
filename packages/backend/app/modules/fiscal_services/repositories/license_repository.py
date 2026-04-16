@@ -737,6 +737,10 @@ class LicenseRepository:
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
 
+        # When agent_profile_id is set the assignment JOIN is present,
+        # so a.started_at is available for the not_started metric.
+        has_assignment_join = agent_profile_id is not None
+
         row = await conn.fetchrow(f"""
             SELECT
                 COUNT(*) FILTER (WHERE lo.status IN ('pending', 'overdue', 'processing')) as pending_count,
@@ -750,7 +754,13 @@ class LicenseRepository:
                 COALESCE(SUM(lo.amount) FILTER (
                     WHERE lo.status = 'completed'
                     AND lo.updated_at::date = CURRENT_DATE
-                ), 0) as total_amount_completed_today
+                ), 0) as total_amount_completed_today,
+                COUNT(*) FILTER (
+                    WHERE lo.status = 'processing'
+                    AND lo.issued_document_id IS NULL
+                ) as awaiting_document,
+                {"COUNT(*) FILTER (WHERE a.started_at IS NULL AND a.status = 'assigned') as not_started"
+                 if has_assignment_join else "0 as not_started"}
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
             {assignment_join}

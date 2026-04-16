@@ -361,6 +361,8 @@ class AgentQueueStats(BaseModel):
     completed_today: int = 0
     total_amount_pending: Decimal = Decimal("0")
     total_amount_completed_today: Decimal = Decimal("0")
+    awaiting_document: int = 0
+    not_started: int = 0
 
 
 class ProcessObligationRequest(BaseModel):

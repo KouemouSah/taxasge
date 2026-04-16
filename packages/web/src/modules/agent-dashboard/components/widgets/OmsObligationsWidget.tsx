@@ -145,7 +145,7 @@ export function OmsObligationsWidget({ variant, className }: OmsObligationsWidge
     );
   }
 
-  const stats = data || { pending_count: 0, completed_today: 0, total_amount_pending: 0, total_amount_completed_today: 0 };
+  const stats = data || { pending_count: 0, completed_today: 0, total_amount_pending: 0, total_amount_completed_today: 0, awaiting_document: 0, not_started: 0 };
 
   return (
     <Card className={className}>
@@ -160,6 +160,9 @@ export function OmsObligationsWidget({ variant, className }: OmsObligationsWidge
           )}
           {variant === 'completed' && stats.completed_today > 0 && (
             <Badge className="bg-green-100 text-green-800">{stats.completed_today}</Badge>
+          )}
+          {variant === 'documents' && stats.awaiting_document > 0 && (
+            <Badge className="bg-blue-100 text-blue-800">{stats.awaiting_document}</Badge>
           )}
         </div>
       </CardHeader>
@@ -200,6 +203,15 @@ function PendingView({ stats, locale, t }: { stats: AgentQueueStats; locale: str
         </span>
         <span className="text-2xl font-bold">{stats.pending_count}</span>
       </div>
+      {stats.not_started > 0 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3.5 w-3.5" />
+            {t('widgets.notStarted', { defaultValue: 'Sin iniciar' })}
+          </span>
+          <span className="font-medium text-amber-600">{stats.not_started}</span>
+        </div>
+      )}
       {stats.total_amount_pending > 0 && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground flex items-center gap-1">
@@ -240,17 +252,22 @@ function DocumentsView({ stats, t }: { stats: AgentQueueStats; locale: string; t
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {t('widgets.obligationsAwaitingDocs', { defaultValue: 'Obligaciones por revisar' })}
+          {t('widgets.obligationsAwaitingDocs', { defaultValue: 'Sin documento emitido' })}
         </span>
-        <span className="text-2xl font-bold text-blue-600">{stats.pending_count}</span>
+        <span className="text-2xl font-bold text-blue-600">{stats.awaiting_document}</span>
       </div>
+      {stats.awaiting_document === 0 && stats.pending_count > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t('widgets.allDocsIssued', { defaultValue: 'Todos los documentos emitidos' })}
+        </p>
+      )}
     </div>
   );
 }
 
 function MinistryView({ stats, locale, t }: { stats: AgentQueueStats; locale: string; t: ReturnType<typeof useTranslations> }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-3 gap-2">
       <div className="text-center p-2 rounded-lg bg-amber-50">
         <p className="text-xs text-muted-foreground">{t('widgets.pending', { defaultValue: 'Pendientes' })}</p>
         <p className="text-lg font-bold text-amber-700">{stats.pending_count}</p>
@@ -260,12 +277,12 @@ function MinistryView({ stats, locale, t }: { stats: AgentQueueStats; locale: st
         <p className="text-lg font-bold text-green-700">{stats.completed_today}</p>
       </div>
       <div className="text-center p-2 rounded-lg bg-blue-50">
-        <p className="text-xs text-muted-foreground">{t('widgets.amtPending', { defaultValue: 'Monto pend.' })}</p>
-        <p className="text-sm font-bold text-blue-700">{fmtAmount(stats.total_amount_pending, locale)}</p>
+        <p className="text-xs text-muted-foreground">{t('widgets.awaitingDoc', { defaultValue: 'Sin doc.' })}</p>
+        <p className="text-lg font-bold text-blue-700">{stats.awaiting_document}</p>
       </div>
-      <div className="text-center p-2 rounded-lg bg-emerald-50">
-        <p className="text-xs text-muted-foreground">{t('widgets.amtToday', { defaultValue: 'Monto hoy' })}</p>
-        <p className="text-sm font-bold text-emerald-700">{fmtAmount(stats.total_amount_completed_today, locale)}</p>
+      <div className="col-span-3 flex items-center justify-between text-sm px-1 pt-1">
+        <span className="text-muted-foreground">{t('widgets.amtPending', { defaultValue: 'Monto pend.' })}</span>
+        <span className="font-medium">{fmtAmount(stats.total_amount_pending, locale)} XAF</span>
       </div>
     </div>
   );
