@@ -532,6 +532,13 @@ class ReceiptService:
                 ob_name = ob.get("name")
                 if not ob_name:
                     ob_name = fee_type_labels.get(fee_type) or "Obligacion"
+                # Decode raw unicode escapes from legacy BD data (e.g.
+                # 'abacer\\u00edas' stored literally instead of 'abacerías')
+                if ob_name and "\\u00" in ob_name:
+                    try:
+                        ob_name = ob_name.encode("utf-8").decode("unicode_escape")
+                    except (UnicodeDecodeError, UnicodeEncodeError):
+                        pass
                 code = ob.get("code") or (ob_id[:8] if ob_id else "")
                 supplements_list.append({
                     "code": code,
@@ -696,6 +703,12 @@ class ReceiptService:
             entity_code = service_data.get("entity_code")
             if solicitud_type:
                 solicitud_type_label = texts.get(solicitud_type, solicitud_type)
+
+        # For bundle splits, prefer the payment's own entity_code over the SR's
+        # primary entity. A CAMARA_COMERCIO split receipt should show
+        # "Entidad: CAMARA_COMERCIO", not "Entidad: TESORO" (the SR primary).
+        if payment_data.get("entity_code"):
+            entity_code = payment_data["entity_code"]
 
         # Payment date
         paid_at = payment_data.get("paid_at") or payment_data.get("created_at") or datetime.utcnow()
