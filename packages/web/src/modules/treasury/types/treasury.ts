@@ -132,6 +132,17 @@ export interface PendingPayment {
   escalationReason?: string;
   escalatedAt?: string;
   slaEscalated?: boolean;
+  // Bundle-specific
+  entityCode?: string;
+  entityName?: string;
+  companyName?: string;
+  registrationNumber?: string;
+  sectorActividad?: string;
+  commerceType?: string;
+  zoneCode?: string;
+  zoneTier?: string;
+  cityName?: string;
+  obligationCount?: number;
 }
 
 export interface TreasuryAgentOption {

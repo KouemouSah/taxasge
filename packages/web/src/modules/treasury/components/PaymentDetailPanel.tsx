@@ -41,7 +41,10 @@ import {
   ArrowRight,
   ExternalLink,
   UserCog,
+  Building2,
+  Package,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   PaymentMethodBadge,
   WorkflowStatusBadge,
@@ -210,9 +213,16 @@ export function PaymentDetailPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold truncate">{getWorkflowName(payment.workflowCode)}</p>
-            {payment.requestReference && (
-              <p className="text-xs font-mono text-muted-foreground">{payment.requestReference}</p>
-            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {isSupervisor && payment.entityName && (
+                <Badge variant="outline" className="text-xs font-normal">
+                  {payment.entityName}
+                </Badge>
+              )}
+              {payment.requestReference && (
+                <span className="text-xs font-mono text-muted-foreground">{payment.requestReference}</span>
+              )}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <WorkflowStatusBadge status={payment.workflowStatus} />
@@ -222,6 +232,41 @@ export function PaymentDetailPanel({
             />
           </div>
         </div>
+
+        {/* Bundle Info — conditional for BUNDLE_PAYMENT */}
+        {payment.workflowCode === 'BUNDLE_PAYMENT' && (
+          <div className="space-y-1.5 px-2 py-2 bg-muted/50 rounded text-sm">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="font-medium truncate">{payment.companyName || 'N/A'}</span>
+              {payment.registrationNumber && (
+                <span className="text-xs text-muted-foreground shrink-0">RC: {payment.registrationNumber}</span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pl-6">
+              {payment.commerceType && (
+                <span>{payment.commerceType.replace(/_/g, ' ')}</span>
+              )}
+              {payment.sectorActividad && (
+                <span>{payment.sectorActividad}</span>
+              )}
+              {payment.zoneTier && payment.zoneCode && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                  {t('detail.zone', { defaultValue: 'Zona' })} {payment.zoneCode} ({payment.zoneTier})
+                </Badge>
+              )}
+              {payment.cityName && (
+                <span>{payment.cityName}</span>
+              )}
+              {payment.obligationCount != null && payment.obligationCount > 0 && (
+                <span className="flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  {payment.obligationCount} {t('detail.obligations', { defaultValue: 'obligaciones' })}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <Separator />
 

@@ -43,7 +43,10 @@ import {
   User,
   CreditCard,
   Receipt,
+  Building2,
+  Package,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { treasuryApi } from '@/modules/treasury/services/api';
 import { usePendingPayments, usePaymentActions } from '@/modules/treasury/hooks';
 import {
@@ -320,6 +323,11 @@ export default function PaymentDetailPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">{t('detail.procedureType')}</p>
                   <p className="text-lg font-semibold truncate">{getWorkflowName(payment.workflowCode)}</p>
+                  {payment.entityName && (
+                    <Badge variant="outline" className="mt-1 text-xs font-normal">
+                      {payment.entityName}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <WorkflowStatusBadge status={payment.workflowStatus} />
@@ -353,6 +361,39 @@ export default function PaymentDetailPage() {
                   <p className="text-xs font-medium">{formatHours(payment.hoursWaiting)}</p>
                 </div>
               </div>
+
+              {/* Bundle Info — conditional */}
+              {payment.workflowCode === 'BUNDLE_PAYMENT' && (
+                <div className="space-y-1.5 px-3 py-2 bg-muted/50 rounded-lg text-sm">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium truncate">{payment.companyName || 'N/A'}</span>
+                    {payment.registrationNumber && (
+                      <span className="text-xs text-muted-foreground shrink-0">RC: {payment.registrationNumber}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pl-6">
+                    {payment.commerceType && (
+                      <span>{payment.commerceType.replace(/_/g, ' ')}</span>
+                    )}
+                    {payment.sectorActividad && (
+                      <span>{payment.sectorActividad}</span>
+                    )}
+                    {payment.zoneTier && payment.zoneCode && (
+                      <span>{t('detail.zone', { defaultValue: 'Zona' })} {payment.zoneCode} ({payment.zoneTier})</span>
+                    )}
+                    {payment.cityName && (
+                      <span>{payment.cityName}</span>
+                    )}
+                    {payment.obligationCount != null && payment.obligationCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {payment.obligationCount} {t('detail.obligations', { defaultValue: 'obligaciones' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <Separator />
 

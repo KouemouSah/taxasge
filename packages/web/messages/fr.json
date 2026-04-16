@@ -7332,7 +7332,8 @@
       "INSPECCION_TECNICA": "Inspection Technique (ITVE)",
       "DUPLICADO_VEHICULO": "Duplicata de Vehicule",
       "PROMOCION_ADMINISTRATIVA": "Promotion Administrative",
-      "CARNET_FUNCIONARIO": "Carnet de Fonctionnaire"
+      "CARNET_FUNCIONARIO": "Carnet de Fonctionnaire",
+      "BUNDLE_PAYMENT": "Paquet Fiscal"
     },
     "validationPage": {
       "filters": {
@@ -7496,7 +7497,9 @@
         "minutes": "{value} min",
         "hours": "{value} heures",
         "days": "{value} jours"
-      }
+      },
+      "obligations": "obligations",
+      "zone": "Zone"
     },
     "receipt": {
       "successTitle": "Paiement Valide - Recu Genere",
@@ -8324,6 +8327,7 @@
       "reason": "Motif de l'escalade",
       "reasonPlaceholder": "Decrivez en detail pourquoi vous escaladez ce paiement (minimum 10 caracteres)...",
       "confirm": "Confirmer l'Escalade",
+      "escalated": "Escalade au superviseur",
       "escalate": "Escalader",
       "escalating": "Escalade en cours...",
       "success": "Paiement escalade avec succes au superviseur",

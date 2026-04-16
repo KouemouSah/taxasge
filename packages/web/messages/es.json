@@ -7332,7 +7332,8 @@
       "INSPECCION_TECNICA": "Inspeccion Tecnica (ITVE)",
       "DUPLICADO_VEHICULO": "Duplicado de Vehiculo",
       "PROMOCION_ADMINISTRATIVA": "Promocion Administrativa",
-      "CARNET_FUNCIONARIO": "Carnet de Funcionario"
+      "CARNET_FUNCIONARIO": "Carnet de Funcionario",
+      "BUNDLE_PAYMENT": "Paquete Fiscal"
     },
     "validationPage": {
       "filters": {
@@ -7496,7 +7497,9 @@
         "minutes": "{value} min",
         "hours": "{value} horas",
         "days": "{value} dias"
-      }
+      },
+      "obligations": "obligaciones",
+      "zone": "Zona"
     },
     "receipt": {
       "successTitle": "Pago Validado - Recibo Generado",
@@ -8324,6 +8327,7 @@
       "reason": "Motivo de la escalacion",
       "reasonPlaceholder": "Describa detalladamente por que escala este pago (minimo 10 caracteres)...",
       "confirm": "Confirmar Escalacion",
+      "escalated": "Escalado al supervisor",
       "escalate": "Escalar",
       "escalating": "Escalando...",
       "success": "Pago escalado exitosamente al supervisor",

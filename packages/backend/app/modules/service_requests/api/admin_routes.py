@@ -3213,6 +3213,17 @@ class PendingPaymentResponse(BaseModel):
     escalation_reason: Optional[str] = None
     escalated_at: Optional[str] = None
     sla_escalated: Optional[bool] = None
+    # Bundle-specific fields (entity split + company context)
+    entity_code: Optional[str] = None
+    entity_name: Optional[str] = None
+    company_name: Optional[str] = None
+    registration_number: Optional[str] = None
+    sector_actividad: Optional[str] = None
+    commerce_type: Optional[str] = None
+    zone_code: Optional[str] = None
+    zone_tier: Optional[str] = None
+    city_name: Optional[str] = None
+    obligation_count: Optional[int] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -3414,7 +3425,18 @@ async def get_pending_payments(
                     NULLIF(TRIM(COALESCE(sr.form_data->>'apellidos', '') || ' ' || COALESCE(sr.form_data->>'nombres', '')), ''),
                     NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), ''),
                     u.first_name || ' ' || u.last_name
-                ) AS beneficiary_name
+                ) AS beneficiary_name,
+                sp.entity_code,
+                ent.name AS entity_name,
+                comp.legal_name AS company_name,
+                comp.registration_number,
+                comp.sector_actividad,
+                comp.commerce_type,
+                cz.zone_code,
+                cz.zone_tier,
+                city.name AS city_name,
+                (SELECT COUNT(*) FROM license_obligations lo2
+                 WHERE lo2.payment_id = sp.id) AS obligation_count
             FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sp.user_id
@@ -3422,6 +3444,11 @@ async def get_pending_payments(
             LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
             LEFT JOIN entity_locations el_site ON el_site.id = assigned_ap.entity_location_id
             LEFT JOIN batch_requests br ON br.id = sp.batch_id
+            LEFT JOIN entities ent ON ent.code = sp.entity_code
+            LEFT JOIN companies comp ON comp.id = sr.company_id
+            LEFT JOIN commercial_licenses cl ON cl.id = sr.commercial_license_id
+            LEFT JOIN commerce_zones cz ON cz.id = cl.zone_id
+            LEFT JOIN cities city ON city.id = cl.city_id
             WHERE {where_sql}
             ORDER BY sp.created_at ASC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -3482,6 +3509,16 @@ async def get_pending_payments(
                     escalation_reason=row["escalation_reason"],
                     escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
                     sla_escalated=row["sla_escalated"],
+                    entity_code=row.get("entity_code"),
+                    entity_name=row.get("entity_name"),
+                    company_name=row.get("company_name"),
+                    registration_number=row.get("registration_number"),
+                    sector_actividad=row.get("sector_actividad"),
+                    commerce_type=row.get("commerce_type"),
+                    zone_code=row.get("zone_code"),
+                    zone_tier=row.get("zone_tier"),
+                    city_name=row.get("city_name"),
+                    obligation_count=row.get("obligation_count"),
                 )
                 payments.append(payment)
             except Exception as row_error:

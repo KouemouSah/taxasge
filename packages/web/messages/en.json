@@ -7332,7 +7332,8 @@
       "INSPECCION_TECNICA": "Technical Inspection (ITVE)",
       "DUPLICADO_VEHICULO": "Vehicle Duplicate",
       "PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
-      "CARNET_FUNCIONARIO": "Official ID Card"
+      "CARNET_FUNCIONARIO": "Official ID Card",
+      "BUNDLE_PAYMENT": "Fiscal Bundle"
     },
     "validationPage": {
       "filters": {
@@ -7496,7 +7497,9 @@
         "minutes": "{value} min",
         "hours": "{value} hours",
         "days": "{value} days"
-      }
+      },
+      "obligations": "obligations",
+      "zone": "Zone"
     },
     "receipt": {
       "successTitle": "Payment Validated - Receipt Generated",
@@ -8324,6 +8327,7 @@
       "reason": "Escalation reason",
       "reasonPlaceholder": "Describe in detail why you are escalating this payment (minimum 10 characters)...",
       "confirm": "Confirm Escalation",
+      "escalated": "Escalated to supervisor",
       "escalate": "Escalate",
       "escalating": "Escalating...",
       "success": "Payment successfully escalated to supervisor",
