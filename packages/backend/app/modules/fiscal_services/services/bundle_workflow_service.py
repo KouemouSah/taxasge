@@ -892,19 +892,19 @@ class BundleWorkflowService:
                 processing_mode, len(selected_obligation_ids),
             )
 
-        # Check for existing in-flight payment on this license.
-        # sr.workflow_code='BUNDLE_PAYMENT' is the only reliable bundle marker;
-        # sp.fee_type has a domain-constrained value (tesoro/municipal/chamber)
-        # so filtering on it would miss bundle payments entirely.
-        existing_payment = await conn.fetchval("""
-            SELECT sp.id FROM service_payments sp
-            JOIN service_requests sr ON sp.service_request_id = sr.id
-            WHERE sr.company_id = $1
-              AND sp.status IN ('pending', 'processing')
-              AND sr.workflow_code = 'BUNDLE_PAYMENT'
+        # Check for in-flight payment overlap on the SELECTED obligations.
+        # Scoped per-obligation (not company-wide) so a citizen who paid 8/10
+        # can initiate a 2nd bundle for the remaining 2 once all splits from
+        # the 1st complete. Only block if a selected obligation already has an
+        # in-flight payment (status='payment_pending').
+        inflight_obligation = await conn.fetchval("""
+            SELECT lo.id FROM license_obligations lo
+            WHERE lo.id = ANY($1::uuid[])
+              AND lo.license_id = $2
+              AND lo.status = 'payment_pending'
             LIMIT 1
-        """, license_row["company_id"])
-        if existing_payment:
+        """, selected_obligation_ids, license_id)
+        if inflight_obligation:
             raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
 
         # Verify obligations are still payable. JOIN fiscal_services so the
@@ -980,10 +980,11 @@ class BundleWorkflowService:
                 source="citizen_wizard",
             )
         except asyncpg.UniqueViolationError:
-            # Safety net per migration 291 partial UNIQUE index
-            # idx_sr_commercial_license_unique. A previous in-flight bundle SR
-            # exists for this license — treat as concurrent duplicate and bail
-            # with a deterministic error (no retry, the caller should resume).
+            # Safety net: idx_sr_commercial_license_unique (migration 291,
+            # relaxed in 297 to exclude terminal statuses PAID/EXPIRED).
+            # Fires when a concurrent request creates an SR for the same
+            # license while one is already in-flight. Deterministic: the
+            # caller should resume the existing SR, not retry.
             raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
         except asyncpg.CheckViolationError as ex:
             # Defensive: fn_enforce_bundle_sr_integrity fired despite our
