@@ -25,6 +25,7 @@ import { AnomalySummaryWidget } from './AnomalySummaryWidget';
 import { CalendarWeekWidget } from './CalendarWeekWidget';
 import { CalendarSlotsWidget } from './CalendarSlotsWidget';
 import { RecentActivityWidget } from './RecentActivityWidget';
+import { OmsObligationsWidget } from './OmsObligationsWidget';
 
 // =============================================================================
 // TYPES
@@ -116,6 +117,24 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   oms_compliance_summary: ({ entityCode, className }) => (
     <AlertsWidget entityCode={entityCode} className={className} />
   ),
+
+  // OMS obligation processing widgets (agent_min_* roles)
+  // These IDs are in roles.dashboard_config for MIN_* entities.
+  // They process obligations (post-payment), not payments — data comes
+  // from /oms/queue/stats (license_obligations + assignments), not service_payments.
+  oms_pending_processing: ({ className }) => (
+    <OmsObligationsWidget variant="pending" className={className} />
+  ),
+  oms_processed_today: ({ className }) => (
+    <OmsObligationsWidget variant="completed" className={className} />
+  ),
+  oms_documents_pending: ({ className }) => (
+    <OmsObligationsWidget variant="documents" className={className} />
+  ),
+  oms_ministry_stats: ({ className }) => (
+    <OmsObligationsWidget variant="ministry" className={className} />
+  ),
+
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />
   ),
