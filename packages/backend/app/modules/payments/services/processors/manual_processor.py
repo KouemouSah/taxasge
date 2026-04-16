@@ -295,16 +295,18 @@ class ManualValidationProcessor(PaymentProcessorBase):
             """
             service_data = await db.fetchrow(service_query, payment["service_request_id"])
 
-            # 5. Get agent data + treasury location for receipt (using agent_profiles table)
+            # 5. Get agent data + entity name + treasury location for receipt
             agent_query = """
                 SELECT u.first_name, u.last_name,
                        el.location_name AS treasury_location_name,
                        el.location_address AS treasury_location_address,
                        el.city AS treasury_city,
-                       el.phone AS treasury_phone
-                FROM users u
-                JOIN agent_profiles ap ON ap.user_id = u.id
+                       el.phone AS treasury_phone,
+                       e.name AS entity_name
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
                 LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+                LEFT JOIN entities e ON e.id = ap.entity_id
                 WHERE ap.id = $1::uuid
             """
             agent_data = await db.fetchrow(agent_query, agent_profile_id)
@@ -318,6 +320,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                         "location_address": agent_data.get("treasury_location_address"),
                         "city": agent_data.get("treasury_city"),
                         "phone": agent_data.get("treasury_phone"),
+                        "entity_name": agent_data.get("entity_name"),
                     }
 
             # 6. Update payment status. validated_by_agent_id stores agent_profiles.id
