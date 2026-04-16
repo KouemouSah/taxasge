@@ -4453,17 +4453,20 @@ async def download_receipt_pdf(
     agent_name = None
     agent_location = None
     if payment["validated_by_agent_id"]:
+        # validated_by_agent_id is agent_profiles.id (not users.id).
         agent_data = await db.fetchrow(
             """
             SELECT u.first_name, u.last_name,
                    ael.location_name AS treasury_location_name,
                    ael.location_address AS treasury_location_address,
                    ael.city AS treasury_city,
-                   ael.phone AS treasury_phone
-            FROM users u
-            JOIN agent_profiles ap ON ap.user_id = u.id
+                   ael.phone AS treasury_phone,
+                   e.name AS entity_name
+            FROM agent_profiles ap
+            JOIN users u ON u.id = ap.user_id
             LEFT JOIN entity_locations ael ON ael.id = ap.entity_location_id
-            WHERE u.id = $1::uuid
+            LEFT JOIN entities e ON e.id = ap.entity_id
+            WHERE ap.id = $1::uuid
             """,
             str(payment["validated_by_agent_id"])
         )
@@ -4475,6 +4478,7 @@ async def download_receipt_pdf(
                     "location_address": agent_data.get("treasury_location_address"),
                     "city": agent_data.get("treasury_city"),
                     "phone": agent_data.get("treasury_phone"),
+                    "entity_name": agent_data.get("entity_name"),
                 }
 
     # Build service_data dict from the joined query

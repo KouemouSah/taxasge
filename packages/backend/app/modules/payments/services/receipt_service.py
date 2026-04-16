@@ -246,11 +246,19 @@ class ReceiptService:
         service_data: Optional[Dict[str, Any]] = None,
         agent_location: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
-        """Build treasury info from agent's treasury site (preferred) or service_data location."""
+        """Build treasury info from agent's entity + site.
+
+        For multi-entity support (TESORO / AYUNTAMIENTO / CAMARA_COMERCIO),
+        the header uses the entity's human-readable name from
+        `agent_location['entity_name']` (e.g. 'Cámara de Comercio') instead
+        of the hardcoded 'Tesoro Publico'. Falls back to 'Tesoro Publico'
+        for legacy callers that don't pass entity_name.
+        """
         info = dict(self.TREASURY_INFO_DEFAULT)
-        # Prefer agent's treasury office over service request location
-        if agent_location and agent_location.get("location_name"):
-            info["name"] = f"Tesoro Publico - {agent_location['location_name']}"
+        if agent_location and (agent_location.get("city") or agent_location.get("location_name")):
+            entity_name = agent_location.get("entity_name") or "Tesoro Publico"
+            site_label = agent_location.get("city") or agent_location.get("location_name", "")
+            info["name"] = f"{entity_name} - {site_label}"
             if agent_location.get("location_address"):
                 info["address"] = agent_location["location_address"]
             elif agent_location.get("city"):
@@ -706,9 +714,14 @@ class ReceiptService:
 
         # For bundle splits, prefer the payment's own entity_code over the SR's
         # primary entity. A CAMARA_COMERCIO split receipt should show
-        # "Entidad: CAMARA_COMERCIO", not "Entidad: TESORO" (the SR primary).
+        # "Entidad: Cámara de Comercio", not "Entidad: TESORO" (the SR primary).
         if payment_data.get("entity_code"):
             entity_code = payment_data["entity_code"]
+
+        # Resolve raw entity_code to human-readable name when agent_location
+        # carries the entity_name (populated by the validate_payment caller).
+        if entity_code and agent_location and agent_location.get("entity_name"):
+            entity_code = agent_location["entity_name"]
 
         # Payment date
         paid_at = payment_data.get("paid_at") or payment_data.get("created_at") or datetime.utcnow()
