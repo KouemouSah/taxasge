@@ -345,6 +345,94 @@ async def get_queue_stats(
         and entity_workflows == ["BUNDLE_PAYMENT"]
     )
 
+    # Distinguish payment validators (TESORO/AYUNT/CAMARA → count sp)
+    # from obligation processors (MIN_* → count license_obligations).
+    # Check: does ANY agent of this entity have treasury.validate_payment?
+    # Uses entity_id → agent_profiles → users → role → role_permissions chain.
+    is_obligation_processor = False
+    if is_bundle_entity:
+        has_treasury_perm = await db.fetchval("""
+            SELECT EXISTS(
+                SELECT 1 FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                JOIN role_permissions rp ON rp.role_id = u.role_id
+                JOIN permissions p ON p.id = rp.permission_id
+                WHERE ap.entity_id = (SELECT id FROM entities WHERE code = $1)
+                  AND p.name = 'treasury.validate_payment'
+                  AND ap.is_active = true
+            )
+        """, entity_code)
+        is_obligation_processor = not has_treasury_perm
+
+    if is_bundle_entity and is_obligation_processor:
+        # ─────────────────────────────────────────────────────────────────
+        # Obligation processor path (MIN_*): count license_obligations
+        # via assignments. These entities process obligations AFTER payment
+        # is validated — "pending" means "to process", not "to collect".
+        # ─────────────────────────────────────────────────────────────────
+        obl_where = []
+        obl_params: list = []
+        obl_join = ""
+
+        # Entity scope: resolve ministry_id from entity
+        entity_ministry = await db.fetchval(
+            "SELECT ministry_id FROM entities WHERE code = $1", entity_code
+        )
+        if entity_ministry:
+            obl_where.append(f"lo.ministry_id = ${len(obl_params) + 1}")
+            obl_params.append(entity_ministry)
+
+        # Agent scope
+        if not agent_ctx.has_global_scope and not agent_ctx.is_supervisor:
+            # Regular agent: only own assignments
+            obl_join = f"""
+                JOIN assignments a ON a.item_id = lo.id
+                    AND a.item_type = 'obligation_processing'
+                    AND a.agent_profile_id IN (
+                        SELECT id FROM agent_profiles WHERE user_id = ${len(obl_params) + 1}::uuid
+                    )
+                    AND a.status IN ('assigned', 'in_progress', 'completed')
+            """
+            obl_params.append(agent_ctx.user_id)
+
+        obl_where_sql = "WHERE " + " AND ".join(obl_where) if obl_where else ""
+
+        stats = await db.fetchrow(f"""
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE lo.status IN ('processing', 'pending', 'overdue')
+                ) AS pending,
+                0 AS assigned,
+                COUNT(*) FILTER (
+                    WHERE lo.status = 'completed'
+                      AND lo.updated_at > NOW() - INTERVAL '24 hours'
+                ) AS completed_today,
+                0 AS escalated,
+                COUNT(*) FILTER (
+                    WHERE lo.due_date IS NOT NULL
+                      AND lo.due_date < CURRENT_DATE
+                      AND lo.status NOT IN ('completed', 'cancelled')
+                ) AS sla_violations,
+                COALESCE(AVG(
+                    EXTRACT(EPOCH FROM (lo.updated_at - lo.created_at)) / 3600
+                ) FILTER (
+                    WHERE lo.status = 'completed'
+                      AND lo.updated_at > NOW() - INTERVAL '30 days'
+                ), 0) AS avg_processing_hours
+            FROM license_obligations lo
+            {obl_join}
+            {obl_where_sql}
+        """, *obl_params)
+
+        return QueueStatsResponse(
+            pending=stats['pending'] or 0,
+            assigned=stats['assigned'] or 0,
+            completed_today=stats['completed_today'] or 0,
+            escalated=stats['escalated'] or 0,
+            sla_violations=stats['sla_violations'] or 0,
+            avg_processing_hours=round(float(stats['avg_processing_hours'] or 0), 2)
+        )
+
     if is_bundle_entity:
         # ─────────────────────────────────────────────────────────────────
         # Bundle collection entity path: count sp rows
