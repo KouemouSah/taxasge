@@ -1741,7 +1741,12 @@ async def get_request_detail_view(
 
     # 14. Bundle details (obligations + payment splits by entity)
     bundle_details = None
-    if request.workflow_code == "BUNDLE_PAYMENT" and request.commercial_license_id:
+    # ServiceRequestResponse may not expose commercial_license_id — fetch from DB
+    sr_license_id = await db.fetchval(
+        "SELECT commercial_license_id FROM service_requests WHERE id = $1",
+        request_id,
+    ) if request.workflow_code == "BUNDLE_PAYMENT" else None
+    if request.workflow_code == "BUNDLE_PAYMENT" and sr_license_id:
         try:
             bd_rows = await db.fetch("""
                 SELECT sp.entity_code, sp.total_amount, sp.workflow_status,
@@ -1762,11 +1767,14 @@ async def get_request_detail_view(
                       SELECT id FROM service_payments WHERE service_request_id = $2
                   )
                 ORDER BY lo.fee_type, fs.name_es
-            """, request.commercial_license_id, request_id)
+            """, sr_license_id, request_id)
+            sr_company_id = await db.fetchval(
+                "SELECT company_id FROM service_requests WHERE id = $1", request_id
+            )
             comp_row = await db.fetchrow(
                 "SELECT legal_name, registration_number FROM companies WHERE id = $1",
-                request.company_id
-            ) if request.company_id else None
+                sr_company_id
+            ) if sr_company_id else None
 
             bundle_details = {
                 "company_name": comp_row["legal_name"] if comp_row else None,
