@@ -351,7 +351,7 @@ export default function ServiceRequestDetailPage() {
                   <CardContent className="space-y-4">
                     {/* Payment splits by entity */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {detailView.bundle_details.splits?.map((split: { entity_name: string; entity_code: string; amount: number; status: string; receipt_number?: string }, idx: number) => (
+                      {detailView.bundle_details.splits?.map((split, idx) => (
                         <div key={idx} className="p-3 rounded-lg border">
                           <p className="text-xs text-muted-foreground">{split.entity_name || split.entity_code}</p>
                           <p className="text-lg font-bold">
@@ -377,7 +377,7 @@ export default function ServiceRequestDetailPage() {
                         {detailView.bundle_details.obligations?.length || 0} {t('obligations') || 'obligaciones'}
                       </p>
                       <div className="space-y-1">
-                        {detailView.bundle_details.obligations?.map((obl: { service_name: string; amount: number; status: string }, idx: number) => (
+                        {detailView.bundle_details.obligations?.map((obl, idx) => (
                           <div key={idx} className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-muted/50">
                             <span className="text-muted-foreground truncate mr-2">{obl.service_name}</span>
                             <div className="flex items-center gap-2 shrink-0">
