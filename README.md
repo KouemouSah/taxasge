@@ -240,14 +240,36 @@ The platform verifies document authenticity at multiple levels:
 
 ### Report Generation
 
-Automated report generation for different profiles:
+Automated report generation for operational and financial profiles:
 
 | Profile | Reports |
 |---------|---------|
 | **Agent** | Daily work summary, decision audit trail, pending actions |
-| **Supervisor** | Weekly team performance, SLA compliance report, workload distribution |
+| **Supervisor** | Weekly team performance, SLA compliance, workload distribution |
 | **Entity Head** | Monthly entity metrics, revenue reports, processing time analytics |
-| **Admin** | System health report, security audit summary, user activity analytics |
+| **Treasury** | Revenue per ministry/entity, bank reconciliation, collection by payment method, outstanding obligations |
+| **Admin** | System health, security audit summary, user activity analytics |
+
+### Financial Integration & External Systems
+
+```mermaid
+graph LR
+    BANGE["🏦 BANGE API"] --> PAY["💳 Payment Service"]
+    PAY --> WEBHOOK["🔗 Webhook Processor"]
+    WEBHOOK --> RECONCILE["📊 Bank Reconciliation"]
+    PAY --> RECEIPT["🧾 Receipt PDF"]
+    IMPORT["📥 Excel/CSV Import"] --> BATCH["📦 Batch Processor"]
+    BATCH --> FIN["📈 Financial Reports"]
+    FIN --> MINISTRY["🏛️ Ministry Reports"]
+    FIN --> BANK["🏦 Bank Reports"]
+```
+
+- **BANGE Payment Gateway**: Mobile money, card, and bank transfer processing via REST API with webhook confirmation
+- **Bank Reconciliation**: Automated matching of bank transactions with internal payment records
+- **Financial Format Import**: Excel/CSV batch import for bulk financial data (bank statements, tax tables, fee schedules)
+- **Ministry Revenue Reports**: Revenue breakdown by ministry, entity, service type, and collection period
+- **External API Connectivity**: Webhook-based integration with banking systems, SMS gateways (Getesa/Muni), and WhatsApp Business API
+- **Receipt Generation**: Automated PDF receipts with QR verification codes, multilingual rendering, and entity branding
 
 ---
 
@@ -497,14 +519,14 @@ Facil is designed to serve **millions of citizens** and **100+ concurrent govern
 
 ## Documentation
 
-| Resource | Link |
-|----------|------|
-| Project Dashboard | [kouemousah.github.io/taxasge](https://kouemousah.github.io/taxasge/) |
-| API Documentation | [Swagger UI](https://taxasge-backend-staging-392159428433.us-central1.run.app/docs) (31 routers) |
-| Technical Docs | [Documentations/](Documentations/) |
-| Wiki | [github.com/KouemouSah/taxasge/wiki](https://github.com/KouemouSah/taxasge/wiki) |
-| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Security Policy | [SECURITY.md](SECURITY.md) |
+| Resource | Description | Link |
+|----------|-------------|------|
+| Technical Documentation | Architecture, modules, API, database, workflows, security (12 pages) | [Documentation Site](https://kouemousah.github.io/taxasge/documentation/) |
+| Project Dashboard | Live metrics, CI/CD status, milestones, activity | [Dashboard](https://kouemousah.github.io/taxasge/) |
+| API Reference | Swagger UI — 31 routers, interactive testing | [Swagger UI](https://taxasge-backend-staging-392159428433.us-central1.run.app/docs) |
+| Wiki | Architecture, deployment, i18n guides | [Wiki](https://github.com/KouemouSah/taxasge/wiki) |
+| Contributing | Git workflow, code style, PR process | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Security Policy | Vulnerability reporting, OWASP compliance | [SECURITY.md](SECURITY.md) |
 
 ---
 
