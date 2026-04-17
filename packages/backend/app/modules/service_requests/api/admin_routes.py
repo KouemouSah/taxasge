@@ -4101,6 +4101,66 @@ async def validate_payment(
                     f"pdf_bytes={'available' if result.receipt_pdf_bytes else 'None'}"
                 )
 
+            # Build bundle context for enriched email (B7)
+            bundle_section = ""
+            sr_workflow = await db.fetchval(
+                "SELECT workflow_code FROM service_requests WHERE id = $1",
+                payment["service_request_id"],
+            ) if payment.get("service_request_id") else None
+            if sr_workflow == "BUNDLE_PAYMENT":
+                try:
+                    sp_row = await db.fetchrow(
+                        "SELECT entity_code FROM service_payments WHERE id = $1",
+                        payment_id,
+                    )
+                    entity_code = sp_row["entity_code"] if sp_row else None
+                    entity_name = None
+                    if entity_code:
+                        entity_name = await db.fetchval(
+                            "SELECT name FROM entities WHERE code = $1", entity_code
+                        )
+                    # Count total splits and completed splits
+                    sr_id = payment["service_request_id"]
+                    split_stats = await db.fetchrow("""
+                        SELECT COUNT(*) as total,
+                               COUNT(*) FILTER (WHERE workflow_status = 'completed') as completed
+                        FROM service_payments WHERE service_request_id = $1
+                    """, sr_id)
+                    total_splits = split_stats["total"] if split_stats else 1
+                    completed_splits = split_stats["completed"] if split_stats else 1
+                    # Obligation names for this split
+                    obl_rows = await db.fetch("""
+                        SELECT fs.name_es, lo.amount
+                        FROM license_obligations lo
+                        LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+                        WHERE lo.payment_id = $1
+                        ORDER BY fs.name_es
+                    """, payment_id)
+                    obl_lines = "".join(
+                        f'<tr><td style="padding:5px 15px;color:#6b7280;">{r["name_es"] or "—"}</td>'
+                        f'<td style="padding:5px 15px;text-align:right;">{int(r["amount"]):,} XAF</td></tr>'
+                        for r in obl_rows
+                    )
+                    is_last = completed_splits >= total_splits
+                    progress_text = f"Validación {completed_splits}/{total_splits}"
+                    entity_label = entity_name or entity_code or ""
+                    bundle_section = f"""
+                    <tr style="border-bottom:1px solid #e5e7eb;background-color:#f0fdf4;">
+                        <td style="padding:10px 15px;color:#6b7280;font-weight:600;">Entidad</td>
+                        <td style="padding:10px 15px;">{entity_label}</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #e5e7eb;">
+                        <td style="padding:10px 15px;color:#6b7280;font-weight:600;">Progreso</td>
+                        <td style="padding:10px 15px;font-weight:bold;color:{'#16a34a' if is_last else '#d97706'};">{progress_text}</td>
+                    </tr>
+                    <tr><td colspan="2" style="padding:10px 15px;">
+                        <table style="width:100%;font-size:13px;">{obl_lines}</table>
+                    </td></tr>
+                    {"<tr><td colspan='2' style='padding:15px;text-align:center;background:#f0fdf4;color:#16a34a;font-weight:bold;font-size:15px;'>✓ Todas las validaciones completadas</td></tr>" if is_last else ""}
+                    """
+                except Exception as bs_err:
+                    logger.warning(f"Could not build bundle email section: {bs_err}")
+
             EventBus.publish_nowait(
                 EventType.PAYMENT_CASH_VALIDATED,
                 {
@@ -4121,6 +4181,7 @@ async def validate_payment(
                     "timestamp": datetime.now().isoformat(),
                     "attachments": attachments,
                     "verification_url": verification_url,
+                    "bundle_section": bundle_section,
                 }
             )
     except Exception as e:
