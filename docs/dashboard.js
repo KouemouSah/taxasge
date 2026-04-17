@@ -248,25 +248,22 @@
     if (!container) return;
 
     container.innerHTML = MILESTONE_DATA.map(function (m) {
-      var fillClass = m.state === 'closed' ? 'completed' :
-                      m.pct >= 75 ? 'high' :
-                      m.pct >= 30 ? 'medium' :
-                      m.pct > 0  ? 'low' : 'zero';
-      var pctColor = m.state === 'closed' ? 'color:var(--ge-green)' :
-                     m.pct >= 75 ? 'color:var(--ge-blue)' :
-                     m.pct >= 30 ? 'color:#B8860B' :
-                     'color:var(--text-muted)';
+      var pctColor = m.state === 'closed' ? 'var(--ge-green)' :
+                     m.pct >= 75 ? 'var(--ge-blue)' :
+                     m.pct >= 30 ? '#B8860B' :
+                     m.pct > 0  ? 'var(--ge-red)' : 'var(--text-muted)';
+      var stateLabel = m.state === 'closed' ? 'Done' : (m.pct > 0 ? 'In Progress' : 'Planned');
+      var stateClass = m.state === 'closed' ? 'done' : (m.pct > 0 ? 'progress' : 'planned');
 
       return '<div class="ms-card animate-in">' +
-        '<div class="ms-header">' +
+        '<div class="ms-left">' +
           '<span class="ms-icon" aria-hidden="true">' + m.icon + '</span>' +
-          '<span class="ms-name" title="' + escapeHtml(m.name) + '">' + escapeHtml(m.name) + '</span>' +
-          '<span class="ms-pct" style="' + pctColor + '">' + m.pct + '%</span>' +
+          '<span class="ms-name">' + escapeHtml(m.name) + '</span>' +
         '</div>' +
-        '<div class="ms-bar">' +
-          '<div class="ms-fill ' + fillClass + '" style="width:' + m.pct + '%"></div>' +
+        '<div class="ms-right">' +
+          '<span class="ms-pct-circle" style="color:' + pctColor + '">' + m.pct + '%</span>' +
+          '<span class="ms-badge ' + stateClass + '">' + stateLabel + '</span>' +
         '</div>' +
-        '<span class="ms-state ' + m.state + '">' + m.state + '</span>' +
       '</div>';
     }).join('');
   }

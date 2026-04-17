@@ -119,22 +119,9 @@ a:hover {
 
 /* ---------- Header ---------- */
 .site-header {
-  background: linear-gradient(135deg, var(--ge-blue) 0%, var(--blue-dark) 60%, #003560 100%);
-  color: #fff;
-  padding: var(--space-lg) var(--space-xl);
+  background: #FFFFFF;
+  padding: var(--space-lg) var(--space-xl) var(--space-md);
   position: relative;
-  overflow: hidden;
-}
-
-.site-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 .site-header::after {
@@ -151,49 +138,35 @@ a:hover {
   max-width: 1280px;
   margin: 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-lg);
-  position: relative;
-  z-index: 1;
+  gap: var(--space-sm);
 }
 
-.header-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.15);
-  padding: 5px;
-  flex-shrink: 0;
-}
-
-.header-logo img {
-  width: 100%;
-  height: 100%;
+.header-logo-img {
+  height: 64px;
   object-fit: contain;
 }
 
-.header-text h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+.header-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
-.header-text p {
-  opacity: 0.85;
-  font-size: 0.82rem;
-  margin-top: 2px;
+/* Updated bar — just below header separator */
+.updated-bar {
+  text-align: center;
+  padding: var(--space-xs) 0 var(--space-md);
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
-.header-meta {
-  margin-left: auto;
-  text-align: right;
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-.header-meta time {
-  display: block;
+@media (prefers-color-scheme: dark) {
+  .site-header {
+    background: var(--bg-card);
+  }
 }
 
 /* ---------- Container ---------- */
@@ -605,7 +578,7 @@ a:hover {
 /* ---------- Milestones (compact 2-col grid) ---------- */
 .milestones-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-sm);
 }
 
@@ -613,7 +586,11 @@ a:hover {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   transition: box-shadow var(--transition-fast);
 }
 
@@ -621,70 +598,52 @@ a:hover {
   box-shadow: var(--shadow-sm);
 }
 
-.ms-header {
+.ms-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .ms-icon {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   flex-shrink: 0;
-  width: 20px;
-  text-align: center;
 }
 
 .ms-name {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-primary);
-  flex: 1;
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.ms-pct {
-  font-size: 0.75rem;
-  font-weight: 700;
+.ms-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  min-width: 36px;
-  text-align: right;
 }
 
-.ms-bar {
-  width: 100%;
-  height: 4px;
-  background: var(--gray-200);
-  border-radius: var(--radius-full);
-  overflow: hidden;
+.ms-pct-circle {
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
-.ms-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  transition: width 0.6s ease;
-}
-
-.ms-fill.completed { background: var(--ge-green); }
-.ms-fill.high      { background: var(--ge-blue); }
-.ms-fill.medium    { background: var(--ge-yellow); }
-.ms-fill.low       { background: var(--ge-red); }
-.ms-fill.zero      { background: var(--gray-300); }
-
-.ms-state {
-  display: inline-block;
-  font-size: 0.62rem;
-  font-weight: 600;
+.ms-badge {
+  font-size: 0.56rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-top: 4px;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
 }
 
-.ms-state.closed { color: var(--ge-green); }
-.ms-state.open   { color: var(--ge-blue); }
+.ms-badge.done     { background: var(--green-light); color: var(--ge-green); }
+.ms-badge.progress { background: var(--blue-light);  color: var(--ge-blue); }
+.ms-badge.planned  { background: var(--gray-100);    color: var(--text-muted); }
 
 /* ---------- Activity / Commits ---------- */
 .commit-list {
@@ -930,16 +889,6 @@ a:hover {
 @media (max-width: 768px) {
   .container { padding: var(--space-md); }
 
-  .header-inner {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .header-meta {
-    margin-left: 0;
-    text-align: center;
-  }
-
   .grid-4,
   .grid-3,
   .grid-2 {
@@ -970,13 +919,14 @@ a:hover {
     padding: var(--space-md);
   }
 
-  .header-text h1 { font-size: 1.25rem; }
+  .header-logo-img { height: 48px; }
+  .header-subtitle { font-size: 0.75rem; }
   .metric-value { font-size: 1.75rem; }
 }
 
 @media (max-width: 480px) {
-  .header-text h1 { font-size: 1.15rem; }
   .section-title { font-size: 1rem; }
+  .milestones-grid { grid-template-columns: 1fr; }
 }
 
 /* ---------- Utility ---------- */
