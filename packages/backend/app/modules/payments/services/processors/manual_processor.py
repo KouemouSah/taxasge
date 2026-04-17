@@ -347,26 +347,42 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 validation_comment
             )
 
-            # 6b. Update service_requests to keep tables in sync
-            # This is critical for:
-            # - checkPaymentStatus endpoint to return correct status (payment_status)
-            # - Overall request workflow status transition (status: PAYMENT_PENDING → PAID)
-            await db.execute(
-                """
-                UPDATE service_requests
-                SET payment_status = 'completed',
-                    status = 'PAID',
-                    paid_at = $2,
-                    updated_at = NOW()
-                WHERE id = $1
-                """,
-                payment["service_request_id"],
-                paid_at
+            # 6b. Update service_requests to keep tables in sync.
+            # For bundles: only transition to PAID when ALL splits are completed.
+            # A single split validation should not mark the whole SR as PAID.
+            sr_id = payment["service_request_id"]
+            sr_wf = await db.fetchval(
+                "SELECT workflow_code FROM service_requests WHERE id = $1", sr_id
             )
-            logger.info(
-                f"Updated service_requests {payment['service_request_id']}: "
-                f"payment_status=completed, status=PAID"
-            )
+            if sr_wf == "BUNDLE_PAYMENT":
+                # Check if all sibling splits are now completed
+                pending_splits = await db.fetchval("""
+                    SELECT COUNT(*) FROM service_payments
+                    WHERE service_request_id = $1
+                      AND workflow_status != 'completed'
+                """, sr_id)
+                if pending_splits == 0:
+                    await db.execute("""
+                        UPDATE service_requests
+                        SET payment_status = 'completed', status = 'PAID',
+                            paid_at = $2, updated_at = NOW()
+                        WHERE id = $1
+                    """, sr_id, paid_at)
+                    logger.info(f"Bundle SR {sr_id}: all splits completed → PAID")
+                else:
+                    logger.info(
+                        f"Bundle SR {sr_id}: split validated, {pending_splits} "
+                        f"splits remaining → stays PAYMENT_PROCESSING"
+                    )
+            else:
+                # Non-bundle: single payment → direct transition to PAID
+                await db.execute("""
+                    UPDATE service_requests
+                    SET payment_status = 'completed', status = 'PAID',
+                        paid_at = $2, updated_at = NOW()
+                    WHERE id = $1
+                """, sr_id, paid_at)
+                logger.info(f"SR {sr_id}: payment validated → PAID")
 
             # 6c. Batch fan-out: if this payment belongs to a batch,
             # update ALL sibling payments and service_requests to PAID

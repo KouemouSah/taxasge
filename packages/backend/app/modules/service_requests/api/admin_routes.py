@@ -4136,14 +4136,15 @@ async def validate_payment(
                         WHERE lo.payment_id = $1
                         ORDER BY fs.name_es
                     """, payment_id)
+                    from html import escape as html_escape
                     obl_lines = "".join(
-                        f'<tr><td style="padding:5px 15px;color:#6b7280;">{r["name_es"] or "—"}</td>'
+                        f'<tr><td style="padding:5px 15px;color:#6b7280;">{html_escape(r["name_es"] or "—")}</td>'
                         f'<td style="padding:5px 15px;text-align:right;">{int(r["amount"]):,} XAF</td></tr>'
                         for r in obl_rows
                     )
                     is_last = completed_splits >= total_splits
                     progress_text = f"Validación {completed_splits}/{total_splits}"
-                    entity_label = entity_name or entity_code or ""
+                    entity_label = html_escape(entity_name or entity_code or "")
                     bundle_section = f"""
                     <tr style="border-bottom:1px solid #e5e7eb;background-color:#f0fdf4;">
                         <td style="padding:10px 15px;color:#6b7280;font-weight:600;">Entidad</td>
