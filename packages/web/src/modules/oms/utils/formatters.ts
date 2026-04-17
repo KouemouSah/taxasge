@@ -42,14 +42,14 @@ export function fmtDate(dateStr: string | null | undefined, locale = 'es-GQ'): s
 // =============================================================================
 
 export const OBLIGATION_STATUS_CONFIG: Record<string, {
-  color: string; label: string; icon: typeof Clock
+  color: string; label: string; labelKey: string; icon: typeof Clock
 }> = {
-  pending:    { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente',  icon: Clock },
-  processing: { color: 'bg-blue-100 text-blue-800',    label: 'En proceso', icon: Play },
-  completed:  { color: 'bg-green-100 text-green-800',  label: 'Completado', icon: CheckCircle2 },
-  paid:       { color: 'bg-emerald-100 text-emerald-800', label: 'Pagado',  icon: DollarSign },
-  overdue:    { color: 'bg-red-100 text-red-800',      label: 'Vencido',    icon: AlertTriangle },
-  cancelled:  { color: 'bg-gray-100 text-gray-800',    label: 'Cancelado',  icon: XCircle },
+  pending:    { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente',  labelKey: 'status.pending',    icon: Clock },
+  processing: { color: 'bg-blue-100 text-blue-800',    label: 'En proceso', labelKey: 'status.processing', icon: Play },
+  completed:  { color: 'bg-green-100 text-green-800',  label: 'Completado', labelKey: 'status.completed',  icon: CheckCircle2 },
+  paid:       { color: 'bg-emerald-100 text-emerald-800', label: 'Pagado',  labelKey: 'status.paid',       icon: DollarSign },
+  overdue:    { color: 'bg-red-100 text-red-800',      label: 'Vencido',    labelKey: 'status.overdue',    icon: AlertTriangle },
+  cancelled:  { color: 'bg-gray-100 text-gray-800',    label: 'Cancelado',  labelKey: 'status.cancelled',  icon: XCircle },
 }
 
 export const LICENSE_STATUS_CONFIG: Record<string, {

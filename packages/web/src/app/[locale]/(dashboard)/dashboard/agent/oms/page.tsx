@@ -8,7 +8,7 @@
  * batch operations, filter by status + fee_type.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ClipboardList, Clock, CheckCircle2, Search,
   ChevronLeft, ChevronRight, RefreshCw, XCircle, DollarSign,
@@ -97,6 +97,31 @@ export default function OMSAgentDashboardPage() {
   // Items are already server-side filtered — no client-side filtering needed
   const filteredItems = queue?.items ?? []
 
+  // Group by license (company) for compact display — agents process per company
+  const groupedItems = useMemo(() => {
+    const groups: { key: string; company: string; reg: string; zone: string; items: AgentQueueItem[]; totalAmount: number }[] = []
+    const map = new Map<string, typeof groups[0]>()
+    for (const item of filteredItems) {
+      const key = item.license_id || item.id
+      let group = map.get(key)
+      if (!group) {
+        group = {
+          key,
+          company: item.company_name || '—',
+          reg: item.company_registration_number || item.company_nif || '',
+          zone: item.zone_code || '',
+          items: [],
+          totalAmount: 0,
+        }
+        map.set(key, group)
+        groups.push(group)
+      }
+      group.items.push(item)
+      group.totalAmount += (item.amount || 0) + (item.penalty_amount || 0)
+    }
+    return groups
+  }, [filteredItems])
+
   const totalPages = queue ? Math.ceil(queue.total / PAGE_SIZE) : 0
 
   // Selection
@@ -139,7 +164,7 @@ export default function OMSAgentDashboardPage() {
 
   const handleBatchProcess = async () => {
     if (selected.size === 0) return
-    if (!window.confirm(`Procesar ${selected.size} obligaciones?`)) return
+    if (!window.confirm(t('queue.batchConfirm', { count: selected.size }))) return
     setProcessing(true)
     try {
       await omsQueueApi.batchProcess(Array.from(selected))
@@ -255,9 +280,9 @@ export default function OMSAgentDashboardPage() {
           <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder={t('queue.allFeeTypes')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('queue.allFeeTypes')}</SelectItem>
-            <SelectItem value="tesoro">Tesoro</SelectItem>
-            <SelectItem value="municipal">Municipal</SelectItem>
-            <SelectItem value="chamber">Cámara</SelectItem>
+            <SelectItem value="tesoro">{t('queue.feeTypeTesoro', { defaultValue: 'Tesoro' })}</SelectItem>
+            <SelectItem value="municipal">{t('queue.feeTypeMunicipal', { defaultValue: 'Municipal' })}</SelectItem>
+            <SelectItem value="chamber">{t('queue.feeTypeChamber', { defaultValue: 'Cámara' })}</SelectItem>
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{queue?.total ?? 0}</span>
@@ -277,7 +302,7 @@ export default function OMSAgentDashboardPage() {
         </div>
       )}
 
-      {/* Queue Table */}
+      {/* Queue Table — grouped by license (company) */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -286,82 +311,120 @@ export default function OMSAgentDashboardPage() {
                 <TableHead className="w-[40px]">
                   <Checkbox checked={allSelected && filteredItems.length > 0} onCheckedChange={toggleSelectAll} />
                 </TableHead>
-                <TableHead className="text-xs">Empresa</TableHead>
-                <TableHead className="text-xs w-[90px]">Tipo tasa</TableHead>
-                <TableHead className="text-xs w-[90px] text-right">Monto</TableHead>
-                <TableHead className="text-xs w-[80px]">Vence</TableHead>
-                <TableHead className="text-xs w-[80px]">Estado</TableHead>
-                <TableHead className="text-xs w-[120px]">Acciones</TableHead>
+                <TableHead className="text-xs">{t('queue.company')}</TableHead>
+                <TableHead className="text-xs w-[90px]">{t('queue.feeType')}</TableHead>
+                <TableHead className="text-xs w-[90px] text-right">{t('queue.amount')}</TableHead>
+                <TableHead className="text-xs w-[80px]">{t('queue.dueDate')}</TableHead>
+                <TableHead className="text-xs w-[80px]">{t('queue.status')}</TableHead>
+                <TableHead className="text-xs w-[120px]">{t('queue.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">...</TableCell></TableRow>
-              ) : filteredItems.length === 0 ? (
+              ) : groupedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p>{t('queue.noObligations')}</p>
                   </TableCell>
                 </TableRow>
-              ) : filteredItems.map(item => {
-                const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending
+              ) : groupedItems.map(group => {
+                const groupAllSelected = group.items.every(i => selected.has(i.id))
+                const toggleGroup = () => {
+                  const next = new Set(selected)
+                  if (groupAllSelected) group.items.forEach(i => next.delete(i.id))
+                  else group.items.forEach(i => next.add(i.id))
+                  setSelected(next)
+                }
                 return (
-                  <TableRow key={item.id}>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selected.has(item.id)}
-                        onCheckedChange={() => {
-                          const next = new Set(selected)
-                          next.has(item.id) ? next.delete(item.id) : next.add(item.id)
-                          setSelected(next)
-                        }} />
-                    </TableCell>
-                    <TableCell className="text-xs font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[160px]">{item.company_name || '—'}</span>
-                      </div>
-                      <div className="ml-5 text-[10px] text-muted-foreground">
-                        <span className="font-mono">{item.company_nif || item.company_registration_number || ''}</span>
-                        {item.zone_code && <span className="ml-1.5">{item.zone_code}</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <Badge variant="outline" className="text-[10px] uppercase">{item.fee_type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-right font-mono">
-                      {fmtXAF(item.amount, locale)}
-                      {item.penalty_amount > 0 && (
-                        <span className="block text-[10px] text-red-500">+{fmtXAF(item.penalty_amount, locale)}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs">{item.due_date || '—'}</TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] gap-1 ${cfg.color}`}>
-                        <cfg.icon className="h-3 w-3" />{cfg.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.viewDetail')}
-                          onClick={() => openDetail(item)}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.processWithNotes')}
-                          onClick={() => { setDetailItem(item); setProcessNotes('') }}>
-                          <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.process')}
-                          onClick={() => handleProcess(item.id)}>
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.reject')}
-                          onClick={() => handleReject(item.id)}>
-                          <XCircle className="h-3.5 w-3.5 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <Fragment key={group.key}>
+                    {/* Company header row */}
+                    <TableRow className="bg-muted/30 hover:bg-muted/50">
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={groupAllSelected} onCheckedChange={toggleGroup} />
+                      </TableCell>
+                      <TableCell colSpan={2} className="text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{group.company}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{group.reg}</span>
+                          {group.zone && <Badge variant="secondary" className="text-[10px] h-4 px-1">{group.zone}</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-mono font-bold">
+                        {fmtXAF(group.totalAmount, locale)}
+                      </TableCell>
+                      <TableCell />
+                      <TableCell className="text-xs text-muted-foreground">
+                        {group.items.length} obl.
+                      </TableCell>
+                      <TableCell>
+                        {group.items.length > 1 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                            onClick={() => {
+                              group.items.forEach(i => {
+                                const next = new Set(selected)
+                                group.items.forEach(it => next.add(it.id))
+                                setSelected(next)
+                              })
+                            }}>
+                            <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    {/* Obligation sub-rows */}
+                    {group.items.map(item => {
+                      const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending
+                      return (
+                        <TableRow key={item.id} className="border-l-2 border-l-muted">
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            <Checkbox checked={selected.has(item.id)}
+                              onCheckedChange={() => {
+                                const next = new Set(selected)
+                                next.has(item.id) ? next.delete(item.id) : next.add(item.id)
+                                setSelected(next)
+                              }} />
+                          </TableCell>
+                          <TableCell className="text-xs pl-8 text-muted-foreground" colSpan={1}>
+                            {item.service_name || '—'}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant="outline" className="text-[10px] uppercase">{item.fee_type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-right font-mono">
+                            {fmtXAF(item.amount, locale)}
+                            {item.penalty_amount > 0 && (
+                              <span className="block text-[10px] text-red-500">+{fmtXAF(item.penalty_amount, locale)}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">{item.due_date || '—'}</TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] gap-1 ${cfg.color}`}>
+                              <cfg.icon className="h-3 w-3" />{t(cfg.labelKey, { defaultValue: cfg.label })}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.viewDetail')}
+                                onClick={() => openDetail(item)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.process')}
+                                onClick={() => handleProcess(item.id)}>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.reject')}
+                                onClick={() => handleReject(item.id)}>
+                                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </Fragment>
                 )
               })}
             </TableBody>
