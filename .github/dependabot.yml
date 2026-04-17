@@ -6,8 +6,7 @@ updates:
       interval: "weekly"
       day: "monday"
     labels:
-      - "type:debt"
-      - "app:backend"
+      - "dependencies"
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
@@ -18,8 +17,7 @@ updates:
       interval: "weekly"
       day: "monday"
     labels:
-      - "type:debt"
-      - "app:frontend"
+      - "dependencies"
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
@@ -29,8 +27,7 @@ updates:
     schedule:
       interval: "monthly"
     labels:
-      - "type:debt"
-      - "app:mobile"
+      - "dependencies"
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 3
@@ -40,8 +37,7 @@ updates:
     schedule:
       interval: "monthly"
     labels:
-      - "type:debt"
-      - "app:inspector"
+      - "dependencies"
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 3
@@ -51,7 +47,7 @@ updates:
     schedule:
       interval: "weekly"
     labels:
-      - "type:debt"
+      - "dependencies"
     commit-message:
       prefix: "chore(ci)"
     open-pull-requests-limit: 5

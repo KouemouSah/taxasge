@@ -266,6 +266,44 @@
         '</div>' +
       '</div>';
     }).join('');
+
+    // Build overall progress chart
+    buildProgressChart();
+  }
+
+  // ---------- 3b. Overall Progress Mini-Rings ----------
+  function buildProgressChart() {
+    var overall = $('#overall-pct');
+    var container = $('#progress-rings');
+    if (!container) return;
+
+    // Calculate overall average
+    var total = 0;
+    MILESTONE_DATA.forEach(function (m) { total += m.pct; });
+    var avg = Math.round(total / MILESTONE_DATA.length);
+    if (overall) overall.textContent = avg + '%';
+
+    // Generate mini SVG rings for top 5 milestones
+    var topItems = MILESTONE_DATA.slice(0, 5);
+    container.innerHTML = topItems.map(function (m) {
+      var r = 18;
+      var circ = 2 * Math.PI * r;
+      var offset = circ - (m.pct / 100) * circ;
+      var color = m.state === 'closed' ? '#009A44' :
+                  m.pct >= 75 ? '#0062A5' :
+                  m.pct >= 30 ? '#B8860B' : '#D1D5DB';
+
+      return '<div class="progress-ring-item">' +
+        '<svg width="44" height="44" viewBox="0 0 44 44">' +
+          '<circle cx="22" cy="22" r="' + r + '" fill="none" stroke="#E5E7EB" stroke-width="3"/>' +
+          '<circle cx="22" cy="22" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="3" ' +
+            'stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" stroke-linecap="round"/>' +
+          '<text x="22" y="22" text-anchor="middle" dominant-baseline="central" ' +
+            'font-size="10" font-weight="700" fill="' + color + '" style="transform:rotate(90deg);transform-origin:center">' + m.pct + '</text>' +
+        '</svg>' +
+        '<span class="progress-ring-label">' + m.name.replace('M' + (MILESTONE_DATA.indexOf(m) + 1) + ' ', '') + '</span>' +
+      '</div>';
+    }).join('');
   }
 
   // ---------- 4. Recent Commits (with type colorization) ----------

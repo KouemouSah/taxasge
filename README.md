@@ -196,6 +196,61 @@ graph LR
 
 ---
 
+## Agent Intelligence & Data Analytics
+
+### Smart Assignment Engine
+
+Incoming service requests are automatically assigned to the optimal agent based on:
+
+```mermaid
+graph LR
+    SR["📥 New Request"] --> RULES["📋 Assignment Rules"]
+    RULES --> CAP["👤 Agent Capacity"]
+    RULES --> SPEC["🎯 Specialization Match"]
+    RULES --> SLA["⏱️ SLA Priority Score"]
+    CAP & SPEC & SLA --> ASSIGN["✅ Auto-Assignment"]
+    ASSIGN --> QUEUE["📊 Agent Work Queue"]
+```
+
+- **Capacity-based**: Real-time workload balancing across 100+ agents, 20 entities
+- **Specialization**: Agent-entity-workflow matching (e.g., passport specialist at CNEDOGE)
+- **SLA scoring**: Dynamic priority based on complexity, amount, deadline, and escalation level
+- **Reassignment**: Automatic redistribution when agents go on leave or become overloaded
+
+### Agent Dashboards with Native Analytics
+
+Each of the 47 roles has a tailored dashboard with embedded data analytics:
+
+| Dashboard | Analytics Features |
+|-----------|-------------------|
+| **Agent** | Work queue with SLA countdown, document validation stats, decision history, performance metrics |
+| **Supervisor** | Team workload heatmap, agent performance comparison, SLA compliance rates, escalation trends |
+| **Treasury** | Revenue tracking per entity, payment validation rates, collection analytics, multi-entity reconciliation |
+| **Admin** | System-wide KPIs, role usage analytics, audit log analysis, entity performance benchmarks |
+
+### Automated Document Authentication
+
+The platform verifies document authenticity at multiple levels:
+
+- **OCR cross-validation**: Extracted data compared against form input and database records
+- **Schema integrity**: 70+ JSON rules per document type enforce required fields, formats, and expiration dates
+- **Risk scoring**: 12-step RiskAnalyzer flags anomalies (inconsistent dates, invalid signatures, expired documents)
+- **MRZ validation**: ICAO 9303 compliant Machine Readable Zone verification for passports and identity documents
+- **Document hash registry**: Detects duplicate submissions and tracks document lineage
+
+### Report Generation
+
+Automated report generation for different profiles:
+
+| Profile | Reports |
+|---------|---------|
+| **Agent** | Daily work summary, decision audit trail, pending actions |
+| **Supervisor** | Weekly team performance, SLA compliance report, workload distribution |
+| **Entity Head** | Monthly entity metrics, revenue reports, processing time analytics |
+| **Admin** | System health report, security audit summary, user activity analytics |
+
+---
+
 ## Workflow Engine
 
 36 predefined business workflows, fully configurable per country deployment:
@@ -464,13 +519,19 @@ Facil is designed to serve **millions of citizens** and **100+ concurrent govern
 
 **KOUEMOU SAH Jean Emac**
 
-Full-Stack Developer & AI Solutions Architect
+Full-Stack Developer | AI Solutions Architect | Digital Transformation Consultant
 
-Specializing in building and deploying AI-powered tools for:
-- **Document-to-data transformation at scale** — Converting physical documents (contracts, invoices, government forms, identity papers) into structured digital data using OCR, template-based extraction, and AI classification
-- **AI workflow automation** — Complete document processing pipelines from OCR scanning to natural language querying with automated structuring
-- **Compliance monitoring & risk management** — Automated audit trails, sensitive data masking, retention policies, and full traceability
-- **Pattern detection & data validation** — AI-driven insights from scanned documents: recurring patterns, cross-reference validation, and enterprise search
+Building and deploying AI-powered enterprise solutions:
+
+| Domain | Capabilities |
+|--------|-------------|
+| **Business Workflow Automation** | Designing and implementing end-to-end digital workflows that replace manual administrative processes, from citizen request intake to multi-level government approval chains |
+| **Custom AI Agent Development** | Building specialized AI agents tailored to business needs — domain-specific tools, role-based access, confidentiality controls, and self-improving reasoning chains |
+| **Document Intelligence at Scale** | OCR pipelines transforming physical documents into structured data — template-based extraction, AI classification, cross-validation, and compliance verification |
+| **Digital Transformation Leadership** | Leading organizations through digital adoption — process analysis, technology selection, phased implementation, change management, and stakeholder alignment |
+| **AI Model Deployment** | Training, fine-tuning, and deploying AI models across environments (cloud, edge, on-premise) — RAG systems, embedding pipelines, and production monitoring |
+| **Team Training & Enablement** | Upskilling teams on AI agent creation, prompt engineering, workflow automation tools, and data-driven decision making |
+| **Compliance & Risk Management** | Automated audit trails, document authentication, risk scoring, sensitive data handling, and regulatory compliance frameworks |
 
 Email: kouemou.sah@gmail.com | GitHub: [@KouemouSah](https://github.com/KouemouSah)
 
