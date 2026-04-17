@@ -1,0 +1,172 @@
+[
+  {
+    "number": 1,
+    "title": "🛠️ Infrastructure Foundation",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 2,
+    "due_on": "2025-07-22T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 2,
+    "title": "🐍 Backend & API Excellence",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 2,
+    "due_on": "2025-12-01T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 3,
+    "title": "📱 Mobile App Critical Path",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 1,
+    "due_on": "2025-12-08T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 4,
+    "title": "🌐 Dashboard Excellence",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 1,
+    "due_on": "2025-12-01T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 5,
+    "title": "🚀 Production Ready",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 0,
+    "due_on": "2026-03-10T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 6,
+    "title": "💳 Business Integration",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 0,
+    "due_on": "2026-04-21T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 7,
+    "title": "🐍 Backend API Excellence",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 0,
+    "due_on": "2025-12-29T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 8,
+    "title": "📱 Mobile Critical Path",
+    "state": "closed",
+    "description": "[ARCHIVED] Closed during ITIL/PMP repository restructuring (2026-04-17). Replaced by new milestone structure.",
+    "open_issues": 0,
+    "closed_issues": 0,
+    "due_on": "2026-02-10T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 9,
+    "title": "M1: Infrastructure & Architecture Foundation [ITIL: Service Strategy]",
+    "state": "closed",
+    "description": "## Phase: COMPLETED (100%)\n\n### ITIL: Service Strategy | PMP: Initiating\n\nCore platform infrastructure enabling all subsequent development phases.\n\n### Delivered Components\n- PostgreSQL database: 145 tables, 50 enums (Supabase)\n- Google Cloud Run: backend + frontend auto-scaling services\n- 6 GitHub Actions CI/CD workflows (test, deploy, build)\n- Firebase Hosting + Supabase Storage integration\n- Redis cache (Upstash) with HybridCache fallback\n- Docker containerization for Cloud Run deployment\n- 299 database migrations framework\n- Multi-environment config (dev/staging/production)\n\n### Key Metrics\n- First commit: 2025-07-22\n- Infrastructure complete: 2025-09-30\n- Workflows: CI, Deploy Backend, Deploy Frontend, Mobile Build, Inspector Build, Inspector CI",
+    "open_issues": 0,
+    "closed_issues": 1,
+    "due_on": "2025-09-29T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 10,
+    "title": "M2: Core Backend API — 30 Modules [ITIL: Service Design]",
+    "state": "closed",
+    "description": "## Phase: COMPLETED (100%)\n\n### ITIL: Service Design | PMP: Executing\n\nFull backend API implementation with 30 modules following 3-tier architecture.\n\n### Architecture: API Layer -> Service Layer -> Repository Layer -> Database\n\n### Delivered Components\n- 30 backend modules, 31 API routers\n- Auth: JWT (30min/30d) + 2FA TOTP + bcrypt (12 rounds)\n- RBAC: 47 roles, 335 permissions, per-user overrides, audit trail\n- 873 fiscal services across 21 ministries\n- 36 predefined business workflows (v2 engine)\n- Payment processing: BANGE (mobile money, card, bank transfer)\n- Communications: 29 email, 31 SMS, 9 push, 16 in-app templates\n- Async database layer: asyncpg connection pooling\n- Pydantic v2 strict validation on all models\n\n### Key Metrics\n- API endpoints: 100+\n- Database tables: 145\n- Permissions: 335\n- Communication templates: 85",
+    "open_issues": 0,
+    "closed_issues": 4,
+    "due_on": "2026-01-14T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 11,
+    "title": "M3: Frontend Dashboard — 41+ Modules [ITIL: Service Design]",
+    "state": "closed",
+    "description": "## Phase: COMPLETED (95%)\n\n### ITIL: Service Design | PMP: Executing\n\nFull frontend dashboard with 41+ modules for all user roles.\n\n### Architecture: Next.js 14 App Router + React Query + Zustand + Shadcn/UI\n\n### Delivered Components\n- 41+ frontend modules with App Router and i18n routing\n- Role-based dashboards: admin, agent, supervisor, citizen\n- Service request wizard (multi-step, cache-first architecture)\n- Trilingual i18n: Spanish, French, English (11,400+ keys per locale)\n- Shadcn/UI component library with Tailwind CSS design system\n- React Query for server state, Zustand for client state\n- Dynamic menu configuration per role and entity\n- Bundle workflow UI for commercial inspections",
+    "open_issues": 0,
+    "closed_issues": 1,
+    "due_on": "2026-02-27T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 12,
+    "title": "M4: Mobile & Inspector Applications [ITIL: Service Transition]",
+    "state": "open",
+    "description": "## Phase: IN PROGRESS (85%)\n\n### ITIL: Service Transition | PMP: Executing\n\nTwo mobile applications: Citizen app + Inspector field agent app.\n\n### Citizen App (Expo SDK 54 / React Native / Paper MD3)\nCompleted: P0 Architecture, P1 Auth, P2 Dashboard + Listings + Services\nRemaining: P3 Wizard, P4 Chat + Push, P5 Store submission\n\n### Inspector App (Expo SDK 54 / React Native)\nCompleted: P1-P5 (Auth, Dashboard, QR Scanning, Document Capture, Offline, Supervisor)\nRemaining: P6 Polish (loading skeletons, haptic feedback, MD3 animations)\n\n### Distribution Channels\n- Expo.dev: Beta testing with shareable links\n- GitHub Releases: APK artifacts per build\n- Google Play Store: Planned for production",
+    "open_issues": 2,
+    "closed_issues": 0,
+    "due_on": "2026-06-29T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 13,
+    "title": "M5: AI, OCR & Document Intelligence [ITIL: Service Transition]",
+    "state": "closed",
+    "description": "## Phase: COMPLETED (90%)\n\n### ITIL: Service Transition | PMP: Executing\n\nAI-powered chatbot and document intelligence system.\n\n### RAG Chatbot Pipeline\nUser Query -> Embedding (text-embedding-004) -> Hybrid Search (70% semantic + 30% full-text) -> Context Assembly -> Gemini 2.5 Flash (35 tools) -> Self-Reflection (score < 5 regenerates) -> Response (15 formats)\n\n### OCR Pipeline\nDocument Upload -> Template Matching (39 schemas) -> Field Extraction (bounding boxes) -> Schema Validation (70+ rules) -> Risk Analysis (12 steps) -> Structured Data\n\n### Delivered\n- Gemini 2.5 Flash RAG chatbot: 35 tools, self-reflection, 15 formats\n- 39 OCR document schemas with template-based extraction\n- SchemaValidationEngine: 70+ JSON rules\n- RiskAnalyzer: 12-step pipeline\n- pgvector: 768-dim embeddings, hybrid search\n- OWASP security: prompt injection detection (30+ patterns)",
+    "open_issues": 0,
+    "closed_issues": 1,
+    "due_on": "2026-03-14T00:00:00Z",
+    "progress": 100
+  },
+  {
+    "number": 14,
+    "title": "M6: Bundle Workflow & Field Inspections [ITIL: Service Transition]",
+    "state": "open",
+    "description": "## Phase: IN PROGRESS (75%)\n\n### ITIL: Service Transition | PMP: Executing\n\nCommercial license bundle workflow with multi-entity validation and field inspections.\n\n### Bundle Payment Flow\nCommercial License -> AI Classification -> Zone Resolution (Levenshtein) -> Obligation Generation -> Multi-Entity Validation (TESORO + AYUNTAMIENTO + CAMARA) -> Payment -> Receipt PDF\n\n### Concurrency: Pessimistic Locking\nLock Order: commercial_licenses (FOR UPDATE) -> service_requests (partial unique index) -> license_obligations (batch UPDATE) -> service_payments (INSERT)\nTransaction timeouts: lock_timeout=3s, statement_timeout=5s\n\n### Completed (Phase 8: 13 commits)\nMulti-entity validation flow, receipt generation, security leak fix, MVCC race fix, city routing, widget scoping, queue_stats bundle-aware, staging reset script\n\n### Remaining (Phase 9)\nMIN_* entity stats, 409 concurrency guard, UI1-UI9 polish, citizen bundle page, email parity, agent workload display",
+    "open_issues": 1,
+    "closed_issues": 0,
+    "due_on": "2026-07-30T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 15,
+    "title": "M7: Testing & Quality Assurance [ITIL: Service Transition]",
+    "state": "open",
+    "description": "## Phase: IN PROGRESS (30%)\n\n### ITIL: Service Transition | PMP: Monitoring and Controlling\n\nQuality assurance covering all critical business flows.\n\n### Test Strategy\n- Unit Tests: Pydantic model validation, utility functions\n- Integration Tests: Real database (NO mocks - project rule), asyncpg\n- E2E Tests: Playwright for frontend critical paths\n- Security: OWASP Top 10 assessment, penetration testing\n- Performance: Load testing (1M citizens, 100+ concurrent agents)\n\n### Coverage Targets\n- Critical paths (auth, payments, workflows): 80%+\n- API endpoints (31 routers): Contract tests\n- RBAC (335 permissions): Enforcement verification\n- OCR (39 schemas): Extraction accuracy\n\n### Also includes\n- RAG chatbot Phase 2-3 bugfix and production hardening\n- Security audit with OWASP Top 10 mapping",
+    "open_issues": 3,
+    "closed_issues": 0,
+    "due_on": "2026-08-30T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 16,
+    "title": "M8: Production Release v1.0 [ITIL: Service Operation]",
+    "state": "open",
+    "description": "## Phase: PLANNED (10%)\n\n### ITIL: Service Operation | PMP: Closing\n\nProduction deployment and operational readiness.\n\n### Deployment Architecture\nStaging (current): Cloud Run us-central1, 0-10 instances, Supabase shared\nProduction (target): Dedicated Cloud Run, Cloud SQL or dedicated Supabase, CDN, monitoring\n\n### Deliverables\n- Production Cloud Run services with blue-green deployment\n- Dedicated production database with backup/DR\n- SSL/TLS and CDN configuration\n- Monitoring: uptime (99.5% SLA), latency (<500ms alert), error rate (<1%)\n- Incident response runbook and on-call procedures\n- User documentation and agent training materials (100+ agents)\n- Mobile app store submissions (Google Play)",
+    "open_issues": 2,
+    "closed_issues": 0,
+    "due_on": "2026-10-30T00:00:00Z",
+    "progress": 0
+  },
+  {
+    "number": 17,
+    "title": "M9: Continuous Improvement [ITIL: CSI]",
+    "state": "open",
+    "description": "## Phase: PLANNED (0%)\n\n### ITIL: Continual Service Improvement | PMP: Ongoing\n\nPost-launch optimization and platform evolution.\n\n### Performance Optimization\n- Database: query profiling, index optimization, partitioning\n- API: response time <200ms, N+1 elimination, cursor pagination\n- Cache: Redis TTL tuning, hot-path preloading\n- Infrastructure: Cloud Run sizing, CDN, read replicas if needed\n\n### New Channels\n- WhatsApp Business API integration\n- USSD channels (Getesa, Muni operators)\n- Multi-channel notification routing with fallback\n\n### Multi-Country Framework\nPrepare Facil for deployment to additional countries:\nCountry-agnostic configuration -> Government structure template -> Payment gateway abstraction -> Locale and legal framework config -> Multi-tenant architecture",
+    "open_issues": 3,
+    "closed_issues": 0,
+    "due_on": "2026-12-30T00:00:00Z",
+    "progress": 0
+  }
+]

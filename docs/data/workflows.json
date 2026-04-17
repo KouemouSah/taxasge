@@ -1,0 +1,62 @@
+[
+  {
+    "id": 189540984,
+    "name": "pages-build-deployment",
+    "state": "active",
+    "path": "dynamic/pages/pages-build-deployment"
+  },
+  {
+    "id": 200612638,
+    "name": "CI - Tests Backend & Frontend",
+    "state": "active",
+    "path": ".github/workflows/ci.yml"
+  },
+  {
+    "id": 210698113,
+    "name": "Deploy Backend to Staging",
+    "state": "active",
+    "path": ".github/workflows/deploy-backend-staging.yml"
+  },
+  {
+    "id": 210698114,
+    "name": "Deploy Frontend to Staging",
+    "state": "active",
+    "path": ".github/workflows/deploy-frontend-staging.yml"
+  },
+  {
+    "id": 254942781,
+    "name": "Mobile CI/CD",
+    "state": "active",
+    "path": ".github/workflows/mobile-build.yml"
+  },
+  {
+    "id": 255916928,
+    "name": "Inspector Build",
+    "state": "active",
+    "path": ".github/workflows/inspector-build.yml"
+  },
+  {
+    "id": 256352011,
+    "name": "Inspector CI",
+    "state": "active",
+    "path": ".github/workflows/inspector-ci.yml"
+  },
+  {
+    "id": 262443698,
+    "name": "CodeQL Security Analysis",
+    "state": "active",
+    "path": ".github/workflows/codeql.yml"
+  },
+  {
+    "id": 262443701,
+    "name": "Update Dashboard Data",
+    "state": "active",
+    "path": ".github/workflows/update-dashboard.yml"
+  },
+  {
+    "id": 262443757,
+    "name": "Dependabot Updates",
+    "state": "active",
+    "path": "dynamic/dependabot/dependabot-updates"
+  }
+]
