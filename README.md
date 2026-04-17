@@ -93,6 +93,75 @@ facil/
 └── .github/           6 CI/CD workflows + security scanning
 ```
 
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Clients
+        WEB[Web Dashboard<br>Next.js 14]
+        MOB[Citizen App<br>Expo SDK 54]
+        INS[Inspector App<br>Expo SDK 54]
+    end
+
+    subgraph Cloud Run
+        API[FastAPI Backend<br>30 Modules - 31 Routers]
+    end
+
+    subgraph Services
+        AUTH[Auth Service<br>JWT + 2FA TOTP]
+        WF[Workflow Engine<br>36 Workflows]
+        PAY[Payment Service<br>BANGE Integration]
+        CHAT[RAG Chatbot<br>Gemini 2.5 Flash]
+        OCR[OCR Pipeline<br>39 Document Schemas]
+        RBAC[RBAC Engine<br>47 Roles - 335 Perms]
+    end
+
+    subgraph Data Layer
+        PG[(PostgreSQL<br>145 Tables - 50 Enums)]
+        REDIS[(Redis Cache<br>Upstash)]
+        VEC[(pgvector<br>768-dim Embeddings)]
+        STORE[(Supabase Storage<br>Documents)]
+    end
+
+    subgraph CI/CD
+        GHA[GitHub Actions<br>6 Workflows]
+        CR[Google Cloud Run<br>Auto-scaling 0-10]
+    end
+
+    WEB & MOB & INS --> API
+    API --> AUTH & WF & PAY & CHAT & OCR & RBAC
+    AUTH & WF & PAY --> PG
+    CHAT --> VEC
+    RBAC --> REDIS
+    OCR --> STORE
+    GHA --> CR
+```
+
+### Backend 3-Tier Architecture
+
+```mermaid
+graph LR
+    subgraph API Layer
+        R[FastAPI Routers<br>31 Endpoints]
+    end
+
+    subgraph Service Layer
+        S[Business Logic<br>Validation - Rules]
+    end
+
+    subgraph Repository Layer
+        D[asyncpg Queries<br>Parameterized SQL]
+    end
+
+    subgraph Database
+        PG[(PostgreSQL<br>Supabase)]
+    end
+
+    R -->|Pydantic Models| S
+    S -->|Domain Logic| D
+    D -->|Connection Pool| PG
+```
+
 ### Technology Stack
 
 | Layer | Technology | Purpose |
@@ -167,6 +236,39 @@ facil/
 
 Each workflow defines: required documents, OCR schemas, validation rules, appointment requirements, fee calculation methods, entity routing, and approval chains.
 
+### Workflow State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft : Citizen creates
+    Draft --> Submitted : Submit request
+    Submitted --> Processing : Agent picks up
+    Processing --> Accepted : Agent approves
+    Processing --> Rejected : Agent rejects
+    Processing --> DocumentsRequested : Need more docs
+    DocumentsRequested --> Processing : Docs provided
+    Accepted --> PaymentPending : Fee required
+    PaymentPending --> Completed : Payment confirmed
+    Accepted --> Completed : No fee
+    Rejected --> Amended : Citizen corrects
+    Amended --> Processing : Re-submit
+    Completed --> [*]
+```
+
+### Service Request Wizard Flow
+
+```mermaid
+graph LR
+    S[Selection] --> U[Document Upload]
+    U --> F1[Form Review 1]
+    F1 --> F2[Form Review 2..N]
+    F2 --> A{Appointment?}
+    A -->|Yes| AP[Slot Selection]
+    A -->|No| P[Payment]
+    AP --> P
+    P --> C[Confirmation]
+```
+
 ---
 
 ## Database Schema
@@ -198,17 +300,39 @@ Each workflow defines: required documents, OCR schemas, validation rules, appoin
 - **Formats**: 15 autonomous response formats (table, comparison, step-by-step, etc.)
 - **Security**: OWASP-hardened — prompt injection detection (30+ patterns), rate limiting, XSS prevention
 
-### OCR Pipeline
+### RAG Chatbot Pipeline
+
+```mermaid
+graph LR
+    Q[User Query] --> EMB[Embedding<br>text-embedding-004]
+    EMB --> HS{Hybrid Search}
+    HS -->|70%| SEM[Semantic Search<br>pgvector cosine]
+    HS -->|30%| FTS[Full-Text Search<br>tsvector]
+    SEM & FTS --> CTX[Context Assembly]
+    CTX --> GEM[Gemini 2.5 Flash<br>+ 35 Tools]
+    GEM --> REF{Self-Reflection<br>Score >= 5?}
+    REF -->|Yes| RES[Response<br>15 Formats]
+    REF -->|No| GEM
+```
+
+### OCR Document Intelligence Pipeline
+
+```mermaid
+graph LR
+    DOC[Document Upload] --> TM[Template Matching<br>39 Schemas]
+    TM --> FE[Field Extraction<br>Bounding Boxes]
+    FE --> SV[Schema Validation<br>70+ JSON Rules]
+    SV --> RA[Risk Analyzer<br>12 Steps]
+    RA --> SD[Structured Data<br>JSON Output]
+    SD --> CL[AI Classification<br>Gemini 2.5 Flash]
+```
+
+### OCR Capabilities
 - **39 document schemas** covering identity documents, contracts, vehicle registrations, tax forms
-- **Template-based extraction**: Field coordinates mapped to JSON schemas
+- **Template-based extraction**: Field coordinates mapped to JSON schemas with bounding box annotation
 - **Validation engine**: SchemaValidationEngine (70+ JSON rules) + RiskAnalyzer (12 steps)
 - **Layout preservation**: Extracts structured text from PDFs while maintaining spatial relationships
-- **Bounding box annotation**: Zone-level annotation for document fields
-
-### Document Classification
-- AI-powered commerce type classification for bundle workflows
-- Automatic zone resolution with fuzzy matching (Levenshtein distance)
-- Cross-document validation and data consistency checks
+- **AI classification**: Commerce type detection, zone resolution (Levenshtein fuzzy matching), cross-document validation
 
 ---
 
@@ -285,6 +409,16 @@ Backend requires `packages/backend/.env`:
 ---
 
 ## Security
+
+```mermaid
+graph LR
+    REQ[Client Request] --> RL[Rate Limiter<br>Per-IP + Per-User]
+    RL --> JWT[JWT Validation<br>30min Access Token]
+    JWT --> RBAC[RBAC Check<br>335 Permissions]
+    RBAC --> HANDLER[Route Handler<br>Pydantic Validation]
+    HANDLER --> AUDIT[Audit Logger<br>2800+ Entries]
+    HANDLER --> DB[asyncpg<br>Parameterized SQL]
+```
 
 | Measure | Implementation |
 |---------|---------------|
