@@ -103,6 +103,8 @@ export interface StructuredApiError {
   isServerError: boolean;
   /** True when the client should offer a retry CTA */
   isRetryable: boolean;
+  /** Raw backend detail object (for extracting extra fields like existing_request_id) */
+  raw?: Record<string, unknown>;
 }
 
 type SupportedLocale = 'es' | 'fr' | 'en';
@@ -165,6 +167,7 @@ export function extractApiError(
         isNetworkError: false,
         isServerError,
         isRetryable: isServerError || RETRYABLE_STATUSES.has(status),
+        raw: d,
       };
     }
 

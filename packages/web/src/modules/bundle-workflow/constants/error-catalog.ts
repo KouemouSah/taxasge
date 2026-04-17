@@ -11,7 +11,7 @@
  * Plan: .claude/plans/BUNDLE_DEBUG_PHASE3_PLAN.md §2.5
  */
 
-export type BundleErrorCtaType = 'retry' | 'back' | 'support' | 'inline' | 'none'
+export type BundleErrorCtaType = 'retry' | 'back' | 'support' | 'inline' | 'none' | 'view_request'
 
 export interface BundleErrorCatalogEntry {
   /** Short title shown above the message */
@@ -28,17 +28,17 @@ export const BUNDLE_ERROR_CATALOG: Record<string, BundleErrorCatalogEntry> = {
   // ── 409 — race conditions ─────────────────────────────────────
   PAYMENT_ALREADY_IN_PROGRESS: {
     title: {
-      es: 'Pago en curso',
-      fr: 'Paiement en cours',
-      en: 'Payment in progress',
+      es: 'Pago ya registrado',
+      fr: 'Paiement déjà enregistré',
+      en: 'Payment already registered',
     },
     hint: {
-      es: 'Ya existe una transacción activa para esta licencia. Espere unos segundos antes de reintentar.',
-      fr: 'Une transaction active existe déjà pour cette licence. Patientez quelques secondes avant de réessayer.',
-      en: 'An active transaction already exists for this license. Wait a few seconds before retrying.',
+      es: 'Su pago ya fue registrado exitosamente. Puede consultar el estado de su solicitud.',
+      fr: 'Votre paiement a déjà été enregistré avec succès. Vous pouvez consulter l\'état de votre demande.',
+      en: 'Your payment has already been registered successfully. You can check the status of your request.',
     },
-    cta: 'retry',
-    retryCooldownMs: 5000,
+    cta: 'view_request',
+    retryCooldownMs: 0,
   },
   OBLIGATION_RACE_CONDITION: {
     title: {

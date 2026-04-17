@@ -309,10 +309,17 @@ async def initiate_bundle_payment(
         return result
 
     except ValueError as e:
-        error_code = str(e).split(":")[0]
+        parts = str(e).split(":")
+        error_code = parts[0]
+        detail = _error_detail(error_code)
+        # For PAYMENT_ALREADY_IN_PROGRESS, include existing SR info
+        # so the frontend can redirect instead of showing a generic error
+        if error_code == "PAYMENT_ALREADY_IN_PROGRESS" and len(parts) >= 3:
+            detail["existing_request_id"] = parts[1]
+            detail["existing_reference"] = parts[2]
         raise HTTPException(
             status_code=_error_status(error_code),
-            detail=_error_detail(error_code),
+            detail=detail,
         )
 
 
