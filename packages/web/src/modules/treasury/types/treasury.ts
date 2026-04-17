@@ -102,6 +102,7 @@ export interface PendingPayment {
   // Joined data
   userName?: string;
   userEmail?: string;
+  userPhone?: string;
   beneficiaryName?: string;
   serviceName?: string;
   ministryName?: string;

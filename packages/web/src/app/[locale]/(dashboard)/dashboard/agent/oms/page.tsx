@@ -11,7 +11,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ClipboardList, Clock, CheckCircle2, Search,
-  ChevronLeft, ChevronRight, RefreshCw, XCircle, DollarSign,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw, XCircle, DollarSign,
   Building2, FileCheck, Eye, History,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +51,7 @@ export default function OMSAgentDashboardPage() {
   const [feeTypeFilter, setFeeTypeFilter] = useState('all')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [processing, setProcessing] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   // Detail panel
   const [detailItem, setDetailItem] = useState<AgentQueueItem | null>(null)
@@ -117,7 +118,7 @@ export default function OMSAgentDashboardPage() {
         groups.push(group)
       }
       group.items.push(item)
-      group.totalAmount += (item.amount || 0) + (item.penalty_amount || 0)
+      group.totalAmount += Number(item.amount || 0) + Number(item.penalty_amount || 0)
     }
     return groups
   }, [filteredItems])
@@ -312,26 +313,31 @@ export default function OMSAgentDashboardPage() {
                   <Checkbox checked={allSelected && filteredItems.length > 0} onCheckedChange={toggleSelectAll} />
                 </TableHead>
                 <TableHead className="text-xs">{t('queue.company')}</TableHead>
-                <TableHead className="text-xs w-[90px]">{t('queue.feeType')}</TableHead>
-                <TableHead className="text-xs w-[90px] text-right">{t('queue.amount')}</TableHead>
-                <TableHead className="text-xs w-[80px]">{t('queue.dueDate')}</TableHead>
-                <TableHead className="text-xs w-[80px]">{t('queue.status')}</TableHead>
+                <TableHead className="text-xs w-[110px] text-right">{t('queue.amount')}</TableHead>
+                <TableHead className="text-xs w-[95px]">{t('queue.dueDate')}</TableHead>
+                <TableHead className="text-xs w-[95px]">{t('queue.status')}</TableHead>
                 <TableHead className="text-xs w-[120px]">{t('queue.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">...</TableCell></TableRow>
               ) : groupedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p>{t('queue.noObligations')}</p>
                   </TableCell>
                 </TableRow>
               ) : groupedItems.map(group => {
                 const groupAllSelected = group.items.every(i => selected.has(i.id))
-                const toggleGroup = () => {
+                const isCollapsed = collapsedGroups.has(group.key)
+                const toggleCollapse = () => {
+                  const next = new Set(collapsedGroups)
+                  next.has(group.key) ? next.delete(group.key) : next.add(group.key)
+                  setCollapsedGroups(next)
+                }
+                const toggleGroupSelect = () => {
                   const next = new Set(selected)
                   if (groupAllSelected) group.items.forEach(i => next.delete(i.id))
                   else group.items.forEach(i => next.add(i.id))
@@ -339,13 +345,14 @@ export default function OMSAgentDashboardPage() {
                 }
                 return (
                   <Fragment key={group.key}>
-                    {/* Company header row */}
-                    <TableRow className="bg-muted/30 hover:bg-muted/50">
+                    {/* Company header row — clickable collapse */}
+                    <TableRow className="bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={toggleCollapse}>
                       <TableCell onClick={e => e.stopPropagation()}>
-                        <Checkbox checked={groupAllSelected} onCheckedChange={toggleGroup} />
+                        <Checkbox checked={groupAllSelected} onCheckedChange={toggleGroupSelect} />
                       </TableCell>
-                      <TableCell colSpan={2} className="text-xs font-medium">
+                      <TableCell className="text-xs font-medium">
                         <div className="flex items-center gap-1.5">
+                          {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                           <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="truncate">{group.company}</span>
                           <span className="text-[10px] text-muted-foreground font-mono">{group.reg}</span>
@@ -359,7 +366,7 @@ export default function OMSAgentDashboardPage() {
                       <TableCell className="text-xs text-muted-foreground">
                         {group.items.length} obl.
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
                         {group.items.length > 1 && (
                           <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
                             onClick={() => {
@@ -372,8 +379,8 @@ export default function OMSAgentDashboardPage() {
                         )}
                       </TableCell>
                     </TableRow>
-                    {/* Obligation sub-rows */}
-                    {group.items.map(item => {
+                    {/* Obligation sub-rows — collapsible */}
+                    {!isCollapsed && group.items.map(item => {
                       const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending
                       return (
                         <TableRow key={item.id} className="border-l-2 border-l-muted">
@@ -385,16 +392,13 @@ export default function OMSAgentDashboardPage() {
                                 setSelected(next)
                               }} />
                           </TableCell>
-                          <TableCell className="text-xs pl-8 text-muted-foreground" colSpan={1}>
+                          <TableCell className="text-xs pl-10 text-muted-foreground">
                             {item.service_name || '—'}
                           </TableCell>
-                          <TableCell className="text-xs">
-                            <Badge variant="outline" className="text-[10px] uppercase">{item.fee_type}</Badge>
-                          </TableCell>
                           <TableCell className="text-xs text-right font-mono">
-                            {fmtXAF(item.amount, locale)}
-                            {item.penalty_amount > 0 && (
-                              <span className="block text-[10px] text-red-500">+{fmtXAF(item.penalty_amount, locale)}</span>
+                            {fmtXAF(Number(item.amount), locale)}
+                            {Number(item.penalty_amount) > 0 && (
+                              <span className="block text-[10px] text-red-500">+{fmtXAF(Number(item.penalty_amount), locale)}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs">{item.due_date || '—'}</TableCell>

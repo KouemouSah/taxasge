@@ -3180,6 +3180,7 @@ class PendingPaymentResponse(BaseModel):
     user_id: str
     user_name: Optional[str] = None
     user_email: Optional[str] = None
+    user_phone: Optional[str] = None
     payment_method: str
     total_amount: float
     currency: str = "XAF"
@@ -3397,6 +3398,7 @@ async def get_pending_payments(
                 sp.user_id,
                 u.first_name || ' ' || u.last_name AS user_name,
                 u.email AS user_email,
+                u.phone AS user_phone,
                 sp.payment_method,
                 sp.total_amount,
                 sp.base_amount,
@@ -3484,6 +3486,7 @@ async def get_pending_payments(
                     user_id=str(row["user_id"]),
                     user_name=row["user_name"],
                     user_email=row["user_email"],
+                    user_phone=row.get("user_phone"),
                     payment_method=row["payment_method"],
                     total_amount=float(row["total_amount"]),
                     base_amount=float(row["base_amount"]) if row["base_amount"] else None,
@@ -3645,6 +3648,7 @@ async def get_my_payment_escalations(
                 sp.user_id,
                 u.first_name || ' ' || u.last_name AS user_name,
                 u.email AS user_email,
+                u.phone AS user_phone,
                 sp.payment_method,
                 sp.total_amount,
                 sp.base_amount,

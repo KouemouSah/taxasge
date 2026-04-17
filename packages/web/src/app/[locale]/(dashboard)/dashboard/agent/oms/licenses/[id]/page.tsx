@@ -360,26 +360,24 @@ export default function LicenseDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Tipo</TableHead>
-                    <TableHead className="text-xs">Ministerio</TableHead>
-                    <TableHead className="text-xs w-[90px] text-right">Monto</TableHead>
-                    {totalPenalties > 0 && <TableHead className="text-xs w-[80px] text-right">Penalidad</TableHead>}
-                    <TableHead className="text-xs w-[80px]">Vence</TableHead>
-                    <TableHead className="text-xs w-[80px]">Estado</TableHead>
-                    <TableHead className="text-xs w-[80px]">Acciones</TableHead>
+                    <TableHead className="text-xs">{t('obligationName', { defaultValue: 'Obligación' })}</TableHead>
+                    <TableHead className="text-xs w-[110px] text-right">{t('amount', { defaultValue: 'Monto' })}</TableHead>
+                    {totalPenalties > 0 && <TableHead className="text-xs w-[80px] text-right">{t('penalty', { defaultValue: 'Penalidad' })}</TableHead>}
+                    <TableHead className="text-xs w-[90px]">{t('dueDate', { defaultValue: 'Vence' })}</TableHead>
+                    <TableHead className="text-xs w-[95px]">{t('statusCol', { defaultValue: 'Estado' })}</TableHead>
+                    <TableHead className="text-xs w-[80px]">{t('actionsCol', { defaultValue: 'Acciones' })}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {obligations.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">Sin obligaciones</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-sm">{t('noObligations', { defaultValue: 'Sin obligaciones' })}</TableCell></TableRow>
                   ) : obligations.map(ob => {
                     const cfg = OB_STATUS[ob.status] || OB_STATUS.pending
                     const Icon = cfg.icon
                     const canProcess = ob.status === 'processing' || ob.status === 'paid'
                     return (
                       <TableRow key={ob.id}>
-                        <TableCell className="text-xs font-medium">{ob.fee_type}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground truncate max-w-[120px]">{ob.ministry_name || '—'}</TableCell>
+                        <TableCell className="text-xs font-medium truncate max-w-[200px]">{ob.service_name || ob.fee_type}</TableCell>
                         <TableCell className="text-xs text-right font-mono">{fmtXAF(ob.amount, locale)}</TableCell>
                         {totalPenalties > 0 && (
                           <TableCell className="text-xs text-right font-mono text-amber-600">

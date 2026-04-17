@@ -44,6 +44,7 @@ import {
   Building2,
   Package,
   Mail,
+  Phone,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -270,7 +271,7 @@ export function PaymentDetailPanel({
         )}
 
         {/* Applicant — compact inline header */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground px-1 flex-wrap">
           <div className="flex items-center gap-1.5 min-w-0">
             <User className="h-3.5 w-3.5 shrink-0" />
             <span className="font-medium text-foreground truncate">{payment.beneficiaryName || payment.userName || 'N/A'}</span>
@@ -280,6 +281,15 @@ export function PaymentDetailPanel({
             <Mail className="h-3 w-3 shrink-0" />
             <span className="truncate">{payment.userEmail || 'N/A'}</span>
           </div>
+          {payment.userPhone && (
+            <>
+              <span className="text-border">|</span>
+              <div className="flex items-center gap-1">
+                <Phone className="h-3 w-3 shrink-0" />
+                <span>{payment.userPhone}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <Separator />
