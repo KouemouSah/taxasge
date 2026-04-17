@@ -44,7 +44,6 @@ import {
   Building2,
   Package,
   Mail,
-  Phone,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {

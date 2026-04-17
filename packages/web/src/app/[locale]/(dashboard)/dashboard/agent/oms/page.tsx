@@ -12,7 +12,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import {
   ClipboardList, Clock, CheckCircle2, Search,
   ChevronLeft, ChevronRight, RefreshCw, XCircle, DollarSign,
-  Building2, FileCheck, Eye, MessageSquare, History,
+  Building2, FileCheck, Eye, History,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -363,11 +363,9 @@ export default function OMSAgentDashboardPage() {
                         {group.items.length > 1 && (
                           <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
                             onClick={() => {
-                              group.items.forEach(i => {
-                                const next = new Set(selected)
-                                group.items.forEach(it => next.add(it.id))
-                                setSelected(next)
-                              })
+                              const next = new Set(selected)
+                              group.items.forEach(it => next.add(it.id))
+                              setSelected(next)
                             }}>
                             <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
                           </Button>
