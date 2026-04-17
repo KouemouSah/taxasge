@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Facil Dashboard — Dynamic Data Layer
+   Facil Dashboard v2 — Dynamic Data Layer
    Fetches from GitHub API with localStorage caching (5-min TTL)
    ========================================================================== */
 
@@ -7,14 +7,14 @@
   'use strict';
 
   // ---------- Constants ----------
-  const REPO_OWNER = 'KouemouSah';
-  const REPO_NAME = 'taxasge';
-  const API_BASE = 'https://api.github.com';
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  const CACHE_PREFIX = 'facil_dash_';
+  var REPO_OWNER = 'KouemouSah';
+  var REPO_NAME = 'taxasge';
+  var API_BASE = 'https://api.github.com';
+  var CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  var CACHE_PREFIX = 'facil_dash_';
 
   // Workflow file names we track
-  const TRACKED_WORKFLOWS = [
+  var TRACKED_WORKFLOWS = [
     { file: 'ci.yml', label: 'CI Tests' },
     { file: 'deploy-backend-staging.yml', label: 'Backend Staging' },
     { file: 'deploy-frontend-staging.yml', label: 'Frontend Staging' },
@@ -23,18 +23,31 @@
     { file: 'inspector-ci.yml', label: 'Inspector CI' }
   ];
 
+  // Milestone progress data (known project state)
+  var MILESTONE_DATA = [
+    { key: 'infrastructure', name: 'M1 Infrastructure', icon: '\u2699', pct: 100, state: 'closed' },
+    { key: 'backend',        name: 'M2 Backend',        icon: '\u2699', pct: 100, state: 'closed' },
+    { key: 'frontend',       name: 'M3 Frontend',       icon: '\uD83C\uDF10', pct: 95,  state: 'closed' },
+    { key: 'mobile',         name: 'M4 Mobile',         icon: '\uD83D\uDCF1', pct: 85,  state: 'open' },
+    { key: 'ai_ocr',         name: 'M5 AI/OCR',         icon: '\uD83E\uDD16', pct: 90,  state: 'closed' },
+    { key: 'bundle',         name: 'M6 Bundle',         icon: '\uD83D\uDCE6', pct: 75,  state: 'open' },
+    { key: 'testing',        name: 'M7 Testing',        icon: '\uD83E\uDDEA', pct: 30,  state: 'open' },
+    { key: 'production',     name: 'M8 Production',     icon: '\uD83D\uDE80', pct: 10,  state: 'open' },
+    { key: 'csi',            name: 'M9 CSI',            icon: '\uD83D\uDCCB', pct: 0,   state: 'open' }
+  ];
+
   // ---------- Cache Helpers ----------
   function cacheGet(key) {
     try {
-      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      var raw = localStorage.getItem(CACHE_PREFIX + key);
       if (!raw) return null;
-      const entry = JSON.parse(raw);
+      var entry = JSON.parse(raw);
       if (Date.now() - entry.ts > CACHE_TTL) {
         localStorage.removeItem(CACHE_PREFIX + key);
         return null;
       }
       return entry.data;
-    } catch {
+    } catch (e) {
       return null;
     }
   }
@@ -42,8 +55,8 @@
   function cacheSet(key, data) {
     try {
       localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data: data }));
-    } catch {
-      // localStorage full or unavailable — silent fail
+    } catch (e) {
+      // localStorage full or unavailable
     }
   }
 
@@ -56,7 +69,6 @@
       headers: { 'Accept': 'application/vnd.github.v3+json' }
     });
 
-    // Rate limited
     if (resp.status === 403 || resp.status === 429) {
       var remaining = resp.headers.get('X-RateLimit-Remaining');
       var resetEpoch = resp.headers.get('X-RateLimit-Reset');
@@ -91,34 +103,64 @@
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-  }
-
   // ---------- DOM Helpers ----------
   function $(sel) { return document.querySelector(sel); }
-  function $$(sel) { return document.querySelectorAll(sel); }
 
   function showRateLimit(container) {
     if (!container) return;
     container.innerHTML =
       '<div class="rate-limit-notice" role="alert">' +
         '<span aria-hidden="true">&#9888;</span> ' +
-        'GitHub API rate limit reached (60 requests/hour for unauthenticated). ' +
-        'Data will refresh automatically when the limit resets.' +
+        'GitHub API rate limit (60 req/h). Auto-refreshes when reset.' +
       '</div>';
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ---------- Commit type detection ----------
+  function getCommitType(msg) {
+    if (!msg) return 'other';
+    var lower = msg.toLowerCase();
+    if (/^feat[\(:]/.test(lower)) return 'feat';
+    if (/^fix[\(:]/.test(lower)) return 'fix';
+    if (/^refactor[\(:]/.test(lower)) return 'refactor';
+    if (/^chore[\(:]/.test(lower)) return 'chore';
+    if (/^docs[\(:]/.test(lower)) return 'docs';
+    if (/^test[\(:]/.test(lower)) return 'test';
+    if (/^style[\(:]/.test(lower)) return 'style';
+    return 'other';
+  }
+
+  // ---------- SVG Donut chart ----------
+  function svgDonut(pct, size) {
+    size = size || 48;
+    var r = (size / 2) - 4;
+    var circ = 2 * Math.PI * r;
+    var offset = circ - (pct / 100) * circ;
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+      '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="var(--gray-200)" stroke-width="4"/>' +
+      '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="var(--ge-green)" stroke-width="4" ' +
+        'stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '" ' +
+        'transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')" stroke-linecap="round"/>' +
+      '<text x="' + (size/2) + '" y="' + (size/2) + '" text-anchor="middle" dominant-baseline="central" ' +
+        'font-size="11" font-weight="700" fill="var(--text-primary)">' + pct + '%</text>' +
+    '</svg>';
   }
 
   // ---------- 1. Header Timestamp ----------
   function updateTimestamp() {
     var el = $('#last-updated');
     if (el) {
-      el.textContent = 'Last updated: ' + new Date().toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      el.textContent = 'Updated: ' + new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
       });
     }
   }
@@ -129,30 +171,20 @@
     if (!container) return;
 
     try {
-      // Fetch all workflows
       var result = await fetchCached('workflows',
         API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/actions/workflows');
       var workflows = result.data.workflows || [];
 
-      // Build a map: filename -> workflow
       var wfMap = {};
       workflows.forEach(function (wf) {
-        // path is like ".github/workflows/ci.yml"
         var filename = wf.path.split('/').pop();
         wfMap[filename] = wf;
       });
 
-      // For each tracked workflow, fetch latest run
-      var html = '';
       var promises = TRACKED_WORKFLOWS.map(async function (tw) {
         var wf = wfMap[tw.file];
         if (!wf) {
-          return {
-            label: tw.label,
-            status: 'unknown',
-            statusText: 'Not found',
-            date: ''
-          };
+          return { label: tw.label, status: 'unknown', statusText: 'Not found', date: '' };
         }
 
         try {
@@ -189,9 +221,9 @@
 
       var results = await Promise.all(promises);
 
-      html = results.map(function (r) {
+      container.innerHTML = results.map(function (r) {
         return '<div class="ci-item animate-in">' +
-          '<div class="ci-dot ' + r.status + '" aria-label="Status: ' + r.statusText + '"></div>' +
+          '<div class="ci-dot ' + r.status + '" aria-label="' + r.statusText + '"></div>' +
           '<div class="ci-info">' +
             '<div class="ci-name">' + r.label + '</div>' +
             '<div class="ci-status-text">' + r.statusText +
@@ -200,8 +232,6 @@
           '</div>' +
         '</div>';
       }).join('');
-
-      container.innerHTML = html;
     } catch (e) {
       if (e.name === 'RateLimitError') {
         showRateLimit(container);
@@ -212,101 +242,63 @@
     }
   }
 
-  // ---------- 3. Milestones ----------
-  async function loadMilestones() {
+  // ---------- 3. Milestones (compact 2-col grid) ----------
+  function loadMilestones() {
     var container = $('#milestones-container');
     if (!container) return;
 
-    // Try local JSON first
-    var milestones = null;
-    try {
-      var localResp = await fetch('data/milestones.json');
-      if (localResp.ok) {
-        milestones = await localResp.json();
-      }
-    } catch { /* ignore */ }
-
-    // Fallback to GitHub API
-    if (!milestones) {
-      try {
-        var result = await fetchCached('milestones',
-          API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/milestones?state=all&sort=due_on&direction=asc&per_page=20');
-        milestones = result.data.map(function (m) {
-          var total = (m.open_issues || 0) + (m.closed_issues || 0);
-          var pct = total > 0 ? Math.round((m.closed_issues / total) * 100) : 0;
-          var state = m.state === 'closed' ? 'completed' :
-                      pct > 0 ? 'in-progress' : 'planned';
-          return {
-            title: m.title,
-            percent: pct,
-            state: state,
-            open: m.open_issues,
-            closed: m.closed_issues,
-            due: m.due_on
-          };
-        });
-      } catch (e) {
-        if (e.name === 'RateLimitError') {
-          showRateLimit(container);
-          return;
-        }
-        milestones = [];
-      }
-    }
-
-    if (!milestones || milestones.length === 0) {
-      container.innerHTML = '<div class="loading-text">No milestones found</div>';
-      return;
-    }
-
-    container.innerHTML = milestones.map(function (m) {
-      var colorClass = m.state === 'completed' ? 'completed' :
-                       m.state === 'in-progress' ? 'in-progress' : 'planned';
-      var pctColor = m.state === 'completed' ? 'color:var(--ge-green)' :
-                     m.state === 'in-progress' ? 'color:var(--ge-blue)' :
+    container.innerHTML = MILESTONE_DATA.map(function (m) {
+      var fillClass = m.state === 'closed' ? 'completed' :
+                      m.pct >= 75 ? 'high' :
+                      m.pct >= 30 ? 'medium' :
+                      m.pct > 0  ? 'low' : 'zero';
+      var pctColor = m.state === 'closed' ? 'color:var(--ge-green)' :
+                     m.pct >= 75 ? 'color:var(--ge-blue)' :
+                     m.pct >= 30 ? 'color:#B8860B' :
                      'color:var(--text-muted)';
-      var dueText = m.due ? new Date(m.due).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
 
-      return '<div class="milestone-item animate-in">' +
-        '<div class="milestone-header">' +
-          '<span class="milestone-name">' + escapeHtml(m.title) + '</span>' +
-          '<span class="milestone-pct" style="' + pctColor + '">' + m.percent + '%</span>' +
+      return '<div class="ms-card animate-in">' +
+        '<div class="ms-header">' +
+          '<span class="ms-icon" aria-hidden="true">' + m.icon + '</span>' +
+          '<span class="ms-name" title="' + escapeHtml(m.name) + '">' + escapeHtml(m.name) + '</span>' +
+          '<span class="ms-pct" style="' + pctColor + '">' + m.pct + '%</span>' +
         '</div>' +
-        '<div class="milestone-bar">' +
-          '<div class="milestone-fill ' + colorClass + '" style="width:' + m.percent + '%"></div>' +
+        '<div class="ms-bar">' +
+          '<div class="ms-fill ' + fillClass + '" style="width:' + m.pct + '%"></div>' +
         '</div>' +
-        '<div class="milestone-meta">' +
-          '<span>' + (m.closed || 0) + ' closed / ' + (m.open || 0) + ' open</span>' +
-          (dueText ? '<span>Due ' + dueText + '</span>' : '') +
-        '</div>' +
+        '<span class="ms-state ' + m.state + '">' + m.state + '</span>' +
       '</div>';
     }).join('');
   }
 
-  // ---------- 4. Recent Commits ----------
+  // ---------- 4. Recent Commits (with type colorization) ----------
   async function loadCommits() {
     var container = $('#commits-container');
     if (!container) return;
 
     try {
       var result = await fetchCached('commits',
-        API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/commits?per_page=5');
-      var commits = result.data;
+        API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/commits?per_page=30');
+      var allCommits = result.data;
 
-      if (!commits || commits.length === 0) {
+      if (!allCommits || allCommits.length === 0) {
         container.innerHTML = '<div class="loading-text">No commits found</div>';
         return;
       }
 
+      // Show last 5 in the commit list
+      var recentFive = allCommits.slice(0, 5);
+
       container.innerHTML = '<ul class="commit-list" role="list">' +
-        commits.map(function (c) {
-          var msg = c.commit.message.split('\n')[0]; // first line only
+        recentFive.map(function (c) {
+          var msg = c.commit.message.split('\n')[0];
           var author = (c.commit.author && c.commit.author.name) || 'Unknown';
           var date = c.commit.author ? c.commit.author.date : '';
           var sha = c.sha.substring(0, 7);
+          var type = getCommitType(msg);
 
           return '<li class="commit-item animate-in">' +
-            '<div class="commit-dot" aria-hidden="true"></div>' +
+            '<div class="commit-type-dot ' + type + '" aria-hidden="true" title="' + type + '"></div>' +
             '<div class="commit-body">' +
               '<div class="commit-msg" title="' + escapeHtml(msg) + '">' + escapeHtml(msg) + '</div>' +
               '<div class="commit-meta">' +
@@ -318,72 +310,110 @@
           '</li>';
         }).join('') +
       '</ul>';
+
+      // Also build the activity chart from all 30 commits
+      buildActivityChart(allCommits);
     } catch (e) {
       if (e.name === 'RateLimitError') {
         showRateLimit(container);
       } else {
-        container.innerHTML = '<div class="loading-text">Unable to load recent commits</div>';
+        container.innerHTML = '<div class="loading-text">Unable to load commits</div>';
       }
     }
   }
 
-  // ---------- 5. Issue Statistics ----------
+  // ---------- 5. Weekly Activity Chart ----------
+  function buildActivityChart(commits) {
+    var container = $('#activity-chart-container');
+    if (!container || !commits || commits.length === 0) return;
+
+    // Group commits by week (last 4 weeks)
+    var now = new Date();
+    var weeks = [];
+    for (var i = 0; i < 4; i++) {
+      var weekEnd = new Date(now.getTime() - i * 7 * 86400000);
+      var weekStart = new Date(weekEnd.getTime() - 7 * 86400000);
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        count: 0,
+        label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      });
+    }
+    weeks.reverse();
+
+    commits.forEach(function (c) {
+      var commitDate = new Date(c.commit.author ? c.commit.author.date : c.commit.committer.date);
+      for (var i = 0; i < weeks.length; i++) {
+        if (commitDate >= weeks[i].start && commitDate < weeks[i].end) {
+          weeks[i].count++;
+          break;
+        }
+      }
+    });
+
+    var maxCount = Math.max.apply(null, weeks.map(function (w) { return w.count; }));
+    if (maxCount === 0) maxCount = 1;
+
+    container.innerHTML = '<div class="activity-bars">' +
+      weeks.map(function (w) {
+        var pct = Math.round((w.count / maxCount) * 100);
+        if (w.count > 0 && pct < 5) pct = 5;
+        return '<div class="activity-row">' +
+          '<span class="activity-label">' + w.label + '</span>' +
+          '<div class="activity-bar-track">' +
+            '<div class="activity-bar-fill" style="width:' + pct + '%"></div>' +
+          '</div>' +
+          '<span class="activity-bar-count">' + w.count + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  // ---------- 6. Issue Statistics (compact inline) ----------
   async function loadIssueStats() {
     var container = $('#issues-container');
     if (!container) return;
 
     try {
-      // Fetch open and closed counts
       var openResult = await fetchCached('issues_open',
         API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '?per_page=1');
       var openCount = openResult.data.open_issues_count || 0;
 
-      // For closed, we need to search
       var closedResult = await fetchCached('issues_closed',
         API_BASE + '/search/issues?q=repo:' + REPO_OWNER + '/' + REPO_NAME + '+type:issue+state:closed&per_page=1');
       var closedCount = closedResult.data.total_count || 0;
 
-      var maxVal = Math.max(openCount, closedCount, 1);
-
-      var openHeight = Math.max(Math.round((openCount / maxVal) * 100), 4);
-      var closedHeight = Math.max(Math.round((closedCount / maxVal) * 100), 4);
+      var total = openCount + closedCount;
+      var closedPct = total > 0 ? Math.round((closedCount / total) * 100) : 0;
 
       container.innerHTML =
-        '<div class="issue-stats">' +
-          '<div class="issue-bar-group">' +
-            '<div class="issue-bar-container">' +
-              '<div class="issue-bar open" style="height:' + openHeight + 'px" role="img" aria-label="Open issues: ' + openCount + '">' +
-                '<span class="issue-bar-value">' + openCount + '</span>' +
-              '</div>' +
+        '<div class="issues-inline">' +
+          '<div class="issue-stat">' +
+            '<span class="issue-dot open"></span>' +
+            '<div>' +
+              '<div class="issue-count">' + openCount + '</div>' +
+              '<div class="issue-label">Open</div>' +
             '</div>' +
-            '<div class="issue-bar-label">Open</div>' +
           '</div>' +
-          '<div class="issue-bar-group">' +
-            '<div class="issue-bar-container">' +
-              '<div class="issue-bar closed" style="height:' + closedHeight + 'px" role="img" aria-label="Closed issues: ' + closedCount + '">' +
-                '<span class="issue-bar-value">' + closedCount + '</span>' +
-              '</div>' +
+          '<div class="issue-stat">' +
+            '<span class="issue-dot closed"></span>' +
+            '<div>' +
+              '<div class="issue-count">' + closedCount + '</div>' +
+              '<div class="issue-label">Closed</div>' +
             '</div>' +
-            '<div class="issue-bar-label">Closed</div>' +
+          '</div>' +
+          '<div class="issue-donut-wrap">' +
+            svgDonut(closedPct, 52) +
           '</div>' +
         '</div>';
     } catch (e) {
       if (e.name === 'RateLimitError') {
         showRateLimit(container);
       } else {
-        container.innerHTML = '<div class="loading-text">Unable to load issue statistics</div>';
+        container.innerHTML = '<div class="loading-text">Unable to load issues</div>';
       }
     }
-  }
-
-  // ---------- Escape HTML ----------
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   }
 
   // ---------- Initialize ----------
@@ -393,11 +423,10 @@
     // Fire all data loads in parallel
     loadCIStatus();
     loadMilestones();
-    loadCommits();
+    loadCommits();     // also builds activity chart
     loadIssueStats();
   }
 
-  // Run when DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

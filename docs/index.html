@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#0062A5">
   <link rel="icon" type="image/png" href="assets/logo.png">
 
-  <!-- Preload Inter font (optional enhancement) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -17,9 +16,7 @@
 </head>
 <body>
 
-  <!-- ============================================================
-       HEADER
-       ============================================================ -->
+  <!-- HEADER -->
   <header class="site-header" role="banner">
     <div class="header-inner">
       <div class="header-logo" aria-hidden="true">
@@ -37,12 +34,12 @@
 
   <main class="container" role="main">
 
-    <!-- ============================================================
-         SECTION 1: Key Metrics
-         ============================================================ -->
+    <!-- ROW 1: Key Metrics -->
     <section class="section" aria-labelledby="metrics-heading">
       <div class="section-header">
-        <div class="section-icon blue" aria-hidden="true">&#9670;</div>
+        <div class="section-icon blue" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z"/></svg>
+        </div>
         <h2 class="section-title" id="metrics-heading">Key Metrics</h2>
       </div>
       <div class="grid grid-4">
@@ -69,54 +66,78 @@
       </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 2: CI/CD Status
-         ============================================================ -->
+    <!-- ROW 2: CI/CD Status + Issue Stats SIDE BY SIDE -->
     <section class="section" aria-labelledby="cicd-heading">
-      <div class="section-header">
-        <div class="section-icon green" aria-hidden="true">&#9881;</div>
-        <h2 class="section-title" id="cicd-heading">CI/CD Pipeline Status</h2>
-      </div>
-      <div id="ci-container" class="ci-grid" aria-live="polite">
-        <!-- 6 skeleton placeholders -->
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:120px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:140px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:90px;height:10px"></div></div></div>
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:130px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:70px;height:10px"></div></div></div>
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:110px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:85px;height:10px"></div></div></div>
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:125px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:75px;height:10px"></div></div></div>
-        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:100px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
+      <div class="row-split">
+        <!-- CI/CD Status -->
+        <div class="split-main">
+          <div class="section-header">
+            <div class="section-icon green" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04zM8 5.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>
+            </div>
+            <h2 class="section-title" id="cicd-heading">CI/CD Pipeline</h2>
+          </div>
+          <div id="ci-container" class="ci-grid" aria-live="polite">
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:120px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:140px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:90px;height:10px"></div></div></div>
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:130px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:70px;height:10px"></div></div></div>
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:110px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:85px;height:10px"></div></div></div>
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:125px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:75px;height:10px"></div></div></div>
+            <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:100px;height:14px;margin-bottom:4px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
+          </div>
+        </div>
+        <!-- Issue Stats -->
+        <div class="split-side">
+          <div class="section-header">
+            <div class="section-icon red" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z"/></svg>
+            </div>
+            <h2 class="section-title" id="issues-heading">Issues</h2>
+          </div>
+          <div id="issues-container" class="card issues-card" aria-live="polite">
+            <div class="loading-text">Loading...</div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 3: Architecture Overview
-         ============================================================ -->
+    <!-- ROW 3: Architecture Overview -->
     <section class="section" aria-labelledby="arch-heading">
       <div class="section-header">
-        <div class="section-icon blue" aria-hidden="true">&#9634;</div>
+        <div class="section-icon blue" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 0A1.75 1.75 0 000 1.75v12.5C0 15.216.784 16 1.75 16h12.5A1.75 1.75 0 0016 14.25V1.75A1.75 1.75 0 0014.25 0H1.75zM1.5 1.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v12.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25V1.75zM8 3a.75.75 0 01.75.75v3.5h3.5a.75.75 0 010 1.5h-3.5v3.5a.75.75 0 01-1.5 0v-3.5h-3.5a.75.75 0 010-1.5h3.5v-3.5A.75.75 0 018 3z"/></svg>
+        </div>
         <h2 class="section-title" id="arch-heading">Architecture Overview</h2>
       </div>
       <div class="arch-container">
         <article class="arch-card backend animate-in" aria-label="Backend package">
-          <div class="arch-icon" aria-hidden="true">&#9881;</div>
+          <div class="arch-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
           <h3 class="arch-title">Backend</h3>
           <div class="arch-tech">Python 3.11 / FastAPI / asyncpg</div>
           <div class="arch-stat">30 modules &middot; 31 routers</div>
         </article>
         <article class="arch-card web animate-in" aria-label="Web frontend package">
-          <div class="arch-icon" aria-hidden="true">&#9783;</div>
+          <div class="arch-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
           <h3 class="arch-title">Web</h3>
           <div class="arch-tech">Next.js 14 / React 18 / TypeScript</div>
           <div class="arch-stat">41+ modules &middot; 3 locales</div>
         </article>
         <article class="arch-card mobile animate-in" aria-label="Mobile app package">
-          <div class="arch-icon" aria-hidden="true">&#9743;</div>
+          <div class="arch-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+          </div>
           <h3 class="arch-title">Mobile</h3>
           <div class="arch-tech">Expo SDK 54 / React Native</div>
           <div class="arch-stat">Citizen app &middot; 3 languages</div>
         </article>
         <article class="arch-card inspector animate-in" aria-label="Inspector app package">
-          <div class="arch-icon" aria-hidden="true">&#9874;</div>
+          <div class="arch-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
           <h3 class="arch-title">Inspector</h3>
           <div class="arch-tech">Expo / React Native</div>
           <div class="arch-stat">Field agent app &middot; Offline-first</div>
@@ -132,177 +153,152 @@
       <div class="grid grid-3">
         <div class="card text-center animate-in" style="border-top:3px solid var(--ge-blue)">
           <div class="metric-label">Database</div>
-          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">PostgreSQL (Supabase)</div>
-          <div class="metric-sub">145 tables &middot; 25 enums &middot; pgvector</div>
+          <div style="font-size:1.05rem;font-weight:600;margin-top:4px">PostgreSQL (Supabase)</div>
+          <div class="metric-sub">145 tables &middot; 50 enums &middot; pgvector</div>
         </div>
         <div class="card text-center animate-in" style="border-top:3px solid var(--ge-green)">
           <div class="metric-label">Cache &amp; Queue</div>
-          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">Redis (Upstash)</div>
+          <div style="font-size:1.05rem;font-weight:600;margin-top:4px">Redis (Upstash)</div>
           <div class="metric-sub">5 cache instances &middot; Rate limiting</div>
         </div>
         <div class="card text-center animate-in" style="border-top:3px solid var(--ge-yellow)">
           <div class="metric-label">AI / RAG</div>
-          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">Gemini 2.0 Flash</div>
+          <div style="font-size:1.05rem;font-weight:600;margin-top:4px">Gemini 2.5 Flash</div>
           <div class="metric-sub">Vertex AI &middot; pgvector embeddings</div>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 4: Tech Stack
-         ============================================================ -->
-    <section class="section" aria-labelledby="tech-heading">
-      <div class="section-header">
-        <div class="section-icon yellow" aria-hidden="true">&#9733;</div>
-        <h2 class="section-title" id="tech-heading">Technology Stack</h2>
-      </div>
-      <div class="card">
-        <!-- Backend -->
-        <div class="tech-category">
-          <div class="tech-category-title">Backend</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3776AB"></span>Python 3.11</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#009688"></span>FastAPI</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#336791"></span>asyncpg</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#E10098"></span>Pydantic v2</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#D22630"></span>Redis / Upstash</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#009688"></span>Uvicorn</span>
-          </div>
-        </div>
-
-        <!-- Frontend -->
-        <div class="tech-category">
-          <div class="tech-category-title">Frontend</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Next.js 14</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#61DAFB"></span>React 18</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3178C6"></span>TypeScript</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#06B6D4"></span>Tailwind CSS</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Shadcn/UI</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF4154"></span>React Query</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3C873A"></span>Zod</span>
-          </div>
-        </div>
-
-        <!-- Mobile -->
-        <div class="tech-category">
-          <div class="tech-category-title">Mobile</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000020"></span>Expo SDK 54</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#61DAFB"></span>React Native</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#764ABC"></span>Zustand</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#6200EE"></span>Paper MD3</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Expo Router</span>
-          </div>
-        </div>
-
-        <!-- Database -->
-        <div class="tech-category">
-          <div class="tech-category-title">Database</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#336791"></span>PostgreSQL 15</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3ECF8E"></span>Supabase</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4A6CF7"></span>pgvector</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF6600"></span>Supabase Storage</span>
-          </div>
-        </div>
-
-        <!-- AI -->
-        <div class="tech-category">
-          <div class="tech-category-title">AI &amp; Machine Learning</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Gemini 2.0 Flash</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Vertex AI</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF6F00"></span>OCR Pipeline</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#7B1FA2"></span>RAG Chatbot</span>
-          </div>
-        </div>
-
-        <!-- Infrastructure -->
-        <div class="tech-category">
-          <div class="tech-category-title">Infrastructure</div>
-          <div class="tech-badges">
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Google Cloud Run</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FFA000"></span>Firebase Hosting</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#2088FF"></span>GitHub Actions</span>
-            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Secret Manager</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 5: Milestones Progress
-         ============================================================ -->
+    <!-- ROW 4: Milestones + Tech Stack SIDE BY SIDE -->
     <section class="section" aria-labelledby="milestones-heading">
-      <div class="section-header">
-        <div class="section-icon green" aria-hidden="true">&#9650;</div>
-        <h2 class="section-title" id="milestones-heading">Milestones Progress</h2>
-      </div>
-      <div id="milestones-container" aria-live="polite">
-        <!-- Skeleton placeholders -->
-        <div class="milestone-item">
-          <div class="milestone-header"><div class="skeleton" style="width:180px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
-          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
+      <div class="row-split">
+        <!-- Milestones -->
+        <div class="split-main">
+          <div class="section-header">
+            <div class="section-icon green" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+            </div>
+            <h2 class="section-title" id="milestones-heading">Milestones</h2>
+          </div>
+          <div id="milestones-container" class="milestones-grid" aria-live="polite">
+            <!-- Skeleton -->
+            <div class="ms-card"><div class="skeleton" style="width:100%;height:60px"></div></div>
+            <div class="ms-card"><div class="skeleton" style="width:100%;height:60px"></div></div>
+            <div class="ms-card"><div class="skeleton" style="width:100%;height:60px"></div></div>
+            <div class="ms-card"><div class="skeleton" style="width:100%;height:60px"></div></div>
+          </div>
         </div>
-        <div class="milestone-item">
-          <div class="milestone-header"><div class="skeleton" style="width:200px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
-          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
-        </div>
-        <div class="milestone-item">
-          <div class="milestone-header"><div class="skeleton" style="width:160px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
-          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
+        <!-- Tech Stack -->
+        <div class="split-side tech-side">
+          <div class="section-header">
+            <div class="section-icon yellow" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0114.25 16H1.75A1.75 1.75 0 010 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V1.75a.25.25 0 00-.25-.25H1.75zM8 3a5 5 0 100 10A5 5 0 008 3z"/></svg>
+            </div>
+            <h2 class="section-title" id="tech-heading">Tech Stack</h2>
+          </div>
+          <div class="card tech-card">
+            <div class="tech-group">
+              <div class="tech-group-label">Backend</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" loading="lazy">
+                <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" loading="lazy">
+                <img src="https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=pydantic&logoColor=white" alt="Pydantic" loading="lazy">
+                <img src="https://img.shields.io/badge/asyncpg-336791?style=flat-square&logo=postgresql&logoColor=white" alt="asyncpg" loading="lazy">
+                <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis" loading="lazy">
+              </div>
+            </div>
+            <div class="tech-group">
+              <div class="tech-group-label">Frontend</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js" loading="lazy">
+                <img src="https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" loading="lazy">
+                <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" loading="lazy">
+                <img src="https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind" loading="lazy">
+                <img src="https://img.shields.io/badge/shadcn/ui-000000?style=flat-square&logo=shadcnui&logoColor=white" alt="shadcn/ui" loading="lazy">
+              </div>
+            </div>
+            <div class="tech-group">
+              <div class="tech-group-label">Mobile</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/Expo_54-000020?style=flat-square&logo=expo&logoColor=white" alt="Expo" loading="lazy">
+                <img src="https://img.shields.io/badge/React_Native-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React Native" loading="lazy">
+                <img src="https://img.shields.io/badge/Zustand-764ABC?style=flat-square&logo=react&logoColor=white" alt="Zustand" loading="lazy">
+              </div>
+            </div>
+            <div class="tech-group">
+              <div class="tech-group-label">Database</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" loading="lazy">
+                <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" loading="lazy">
+                <img src="https://img.shields.io/badge/pgvector-4A6CF7?style=flat-square&logo=postgresql&logoColor=white" alt="pgvector" loading="lazy">
+              </div>
+            </div>
+            <div class="tech-group">
+              <div class="tech-group-label">AI</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/Gemini_2.5-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini" loading="lazy">
+                <img src="https://img.shields.io/badge/Vertex_AI-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Vertex AI" loading="lazy">
+                <img src="https://img.shields.io/badge/RAG-7B1FA2?style=flat-square&logo=openai&logoColor=white" alt="RAG" loading="lazy">
+              </div>
+            </div>
+            <div class="tech-group">
+              <div class="tech-group-label">Infrastructure</div>
+              <div class="tech-badges-flow">
+                <img src="https://img.shields.io/badge/Cloud_Run-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Cloud Run" loading="lazy">
+                <img src="https://img.shields.io/badge/Firebase-FFA000?style=flat-square&logo=firebase&logoColor=white" alt="Firebase" loading="lazy">
+                <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="GitHub Actions" loading="lazy">
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================
-         SECTION 6: Recent Activity
-         ============================================================ -->
+    <!-- ROW 5: Activity Chart + Recent Commits SIDE BY SIDE -->
     <section class="section" aria-labelledby="activity-heading">
-      <div class="section-header">
-        <div class="section-icon blue" aria-hidden="true">&#8635;</div>
-        <h2 class="section-title" id="activity-heading">Recent Activity</h2>
-      </div>
-      <div class="card">
-        <div id="commits-container" aria-live="polite">
-          <!-- Skeleton placeholders -->
-          <div style="display:flex;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
-            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
-            <div style="flex:1"><div class="skeleton" style="width:80%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:40%;height:10px"></div></div>
+      <div class="row-split">
+        <div class="split-main">
+          <div class="section-header">
+            <div class="section-icon blue" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.643 3.143L.427 1.927A.25.25 0 00.177 2.177L1.893 3.893A.25.25 0 00.177 2.177L1.893 3.893 7.5 2.75V.25a.75.75 0 011.5 0v2.5h2.5a.75.75 0 010 1.5H9v2.5a.75.75 0 01-1.5 0V4.25H5a.75.75 0 010-1.5h2.5V.25z"/><path d="M16 12.5a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zm-1.41-1.91a.75.75 0 00-1.06-1.06L11 12.06l-.97-.97a.75.75 0 10-1.06 1.06l1.5 1.5a.75.75 0 001.06 0l3.06-3.06z"/></svg>
+            </div>
+            <h2 class="section-title" id="activity-heading">Recent Commits</h2>
           </div>
-          <div style="display:flex;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
-            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
-            <div style="flex:1"><div class="skeleton" style="width:70%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:35%;height:10px"></div></div>
-          </div>
-          <div style="display:flex;gap:1rem;padding:0.75rem 0">
-            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
-            <div style="flex:1"><div class="skeleton" style="width:75%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:45%;height:10px"></div></div>
+          <div class="card compact-card">
+            <div id="commits-container" aria-live="polite">
+              <div style="display:flex;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+                <div class="skeleton" style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0"></div>
+                <div style="flex:1"><div class="skeleton" style="width:80%;height:13px;margin-bottom:6px"></div><div class="skeleton" style="width:40%;height:10px"></div></div>
+              </div>
+              <div style="display:flex;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+                <div class="skeleton" style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0"></div>
+                <div style="flex:1"><div class="skeleton" style="width:70%;height:13px;margin-bottom:6px"></div><div class="skeleton" style="width:35%;height:10px"></div></div>
+              </div>
+              <div style="display:flex;gap:0.75rem;padding:0.5rem 0">
+                <div class="skeleton" style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0"></div>
+                <div style="flex:1"><div class="skeleton" style="width:75%;height:13px;margin-bottom:6px"></div><div class="skeleton" style="width:45%;height:10px"></div></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- ============================================================
-         SECTION 7: Issue Statistics
-         ============================================================ -->
-    <section class="section" aria-labelledby="issues-heading">
-      <div class="section-header">
-        <div class="section-icon red" aria-hidden="true">&#9888;</div>
-        <h2 class="section-title" id="issues-heading">Issue Statistics</h2>
-      </div>
-      <div class="card">
-        <div id="issues-container" aria-live="polite">
-          <div class="loading-text">Loading issue data...</div>
+        <!-- Activity Chart -->
+        <div class="split-side">
+          <div class="section-header">
+            <div class="section-icon green" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 14h13a.75.75 0 000-1.5H2V1.75a.75.75 0 00-1.5 0v11.5c0 .414.336.75.75.75z"/><path d="M3.5 11.5a.75.75 0 01-.11-1.49l3-1.5a.75.75 0 01.67.01l2.44 1.22 3.54-4.43a.75.75 0 011.17.94l-4 5a.75.75 0 01-1.08.1L6.5 10.06l-2.47 1.24a.75.75 0 01-.53.2z"/></svg>
+            </div>
+            <h2 class="section-title">Weekly Activity</h2>
+          </div>
+          <div class="card compact-card" id="activity-chart-container" aria-live="polite">
+            <div class="loading-text">Loading activity...</div>
+          </div>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- ============================================================
-       FOOTER
-       ============================================================ -->
+  <!-- FOOTER -->
   <footer class="site-footer" role="contentinfo">
     <div class="footer-inner">
       <div class="footer-flag">

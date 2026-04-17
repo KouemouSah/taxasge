@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="packages/web/public/icon_facil.png" alt="Facil Logo" width="120" height="120">
-
-# Facil
+<img src="packages/web/public/logo.png" alt="Facil" width="280">
 
 ### Scalable Government Digital Services Framework
 
@@ -39,21 +37,35 @@ The framework is **country-agnostic by design**: workflows, fiscal services, ent
 
 ## Core Capabilities
 
+### Government Workflow Automation Engine
+
+End-to-end digitization of administrative procedures. 36 predefined workflows (passport, residency, driving license, contracts, inspections...) with configurable steps, dynamic form validation, conditional routing, and multi-entity approval chains. Citizens submit requests through guided wizards; government agents process them via role-based dashboards with SLA-driven priority queues, automatic assignment, and real-time workload balancing across 20 government entities.
+
+### AI-Powered Specialized Chatbot Agents
+
+A RAG chatbot powered by Gemini 2.5 Flash with **role-based specialized agents** — each agent has domain-specific tools and access controls respecting strict data confidentiality:
+
+| Agent | Scope | Tools | Confidentiality |
+|-------|-------|-------|-----------------|
+| Citizen Agent | Public services, fees, procedures | 19 public tools | No access to internal data |
+| Authenticated Agent | Personal requests, status tracking | 8 auth tools | Own data only |
+| Treasury Agent | Payment validation, revenue analysis | Deep reasoning | Entity-scoped financial data |
+| Supervisor Agent | Team performance, anomaly detection | Deep reasoning | Entity-scoped agent metrics |
+| Admin Agent | System configuration, audit analysis | Deep reasoning | Full system access with audit trail |
+
+Each agent operates with Chain-of-Thought reasoning (6-step prompt), self-reflection (auto-regeneration if quality score < 5/10), and 15 response formats.
+
 ### Document-to-Data Transformation at Scale
 
-Convert physical documents (contracts, invoices, government forms, identity documents, tax declarations) into structured digital data in minutes. Facil's OCR pipeline extracts, validates, and structures data from 39+ document schemas using template-based field mapping and AI-powered classification.
-
-### AI-Powered Workflow Automation
-
-Build complete document processing pipelines — from OCR scanning to natural language querying, with fully automated structuring. The RAG-powered chatbot (Gemini 2.5 Flash + pgvector) answers citizen questions, guides procedures, and enables agents to query documents in natural language.
+Convert physical documents (contracts, invoices, identity papers, government forms, tax declarations) into structured digital data. The OCR pipeline extracts, validates, and structures data from 39+ document schemas using template-based field mapping with bounding box annotation, AI-powered classification, and cross-document validation. Extract structured text from PDFs while preserving layouts.
 
 ### Compliance Monitoring & Risk Management
 
-Automatically audit document workflows, apply retention policies, and ensure complete traceability. Every agent action, payment validation, document review, and permission change is logged in the audit trail (2,800+ entries). Schema validation enforces document integrity with 70+ JSON rules across all workflow types.
+Every agent action, payment validation, document review, and permission change is logged in the audit trail (2,800+ entries). The SchemaValidationEngine enforces document integrity with 70+ JSON rules. RiskAnalyzer runs a 12-step assessment pipeline on every document. All API requests pass through rate limiting, JWT validation, RBAC check (335 permissions), and parameterized SQL — ensuring OWASP compliance at every layer.
 
-### Extraction & Analysis
+### Intelligent Pattern Detection & Data Validation
 
-AI-driven insights: detect recurring patterns across documents, validate data cross-referencing multiple sources, and enhance enterprise search from scanned documents. The extraction engine preserves layouts, annotates bounding boxes, and structures text from PDFs while maintaining spatial relationships.
+AI-driven analysis: detect recurring patterns across scanned documents, validate data by cross-referencing multiple sources (OCR extraction vs form input vs database records), and enable enterprise-grade search across the fiscal services catalog (873 services, 21 ministries). Automatic zone resolution with Levenshtein fuzzy matching and commerce type classification for commercial license workflows.
 
 ---
 
@@ -97,69 +109,34 @@ facil/
 
 ```mermaid
 graph TB
-    subgraph Clients
-        WEB[Web Dashboard<br>Next.js 14]
-        MOB[Citizen App<br>Expo SDK 54]
-        INS[Inspector App<br>Expo SDK 54]
-    end
+    WEB["🖥️ Web Dashboard — Next.js 14"] --> API
+    MOB["📱 Citizen App — Expo SDK 54"] --> API
+    INS["🔍 Inspector App — Expo SDK 54"] --> API
 
-    subgraph Cloud Run
-        API[FastAPI Backend<br>30 Modules - 31 Routers]
-    end
+    API["⚙️ FastAPI Backend — 30 Modules, 31 Routers"]
 
-    subgraph Services
-        AUTH[Auth Service<br>JWT + 2FA TOTP]
-        WF[Workflow Engine<br>36 Workflows]
-        PAY[Payment Service<br>BANGE Integration]
-        CHAT[RAG Chatbot<br>Gemini 2.5 Flash]
-        OCR[OCR Pipeline<br>39 Document Schemas]
-        RBAC[RBAC Engine<br>47 Roles - 335 Perms]
-    end
+    API --> AUTH["🔐 Auth — JWT + 2FA TOTP"]
+    API --> WF["🔄 Workflow Engine — 36 Workflows"]
+    API --> PAY["💳 Payments — BANGE"]
+    API --> CHAT["🤖 RAG Chatbot — Gemini 2.5 Flash"]
+    API --> OCRS["📄 OCR — 39 Schemas"]
+    API --> RBAC["🛡️ RBAC — 47 Roles, 335 Perms"]
 
-    subgraph Data Layer
-        PG[(PostgreSQL<br>145 Tables - 50 Enums)]
-        REDIS[(Redis Cache<br>Upstash)]
-        VEC[(pgvector<br>768-dim Embeddings)]
-        STORE[(Supabase Storage<br>Documents)]
-    end
-
-    subgraph CI/CD
-        GHA[GitHub Actions<br>6 Workflows]
-        CR[Google Cloud Run<br>Auto-scaling 0-10]
-    end
-
-    WEB & MOB & INS --> API
-    API --> AUTH & WF & PAY & CHAT & OCR & RBAC
-    AUTH & WF & PAY --> PG
-    CHAT --> VEC
-    RBAC --> REDIS
-    OCR --> STORE
-    GHA --> CR
+    AUTH --> PG[("🗄️ PostgreSQL — 145 Tables")]
+    WF --> PG
+    PAY --> PG
+    CHAT --> VEC[("🔍 pgvector — 768-dim")]
+    RBAC --> REDIS[("⚡ Redis — Upstash")]
+    OCRS --> STORE[("📦 Supabase Storage")]
 ```
 
 ### Backend 3-Tier Architecture
 
 ```mermaid
 graph LR
-    subgraph API Layer
-        R[FastAPI Routers<br>31 Endpoints]
-    end
-
-    subgraph Service Layer
-        S[Business Logic<br>Validation - Rules]
-    end
-
-    subgraph Repository Layer
-        D[asyncpg Queries<br>Parameterized SQL]
-    end
-
-    subgraph Database
-        PG[(PostgreSQL<br>Supabase)]
-    end
-
-    R -->|Pydantic Models| S
-    S -->|Domain Logic| D
-    D -->|Connection Pool| PG
+    R["📡 FastAPI Routers — 31 Endpoints"] -->|Pydantic v2| S["⚙️ Service Layer — Business Logic"]
+    S -->|Domain Rules| D["🗃️ Repository — asyncpg"]
+    D -->|Connection Pool| PG[("🗄️ PostgreSQL")]
 ```
 
 ### Technology Stack
@@ -239,34 +216,30 @@ Each workflow defines: required documents, OCR schemas, validation rules, appoin
 ### Workflow State Machine
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Draft : Citizen creates
-    Draft --> Submitted : Submit request
-    Submitted --> Processing : Agent picks up
-    Processing --> Accepted : Agent approves
-    Processing --> Rejected : Agent rejects
-    Processing --> DocumentsRequested : Need more docs
-    DocumentsRequested --> Processing : Docs provided
-    Accepted --> PaymentPending : Fee required
-    PaymentPending --> Completed : Payment confirmed
-    Accepted --> Completed : No fee
-    Rejected --> Amended : Citizen corrects
-    Amended --> Processing : Re-submit
-    Completed --> [*]
+graph LR
+    A["📝 Draft"] --> B["📤 Submitted"]
+    B --> C["⚙️ Processing"]
+    C --> D["✅ Accepted"]
+    C --> E["❌ Rejected"]
+    C --> F["📎 Docs Requested"]
+    F --> C
+    D --> G["💳 Payment Pending"]
+    G --> H["🏁 Completed"]
+    D --> H
+    E --> I["✏️ Amended"]
+    I --> C
 ```
 
 ### Service Request Wizard Flow
 
 ```mermaid
 graph LR
-    S[Selection] --> U[Document Upload]
-    U --> F1[Form Review 1]
-    F1 --> F2[Form Review 2..N]
-    F2 --> A{Appointment?}
-    A -->|Yes| AP[Slot Selection]
-    A -->|No| P[Payment]
-    AP --> P
-    P --> C[Confirmation]
+    S["1️⃣ Selection"] --> U["2️⃣ Document Upload"]
+    U --> F1["3️⃣ Form Review"]
+    F1 --> F2["4️⃣ Additional Forms"]
+    F2 --> AP["5️⃣ Appointment"]
+    AP --> P["6️⃣ Payment"]
+    P --> C["7️⃣ Confirmation"]
 ```
 
 ---
@@ -304,14 +277,14 @@ graph LR
 
 ```mermaid
 graph LR
-    Q[User Query] --> EMB[Embedding<br>text-embedding-004]
-    EMB --> HS{Hybrid Search}
-    HS -->|70%| SEM[Semantic Search<br>pgvector cosine]
-    HS -->|30%| FTS[Full-Text Search<br>tsvector]
-    SEM & FTS --> CTX[Context Assembly]
-    CTX --> GEM[Gemini 2.5 Flash<br>+ 35 Tools]
-    GEM --> REF{Self-Reflection<br>Score >= 5?}
-    REF -->|Yes| RES[Response<br>15 Formats]
+    Q["💬 User Query"] --> EMB["🔢 Embedding"]
+    EMB --> SEM["🔍 Semantic 70%"]
+    EMB --> FTS["📝 Full-Text 30%"]
+    SEM --> CTX["📋 Context Assembly"]
+    FTS --> CTX
+    CTX --> GEM["🤖 Gemini 2.5 Flash + 35 Tools"]
+    GEM --> REF{"🔄 Score >= 5?"}
+    REF -->|Yes| RES["✅ Response — 15 Formats"]
     REF -->|No| GEM
 ```
 
@@ -319,12 +292,12 @@ graph LR
 
 ```mermaid
 graph LR
-    DOC[Document Upload] --> TM[Template Matching<br>39 Schemas]
-    TM --> FE[Field Extraction<br>Bounding Boxes]
-    FE --> SV[Schema Validation<br>70+ JSON Rules]
-    SV --> RA[Risk Analyzer<br>12 Steps]
-    RA --> SD[Structured Data<br>JSON Output]
-    SD --> CL[AI Classification<br>Gemini 2.5 Flash]
+    DOC["📄 Upload"] --> TM["🔎 Template Match — 39 Schemas"]
+    TM --> FE["📐 Field Extraction"]
+    FE --> SV["✅ Schema Validation — 70+ Rules"]
+    SV --> RA["⚠️ Risk Analysis — 12 Steps"]
+    RA --> SD["📊 Structured JSON"]
+    SD --> CL["🤖 AI Classification"]
 ```
 
 ### OCR Capabilities
@@ -412,12 +385,12 @@ Backend requires `packages/backend/.env`:
 
 ```mermaid
 graph LR
-    REQ[Client Request] --> RL[Rate Limiter<br>Per-IP + Per-User]
-    RL --> JWT[JWT Validation<br>30min Access Token]
-    JWT --> RBAC[RBAC Check<br>335 Permissions]
-    RBAC --> HANDLER[Route Handler<br>Pydantic Validation]
-    HANDLER --> AUDIT[Audit Logger<br>2800+ Entries]
-    HANDLER --> DB[asyncpg<br>Parameterized SQL]
+    REQ["🌐 Request"] --> RL["🚦 Rate Limiter"]
+    RL --> JWT["🔑 JWT Validation"]
+    JWT --> RBAC["🛡️ RBAC — 335 Perms"]
+    RBAC --> H["⚙️ Handler + Pydantic"]
+    H --> AUDIT["📋 Audit Logger"]
+    H --> DB["🗄️ asyncpg — Parameterized SQL"]
 ```
 
 | Measure | Implementation |
