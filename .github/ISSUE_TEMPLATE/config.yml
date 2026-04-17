@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/KouemouSah/taxasge/blob/develop/SECURITY.md
+    about: Report security vulnerabilities privately via email (see SECURITY.md)
+  - name: General Questions
+    url: https://github.com/KouemouSah/taxasge/discussions
+    about: Ask questions in GitHub Discussions

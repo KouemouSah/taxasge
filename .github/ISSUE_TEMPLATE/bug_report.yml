@@ -1,0 +1,132 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in the Facil platform
+title: "[Bug]: "
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill in the details below.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical - System down, data loss, security breach
+        - High - Major feature broken, no workaround
+        - Medium - Feature partially broken, workaround exists
+        - Low - Minor issue, cosmetic
+    validations:
+      required: true
+
+  - type: dropdown
+    id: application
+    attributes:
+      label: Application
+      description: Which application is affected?
+      options:
+        - Backend API
+        - Frontend Web (Next.js)
+        - Mobile App (Citizen)
+        - Inspector App (Field Agent)
+        - Database / Migrations
+        - CI/CD Workflows
+        - GitHub Pages Dashboard
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which module is affected?
+      options:
+        - auth
+        - users
+        - fiscal-services
+        - declarations
+        - payments
+        - service-requests
+        - chatbot
+        - permissions
+        - communications
+        - documents (OCR)
+        - inspections
+        - treasury
+        - bundle-workflow
+        - companies
+        - assignments
+        - support
+        - translations
+        - menu-config
+        - admin
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear and concise description of the bug
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the bug
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Error Messages
+      description: Paste any relevant logs, error messages, or stack traces
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Add screenshots if applicable
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        - Browser / Device:
+        - OS:
+        - API endpoint:
+        - User role:
+      placeholder: |
+        - Browser: Chrome 120
+        - OS: Windows 11
+        - API: staging
+        - Role: dgi_agent

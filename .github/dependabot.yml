@@ -1,0 +1,57 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/packages/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type:debt"
+      - "app:backend"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type:debt"
+      - "app:frontend"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/packages/mobile"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "type:debt"
+      - "app:mobile"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "npm"
+    directory: "/packages/inspector"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "type:debt"
+      - "app:inspector"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "type:debt"
+    commit-message:
+      prefix: "chore(ci)"
+    open-pull-requests-limit: 5

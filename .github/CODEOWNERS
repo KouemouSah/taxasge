@@ -1,0 +1,28 @@
+# Facil Platform - Code Ownership
+# Each line is a file pattern followed by one or more owners.
+# Order matters: later rules override earlier ones.
+
+# Default owner for everything
+* @KouemouSah
+
+# Backend
+packages/backend/ @KouemouSah
+
+# Frontend Web
+packages/web/ @KouemouSah
+
+# Mobile (Citizen App)
+packages/mobile/ @KouemouSah
+
+# Inspector (Field Agent App)
+packages/inspector/ @KouemouSah
+
+# CI/CD Workflows
+.github/workflows/ @KouemouSah
+
+# Database Migrations
+packages/backend/database/migrations/ @KouemouSah
+
+# Documentation
+docs/ @KouemouSah
+Documentations/ @KouemouSah

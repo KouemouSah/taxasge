@@ -1,604 +1,322 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaxasGE - Dashboard de Monitoring Complet</title>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --success: #16a34a;
-      --warning: #d97706;
-      --danger: #dc2626;
-      --muted: #6b7280;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --border: #e2e8f0;
-    }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facil — Government Digital Services Dashboard</title>
+  <meta name="description" content="Facil: Government Digital Services Framework for Equatorial Guinea. Platform monitoring dashboard with CI/CD status, architecture overview, and project milestones.">
+  <meta name="theme-color" content="#0062A5">
+  <link rel="icon" type="image/png" href="assets/logo.png">
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  <!-- Preload Inter font (optional enhancement) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
-    body {
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
-      background: var(--bg);
-      color: #111827;
-      line-height: 1.6;
-    }
-
-    .header {
-      background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
-      color: #fff;
-      padding: 2rem;
-      text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .header h1 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .header p {
-      opacity: 0.9;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    .status-banner {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-left: 6px solid var(--success);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .status-banner.critical {
-      border-left-color: var(--danger);
-    }
-
-    .status-banner.warning {
-      border-left-color: var(--warning);
-    }
-
-    .status-banner h2 {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .status-banner .timestamp {
-      color: var(--muted);
-      font-size: 0.875rem;
-    }
-
-    .alerts {
-      background: #fee;
-      border: 1px solid #fcc;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 1rem;
-      color: #c00;
-    }
-
-    .section {
-      margin-bottom: 3rem;
-    }
-
-    .section-title {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      color: #1f2937;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    }
-
-    .grid-2 {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .card h3 {
-      font-size: 0.875rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-    }
-
-    .card .value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #1f2937;
-    }
-
-    .card .subtext {
-      font-size: 0.875rem;
-      color: var(--muted);
-      margin-top: 0.5rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .badge.success {
-      background: #d1fae5;
-      color: var(--success);
-    }
-
-    .badge.warning {
-      background: #fed7aa;
-      color: var(--warning);
-    }
-
-    .badge.danger {
-      background: #fee2e2;
-      color: var(--danger);
-    }
-
-    .badge.info {
-      background: #dbeafe;
-      color: var(--primary);
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 9999px;
-      overflow: hidden;
-      margin-top: 0.5rem;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--primary), var(--success));
-      transition: width 0.5s ease;
-    }
-
-    .metric-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .metric-row:last-child {
-      border-bottom: none;
-    }
-
-    .metric-label {
-      color: #6b7280;
-      font-size: 0.875rem;
-    }
-
-    .metric-value {
-      font-weight: 600;
-      color: #1f2937;
-    }
-
-    .list-item {
-      padding: 0.5rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .list-item:last-child {
-      border-bottom: none;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 2rem;
-      color: var(--muted);
-    }
-
-    @media (max-width: 768px) {
-      .grid, .grid-2 {
-        grid-template-columns: 1fr;
-      }
-
-      .header h1 {
-        font-size: 1.5rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="header">
-    <h1>📊 TaxasGE - Dashboard de Monitoring</h1>
-    <p>Suivi en Temps Réel de la Santé du Système & Progression du Projet</p>
-  </div>
 
-  <div class="container">
-    <!-- Status Banner -->
-    <div id="status-banner" class="status-banner">
-      <h2 id="overall-status">Chargement du statut...</h2>
-      <div id="status-timestamp" class="timestamp">Dernière mise à jour: ...</div>
-      <div id="alerts-container"></div>
-    </div>
-
-    <!-- Section: Métriques Système -->
-    <div class="section">
-      <h2 class="section-title">🖥️ Santé du Système</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Uptime 24h</h3>
-          <div id="uptime" class="value">—</div>
-          <div class="subtext">Disponibilité système</div>
-        </div>
-
-        <div class="card">
-          <h3>Temps de Réponse API</h3>
-          <div id="response-time" class="value">—</div>
-          <div class="subtext">Moyenne dernières 24h</div>
-        </div>
-
-        <div class="card">
-          <h3>Taux de Succès API</h3>
-          <div id="api-success" class="value">—</div>
-          <div class="subtext">Requêtes réussies</div>
-        </div>
-
-        <div class="card">
-          <h3>Efficacité Cache</h3>
-          <div id="cache-hit" class="value">—</div>
-          <div class="subtext">Cache hit rate</div>
-        </div>
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <div class="header-logo" aria-hidden="true">
+        <img src="assets/logo.png" alt="">
+      </div>
+      <div class="header-text">
+        <h1>Facil</h1>
+        <p>Government Digital Services Framework &mdash; Equatorial Guinea</p>
+      </div>
+      <div class="header-meta">
+        <time id="last-updated" datetime="">Loading...</time>
       </div>
     </div>
+  </header>
 
-    <!-- Section: Composants -->
-    <div class="section">
-      <h2 class="section-title">🔧 Status des Composants</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Backend</h3>
-          <div id="backend-status">—</div>
+  <main class="container" role="main">
+
+    <!-- ============================================================
+         SECTION 1: Key Metrics
+         ============================================================ -->
+    <section class="section" aria-labelledby="metrics-heading">
+      <div class="section-header">
+        <div class="section-icon blue" aria-hidden="true">&#9670;</div>
+        <h2 class="section-title" id="metrics-heading">Key Metrics</h2>
+      </div>
+      <div class="grid grid-4">
+        <div class="card metric-card blue animate-in">
+          <div class="metric-label">Fiscal Services</div>
+          <div class="metric-value">873</div>
+          <div class="metric-sub">Active service catalog</div>
         </div>
-
-        <div class="card">
-          <h3>Database</h3>
-          <div id="database-status">—</div>
+        <div class="card metric-card green animate-in">
+          <div class="metric-label">Database Tables</div>
+          <div class="metric-value">145</div>
+          <div class="metric-sub">PostgreSQL / Supabase</div>
         </div>
-
-        <div class="card">
-          <h3>Firebase</h3>
-          <div id="firebase-status">—</div>
+        <div class="card metric-card yellow animate-in">
+          <div class="metric-label">Workflows</div>
+          <div class="metric-value">36</div>
+          <div class="metric-sub">Predefined workflow definitions</div>
         </div>
-
-        <div class="card">
-          <h3>Build Status</h3>
-          <div id="build-status">—</div>
+        <div class="card metric-card red animate-in">
+          <div class="metric-label">Roles</div>
+          <div class="metric-value">47</div>
+          <div class="metric-sub">335 permissions</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Section: Qualité & Sécurité -->
-    <div class="section">
-      <h2 class="section-title">🔒 Qualité & Sécurité</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Couverture Tests</h3>
-          <div id="test-coverage" class="value">—</div>
-          <div class="progress-bar">
-            <div id="coverage-bar" class="progress-fill" style="width: 0%"></div>
-          </div>
+    <!-- ============================================================
+         SECTION 2: CI/CD Status
+         ============================================================ -->
+    <section class="section" aria-labelledby="cicd-heading">
+      <div class="section-header">
+        <div class="section-icon green" aria-hidden="true">&#9881;</div>
+        <h2 class="section-title" id="cicd-heading">CI/CD Pipeline Status</h2>
+      </div>
+      <div id="ci-container" class="ci-grid" aria-live="polite">
+        <!-- 6 skeleton placeholders -->
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:120px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:140px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:90px;height:10px"></div></div></div>
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:130px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:70px;height:10px"></div></div></div>
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:110px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:85px;height:10px"></div></div></div>
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:125px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:75px;height:10px"></div></div></div>
+        <div class="ci-item"><div class="skeleton" style="width:12px;height:12px;border-radius:50%"></div><div class="ci-info"><div class="skeleton" style="width:100px;height:14px;margin-bottom:6px"></div><div class="skeleton" style="width:80px;height:10px"></div></div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 3: Architecture Overview
+         ============================================================ -->
+    <section class="section" aria-labelledby="arch-heading">
+      <div class="section-header">
+        <div class="section-icon blue" aria-hidden="true">&#9634;</div>
+        <h2 class="section-title" id="arch-heading">Architecture Overview</h2>
+      </div>
+      <div class="arch-container">
+        <article class="arch-card backend animate-in" aria-label="Backend package">
+          <div class="arch-icon" aria-hidden="true">&#9881;</div>
+          <h3 class="arch-title">Backend</h3>
+          <div class="arch-tech">Python 3.11 / FastAPI / asyncpg</div>
+          <div class="arch-stat">30 modules &middot; 31 routers</div>
+        </article>
+        <article class="arch-card web animate-in" aria-label="Web frontend package">
+          <div class="arch-icon" aria-hidden="true">&#9783;</div>
+          <h3 class="arch-title">Web</h3>
+          <div class="arch-tech">Next.js 14 / React 18 / TypeScript</div>
+          <div class="arch-stat">41+ modules &middot; 3 locales</div>
+        </article>
+        <article class="arch-card mobile animate-in" aria-label="Mobile app package">
+          <div class="arch-icon" aria-hidden="true">&#9743;</div>
+          <h3 class="arch-title">Mobile</h3>
+          <div class="arch-tech">Expo SDK 54 / React Native</div>
+          <div class="arch-stat">Citizen app &middot; 3 languages</div>
+        </article>
+        <article class="arch-card inspector animate-in" aria-label="Inspector app package">
+          <div class="arch-icon" aria-hidden="true">&#9874;</div>
+          <h3 class="arch-title">Inspector</h3>
+          <div class="arch-tech">Expo / React Native</div>
+          <div class="arch-stat">Field agent app &middot; Offline-first</div>
+        </article>
+      </div>
+
+      <!-- Connector -->
+      <div class="arch-connector" aria-hidden="true">
+        <span class="arch-connector-label">REST API / WebSocket / Push</span>
+      </div>
+
+      <!-- Shared layer -->
+      <div class="grid grid-3">
+        <div class="card text-center animate-in" style="border-top:3px solid var(--ge-blue)">
+          <div class="metric-label">Database</div>
+          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">PostgreSQL (Supabase)</div>
+          <div class="metric-sub">145 tables &middot; 25 enums &middot; pgvector</div>
         </div>
-
-        <div class="card">
-          <h3>Scan Sécurité</h3>
-          <div id="security-scan" class="value">—</div>
-          <div class="subtext">Dernière analyse</div>
+        <div class="card text-center animate-in" style="border-top:3px solid var(--ge-green)">
+          <div class="metric-label">Cache &amp; Queue</div>
+          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">Redis (Upstash)</div>
+          <div class="metric-sub">5 cache instances &middot; Rate limiting</div>
         </div>
-
-        <div class="card">
-          <h3>SonarQube Gate</h3>
-          <div id="sonar-gate" class="value">—</div>
-          <div class="subtext">Quality gate</div>
-        </div>
-
-        <div class="card">
-          <h3>Issues Ouvertes</h3>
-          <div id="open-issues" class="value">—</div>
-          <div class="subtext">GitHub repository</div>
+        <div class="card text-center animate-in" style="border-top:3px solid var(--ge-yellow)">
+          <div class="metric-label">AI / RAG</div>
+          <div style="font-size:1.1rem;font-weight:600;margin-top:4px">Gemini 2.0 Flash</div>
+          <div class="metric-sub">Vertex AI &middot; pgvector embeddings</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Section: Projet -->
-    <div class="section">
-      <h2 class="section-title">📈 Progression du Projet</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3>Progression Globale</h3>
-          <div id="project-progress" class="value">—</div>
-          <div class="progress-bar">
-            <div id="progress-bar" class="progress-fill" style="width: 0%"></div>
-          </div>
-          <div id="project-status" class="subtext"></div>
-        </div>
-
-        <div class="card">
-          <h3>Milestones</h3>
-          <div id="milestones-info"></div>
-        </div>
+    <!-- ============================================================
+         SECTION 4: Tech Stack
+         ============================================================ -->
+    <section class="section" aria-labelledby="tech-heading">
+      <div class="section-header">
+        <div class="section-icon yellow" aria-hidden="true">&#9733;</div>
+        <h2 class="section-title" id="tech-heading">Technology Stack</h2>
       </div>
-    </div>
-
-    <!-- Section: Phases du Projet -->
-    <div class="section">
-      <h2 class="section-title">🎯 Progression par Phase</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Infrastructure</h3>
-          <div id="phase-infrastructure" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-infrastructure" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Backend</h3>
-          <div id="phase-backend" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-backend" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Mobile</h3>
-          <div id="phase-mobile" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-mobile" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Dashboard</h3>
-          <div id="phase-dashboard" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-dashboard" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Production</h3>
-          <div id="phase-production" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-production" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Business</h3>
-          <div id="phase-business" class="value">—</div>
-          <div class="progress-bar">
-            <div id="bar-business" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Section: Recommandations -->
-    <div class="section">
-      <h2 class="section-title">💡 Recommandations</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3>Actions Immédiates</h3>
-          <div id="recommendations-immediate"></div>
-        </div>
-
-        <div class="card">
-          <h3>Cette Semaine</h3>
-          <div id="recommendations-week"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Section: Performance -->
-    <div class="section">
-      <h2 class="section-title">⚡ Performance & Optimisation</h2>
       <div class="card">
-        <div id="performance-metrics"></div>
+        <!-- Backend -->
+        <div class="tech-category">
+          <div class="tech-category-title">Backend</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3776AB"></span>Python 3.11</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#009688"></span>FastAPI</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#336791"></span>asyncpg</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#E10098"></span>Pydantic v2</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#D22630"></span>Redis / Upstash</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#009688"></span>Uvicorn</span>
+          </div>
+        </div>
+
+        <!-- Frontend -->
+        <div class="tech-category">
+          <div class="tech-category-title">Frontend</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Next.js 14</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#61DAFB"></span>React 18</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3178C6"></span>TypeScript</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#06B6D4"></span>Tailwind CSS</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Shadcn/UI</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF4154"></span>React Query</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3C873A"></span>Zod</span>
+          </div>
+        </div>
+
+        <!-- Mobile -->
+        <div class="tech-category">
+          <div class="tech-category-title">Mobile</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000020"></span>Expo SDK 54</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#61DAFB"></span>React Native</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#764ABC"></span>Zustand</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#6200EE"></span>Paper MD3</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#000000"></span>Expo Router</span>
+          </div>
+        </div>
+
+        <!-- Database -->
+        <div class="tech-category">
+          <div class="tech-category-title">Database</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#336791"></span>PostgreSQL 15</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#3ECF8E"></span>Supabase</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4A6CF7"></span>pgvector</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF6600"></span>Supabase Storage</span>
+          </div>
+        </div>
+
+        <!-- AI -->
+        <div class="tech-category">
+          <div class="tech-category-title">AI &amp; Machine Learning</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Gemini 2.0 Flash</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Vertex AI</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FF6F00"></span>OCR Pipeline</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#7B1FA2"></span>RAG Chatbot</span>
+          </div>
+        </div>
+
+        <!-- Infrastructure -->
+        <div class="tech-category">
+          <div class="tech-category-title">Infrastructure</div>
+          <div class="tech-badges">
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Google Cloud Run</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#FFA000"></span>Firebase Hosting</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#2088FF"></span>GitHub Actions</span>
+            <span class="tech-badge"><span class="tech-badge-dot" style="background:#4285F4"></span>Secret Manager</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 5: Milestones Progress
+         ============================================================ -->
+    <section class="section" aria-labelledby="milestones-heading">
+      <div class="section-header">
+        <div class="section-icon green" aria-hidden="true">&#9650;</div>
+        <h2 class="section-title" id="milestones-heading">Milestones Progress</h2>
+      </div>
+      <div id="milestones-container" aria-live="polite">
+        <!-- Skeleton placeholders -->
+        <div class="milestone-item">
+          <div class="milestone-header"><div class="skeleton" style="width:180px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
+          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
+        </div>
+        <div class="milestone-item">
+          <div class="milestone-header"><div class="skeleton" style="width:200px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
+          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
+        </div>
+        <div class="milestone-item">
+          <div class="milestone-header"><div class="skeleton" style="width:160px;height:16px"></div><div class="skeleton" style="width:40px;height:16px"></div></div>
+          <div class="milestone-bar"><div class="skeleton" style="width:100%;height:6px"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 6: Recent Activity
+         ============================================================ -->
+    <section class="section" aria-labelledby="activity-heading">
+      <div class="section-header">
+        <div class="section-icon blue" aria-hidden="true">&#8635;</div>
+        <h2 class="section-title" id="activity-heading">Recent Activity</h2>
+      </div>
+      <div class="card">
+        <div id="commits-container" aria-live="polite">
+          <!-- Skeleton placeholders -->
+          <div style="display:flex;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
+            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
+            <div style="flex:1"><div class="skeleton" style="width:80%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:40%;height:10px"></div></div>
+          </div>
+          <div style="display:flex;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
+            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
+            <div style="flex:1"><div class="skeleton" style="width:70%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:35%;height:10px"></div></div>
+          </div>
+          <div style="display:flex;gap:1rem;padding:0.75rem 0">
+            <div class="skeleton" style="width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0"></div>
+            <div style="flex:1"><div class="skeleton" style="width:75%;height:14px;margin-bottom:8px"></div><div class="skeleton" style="width:45%;height:10px"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SECTION 7: Issue Statistics
+         ============================================================ -->
+    <section class="section" aria-labelledby="issues-heading">
+      <div class="section-header">
+        <div class="section-icon red" aria-hidden="true">&#9888;</div>
+        <h2 class="section-title" id="issues-heading">Issue Statistics</h2>
+      </div>
+      <div class="card">
+        <div id="issues-container" aria-live="polite">
+          <div class="loading-text">Loading issue data...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-flag">
+        <span aria-label="Flag of Equatorial Guinea">&#127468;&#127478;</span>
+        <span>&copy; 2025&ndash;2026 Facil &mdash; Government Digital Services, Equatorial Guinea</span>
+      </div>
+      <div>
+        <a href="https://github.com/KouemouSah/taxasge" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">GitHub</a>
+        <span style="margin:0 0.5rem;opacity:0.4">|</span>
+        <span>Powered by GitHub Pages</span>
       </div>
     </div>
-  </div>
+  </footer>
 
-  <script>
-    // Fonction pour déterminer le badge de statut
-    function getStatusBadge(status) {
-      const statusMap = {
-        'operational': '<span class="badge success">Opérationnel</span>',
-        'down': '<span class="badge danger">Hors Ligne</span>',
-        'degraded': '<span class="badge warning">Dégradé</span>',
-        'passed': '<span class="badge success">Passé</span>',
-        'failed': '<span class="badge danger">Échoué</span>',
-        'no_issues': '<span class="badge success">Aucun Problème</span>',
-        'success': '<span class="badge success">Succès</span>',
-        'critical': '<span class="badge danger">Critique</span>',
-        'warning': '<span class="badge warning">Attention</span>',
-        'healthy': '<span class="badge success">Sain</span>'
-      };
-      return statusMap[status] || `<span class="badge info">${status}</span>`;
-    }
-
-    // Charger unified-metrics.json
-    fetch('unified-metrics.json')
-      .then(r => r.json())
-      .then(unified => {
-        // Status banner
-        const banner = document.getElementById('status-banner');
-        const overallStatus = unified.system_health.overall;
-        banner.className = 'status-banner ' + overallStatus;
-
-        document.getElementById('overall-status').textContent =
-          `Statut Global: ${overallStatus.toUpperCase()}`;
-        document.getElementById('status-timestamp').textContent =
-          `Dernière mise à jour: ${new Date(unified.metadata.timestamp).toLocaleString('fr-FR')}`;
-
-        // Alerts
-        if (unified.system_health.should_alert && unified.system_health.alerts) {
-          const alertsDiv = document.createElement('div');
-          alertsDiv.className = 'alerts';
-          alertsDiv.innerHTML = `<strong>⚠️ Alertes:</strong> ${unified.system_health.alerts}`;
-          document.getElementById('alerts-container').appendChild(alertsDiv);
-        }
-
-        // Métriques système
-        document.getElementById('uptime').textContent = unified.technical_metrics.uptime_24h || '—';
-        document.getElementById('response-time').textContent = unified.technical_metrics.average_response_time || '—';
-        document.getElementById('api-success').textContent = unified.technical_metrics.api_success_rate + '%' || '—';
-        document.getElementById('cache-hit').textContent = unified.performance.cache_hit_rate || '—';
-
-        // Progression projet
-        const progress = unified.project_metrics.overall_progress;
-        document.getElementById('project-progress').textContent = progress + '%';
-        document.getElementById('progress-bar').style.width = progress + '%';
-        document.getElementById('project-status').textContent =
-          `Activité: ${unified.project_metrics.recent_activity}`;
-      })
-      .catch(err => {
-        console.error('Erreur chargement unified-metrics:', err);
-        document.getElementById('overall-status').textContent = 'Erreur de chargement des métriques';
-      });
-
-    // Charger status.json
-    fetch('status.json')
-      .then(r => r.json())
-      .then(status => {
-        // Composants
-        document.getElementById('backend-status').innerHTML =
-          getStatusBadge(status.system_status.components.backend);
-        document.getElementById('database-status').innerHTML =
-          getStatusBadge(status.system_status.components.database);
-        document.getElementById('firebase-status').innerHTML =
-          getStatusBadge(status.system_status.components.firebase);
-
-        // Qualité
-        const coverage = status.quality.test_coverage;
-        document.getElementById('test-coverage').textContent = coverage + '%';
-        document.getElementById('coverage-bar').style.width = coverage + '%';
-        document.getElementById('security-scan').innerHTML =
-          getStatusBadge(status.quality.security_scan);
-        document.getElementById('sonar-gate').innerHTML =
-          getStatusBadge(status.quality.sonarqube_gate);
-
-        // Issues
-        document.getElementById('open-issues').textContent = status.repository.open_issues;
-      })
-      .catch(err => console.error('Erreur chargement status.json:', err));
-
-    // Charger badges.json
-    fetch('badges.json')
-      .then(r => r.json())
-      .then(badges => {
-        document.getElementById('build-status').innerHTML =
-          getStatusBadge(badges.badges.build.message.toLowerCase());
-      })
-      .catch(err => console.error('Erreur chargement badges.json:', err));
-
-    // Charger dashboard-metrics.json
-    fetch('dashboard-metrics.json')
-      .then(r => r.json())
-      .then(metrics => {
-        // Phases
-        const phases = metrics.project_overview.phase_progress;
-        Object.keys(phases).forEach(phase => {
-          const value = phases[phase];
-          const elem = document.getElementById(`phase-${phase}`);
-          const bar = document.getElementById(`bar-${phase}`);
-          if (elem) {
-            elem.textContent = value + '%';
-            bar.style.width = value + '%';
-          }
-        });
-
-        // Milestones
-        const ms = metrics.milestones;
-        document.getElementById('milestones-info').innerHTML = `
-          <div class="metric-row">
-            <span class="metric-label">Total</span>
-            <span class="metric-value">${ms.total}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Complétés</span>
-            <span class="metric-value">${ms.completed}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Actifs</span>
-            <span class="metric-value">${ms.active}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Taux de Complétion</span>
-            <span class="metric-value">${ms.completion_rate}%</span>
-          </div>
-        `;
-
-        // Recommandations
-        const recs = metrics.recommendations;
-        document.getElementById('recommendations-immediate').innerHTML =
-          recs.immediate.map(r => `<div class="list-item">• ${r}</div>`).join('');
-        document.getElementById('recommendations-week').innerHTML =
-          recs.this_week.map(r => `<div class="list-item">• ${r}</div>`).join('');
-
-        // Performance metrics
-        document.getElementById('performance-metrics').innerHTML = `
-          <div class="metric-row">
-            <span class="metric-label">Commits (7 derniers jours)</span>
-            <span class="metric-value">${metrics.activity.commits_last_week}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Dernier Commit</span>
-            <span class="metric-value">${new Date(metrics.activity.last_commit).toLocaleString('fr-FR')}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Issues Critiques</span>
-            <span class="metric-value">${metrics.issues.critical}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Issues Haute Priorité</span>
-            <span class="metric-value">${metrics.issues.high_priority}</span>
-          </div>
-        `;
-      })
-      .catch(err => console.error('Erreur chargement dashboard-metrics.json:', err));
-  </script>
+  <script src="dashboard.js"></script>
 </body>
 </html>

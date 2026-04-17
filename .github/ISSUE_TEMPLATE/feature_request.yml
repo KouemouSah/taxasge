@@ -1,0 +1,120 @@
+name: Feature Request
+description: Propose a new feature or enhancement for the Facil platform
+title: "[Feature]: "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the feature you'd like to see in the Facil platform.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Critical - Blocks production release
+        - High - Important for next milestone
+        - Medium - Nice to have
+        - Low - Future consideration
+    validations:
+      required: true
+
+  - type: dropdown
+    id: application
+    attributes:
+      label: Application
+      options:
+        - Backend API
+        - Frontend Web
+        - Mobile App
+        - Inspector App
+        - Cross-platform
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - auth
+        - users
+        - fiscal-services
+        - declarations
+        - payments
+        - service-requests
+        - chatbot
+        - permissions
+        - communications
+        - documents (OCR)
+        - inspections
+        - treasury
+        - bundle-workflow
+        - companies
+        - assignments
+        - support
+        - translations
+        - new module
+    validations:
+      required: true
+
+  - type: dropdown
+    id: itil_phase
+    attributes:
+      label: ITIL Service Lifecycle Phase
+      description: Which phase does this feature belong to?
+      options:
+        - Service Strategy - Vision & architecture decisions
+        - Service Design - Module design & planning
+        - Service Transition - Implementation & testing
+        - Service Operation - Production & monitoring
+        - Continual Service Improvement - Optimization
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: As a [role], I need [capability] because [reason]...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this feature is complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Estimated Effort
+      options:
+        - XS (< 2 hours)
+        - S (2-8 hours)
+        - M (1-3 days)
+        - L (1-2 weeks)
+        - XL (> 2 weeks)
