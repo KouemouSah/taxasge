@@ -11,7 +11,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ClipboardList, Clock, CheckCircle2, Search,
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw, XCircle, DollarSign,
+  ChevronLeft, ChevronRight, ChevronDown, RefreshCw, XCircle, DollarSign,
   Building2, FileCheck, Eye, History,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'

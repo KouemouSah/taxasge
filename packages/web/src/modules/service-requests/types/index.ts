@@ -1393,7 +1393,27 @@ export interface DetailViewResponse {
   } | null
   documents: DetailViewDocumentInfo[]
   workflow_name_es: string
+  workflow_name?: string
   solicitud_type_display?: string | null
+  bundle_details?: {
+    company_name?: string | null
+    registration_number?: string | null
+    total_amount?: number
+    splits?: Array<{
+      entity_code: string
+      entity_name?: string
+      amount: number
+      status: string
+      payment_reference?: string
+      receipt_number?: string | null
+    }>
+    obligations?: Array<{
+      service_name: string
+      amount: number
+      status: string
+      fee_type: string
+    }>
+  } | null
 }
 
 // ============================================================================
