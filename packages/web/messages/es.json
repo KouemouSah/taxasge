@@ -8415,7 +8415,23 @@
     "oms": {
       "nav": {
         "dashboard": "Panel OMS",
-        "licencesoverview": "Vista General Licencias"
+        "licencesoverview": "Vista General Licencias",
+        "licensesOverview": "Vista General Licencias",
+        "pendingValidation": "Validación Pendiente",
+        "validationHistory": "Historial Validaciones",
+        "pendingProcessing": "En Proceso",
+        "completedObligations": "Obligaciones Completadas",
+        "obligations": "Obligaciones",
+        "queue": "Cola de Trabajo",
+        "team": "Equipo",
+        "escalations": "Escalaciones",
+        "payments": "Pagos",
+        "documents": "Documentos",
+        "inspections": "Inspecciones",
+        "processor": "Procesamiento",
+        "licenses": "Licencias",
+        "compliance": "Cumplimiento",
+        "stats": "Estadísticas"
       }
     },
     "companyLookup": {

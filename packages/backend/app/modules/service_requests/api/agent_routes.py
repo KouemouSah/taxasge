@@ -380,7 +380,7 @@ async def get_queue_stats(
                     WHERE sp.workflow_status = 'pending_agent_review'
                 ) AS pending,
                 COUNT(*) FILTER (
-                    WHERE sp.workflow_status IN ('agent_reviewing', 'locked_by_agent')
+                    WHERE sp.workflow_status = 'agent_reviewing'
                 ) AS assigned,
                 COUNT(*) FILTER (
                     WHERE sp.workflow_status = 'completed'

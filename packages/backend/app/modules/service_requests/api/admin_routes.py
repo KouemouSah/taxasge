@@ -3224,6 +3224,7 @@ class PendingPaymentResponse(BaseModel):
     zone_tier: Optional[str] = None
     city_name: Optional[str] = None
     obligation_count: Optional[int] = None
+    obligations: Optional[List[Dict[str, Any]]] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -3527,6 +3528,29 @@ async def get_pending_payments(
                 raise
 
         logger.info(f"[Treasury] Successfully built {len(payments)} payment responses")
+
+        # Batch-fetch obligations for bundle payments (single query, no N+1)
+        bundle_payment_ids = [p.payment_id for p in payments if p.workflow_code == "BUNDLE_PAYMENT"]
+        if bundle_payment_ids:
+            obl_rows = await db.fetch("""
+                SELECT lo.payment_id::text, fs.name_es, lo.amount, lo.fee_type
+                FROM license_obligations lo
+                LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+                WHERE lo.payment_id = ANY($1::uuid[])
+                ORDER BY lo.payment_id, fs.name_es
+            """, bundle_payment_ids)
+            # Group by payment_id
+            obl_map: Dict[str, list] = {}
+            for orow in obl_rows:
+                pid = orow["payment_id"]
+                obl_map.setdefault(pid, []).append({
+                    "name": orow["name_es"] or "—",
+                    "amount": float(orow["amount"]) if orow["amount"] else 0,
+                    "fee_type": orow["fee_type"],
+                })
+            for p in payments:
+                if p.payment_id in obl_map:
+                    p.obligations = obl_map[p.payment_id]
 
         # For supervisors, include agent list for reassign dropdown.
         # Scope:

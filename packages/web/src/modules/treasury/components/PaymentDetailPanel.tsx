@@ -43,6 +43,8 @@ import {
   UserCog,
   Building2,
   Package,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -268,9 +270,22 @@ export function PaymentDetailPanel({
           </div>
         )}
 
+        {/* Applicant — compact inline header */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <User className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-medium text-foreground truncate">{payment.beneficiaryName || payment.userName || 'N/A'}</span>
+          </div>
+          <span className="text-border">|</span>
+          <div className="flex items-center gap-1 min-w-0">
+            <Mail className="h-3 w-3 shrink-0" />
+            <span className="truncate">{payment.userEmail || 'N/A'}</span>
+          </div>
+        </div>
+
         <Separator />
 
-        {/* Payment + Beneficiary — merged 2-column layout */}
+        {/* Payment breakdown + Obligations (bundle) or Beneficiary (non-bundle) */}
         <div className="grid grid-cols-2 gap-4">
           {/* Left: Payment breakdown */}
           <div className="space-y-2 text-sm">
@@ -326,28 +341,46 @@ export function PaymentDetailPanel({
             </div>
           </div>
 
-          {/* Right: Beneficiary + Account */}
+          {/* Right: Obligations list (bundle) or Beneficiary details (non-bundle) */}
           <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground">{t('detail.applicant')}</span>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.beneficiary')}</p>
-              <p className="font-medium text-sm">{payment.beneficiaryName || payment.userName || 'N/A'}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.accountEmail')}</p>
-              <p className="text-xs truncate">{payment.userEmail || 'N/A'}</p>
-            </div>
-
-            {payment.beneficiaryName && payment.userName && payment.beneficiaryName !== payment.userName && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t('detail.accountHolder')}</p>
-                <p className="text-xs text-muted-foreground">{payment.userName}</p>
-              </div>
+            {payment.workflowCode === 'BUNDLE_PAYMENT' && payment.obligations && payment.obligations.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t('detail.obligations', { defaultValue: 'obligaciones' })} ({payment.obligations.length})
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {payment.obligations.map((obl, idx) => (
+                    <div key={idx} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground truncate mr-2">{obl.name}</span>
+                      <span className="shrink-0 font-medium">{formatCurrency(obl.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">{t('detail.applicant')}</span>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('detail.beneficiary')}</p>
+                  <p className="font-medium text-sm">{payment.beneficiaryName || payment.userName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('detail.accountEmail')}</p>
+                  <p className="text-xs truncate">{payment.userEmail || 'N/A'}</p>
+                </div>
+                {payment.beneficiaryName && payment.userName && payment.beneficiaryName !== payment.userName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t('detail.accountHolder')}</p>
+                    <p className="text-xs text-muted-foreground">{payment.userName}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

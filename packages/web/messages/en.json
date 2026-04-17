@@ -8415,7 +8415,23 @@
     "oms": {
       "nav": {
         "dashboard": "OMS Dashboard",
-        "licencesoverview": "Licenses Overview"
+        "licencesoverview": "Licenses Overview",
+        "licensesOverview": "Licenses Overview",
+        "pendingValidation": "Pending Validation",
+        "validationHistory": "Validation History",
+        "pendingProcessing": "Processing",
+        "completedObligations": "Completed Obligations",
+        "obligations": "Obligations",
+        "queue": "Work Queue",
+        "team": "Team",
+        "escalations": "Escalations",
+        "payments": "Payments",
+        "documents": "Documents",
+        "inspections": "Inspections",
+        "processor": "Processing",
+        "licenses": "Licenses",
+        "compliance": "Compliance",
+        "stats": "Statistics"
       }
     },
     "companyLookup": {

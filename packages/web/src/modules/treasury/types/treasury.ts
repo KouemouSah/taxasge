@@ -143,6 +143,7 @@ export interface PendingPayment {
   zoneTier?: string;
   cityName?: string;
   obligationCount?: number;
+  obligations?: Array<{ name: string; amount: number; fee_type: string }>;
 }
 
 export interface TreasuryAgentOption {
