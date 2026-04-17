@@ -279,11 +279,11 @@ class LicenseRepository:
             SELECT
                 COUNT(*) as total,
                 COALESCE(SUM(lo.amount), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN lo.status IN ('paid', 'completed')
+                COALESCE(SUM(CASE WHEN lo.status IN ('paid', 'processing', 'completed')
                     THEN lo.amount ELSE 0 END), 0) as paid_amount,
                 COALESCE(SUM(lo.penalty_amount), 0) as penalty_amount,
-                COUNT(*) FILTER (WHERE lo.status IN ('paid', 'completed')) as paid_count,
-                COUNT(*) FILTER (WHERE lo.status IN ('pending', 'processing')) as pending_count,
+                COUNT(*) FILTER (WHERE lo.status IN ('paid', 'processing', 'completed')) as paid_count,
+                COUNT(*) FILTER (WHERE lo.status = 'pending') as pending_count,
                 COUNT(*) FILTER (WHERE lo.status = 'overdue') as overdue_count
             FROM license_obligations lo
             {where}
@@ -1008,7 +1008,7 @@ class LicenseRepository:
                     SELECT
                         lo.license_id,
                         SUM(lo.amount) as total_amount,
-                        SUM(CASE WHEN lo.status IN ('paid', 'completed') THEN lo.amount ELSE 0 END) as amount_paid,
+                        SUM(CASE WHEN lo.status IN ('paid', 'processing', 'completed') THEN lo.amount ELSE 0 END) as amount_paid,
                         SUM(COALESCE(lo.penalty_amount, 0)) as penalty_amount
                     FROM license_obligations lo
                     JOIN scoped_licenses sl ON sl.id = lo.license_id
