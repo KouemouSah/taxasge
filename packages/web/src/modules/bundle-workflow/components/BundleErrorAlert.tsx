@@ -11,7 +11,7 @@
  * Plan: .claude/plans/BUNDLE_DEBUG_PHASE3_PLAN.md §3.3
  */
 
-import { AlertCircle, ArrowLeft, LifeBuoy, RefreshCcw, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ExternalLink, LifeBuoy, RefreshCcw, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { StructuredApiError } from '@/core/api/errors'
@@ -43,6 +43,11 @@ const CTA_LABELS: Record<
   },
   inline: { es: 'Corregir', fr: 'Corriger', en: 'Fix' },
   none: { es: 'OK', fr: 'OK', en: 'OK' },
+  view_request: {
+    es: 'Ver mi solicitud',
+    fr: 'Voir ma demande',
+    en: 'View my request',
+  },
 }
 
 const DISMISS_LABEL = {
@@ -83,6 +88,19 @@ export function BundleErrorAlert({
         if (typeof window !== 'undefined') window.location.href = href
         break
       }
+      case 'view_request': {
+        // Redirect to existing SR detail page (id from backend 409 response)
+        const srId = error.raw?.existing_request_id
+        if (srId && typeof window !== 'undefined') {
+          window.location.href = `/${lang}/dashboard/service-requests/${srId}`
+        } else {
+          // Fallback: go to service requests list
+          if (typeof window !== 'undefined') {
+            window.location.href = `/${lang}/dashboard/service-requests`
+          }
+        }
+        break
+      }
       case 'inline':
       case 'none':
         onClear?.()
@@ -101,6 +119,8 @@ export function BundleErrorAlert({
       ? ArrowLeft
       : entry.cta === 'support'
       ? LifeBuoy
+      : entry.cta === 'view_request'
+      ? ExternalLink
       : AlertCircle
 
   return (

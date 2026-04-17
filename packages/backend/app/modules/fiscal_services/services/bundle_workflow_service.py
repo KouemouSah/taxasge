@@ -897,15 +897,21 @@ class BundleWorkflowService:
         # can initiate a 2nd bundle for the remaining 2 once all splits from
         # the 1st complete. Only block if a selected obligation already has an
         # in-flight payment (status='payment_pending').
-        inflight_obligation = await conn.fetchval("""
-            SELECT lo.id FROM license_obligations lo
+        inflight_obligation = await conn.fetchrow("""
+            SELECT lo.id, sr.id AS sr_id, sr.reference AS sr_reference
+            FROM license_obligations lo
+            JOIN service_payments sp ON sp.id = lo.payment_id
+            JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE lo.id = ANY($1::uuid[])
               AND lo.license_id = $2
               AND lo.status = 'payment_pending'
             LIMIT 1
         """, selected_obligation_ids, license_id)
         if inflight_obligation:
-            raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
+            raise ValueError(
+                f"PAYMENT_ALREADY_IN_PROGRESS:{inflight_obligation['sr_id']}:"
+                f"{inflight_obligation['sr_reference']}"
+            )
 
         # Verify obligations are still payable. JOIN fiscal_services so the
         # calculation_details snapshot carries a human-readable name per
