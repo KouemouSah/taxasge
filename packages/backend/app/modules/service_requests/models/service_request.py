@@ -838,6 +838,9 @@ class DetailViewResponse(BaseModel):
     workflow_name: str = Field(default="", description="Translated workflow name (based on Accept-Language)")
     solicitud_type_display: Optional[str] = None
 
+    # Bundle-specific (only for BUNDLE_PAYMENT workflow)
+    bundle_details: Optional[Dict[str, Any]] = None
+
 
 class PaymentInitiateRequest(BaseModel):
     """Request to initiate a payment."""

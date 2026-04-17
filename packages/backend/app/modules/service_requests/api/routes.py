@@ -1739,6 +1739,63 @@ async def get_request_detail_view(
                 file_url=file_url,
             ))
 
+    # 14. Bundle details (obligations + payment splits by entity)
+    bundle_details = None
+    if request.workflow_code == "BUNDLE_PAYMENT" and request.commercial_license_id:
+        try:
+            bd_rows = await db.fetch("""
+                SELECT sp.entity_code, sp.total_amount, sp.workflow_status,
+                       sp.payment_reference, sp.receipt_number,
+                       ent.name AS entity_name
+                FROM service_payments sp
+                LEFT JOIN entities ent ON ent.code = sp.entity_code
+                WHERE sp.service_request_id = $1
+                ORDER BY sp.entity_code
+            """, request_id)
+            obl_rows = await db.fetch("""
+                SELECT lo.fee_type, lo.amount, lo.status,
+                       fs.name_es AS service_name, lo.payment_id::text
+                FROM license_obligations lo
+                LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+                WHERE lo.license_id = $1
+                  AND lo.payment_id IN (
+                      SELECT id FROM service_payments WHERE service_request_id = $2
+                  )
+                ORDER BY lo.fee_type, fs.name_es
+            """, request.commercial_license_id, request_id)
+            comp_row = await db.fetchrow(
+                "SELECT legal_name, registration_number FROM companies WHERE id = $1",
+                request.company_id
+            ) if request.company_id else None
+
+            bundle_details = {
+                "company_name": comp_row["legal_name"] if comp_row else None,
+                "registration_number": comp_row["registration_number"] if comp_row else None,
+                "splits": [
+                    {
+                        "entity_code": r["entity_code"],
+                        "entity_name": r["entity_name"],
+                        "amount": float(r["total_amount"]),
+                        "status": r["workflow_status"],
+                        "payment_reference": r["payment_reference"],
+                        "receipt_number": r["receipt_number"],
+                    }
+                    for r in bd_rows
+                ],
+                "obligations": [
+                    {
+                        "service_name": r["service_name"] or r["fee_type"],
+                        "amount": float(r["amount"]),
+                        "status": r["status"],
+                        "fee_type": r["fee_type"],
+                    }
+                    for r in obl_rows
+                ],
+                "total_amount": sum(float(r["total_amount"]) for r in bd_rows),
+            }
+        except Exception as bd_err:
+            logger.warning(f"Could not build bundle details: {bd_err}")
+
     return DetailViewResponse(
         request=request,
         stepper_phases=stepper_phases,
@@ -1756,6 +1813,7 @@ async def get_request_detail_view(
         workflow_name_es=workflow_name_es,
         workflow_name=workflow_name_translated,
         solicitud_type_display=solicitud_type_display,
+        bundle_details=bundle_details,
     )
 
 

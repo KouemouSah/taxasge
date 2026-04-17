@@ -42,6 +42,8 @@ import {
   RefreshCw,
   Download,
   Clock,
+  Building2,
+  Package,
 } from 'lucide-react'
 import { useDetailView } from '@/modules/service-requests/hooks/useWorkflowQueries'
 import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
@@ -331,6 +333,68 @@ export default function ServiceRequestDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Bundle Details — conditional for BUNDLE_PAYMENT */}
+              {detailView.bundle_details && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Building2 className="h-5 w-5" />
+                      {detailView.bundle_details.company_name || 'Paquete Fiscal'}
+                      {detailView.bundle_details.registration_number && (
+                        <span className="text-sm font-normal text-muted-foreground">
+                          RC: {detailView.bundle_details.registration_number}
+                        </span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Payment splits by entity */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {detailView.bundle_details.splits?.map((split: { entity_name: string; entity_code: string; amount: number; status: string; receipt_number?: string }, idx: number) => (
+                        <div key={idx} className="p-3 rounded-lg border">
+                          <p className="text-xs text-muted-foreground">{split.entity_name || split.entity_code}</p>
+                          <p className="text-lg font-bold">
+                            {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', { maximumFractionDigits: 0 }).format(split.amount)} XAF
+                          </p>
+                          <Badge className={split.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                            {split.status === 'completed' ? (
+                              <><CheckCircle className="h-3 w-3 mr-1" />{t('status.paid') || 'Validado'}</>
+                            ) : (
+                              <><Clock className="h-3 w-3 mr-1" />{t('status.payment_processing') || 'En proceso'}</>
+                            )}
+                          </Badge>
+                          {split.receipt_number && (
+                            <p className="text-[10px] text-muted-foreground mt-1">{split.receipt_number}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Obligations list */}
+                    <div>
+                      <p className="text-sm font-medium flex items-center gap-1 mb-2">
+                        <Package className="h-4 w-4" />
+                        {detailView.bundle_details.obligations?.length || 0} {t('obligations') || 'obligaciones'}
+                      </p>
+                      <div className="space-y-1">
+                        {detailView.bundle_details.obligations?.map((obl: { service_name: string; amount: number; status: string }, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-muted/50">
+                            <span className="text-muted-foreground truncate mr-2">{obl.service_name}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono text-xs">
+                                {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', { maximumFractionDigits: 0 }).format(obl.amount)} XAF
+                              </span>
+                              {obl.status === 'completed' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                              {obl.status === 'processing' && <Clock className="h-3 w-3 text-blue-500" />}
+                              {obl.status === 'payment_pending' && <CreditCard className="h-3 w-3 text-yellow-500" />}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Dynamic Data Sections with highlight blocks (Pago/Cita/Anterior) */}
               {data_sections.length > 0 && (
