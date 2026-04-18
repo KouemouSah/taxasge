@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Platform Deployment &amp; Operations - CI/CD, Cloud Run, Firebase Hosting">
+  <title>Deployment &amp; Operations - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div><div class="sidebar-title">Facil Docs</div><div class="sidebar-subtitle">Technical Reference</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+      </nav>
+      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Deployment &amp; Operations</span></nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title">Deployment &amp; Operations</h1>
+        <p class="page-description">
+          Automated CI/CD via GitHub Actions. Backend deploys to Google Cloud Run (container auto-scaling),
+          frontend to Firebase Hosting (CDN). Mobile apps built via Expo and distributed through stores.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#ci-cd">CI/CD Pipeline</a></li>
+            <li><a href="#github-actions">GitHub Actions Workflows</a></li>
+            <li><a href="#cloud-run">Google Cloud Run</a></li>
+            <li><a href="#firebase">Firebase Hosting</a></li>
+            <li><a href="#environments">Environment Management</a></li>
+            <li><a href="#migrations-ops">Database Migrations</a></li>
+            <li><a href="#mobile-dist">Mobile Distribution</a></li>
+            <li><a href="#monitoring">Monitoring &amp; Alerting</a></li>
+          </ul>
+        </div>
+
+        <div class="callout callout-danger">
+          <div class="callout-title">Critical Rule: No Manual Builds</div>
+          <p>
+            <strong>Never build manually with <code>gcloud</code>.</strong> All deployments must go through
+            GitHub Actions. Push to the remote branch and let the CI/CD pipeline handle building and deploying.
+          </p>
+        </div>
+
+        <!-- CI/CD Pipeline -->
+        <h2 id="ci-cd">CI/CD Pipeline <a href="#ci-cd" class="anchor-link">#</a></h2>
+
+        <div class="diagram">
+          <div class="diagram-title">Deployment Pipeline</div>
+          <div class="diagram-row">
+            <div class="diagram-box primary">git push develop</div>
+          </div>
+          <div class="diagram-arrow">&#9660;</div>
+          <div class="diagram-row">
+            <div class="diagram-box">GitHub Actions<span class="diagram-box-subtitle">8 workflow files</span></div>
+          </div>
+          <div class="diagram-arrow">&#9660;</div>
+          <div class="diagram-row">
+            <div class="diagram-box green">CI Tests<span class="diagram-box-subtitle">Lint, type-check, unit tests</span></div>
+          </div>
+          <div class="diagram-arrow">&#9660;</div>
+          <div class="diagram-row">
+            <div class="diagram-box">Build Containers</div>
+            <div class="diagram-box">Build Frontend</div>
+          </div>
+          <div class="diagram-arrow">&#9660;</div>
+          <div class="diagram-row">
+            <div class="diagram-box green filled">Cloud Run<span class="diagram-box-subtitle">Backend API</span></div>
+            <div class="diagram-box green filled">Firebase Hosting<span class="diagram-box-subtitle">Frontend CDN</span></div>
+          </div>
+        </div>
+
+        <!-- GitHub Actions Workflows -->
+        <h2 id="github-actions">GitHub Actions Workflows <a href="#github-actions" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Workflow File</th><th>Trigger</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>ci.yml</code></td><td>Push to main, develop, feature/**</td><td>Run linting, type checking, and unit tests</td></tr>
+              <tr><td><code>deploy-backend-staging.yml</code></td><td>Push to develop (packages/backend/ changes)</td><td>Build Docker container, deploy to Cloud Run staging</td></tr>
+              <tr><td><code>deploy-frontend-staging.yml</code></td><td>Push to develop (packages/web/ changes)</td><td>Build Next.js, deploy to Firebase Hosting staging</td></tr>
+              <tr><td><code>codeql.yml</code></td><td>Scheduled + PR</td><td>CodeQL security analysis</td></tr>
+              <tr><td><code>mobile-build.yml</code></td><td>Push (packages/mobile/ changes)</td><td>Build Expo citizen app</td></tr>
+              <tr><td><code>inspector-build.yml</code></td><td>Push (packages/inspector/ changes)</td><td>Build Expo inspector app</td></tr>
+              <tr><td><code>inspector-ci.yml</code></td><td>Push (packages/inspector/ changes)</td><td>CI tests for inspector app</td></tr>
+              <tr><td><code>update-dashboard.yml</code></td><td>Manual / Scheduled</td><td>Update documentation dashboard</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Cloud Run -->
+        <h2 id="cloud-run">Google Cloud Run <a href="#cloud-run" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Configuration</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Service name</td><td><code>taxasge-backend-staging</code></td></tr>
+              <tr><td>Region</td><td>us-central1</td></tr>
+              <tr><td>Runtime</td><td>Python 3.11 (container)</td></tr>
+              <tr><td>Entry point</td><td><code>uvicorn app.main:app</code></td></tr>
+              <tr><td>Min instances</td><td>0 (scales to zero)</td></tr>
+              <tr><td>Max instances</td><td>Auto-scaled</td></tr>
+              <tr><td>Memory</td><td>512MB-1GB per instance</td></tr>
+              <tr><td>Timeout</td><td>300 seconds</td></tr>
+              <tr><td>Concurrency</td><td>80 requests per instance</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Firebase Hosting -->
+        <h2 id="firebase">Firebase Hosting <a href="#firebase" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Property</th><th>Dev</th><th>Production</th></tr></thead>
+            <tbody>
+              <tr><td>Project</td><td>taxasge-dev</td><td>taxasge-pro</td></tr>
+              <tr><td>URL</td><td>taxasge-dev.web.app</td><td>taxasge-pro.web.app</td></tr>
+              <tr><td>Custom domain</td><td>&mdash;</td><td>taxasge.emacsah.com</td></tr>
+              <tr><td>CDN</td><td>Global</td><td>Global</td></tr>
+              <tr><td>SSL</td><td>Automatic</td><td>Automatic</td></tr>
+              <tr><td>Staging channels</td><td>Pattern: <code>taxasge-dev--{channel}.web.app</code></td><td>&mdash;</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Environments -->
+        <h2 id="environments">Environment Management <a href="#environments" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Environment</th><th>Branch</th><th>Backend</th><th>Frontend</th><th>Database</th></tr></thead>
+            <tbody>
+              <tr><td>Development</td><td>feature/**</td><td>localhost:8000</td><td>localhost:3000</td><td>Local / Supabase dev</td></tr>
+              <tr><td>Staging</td><td>develop</td><td>Cloud Run staging</td><td>Firebase dev</td><td>Supabase staging</td></tr>
+              <tr><td>Production</td><td>main</td><td>Cloud Run prod</td><td>Firebase prod</td><td>Supabase prod</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Environment Variables</h3>
+        <p>Key environment variables configured in <code>packages/backend/.env</code>:</p>
+        <pre><code>ENVIRONMENT=development|staging|production
+DATABASE_URL=postgresql://...
+REDIS_URL=rediss://...            <span class="cmt"># Upstash TLS</span>
+SECRET_KEY=...                    <span class="cmt"># JWT signing key</span>
+GOOGLE_CLOUD_PROJECT=...         <span class="cmt"># Vertex AI project</span>
+SMTP_USERNAME=...                <span class="cmt"># Email sending</span>
+SMTP_PASSWORD_GMAIL=...          <span class="cmt"># Email credentials</span>
+SUPABASE_URL=...                 <span class="cmt"># Storage and auth</span>
+SUPABASE_SERVICE_ROLE_KEY=...    <span class="cmt"># Admin access</span></code></pre>
+
+        <!-- Database Migrations -->
+        <h2 id="migrations-ops">Database Migrations <a href="#migrations-ops" class="anchor-link">#</a></h2>
+        <p>
+          Migrations are stored in <code>packages/backend/migrations/</code> as SQL and Python files.
+          They include schema changes, data seeds, and view definitions.
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Category</th><th>Count</th><th>Examples</th></tr></thead>
+            <tbody>
+              <tr><td>Schema migrations</td><td>~10 numbered</td><td><code>001_module_03_infrastructure.sql</code>, <code>008_permissions_module.sql</code></td></tr>
+              <tr><td>View definitions</td><td>5</td><td><code>00_apply_all_views.sql</code> through <code>04_permissions_rbac_views.sql</code></td></tr>
+              <tr><td>Seed data</td><td>4</td><td><code>seed_permissions.sql</code>, <code>seed_predefined_roles.sql</code>, <code>seed_custom_roles.sql</code></td></tr>
+              <tr><td>Python runners</td><td>6</td><td><code>execute_seed_permissions.py</code>, <code>sync_assignment_permissions.py</code></td></tr>
+              <tr><td>Hotfixes</td><td>Various</td><td><code>fix_pending_registrations_minimal.sql</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Migration Safety</div>
+          <p>
+            Always verify database state before writing migrations: <code>SELECT code FROM roles</code>,
+            <code>SELECT column_name FROM information_schema.columns</code>, etc. Role codes and enum values
+            change over time and must be verified against the live database.
+          </p>
+        </div>
+
+        <!-- Mobile Distribution -->
+        <h2 id="mobile-dist">Mobile Distribution <a href="#mobile-dist" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>App</th><th>Package ID</th><th>Distribution</th></tr></thead>
+            <tbody>
+              <tr><td>Facil (Citizen)</td><td><code>com.taxasge.facil</code></td><td>Expo.dev builds, GitHub Releases, Google Play Store</td></tr>
+              <tr><td>Facil Inspector</td><td><code>com.taxasge.inspector</code></td><td>Expo.dev builds, internal distribution</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Monitoring -->
+        <h2 id="monitoring">Monitoring &amp; Alerting <a href="#monitoring" class="anchor-link">#</a></h2>
+
+        <h3>Health Check Endpoint</h3>
+        <pre><code>GET /health
+
+<span class="cmt">Response:</span>
+{
+  <span class="str">"status"</span>: <span class="str">"healthy"</span>,
+  <span class="str">"service"</span>: <span class="str">"taxasge-backend"</span>,
+  <span class="str">"environment"</span>: <span class="str">"staging"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.1.8"</span>,
+  <span class="str">"database"</span>: <span class="str">"connected"</span>,
+  <span class="str">"redis"</span>: <span class="str">"connected"</span>
+}</code></pre>
+
+        <h3>Monitoring Endpoints</h3>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/health</code> <span class="endpoint-desc">Basic health check (public)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/admin/monitoring/health</code> <span class="endpoint-desc">Detailed system health (admin)</span></div>
+        </div>
+
+        <h3>Logging</h3>
+        <p>
+          Structured logging via <strong>Loguru</strong> with contextual information. Cloud Run captures
+          stdout/stderr and forwards to Google Cloud Logging for centralized monitoring.
+        </p>
+
+        <!-- SCREENSHOT placeholder -->
+        <!-- SCREENSHOT: GitHub Actions workflow showing successful backend and frontend deployments -->
+
+      </div>
+
+      <footer class="page-footer">
+        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>

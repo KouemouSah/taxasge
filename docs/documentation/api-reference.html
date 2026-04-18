@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Platform API Reference - 62 routers, authentication, endpoints">
+  <title>API Reference - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
+        <div><div class="sidebar-title">Facil Docs</div><div class="sidebar-subtitle">Technical Reference</div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+      </nav>
+      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">API Reference</span>
+        </nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title">API Reference</h1>
+        <p class="page-description">
+          The Facil backend exposes 62 API routers via FastAPI, all mounted under the <code>/api/v1</code> prefix.
+          This reference covers authentication, request conventions, and key endpoints by domain.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#base-url">Base URL &amp; Conventions</a></li>
+            <li><a href="#authentication">Authentication</a></li>
+            <li><a href="#error-handling">Error Handling</a></li>
+            <li><a href="#rate-limiting">Rate Limiting</a></li>
+            <li><a href="#routers">All 62 API Routers</a></li>
+            <li><a href="#auth-endpoints">Auth Endpoints</a></li>
+            <li><a href="#user-endpoints">User Endpoints</a></li>
+            <li><a href="#fiscal-services-endpoints">Fiscal Services Endpoints</a></li>
+            <li><a href="#service-requests-endpoints">Service Requests Endpoints</a></li>
+            <li><a href="#payments-endpoints">Payment Endpoints</a></li>
+            <li><a href="#chatbot-endpoints">Chatbot Endpoints</a></li>
+            <li><a href="#admin-endpoints">Admin Endpoints</a></li>
+          </ul>
+        </div>
+
+        <!-- Base URL -->
+        <h2 id="base-url">Base URL &amp; Conventions <a href="#base-url" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Environment</th><th>Base URL</th></tr></thead>
+            <tbody>
+              <tr><td>Production</td><td><code>https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app/api/v1</code></td></tr>
+              <tr><td>Local Dev</td><td><code>http://localhost:8000/api/v1</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Request Headers</h3>
+        <pre><code>Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json
+Accept-Language: es | fr | en    <span class="cmt"># Determines error message language</span></code></pre>
+
+        <h3>Pagination</h3>
+        <p>List endpoints accept standard pagination parameters:</p>
+        <pre><code>GET /api/v1/fiscal-services?page=1&amp;per_page=20&amp;sort_by=name&amp;sort_order=asc</code></pre>
+        <p>Response includes pagination metadata:</p>
+        <pre><code>{
+  <span class="str">"data"</span>: [...],
+  <span class="str">"total"</span>: <span class="num">873</span>,
+  <span class="str">"page"</span>: <span class="num">1</span>,
+  <span class="str">"per_page"</span>: <span class="num">20</span>,
+  <span class="str">"total_pages"</span>: <span class="num">44</span>
+}</code></pre>
+
+        <!-- Authentication -->
+        <h2 id="authentication">Authentication <a href="#authentication" class="anchor-link">#</a></h2>
+
+        <div class="diagram">
+          <div class="diagram-title">Authentication Flow</div>
+          <div class="flow">
+            <span class="flow-step">Login (email+password)</span>
+            <span class="flow-arrow">&#8594;</span>
+            <span class="flow-step">Verify credentials</span>
+            <span class="flow-arrow">&#8594;</span>
+            <span class="flow-step">2FA check (if enabled)</span>
+            <span class="flow-arrow">&#8594;</span>
+            <span class="flow-step success">Issue JWT pair</span>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Token</th><th>Lifetime</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>Access Token</td><td>30 minutes</td><td>API authorization (Bearer header)</td></tr>
+              <tr><td>Refresh Token</td><td>30 days</td><td>Obtain new access tokens without re-login</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>JWT Payload</h3>
+        <pre><code>{
+  <span class="str">"sub"</span>: <span class="str">"user_uuid"</span>,
+  <span class="str">"email"</span>: <span class="str">"user@example.com"</span>,
+  <span class="str">"role"</span>: <span class="str">"citizen"</span>,
+  <span class="str">"permissions"</span>: [<span class="str">"service_request.create"</span>, ...],
+  <span class="str">"exp"</span>: <span class="num">1714000000</span>,
+  <span class="str">"iat"</span>: <span class="num">1713998200</span>
+}</code></pre>
+
+        <h3>Two-Factor Authentication (2FA)</h3>
+        <p>
+          Optional TOTP-based 2FA using <code>pyotp</code>. When enabled, login returns a <code>2fa_required</code>
+          flag and the client must submit the TOTP code to complete authentication.
+        </p>
+
+        <!-- Error Handling -->
+        <h2 id="error-handling">Error Handling <a href="#error-handling" class="anchor-link">#</a></h2>
+
+        <p>All errors follow a consistent response schema with trilingual support:</p>
+        <pre><code>{
+  <span class="str">"detail"</span>: <span class="str">"Translated error message (based on Accept-Language)"</span>,
+  <span class="str">"error_code"</span>: <span class="str">"ERR_NOT_FOUND"</span>
+}</code></pre>
+
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>HTTP Status</th><th>Error Code</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>400</td><td><code>ERR_BAD_REQUEST</code></td><td>Invalid request parameters</td></tr>
+              <tr><td>401</td><td><code>ERR_UNAUTHORIZED</code></td><td>Missing or invalid JWT token</td></tr>
+              <tr><td>403</td><td><code>ERR_FORBIDDEN</code></td><td>Insufficient permissions (RBAC)</td></tr>
+              <tr><td>404</td><td><code>ERR_NOT_FOUND</code></td><td>Resource not found</td></tr>
+              <tr><td>409</td><td><code>ERR_CONFLICT</code></td><td>Resource conflict (duplicate, version mismatch)</td></tr>
+              <tr><td>422</td><td><code>VALIDATION_ERROR</code></td><td>Pydantic validation failure (detailed field errors)</td></tr>
+              <tr><td>429</td><td><code>ERR_RATE_LIMITED</code></td><td>Rate limit exceeded</td></tr>
+              <tr><td>500</td><td><code>ERR_SERVER_ERROR</code></td><td>Internal error (details sanitized for clients)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Security Note</div>
+          <p>
+            For 5xx errors, the backend sanitizes the <code>detail</code> field to prevent leaking internal
+            exception messages. Full stack traces are logged server-side via Loguru.
+          </p>
+        </div>
+
+        <!-- Rate Limiting -->
+        <h2 id="rate-limiting">Rate Limiting <a href="#rate-limiting" class="anchor-link">#</a></h2>
+        <p>Rate limiting is enforced per user (or IP for unauthenticated endpoints) via the Redis-backed <code>check_rate_limit()</code> function.</p>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Endpoint Category</th><th>Limit</th><th>Window</th></tr></thead>
+            <tbody>
+              <tr><td>Authentication (login/register)</td><td>10 requests</td><td>60 seconds</td></tr>
+              <tr><td>Chatbot messages</td><td>30 requests</td><td>60 seconds</td></tr>
+              <tr><td>General API (authenticated)</td><td>100 requests</td><td>60 seconds</td></tr>
+              <tr><td>File uploads</td><td>20 requests</td><td>60 seconds</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- All 62 Routers -->
+        <h2 id="routers">All 62 API Routers <a href="#routers" class="anchor-link">#</a></h2>
+
+        <details>
+          <summary>Authentication &amp; Users (5 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>auth_router</td><td><code>/api/v1/auth</code></td><td>authentication</td></tr>
+                  <tr><td>two_factor_router</td><td><code>/api/v1/auth</code></td><td>two-factor-authentication</td></tr>
+                  <tr><td>user_routes</td><td><code>/api/v1/users</code></td><td>users</td></tr>
+                  <tr><td>user_audit_router</td><td><code>/api/v1/users</code></td><td>user-audit-logs</td></tr>
+                  <tr><td>funcionario_router</td><td><code>/api/v1</code></td><td>funcionario-verification</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Fiscal Services &amp; Bundles (7 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>fiscal_service_router</td><td><code>/api/v1/fiscal-services</code></td><td>fiscal-services</td></tr>
+                  <tr><td>bundle_router</td><td><code>/api/v1</code></td><td>service-bundles</td></tr>
+                  <tr><td>config_rules_router</td><td><code>/api/v1</code></td><td>config-rules</td></tr>
+                  <tr><td>license_router</td><td><code>/api/v1</code></td><td>commercial-licenses</td></tr>
+                  <tr><td>oms_agent_router</td><td><code>/api/v1</code></td><td>oms-agent-processing</td></tr>
+                  <tr><td>bundle_workflow_router</td><td><code>/api/v1</code></td><td>bundle-workflow</td></tr>
+                  <tr><td>document_template_router</td><td><code>/api/v1/document-templates</code></td><td>document-templates</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Service Requests (6 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>service_requests_router</td><td><code>/api/v1</code></td><td>service-requests</td></tr>
+                  <tr><td>service_requests_agent_router</td><td><code>/api/v1</code></td><td>service-requests-agent</td></tr>
+                  <tr><td>service_requests_admin_router</td><td><code>/api/v1</code></td><td>service-requests-admin</td></tr>
+                  <tr><td>service_requests_wizard_router</td><td><code>/api/v1</code></td><td>wizard-sessions</td></tr>
+                  <tr><td>service_requests_appointment_router</td><td><code>/api/v1</code></td><td>service-requests-appointments</td></tr>
+                  <tr><td>service_requests_cron_router</td><td><code>/api/v1/internal</code></td><td>cron-jobs</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Payments &amp; Verification (3 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>payment_router</td><td><code>/api/v1/payments</code></td><td>payments</td></tr>
+                  <tr><td>verify_router</td><td><code>/api/v1/verify</code></td><td>verification</td></tr>
+                  <tr><td>webhook_router</td><td><code>/api/v1/webhooks</code></td><td>webhooks</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Agents &amp; Assignments (5 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>agent_profile_router</td><td><code>/api/v1/agents</code></td><td>agent-profiles</td></tr>
+                  <tr><td>analyst_router</td><td><code>/api/v1/agents</code></td><td>analyst</td></tr>
+                  <tr><td>assignment_router</td><td><code>/api/v1</code></td><td>assignments</td></tr>
+                  <tr><td>supervisor_router</td><td><code>/api/v1</code></td><td>supervisor</td></tr>
+                  <tr><td>statistics_router</td><td><code>/api/v1</code></td><td>statistics</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Admin &amp; Permissions (7 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>admin_router</td><td><code>/api/v1/admin</code></td><td>admin-diagnostics</td></tr>
+                  <tr><td>user_management_router</td><td><code>/api/v1/admin/users</code></td><td>admin-user-management</td></tr>
+                  <tr><td>monitoring_router</td><td><code>/api/v1/admin/monitoring</code></td><td>admin-monitoring</td></tr>
+                  <tr><td>permission_router</td><td><code>/api/v1</code></td><td>permissions</td></tr>
+                  <tr><td>role_router</td><td><code>/api/v1</code></td><td>roles</td></tr>
+                  <tr><td>user_permission_router</td><td><code>/api/v1</code></td><td>user-permissions</td></tr>
+                  <tr><td>audit_router</td><td><code>/api/v1/audit-logs</code></td><td>audit-logs</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Translations &amp; i18n (4 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>entity_translation_router</td><td><code>/api/v1</code></td><td>entity-translations</td></tr>
+                  <tr><td>frontend_translation_router</td><td><code>/api/v1</code></td><td>frontend-translations</td></tr>
+                  <tr><td>translation_router</td><td><code>/api/v1</code></td><td>translations</td></tr>
+                  <tr><td>enum_router</td><td><code>/api/v1</code></td><td>enum-management</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Communications (6 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>communication_router</td><td><code>/api/v1</code></td><td>communications</td></tr>
+                  <tr><td>email_templates_router</td><td><code>/api/v1</code></td><td>email-templates</td></tr>
+                  <tr><td>push_templates_router</td><td><code>/api/v1</code></td><td>push-templates</td></tr>
+                  <tr><td>sms_templates_router</td><td><code>/api/v1</code></td><td>sms-templates</td></tr>
+                  <tr><td>ussd_routes</td><td><code>/api/v1</code></td><td>ussd (Getesa/Muni)</td></tr>
+                  <tr><td>comm_webhook_router</td><td><code>/api/v1</code></td><td>comm-webhooks</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Companies (5 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>company_router</td><td><code>/api/v1/companies</code></td><td>companies</td></tr>
+                  <tr><td>company_public_router</td><td><code>/api/v1/public/companies</code></td><td>public-directory</td></tr>
+                  <tr><td>company_classification_routes</td><td><code>/api/v1</code></td><td>company-classification</td></tr>
+                  <tr><td>company_cron_routes</td><td><code>/api/v1</code></td><td>company-cron</td></tr>
+                  <tr><td>company_dashboard_routes</td><td><code>/api/v1</code></td><td>company-dashboard</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Inspections (4 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>inspections_router</td><td><code>/api/v1</code></td><td>field-inspections</td></tr>
+                  <tr><td>inspection_mission_router</td><td><code>/api/v1</code></td><td>inspection-missions</td></tr>
+                  <tr><td>inspection_analytics_router</td><td><code>/api/v1</code></td><td>inspection-analytics</td></tr>
+                  <tr><td>inspection_filter_export_router</td><td><code>/api/v1</code></td><td>inspection-filters-export</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Other (10 routers)</summary>
+          <div class="details-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Router</th><th>Prefix</th><th>Tags</th></tr></thead>
+                <tbody>
+                  <tr><td>chatbot_router</td><td><code>/api/v1/chatbot</code></td><td>chatbot</td></tr>
+                  <tr><td>declaration_router</td><td><code>/api/v1/declarations</code></td><td>declarations</td></tr>
+                  <tr><td>accountant_batch_router</td><td><code>/api/v1/accountant</code></td><td>accountant-batch</td></tr>
+                  <tr><td>accountant_router</td><td><code>/api/v1/accountant</code></td><td>accountant-deadline-tracking</td></tr>
+                  <tr><td>document_routes</td><td><code>/api/v1/documents</code></td><td>documents</td></tr>
+                  <tr><td>user_documents_router</td><td><code>/api/v1/user-documents</code></td><td>user-documents</td></tr>
+                  <tr><td>homepage_router</td><td><code>/api/v1/homepage</code></td><td>homepage</td></tr>
+                  <tr><td>support_router</td><td><code>/api/v1</code></td><td>support</td></tr>
+                  <tr><td>enrichment_router</td><td><code>/api/v1</code></td><td>enrichment</td></tr>
+                  <tr><td>menu_config_router</td><td><code>/api/v1</code></td><td>menu-configuration</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <!-- Key Endpoints by Domain -->
+        <h2 id="auth-endpoints">Auth Endpoints <a href="#auth-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/login</code> <span class="endpoint-desc">Email + password login, returns JWT pair</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/register</code> <span class="endpoint-desc">Create new user account</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/refresh</code> <span class="endpoint-desc">Exchange refresh token for new access token</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/request-verification</code> <span class="endpoint-desc">Send email verification code</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/password-reset</code> <span class="endpoint-desc">Request password reset email</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/password-change</code> <span class="endpoint-desc">Change password (authenticated)</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/2fa/setup</code> <span class="endpoint-desc">Initialize TOTP 2FA setup</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/2fa/verify</code> <span class="endpoint-desc">Verify TOTP code during login</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/auth/logout</code> <span class="endpoint-desc">Revoke refresh token</span></div>
+        </div>
+
+        <h2 id="user-endpoints">User Endpoints <a href="#user-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/users/me</code> <span class="endpoint-desc">Get current user profile</span></div>
+          <div class="endpoint-item"><span class="method method-put">PUT</span> <code class="endpoint-path">/api/v1/users/me</code> <span class="endpoint-desc">Update current user profile</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/users/{id}</code> <span class="endpoint-desc">Get user by ID (admin)</span></div>
+        </div>
+
+        <h2 id="fiscal-services-endpoints">Fiscal Services Endpoints <a href="#fiscal-services-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/fiscal-services</code> <span class="endpoint-desc">List all fiscal services (873 total, paginated)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/fiscal-services/{id}</code> <span class="endpoint-desc">Get service details with tariff info</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/fiscal-services/search</code> <span class="endpoint-desc">Full-text search (tsvector)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/fiscal-services/by-ministry/{id}</code> <span class="endpoint-desc">Services filtered by ministry</span></div>
+        </div>
+
+        <h2 id="service-requests-endpoints">Service Requests Endpoints <a href="#service-requests-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/service-requests</code> <span class="endpoint-desc">Create new service request</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/service-requests</code> <span class="endpoint-desc">List user service requests</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/service-requests/{id}</code> <span class="endpoint-desc">Get request details</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/wizard-sessions</code> <span class="endpoint-desc">Create wizard session (cache-first flow)</span></div>
+          <div class="endpoint-item"><span class="method method-put">PUT</span> <code class="endpoint-path">/api/v1/wizard-sessions/{id}/steps/{step}</code> <span class="endpoint-desc">Update wizard step data</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/wizard-sessions/{id}/initiate-payment</code> <span class="endpoint-desc">Atomic persist + payment</span></div>
+        </div>
+
+        <h2 id="payments-endpoints">Payment Endpoints <a href="#payments-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/payments/initiate</code> <span class="endpoint-desc">Initiate payment (BANGE or manual)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/payments/{id}</code> <span class="endpoint-desc">Get payment details</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/webhooks/bange</code> <span class="endpoint-desc">BANGE payment callback</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/verify/{reference}</code> <span class="endpoint-desc">Verify payment receipt</span></div>
+        </div>
+
+        <h2 id="chatbot-endpoints">Chatbot Endpoints <a href="#chatbot-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/chatbot/message</code> <span class="endpoint-desc">Send message to AI chatbot</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/chatbot/conversations</code> <span class="endpoint-desc">List conversation history</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/chatbot/conversations/{id}</code> <span class="endpoint-desc">Get conversation messages</span></div>
+        </div>
+
+        <h2 id="admin-endpoints">Admin Endpoints <a href="#admin-endpoints" class="anchor-link">#</a></h2>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/admin/monitoring/health</code> <span class="endpoint-desc">System health dashboard</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/admin/users</code> <span class="endpoint-desc">List all users (admin only)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/audit-logs</code> <span class="endpoint-desc">Query audit logs (2800+ entries)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/menu-config/me</code> <span class="endpoint-desc">Get agent menu for current user</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/menu-config/workflow-mappings</code> <span class="endpoint-desc">List workflow-to-menu mappings</span></div>
+        </div>
+
+        <!-- SCREENSHOT placeholder -->
+        <!-- SCREENSHOT: Swagger UI showing all 62 routers at /docs endpoint -->
+
+      </div>
+
+      <footer class="page-footer">
+        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>

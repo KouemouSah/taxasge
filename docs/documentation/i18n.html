@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Platform Internationalization - Trilingual support (ES/FR/EN), 11,400+ keys">
+  <title>Internationalization - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div><div class="sidebar-title">Facil Docs</div><div class="sidebar-subtitle">Technical Reference</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+      </nav>
+      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Internationalization</span></nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title">Internationalization Guide</h1>
+        <p class="page-description">
+          Facil is fully trilingual: Spanish (primary), French, and English. The i18n system spans
+          the frontend (11,400+ keys per locale), backend (entity translations + error messages),
+          mobile apps, and communication templates.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#overview">Language Support Overview</a></li>
+            <li><a href="#frontend-i18n">Frontend i18n (next-intl)</a></li>
+            <li><a href="#backend-i18n">Backend i18n</a></li>
+            <li><a href="#database-translations">Database Translations</a></li>
+            <li><a href="#mobile-i18n">Mobile i18n</a></li>
+            <li><a href="#communications">Communication Templates</a></li>
+            <li><a href="#adding-keys">Adding New Keys</a></li>
+          </ul>
+        </div>
+
+        <!-- Overview -->
+        <h2 id="overview">Language Support Overview <a href="#overview" class="anchor-link">#</a></h2>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Languages</div></div>
+          <div class="stat-card green"><div class="stat-value">11,400+</div><div class="stat-label">Keys per Locale</div></div>
+          <div class="stat-card"><div class="stat-value">40%</div><div class="stat-label">Storage Savings (entity_translations)</div></div>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Language</th><th>Code</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Spanish</td><td><code>es</code></td><td><span class="badge badge-green">Primary</span></td><td>Official language of Equatorial Guinea. All database content stored in Spanish.</td></tr>
+              <tr><td>French</td><td><code>fr</code></td><td><span class="badge badge-green">Complete</span></td><td>Official language of Equatorial Guinea. Full UI + entity translations.</td></tr>
+              <tr><td>English</td><td><code>en</code></td><td><span class="badge badge-green">Complete</span></td><td>International support. Full UI + entity translations.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Frontend i18n -->
+        <h2 id="frontend-i18n">Frontend i18n (next-intl) <a href="#frontend-i18n" class="anchor-link">#</a></h2>
+
+        <h3>Architecture</h3>
+        <p>
+          The frontend uses <code>next-intl</code> with Next.js App Router's <code>[locale]</code> segment.
+          All pages are nested under <code>/[locale]/</code> which automatically detects and sets the language.
+        </p>
+
+        <pre><code>packages/web/src/
+├── app/
+│   └── [locale]/              <span class="cmt"># Dynamic locale segment (es/fr/en)</span>
+│       ├── (auth)/            <span class="cmt"># Auth pages (login, register)</span>
+│       ├── (dashboard)/       <span class="cmt"># Protected pages</span>
+│       └── (public)/          <span class="cmt"># Public pages</span>
+├── i18n/
+│   ├── messages/
+│   │   ├── es.json            <span class="cmt"># Spanish (11,400+ keys)</span>
+│   │   ├── fr.json            <span class="cmt"># French</span>
+│   │   └── en.json            <span class="cmt"># English</span>
+│   ├── request.ts             <span class="cmt"># Server-side locale resolution</span>
+│   └── routing.ts             <span class="cmt"># Locale routing config</span></code></pre>
+
+        <h3>Usage in Components</h3>
+        <pre><code><span class="kw">import</span> { useTranslations } <span class="kw">from</span> <span class="str">'next-intl'</span>;
+
+<span class="kw">export function</span> <span class="fn">ServiceCard</span>() {
+  <span class="kw">const</span> t = <span class="fn">useTranslations</span>(<span class="str">'services'</span>);
+
+  <span class="kw">return</span> (
+    &lt;div&gt;
+      &lt;h2&gt;{t(<span class="str">'catalog.title'</span>)}&lt;/h2&gt;
+      &lt;p&gt;{t(<span class="str">'catalog.description'</span>)}&lt;/p&gt;
+      &lt;span&gt;{t(<span class="str">'catalog.count'</span>, { count: <span class="num">873</span> })}&lt;/span&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+        <h3>Translation Key Structure</h3>
+        <p>Keys are organized hierarchically by module/page:</p>
+        <pre><code>{
+  <span class="str">"common"</span>: {
+    <span class="str">"save"</span>: <span class="str">"Guardar"</span>,
+    <span class="str">"cancel"</span>: <span class="str">"Cancelar"</span>,
+    <span class="str">"loading"</span>: <span class="str">"Cargando..."</span>
+  },
+  <span class="str">"services"</span>: {
+    <span class="str">"catalog"</span>: {
+      <span class="str">"title"</span>: <span class="str">"Servicios Fiscales"</span>,
+      <span class="str">"search"</span>: <span class="str">"Buscar servicios..."</span>
+    }
+  },
+  <span class="str">"auth"</span>: {
+    <span class="str">"login"</span>: {
+      <span class="str">"title"</span>: <span class="str">"Iniciar Sesion"</span>,
+      <span class="str">"email"</span>: <span class="str">"Correo electronico"</span>
+    }
+  }
+}</code></pre>
+
+        <!-- Backend i18n -->
+        <h2 id="backend-i18n">Backend i18n <a href="#backend-i18n" class="anchor-link">#</a></h2>
+
+        <h3>Language Detection Middleware</h3>
+        <p>
+          The <code>language_middleware</code> detects the user's language from the <code>Accept-Language</code>
+          header and stores it in <code>request.state.language</code> for use throughout the request lifecycle.
+        </p>
+
+        <h3>Error Message Translation</h3>
+        <p>
+          Error messages are auto-translated based on the detected language. The <code>TranslatedException</code>
+          class carries an <code>error_code</code> which maps to trilingual messages. Pattern matching handles
+          legacy HTTP exceptions.
+        </p>
+        <pre><code><span class="cmt"># Error code mapping (app/core/errors.py)</span>
+<span class="kw">class</span> <span class="typ">ErrorCode</span>(Enum):
+    NOT_FOUND = <span class="str">"ERR_NOT_FOUND"</span>
+    UNAUTHORIZED = <span class="str">"ERR_UNAUTHORIZED"</span>
+    SERVER_ERROR = <span class="str">"ERR_SERVER_ERROR"</span>
+
+<span class="cmt"># Each code has translations for es, fr, en</span>
+<span class="fn">get_error_message</span>(ErrorCode.NOT_FOUND, <span class="str">"fr"</span>)
+<span class="cmt"># Returns: "Ressource non trouvee"</span></code></pre>
+
+        <!-- Database Translations -->
+        <h2 id="database-translations">Database Translations <a href="#database-translations" class="anchor-link">#</a></h2>
+
+        <h3>Two Translation Tables</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Purpose</th><th>Storage Model</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>translations</code></td>
+                <td>Unified translations for ENUMs, UI labels, form fields, system messages</td>
+                <td>Key-value with locale column</td>
+              </tr>
+              <tr>
+                <td><code>entity_translations</code></td>
+                <td>Entity-specific translations (ministry names, service names, etc.)</td>
+                <td>Optimized structure (40% storage reduction vs. inline columns)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Database Content Convention</h3>
+        <div class="callout callout-info">
+          <div class="callout-title">Spanish in Database, Translated at Runtime</div>
+          <p>
+            All database content (ministry names, service names, categories) is stored in Spanish
+            (the primary language). French and English translations are stored in the
+            <code>entity_translations</code> table and resolved at query time.
+          </p>
+        </div>
+
+        <h3>Entity Translation Pattern</h3>
+        <pre><code><span class="cmt">-- Entity translation lookup</span>
+<span class="kw">SELECT</span>
+  m.name_es,
+  COALESCE(et.translated_value, m.name_es) <span class="kw">AS</span> name_display
+<span class="kw">FROM</span> ministries m
+<span class="kw">LEFT JOIN</span> entity_translations et
+  <span class="kw">ON</span> et.entity_type = <span class="str">'ministry'</span>
+  <span class="kw">AND</span> et.entity_id = m.id::text
+  <span class="kw">AND</span> et.field_name = <span class="str">'name'</span>
+  <span class="kw">AND</span> et.locale = $<span class="num">1</span>  <span class="cmt">-- 'fr' or 'en'</span></code></pre>
+
+        <h3>Translation Cache</h3>
+        <p>
+          Translations are cached for 1 hour via <code>get_translations_cache()</code> to minimize
+          database queries. Cache invalidation is triggered when translations are updated via the admin API.
+        </p>
+
+        <!-- Mobile i18n -->
+        <h2 id="mobile-i18n">Mobile i18n <a href="#mobile-i18n" class="anchor-link">#</a></h2>
+        <p>
+          Both mobile apps (Facil citizen and Facil Inspector) support the same 3 languages.
+          Translations are stored as JSON files bundled with the app and loaded at runtime
+          based on the user's language preference.
+        </p>
+
+        <!-- Communication Templates -->
+        <h2 id="communications">Communication Templates <a href="#communications" class="anchor-link">#</a></h2>
+        <p>
+          Email, SMS, push notification, and in-app notification templates are stored in their respective
+          tables (<code>email_templates</code>, <code>sms_templates</code>, <code>push_templates</code>,
+          <code>notification_templates</code>) with content for all 3 languages.
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Template Type</th><th>Table</th><th>Rendering</th></tr></thead>
+            <tbody>
+              <tr><td>Email</td><td><code>email_templates</code></td><td>Jinja2 with trilingual subject + body</td></tr>
+              <tr><td>SMS</td><td><code>sms_templates</code></td><td>Plain text, 160 char segments</td></tr>
+              <tr><td>Push Notification</td><td><code>push_templates</code></td><td>Title + body per locale</td></tr>
+              <tr><td>In-App</td><td><code>notification_templates</code></td><td>Structured notification per locale</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Adding New Keys -->
+        <h2 id="adding-keys">Adding New Keys <a href="#adding-keys" class="anchor-link">#</a></h2>
+        <p>To add a new translation key:</p>
+        <ol>
+          <li>Add the key to <strong>all 3 JSON files</strong> (<code>es.json</code>, <code>fr.json</code>, <code>en.json</code>)</li>
+          <li>Follow the existing hierarchical structure: <code>module.section.key</code></li>
+          <li>Provide real translations (not machine-translated placeholders)</li>
+          <li>Use the key in your component with <code>useTranslations('module')</code></li>
+          <li>For parameterized strings, use ICU message format: <code>"count": "{count} servicios"</code></li>
+        </ol>
+
+        <h3>Translation API Endpoints</h3>
+        <div class="endpoint-group">
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc">List translations by category/locale</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc">Create new translation entry</span></div>
+          <div class="endpoint-item"><span class="method method-put">PUT</span> <code class="endpoint-path">/api/v1/translations/{id}</code> <span class="endpoint-desc">Update translation</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/entity-translations/{type}/{id}</code> <span class="endpoint-desc">Get entity translations</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/frontend-translations/{locale}</code> <span class="endpoint-desc">Bulk fetch for frontend hydration</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/enums/{enum_name}/values</code> <span class="endpoint-desc">Get enum values with translations</span></div>
+        </div>
+
+      </div>
+
+      <footer class="page-footer">
+        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="modules.html">Modules</a></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>

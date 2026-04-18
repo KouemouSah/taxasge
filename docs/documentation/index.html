@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Platform Technical Documentation - Government Digital Services for Equatorial Guinea">
+  <meta name="author" content="Facil Engineering Team">
+  <title>Facil Platform Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
+        <div>
+          <div class="sidebar-title">Facil Docs</div>
+          <div class="sidebar-subtitle">Technical Reference</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Getting Started</div>
+          <a href="index.html" class="sidebar-link active">
+            <span class="sidebar-link-icon">&#127968;</span> Home
+          </a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Architecture</div>
+          <a href="architecture.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#9881;</span> System Architecture
+          </a>
+          <a href="database.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128451;</span> Database Schema
+          </a>
+          <a href="workflows.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128260;</span> Workflow Engine
+          </a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Reference</div>
+          <a href="api-reference.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128268;</span> API Reference
+          </a>
+          <a href="modules.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128230;</span> Module Catalog
+          </a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Features</div>
+          <a href="agents.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence
+          </a>
+          <a href="payments.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128179;</span> Payments
+          </a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Operations</div>
+          <a href="security.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128274;</span> Security
+          </a>
+          <a href="deployment.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128640;</span> Deployment
+          </a>
+          <a href="i18n.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127760;</span> Internationalization
+          </a>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        Facil v1.1.8 &middot; Updated April 2026
+      </div>
+    </aside>
+
+    <!-- Sidebar toggle (mobile) -->
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <span class="breadcrumb-current">Documentation Home</span>
+        </nav>
+      </header>
+
+      <div class="content-body">
+        <!-- Page Title -->
+        <h1 class="page-title">Facil Platform Documentation</h1>
+        <p class="page-description">
+          Comprehensive technical reference for the Facil government digital services platform.
+          Built for the Republic of Equatorial Guinea to process fiscal services, manage civil procedures,
+          and support 100+ concurrent government agents across multiple ministries.
+        </p>
+
+        <!-- ===== Quick Stats ===== -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value">873</div>
+            <div class="stat-label">Fiscal Services</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-value">145</div>
+            <div class="stat-label">Database Tables</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">36</div>
+            <div class="stat-label">Workflows</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-value">47</div>
+            <div class="stat-label">Roles</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">30</div>
+            <div class="stat-label">Backend Modules</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-value">41+</div>
+            <div class="stat-label">Frontend Modules</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-value">62</div>
+            <div class="stat-label">API Routers</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-value">40</div>
+            <div class="stat-label">OCR Schemas</div>
+          </div>
+        </div>
+
+        <!-- ===== Table of Contents ===== -->
+        <div class="toc">
+          <div class="toc-title">Documentation Map</div>
+          <ul class="toc-list">
+            <li><a href="architecture.html"><strong>System Architecture</strong></a> &mdash; Monorepo structure, 3-tier backend, frontend modules, caching, AI pipeline</li>
+            <li><a href="api-reference.html"><strong>API Reference</strong></a> &mdash; 62 routers, authentication, request/response formats, rate limiting</li>
+            <li><a href="database.html"><strong>Database Schema</strong></a> &mdash; 145 tables across 10 domains, 50 enums, naming conventions, migrations</li>
+            <li><a href="workflows.html"><strong>Workflow Engine</strong></a> &mdash; 36 workflows, wizard steps, condition evaluator, fee calculation, entity routing</li>
+            <li><a href="modules.html"><strong>Module Catalog</strong></a> &mdash; 30 backend modules, 41+ frontend modules, organized by domain</li>
+            <li><a href="agents.html"><strong>AI &amp; Intelligence</strong></a> &mdash; RAG chatbot, 5 role-based agents, OCR extraction, smart assignment</li>
+            <li><a href="payments.html"><strong>Payment Systems</strong></a> &mdash; BANGE integration, atomic payments, bundle flows, financial reporting</li>
+            <li><a href="security.html"><strong>Security Architecture</strong></a> &mdash; JWT + 2FA, RBAC with 335 permissions, OWASP compliance, audit logging</li>
+            <li><a href="deployment.html"><strong>Deployment &amp; Operations</strong></a> &mdash; CI/CD pipeline, Cloud Run, Firebase Hosting, monitoring</li>
+            <li><a href="i18n.html"><strong>Internationalization</strong></a> &mdash; Trilingual support (ES/FR/EN), 11,400+ keys, translation architecture</li>
+          </ul>
+        </div>
+
+        <!-- ===== Platform Overview ===== -->
+        <h2 id="overview">Platform Overview</h2>
+        <p>
+          <strong>Facil</strong> is a comprehensive digital government services platform designed for the Republic
+          of Equatorial Guinea. It enables citizens, businesses, and accountants to manage fiscal obligations,
+          apply for civil documents, and interact with government agencies entirely online.
+        </p>
+        <p>
+          The platform serves multiple government entities including the Direccion General de Impuestos (DGI),
+          CNEDOGE (passport services), Direccion General de Trafico (DGT), Extranjeria (immigration),
+          Ayuntamiento (municipal services), Camara de Comercio, and various ministries.
+        </p>
+
+        <h3 id="tech-stack">Technology Stack</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Backend API</td><td>FastAPI</td><td>0.100+</td><td>REST API with automatic OpenAPI docs</td></tr>
+              <tr><td>Runtime</td><td>Python</td><td>3.11+</td><td>Async-first with asyncio/asyncpg</td></tr>
+              <tr><td>Database</td><td>PostgreSQL (Supabase)</td><td>15</td><td>Primary data store with pgvector</td></tr>
+              <tr><td>Cache</td><td>Redis (Upstash)</td><td>7+</td><td>Caching with in-memory fallback</td></tr>
+              <tr><td>Frontend</td><td>Next.js</td><td>14</td><td>App Router with SSR and i18n</td></tr>
+              <tr><td>UI Framework</td><td>React + Shadcn/UI</td><td>18</td><td>Component library with Tailwind CSS</td></tr>
+              <tr><td>Mobile</td><td>Expo (React Native)</td><td>SDK 54</td><td>Android/iOS citizen and inspector apps</td></tr>
+              <tr><td>AI</td><td>Gemini 2.5 Flash (Vertex AI)</td><td>&mdash;</td><td>RAG chatbot, document analysis, risk scoring</td></tr>
+              <tr><td>Cloud</td><td>Google Cloud Run</td><td>&mdash;</td><td>Serverless container deployment</td></tr>
+              <tr><td>Hosting</td><td>Firebase Hosting</td><td>&mdash;</td><td>Frontend CDN with staging channels</td></tr>
+              <tr><td>Storage</td><td>Supabase Storage / Firebase</td><td>&mdash;</td><td>Document and file storage with signed URLs</td></tr>
+              <tr><td>CI/CD</td><td>GitHub Actions</td><td>&mdash;</td><td>8 workflow files (CI, deploy, build)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="monorepo">Monorepo Structure</h3>
+        <pre><code>taxasge/
+├── packages/
+│   ├── backend/          <span class="cmt"># FastAPI application (Python 3.11+)</span>
+│   │   ├── app/
+│   │   │   ├── main.py
+│   │   │   ├── config.py
+│   │   │   ├── core/     <span class="cmt"># Cache, events, errors, RBAC, scheduler</span>
+│   │   │   ├── database/
+│   │   │   └── modules/  <span class="cmt"># 30 feature modules</span>
+│   │   ├── migrations/   <span class="cmt"># SQL + Python migration scripts</span>
+│   │   └── requirements.txt
+│   ├── web/              <span class="cmt"># Next.js 14 frontend</span>
+│   │   ├── src/
+│   │   │   ├── app/[locale]/
+│   │   │   ├── components/ui/
+│   │   │   ├── core/
+│   │   │   ├── modules/  <span class="cmt"># 41+ feature modules</span>
+│   │   │   └── i18n/
+│   │   └── package.json
+│   ├── mobile/           <span class="cmt"># Expo citizen app (React Native)</span>
+│   └── inspector/        <span class="cmt"># Expo inspector app (React Native)</span>
+├── .github/workflows/    <span class="cmt"># 8 CI/CD pipeline files</span>
+├── docs/                 <span class="cmt"># Documentation site</span>
+└── Documentations/       <span class="cmt"># Architecture docs, project context</span></code></pre>
+
+        <!-- ===== Quick Start ===== -->
+        <h2 id="quick-start">Quick Start</h2>
+
+        <h3 id="backend-dev">Backend Development</h3>
+        <pre><code><span class="cmt"># Install dependencies</span>
+pip install -r packages/backend/requirements.txt
+
+<span class="cmt"># Configure environment</span>
+cp packages/backend/.env.example packages/backend/.env
+<span class="cmt"># Edit .env with database URL, API keys, etc.</span>
+
+<span class="cmt"># Run development server</span>
+uvicorn app.main:app --reload
+
+<span class="cmt"># Run tests</span>
+pytest tests/ -v
+
+<span class="cmt"># Type checking and linting</span>
+mypy app --strict
+flake8 app --max-line-length=100
+black app --check</code></pre>
+
+        <h3 id="frontend-dev">Frontend Development</h3>
+        <pre><code><span class="cmt"># Install dependencies</span>
+cd packages/web
+npm install --legacy-peer-deps
+
+<span class="cmt"># Run development server</span>
+npm run dev
+
+<span class="cmt"># Build for production</span>
+npm run build
+
+<span class="cmt"># Type checking and linting</span>
+npm run type-check
+npm run lint</code></pre>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Important</div>
+          <p>
+            Never build manually with <code>gcloud</code>. All deployments must go through GitHub Actions.
+            Push to the <code>develop</code> branch and the CI/CD pipeline will handle building and deploying
+            both backend (Cloud Run) and frontend (Firebase Hosting) automatically.
+          </p>
+        </div>
+
+        <!-- ===== Documentation Pages ===== -->
+        <h2 id="pages">Documentation Pages</h2>
+
+        <div class="cards-grid">
+          <a href="architecture.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#9881; System Architecture</div>
+            <div class="card-description">
+              Backend 3-tier design, frontend module structure, caching layers,
+              AI pipeline, mobile apps, and deployment topology.
+            </div>
+          </a>
+          <a href="api-reference.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128268; API Reference</div>
+            <div class="card-description">
+              All 62 API routers, authentication flows, request/response formats,
+              error handling, rate limiting, and pagination.
+            </div>
+          </a>
+          <a href="database.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128451; Database Schema</div>
+            <div class="card-description">
+              145 tables across 10 domains, 50 enums with all values,
+              naming conventions, and key relationships.
+            </div>
+          </a>
+          <a href="workflows.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128260; Workflow Engine</div>
+            <div class="card-description">
+              36 workflow definitions, wizard step flow, dynamic conditions,
+              fee calculation, OCR integration, and entity routing.
+            </div>
+          </a>
+          <a href="modules.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128230; Module Catalog</div>
+            <div class="card-description">
+              30 backend modules and 41+ frontend modules organized by domain,
+              with key endpoints, tables, and dependencies.
+            </div>
+          </a>
+          <a href="agents.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#129302; AI &amp; Intelligence</div>
+            <div class="card-description">
+              RAG chatbot with Gemini 2.5 Flash, 5 role-based agents,
+              OCR document processing, and smart assignment engine.
+            </div>
+          </a>
+          <a href="payments.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128179; Payment Systems</div>
+            <div class="card-description">
+              BANGE integration, atomic payment pipeline, bundle multi-entity flows,
+              financial reporting, and receipt generation.
+            </div>
+          </a>
+          <a href="security.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128274; Security Architecture</div>
+            <div class="card-description">
+              JWT + 2FA authentication, RBAC with 47 roles and 335 permissions,
+              OWASP compliance, CSP headers, and audit logging.
+            </div>
+          </a>
+          <a href="deployment.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#128640; Deployment &amp; Ops</div>
+            <div class="card-description">
+              8 GitHub Actions workflows, Cloud Run containers, Firebase Hosting,
+              environment management, and monitoring.
+            </div>
+          </a>
+          <a href="i18n.html" class="card" style="text-decoration:none;">
+            <div class="card-title">&#127760; Internationalization</div>
+            <div class="card-description">
+              Trilingual support (Spanish, French, English), 11,400+ translation keys,
+              backend entity translations, and template rendering.
+            </div>
+          </a>
+        </div>
+
+        <!-- ===== Key Architecture Decisions ===== -->
+        <h2 id="decisions">Key Architecture Decisions</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>API Framework</td>
+                <td>FastAPI (async)</td>
+                <td>Native async, auto OpenAPI docs, Pydantic v2 validation, high throughput</td>
+              </tr>
+              <tr>
+                <td>Database Driver</td>
+                <td>asyncpg (not ORM)</td>
+                <td>Raw parameterized SQL for maximum control, performance, and security</td>
+              </tr>
+              <tr>
+                <td>Frontend Routing</td>
+                <td>Next.js App Router with [locale]</td>
+                <td>Server-side rendering, built-in i18n, route groups for auth/dashboard/public</td>
+              </tr>
+              <tr>
+                <td>State Management</td>
+                <td>React Query + Zustand</td>
+                <td>Server state (Query) vs client state (Zustand) separation</td>
+              </tr>
+              <tr>
+                <td>Deployment</td>
+                <td>Cloud Run + Firebase Hosting</td>
+                <td>Serverless scaling, zero infra management, CDN distribution</td>
+              </tr>
+              <tr>
+                <td>Entity Routing</td>
+                <td>Database-driven (entities.workflow_codes)</td>
+                <td>No code changes needed to assign workflows to entities, admin UI managed</td>
+              </tr>
+              <tr>
+                <td>Cache Strategy</td>
+                <td>HybridCache (Redis + in-memory fallback)</td>
+                <td>Graceful degradation if Redis unavailable, domain-specific TTLs</td>
+              </tr>
+              <tr>
+                <td>AI Model</td>
+                <td>Gemini 2.5 Flash via Vertex AI</td>
+                <td>Fast inference, tool-use support, cost-effective for government workloads</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ===== Government Entities ===== -->
+        <h2 id="entities">Government Entities</h2>
+        <p>
+          Facil serves multiple government entities across Equatorial Guinea, each managing specific
+          fiscal services and workflows:
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Entity</th><th>Code</th><th>Domain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Direccion General de Impuestos</td><td>DGI</td><td>Tax declarations, fiscal services</td></tr>
+              <tr><td>CNEDOGE</td><td>CNEDOGE</td><td>Passport services</td></tr>
+              <tr><td>Direccion General de Trafico</td><td>DGT</td><td>Vehicle registration, driving permits</td></tr>
+              <tr><td>Extranjeria</td><td>EXTRANJERIA</td><td>Residence permits, visa procedures</td></tr>
+              <tr><td>Ayuntamiento</td><td>AYUNTAMIENTO</td><td>Municipal services, commercial licenses</td></tr>
+              <tr><td>Camara de Comercio</td><td>CAMARA_COMERCIO</td><td>Business registration, commercial certificates</td></tr>
+              <tr><td>Tesoro Publico</td><td>TESORO</td><td>Treasury, payment processing</td></tr>
+              <tr><td>Funcion Publica</td><td>FUNCION_PUBLICA</td><td>Civil service, employee verification</td></tr>
+              <tr><td>Various Ministries</td><td>MIN_*</td><td>Sector-specific inspections and permits</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- ===== Footer ===== -->
+      <footer class="page-footer">
+        <span>Facil Platform v1.1.8 &middot; Republic of Equatorial Guinea &middot; &copy; 2026</span>
+        <div class="footer-links">
+          <a href="architecture.html">Architecture</a>
+          <a href="api-reference.html">API</a>
+          <a href="security.html">Security</a>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Sidebar toggle for mobile
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+      });
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      });
+    }
+  </script>
+</body>
+</html>

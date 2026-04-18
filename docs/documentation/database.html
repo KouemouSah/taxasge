@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Platform Database Schema Reference - 145 tables, 50 enums, 10 domains">
+  <title>Database Schema - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div><div class="sidebar-title">Facil Docs</div><div class="sidebar-subtitle">Technical Reference</div></div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+      </nav>
+      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Database Schema</span></nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title">Database Schema Reference</h1>
+        <p class="page-description">
+          PostgreSQL database hosted on Supabase with 145 tables organized across 10 domains,
+          50 custom enums, and pgvector extension for AI embeddings. All access via asyncpg with parameterized queries.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#overview">Schema Overview</a></li>
+            <li><a href="#core-business">Core Business (14 tables)</a></li>
+            <li><a href="#declarations-workflow">Declarations &amp; Workflow (12 tables)</a></li>
+            <li><a href="#agents-workload">Agents &amp; Workload (7 tables)</a></li>
+            <li><a href="#payments-domain">Payments (10 tables)</a></li>
+            <li><a href="#documents-ocr">Documents &amp; OCR (5 tables)</a></li>
+            <li><a href="#auth-rbac">Authentication &amp; RBAC (9 tables)</a></li>
+            <li><a href="#communications">Communications (9 tables)</a></li>
+            <li><a href="#support-domain">Support (4 tables)</a></li>
+            <li><a href="#translations-domain">Translations (3 tables)</a></li>
+            <li><a href="#inspections-domain">Inspections &amp; Bundle (15+ tables)</a></li>
+            <li><a href="#key-enums">Key Enums</a></li>
+            <li><a href="#conventions">Naming Conventions</a></li>
+            <li><a href="#migrations">Migration System</a></li>
+          </ul>
+        </div>
+
+        <h2 id="overview">Schema Overview <a href="#overview" class="anchor-link">#</a></h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">145</div><div class="stat-label">Tables</div></div>
+          <div class="stat-card green"><div class="stat-value">50</div><div class="stat-label">Custom Enums</div></div>
+          <div class="stat-card"><div class="stat-value">10</div><div class="stat-label">Domains</div></div>
+          <div class="stat-card yellow"><div class="stat-value">335</div><div class="stat-label">Permissions</div></div>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Source of Truth</div>
+          <p>Always query the database directly for current schema information. Use <code>information_schema.columns</code>
+          and <code>pg_type</code> rather than relying on documentation alone, as the schema evolves frequently.</p>
+        </div>
+
+        <!-- Core Business -->
+        <h2 id="core-business">Core Business (14 tables) <a href="#core-business" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th><th>Key Columns</th></tr></thead>
+            <tbody>
+              <tr><td><code>users</code></td><td>User accounts with roles</td><td>id, email, full_name, role, status, phone</td></tr>
+              <tr><td><code>fiscal_services</code></td><td>873 fiscal services catalog</td><td>id, service_code, name_es, ministry_id, type, status, base_price</td></tr>
+              <tr><td><code>tax_declarations</code></td><td>Tax declarations (20 types)</td><td>id, user_id, type, status, period, amount</td></tr>
+              <tr><td><code>companies</code></td><td>Company management</td><td>id, nif, name, owner_id, classification, status</td></tr>
+              <tr><td><code>user_company_roles</code></td><td>User roles within companies</td><td>user_id, company_id, role</td></tr>
+              <tr><td><code>ministries</code></td><td>Government ministries</td><td>id, code, name_es, active</td></tr>
+              <tr><td><code>sectors</code></td><td>Ministry sectors</td><td>id, ministry_id, name_es</td></tr>
+              <tr><td><code>categories</code></td><td>Service categories</td><td>id, name_es, description_es</td></tr>
+              <tr><td><code>service_keywords</code></td><td>Search keywords for services</td><td>id, fiscal_service_id, keyword</td></tr>
+              <tr><td><code>service_document_assignments</code></td><td>Required documents per service</td><td>fiscal_service_id, document_template_id, required</td></tr>
+              <tr><td><code>service_procedure_assignments</code></td><td>Procedures per service</td><td>fiscal_service_id, procedure_template_id</td></tr>
+              <tr><td><code>procedure_templates</code></td><td>Procedure templates</td><td>id, name_es, steps_count</td></tr>
+              <tr><td><code>procedure_template_steps</code></td><td>Steps within procedures</td><td>id, template_id, step_number, name_es</td></tr>
+              <tr><td><code>document_templates</code></td><td>Document templates with validity</td><td>id, template_code, document_name_es, validity_days</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Declarations & Workflow -->
+        <h2 id="declarations-workflow">Declarations &amp; Workflow (12 tables) <a href="#declarations-workflow" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th><th>Volume</th></tr></thead>
+            <tbody>
+              <tr><td><code>declaration_iva_details</code></td><td>IVA declarations</td><td>~90% of declarations</td></tr>
+              <tr><td><code>declaration_irpf_data</code></td><td>IRPF/Income tax data</td><td>~5%</td></tr>
+              <tr><td><code>declaration_petroliferos_details</code></td><td>Petroleum sector declarations</td><td>~4% (large amounts)</td></tr>
+              <tr><td><code>declaration_retencion_details</code></td><td>Withholding tax</td><td>&lt;1%</td></tr>
+              <tr><td><code>declaration_other_details</code></td><td>Generic JSONB for 7 other types</td><td>&lt;1%</td></tr>
+              <tr><td><code>declaration_amount_adjustments</code></td><td>Amount adjustment audit trail</td><td>&mdash;</td></tr>
+              <tr><td><code>declaration_corrections</code></td><td>Correction/amendment history</td><td>&mdash;</td></tr>
+              <tr><td><code>workflow_transitions</code></td><td>Workflow state transitions</td><td>&mdash;</td></tr>
+              <tr><td><code>assignments</code></td><td>Agent task assignments</td><td>&mdash;</td></tr>
+              <tr><td><code>assignment_rules</code></td><td>Auto-assignment rules</td><td>&mdash;</td></tr>
+              <tr><td><code>adjustment_reasons</code></td><td>Predefined adjustment catalog</td><td>&mdash;</td></tr>
+              <tr><td><code>calculation_history</code></td><td>Tax calculation history</td><td>&mdash;</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Agents & Workload -->
+        <h2 id="agents-workload">Agents &amp; Workload (7 tables) <a href="#agents-workload" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>ministry_agents</code></td><td>Ministry agents with full workflow status</td></tr>
+              <tr><td><code>agent_workloads</code></td><td>Real-time agent workload tracking</td></tr>
+              <tr><td><code>agent_work_queue</code></td><td>Dynamic priority queue (SLA, amount, complexity scoring)</td></tr>
+              <tr><td><code>agent_performance_stats</code></td><td>Monthly performance metrics</td></tr>
+              <tr><td><code>user_ministry_assignments</code></td><td>User-ministry mappings</td></tr>
+              <tr><td><code>ministry_validation_config</code></td><td>Ministry validation settings</td></tr>
+              <tr><td><code>system_rules</code></td><td>Dynamic business rules (no redeploy)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Payments -->
+        <h2 id="payments-domain">Payments (10 tables) <a href="#payments-domain" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>payments</code></td><td>Central polymorphic payments table</td></tr>
+              <tr><td><code>service_payments</code></td><td>Payments with agent workflow (pessimistic locking)</td></tr>
+              <tr><td><code>payment_plans</code></td><td>Installment payment schedules</td></tr>
+              <tr><td><code>payment_installments</code></td><td>Individual installments</td></tr>
+              <tr><td><code>payment_receipts</code></td><td>Generated PDF receipts</td></tr>
+              <tr><td><code>payment_lock_history</code></td><td>Payment lock audit</td></tr>
+              <tr><td><code>payment_validation_audit</code></td><td>Validation audit trail</td></tr>
+              <tr><td><code>bank_configurations</code></td><td>Bank API/webhook configurations</td></tr>
+              <tr><td><code>bank_transactions</code></td><td>Bank webhook transactions</td></tr>
+              <tr><td><code>fiscal_service_data</code></td><td>Fiscal service payment data</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Documents & OCR -->
+        <h2 id="documents-ocr">Documents &amp; OCR (5 tables) <a href="#documents-ocr" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>uploaded_files</code></td><td>File metadata (Supabase Storage)</td></tr>
+              <tr><td><code>document_processing_queue</code></td><td>Async OCR queue with retry/fallback</td></tr>
+              <tr><td><code>ocr_extraction_results</code></td><td>Raw OCR extraction (JSONB)</td></tr>
+              <tr><td><code>form_templates</code></td><td>OCR field coordinates (14 form types)</td></tr>
+              <tr><td><code>import_batches</code> / <code>import_batch_items</code></td><td>Excel bulk import tracking</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Auth & RBAC -->
+        <h2 id="auth-rbac">Authentication &amp; RBAC (9 tables) <a href="#auth-rbac" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>sessions</code></td><td>JWT sessions</td></tr>
+              <tr><td><code>refresh_tokens</code></td><td>Refresh tokens with revocation</td></tr>
+              <tr><td><code>pending_registrations</code></td><td>Email verification (15min expiry)</td></tr>
+              <tr><td><code>roles</code></td><td>47 custom roles (with menu_config, dashboard_config JSONB)</td></tr>
+              <tr><td><code>permissions</code></td><td>335 permission entries</td></tr>
+              <tr><td><code>role_permissions</code></td><td>Role-permission mappings</td></tr>
+              <tr><td><code>user_permissions</code></td><td>Per-user permission overrides</td></tr>
+              <tr><td><code>permission_audit_log</code></td><td>Permission change history</td></tr>
+              <tr><td><code>audit_logs</code></td><td>System-wide audit trail (2800+ entries)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Communications -->
+        <h2 id="communications">Communications (9 tables) <a href="#communications" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>communication_provider_settings</code></td><td>Provider configs (SMS, Email, Push, WhatsApp)</td></tr>
+              <tr><td><code>email_templates</code></td><td>Multilingual email templates</td></tr>
+              <tr><td><code>sms_templates</code></td><td>SMS templates (160 char segments)</td></tr>
+              <tr><td><code>push_templates</code></td><td>Mobile/web push templates</td></tr>
+              <tr><td><code>notification_templates</code></td><td>In-app notification templates</td></tr>
+              <tr><td><code>ussd_configurations</code></td><td>USSD menu configs (Getesa, Muni)</td></tr>
+              <tr><td><code>webhook_configurations</code></td><td>WhatsApp Business API webhooks</td></tr>
+              <tr><td><code>webhook_logs</code></td><td>Webhook execution audit</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Support -->
+        <h2 id="support-domain">Support (4 tables) <a href="#support-domain" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>support_tickets</code></td><td>User/agent support tickets</td></tr>
+              <tr><td><code>support_messages</code></td><td>Ticket messages</td></tr>
+              <tr><td><code>support_attachments</code></td><td>Message attachments</td></tr>
+              <tr><td><code>support_categories</code></td><td>Multilingual ticket categories</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Translations -->
+        <h2 id="translations-domain">Translations (3 tables) <a href="#translations-domain" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>translations</code></td><td>Unified translations (ENUMs, UI, Forms, System messages)</td></tr>
+              <tr><td><code>entity_translations</code></td><td>Optimized entity translations (40% storage reduction)</td></tr>
+              <tr><td><code>user_favorites</code></td><td>User service favorites</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Inspections -->
+        <h2 id="inspections-domain">Inspections &amp; Bundle (15+ tables) <a href="#inspections-domain" class="anchor-link">#</a></h2>
+        <p>Bundle workflow and field inspection tables covering commercial licenses, obligations, service requests, and field operations.</p>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Table</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>commercial_licenses</code></td><td>Root entity for bundle workflow (SELECT FOR UPDATE)</td></tr>
+              <tr><td><code>service_requests</code></td><td>Service request tracking (partial unique index)</td></tr>
+              <tr><td><code>license_obligations</code></td><td>Per-entity obligations for a license</td></tr>
+              <tr><td><code>entities</code></td><td>Government entities with workflow_codes JSONB</td></tr>
+              <tr><td><code>entity_locations</code></td><td>Physical locations per entity</td></tr>
+              <tr><td><code>predefined_workflows</code></td><td>Workflow definitions synced from Python classes</td></tr>
+              <tr><td><code>workflow_tariffs</code></td><td>Fee schedules per workflow</td></tr>
+              <tr><td><code>workflow_documents</code></td><td>Required documents per workflow</td></tr>
+              <tr><td><code>workflow_menu_mapping</code></td><td>Workflow to menu structure mapping</td></tr>
+              <tr><td><code>agent_profiles</code></td><td>Agent profiles with menu_overrides</td></tr>
+              <tr><td><code>field_inspections</code></td><td>Field inspection records</td></tr>
+              <tr><td><code>appointment_holds</code></td><td>Temporary 15min holds</td></tr>
+              <tr><td><code>appointment_reservations</code></td><td>Confirmed permanent reservations</td></tr>
+              <tr><td><code>appointment_slot_configs</code></td><td>Slot capacity configuration</td></tr>
+              <tr><td><code>wizard_sessions</code></td><td>Cache-first wizard session data</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Key Enums -->
+        <h2 id="key-enums">Key Enums <a href="#key-enums" class="anchor-link">#</a></h2>
+
+        <details>
+          <summary>user_role_enum (7 values)</summary>
+          <div class="details-content">
+            <p><code>citizen</code>, <code>business</code>, <code>accountant</code>, <code>admin</code>, <code>supervisor</code>, <code>dgi_agent</code>, <code>ministry_agent</code></p>
+          </div>
+        </details>
+
+        <details>
+          <summary>declaration_type_enum (34 types)</summary>
+          <div class="details-content">
+            <p><code>income_tax</code>, <code>corporate_tax</code>, <code>vat_declaration</code>, <code>iva_destajo</code>, <code>iva_real</code>, <code>retencion_irpf</code>, <code>retencion_alquileres</code>, <code>retencion_servicios</code>, <code>retencion_rendimientos</code>, <code>imp_sociedades</code>, <code>imp_petroliferos</code>, <code>imp_transmisiones</code>, <code>imp_actos_juridicos</code>, <code>imp_monopolios</code>, <code>imp_especiales</code>, <code>imp_aduanas</code>, <code>cuota_min_sociedades</code>, <code>cuota_min_personas</code>, <code>impreso_irpf</code>, <code>impreso_sociedades</code>, and more</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>payment_workflow_status (17 states)</summary>
+          <div class="details-content">
+            <p><code>submitted</code> &#8594; <code>auto_processing</code> &#8594; <code>pending_agent_review</code> &#8594; <code>locked_by_agent</code> &#8594; <code>approved</code> / <code>rejected</code> &#8594; <code>completed</code></p>
+            <p>Additional states: <code>pending_documents</code>, <code>escalated</code>, <code>cancelled</code>, <code>refund_requested</code>, <code>refund_approved</code>, <code>refund_completed</code>, <code>on_hold</code>, <code>expired</code>, <code>partial_payment</code>, <code>awaiting_bank_confirmation</code>, <code>manual_review</code></p>
+          </div>
+        </details>
+
+        <details>
+          <summary>payment_method_enum (5 values)</summary>
+          <div class="details-content">
+            <p><code>bank_transfer</code>, <code>card</code>, <code>mobile_money</code>, <code>cash</code>, <code>bange_wallet</code></p>
+          </div>
+        </details>
+
+        <details>
+          <summary>agent_action_type (7 values)</summary>
+          <div class="details-content">
+            <p><code>lock_for_review</code>, <code>approve</code>, <code>reject</code>, <code>request_documents</code>, <code>escalate</code>, <code>unlock_release</code>, <code>assign_to_colleague</code></p>
+          </div>
+        </details>
+
+        <details>
+          <summary>service_type_enum (8 values)</summary>
+          <div class="details-content">
+            <p><code>document_processing</code>, <code>license_permit</code>, <code>residence_permit</code>, <code>registration_fee</code>, <code>inspection_fee</code>, <code>administrative_tax</code>, <code>customs_duty</code>, <code>declaration_tax</code></p>
+          </div>
+        </details>
+
+        <details>
+          <summary>calculation_method_enum (7 values)</summary>
+          <div class="details-content">
+            <p><code>fixed_expedition</code>, <code>fixed_renewal</code>, <code>percentage_based</code>, <code>unit_based</code>, <code>tiered_rates</code>, <code>formula_based</code>, <code>fixed_plus_unit</code></p>
+          </div>
+        </details>
+
+        <!-- Naming Conventions -->
+        <h2 id="conventions">Naming Conventions <a href="#conventions" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Element</th><th>Convention</th><th>Example</th></tr></thead>
+            <tbody>
+              <tr><td>Tables</td><td><code>snake_case</code> plural</td><td><code>fiscal_services</code>, <code>users</code></td></tr>
+              <tr><td>Columns</td><td><code>snake_case</code></td><td><code>full_name</code>, <code>created_at</code></td></tr>
+              <tr><td>Foreign keys</td><td><code>{table}_id</code></td><td><code>user_id</code>, <code>ministry_id</code></td></tr>
+              <tr><td>Timestamps</td><td><code>created_at</code>, <code>updated_at</code></td><td>Present on all tables</td></tr>
+              <tr><td>Soft deletes</td><td><code>deleted_at</code></td><td>Nullable timestamp</td></tr>
+              <tr><td>Enums</td><td><code>{domain}_enum</code></td><td><code>user_role_enum</code></td></tr>
+              <tr><td>Indexes</td><td><code>idx_{table}_{columns}</code></td><td><code>idx_users_email</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Migration System -->
+        <h2 id="migrations">Migration System <a href="#migrations" class="anchor-link">#</a></h2>
+        <p>
+          Database migrations are stored in <code>packages/backend/migrations/</code> as both SQL files and
+          Python scripts. Migrations are numbered sequentially and applied via a custom runner.
+        </p>
+        <div class="callout callout-info">
+          <div class="callout-title">Migration Safety Rule</div>
+          <p>
+            Always verify the database state before writing a migration. Use <code>SELECT code FROM roles</code>
+            before inserting into <code>role_permissions</code>. Role codes like <code>dgi_agent</code> or
+            <code>ministry_agent</code> may no longer exist &mdash; the actual codes are entity-specific
+            (e.g., <code>agent_cnedoge_pasaporte</code>, <code>agent_dgt</code>, <code>agent_extranjeria</code>).
+          </p>
+        </div>
+
+        <h3>Verification Pattern</h3>
+        <pre><code><span class="cmt">-- Check if table exists</span>
+<span class="kw">SELECT</span> table_name <span class="kw">FROM</span> information_schema.tables
+<span class="kw">WHERE</span> table_name = <span class="str">'TABLE_NAME'</span>;
+
+<span class="cmt">-- Check columns</span>
+<span class="kw">SELECT</span> column_name, data_type
+<span class="kw">FROM</span> information_schema.columns
+<span class="kw">WHERE</span> table_name = <span class="str">'TABLE_NAME'</span>;
+
+<span class="cmt">-- Check permission exists</span>
+<span class="kw">SELECT</span> name <span class="kw">FROM</span> permissions
+<span class="kw">WHERE</span> name = <span class="str">'permission.name'</span>;</code></pre>
+
+      </div>
+
+      <footer class="page-footer">
+        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="workflows.html">Workflows</a></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>
