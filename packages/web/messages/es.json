@@ -5864,7 +5864,6 @@
       "totalLicenses": "Total licencias",
       "paid": "Pagado",
       "debt": "Deuda",
-      "recovery": "Recouvrement",
       "noData": "Sin datos disponibles",
       "year": "Año",
       "company": "Empresa",
@@ -5899,7 +5898,19 @@
       "processed": "Obligación procesada",
       "rejected": "Obligación rechazada",
       "rejectReason": "Motivo del rechazo (min 5 caracteres):",
-      "history": "Historial"
+      "process": "Procesar",
+      "reject": "Rechazar",
+      "history": "Historial",
+      "timeline": "Historial de eventos",
+      "noEvents": "Sin eventos registrados",
+      "yearLabel": "Año",
+      "obligationName": "Obligación",
+      "amount": "Monto",
+      "penalty": "Penalidad",
+      "dueDate": "Vence",
+      "statusCol": "Estado",
+      "actionsCol": "Acciones",
+      "paginationObligations": "obligaciones"
     },
     "team": {
       "title": "Rendimiento del Equipo OMS",

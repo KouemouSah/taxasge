@@ -5864,7 +5864,6 @@
       "totalLicenses": "Total licenses",
       "paid": "Paid",
       "debt": "Debt",
-      "recovery": "Recovery",
       "noData": "No data available",
       "year": "Year",
       "company": "Company",
@@ -5899,7 +5898,19 @@
       "processed": "Obligation processed",
       "rejected": "Obligation rejected",
       "rejectReason": "Rejection reason (min 5 characters):",
-      "history": "History"
+      "process": "Process",
+      "reject": "Reject",
+      "history": "History",
+      "timeline": "Event History",
+      "noEvents": "No events recorded",
+      "yearLabel": "Year",
+      "obligationName": "Obligation",
+      "amount": "Amount",
+      "penalty": "Penalty",
+      "dueDate": "Due Date",
+      "statusCol": "Status",
+      "actionsCol": "Actions",
+      "paginationObligations": "obligations"
     },
     "team": {
       "title": "OMS Team Performance",

@@ -331,6 +331,64 @@ export default function OMSAgentDashboardPage() {
                 </TableRow>
               ) : groupedItems.map(group => {
                 const groupAllSelected = group.items.every(i => selected.has(i.id))
+                const isSingle = group.items.length === 1
+
+                // Single obligation: flat row (no collapse, no header/sub-row split)
+                if (isSingle) {
+                  const item = group.items[0]
+                  const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending
+                  return (
+                    <TableRow key={group.key} className="hover:bg-muted/30">
+                      <TableCell>
+                        <Checkbox checked={selected.has(item.id)}
+                          onCheckedChange={() => {
+                            const next = new Set(selected)
+                            next.has(item.id) ? next.delete(item.id) : next.add(item.id)
+                            setSelected(next)
+                          }} />
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="font-medium truncate">{group.company}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{group.reg}</span>
+                          {group.zone && <Badge variant="secondary" className="text-[10px] h-4 px-1">{group.zone}</Badge>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground pl-5 mt-0.5">{item.service_name || '—'}</p>
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-mono font-bold">
+                        {fmtXAF(Number(item.amount), locale)}
+                        {Number(item.penalty_amount) > 0 && (
+                          <span className="block text-[10px] text-red-500">+{fmtXAF(Number(item.penalty_amount), locale)}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{item.due_date || '—'}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] gap-1 ${cfg.color}`}>
+                          <cfg.icon className="h-3 w-3" />{t(cfg.labelKey, { defaultValue: cfg.label })}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.viewDetail')}
+                            onClick={() => openDetail(item)}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.process')}
+                            onClick={() => handleProcess(item.id)}>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.reject')}
+                            onClick={() => handleReject(item.id)}>
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+
+                // Multiple obligations: collapsible group
                 const isCollapsed = collapsedGroups.has(group.key)
                 const toggleCollapse = () => {
                   const next = new Set(collapsedGroups)
@@ -367,16 +425,14 @@ export default function OMSAgentDashboardPage() {
                         {group.items.length} obl.
                       </TableCell>
                       <TableCell onClick={e => e.stopPropagation()}>
-                        {group.items.length > 1 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                            onClick={() => {
-                              const next = new Set(selected)
-                              group.items.forEach(it => next.add(it.id))
-                              setSelected(next)
-                            }}>
-                            <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                          onClick={() => {
+                            const next = new Set(selected)
+                            group.items.forEach(it => next.add(it.id))
+                            setSelected(next)
+                          }}>
+                          <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
+                        </Button>
                       </TableCell>
                     </TableRow>
                     {/* Obligation sub-rows — collapsible */}
