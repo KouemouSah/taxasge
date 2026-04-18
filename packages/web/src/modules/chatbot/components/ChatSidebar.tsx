@@ -11,7 +11,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
@@ -81,6 +81,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   const authData = getAuthData();
   const isAuthenticated = !!authData?.user;
+  const userRole = authData?.user?.role ?? '';
+
+  // Map user role to their role-specific dashboard path
+  const dashboardPath = useMemo(() => {
+    const r = userRole.toLowerCase();
+    if (r === 'admin') return '/dashboard/admin';
+    if (r === 'supervisor' || r.startsWith('supervisor_')) return '/dashboard/supervisor';
+    if (r === 'agent' || r.startsWith('agent_') || r === 'dgi_agent' || r === 'ministry_agent') return '/dashboard/agent';
+    return '/dashboard';
+  }, [userRole]);
 
   const isActive = (href: string) => {
     const localizedHref = `/${locale}${href}`;
@@ -199,7 +209,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {t('chatPage.new_request')}
                   </Button>
                 </Link>
-                <Link href={`/${locale}/dashboard`} onClick={onNavigate}>
+                <Link href={`/${locale}${dashboardPath}`} onClick={onNavigate}>
                   <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 h-9 transition-colors">
                     <User {...ICON_PROPS} />
                     Dashboard
@@ -209,7 +219,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href={`/${locale}/dashboard`}>
+                  <Link href={`/${locale}${dashboardPath}`}>
                     <Button variant="ghost" size="icon" className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
                       <User {...ICON_PROPS} />
                     </Button>
