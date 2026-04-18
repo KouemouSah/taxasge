@@ -2097,12 +2097,17 @@ class GeminiDocumentProcessor:
             # Use Gemini for vision/multimodal tasks
             self.model = GenerativeModel(settings.GEMINI_PRO_MODEL)
 
-            # Generation config optimized for extraction + risk analysis
+            # Generation config optimized for extraction + risk analysis.
+            # response_mime_type="application/json" forces Gemini to return
+            # ONLY valid JSON — no surrounding text, no markdown, no
+            # explanations. This eliminates the fragile regex parsing and
+            # prevents format drift when Google updates the model.
             self.generation_config = GenerationConfig(
                 temperature=0.1,  # Low for consistent extraction
                 top_p=0.8,
                 top_k=20,
                 max_output_tokens=8192,  # Increased for risk analysis
+                response_mime_type="application/json",
             )
 
             # Safety settings
@@ -2597,6 +2602,9 @@ class GeminiDocumentProcessor:
         """
         Process document using Gemini multimodal vision.
         Includes fraud detection and risk indicator extraction.
+
+        Retries once on parse failure (empty extraction) to handle
+        transient Gemini response format issues.
         """
         # Build extraction + risk analysis prompt
         prompt = self._build_gemini_prompt(document_code, schema)
@@ -2607,39 +2615,61 @@ class GeminiDocumentProcessor:
         # Build content for Gemini
         contents = [document_part, Part.from_text(prompt)]
 
-        # Call Gemini
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: self.model.generate_content(
-                contents,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings
-            )
-        )
-
-        # Capture token usage from Vertex AI response
+        max_attempts = 2
+        last_response_text = ""
         input_tokens = None
         output_tokens = None
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-            input_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
-            output_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
 
-        # Parse response
-        response_text = response.text if response.text else ""
-
-        # Extract JSON from response
-        extraction, confidence, risk_hints = self._parse_gemini_response(response_text, schema)
-
-        # Defense layer 1: Gemini may return non-dict (string, list, None)
-        # via malformed JSON or unexpected response structure.
-        if not isinstance(extraction, dict):
-            logger.warning(
-                f"Gemini returned non-dict extraction "
-                f"({type(extraction).__name__}), coercing to empty dict. "
-                f"document_code={document_code}, raw_type={type(extraction)}"
+        for attempt in range(1, max_attempts + 1):
+            # Call Gemini
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.model.generate_content(
+                    contents,
+                    generation_config=self.generation_config,
+                    safety_settings=self.safety_settings
+                )
             )
-            extraction = {}
+
+            # Capture token usage from Vertex AI response
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                input_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
+                output_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
+
+            # Parse response
+            response_text = response.text if response.text else ""
+            last_response_text = response_text
+
+            # Extract JSON from response
+            extraction, confidence, risk_hints = self._parse_gemini_response(response_text, schema)
+
+            # Defense layer 1: Gemini may return non-dict (string, list, None)
+            if not isinstance(extraction, dict):
+                logger.warning(
+                    f"Gemini attempt {attempt}/{max_attempts}: non-dict extraction "
+                    f"({type(extraction).__name__}), coercing to empty dict. "
+                    f"document_code={document_code}"
+                )
+                extraction = {}
+
+            # If we got actual extraction data, stop retrying
+            if extraction:
+                if attempt > 1:
+                    logger.info(
+                        f"Gemini retry succeeded on attempt {attempt} "
+                        f"for {document_code}"
+                    )
+                break
+
+            # Empty extraction — retry if we have attempts left
+            if attempt < max_attempts:
+                logger.warning(
+                    f"Gemini attempt {attempt}/{max_attempts}: empty extraction "
+                    f"for {document_code}, retrying. "
+                    f"response_preview={response_text[:200]}"
+                )
+                await asyncio.sleep(1)  # Brief backoff
 
         # Detect document type from response
         detected_type = extraction.pop("_document_type", document_code)
@@ -2651,7 +2681,7 @@ class GeminiDocumentProcessor:
             "document_type": detected_type,
             "has_error": False,
             "risk_hints": risk_hints,
-            "raw_response": response_text[:500],
+            "raw_response": last_response_text[:500],
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
         }
