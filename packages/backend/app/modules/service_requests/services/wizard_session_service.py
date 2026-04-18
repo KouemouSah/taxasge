@@ -563,7 +563,12 @@ class WizardSessionService:
                     workflow_code=session["workflow_code"],
                 )
             except Exception as e:
-                logger.error(f"[WizardSession] Extraction failed: {e}", exc_info=True)
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(
+                    f"[WizardSession] Extraction failed: {e}\n"
+                    f"Traceback:\n{tb}"
+                )
                 raise WizardDocumentValidationError(
                     "Error al procesar el documento. Verifique que sea legible.",
                     "EXTRACTION_FAILED"

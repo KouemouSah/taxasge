@@ -627,6 +627,17 @@ class RiskAnalyzer:
         Returns:
             Complete risk analysis result including identity_mismatches
         """
+        # Defense layer 3: coerce extraction at analyze() entry so ALL
+        # downstream helpers (_check_data_validation, _check_coherence, etc.)
+        # can safely call extraction.get() / extraction[key] / 'key' in extraction.
+        if not isinstance(extraction, dict):
+            logger.warning(
+                f"analyze() received non-dict extraction "
+                f"({type(extraction).__name__} for {document_code}), "
+                f"coercing to empty dict"
+            )
+            extraction = {}
+
         risk_factors: List[Dict[str, Any]] = []
 
         # 1. Document Type Mismatch Detection
@@ -2309,7 +2320,15 @@ class GeminiDocumentProcessor:
             Processed extraction with separated fields
         """
         if not extraction:
-            return extraction
+            return extraction if isinstance(extraction, dict) else {}
+
+        # Defense layer 2: guard against non-dict input from upstream
+        if not isinstance(extraction, dict):
+            logger.warning(
+                f"_post_process_extraction received "
+                f"{type(extraction).__name__}, returning empty dict"
+            )
+            return {}
 
         result = extraction.copy()
 
@@ -2611,6 +2630,16 @@ class GeminiDocumentProcessor:
 
         # Extract JSON from response
         extraction, confidence, risk_hints = self._parse_gemini_response(response_text, schema)
+
+        # Defense layer 1: Gemini may return non-dict (string, list, None)
+        # via malformed JSON or unexpected response structure.
+        if not isinstance(extraction, dict):
+            logger.warning(
+                f"Gemini returned non-dict extraction "
+                f"({type(extraction).__name__}), coercing to empty dict. "
+                f"document_code={document_code}, raw_type={type(extraction)}"
+            )
+            extraction = {}
 
         # Detect document type from response
         detected_type = extraction.pop("_document_type", document_code)
