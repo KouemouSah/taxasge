@@ -269,11 +269,10 @@ class OmsAgentService:
         """
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
-        # Default: show actionable obligations (pending + overdue).
-        # 'processing' is for obligations actively being worked on.
-        # Default: all actionable statuses (pending from seed data + overdue +
-        # processing from post-payment routing via on_payment_completed)
-        status_filter = [status] if status else ["pending", "overdue", "processing"]
+        # Post-payment queue: only paid (awaiting agent action) and processing
+        # (routed to agent). Pre-payment statuses (pending, overdue) belong to
+        # the citizen view, not the OMS agent work queue.
+        status_filter = [status] if status else ["paid", "processing"]
 
         # Supervisors see all; independent agents (camara/ayuntamiento) see all
         # in their fee_type scope (no assignment needed). Ministry agents see
@@ -389,11 +388,11 @@ class OmsAgentService:
         obligation = dict(row)
         processing_mode = obligation.pop("license_processing_mode")
 
-        # Status check: actionable statuses depend on context.
-        # Independent agents (CAMARA/AYUNTAMIENTO) process pending/overdue directly.
-        # Ministry agents (MIN_*) process obligations routed to them (processing status).
+        # Status check: OMS agents only process POST-PAYMENT obligations.
+        # All fee_types go through paid → processing → completed (Addendum 2+3).
+        # Pre-payment statuses (pending, overdue) belong to citizen flow, not agent queue.
         if require_processing:
-            actionable = ("pending", "overdue", "processing")
+            actionable = ("paid", "processing")
             if obligation["status"] not in actionable:
                 raise ValueError(
                     f"Obligation {obligation_id} is not actionable "
@@ -561,9 +560,10 @@ class OmsAgentService:
         # 2. Validate ALL obligations before any mutation (fail-fast)
         license_ids = set()
         for row in rows:
-            if row["status"] != "processing":
+            if row["status"] not in ("paid", "processing"):
                 raise ValueError(
-                    f"Obligation {row['id']} is not in 'processing' status"
+                    f"Obligation {row['id']} is not processable "
+                    f"(current: {row['status']}, expected: paid or processing)"
                 )
 
             if ctx["is_polyvalent"]:
@@ -593,7 +593,7 @@ class OmsAgentService:
             UPDATE license_obligations
             SET {update_fields}
             WHERE id = ANY($1::uuid[])
-              AND status = 'processing'
+              AND status IN ('paid', 'processing')
             RETURNING *
         """, *update_params)
         results = [dict(r) for r in results]

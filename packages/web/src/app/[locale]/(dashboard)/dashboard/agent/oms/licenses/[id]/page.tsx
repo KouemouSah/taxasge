@@ -235,10 +235,10 @@ export default function LicenseDetailPage() {
             { label: 'Año', value: String(license.fiscal_year) },
           ]} />
         <div className="grid grid-cols-4 gap-2 text-[9pt] my-3 bg-gray-50 p-2 rounded">
-          <div><span className="font-medium">Total:</span><br/>{fmtXAF(totalAmount, locale)}</div>
-          <div><span className="font-medium">Pagado:</span><br/>{fmtXAF(paidAmount, locale)}</div>
-          <div><span className="font-medium">Balance:</span><br/>{fmtXAF(balance, locale)}</div>
-          <div><span className="font-medium">Recovery:</span><br/>{recoveryPct}%</div>
+          <div><span className="font-medium">{t('totalAmount')}:</span><br/>{fmtXAF(totalAmount, locale)}</div>
+          <div><span className="font-medium">{t('paidAmount')}:</span><br/>{fmtXAF(paidAmount, locale)}</div>
+          <div><span className="font-medium">{t('balance')}:</span><br/>{fmtXAF(balance, locale)}</div>
+          <div><span className="font-medium">{t('recovery')}:</span><br/>{recoveryPct}%</div>
         </div>
         <table className="w-full text-[8pt] border-collapse">
           <thead><tr className="border-b">
@@ -280,7 +280,7 @@ export default function LicenseDetailPage() {
               {license.company_nif && <span className="font-mono">NIF: {license.company_nif}</span>}
               {license.company_registration_number && <span className="font-mono">N°: {license.company_registration_number}</span>}
               {license.zone_code && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{license.zone_code}</span>}
-              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Año {license.fiscal_year}</span>
+              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{t('yearLabel')} {license.fiscal_year}</span>
             </div>
           </div>
           <div className="flex gap-1 shrink-0 flex-wrap">
@@ -305,25 +305,25 @@ export default function LicenseDetailPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Card className="p-3">
-            <div className="text-xs text-muted-foreground">Total</div>
+            <div className="text-xs text-muted-foreground">{t('totalAmount')}</div>
             <p className="text-xl font-bold">{fmtXAF(totalAmount, locale)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-xs text-muted-foreground">Pagado</div>
+            <div className="text-xs text-muted-foreground">{t('paidAmount')}</div>
             <p className="text-xl font-bold text-green-700">{fmtXAF(paidAmount, locale)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-xs text-muted-foreground">Balance</div>
+            <div className="text-xs text-muted-foreground">{t('balance')}</div>
             <p className={`text-xl font-bold ${balance > 0 ? 'text-red-700' : 'text-green-700'}`}>{fmtXAF(balance, locale)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-xs text-muted-foreground">Recuperación</div>
+            <div className="text-xs text-muted-foreground">{t('recovery')}</div>
             <p className="text-xl font-bold">{recoveryPct}%</p>
             <Progress value={recoveryPct} className="h-1.5 mt-1" />
           </Card>
           {totalPenalties > 0 && (
             <Card className="p-3">
-              <div className="text-xs text-muted-foreground">Penalidades</div>
+              <div className="text-xs text-muted-foreground">{t('penalties')}</div>
               <p className="text-xl font-bold text-amber-700">{fmtXAF(totalPenalties, locale)}</p>
             </Card>
           )}
@@ -393,11 +393,11 @@ export default function LicenseDetailPage() {
                         <TableCell>
                           {canProcess && (
                             <div className="flex gap-0.5">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Procesar"
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('process')}
                                 onClick={() => handleProcess(ob.id)}>
                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Rechazar"
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('reject')}
                                 onClick={() => handleReject(ob.id)}>
                                 <XCircle className="h-3.5 w-3.5 text-red-500" />
                               </Button>
@@ -413,7 +413,7 @@ export default function LicenseDetailPage() {
               {/* Obligation pagination */}
               {obTotalPages > 1 && (
                 <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground">
-                  <span>{obTotal} obligaciones — pag. {obPage}/{obTotalPages}</span>
+                  <span>{obTotal} {t('paginationObligations')} — {obPage}/{obTotalPages}</span>
                   <div className="flex gap-1">
                     <Button variant="outline" size="icon" className="h-7 w-7"
                       disabled={obPage <= 1} onClick={() => handleObPageChange(obPage - 1)}>
@@ -436,12 +436,12 @@ export default function LicenseDetailPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <History className="h-4 w-4" />
-                Historial de eventos ({events.length})
+                {t('timeline')} ({events.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {events.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Sin eventos registrados</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('noEvents')}</p>
               ) : (
                 <div className="relative pl-6 space-y-3">
                   {/* Vertical line */}

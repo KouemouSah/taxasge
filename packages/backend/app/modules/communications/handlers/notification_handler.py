@@ -97,6 +97,14 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         sms_template_code="PAYMENT_ESCALATED"
     ),
 
+    # License Events (OMS Bundle)
+    EventType.LICENSE_COMPLETED: NotificationConfig(
+        template_code="LICENSE_GENERATED",
+        channels=[NotificationChannel.EMAIL],
+        priority="high",
+        subject_key="notifications.license.completed.subject",
+    ),
+
     # Service Request Events
     EventType.REQUEST_SUBMITTED: NotificationConfig(
         template_code="request_submitted",
