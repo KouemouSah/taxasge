@@ -432,19 +432,28 @@ class LicenseService:
                         ORDER BY ucr.created_at ASC LIMIT 1
                     """, company_id) if company_id else None
 
+                    owner_name = (
+                        f"{owner['first_name'] or ''} "
+                        f"{owner['last_name'] or ''}".strip()
+                    ) if owner else None
+
                     EventBus.publish_nowait(EventType.LICENSE_COMPLETED, {
                         "license_id": str(license_id),
                         "company_id": str(company_id) if company_id else None,
                         "service_request_id": str(
                             license_row.get("service_request_id") or ""
                         ),
+                        # Standard keys for notification_handler (user_email, user_name)
+                        "user_email": owner["email"] if owner else None,
+                        "user_name": owner_name,
                         "owner_email": owner["email"] if owner else None,
-                        "owner_name": (
-                            f"{owner['first_name'] or ''} "
-                            f"{owner['last_name'] or ''}".strip()
-                        ) if owner else None,
+                        "owner_name": owner_name,
                         "total_amount": float(amount_paid),
                         "fiscal_year": license_row.get("fiscal_year"),
+                        # Template variables for LICENSE_GENERATED
+                        "company_name": license_row.get("company_name", ""),
+                        "license_ref": f"LIC-{license_row.get('fiscal_year')}-{str(license_id)[:8].upper()}",
+                        "status": "Completada",
                     })
                     logger.info(
                         "LICENSE_COMPLETED event published for license %s "

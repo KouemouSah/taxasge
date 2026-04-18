@@ -1332,6 +1332,55 @@ class BundleWorkflowService:
             len(obligations), total_amount, entities_summary, len(all_payment_ids),
         )
 
+        # 11. Notify citizen: publish PAYMENT_CASH_PENDING for bundle.
+        # manual_processor skips this event for bundles (P8.2-B1.2 assignment
+        # race fix), but the citizen notification is still needed. Without
+        # this, the citizen has ZERO confirmation after initiating a cash
+        # bundle payment. The handler sends payment_cash_pending email + SMS.
+        if payment_method in ("cash", "check"):
+            try:
+                from app.core.events import EventBus, EventType
+
+                # Fetch citizen contact info (best-effort, outside critical path)
+                citizen = await conn.fetchrow(
+                    "SELECT email, phone_number, first_name, last_name "
+                    "FROM users WHERE id = $1",
+                    user_id,
+                )
+                if citizen and citizen["email"]:
+                    EventBus.publish_nowait(EventType.PAYMENT_CASH_PENDING, {
+                        "payment_id": primary_payment_id,
+                        "payment_reference": primary_payment_id,
+                        "service_request_id": str(service_request_id),
+                        "amount": float(total_amount),
+                        "method": payment_method,
+                        "user_id": str(user_id),
+                        "user_email": citizen["email"],
+                        "user_phone": citizen["phone_number"],
+                        "user_name": (
+                            f"{citizen['first_name'] or ''} "
+                            f"{citizen['last_name'] or ''}".strip()
+                        ),
+                        "company_name": license_row.get("company_name")
+                            or (await conn.fetchval(
+                                "SELECT legal_name FROM companies WHERE id = $1",
+                                license_row["company_id"],
+                            )),
+                        "workflow_code": "BUNDLE_PAYMENT",
+                        "obligations_count": len(obligations),
+                        "entities": entities_summary,
+                    })
+                    logger.info(
+                        "PAYMENT_CASH_PENDING event published for bundle "
+                        "payment %s (citizen=%s)",
+                        primary_payment_id, citizen["email"],
+                    )
+            except Exception as e:
+                # Non-fatal: log and continue. The payment is already created.
+                logger.warning(
+                    "Failed to publish PAYMENT_CASH_PENDING for bundle: %s", e
+                )
+
         # Build trilingual messages for the response
         if payment_method in ("cash", "check"):
             msg_es = "Su solicitud de pago ha sido registrada. Cada entidad validará su parte."
