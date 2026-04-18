@@ -587,7 +587,7 @@ class LicenseRepository:
         to see all obligations in their scope.
         """
         if status_filter is None:
-            status_filter = ["processing"]
+            status_filter = ["paid", "processing"]
 
         conditions = []
         params = []
@@ -743,13 +743,13 @@ class LicenseRepository:
 
         row = await conn.fetchrow(f"""
             SELECT
-                COUNT(*) FILTER (WHERE lo.status IN ('pending', 'overdue', 'processing')) as pending_count,
+                COUNT(*) FILTER (WHERE lo.status IN ('paid', 'processing')) as pending_count,
                 COUNT(*) FILTER (
                     WHERE lo.status = 'completed'
                     AND lo.updated_at::date = CURRENT_DATE
                 ) as completed_today,
                 COALESCE(SUM(lo.amount) FILTER (
-                    WHERE lo.status IN ('pending', 'overdue', 'processing')
+                    WHERE lo.status IN ('paid', 'processing')
                 ), 0) as total_amount_pending,
                 COALESCE(SUM(lo.amount) FILTER (
                     WHERE lo.status = 'completed'

@@ -1262,6 +1262,13 @@ class BundleWorkflowService:
                 len(entity_obligations), entity_amount,
             )
 
+        # 7b. Refresh license counters — obligations moved from pending/overdue
+        # to payment_pending, so overdue counts must be decremented and license
+        # status recalculated. Without this, the Vue d'Ensemble shows stale
+        # "overdue" badges and 0 XAF paid even after payment initiation.
+        from app.modules.fiscal_services.services.license_service import LicenseService
+        await LicenseService.update_license_counters(conn, license_id, user_id)
+
         # 8. Update service_request with primary payment_id
         await conn.execute("""
             UPDATE service_requests
