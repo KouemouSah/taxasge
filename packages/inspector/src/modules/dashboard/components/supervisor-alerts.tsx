@@ -16,9 +16,10 @@ interface Props {
   overdueMed: number;
   unreconciledCash: number;
   unreconciledCount: number;
+  locationLabel?: string;
 }
 
-export function SupervisorAlerts({ pendingSeals, overdueMed, unreconciledCash, unreconciledCount }: Props) {
+export function SupervisorAlerts({ pendingSeals, overdueMed, unreconciledCash, unreconciledCount, locationLabel }: Props) {
   const { t } = useTranslation();
   const { colors, custom } = useAppTheme();
 
@@ -41,7 +42,7 @@ export function SupervisorAlerts({ pendingSeals, overdueMed, unreconciledCash, u
     },
     {
       icon: 'cash-fast' as const,
-      label: t('dashboard.unreconciledCash'),
+      label: `${t('dashboard.unreconciledCash')}${locationLabel ? ` (${locationLabel})` : ''}`,
       value: `${unreconciledCount} (${formatCurrency(unreconciledCash)})`,
       color: colors.primary,
       urgent: unreconciledCount > 0,

@@ -41,6 +41,14 @@ export interface UserProfile {
   permissions?: string[];
   entity_id?: string;
   entity_name?: string;
+  // Agent profile fields (from /profiles/me)
+  entity_location_id?: string;
+  entity_code?: string;
+  location_city?: string;
+  location_region?: string;
+  is_main_office?: boolean;
+  ministry_id?: number | null;
+  is_supervisor_agent?: boolean;
 }
 
 export function getFullName(user: Pick<UserProfile, 'first_name' | 'last_name'>): string {

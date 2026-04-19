@@ -4,6 +4,7 @@
  * Manages authentication state with inspector role verification.
  * After login, verifies the user has inspection permissions.
  * Rejects login if user is not an inspection agent/supervisor.
+ * HF-1: Enriches profile with agent context from /profiles/me.
  */
 
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,11 +39,21 @@ const INSPECTION_PERMISSIONS = [
   'inspection.view_entity',
 ];
 
+export interface AgentContext {
+  entityCode: string;
+  entityLocationId: string;
+  locationCity: string;
+  locationRegion: string;
+  isMainOffice: boolean;
+  ministryId: number | null;
+}
+
 export interface AuthContextValue {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isSupervisor: boolean;
+  agentContext: AgentContext | null;
   signIn: (email: string, password: string) => Promise<{ requires2fa?: boolean; tempToken?: string }>;
   signInWithBiometric: (refreshToken: string, email: string) => Promise<void>;
   verify2fa: (tempToken: string, code: string) => Promise<void>;
@@ -51,6 +62,29 @@ export interface AuthContextValue {
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+/**
+ * Enrich a base UserProfile with agent-specific fields from /profiles/me.
+ * Fails silently if the user has no agent profile (e.g., citizen on wrong app).
+ */
+async function enrichWithAgentProfile(base: UserProfile): Promise<UserProfile> {
+  try {
+    const agent = await apiGet<Record<string, unknown>>(API_ENDPOINTS.agents.profile);
+    return {
+      ...base,
+      entity_location_id: agent.entity_location_id as string | undefined,
+      entity_code: agent.entity_code as string | undefined,
+      location_city: agent.location_city as string | undefined,
+      location_region: agent.location_region as string | undefined,
+      is_main_office: agent.is_main_office as boolean | undefined,
+      ministry_id: (agent.ministry_id as number) ?? null,
+      is_supervisor_agent: agent.is_supervisor as boolean | undefined,
+    };
+  } catch {
+    // /profiles/me may 403/404 if user has no agent profile — not blocking
+    return base;
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(getUserProfile);
@@ -62,6 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user.permissions.includes('inspection.seal_approve') ||
       user.permissions.includes('inspection.view_entity');
   }, [user?.permissions]);
+
+  const agentContext = useMemo<AgentContext | null>(() => {
+    if (!user?.entity_code || !user?.entity_location_id) return null;
+    return {
+      entityCode: user.entity_code,
+      entityLocationId: user.entity_location_id,
+      locationCity: user.location_city ?? '',
+      locationRegion: user.location_region ?? '',
+      isMainOffice: user.is_main_office ?? false,
+      ministryId: user.ministry_id ?? null,
+    };
+  }, [user?.entity_code, user?.entity_location_id, user?.location_city, user?.location_region, user?.is_main_office, user?.ministry_id]);
 
   // Bootstrap: check stored tokens on mount
   useEffect(() => {
@@ -89,8 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await clearAllAuthData();
               setUser(null);
             } else {
-              setUserProfile(profile);
-              setUser(profile);
+              const enriched = await enrichWithAgentProfile(profile);
+              setUserProfile(enriched);
+              setUser(enriched);
             }
           }
         } catch {
@@ -134,8 +181,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     await setTokens(tokenResponse.access_token, tokenResponse.refresh_token);
-    setUserProfile(profile);
-    setUser(profile);
+    const enriched = await enrichWithAgentProfile(profile);
+    setUserProfile(enriched);
+    setUser(enriched);
 
     // Save refresh token for biometric login (not password)
     await saveBiometricToken(email, tokenResponse.refresh_token);
@@ -166,8 +214,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Su cuenta no tiene permisos de inspeccion. Contacte al administrador.');
     }
 
-    setUserProfile(profile);
-    setUser(profile);
+    const enriched = await enrichWithAgentProfile(profile);
+    setUserProfile(enriched);
+    setUser(enriched);
 
     // Update biometric stored token with the new refresh token
     await updateBiometricToken(newRefreshToken);
@@ -187,8 +236,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     await setTokens(response.access_token, response.refresh_token);
-    setUserProfile(profile);
-    setUser(profile);
+    const enriched = await enrichWithAgentProfile(profile);
+    setUserProfile(enriched);
+    setUser(enriched);
   }, []);
 
   const signOut = useCallback(async (allSessions = false) => {
@@ -209,8 +259,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = useCallback(async () => {
     try {
       const profile = await apiGet<UserProfile>(API_ENDPOINTS.users.profile);
-      setUserProfile(profile);
-      setUser(profile);
+      const enriched = await enrichWithAgentProfile(profile);
+      setUserProfile(enriched);
+      setUser(enriched);
     } catch {
       // Silent fail - keep current profile
     }
@@ -221,12 +272,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     isLoading,
     isSupervisor,
+    agentContext,
     signIn,
     signInWithBiometric,
     verify2fa,
     signOut,
     refreshProfile,
-  }), [user, isAuthenticated, isLoading, isSupervisor, signIn, signInWithBiometric, verify2fa, signOut, refreshProfile]);
+  }), [user, isAuthenticated, isLoading, isSupervisor, agentContext, signIn, signInWithBiometric, verify2fa, signOut, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

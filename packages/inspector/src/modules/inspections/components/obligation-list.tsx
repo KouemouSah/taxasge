@@ -66,7 +66,8 @@ export function ObligationList({ obligations, selectable = false, selected, onTo
                 </Text>
                 {restricted && (
                   <Text variant="bodySmall" style={{ color: custom.status.miseEnDemeure }}>
-                    {t('verify.outOfScope', { defaultValue: 'Out of your agent scope' })}
+                    {ob.agent_restricted_reason
+                      ?? t('verify.outOfScope', { defaultValue: 'Out of your agent scope' })}
                   </Text>
                 )}
               </View>

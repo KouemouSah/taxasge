@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import { extractApiError } from '@core/api/errors';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import { StatusBadge } from '@components/ui/status-badge';
@@ -26,6 +27,7 @@ import type { LicenseVerification, LicenseObligation } from '@modules/inspection
 export default function VerifyScreen() {
   const { t } = useTranslation();
   const { colors, custom } = useAppTheme();
+  const { agentContext } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [identifier, setIdentifier] = useState('');
@@ -216,6 +218,19 @@ export default function VerifyScreen() {
               </View>
             </View>
           </View>
+
+          {/* Agent scope context badge */}
+          {result.agent_scope && agentContext && (
+            <View style={[styles.scopeBadge, { backgroundColor: `${colors.primary}10` }]}>
+              <MaterialCommunityIcons name="shield-account" size={18} color={colors.primary} />
+              <Text variant="bodySmall" style={{ color: colors.primary, marginLeft: 6, flex: 1 }}>
+                {t('verify.agentScope', { defaultValue: 'Scope' })}:{' '}
+                {result.agent_scope.allowed_fee_types?.join(', ') ?? 'N/A'}
+                {result.agent_scope.required_ministry_id ? ` (${t('verify.ministryScoped', { defaultValue: 'min. specific' })})` : ''}
+                {' \u2022 '}{agentContext.locationCity}
+              </Text>
+            </View>
+          )}
 
           {/* P4: Existing dossier banner (info blue) */}
           {result.existing_dossier && (
@@ -479,6 +494,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scopeBadge: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',

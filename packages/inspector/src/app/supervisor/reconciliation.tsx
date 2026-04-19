@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import { extractApiError } from '@core/api/errors';
 import { EmptyState } from '@components/ui/empty-state';
@@ -25,6 +26,7 @@ import type { ReconciliationItem } from '@modules/inspections/services/inspectio
 export default function ReconciliationScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const { agentContext } = useAuth();
   const insets = useSafeAreaInsets();
 
   const { data, isLoading, refetch, isRefetching } = useSupervisorReconciliation();
@@ -131,6 +133,18 @@ export default function ReconciliationScreen() {
         </View>
       )}
 
+      {/* Scope badge */}
+      {agentContext && (
+        <View style={styles.scopeInfo}>
+          <MaterialCommunityIcons name="map-marker-outline" size={14} color={colors.onSurfaceVariant} />
+          <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
+            {agentContext.isMainOffice
+              ? t('dashboard.allLocations', { defaultValue: 'All locations' })
+              : `${agentContext.locationCity} (${agentContext.locationRegion})`}
+          </Text>
+        </View>
+      )}
+
       {error ? (
         <Text variant="bodySmall" style={{ color: colors.error, paddingHorizontal: 16, paddingVertical: 4 }}>
           {error}
@@ -172,6 +186,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 8, paddingBottom: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   banner: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 8 },
+  scopeInfo: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 },
   listContent: { paddingBottom: 32 },
   emptyContainer: { flexGrow: 1 },
   item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },

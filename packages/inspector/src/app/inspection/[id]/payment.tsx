@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import {
   extractApiError,
   isPermissionError,
@@ -28,6 +29,7 @@ import { ObligationList } from '@modules/inspections/components/obligation-list'
 export default function CollectPaymentScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const { agentContext } = useAuth();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -252,6 +254,23 @@ export default function CollectPaymentScreen() {
           </View>
         )}
 
+        {/* Collection summary */}
+        {selectedObligations.size > 0 && parsedAmount > 0 && (
+          <View style={[styles.section, styles.summaryCard, { backgroundColor: `${colors.primary}08` }]}>
+            <Text variant="labelMedium" style={{ color: colors.primary, fontWeight: '700' }}>
+              {t('payment.summary', { defaultValue: 'Summary' })}
+            </Text>
+            <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 4 }}>
+              {selectedObligations.size} {t('obligations.title', { defaultValue: 'obligations' })} — {formatCurrency(parsedAmount)}
+            </Text>
+            {agentContext && (
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                {agentContext.entityCode} — {agentContext.locationCity} ({agentContext.locationRegion})
+              </Text>
+            )}
+          </View>
+        )}
+
         <View style={styles.submitSection}>
           <Button
             mode="contained"
@@ -277,6 +296,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 32 },
   section: { paddingHorizontal: 16, paddingVertical: 12 },
   sectionTitle: { fontWeight: '600', marginBottom: 4 },
+  summaryCard: { borderRadius: 8, marginHorizontal: 16, marginTop: 8 },
   submitSection: { paddingHorizontal: 16, paddingTop: 16 },
   submitButton: { borderRadius: 8 },
 });

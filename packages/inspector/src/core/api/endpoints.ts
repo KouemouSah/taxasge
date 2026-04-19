@@ -32,6 +32,10 @@ export const API_ENDPOINTS = {
     myPermissions: '/permissions/my-permissions',
   },
 
+  agents: {
+    profile: '/profiles/me',
+  },
+
   inspections: {
     list: '/inspections/',
     create: '/inspections/',

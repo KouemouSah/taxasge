@@ -35,7 +35,7 @@ import { QueryError } from '@components/ui/query-error';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
-  const { user, isSupervisor, signOut } = useAuth();
+  const { user, isSupervisor, agentContext, signOut } = useAuth();
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
 
@@ -61,6 +61,9 @@ export default function DashboardScreen() {
 
   const userName = user ? getFullName(user) : '';
   const entityName = user?.entity_name ?? '';
+  const locationLabel = agentContext
+    ? `${agentContext.locationCity} (${agentContext.locationRegion})`
+    : '';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -75,8 +78,8 @@ export default function DashboardScreen() {
           <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '700' }}>
             {t('app.name')}
           </Text>
-          <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-            {entityName}
+          <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }} numberOfLines={1}>
+            {entityName}{locationLabel ? ` \u2022 ${locationLabel}` : ''}
           </Text>
         </View>
         {isSupervisor && (
@@ -134,6 +137,7 @@ export default function DashboardScreen() {
             overdueMed={supervisorDashboard.data.overdue_med}
             unreconciledCash={supervisorDashboard.data.unreconciled_cash_amount}
             unreconciledCount={supervisorDashboard.data.unreconciled_cash_count}
+            locationLabel={agentContext?.isMainOffice ? t('dashboard.allLocations', { defaultValue: 'global' }) : agentContext?.locationCity}
           />
           </AnimatedSection>
         )}
@@ -142,11 +146,11 @@ export default function DashboardScreen() {
         <AnimatedSection delay={300}>
           {isSupervisor && supervisorDashboard.data ? (
             <>
-              <StatsGrid stats={supervisorDashboard.data.today} label={t('dashboard.todayStats')} />
-              <StatsGrid stats={supervisorDashboard.data.week} label={t('dashboard.weekStats')} />
+              <StatsGrid stats={supervisorDashboard.data.today} label={`${t('dashboard.todayStats')} — ${agentContext?.isMainOffice ? t('dashboard.allLocations', { defaultValue: 'All locations' }) : agentContext?.locationCity ?? ''}`} />
+              <StatsGrid stats={supervisorDashboard.data.week} label={`${t('dashboard.weekStats')} — ${agentContext?.isMainOffice ? t('dashboard.allLocations', { defaultValue: 'All locations' }) : agentContext?.locationCity ?? ''}`} />
             </>
           ) : agentStats.data ? (
-            <StatsGrid stats={agentStats.data} label={t('dashboard.todayStats')} />
+            <StatsGrid stats={agentStats.data} label={`${t('dashboard.todayStats')}${agentContext?.locationCity ? ` — ${agentContext.locationCity}` : ''}`} />
           ) : agentStats.isLoading ? (
             <SkeletonStatsGrid />
           ) : agentStats.error ? (
