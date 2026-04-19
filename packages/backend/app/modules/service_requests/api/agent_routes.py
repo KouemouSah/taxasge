@@ -1365,7 +1365,7 @@ async def make_decision(
             # Lock the row — any concurrent decision on same request will WAIT
             locked = await db.fetchval("""
                 SELECT id FROM service_requests
-                WHERE id = $1 AND status = ANY($2::text[])
+                WHERE id = $1 AND status::text = ANY($2::text[])
                 FOR UPDATE
             """, request_id, list(allowed_statuses))
 
@@ -1459,7 +1459,7 @@ async def make_decision(
         async with db.transaction():
             locked = await db.fetchval("""
                 SELECT id FROM service_requests
-                WHERE id = $1 AND status = ANY($2::text[])
+                WHERE id = $1 AND status::text = ANY($2::text[])
                 FOR UPDATE
             """, request_id, list(allowed_statuses))
 
@@ -1540,7 +1540,7 @@ async def make_decision(
         async with db.transaction():
             locked = await db.fetchval("""
                 SELECT id FROM service_requests
-                WHERE id = $1 AND status = ANY($2::text[])
+                WHERE id = $1 AND status::text = ANY($2::text[])
                 FOR UPDATE
             """, request_id, list(allowed_statuses))
 
