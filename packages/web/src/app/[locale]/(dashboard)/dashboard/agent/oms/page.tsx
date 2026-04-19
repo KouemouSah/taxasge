@@ -289,19 +289,30 @@ export default function OMSAgentDashboardPage() {
         <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{queue?.total ?? 0}</span>
       </div>
 
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-xs font-medium text-blue-700">{selected.size} {t('queue.selected')}</span>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-auto"
-            onClick={handleBatchProcess} disabled={processing}>
-            <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
-            {t('queue.cancel')}
-          </Button>
-        </div>
-      )}
+      {/* Bulk action bar — shows payment verification status */}
+      {selected.size > 0 && (() => {
+        const selectedItems = filteredItems.filter(i => selected.has(i.id))
+        const allPaid = selectedItems.every(i => i.status === 'paid' || i.status === 'processing')
+        const totalSelected = selectedItems.reduce((sum, i) => sum + Number(i.amount || 0), 0)
+        return (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <span className="text-xs font-medium text-blue-700">{selected.size} {t('queue.selected')}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">{fmtXAF(totalSelected, locale)}</span>
+            {allPaid && (
+              <span className="flex items-center gap-0.5 text-[10px] text-green-700">
+                <DollarSign className="h-3 w-3" />{t('queue.allPaidVerified', { defaultValue: 'Pago verificado' })}
+              </span>
+            )}
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-auto"
+              onClick={handleBatchProcess} disabled={processing}>
+              <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
+              {t('queue.cancel')}
+            </Button>
+          </div>
+        )
+      })()}
 
       {/* Queue Table — grouped by license (company) */}
       <Card>
