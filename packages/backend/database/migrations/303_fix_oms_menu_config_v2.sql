@@ -50,6 +50,10 @@ SET menu_config = '{
     {"id":"licenses","icon":"Briefcase","titleKey":"oms.nav.licenses","items":[
       {"id":"overview","href":"/dashboard/agent/oms/licenses","icon":"FileCheck","titleKey":"oms.nav.licensesOverview","permission":"fiscal_service.view_bundles"},
       {"id":"compliance","href":"/dashboard/agent/oms/compliance","icon":"ShieldCheck","titleKey":"oms.nav.compliance","permission":"fiscal_service.view_bundles"}
+    ]},
+    {"id":"companies","icon":"Building2","titleKey":"agent.nav.companies","items":[
+      {"id":"company_debt","href":"/dashboard/agent/companies/debt","icon":"DollarSign","titleKey":"agent.nav.companyDebt","permission":"company.view"},
+      {"id":"company_lookup","href":"/dashboard/agent/companies/lookup","icon":"Search","titleKey":"agent.nav.companyLookup","permission":"company.view"}
     ]}
   ],
   "source":"role","version":"1.2"
@@ -78,6 +82,10 @@ SET menu_config = '{
     {"id":"licenses","icon":"Briefcase","titleKey":"oms.nav.licenses","items":[
       {"id":"overview","href":"/dashboard/agent/oms/licenses","icon":"FileCheck","titleKey":"oms.nav.licensesOverview","permission":"fiscal_service.view_bundles"},
       {"id":"compliance","href":"/dashboard/agent/oms/compliance","icon":"ShieldCheck","titleKey":"oms.nav.compliance","permission":"fiscal_service.view_bundles"}
+    ]},
+    {"id":"companies","icon":"Building2","titleKey":"agent.nav.companies","items":[
+      {"id":"company_debt","href":"/dashboard/agent/companies/debt","icon":"DollarSign","titleKey":"agent.nav.companyDebt","permission":"company.view"},
+      {"id":"company_lookup","href":"/dashboard/agent/companies/lookup","icon":"Search","titleKey":"agent.nav.companyLookup","permission":"company.view"}
     ]}
   ],
   "source":"role","version":"1.2"
@@ -102,6 +110,10 @@ SET menu_config = '{
     {"id":"licenses","icon":"Briefcase","titleKey":"oms.nav.licenses","items":[
       {"id":"overview","href":"/dashboard/agent/oms/licenses","icon":"FileCheck","titleKey":"oms.nav.licensesOverview","permission":"fiscal_service.view_bundles"},
       {"id":"compliance","href":"/dashboard/agent/oms/compliance","icon":"ShieldCheck","titleKey":"oms.nav.compliance","permission":"fiscal_service.view_bundles"}
+    ]},
+    {"id":"companies","icon":"Building2","titleKey":"agent.nav.companies","items":[
+      {"id":"company_debt","href":"/dashboard/agent/companies/debt","icon":"DollarSign","titleKey":"agent.nav.companyDebt","permission":"company.view"},
+      {"id":"company_lookup","href":"/dashboard/agent/companies/lookup","icon":"Search","titleKey":"agent.nav.companyLookup","permission":"company.view"}
     ]}
   ],
   "source":"role","version":"1.2"
@@ -141,7 +153,27 @@ WHERE code IN ('supervisor_ayuntamiento', 'supervisor_camara')
 AND dashboard_config IS NOT NULL;
 
 -- ============================================================================
--- 6. Invalidate Redis menu cache (best-effort)
+-- 6. Grant company.view to MIN_* agents and supervisors
+-- Without this permission, the Companies submenu items are hidden by frontend.
+-- AYUNT/CAMARA already have this from migration 247. MIN_* don't.
+-- Idempotent: ON CONFLICT DO NOTHING.
+-- ============================================================================
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.code IN (
+    'agent_min_comercio', 'agent_min_hacienda', 'agent_min_informacion',
+    'agent_min_turismo', 'agent_min_agricultura', 'agent_min_electricidad',
+    'agent_oms_polyvalent',
+    'supervisor_min_comercio', 'supervisor_min_hacienda', 'supervisor_min_informacion',
+    'supervisor_min_turismo', 'supervisor_min_agricultura', 'supervisor_min_electricidad'
+)
+AND p.name = 'company.view'
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- 7. Invalidate Redis menu cache (best-effort)
 -- The menu service caches per agent_profile_id with 5-min TTL.
 -- After this migration, agents must wait max 5 min or re-login.
 -- ============================================================================
