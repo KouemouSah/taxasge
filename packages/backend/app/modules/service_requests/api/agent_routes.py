@@ -1276,7 +1276,9 @@ async def make_decision(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))
 ):
-    # ── PRE-FLIGHT: CTE fetches queue + request + idempotency check in 1 query ──
+    # ── PRE-FLIGHT: CTE fetches queue + assignment + request + idempotency ──
+    # Dual-source authorization: agent_work_queue (legacy) OR assignments
+    # (AutoAssignmentService). Both are valid proof of assignment.
     preflight = await db.fetchrow("""
         WITH queue AS (
             SELECT id AS queue_id
@@ -1285,6 +1287,16 @@ async def make_decision(
               AND item_type = 'service_request'
               AND assigned_to = $2
               AND status = 'assigned'
+        ),
+        asn AS (
+            SELECT a.id AS assignment_id
+            FROM assignments a
+            JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+            WHERE a.item_id = $3
+              AND a.item_type = 'service_request'
+              AND ap.user_id = $2::uuid
+              AND a.status IN ('assigned', 'in_progress')
+            LIMIT 1
         ),
         req AS (
             SELECT id, reference, status, workflow_code, user_id, form_data,
@@ -1302,18 +1314,20 @@ async def make_decision(
         )
         SELECT
             q.queue_id,
+            asn.assignment_id,
             r.id AS req_id, r.reference, r.status, r.workflow_code,
             r.user_id, r.form_data, r.escalated, r.batch_id,
             r.entity_code, r.cita_date,
             ad.decided
         FROM req r
         LEFT JOIN queue q ON TRUE
+        LEFT JOIN asn ON TRUE
         LEFT JOIN already_decided ad ON TRUE
     """, str(request_id), str(current_user.id), request_id)
 
     if not preflight or not preflight['req_id']:
         raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
-    if not preflight['queue_id']:
+    if not preflight['queue_id'] and not preflight['assignment_id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This request is not assigned to you")
     if preflight.get('decided'):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Decision already recorded for this request (idempotency)")
@@ -1328,7 +1342,9 @@ async def make_decision(
         )
 
     # Store preflight results for use in branches
-    queue_id = str(preflight['queue_id'])
+    # queue_id may be None if authorization came from assignments table
+    queue_id = str(preflight['queue_id']) if preflight['queue_id'] else None
+    assignment_id = str(preflight['assignment_id']) if preflight.get('assignment_id') else None
     request_ref = preflight['reference']
     workflow_code = preflight['workflow_code']
     user_id = preflight['user_id']
@@ -1368,10 +1384,18 @@ async def make_decision(
                 VALUES ($1, 'status_change', $2, $3, $4, $5)
             """, request_id, previous_status, new_status, current_user.id, decision.comments)
 
-            await agent_queue_service.complete_item(
-                db=db, queue_id=queue_id,
-                agent_id=str(current_user.id), result_status="approved"
-            )
+            # Complete the source that authorized this decision
+            if queue_id:
+                await agent_queue_service.complete_item(
+                    db=db, queue_id=queue_id,
+                    agent_id=str(current_user.id), result_status="approved"
+                )
+            if assignment_id:
+                await db.execute("""
+                    UPDATE assignments
+                    SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+                    WHERE id = $1::uuid
+                """, assignment_id)
 
         # ── Post-transaction: appointment (if citizen didn't already book one) ──
         workflow_data = await db.fetchrow(
@@ -1455,10 +1479,17 @@ async def make_decision(
                 VALUES ($1, 'status_change', $2, 'REJECTED', $3, $4)
             """, request_id, previous_status, current_user.id, history_comment)
 
-            await agent_queue_service.complete_item(
-                db=db, queue_id=queue_id,
-                agent_id=str(current_user.id), result_status="rejected"
-            )
+            if queue_id:
+                await agent_queue_service.complete_item(
+                    db=db, queue_id=queue_id,
+                    agent_id=str(current_user.id), result_status="rejected"
+                )
+            if assignment_id:
+                await db.execute("""
+                    UPDATE assignments
+                    SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+                    WHERE id = $1::uuid
+                """, assignment_id)
 
         # ── BACKGROUND: notification + batch check ──
         agent_id_str = str(current_user.id)
@@ -1529,11 +1560,18 @@ async def make_decision(
             """, request_id, previous_status, current_user.id, history_comment,
                 json.dumps(history_details))
 
-            await db.execute("""
-                UPDATE agent_work_queue
-                SET status = 'cancelled', assigned_to = NULL, updated_at = NOW()
-                WHERE id = $1
-            """, queue_id)
+            if queue_id:
+                await db.execute("""
+                    UPDATE agent_work_queue
+                    SET status = 'cancelled', assigned_to = NULL, updated_at = NOW()
+                    WHERE id = $1
+                """, queue_id)
+            if assignment_id:
+                await db.execute("""
+                    UPDATE assignments
+                    SET status = 'cancelled', completed_at = NOW(), updated_at = NOW()
+                    WHERE id = $1::uuid
+                """, assignment_id)
 
         # ── BACKGROUND: notification ──
         background_tasks.add_task(

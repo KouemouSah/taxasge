@@ -1361,8 +1361,15 @@ class WizardSessionService:
         reference: str,
         workflow: Any,
         appointment_data: Optional[Dict[str, Any]] = None,
+        db: Optional[asyncpg.Connection] = None,
+        user_id: Optional[UUID] = None,
+        service_request_id: Optional[UUID] = None,
     ) -> Optional[List[Tuple[str, bytes, str]]]:
-        """Generate citizen summary PDF for email attachment. Returns None on failure."""
+        """Generate citizen summary PDF for email attachment. Returns None on failure.
+
+        If db, user_id, and service_request_id are provided, also uploads the PDF
+        to Firebase Storage and registers it in the user's document vault.
+        """
         try:
             from .summary_pdf_service import summary_pdf_service
             from ..workflows.workflow_interface import PredefinedWorkflow
@@ -1413,8 +1420,50 @@ class WizardSessionService:
                 appointment=appointment_for_pdf,
                 language="es",
             )
+            filename = f"solicitud_{reference}.pdf"
             logger.info(f"[WizardSession] Generated summary PDF for {reference} ({len(pdf_bytes)} bytes)")
-            return [(f"solicitud_{reference}.pdf", pdf_bytes, "application/pdf")]
+
+            # Upload to Firebase + register in user vault (non-blocking)
+            if db and user_id and service_request_id:
+                try:
+                    from app.modules.documents.services.storage_service import (
+                        firebase_storage_service,
+                    )
+                    from app.modules.user_documents.services.user_documents_service import (
+                        user_documents_service,
+                    )
+                    upload_result = await firebase_storage_service.upload_tax_attachment(
+                        application_id=str(service_request_id),
+                        file=pdf_bytes,
+                        allowed_users=[str(user_id)],
+                        metadata={
+                            "filename": filename,
+                            "mime_type": "application/pdf",
+                            "document_type": "request_summary",
+                            "reference": reference,
+                        },
+                    )
+                    sr_token = summary_pdf_service._generate_sr_verification_token(reference)
+                    await user_documents_service.auto_import_generated(
+                        db=db,
+                        user_id=user_id,
+                        generation_type="request_summary",
+                        file_path=upload_result.file_path,
+                        file_name=filename,
+                        file_size_bytes=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        title_es="Solicitud de Tramite",
+                        title_fr="Demande de Service",
+                        title_en="Service Request",
+                        reference_number=reference,
+                        service_request_id=service_request_id,
+                        verification_code=sr_token,
+                    )
+                    logger.info(f"[WizardSession] Solicitud PDF registered in user vault for {reference}")
+                except Exception as vault_err:
+                    logger.warning(f"[WizardSession] Vault registration failed (non-blocking): {vault_err}")
+
+            return [(filename, pdf_bytes, "application/pdf")]
         except Exception as e:
             logger.warning(f"[WizardSession] PDF generation failed (non-blocking): {e}")
             return None
@@ -1484,10 +1533,11 @@ class WizardSessionService:
                 f"request_id={service_request_id}, reference={reference}"
             )
 
-            # Generate PDF attachment for email notification (non-blocking)
+            # Generate PDF attachment for email notification + vault registration
             workflow = workflow_engine.get_workflow_by_string(session.get("workflow_code", ""))
             pdf_attachment = await self._generate_summary_pdf_attachment(
-                session, reference, workflow, session.get("appointment_data")
+                session, reference, workflow, session.get("appointment_data"),
+                db=db, user_id=user_id, service_request_id=service_request_id,
             )
 
             # Fetch user info for email notification
@@ -1777,9 +1827,10 @@ class WizardSessionService:
                 f"payment_id={payment_result.payment_id}"
             )
 
-            # Generate PDF attachment for email notification (non-blocking)
+            # Generate PDF attachment for email notification + vault registration
             pdf_attachment = await self._generate_summary_pdf_attachment(
-                session, reference, workflow, appointment_data
+                session, reference, workflow, appointment_data,
+                db=db, user_id=user_id, service_request_id=service_request_id,
             )
 
             # Publish event (include user info for email notification)

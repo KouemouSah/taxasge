@@ -277,8 +277,23 @@ const translations = {
 // Helpers
 // ================================================================
 
+/**
+ * Detect if a reference is a service_request by its prefix.
+ * All workflow references use a 3-letter code + year format (e.g. CON-2026-00001).
+ * Receipt references use REC- prefix and are handled by the default branch.
+ */
+const SERVICE_REQUEST_PREFIXES = [
+  'SRV-', 'CON-', 'PAS-', 'RES-', 'MAT-', 'INS-', 'DUP-',
+  'PRO-', 'CAR-', 'VER-', 'TRA-', 'PER-', 'CER-', 'VIS-',
+  'INM-', 'SOL-', 'REG-', 'LIQ-', 'IMP-',
+];
+
 function isServiceRequest(ref: string): boolean {
-  return ref.startsWith('SRV-');
+  // Known prefixes
+  if (SERVICE_REQUEST_PREFIXES.some(p => ref.startsWith(p))) return true;
+  // Fallback: 3 uppercase letters + dash + 4-digit year pattern (not REC-, not LIC-)
+  if (/^[A-Z]{3}-\d{4}-/.test(ref) && !ref.startsWith('REC-') && !ref.startsWith('LIC-')) return true;
+  return false;
 }
 
 function isLicense(ref: string): boolean {

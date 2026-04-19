@@ -906,6 +906,42 @@ class ReceiptService:
 
         logger.info(f"Receipt {receipt_number} generated and stored for payment {payment_id}")
 
+        # Auto-register in user vault (Documents > Generados tab)
+        if file_path and user_id:
+            try:
+                from uuid import UUID as _UUID
+                from app.modules.user_documents.services.user_documents_service import (
+                    user_documents_service,
+                )
+                # Regenerate the verification token for vault metadata
+                db_amount = float(payment_data.get("total_amount") or 0)
+                paid_at_val = payment_data.get("paid_at") or validated_at
+                vault_token = self._generate_verification_token(
+                    receipt_number, db_amount, paid_at_val
+                )
+                await user_documents_service.auto_import_generated(
+                    db=db,
+                    user_id=_UUID(str(user_id)),
+                    generation_type="payment_receipt",
+                    file_path=file_path,
+                    file_name=filename,
+                    file_size_bytes=len(pdf_bytes),
+                    mime_type="application/pdf",
+                    title_es="Recibo de Pago",
+                    title_fr="Recu de Paiement",
+                    title_en="Payment Receipt",
+                    reference_number=receipt_number,
+                    service_request_id=(
+                        _UUID(str(service_request_id)) if service_request_id else None
+                    ),
+                    verification_code=vault_token,
+                )
+                logger.info(
+                    f"Receipt {receipt_number} registered in user vault for {user_id}"
+                )
+            except Exception as e:
+                logger.warning(f"Could not register receipt in user vault: {e}")
+
         return {
             "receipt_number": receipt_number,
             "receipt_url": receipt_url,
