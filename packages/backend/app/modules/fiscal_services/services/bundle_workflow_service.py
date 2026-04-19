@@ -856,7 +856,7 @@ class BundleWorkflowService:
         # Prevents deadlock fan-out when many agents/users touch the same
         # commercial_license / service_requests / license_obligations chain.
         await conn.execute("SET LOCAL lock_timeout = '3s'")
-        await conn.execute("SET LOCAL statement_timeout = '5s'")
+        await conn.execute("SET LOCAL statement_timeout = '10s'")
 
         # 1. Re-validate within transaction (race protection)
         # NOWAIT: fail immediately if another transaction is locking this license
@@ -1262,12 +1262,20 @@ class BundleWorkflowService:
                 len(entity_obligations), entity_amount,
             )
 
-        # 7b. Refresh license counters — obligations moved from pending/overdue
-        # to payment_pending, so overdue counts must be decremented and license
-        # status recalculated. Without this, the Vue d'Ensemble shows stale
-        # "overdue" badges and 0 XAF paid even after payment initiation.
-        from app.modules.fiscal_services.services.license_service import LicenseService
-        await LicenseService.update_license_counters(conn, license_id, user_id)
+        # 7b. Schedule async counter refresh AFTER transaction commits.
+        # Obligations moved from pending/overdue → payment_pending, so overdue
+        # counts must be decremented. Done async to avoid adding 250-500ms
+        # to the critical transaction path (statement_timeout = 5-10s).
+        # The EventBus handler runs on a separate connection post-commit.
+        try:
+            from app.core.events import EventBus, EventType
+            EventBus.publish_nowait(EventType.LICENSE_COUNTER_REFRESH, {
+                "license_id": str(license_id),
+                "user_id": str(user_id),
+                "trigger": "initiate_payment",
+            })
+        except Exception as e:
+            logger.warning("Failed to schedule counter refresh: %s", e)
 
         # 8. Update service_request with primary payment_id
         await conn.execute("""

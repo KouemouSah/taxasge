@@ -133,6 +133,30 @@ async def lifespan(app: FastAPI):
             payment_assignment_handler = register_payment_assignment_handlers()
             logger.info("✅ Payment assignment event handlers registered")
 
+            # Register license counter refresh handler (async post-commit)
+            from app.core.events import EventType
+
+            async def _handle_counter_refresh(payload):
+                """Async counter refresh — runs on separate connection post-commit."""
+                from uuid import UUID
+                from app.modules.fiscal_services.services.license_service import LicenseService
+                license_id = payload.get("license_id")
+                user_id = payload.get("user_id")
+                if not license_id:
+                    return
+                try:
+                    async with db_manager.acquire() as conn:
+                        await LicenseService.update_license_counters(
+                            conn, UUID(license_id),
+                            UUID(user_id) if user_id else None,
+                        )
+                    logger.debug(f"Counter refresh completed for license {license_id}")
+                except Exception as e:
+                    logger.warning(f"Counter refresh failed for license {license_id}: {e}")
+
+            EventBus.subscribe(EventType.LICENSE_COUNTER_REFRESH, _handle_counter_refresh)
+            logger.info("✅ License counter refresh handler registered")
+
             # Register verification event handlers (external document verification)
             try:
                 from app.modules.verified_identifiers.handlers import setup_verification_handlers

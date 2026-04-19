@@ -364,7 +364,10 @@ class OmsAgentService:
         """
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
-        # Atomic fetch: obligation + license in 1 query (no TOCTOU gap)
+        # Atomic fetch with row-level lock — prevents two agents from
+        # processing the same obligation concurrently (TOCTOU fix).
+        # SKIP LOCKED: if another agent holds this row, return NULL
+        # immediately instead of waiting (no deadlock, no contention).
         row = await conn.fetchrow("""
             SELECT lo.id, lo.license_id, lo.bundle_item_id,
                    lo.fiscal_service_id, lo.ministry_id, lo.fee_type,
@@ -380,10 +383,13 @@ class OmsAgentService:
             LEFT JOIN fiscal_services fs ON lo.fiscal_service_id = fs.id
             LEFT JOIN ministries m ON lo.ministry_id = m.id
             WHERE lo.id = $1
+            FOR UPDATE OF lo SKIP LOCKED
         """, obligation_id)
 
         if not row:
-            raise ValueError(f"Obligation {obligation_id} not found")
+            raise ValueError(
+                f"Obligation {obligation_id} not found or locked by another agent"
+            )
 
         obligation = dict(row)
         processing_mode = obligation.pop("license_processing_mode")
@@ -542,7 +548,9 @@ class OmsAgentService:
 
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
-        # 1. Batch-fetch all obligations + licenses in 1 query (no N+1)
+        # 1. Batch-fetch all obligations with row-level lock (TOCTOU fix).
+        # SKIP LOCKED: obligations being processed by another agent are
+        # excluded — prevents double-processing and counter double-count.
         rows = await conn.fetch("""
             SELECT lo.id, lo.license_id, lo.ministry_id, lo.fee_type,
                    lo.amount, lo.status,
@@ -550,12 +558,15 @@ class OmsAgentService:
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
             WHERE lo.id = ANY($1::uuid[])
+            FOR UPDATE OF lo SKIP LOCKED
         """, obligation_ids)
 
         if len(rows) != len(obligation_ids):
             found = {r["id"] for r in rows}
             missing = [oid for oid in obligation_ids if oid not in found]
-            raise ValueError(f"Obligations not found: {missing}")
+            raise ValueError(
+                f"Obligations not found or locked by other agents: {missing}"
+            )
 
         # 2. Validate ALL obligations before any mutation (fail-fast)
         license_ids = set()

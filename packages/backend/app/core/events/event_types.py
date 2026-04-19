@@ -254,6 +254,9 @@ class EventType(str, Enum):
     LICENSE_COMPLETED = "license.completed"
     """All obligations completed — trigger PDF generation + email to citizen"""
 
+    LICENSE_COUNTER_REFRESH = "license.counter_refresh"
+    """Async counter refresh — recalculate paid/overdue counts post-commit"""
+
     # ==========================================================================
     # OMS OBLIGATION EVENTS
     # ==========================================================================
