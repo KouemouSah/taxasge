@@ -497,5 +497,71 @@ class LicensePDFService:
         return pdf_bytes
 
 
+    async def generate_proforma_pdf(
+        self,
+        db: asyncpg.Connection,
+        license_id: str,
+        payment_reference: Optional[str] = None,
+        language: str = "es",
+    ) -> bytes:
+        """Generate a proforma invoice PDF for bundle payment initiation.
+
+        Reuses the license_dossier template with modified title/disclaimer.
+        Shows obligations in their current status (payment_pending).
+        Serves as the citizen's proof of payment submission.
+        """
+        # Override texts for proforma context
+        PROFORMA_OVERRIDES = {
+            "es": {
+                "title": "Factura Proforma",
+                "subtitle": "República de Guinea Ecuatorial — Sistema Facil",
+                "disclaimer": (
+                    "FACTURA PROFORMA: Este documento certifica la solicitud "
+                    "de pago de las obligaciones fiscales indicadas. "
+                    "No constituye un recibo oficial — el recibo será emitido "
+                    "tras la validación del pago por la entidad correspondiente."
+                ),
+            },
+            "fr": {
+                "title": "Facture Proforma",
+                "subtitle": "République de Guinée Équatoriale — Système Facil",
+                "disclaimer": (
+                    "FACTURE PROFORMA : Ce document certifie la demande "
+                    "de paiement des obligations fiscales indiquées. "
+                    "Il ne constitue pas un reçu officiel — le reçu sera émis "
+                    "après validation du paiement par l'entité concernée."
+                ),
+            },
+            "en": {
+                "title": "Proforma Invoice",
+                "subtitle": "Republic of Equatorial Guinea — Facil System",
+                "disclaimer": (
+                    "PROFORMA INVOICE: This document certifies the payment "
+                    "request for the listed fiscal obligations. "
+                    "It is not an official receipt — the receipt will be issued "
+                    "after payment validation by the corresponding entity."
+                ),
+            },
+        }
+
+        # Temporarily patch translations for proforma
+        original_texts = TRANSLATIONS.get(language, TRANSLATIONS["es"]).copy()
+        overrides = PROFORMA_OVERRIDES.get(language, PROFORMA_OVERRIDES["es"])
+        patched = {**original_texts, **overrides}
+
+        # Swap translations, generate, restore
+        TRANSLATIONS[language] = patched
+        try:
+            pdf_bytes = await self.generate_license_pdf(db, license_id, language)
+        finally:
+            TRANSLATIONS[language] = original_texts
+
+        logger.info(
+            f"Proforma PDF generated: {license_id} "
+            f"(ref={payment_reference}, {len(pdf_bytes)} bytes)"
+        )
+        return pdf_bytes
+
+
 # Singleton
 license_pdf_service = LicensePDFService()
