@@ -163,14 +163,18 @@ class PaymentAssignmentHandler:
 
             agent_profile_id = assignment.agent_profile_id
 
-            # 4. Update service_payments with assigned agent + assigned_at
+            # 4. Update service_payments with assigned agent + entity_code + assigned_at
+            # entity_code must reflect the VALIDATOR entity (TESORO, AYUNTAMIENTO, etc.)
+            # not the workflow entity (DGT, CNEDOGE, etc.) — otherwise dashboard
+            # stats queries that filter on sp.entity_code miss the payment.
             await conn.execute("""
                 UPDATE service_payments
                 SET assigned_agent_id = $1,
+                    entity_code = $3,
                     assigned_at = NOW(),
                     updated_at = NOW()
                 WHERE id = $2::uuid
-            """, agent_profile_id, payment_id)
+            """, agent_profile_id, payment_id, target_entity_code)
 
             logger.info(
                 f"Payment {payment_id} auto-assigned to {target_entity_code} "

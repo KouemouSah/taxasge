@@ -166,19 +166,34 @@ class WorkloadRepository:
                      aw.max_concurrent_assignments, aw.workload_status, aw.availability,
                      aw.success_rate, aw.avg_processing_time_hours, ap.specializations
             HAVING (COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress'))::float /
-                    COALESCE(aw.max_concurrent_assignments, 20)) * 100 < $1
+                    COALESCE(aw.max_concurrent_assignments, 20)) * 100 <= $1
             ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
         """
         rows = await db.fetch(query, *params)
 
-        # Fallback: if location filter yielded no agents, retry without it
+        # Location-strict fallback: if the capacity threshold excluded all
+        # agents at the target site, retry at the SAME site WITHOUT the
+        # capacity threshold. Location scope is absolute — work for a site
+        # must always go to an agent at that site, even if overloaded.
+        # Entity-wide fallback (routing to another city) is NEVER allowed
+        # when entity_location_id is set.
         if not rows and entity_location_id:
-            logger.info(f"No agents for location {entity_location_id}, falling back to entity-wide")
-            fallback_params = [max_workload_pct]
+            logger.info(
+                f"No agents under capacity at location {entity_location_id}, "
+                f"retrying same site without capacity threshold (strict location)"
+            )
+            fallback_params = []
             fallback_entity_filter = ""
+            fallback_location_filter = ""
             if entity_id:
                 fallback_entity_filter = f"AND ap.entity_id = ${len(fallback_params) + 1}"
                 fallback_params.append(entity_id)
+            fallback_location_filter = (
+                f"AND (ap.entity_location_id = ${len(fallback_params) + 1}"
+                f" OR (ap.entity_location_id IS NULL"
+                f"     AND EXISTS (SELECT 1 FROM entities e2 WHERE e2.id = ap.entity_id AND e2.parent_entity_id IS NULL)))"
+            )
+            fallback_params.append(entity_location_id)
             fallback_query = f"""
                 SELECT
                     ap.id as agent_profile_id,
@@ -207,17 +222,25 @@ class WorkloadRepository:
                 AND ap.is_supervisor = false
                 AND COALESCE(aw.availability::text, 'available') = 'available'
                 {fallback_entity_filter}
+                {fallback_location_filter}
                 GROUP BY ap.id, ap.user_id, ap.entity_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
                          aw.max_concurrent_assignments, aw.workload_status, aw.availability,
                          aw.success_rate, aw.avg_processing_time_hours, ap.specializations
-                HAVING (COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress'))::float /
-                        COALESCE(aw.max_concurrent_assignments, 20)) * 100 < $1
                 ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
             """
             rows = await db.fetch(fallback_query, *fallback_params)
+            if rows:
+                logger.info(
+                    f"Strict location fallback: found {len(rows)} agent(s) "
+                    f"at location {entity_location_id} (over capacity, "
+                    f"but location scope takes precedence)"
+                )
 
         if not rows and entity_id:
-            logger.warning(f"No available agents found for entity_id: {entity_id}")
+            logger.warning(
+                f"No available agents found for entity_id: {entity_id}"
+                + (f" at location {entity_location_id}" if entity_location_id else "")
+            )
 
         agents = []
         for row in rows:
