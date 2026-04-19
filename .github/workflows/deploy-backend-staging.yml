@@ -180,11 +180,75 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Backend deployed to: $URL"
 
-  # Job 3: Generate Embeddings (RAG)
+  # Job 3: Run Database Migrations (post-deploy)
+  migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    needs: deploy
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install migration dependencies
+        run: pip install psycopg2-binary python-dotenv loguru
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🗄️ Running database migrations..."
+          python -c "
+          import os, sys, psycopg2
+          from pathlib import Path
+
+          DATABASE_URL = os.environ['DATABASE_URL']
+          migrations_dir = Path('database/migrations')
+          files = sorted(migrations_dir.glob('*.sql'))
+          print(f'Found {len(files)} migration files')
+
+          conn = psycopg2.connect(DATABASE_URL)
+          conn.autocommit = True
+          cur = conn.cursor()
+
+          ok = err = 0
+          for f in files:
+              sql = f.read_text(encoding='utf-8')
+              stmts = [s.strip() for s in sql.split(';') if s.strip() and not s.strip().startswith('--')]
+              for stmt in stmts:
+                  if not stmt:
+                      continue
+                  try:
+                      cur.execute(stmt)
+                  except Exception as e:
+                      if 'already exists' in str(e) or 'duplicate' in str(e).lower():
+                          pass  # Idempotent — skip silently
+                      else:
+                          print(f'  WARN {f.name}: {str(e)[:120]}')
+                          err += 1
+                          break
+              else:
+                  ok += 1
+
+          cur.close()
+          conn.close()
+          print(f'✅ Migrations: {ok} OK, {err} warnings')
+          "
+
+  # Job 4: Generate Embeddings (RAG)
   embeddings:
     name: Generate RAG Embeddings
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [deploy, migrate]
     continue-on-error: true
 
     steps:
