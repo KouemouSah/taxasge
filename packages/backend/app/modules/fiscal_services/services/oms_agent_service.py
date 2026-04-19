@@ -492,6 +492,37 @@ class OmsAgentService:
             f"({ctx['entity_code']})"
         )
 
+        # Notify citizen of progress (async, non-blocking).
+        # Individual obligation completion → push notification only
+        # (email would spam for 10 obligations; full email at LICENSE_COMPLETED).
+        try:
+            from app.core.events import EventBus, EventType
+
+            # Resolve company owner for push notification target
+            owner_row = await conn.fetchrow("""
+                SELECT u.id, u.email, u.first_name
+                FROM users u
+                JOIN user_company_roles ucr ON ucr.user_id = u.id
+                JOIN commercial_licenses cl ON cl.company_id = ucr.company_id
+                WHERE cl.id = (SELECT license_id FROM license_obligations WHERE id = $1)
+                ORDER BY ucr.created_at ASC LIMIT 1
+            """, obligation_id)
+
+            if owner_row:
+                EventBus.publish_nowait(EventType.OBLIGATION_PROCESSED, {
+                    "obligation_id": str(obligation_id),
+                    "license_id": str(obligation["license_id"]),
+                    "user_id": str(owner_row["id"]),
+                    "user_email": owner_row["email"],
+                    "user_name": owner_row["first_name"] or "",
+                    "fee_type": obligation.get("fee_type"),
+                    "amount": float(obligation.get("amount", 0)),
+                    "service_name": obligation.get("service_name"),
+                    "agent_entity": ctx["entity_code"],
+                })
+        except Exception:
+            pass  # Best-effort — obligation already completed
+
         return result
 
     @staticmethod

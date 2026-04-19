@@ -104,6 +104,13 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="high",
         subject_key="notifications.license.completed.subject",
     ),
+    EventType.OBLIGATION_PROCESSED: NotificationConfig(
+        template_code="obligation_processed",
+        channels=[NotificationChannel.PUSH],
+        priority="normal",
+        subject_key="notifications.obligation.processed.subject",
+        requires_user_prefs=False,  # Always notify (progress is important)
+    ),
 
     # Service Request Events
     EventType.REQUEST_SUBMITTED: NotificationConfig(
