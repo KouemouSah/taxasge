@@ -339,7 +339,7 @@ class AssignmentOutboxService:
             )
 
             if assignment:
-                # Sync assigned_to for backward compatibility
+                # Sync assigned_to on service_requests + agent_work_queue
                 agent_user_id = await db.fetchval(
                     "SELECT user_id FROM agent_profiles WHERE id = $1",
                     assignment.agent_profile_id,
@@ -354,10 +354,23 @@ class AssignmentOutboxService:
                         agent_user_id,
                         service_request_id,
                     )
+                    # Sync agent_work_queue so make_decision + Pendientes/Completados work
+                    await db.execute(
+                        """
+                        UPDATE agent_work_queue
+                        SET assigned_to = $1, assigned_at = NOW(),
+                            status = 'assigned', updated_at = NOW()
+                        WHERE item_id = $2
+                          AND item_type = 'service_request'
+                          AND assigned_to IS NULL
+                        """,
+                        agent_user_id,
+                        service_request_id,
+                    )
 
                 logger.info(
                     f"Outbox: SR {sr['reference']} auto-assigned to "
-                    f"agent {assignment.agent_profile_id}"
+                    f"agent {assignment.agent_profile_id} (user {agent_user_id})"
                 )
             else:
                 logger.warning(

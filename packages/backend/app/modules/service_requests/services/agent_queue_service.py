@@ -89,17 +89,29 @@ class AgentQueueService:
             workflow_instance=workflow_instance
         )
 
-        # Check if already in queue
+        # Check if already in queue (active or waiting for documents)
         existing = await db.fetchrow("""
-            SELECT id FROM agent_work_queue
+            SELECT id, status, assigned_to FROM agent_work_queue
             WHERE item_type = $1 AND item_id = $2
             AND status NOT IN ('completed', 'cancelled')
         """, self.ITEM_TYPE, service_request_id)
 
         if existing:
-            logger.warning(
-                f"Service request {service_request_id} already in queue: {existing['id']}"
-            )
+            # If waiting_documents → reactivate same entry (same agent, SLA preserved)
+            if existing['status'] == 'waiting_documents':
+                await db.execute("""
+                    UPDATE agent_work_queue
+                    SET status = 'assigned', updated_at = NOW()
+                    WHERE id = $1
+                """, existing['id'])
+                logger.info(
+                    f"Service request {service_request_id} reactivated in queue "
+                    f"(was waiting_documents, same agent {existing['assigned_to']})"
+                )
+            else:
+                logger.warning(
+                    f"Service request {service_request_id} already in queue: {existing['id']}"
+                )
             return await self._get_queue_item(db, existing['id'])
 
         # Insert into queue with entity_code (direct routing)

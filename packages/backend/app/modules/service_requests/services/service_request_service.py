@@ -1259,59 +1259,71 @@ class ServiceRequestService:
                     f"Queue ID: {queue_item.get('id')}, Priority: {queue_item.get('priority_score')}"
                 )
 
-                # 2. Trigger auto-assignment to select best agent
-                # CRITICAL: Pass entity_code for deterministic routing + entity_location_id for site-based routing
-                # This ensures PASAPORTE_* goes to CNEDOGE_PASAPORTE agents,
-                # and RESIDENCIA_* goes to CNEDOGE_RESIDENCIA agents, at the correct site
-                auto_assignment_service = AutoAssignmentService()
-                # Resolve entity_location_id from the service request for site-based routing
-                sr_location_id = request.get("entity_location_id")
-                if sr_location_id and not isinstance(sr_location_id, UUID):
-                    try:
-                        sr_location_id = UUID(str(sr_location_id))
-                    except (ValueError, TypeError):
-                        sr_location_id = None
-                assignment = await auto_assignment_service.auto_assign_item(
-                    db=db,
-                    item_id=request_id,
-                    item_type="service_request",
-                    item_data={
-                        "workflow_code": workflow_code,
-                        "entity_code": entity_code,
-                        "solicitud_type": request.get("solicitud_type", "expedicion"),
-                        "priority": request.get("priority", "NORMAL"),
-                    },
-                    entity_type="entity",
-                    entity_id=None,  # Let entity_code determine the entity
-                    priority_level=5,
-                    entity_code=entity_code,  # Deterministic routing by entity
-                    workflow_code=workflow_code,  # Fallback if no entity_code
-                    entity_location_id=sr_location_id,  # Site-based routing
-                )
-
-                if assignment:
-                    # Sync assigned_to in service_requests for backward compatibility
-                    # agent_profile_id -> user_id via agent_profiles table
-                    agent_user_id = await db.fetchval(
-                        "SELECT user_id FROM agent_profiles WHERE id = $1",
-                        assignment.agent_profile_id
-                    )
-                    if agent_user_id:
-                        await db.execute("""
-                            UPDATE service_requests
-                            SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
-                            WHERE id = $2
-                        """, agent_user_id, request_id)
-
+                # 2. Auto-assignment (only if not already assigned — re-submission
+                # after DOCUMENTS_REQUIRED keeps the same agent)
+                existing_assigned = request.get("assigned_to")
+                if existing_assigned:
                     logger.info(
-                        f"Service request {request['reference']} auto-assigned to agent "
-                        f"{assignment.agent_profile_id} (user_id: {agent_user_id})"
+                        f"Service request {request['reference']} already assigned to "
+                        f"{existing_assigned} (re-submission). Skipping auto-assign."
                     )
                 else:
-                    logger.warning(
-                        f"Service request {request['reference']} could not be auto-assigned. "
-                        "No agent available or no matching rules."
+                    # First-time submission: auto-assign to best agent
+                    auto_assignment_service = AutoAssignmentService()
+                    sr_location_id = request.get("entity_location_id")
+                    if sr_location_id and not isinstance(sr_location_id, UUID):
+                        try:
+                            sr_location_id = UUID(str(sr_location_id))
+                        except (ValueError, TypeError):
+                            sr_location_id = None
+                    assignment = await auto_assignment_service.auto_assign_item(
+                        db=db,
+                        item_id=request_id,
+                        item_type="service_request",
+                        item_data={
+                            "workflow_code": workflow_code,
+                            "entity_code": entity_code,
+                            "solicitud_type": request.get("solicitud_type", "expedicion"),
+                            "priority": request.get("priority", "NORMAL"),
+                        },
+                        entity_type="entity",
+                        entity_id=None,
+                        priority_level=5,
+                        entity_code=entity_code,
+                        workflow_code=workflow_code,
+                        entity_location_id=sr_location_id,
                     )
+
+                    if assignment:
+                        agent_user_id = await db.fetchval(
+                            "SELECT user_id FROM agent_profiles WHERE id = $1",
+                            assignment.agent_profile_id
+                        )
+                        if agent_user_id:
+                            await db.execute("""
+                                UPDATE service_requests
+                                SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
+                                WHERE id = $2
+                            """, agent_user_id, request_id)
+                            # Sync agent_work_queue.assigned_to
+                            await db.execute("""
+                                UPDATE agent_work_queue
+                                SET assigned_to = $1, assigned_at = NOW(),
+                                    status = 'assigned', updated_at = NOW()
+                                WHERE item_id = $2
+                                  AND item_type = 'service_request'
+                                  AND assigned_to IS NULL
+                            """, agent_user_id, request_id)
+
+                        logger.info(
+                            f"Service request {request['reference']} auto-assigned to agent "
+                            f"{assignment.agent_profile_id} (user {agent_user_id})"
+                        )
+                    else:
+                        logger.warning(
+                            f"Service request {request['reference']} could not be auto-assigned. "
+                            "No agent available or no matching rules."
+                        )
 
             except Exception as e:
                 # Log error but don't fail the submission

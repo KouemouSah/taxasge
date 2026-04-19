@@ -1276,9 +1276,7 @@ async def make_decision(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))
 ):
-    # ── PRE-FLIGHT: CTE fetches queue + assignment + request + idempotency ──
-    # Dual-source authorization: agent_work_queue (legacy) OR assignments
-    # (AutoAssignmentService). Both are valid proof of assignment.
+    # ── PRE-FLIGHT: CTE fetches queue + request + idempotency check in 1 query ──
     preflight = await db.fetchrow("""
         WITH queue AS (
             SELECT id AS queue_id
@@ -1287,16 +1285,6 @@ async def make_decision(
               AND item_type = 'service_request'
               AND assigned_to = $2
               AND status = 'assigned'
-        ),
-        asn AS (
-            SELECT a.id AS assignment_id
-            FROM assignments a
-            JOIN agent_profiles ap ON ap.id = a.agent_profile_id
-            WHERE a.item_id = $3
-              AND a.item_type = 'service_request'
-              AND ap.user_id = $2::uuid
-              AND a.status IN ('assigned', 'in_progress')
-            LIMIT 1
         ),
         req AS (
             SELECT id, reference, status, workflow_code, user_id, form_data,
@@ -1314,20 +1302,18 @@ async def make_decision(
         )
         SELECT
             q.queue_id,
-            asn.assignment_id,
             r.id AS req_id, r.reference, r.status, r.workflow_code,
             r.user_id, r.form_data, r.escalated, r.batch_id,
             r.entity_code, r.cita_date,
             ad.decided
         FROM req r
         LEFT JOIN queue q ON TRUE
-        LEFT JOIN asn ON TRUE
         LEFT JOIN already_decided ad ON TRUE
     """, str(request_id), str(current_user.id), request_id)
 
     if not preflight or not preflight['req_id']:
         raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
-    if not preflight['queue_id'] and not preflight['assignment_id']:
+    if not preflight['queue_id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This request is not assigned to you")
     if preflight.get('decided'):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Decision already recorded for this request (idempotency)")
@@ -1342,9 +1328,7 @@ async def make_decision(
         )
 
     # Store preflight results for use in branches
-    # queue_id may be None if authorization came from assignments table
-    queue_id = str(preflight['queue_id']) if preflight['queue_id'] else None
-    assignment_id = str(preflight['assignment_id']) if preflight.get('assignment_id') else None
+    queue_id = str(preflight['queue_id'])
     request_ref = preflight['reference']
     workflow_code = preflight['workflow_code']
     user_id = preflight['user_id']
@@ -1384,18 +1368,10 @@ async def make_decision(
                 VALUES ($1, 'status_change', $2, $3, $4, $5)
             """, request_id, previous_status, new_status, current_user.id, decision.comments)
 
-            # Complete the source that authorized this decision
-            if queue_id:
-                await agent_queue_service.complete_item(
-                    db=db, queue_id=queue_id,
-                    agent_id=str(current_user.id), result_status="approved"
-                )
-            if assignment_id:
-                await db.execute("""
-                    UPDATE assignments
-                    SET status = 'completed', completed_at = NOW(), updated_at = NOW()
-                    WHERE id = $1::uuid
-                """, assignment_id)
+            await agent_queue_service.complete_item(
+                db=db, queue_id=queue_id,
+                agent_id=str(current_user.id), result_status="approved"
+            )
 
         # ── Post-transaction: appointment (if citizen didn't already book one) ──
         workflow_data = await db.fetchrow(
@@ -1417,6 +1393,55 @@ async def make_decision(
                 }
             except Exception as e:
                 logger.warning(f"Post-approval appointment scheduling failed for {request_id}: {e}")
+
+        # ── Auto-advance: if payment + cita already exist, advance past DOSSIER_VALIDE ──
+        # For workflows where appointment+payment happen BEFORE agent validation
+        # (e.g. CONDUCIR with appointment inversion), DOSSIER_VALIDE is not the
+        # citizen-facing final state. Advance to reflect reality.
+        try:
+            advance_data = await db.fetchrow("""
+                SELECT
+                    EXISTS(SELECT 1 FROM service_payments
+                           WHERE service_request_id = $1
+                             AND workflow_status IN ('completed', 'approved_by_agent')
+                    ) AS has_payment,
+                    (sr.cita_date IS NOT NULL) AS has_cita,
+                    sr.status
+                FROM service_requests sr WHERE sr.id = $1
+            """, request_id)
+            if advance_data and advance_data['has_payment'] and advance_data['has_cita']:
+                await db.execute("""
+                    UPDATE service_requests
+                    SET status = 'CITA_SCHEDULED', updated_at = NOW()
+                    WHERE id = $1 AND status = 'DOSSIER_VALIDE'
+                """, request_id)
+                await db.execute("""
+                    INSERT INTO service_request_history
+                    (service_request_id, action, previous_status, new_status, performed_by, comment)
+                    VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'CITA_SCHEDULED', $2,
+                            'Auto-advance: payment completed and appointment scheduled')
+                """, request_id, current_user.id)
+                new_status = "CITA_SCHEDULED"
+                logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to CITA_SCHEDULED")
+            elif advance_data and advance_data['has_payment'] and not advance_data['has_cita']:
+                # Payment done but no cita needed or not yet scheduled
+                wf_needs_cita = workflow_data and workflow_data.get('requires_appointment')
+                if not wf_needs_cita:
+                    await db.execute("""
+                        UPDATE service_requests
+                        SET status = 'IN_PROGRESS', updated_at = NOW()
+                        WHERE id = $1 AND status = 'DOSSIER_VALIDE'
+                    """, request_id)
+                    await db.execute("""
+                        INSERT INTO service_request_history
+                        (service_request_id, action, previous_status, new_status, performed_by, comment)
+                        VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'IN_PROGRESS', $2,
+                                'Auto-advance: payment completed, no appointment required')
+                    """, request_id, current_user.id)
+                    new_status = "IN_PROGRESS"
+                    logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to IN_PROGRESS")
+        except Exception as e:
+            logger.warning(f"Auto-advance check failed for {request_ref}: {e}")
 
         # ── BACKGROUND TASK: PDF generation + notification (frees DB connection) ──
         agent_name = f"{current_user.first_name} {current_user.last_name}"
@@ -1479,17 +1504,10 @@ async def make_decision(
                 VALUES ($1, 'status_change', $2, 'REJECTED', $3, $4)
             """, request_id, previous_status, current_user.id, history_comment)
 
-            if queue_id:
-                await agent_queue_service.complete_item(
-                    db=db, queue_id=queue_id,
-                    agent_id=str(current_user.id), result_status="rejected"
-                )
-            if assignment_id:
-                await db.execute("""
-                    UPDATE assignments
-                    SET status = 'completed', completed_at = NOW(), updated_at = NOW()
-                    WHERE id = $1::uuid
-                """, assignment_id)
+            await agent_queue_service.complete_item(
+                db=db, queue_id=queue_id,
+                agent_id=str(current_user.id), result_status="rejected"
+            )
 
         # ── BACKGROUND: notification + batch check ──
         agent_id_str = str(current_user.id)
@@ -1560,18 +1578,13 @@ async def make_decision(
             """, request_id, previous_status, current_user.id, history_comment,
                 json.dumps(history_details))
 
-            if queue_id:
-                await db.execute("""
-                    UPDATE agent_work_queue
-                    SET status = 'cancelled', assigned_to = NULL, updated_at = NOW()
-                    WHERE id = $1
-                """, queue_id)
-            if assignment_id:
-                await db.execute("""
-                    UPDATE assignments
-                    SET status = 'cancelled', completed_at = NOW(), updated_at = NOW()
-                    WHERE id = $1::uuid
-                """, assignment_id)
+            # Keep assigned_to so the SAME agent gets the dossier back
+            # when the citizen re-submits documents (continuity + SLA preserved)
+            await db.execute("""
+                UPDATE agent_work_queue
+                SET status = 'waiting_documents', updated_at = NOW()
+                WHERE id = $1
+            """, queue_id)
 
         # ── BACKGROUND: notification ──
         background_tasks.add_task(
@@ -1732,6 +1745,52 @@ async def _bg_approve_pdf_and_notify(
             except Exception as e:
                 logger.warning(f"[bg_approve] PDF generation failed for {request_id}: {e}")
 
+            # ── Build next_steps message for citizen notification ──
+            # Fetch current SR status (may have been auto-advanced)
+            current_sr_status = await db.fetchval(
+                "SELECT status FROM service_requests WHERE id = $1", request_id
+            ) or "DOSSIER_VALIDE"
+            sr_cita = await db.fetchrow(
+                "SELECT cita_date, cita_time FROM service_requests WHERE id = $1", request_id
+            )
+
+            next_steps_es = ""
+            next_steps_fr = ""
+            if current_sr_status == "CITA_SCHEDULED" and sr_cita and sr_cita['cita_date']:
+                cita_str = sr_cita['cita_date'].strftime("%d/%m/%Y")
+                hora_str = sr_cita['cita_time'].strftime("%H:%M") if sr_cita.get('cita_time') else ""
+                loc = appointment_info.get('location', '') if appointment_info else ''
+                next_steps_es = (
+                    f"<strong>Proximos pasos:</strong> Presentese el {cita_str}"
+                    f"{' a las ' + hora_str if hora_str else ''}"
+                    f"{' en ' + loc if loc else ''} con los documentos originales."
+                )
+                next_steps_fr = (
+                    f"<strong>Prochaines etapes:</strong> Presentez-vous le {cita_str}"
+                    f"{' a ' + hora_str if hora_str else ''}"
+                    f"{' a ' + loc if loc else ''} avec les documents originaux."
+                )
+            elif current_sr_status == "IN_PROGRESS":
+                next_steps_es = "<strong>Proximos pasos:</strong> Su tramite esta en curso. Le notificaremos cuando este listo."
+                next_steps_fr = "<strong>Prochaines etapes:</strong> Votre dossier est en cours de traitement. Nous vous notifierons lorsqu'il sera pret."
+            elif current_sr_status == "DOSSIER_VALIDE":
+                has_payment = await db.fetchval(
+                    "SELECT EXISTS(SELECT 1 FROM service_payments WHERE service_request_id=$1 "
+                    "AND workflow_status IN ('completed','approved_by_agent'))", request_id
+                )
+                wf_needs_cita = workflow_data and workflow_data.get('requires_appointment')
+                if not has_payment:
+                    next_steps_es = "<strong>Proximos pasos:</strong> Proceda al pago de las tasas correspondientes."
+                    next_steps_fr = "<strong>Prochaines etapes:</strong> Procedez au paiement des frais correspondants."
+                elif wf_needs_cita:
+                    next_steps_es = "<strong>Proximos pasos:</strong> Su dossier esta validado. Un rendez-vous sera programado."
+                    next_steps_fr = "<strong>Prochaines etapes:</strong> Votre dossier est valide. Un rendez-vous sera programme."
+                else:
+                    next_steps_es = "<strong>Proximos pasos:</strong> Su tramite esta en proceso."
+                    next_steps_fr = "<strong>Prochaines etapes:</strong> Votre dossier est en cours de traitement."
+
+            next_steps = next_steps_fr if language == 'fr' else next_steps_es
+
             # ── Publish event ──
             event_payload = {
                 "request_id": str(request_id),
@@ -1742,7 +1801,9 @@ async def _bg_approve_pdf_and_notify(
                 "user_phone": user_info['phone_number'],
                 "preferred_language": language,
                 "workflow_code": workflow_code,
+                "workflow_name": workflow_name,
                 "agent_id": agent_id_str,
+                "next_steps": next_steps,
                 "appointment_date": appointment_info['date'] if appointment_info else None,
                 "appointment_time": appointment_info['time'] if appointment_info else None,
                 "location": appointment_info.get('location') if appointment_info else None,

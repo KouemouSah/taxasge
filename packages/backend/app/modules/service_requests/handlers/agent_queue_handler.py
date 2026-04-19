@@ -202,7 +202,7 @@ class AgentQueueEventHandler:
             )
 
             if assignment:
-                # Sync assigned_to in service_requests for backward compatibility
+                # Sync assigned_to on service_requests + agent_work_queue
                 agent_user_id = await conn.fetchval(
                     "SELECT user_id FROM agent_profiles WHERE id = $1",
                     assignment.agent_profile_id
@@ -213,10 +213,20 @@ class AgentQueueEventHandler:
                         SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
                         WHERE id = $2
                     """, agent_user_id, UUID(service_request_id))
+                    # Sync agent_work_queue so make_decision + Pendientes/Completados work
+                    await conn.execute("""
+                        UPDATE agent_work_queue
+                        SET assigned_to = $1, assigned_at = NOW(),
+                            status = 'assigned', updated_at = NOW()
+                        WHERE item_id = $2
+                          AND item_type = 'service_request'
+                          AND assigned_to IS NULL
+                    """, agent_user_id, UUID(service_request_id))
 
                 logger.info(
                     f"Service request {sr['reference']} auto-assigned to agent "
-                    f"{assignment.agent_profile_id} via PAYMENT_COMPLETED handler"
+                    f"{assignment.agent_profile_id} (user {agent_user_id}) "
+                    f"via PAYMENT_COMPLETED handler"
                 )
             else:
                 logger.warning(
