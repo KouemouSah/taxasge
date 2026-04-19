@@ -112,8 +112,10 @@ WHERE code IN (
 );
 
 -- ============================================================================
--- 5. Fix dashboard_config widget duplicate (P9)
+-- 5a. Fix dashboard_config widget duplicate (P9) — AGENTS only
 -- oms_overdue_alerts + oms_compliance_summary both render AlertsWidget
+-- ONLY update agent roles. Supervisors have different widgets
+-- (team_overview, escalations, performance) that must NOT be overwritten.
 -- ============================================================================
 UPDATE roles
 SET dashboard_config = '{
@@ -123,7 +125,19 @@ SET dashboard_config = '{
     {"id":"oms_overdue_alerts","size":"full","visible":true,"position":3}
   ]
 }'::jsonb
-WHERE code IN ('agent_ayuntamiento', 'agent_camara', 'supervisor_ayuntamiento', 'supervisor_camara')
+WHERE code IN ('agent_ayuntamiento', 'agent_camara')
+AND dashboard_config IS NOT NULL;
+
+-- 5b. Fix supervisor dashboard_config — remove duplicate but KEEP supervisor widgets
+UPDATE roles
+SET dashboard_config = '{
+  "layout":"grid","version":"1.1","widgets":[
+    {"id":"oms_team_overview","size":"full","visible":true,"position":1},
+    {"id":"oms_pending_escalations","size":"medium","visible":true,"position":2},
+    {"id":"oms_performance_stats","size":"medium","visible":true,"position":3}
+  ]
+}'::jsonb
+WHERE code IN ('supervisor_ayuntamiento', 'supervisor_camara')
 AND dashboard_config IS NOT NULL;
 
 -- ============================================================================
