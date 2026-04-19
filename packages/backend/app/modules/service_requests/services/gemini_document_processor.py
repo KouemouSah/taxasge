@@ -1823,6 +1823,15 @@ class RiskAnalyzer:
         """Process fraud/risk indicators detected by Gemini"""
         risks = []
 
+        # Defense: gemini_hints must be a dict. Gemini may return
+        # _risk_hints as a string or list instead of a dict.
+        if not isinstance(gemini_hints, dict):
+            logger.warning(
+                f"_process_gemini_risk_hints received "
+                f"{type(gemini_hints).__name__}, expected dict"
+            )
+            return risks
+
         # Digital manipulation detection
         if gemini_hints.get("digital_manipulation_detected"):
             risks.append({
@@ -1843,14 +1852,22 @@ class RiskAnalyzer:
                 "action": "review"
             })
 
-        # Suspicious patterns
+        # Suspicious patterns — Gemini may return either:
+        #   [{"description": "blurry"}, ...] (expected) or
+        #   ["blurry text", ...] (string list, observed in production)
         if gemini_hints.get("suspicious_patterns"):
             for pattern in gemini_hints["suspicious_patterns"]:
+                if isinstance(pattern, dict):
+                    desc = pattern.get("description", "Unknown")
+                    detail = pattern
+                else:
+                    desc = str(pattern)
+                    detail = {"description": desc}
                 risks.append({
                     "code": RiskFactorCode.SUSPICIOUS_PATTERNS.value,
                     "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.SUSPICIOUS_PATTERNS],
-                    "message": f"Suspicious pattern detected: {pattern.get('description', 'Unknown')}",
-                    "detail": pattern,
+                    "message": f"Suspicious pattern detected: {desc}",
+                    "detail": detail,
                     "action": "review"
                 })
 
