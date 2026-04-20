@@ -3759,7 +3759,7 @@ async def get_urgent_requests_widget(
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
         WHERE sr.workflow_code = ANY($1)
-          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING', 'DOSSIER_VALIDE')
           AND sr.payment_status = 'completed'
           AND ({priority_condition} OR {assigned_condition})
         ORDER BY
@@ -3812,7 +3812,7 @@ async def get_urgent_requests_widget(
             COUNT(*) FILTER (WHERE sr.assigned_to IS NOT NULL) as total_assigned
         FROM service_requests sr
         WHERE sr.workflow_code = ANY($1)
-          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING', 'DOSSIER_VALIDE')
           AND sr.payment_status = 'completed'
     """, workflow_codes)
 
@@ -4173,7 +4173,7 @@ async def get_alerts_widget(
             FROM service_requests sr
             LEFT JOIN workflows w ON w.code = sr.workflow_code
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING', 'DOSSIER_VALIDE')
               AND sr.payment_status = 'completed'
               AND sr.submitted_at IS NOT NULL
               AND w.sla_hours IS NOT NULL
@@ -4205,7 +4205,7 @@ async def get_alerts_widget(
             FROM service_requests sr
             LEFT JOIN workflows w ON w.code = sr.workflow_code
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING', 'DOSSIER_VALIDE')
               AND sr.payment_status = 'completed'
               AND sr.submitted_at IS NOT NULL
               AND w.sla_hours IS NOT NULL

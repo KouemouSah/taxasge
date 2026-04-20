@@ -547,6 +547,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               showRequestDocsDialog={showRequestDocsDialog}
               onRequestDocsDialogChange={setShowRequestDocsDialog}
               onAppointmentCreated={handleAppointmentCreated}
+              agentLocationId={context?.entityLocationId}
               escalationReason={selectedRequest?.escalationReason}
               escalatedAt={selectedRequest?.escalatedAt}
             />

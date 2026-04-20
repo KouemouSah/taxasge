@@ -22,7 +22,6 @@ import {
 import { Calendar, Clock, MapPin, AlertCircle, Loader2, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { agentAppointmentsApi } from '../../../services/appointments-api';
-import { useAgentDashboard } from '../../../hooks/useAgentDashboard';
 import type { RequestPreviewAppointment } from '../../../services/agent-requests-api';
 import type { SlotsCalendarResponse, SlotTimeDetail } from '../../../services/appointments-api';
 
@@ -34,6 +33,8 @@ interface AppointmentSectionProps {
   appointment?: RequestPreviewAppointment | null;
   requestId: string;
   entityCode: string;
+  /** Agent's entity location ID — passed from parent to avoid stale hook context */
+  agentLocationId?: string | null;
   onAppointmentCreated?: () => void;
 }
 
@@ -45,11 +46,10 @@ export function AppointmentSection({
   appointment,
   requestId,
   entityCode,
+  agentLocationId,
   onAppointmentCreated,
 }: AppointmentSectionProps) {
   const t = useTranslations('agent.pending');
-  const { context } = useAgentDashboard();
-  const agentLocationId = context?.entityLocationId;
 
   // State for scheduling
   const [isScheduling, setIsScheduling] = useState(false);

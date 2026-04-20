@@ -102,6 +102,8 @@ interface RequestPreviewProps {
   onRequestDocsDialogChange?: (open: boolean) => void;
   // Callback when appointment is created
   onAppointmentCreated?: () => void;
+  // Agent's entity location ID for appointment scheduling
+  agentLocationId?: string | null;
   // Escalation context (passed from list item for banner display)
   escalationReason?: string | null;
   escalatedAt?: string | null;
@@ -129,6 +131,7 @@ export function RequestPreview({
   showRequestDocsDialog: externalShowRequestDocsDialog,
   onRequestDocsDialogChange,
   onAppointmentCreated,
+  agentLocationId,
   escalationReason,
   escalatedAt,
 }: RequestPreviewProps) {
@@ -426,6 +429,7 @@ export function RequestPreview({
               appointment={data.appointment}
               requestId={data.id}
               entityCode={entityCode}
+              agentLocationId={agentLocationId}
               onAppointmentCreated={onAppointmentCreated}
             />
           )}
