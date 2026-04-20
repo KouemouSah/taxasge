@@ -6391,7 +6391,23 @@ async def get_request_history(
 
     if not has_view_all:
         assigned_to = request_data.get("assigned_to")
-        if assigned_to is None or UUID(str(assigned_to)) != user_id:
+        is_direct_assignee = assigned_to is not None and UUID(str(assigned_to)) == user_id
+
+        # Bundle SRs have split payments assigned to different entities.
+        # An agent may not be the SR's assigned_to but still have a
+        # service_payment assigned to them on this SR.
+        is_split_assignee = False
+        if not is_direct_assignee:
+            is_split_assignee = await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT 1 FROM service_payments sp
+                    JOIN agent_profiles ap ON ap.id::text = sp.assigned_agent_id
+                    WHERE sp.service_request_id = $1
+                      AND ap.user_id = $2
+                )
+            """, request_id, user_id) or False
+
+        if not is_direct_assignee and not is_split_assignee:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only view history of requests assigned to you"
@@ -6529,7 +6545,20 @@ async def export_request_history(
 
     if not has_view_all:
         assigned_to = request_data.get("assigned_to")
-        if assigned_to is None or UUID(str(assigned_to)) != user_id:
+        is_direct_assignee = assigned_to is not None and UUID(str(assigned_to)) == user_id
+
+        is_split_assignee = False
+        if not is_direct_assignee:
+            is_split_assignee = await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT 1 FROM service_payments sp
+                    JOIN agent_profiles ap ON ap.id::text = sp.assigned_agent_id
+                    WHERE sp.service_request_id = $1
+                      AND ap.user_id = $2
+                )
+            """, request_id, user_id) or False
+
+        if not is_direct_assignee and not is_split_assignee:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only export history of requests assigned to you"
