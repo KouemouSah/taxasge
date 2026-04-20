@@ -185,6 +185,47 @@ class BundleWorkflowService:
                 for o in obl_rows
             ]
 
+        # Field inspections (mise en demeure, scellés, reçus inspection)
+        inspections = []
+        insp_rows = await conn.fetch("""
+            SELECT fi.id, fi.inspection_date, fi.status, fi.result,
+                   fi.activity_conforme, fi.activity_declared, fi.activity_observed,
+                   fi.mise_en_demeure_issued, fi.mise_en_demeure_deadline,
+                   fi.seal_applied, fi.seal_reason, fi.seal_approved_at,
+                   fi.payment_collected, fi.payment_receipt_number, fi.payment_amount,
+                   fi.notes, fi.created_at
+            FROM field_inspections fi
+            WHERE fi.company_id = $1
+            ORDER BY fi.inspection_date DESC NULLS LAST, fi.created_at DESC
+            LIMIT 20
+        """, company_id)
+        for insp in insp_rows:
+            inspections.append({
+                "id": str(insp["id"]),
+                "date": insp["inspection_date"].isoformat() if insp["inspection_date"] else None,
+                "status": insp["status"],
+                "result": insp["result"],
+                "conforme": insp["activity_conforme"],
+                "activity_declared": insp["activity_declared"],
+                "activity_observed": insp["activity_observed"],
+                "mise_en_demeure": insp["mise_en_demeure_issued"] or False,
+                "mise_en_demeure_deadline": (
+                    insp["mise_en_demeure_deadline"].isoformat()
+                    if insp["mise_en_demeure_deadline"] else None
+                ),
+                "seal_applied": insp["seal_applied"] or False,
+                "seal_reason": insp["seal_reason"],
+                "seal_approved_at": (
+                    insp["seal_approved_at"].isoformat()
+                    if insp["seal_approved_at"] else None
+                ),
+                "payment_collected": insp["payment_collected"] or False,
+                "payment_receipt": insp["payment_receipt_number"],
+                "payment_amount": float(insp["payment_amount"]) if insp["payment_amount"] else None,
+                "notes": insp["notes"],
+                "created_at": insp["created_at"].isoformat() if insp["created_at"] else None,
+            })
+
         total = float(row["total_amount"] or 0)
         paid = float(row["amount_paid"] or 0)
 
@@ -218,6 +259,7 @@ class BundleWorkflowService:
                 "expiry_date": f"{row['fiscal_year']}-12-31",
             } if row["license_id"] else None,
             "obligations": obligations,
+            "inspections": inspections,
             "fiscal_year": fiscal_year,
         }
 
@@ -239,7 +281,7 @@ class BundleWorkflowService:
 
         offset = (page - 1) * page_size
         rows = await conn.fetch("""
-            SELECT sp.id, sp.payment_reference, sp.amount, sp.currency,
+            SELECT sp.id, sp.payment_reference, sp.total_amount, sp.currency,
                    sp.payment_method, sp.workflow_status, sp.fee_type,
                    sp.entity_code, sp.receipt_number, sp.receipt_url,
                    sp.created_at, sp.validated_at,
@@ -262,7 +304,7 @@ class BundleWorkflowService:
                     "id": str(r["id"]),
                     "reference": r["payment_reference"] or str(r["id"])[:12],
                     "sr_reference": r["sr_reference"],
-                    "amount": float(r["amount"]),
+                    "amount": float(r["total_amount"] or 0),
                     "currency": r["currency"],
                     "method": r["payment_method"],
                     "status": r["workflow_status"],
