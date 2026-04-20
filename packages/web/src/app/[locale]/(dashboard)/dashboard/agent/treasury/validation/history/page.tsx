@@ -10,7 +10,7 @@
  * @route /[locale]/dashboard/agent/treasury/validation/history
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   History, Search, ChevronLeft, ChevronRight, Building2, RefreshCw,
   Eye, CheckCircle2, XCircle, DollarSign, Calendar, CreditCard,
@@ -28,10 +28,10 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet'
-import { useToast } from '@/hooks/use-toast'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
 import { usePendingPayments } from '@/modules/treasury/hooks'
+import type { PendingPayment } from '@/modules/treasury/types'
 
 function fmtXAF(n: number | null | undefined, locale = 'es-GQ'): string {
   if (n == null || isNaN(n)) return '0 XAF'
@@ -62,7 +62,6 @@ const METHOD_LABELS: Record<string, string> = {
 }
 
 export default function TreasuryValidationHistoryPage() {
-  const { toast } = useToast()
   const t = useTranslations('treasury')
   const locale = useLocale()
 
@@ -72,14 +71,13 @@ export default function TreasuryValidationHistoryPage() {
 
   const debounceRef = useRef<NodeJS.Timeout>()
   const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
+  const [_search, setSearch] = useState('')
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchInput])
 
-  // Fetch only completed/rejected payments (history)
   const { data: paymentsData, isLoading, refetch } = usePendingPayments({
     status: 'completed',
     method: methodFilter !== 'all' ? methodFilter : undefined,
@@ -91,17 +89,14 @@ export default function TreasuryValidationHistoryPage() {
   const total = paymentsData?.total ?? 0
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
-  // Detail panel
-  const [detailPayment, setDetailPayment] = useState<typeof payments[0] | null>(null)
+  const [detailPayment, setDetailPayment] = useState<PendingPayment | null>(null)
 
-  // KPIs
-  const totalValidated = payments.filter(p => p.workflow_status === 'completed').length
-  const totalRejected = payments.filter(p => p.workflow_status === 'rejected').length
-  const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0)
+  const totalValidated = payments.filter(p => p.workflowStatus === 'completed').length
+  const totalRejected = payments.filter(p => p.workflowStatus === 'rejected').length
+  const totalAmount = payments.reduce((sum, p) => sum + (p.totalAmount || 0), 0)
 
   return (
     <div className="space-y-4 p-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
@@ -120,7 +115,6 @@ export default function TreasuryValidationHistoryPage() {
         </div>
       </div>
 
-      {/* KPI summary */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-3">
           <div className="flex items-center gap-2">
@@ -151,7 +145,6 @@ export default function TreasuryValidationHistoryPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -161,7 +154,7 @@ export default function TreasuryValidationHistoryPage() {
         </div>
         <Select value={methodFilter} onValueChange={v => { setMethodFilter(v); setPage(1) }}>
           <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue placeholder={t('history.allMethods', { defaultValue: 'Todos los métodos' })} />
+            <SelectValue placeholder={t('history.allMethods', { defaultValue: 'Todos' })} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('history.allMethods', { defaultValue: 'Todos' })}</SelectItem>
@@ -172,7 +165,6 @@ export default function TreasuryValidationHistoryPage() {
         </Select>
       </div>
 
-      {/* Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -198,37 +190,37 @@ export default function TreasuryValidationHistoryPage() {
                   </TableCell>
                 </TableRow>
               ) : payments.map(payment => {
-                const statusColor = STATUS_COLORS[payment.workflow_status] || 'bg-gray-100 text-gray-800'
+                const statusColor = STATUS_COLORS[payment.workflowStatus] || 'bg-gray-100 text-gray-800'
                 return (
                   <TableRow key={payment.id} className="hover:bg-muted/30">
-                    <TableCell className="text-xs font-mono">{payment.payment_reference || payment.id?.slice(0, 12)}</TableCell>
+                    <TableCell className="text-xs font-mono">{payment.paymentReference || payment.id?.slice(0, 12)}</TableCell>
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[180px]">{payment.user_name || payment.company_name || '—'}</span>
+                        <span className="truncate max-w-[180px]">{payment.userName || payment.companyName || '—'}</span>
                       </div>
-                      {payment.workflow_code && (
-                        <span className="text-[10px] text-muted-foreground">{payment.workflow_code}</span>
+                      {payment.workflowCode && (
+                        <span className="text-[10px] text-muted-foreground">{payment.workflowCode}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1">
                         <CreditCard className="h-3 w-3 text-muted-foreground" />
-                        {METHOD_LABELS[payment.payment_method] || payment.payment_method}
+                        {METHOD_LABELS[payment.paymentMethod] || payment.paymentMethod}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-right font-mono font-bold">
-                      {fmtXAF(payment.amount, locale)}
+                      {fmtXAF(payment.totalAmount, locale)}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {fmtDate(payment.validated_at || payment.updated_at, locale)}
+                        {fmtDate(payment.validatedAt || payment.updatedAt, locale)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge className={`text-[10px] ${statusColor}`}>
-                        {payment.workflow_status === 'completed' ? '✓ Validado' : '✕ Rechazado'}
+                        {payment.workflowStatus === 'completed' ? '✓ Validado' : '✕ Rechazado'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -245,7 +237,6 @@ export default function TreasuryValidationHistoryPage() {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground text-xs">{page}/{totalPages}</span>
@@ -260,7 +251,6 @@ export default function TreasuryValidationHistoryPage() {
         </div>
       )}
 
-      {/* Detail Sheet */}
       <Sheet open={!!detailPayment} onOpenChange={open => { if (!open) setDetailPayment(null) }}>
         <SheetContent side="right" className="w-[400px] sm:w-[480px] overflow-y-auto">
           {detailPayment && (
@@ -268,38 +258,49 @@ export default function TreasuryValidationHistoryPage() {
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
-                  {detailPayment.payment_reference || 'Pago'}
+                  {detailPayment.paymentReference || 'Pago'}
                 </SheetTitle>
                 <SheetDescription>
-                  {detailPayment.workflow_code} · {METHOD_LABELS[detailPayment.payment_method] || detailPayment.payment_method}
+                  {detailPayment.workflowCode} · {METHOD_LABELS[detailPayment.paymentMethod] || detailPayment.paymentMethod}
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 mt-4 text-xs">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <span className="text-muted-foreground">{t('history.amount', { defaultValue: 'Monto' })}:</span>
-                    <br/><strong className="text-base">{fmtXAF(detailPayment.amount, locale)}</strong>
+                    <br/><strong className="text-base">{fmtXAF(detailPayment.totalAmount, locale)}</strong>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('history.status', { defaultValue: 'Estado' })}:</span>
                     <br/>
-                    <Badge className={`text-xs mt-1 ${STATUS_COLORS[detailPayment.workflow_status] || ''}`}>
-                      {detailPayment.workflow_status === 'completed' ? '✓ Validado' : '✕ Rechazado'}
+                    <Badge className={`text-xs mt-1 ${STATUS_COLORS[detailPayment.workflowStatus] || ''}`}>
+                      {detailPayment.workflowStatus === 'completed' ? '✓ Validado' : '✕ Rechazado'}
                     </Badge>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('history.company', { defaultValue: 'Empresa' })}:</span>
-                    <br/><strong>{detailPayment.company_name || detailPayment.user_name || '—'}</strong>
+                    <br/><strong>{detailPayment.companyName || detailPayment.userName || '—'}</strong>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('history.date', { defaultValue: 'Fecha' })}:</span>
-                    <br/><strong>{fmtDate(detailPayment.validated_at || detailPayment.updated_at, locale)}</strong>
+                    <br/><strong>{fmtDate(detailPayment.validatedAt || detailPayment.updatedAt, locale)}</strong>
                   </div>
                 </div>
-                {detailPayment.assigned_agent_name && (
+                {detailPayment.assignedAgentName && (
                   <div className="p-2 bg-muted/30 rounded border text-xs">
                     <span className="text-muted-foreground">{t('history.validatedBy', { defaultValue: 'Validado por' })}:</span>{' '}
-                    <strong>{detailPayment.assigned_agent_name}</strong>
+                    <strong>{detailPayment.assignedAgentName}</strong>
+                  </div>
+                )}
+                {detailPayment.obligations && detailPayment.obligations.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t">
+                    <p className="font-medium">{t('history.obligations', { defaultValue: 'Obligaciones' })} ({detailPayment.obligations.length})</p>
+                    {detailPayment.obligations.map((ob, i) => (
+                      <div key={i} className="flex justify-between text-[10px] py-0.5">
+                        <span className="text-muted-foreground">{ob.name || ob.fee_type}</span>
+                        <span className="font-mono">{fmtXAF(ob.amount, locale)}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
