@@ -197,7 +197,7 @@ export default function TreasuryValidationHistoryPage() {
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[180px]">{payment.userName || payment.companyName || '—'}</span>
+                        <span className="truncate max-w-[180px]">{payment.companyName || payment.userName || '—'}</span>
                       </div>
                       {payment.workflowCode && (
                         <span className="text-[10px] text-muted-foreground">{payment.workflowCode}</span>
@@ -280,6 +280,11 @@ export default function TreasuryValidationHistoryPage() {
                   <div>
                     <span className="text-muted-foreground">{t('history.company', { defaultValue: 'Empresa' })}:</span>
                     <br/><strong>{detailPayment.companyName || detailPayment.userName || '—'}</strong>
+                    {detailPayment.registrationNumber && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {t('history.registrationNumber', { defaultValue: 'N° Registro' })}: {detailPayment.registrationNumber}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('history.date', { defaultValue: 'Fecha' })}:</span>
