@@ -22,7 +22,7 @@ SET menu_config = '{
     {"id":"dashboard","href":"/dashboard/agent/ayuntamiento","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
     {"id":"validation","icon":"CreditCard","titleKey":"treasury.nav.validation","items":[
       {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.validation","permission":"treasury.validate_payment"},
-      {"id":"history","href":"/dashboard/agent/treasury/validation?status=completed","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
+      {"id":"history","href":"/dashboard/agent/treasury/validation/history","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
     ]},
     {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
       {"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},
@@ -52,7 +52,7 @@ SET menu_config = '{
     {"id":"dashboard","href":"/dashboard/agent/camara-comercio","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
     {"id":"validation","icon":"CreditCard","titleKey":"treasury.nav.validation","items":[
       {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.validation","permission":"treasury.validate_payment"},
-      {"id":"history","href":"/dashboard/agent/treasury/validation?status=completed","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
+      {"id":"history","href":"/dashboard/agent/treasury/validation/history","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
     ]},
     {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
       {"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},
