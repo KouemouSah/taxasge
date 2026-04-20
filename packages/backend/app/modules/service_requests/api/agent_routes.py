@@ -2420,14 +2420,26 @@ async def mark_appointment_arrived(
     if not request:
         raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
 
-    # Update appointment status
+    previous_status = request['status']
+
+    # Update appointment status + advance SR to IN_PROGRESS
     await db.execute("""
         UPDATE service_requests
         SET appointment_status = 'arrived',
             arrived_at = NOW(),
+            status = 'IN_PROGRESS',
             updated_at = NOW()
         WHERE id = $1::uuid
+          AND status::text IN ('CITA_SCHEDULED', 'DOSSIER_VALIDE', 'IN_PROGRESS')
     """, request_id)
+
+    # Record history
+    if previous_status != 'IN_PROGRESS':
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, previous_status, new_status, performed_by, comment)
+            VALUES ($1::uuid, 'status_change', $2, 'IN_PROGRESS', $3, 'Citizen arrived for appointment')
+        """, request_id, previous_status, current_user.id)
 
     # Update appointment_holds if exists
     await db.execute("""
@@ -2528,6 +2540,181 @@ async def mark_appointment_no_show(
         logger.error(f"Failed to publish APPOINTMENT_NO_SHOW event: {e}")
 
     return {"message": "Citizen marked as no-show", "request_id": request_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+# POST-VALIDATION: mark-delivered + complete
+# ═══════════════════════════════════════════════════════════════
+
+async def _complete_request(
+    db: asyncpg.Connection,
+    request_id: str,
+    current_user,
+    action: str,
+    comment: str,
+):
+    """
+    Shared logic for mark-delivered and complete endpoints.
+    Transitions SR to COMPLETED and cleans up assignments + agent_work_queue.
+    """
+    # Fetch request + user info
+    request = await db.fetchrow("""
+        SELECT sr.id, sr.user_id, sr.status::text as status, sr.workflow_code,
+               sr.reference, sr.assigned_to,
+               u.email, u.phone_number as phone,
+               u.first_name, u.last_name, u.preferred_language
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.id = $1::uuid
+    """, request_id)
+
+    if not request:
+        raise TranslatedException(ErrorCode.REQUEST_NOT_FOUND)
+
+    previous_status = request['status']
+    allowed = ('IN_PROGRESS', 'DOSSIER_VALIDE', 'CITA_SCHEDULED')
+    if previous_status not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot complete request in status {previous_status}. "
+                   f"Allowed: {', '.join(allowed)}"
+        )
+
+    async with db.transaction():
+        # 1. Update SR → COMPLETED
+        await db.execute("""
+            UPDATE service_requests
+            SET status = 'COMPLETED',
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1::uuid
+        """, request_id)
+
+        # 2. Record history
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, previous_status, new_status, performed_by, comment)
+            VALUES ($1::uuid, $2, $3, 'COMPLETED', $4, $5)
+        """, request_id, action, previous_status, current_user.id, comment)
+
+        # 3. Complete agent_work_queue entry
+        await db.execute("""
+            UPDATE agent_work_queue
+            SET status = 'completed',
+                completed_at = NOW(),
+                completed_by = $2,
+                updated_at = NOW()
+            WHERE item_id = $1
+              AND item_type = 'service_request'
+              AND status NOT IN ('completed', 'cancelled')
+        """, request_id, str(current_user.id))
+
+        # 4. Complete assignment
+        await db.execute("""
+            UPDATE assignments
+            SET status = 'completed',
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE item_id = $1
+              AND status IN ('assigned', 'in_progress')
+        """, request_id)
+
+    # 5. Update agent workload (non-blocking)
+    try:
+        if request['assigned_to']:
+            agent_profile = await db.fetchrow("""
+                SELECT id FROM agent_profiles
+                WHERE user_id = $1 AND is_active = true
+            """, request['assigned_to'])
+            if agent_profile:
+                await db.execute("""
+                    UPDATE agent_workloads
+                    SET current_active = GREATEST(current_active - 1, 0),
+                        completed_today = completed_today + 1,
+                        updated_at = NOW()
+                    WHERE agent_profile_id = $1
+                """, agent_profile['id'])
+    except Exception as e:
+        logger.warning(f"Workload update failed (non-blocking): {e}")
+
+    # 6. Publish REQUEST_COMPLETED event
+    try:
+        EventBus.publish_nowait(
+            EventType.REQUEST_COMPLETED,
+            {
+                "request_id": request_id,
+                "user_id": str(request["user_id"]),
+                "user_email": request["email"],
+                "user_phone": request["phone"],
+                "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
+                "preferred_language": request.get("preferred_language", "es"),
+                "workflow_code": request["workflow_code"],
+                "reference": request["reference"],
+                "agent_id": str(current_user.id),
+                "action": action,
+            }
+        )
+        logger.info(f"REQUEST_COMPLETED event published for {request['reference']}")
+    except Exception as e:
+        logger.error(f"Failed to publish REQUEST_COMPLETED event: {e}")
+
+    return request
+
+
+@router.post(
+    "/{request_id}/mark-delivered",
+    summary="Mark document as delivered to citizen",
+    description=(
+        "Agent marks that the physical document has been delivered to the citizen. "
+        "Transitions status to COMPLETED and cleans up assignments."
+    )
+)
+async def mark_request_delivered(
+    request_id: str,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.process"))
+):
+    """Mark that the document has been delivered (for workflows with appointments)."""
+    request = await _complete_request(
+        db, request_id, current_user,
+        action="document_delivered",
+        comment="Document delivered to citizen at appointment"
+    )
+    return {
+        "message": "Request marked as delivered",
+        "request_id": request_id,
+        "reference": request["reference"],
+        "status": "COMPLETED"
+    }
+
+
+@router.post(
+    "/{request_id}/complete",
+    summary="Complete a validated request (no appointment)",
+    description=(
+        "For workflows that do NOT require an appointment (matriculacion, duplicado, etc.). "
+        "Transitions directly from DOSSIER_VALIDE to COMPLETED."
+    )
+)
+async def complete_request(
+    request_id: str,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.process"))
+):
+    """Complete request directly (for workflows without appointment)."""
+    request = await _complete_request(
+        db, request_id, current_user,
+        action="request_completed",
+        comment="Request completed (no appointment required)"
+    )
+    return {
+        "message": "Request completed",
+        "request_id": request_id,
+        "reference": request["reference"],
+        "status": "COMPLETED"
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
