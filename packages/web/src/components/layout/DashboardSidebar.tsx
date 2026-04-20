@@ -29,6 +29,7 @@ import {
   FileStack,
   Calculator,
   FolderOpen,
+  Building2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
@@ -110,6 +111,11 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'serviceRequests',
       href: `/${locale}/dashboard/service-requests`,
       icon: ClipboardList,
+    },
+    {
+      titleKey: 'myCompanies',
+      href: `/${locale}/dashboard/empresas`,
+      icon: Building2,
     },
     {
       titleKey: 'batchRequests',

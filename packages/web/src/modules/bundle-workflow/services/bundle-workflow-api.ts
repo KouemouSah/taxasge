@@ -113,4 +113,56 @@ export const bundleWorkflowApi = {
     wizardSessionId?: string
   }): Promise<BundlePaymentResult> =>
     post('/initiate-payment', params),
+
+  // ========== Citizen Company Management ==========
+
+  /** Company detail with license + obligations + inspections */
+  getMyCompanyDetail: (companyId: string, fiscalYear?: number) =>
+    get<CompanyDetailResponse>(`/my-companies/${companyId}`, { fiscal_year: fiscalYear }),
+
+  /** Payment history for a company (paginated) */
+  getMyCompanyPayments: (companyId: string, page = 1, pageSize = 20) =>
+    get<CompanyPaymentsResponse>(`/my-companies/${companyId}/payments`, { page, page_size: pageSize }),
+}
+
+// ========== Citizen Company Types ==========
+
+export interface CompanyDetailResponse {
+  company: {
+    id: string; legalName: string; nif: string | null; registrationNumber: string | null
+    regimenFiscal: string | null; commerceType: string | null; objetoSocial: string | null
+    formaJuridica: string | null; isActive: boolean; isVerified: boolean
+    zoneCode: string | null; cityName: string | null
+  }
+  license: {
+    id: string; status: string; fiscalYear: number; totalAmount: number
+    amountPaid: number; amountRemaining: number; penaltyAmount: number
+    obligationsTotal: number; obligationsPaid: number
+    deadline: string | null; completedAt: string | null; expiryDate: string
+  } | null
+  obligations: Array<{
+    id: string; feeType: string; amount: number; penaltyAmount: number
+    status: string; dueDate: string | null; paidAt: string | null
+    serviceName: string | null; serviceCode: string | null; ministryName: string | null
+  }>
+  inspections: Array<{
+    id: string; date: string | null; status: string; result: string | null
+    conforme: boolean | null; activityDeclared: string | null; activityObserved: string | null
+    miseEnDemeure: boolean; miseEnDemeureDeadline: string | null
+    sealApplied: boolean; sealReason: string | null; sealApprovedAt: string | null
+    paymentCollected: boolean; paymentReceipt: string | null; paymentAmount: number | null
+    notes: string | null; createdAt: string | null
+  }>
+  fiscalYear: number
+}
+
+export interface CompanyPaymentsResponse {
+  payments: Array<{
+    id: string; reference: string; srReference: string | null
+    amount: number; currency: string; method: string; status: string
+    feeType: string | null; entityCode: string | null
+    receiptNumber: string | null; receiptUrl: string | null
+    createdAt: string | null; validatedAt: string | null
+  }>
+  total: number; page: number; pageSize: number
 }
