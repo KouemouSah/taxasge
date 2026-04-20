@@ -192,3 +192,55 @@ P5.2..P5.4 (qualité production) .......... 4-6h
 | SLA post-validation | ❌ | S'arrête à DOSSIER_VALIDE |
 | Cleanup agent_work_queue | ❌ | Accumulation infinie |
 | Dashboard exclut DOSSIER_VALIDE | ❌ | Alertas/Urgentes buggés |
+
+---
+
+## 6. Prompt de démarrage (prochaine session)
+
+```
+Lis ces fichiers en parallèle :
+- .claude/plans/POST_VALIDATION_WORKFLOW_PLAN.md (ce plan complet)
+- .claude/plans/BILAN_SESSION_2026_04_19.md (bilan session précédente)
+
+Contexte session précédente (2026-04-19/20) :
+- Root cause 403 agents TROUVÉE et FIXÉE : assignment_outbox_service + agent_queue_handler
+  + service_request_service ne synchronisaient pas agent_work_queue.assigned_to.
+  Fix déployé (3 fichiers + migration 305 + backfill BD).
+- waiting_documents flow implémenté : request_documents garde assigned_to + SLA.
+- Auto-advance DOSSIER_VALIDE → CITA_SCHEDULED/IN_PROGRESS implémenté.
+- next_steps dynamique dans notification REQUEST_APPROVED implémenté.
+- Verify page polymorphe (CON-/PAS-/etc.) implémenté.
+- Auto-register PDFs dans user_documents (reçu + solicitud) implémenté.
+- Location scope strict implémenté (pas de fallback entity-wide).
+- entity_code alignment sur service_payments implémenté.
+
+BUGS NON RÉSOLUS :
+- B1 : AppointmentSection default site — useAgentDashboard() retourne null.
+  Fix tenté mais NE FONCTIONNE PAS. Investiguer le Provider tree OU passer
+  agentLocationId en prop depuis RequestPreview.
+  Fichier : packages/web/src/modules/agent-dashboard/components/pending/sections/AppointmentSection.tsx
+  Parent : packages/web/src/modules/agent-dashboard/components/pending/RequestPreview.tsx
+- B2 : Alertas/Urgentes dashboard montrent des dossiers DOSSIER_VALIDE.
+  Fichier backend : packages/backend/app/modules/service_requests/api/agent_routes.py
+  Chercher les endpoints /widgets/alerts et le dashboard principal Solicitudes Urgentes.
+
+EXÉCUTION :
+1. Commencer par B1 + B2 (bugs visibles, 2-3h)
+   - B1 : vérifier Provider tree, passer agentLocationId en prop
+   - B2 : ajouter filtre sr.status dans les widgets alertas/urgentes
+2. Puis P1.1 + P1.2 + P1.3 (endpoints post-validation, 3-4h)
+   - P1.1 : modifier mark-arrived pour aussi UPDATE sr.status = 'IN_PROGRESS'
+   - P1.2 : créer POST /{id}/mark-delivered (COMPLETED + cleanup + notification)
+   - P1.3 : créer POST /{id}/complete (workflows sans RDV)
+3. Puis P2 (dashboard cleanup) + P3 (notifications) + P5.1 (certificat Firebase)
+4. Commit local par phase, push après validation globale.
+
+RÈGLES :
+- Toujours interroger la BD directement (pas se fier aux docs)
+- Challenger les suggestions utilisateur
+- status::text pour les comparaisons enum
+- agent_work_queue.assigned_to = users.id (pas agent_profile_id)
+- Location scope absolu (jamais de fallback entity-wide)
+- waiting_documents au lieu de cancelled pour request_documents
+- Vérifier les CHECK constraints avant d'ajouter de nouveaux statuts
+```
