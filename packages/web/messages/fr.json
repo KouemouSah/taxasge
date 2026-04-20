@@ -5831,6 +5831,9 @@
       "batchProcessed": "obligations traitées",
       "error": "Erreur de traitement",
       "loadError": "Erreur de chargement",
+      "completedTitle": "Obligations Terminées",
+      "completedSubtitle": "Historique des obligations traitées par votre entité",
+      "total": "total",
       "history": "Historique",
       "noEvents": "Aucun événement",
       "penalty": "Pénalité",
@@ -8456,6 +8459,29 @@
         "compliance": "Conformité",
         "stats": "Statistiques"
       }
+    },
+    "treasury": {
+      "nav": {
+        "validation": "Validation",
+        "transactions": "Historique"
+      }
+    },
+    "inspection": {
+      "nav": {
+        "inspections": "Inspections Terrain",
+        "dashboard": "Tableau Terrain",
+        "scan": "Nouvelle Inspection",
+        "reconcile": "Réconciliation",
+        "supervision": "Supervision Inspections",
+        "overview": "Tableau de bord",
+        "pendingSeals": "Scellés en attente",
+        "agentPerformance": "Performance Agents"
+      }
+    },
+    "nav": {
+      "companies": "Entreprises",
+      "companyDebt": "Dette Entreprises",
+      "companyLookup": "Consulter Entreprise"
     },
     "companyLookup": {
       "title": "Consultation Entreprises",

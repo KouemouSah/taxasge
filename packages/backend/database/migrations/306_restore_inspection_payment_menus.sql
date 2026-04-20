@@ -21,8 +21,8 @@ SET menu_config = '{
   "menus":[
     {"id":"dashboard","href":"/dashboard/agent/ayuntamiento","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
     {"id":"validation","icon":"CreditCard","titleKey":"treasury.nav.validation","items":[
-      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.pendingValidation","permission":"treasury.validate_payment"},
-      {"id":"history","href":"/dashboard/agent/treasury/validation?status=processed","icon":"History","titleKey":"treasury.nav.validationHistory","permission":"treasury.validate_payment"}
+      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.validation","permission":"treasury.validate_payment"},
+      {"id":"history","href":"/dashboard/agent/treasury/validation/history","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
     ]},
     {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
       {"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},
@@ -51,8 +51,8 @@ SET menu_config = '{
   "menus":[
     {"id":"dashboard","href":"/dashboard/agent/camara-comercio","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
     {"id":"validation","icon":"CreditCard","titleKey":"treasury.nav.validation","items":[
-      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.pendingValidation","permission":"treasury.validate_payment"},
-      {"id":"history","href":"/dashboard/agent/treasury/validation?status=processed","icon":"History","titleKey":"treasury.nav.validationHistory","permission":"treasury.validate_payment"}
+      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.validation","permission":"treasury.validate_payment"},
+      {"id":"history","href":"/dashboard/agent/treasury/validation/history","icon":"History","titleKey":"treasury.nav.transactions","permission":"treasury.validate_payment"}
     ]},
     {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
       {"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},
@@ -77,38 +77,54 @@ SET menu_config = '{
 WHERE code = 'agent_camara';
 
 -- ============================================================================
--- 2. MIN_* agents + polyvalent — OMS + inspections + companies (no payment validation)
+-- 2. MIN_* agents — each gets their entity-specific dashboard
+-- Dashboard slug follows entity-url convention: MIN_HACIENDA → min-hacienda
 -- ============================================================================
 
-UPDATE roles
-SET menu_config = '{
-  "menus":[
-    {"id":"dashboard","href":"/dashboard/agent/oms","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
-    {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
-      {"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},
-      {"id":"oms_completed","href":"/dashboard/agent/oms/queue/completed","icon":"CheckCircle2","titleKey":"oms.nav.completedObligations","permission":"fiscal_service.view_bundles"}
-    ]},
-    {"id":"licenses","icon":"Briefcase","titleKey":"oms.nav.licenses","items":[
-      {"id":"overview","href":"/dashboard/agent/oms/licenses","icon":"FileCheck","titleKey":"oms.nav.licensesOverview","permission":"fiscal_service.view_bundles"},
-      {"id":"compliance","href":"/dashboard/agent/oms/compliance","icon":"ShieldCheck","titleKey":"oms.nav.compliance","permission":"fiscal_service.view_bundles"}
-    ]},
-    {"id":"field_inspections","icon":"ClipboardCheck","titleKey":"inspection.nav.inspections","items":[
-      {"id":"field_dashboard","href":"/dashboard/agent/oms/field","icon":"Activity","titleKey":"inspection.nav.dashboard","permission":"inspection.view_own"},
-      {"id":"field_scan","href":"/dashboard/agent/oms/field/scan","icon":"QrCode","titleKey":"inspection.nav.scan","permission":"inspection.create"},
-      {"id":"field_reconcile","href":"/dashboard/agent/oms/field/reconcile","icon":"Wallet","titleKey":"inspection.nav.reconcile","permission":"inspection.collect_payment"}
-    ]},
-    {"id":"companies","icon":"Building2","titleKey":"agent.nav.companies","items":[
-      {"id":"company_debt","href":"/dashboard/agent/companies/debt","icon":"DollarSign","titleKey":"agent.nav.companyDebt","permission":"company.view"},
-      {"id":"company_lookup","href":"/dashboard/agent/companies/lookup","icon":"Search","titleKey":"agent.nav.companyLookup","permission":"company.view"}
-    ]}
-  ],
-  "source":"role","version":"1.3"
-}'::jsonb
-WHERE code IN (
-    'agent_min_comercio', 'agent_min_hacienda', 'agent_min_informacion',
-    'agent_min_turismo', 'agent_min_agricultura', 'agent_min_electricidad',
-    'agent_oms_polyvalent'
-);
+-- Helper: shared menu body (everything except dashboard href)
+-- Each role gets a separate UPDATE for its entity-specific dashboard.
+
+UPDATE roles SET menu_config = jsonb_build_object(
+  'menus', jsonb_build_array(
+    '{"id":"dashboard","href":"/dashboard/agent/min-comercio","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"}'::jsonb,
+    '{"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[{"id":"oms_pending","href":"/dashboard/agent/oms/queue","icon":"Clock","titleKey":"oms.nav.pendingProcessing","permission":"fiscal_service.process_obligations"},{"id":"oms_completed","href":"/dashboard/agent/oms/queue/completed","icon":"CheckCircle2","titleKey":"oms.nav.completedObligations","permission":"fiscal_service.view_bundles"}]}'::jsonb,
+    '{"id":"licenses","icon":"Briefcase","titleKey":"oms.nav.licenses","items":[{"id":"overview","href":"/dashboard/agent/oms/licenses","icon":"FileCheck","titleKey":"oms.nav.licensesOverview","permission":"fiscal_service.view_bundles"},{"id":"compliance","href":"/dashboard/agent/oms/compliance","icon":"ShieldCheck","titleKey":"oms.nav.compliance","permission":"fiscal_service.view_bundles"}]}'::jsonb,
+    '{"id":"field_inspections","icon":"ClipboardCheck","titleKey":"inspection.nav.inspections","items":[{"id":"field_dashboard","href":"/dashboard/agent/oms/field","icon":"Activity","titleKey":"inspection.nav.dashboard","permission":"inspection.view_own"},{"id":"field_scan","href":"/dashboard/agent/oms/field/scan","icon":"QrCode","titleKey":"inspection.nav.scan","permission":"inspection.create"},{"id":"field_reconcile","href":"/dashboard/agent/oms/field/reconcile","icon":"Wallet","titleKey":"inspection.nav.reconcile","permission":"inspection.collect_payment"}]}'::jsonb,
+    '{"id":"companies","icon":"Building2","titleKey":"agent.nav.companies","items":[{"id":"company_debt","href":"/dashboard/agent/companies/debt","icon":"DollarSign","titleKey":"agent.nav.companyDebt","permission":"company.view"},{"id":"company_lookup","href":"/dashboard/agent/companies/lookup","icon":"Search","titleKey":"agent.nav.companyLookup","permission":"company.view"}]}'::jsonb
+  ),
+  'source', '"role"'::jsonb,
+  'version', '"1.3"'::jsonb
+) WHERE code = 'agent_min_comercio';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/min-hacienda"'::jsonb
+) WHERE code = 'agent_min_hacienda';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/min-informacion"'::jsonb
+) WHERE code = 'agent_min_informacion';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/min-turismo"'::jsonb
+) WHERE code = 'agent_min_turismo';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/min-agricultura"'::jsonb
+) WHERE code = 'agent_min_agricultura';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/min-electricidad"'::jsonb
+) WHERE code = 'agent_min_electricidad';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'agent_min_comercio'),
+  '{menus,0,href}', '"/dashboard/agent/treasury"'::jsonb
+) WHERE code = 'agent_oms_polyvalent';
 
 -- ============================================================================
 -- 3. AYUNTAMIENTO/CAMARA supervisors — team + validation + OMS + inspection supervision + companies
@@ -124,7 +140,7 @@ SET menu_config = '{
       {"id":"workload","href":"/dashboard/supervisor/team/workload","icon":"BarChart2","titleKey":"supervisor.nav.workload","permission":"agent.view_workload"}
     ]},
     {"id":"validation","icon":"CreditCard","titleKey":"treasury.nav.validation","items":[
-      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.pendingValidation","permission":"treasury.validate_payment"},
+      {"id":"pending","href":"/dashboard/agent/treasury/validation","icon":"CheckCircle","titleKey":"treasury.nav.validation","permission":"treasury.validate_payment"},
       {"id":"escalations","href":"/dashboard/supervisor/oms/escalations","icon":"AlertTriangle","titleKey":"supervisor.nav.escalations","permission":"queue.escalate"}
     ]},
     {"id":"queue","icon":"ListTodo","titleKey":"oms.nav.obligations","items":[
@@ -151,13 +167,13 @@ SET menu_config = '{
 WHERE code IN ('supervisor_ayuntamiento', 'supervisor_camara');
 
 -- ============================================================================
--- 4. MIN_* supervisors — team + OMS + inspection supervision + companies (no payment validation)
+-- 4. MIN_* supervisors — each gets entity-specific supervisor dashboard
 -- ============================================================================
 
 UPDATE roles
 SET menu_config = '{
   "menus":[
-    {"id":"dashboard","href":"/dashboard/supervisor/oms","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
+    {"id":"dashboard","href":"/dashboard/supervisor/min-comercio","icon":"LayoutDashboard","titleKey":"oms.nav.dashboard"},
     {"id":"team","icon":"Users","titleKey":"supervisor.nav.team","items":[
       {"id":"oms_team","href":"/dashboard/supervisor/oms/team","icon":"BarChart2","titleKey":"oms.nav.team","permission":"fiscal_service.process_obligations"},
       {"id":"agents","href":"/dashboard/supervisor/team/agents","icon":"User","titleKey":"supervisor.nav.agents","permission":"agent.list"},
@@ -184,9 +200,31 @@ SET menu_config = '{
   ],
   "source":"role","version":"1.3"
 }'::jsonb
-WHERE code IN (
-    'supervisor_min_comercio', 'supervisor_min_hacienda', 'supervisor_min_informacion',
-    'supervisor_min_turismo', 'supervisor_min_agricultura', 'supervisor_min_electricidad'
-);
+WHERE code = 'supervisor_min_comercio';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'supervisor_min_comercio'),
+  '{menus,0,href}', '"/dashboard/supervisor/min-hacienda"'::jsonb
+) WHERE code = 'supervisor_min_hacienda';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'supervisor_min_comercio'),
+  '{menus,0,href}', '"/dashboard/supervisor/min-informacion"'::jsonb
+) WHERE code = 'supervisor_min_informacion';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'supervisor_min_comercio'),
+  '{menus,0,href}', '"/dashboard/supervisor/min-turismo"'::jsonb
+) WHERE code = 'supervisor_min_turismo';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'supervisor_min_comercio'),
+  '{menus,0,href}', '"/dashboard/supervisor/min-agricultura"'::jsonb
+) WHERE code = 'supervisor_min_agricultura';
+
+UPDATE roles SET menu_config = jsonb_set(
+  (SELECT menu_config FROM roles WHERE code = 'supervisor_min_comercio'),
+  '{menus,0,href}', '"/dashboard/supervisor/min-electricidad"'::jsonb
+) WHERE code = 'supervisor_min_electricidad';
 
 COMMIT;

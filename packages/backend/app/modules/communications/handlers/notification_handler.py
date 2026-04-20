@@ -110,6 +110,9 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="normal",
         subject_key="notifications.obligation.processed.subject",
         requires_user_prefs=False,  # Always notify (progress is important)
+        # NOTE: No DB template needed for PUSH-only — the push_sending_service
+        # uses payload fields (service_name, amount) directly. If template
+        # lookup fails, the handler falls back to generic push text.
     ),
 
     # Service Request Events

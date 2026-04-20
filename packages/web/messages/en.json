@@ -5831,6 +5831,9 @@
       "batchProcessed": "obligations processed",
       "error": "Processing error",
       "loadError": "Loading error",
+      "completedTitle": "Completed Obligations",
+      "completedSubtitle": "History of obligations processed by your entity",
+      "total": "total",
       "history": "History",
       "noEvents": "No events",
       "penalty": "Penalty",
@@ -8456,6 +8459,29 @@
         "compliance": "Compliance",
         "stats": "Statistics"
       }
+    },
+    "treasury": {
+      "nav": {
+        "validation": "Validation",
+        "transactions": "History"
+      }
+    },
+    "inspection": {
+      "nav": {
+        "inspections": "Field Inspections",
+        "dashboard": "Field Dashboard",
+        "scan": "New Inspection",
+        "reconcile": "Reconciliation",
+        "supervision": "Inspection Supervision",
+        "overview": "Dashboard",
+        "pendingSeals": "Pending Seals",
+        "agentPerformance": "Agent Performance"
+      }
+    },
+    "nav": {
+      "companies": "Companies",
+      "companyDebt": "Company Debt",
+      "companyLookup": "Company Lookup"
     },
     "companyLookup": {
       "title": "Company Lookup",

@@ -5831,6 +5831,9 @@
       "batchProcessed": "obligaciones procesadas",
       "error": "Error al procesar",
       "loadError": "Error al cargar la cola",
+      "completedTitle": "Obligaciones Completadas",
+      "completedSubtitle": "Historial de obligaciones procesadas por su entidad",
+      "total": "total",
       "history": "Historial",
       "noEvents": "Sin eventos",
       "penalty": "Penalidad",
@@ -8456,6 +8459,29 @@
         "compliance": "Cumplimiento",
         "stats": "Estadísticas"
       }
+    },
+    "treasury": {
+      "nav": {
+        "validation": "Validación",
+        "transactions": "Historial"
+      }
+    },
+    "inspection": {
+      "nav": {
+        "inspections": "Inspecciones Terrain",
+        "dashboard": "Panel Terrain",
+        "scan": "Nueva Inspección",
+        "reconcile": "Reconciliación",
+        "supervision": "Supervisión Inspecciones",
+        "overview": "Dashboard",
+        "pendingSeals": "Scellés Pendientes",
+        "agentPerformance": "Rendimiento Agentes"
+      }
+    },
+    "nav": {
+      "companies": "Empresas",
+      "companyDebt": "Deuda Empresarial",
+      "companyLookup": "Consultar Empresa"
     },
     "companyLookup": {
       "title": "Consulta de Empresas",
