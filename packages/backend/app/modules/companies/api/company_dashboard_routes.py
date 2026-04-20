@@ -18,6 +18,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException
 from loguru import logger
 
+from app.core.cache import get_cache
 from app.core.jsonb import ensure_list as _ensure_list
 
 from app.database.connection import get_database
@@ -27,6 +28,11 @@ from app.modules.companies.services.agent_context import (
     get_agent_ministry_id,
     get_agent_zone_id,
 )
+
+# Cache TTLs — live queries cached in Redis, no MV dependency
+_GLOBAL_STATS_TTL = 60       # 60s — KPIs refresh every minute
+_ZONE_STATS_TTL = 60         # 60s
+_ANALYTICS_TTL = 120         # 2min — heavier queries
 
 router = APIRouter(prefix="/dashboard", tags=["Company Dashboard"])
 
@@ -68,39 +74,42 @@ async def get_zone_stats(
     """All zones stats — admin choropleth map data.
 
     Returns 12 zones with company counts, regime breakdown, debt, recovery rate.
-    Reads from mv_company_stats_by_zone if available, else live query.
+    Live query with Redis cache (60s TTL) — no MV dependency.
     """
-    if await _mv_exists(db, "mv_company_stats_by_zone"):
-        rows = await db.fetch(
-            "SELECT * FROM mv_company_stats_by_zone ORDER BY zone_code"
-        )
-    else:
-        # Live fallback (slower but works before migration 235)
-        rows = await db.fetch("""
-            SELECT
-                cz.id AS zone_id, cz.zone_code, cz.zone_tier, cz.name_es AS zone_name,
-                COUNT(c.id) AS total_companies,
-                COUNT(c.id) FILTER (WHERE c.is_active) AS active_companies,
-                COUNT(c.id) FILTER (WHERE c.is_active AND NOT c.is_verified) AS pending_verification,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'bundle') AS bundle_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'declarativo') AS declarativo_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'exento') AS exento_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'pendiente') AS pendiente_count,
-                COALESCE(SUM(cl.total_amount), 0) AS total_obligations_amount,
-                COALESCE(SUM(cl.amount_paid), 0) AS total_paid_amount,
-                COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) AS total_debt,
-                CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
-                     THEN ROUND(COALESCE(SUM(cl.amount_paid), 0) * 100.0 / SUM(cl.total_amount), 1)
-                     ELSE 0 END AS recovery_rate_pct
-            FROM commerce_zones cz
-            LEFT JOIN companies c ON c.zone_id = cz.id
-            LEFT JOIN commercial_licenses cl ON cl.company_id = c.id
-                AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
-            GROUP BY cz.id, cz.zone_code, cz.zone_tier, cz.name_es
-            ORDER BY cz.zone_code
-        """)
+    cache = get_cache()
+    cache_key = "company_dashboard:zone_stats"
 
-    return {"zones": [dict(r) for r in rows]}
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    rows = await db.fetch("""
+        SELECT
+            cz.id AS zone_id, cz.zone_code, cz.zone_tier, cz.name_es AS zone_name,
+            COUNT(c.id) AS total_companies,
+            COUNT(c.id) FILTER (WHERE c.is_active) AS active_companies,
+            COUNT(c.id) FILTER (WHERE c.is_active AND NOT c.is_verified) AS pending_verification,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'bundle') AS bundle_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'declarativo') AS declarativo_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'exento') AS exento_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'pendiente') AS pendiente_count,
+            COALESCE(SUM(cl.total_amount), 0) AS total_obligations_amount,
+            COALESCE(SUM(cl.amount_paid), 0) AS total_paid_amount,
+            COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) AS total_debt,
+            CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
+                 THEN ROUND(COALESCE(SUM(cl.amount_paid), 0) * 100.0 / SUM(cl.total_amount), 1)
+                 ELSE 0 END AS recovery_rate_pct
+        FROM commerce_zones cz
+        LEFT JOIN companies c ON c.zone_id = cz.id
+        LEFT JOIN commercial_licenses cl ON cl.company_id = c.id
+            AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+        GROUP BY cz.id, cz.zone_code, cz.zone_tier, cz.name_es
+        ORDER BY cz.zone_code
+    """)
+
+    result = {"zones": [dict(r) for r in rows]}
+    await cache.set(cache_key, result, ttl=_ZONE_STATS_TTL)
+    return result
 
 
 @router.get("/zone-stats/mine")
@@ -220,28 +229,41 @@ async def get_global_stats(
     current_user: Dict[str, Any] = Depends(get_current_user),
     _=Depends(permission_required("company.view_stats")),
 ):
-    """Admin global stats — single-row KPIs from materialized view."""
-    if await _mv_exists(db, "mv_company_global_stats"):
-        row = await db.fetchrow("SELECT * FROM mv_company_global_stats")
-    else:
-        row = await db.fetchrow("""
-            SELECT
-                COUNT(*) AS total_companies,
-                COUNT(*) FILTER (WHERE is_active) AS active_companies,
-                COUNT(*) FILTER (WHERE is_verified) AS verified_companies,
-                COUNT(*) FILTER (WHERE NOT is_active) AS inactive_companies,
-                COUNT(*) FILTER (WHERE regimen_fiscal = 'bundle') AS bundle_count,
-                COUNT(*) FILTER (WHERE regimen_fiscal = 'declarativo') AS declarativo_count,
-                COUNT(*) FILTER (WHERE regimen_fiscal = 'exento') AS exento_count,
-                COUNT(*) FILTER (WHERE regimen_fiscal = 'pendiente') AS pendiente_count,
-                COUNT(*) FILTER (WHERE nif IS NOT NULL) AS with_nif,
-                COUNT(*) FILTER (WHERE registration_number IS NOT NULL) AS with_reg_number,
-                COUNT(*) FILTER (WHERE zone_id IS NOT NULL) AS with_zone,
-                COUNT(*) FILTER (WHERE nif IS NULL AND registration_number IS NULL) AS missing_identifier
-            FROM companies
-        """)
+    """Admin global stats — live query with Redis cache (60s TTL).
 
-    return dict(row) if row else {}
+    Always reads from the live `companies` table — never from the
+    materialized view which can go stale if the cron misses runs.
+    Redis cache avoids hitting the DB on every dashboard refresh.
+    """
+    cache = get_cache()
+    cache_key = "company_dashboard:global_stats"
+
+    # Cache hit → return immediately
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    # Live query — always fresh
+    row = await db.fetchrow("""
+        SELECT
+            COUNT(*) AS total_companies,
+            COUNT(*) FILTER (WHERE is_active) AS active_companies,
+            COUNT(*) FILTER (WHERE is_verified) AS verified_companies,
+            COUNT(*) FILTER (WHERE NOT is_active) AS inactive_companies,
+            COUNT(*) FILTER (WHERE regimen_fiscal = 'bundle') AS bundle_count,
+            COUNT(*) FILTER (WHERE regimen_fiscal = 'declarativo') AS declarativo_count,
+            COUNT(*) FILTER (WHERE regimen_fiscal = 'exento') AS exento_count,
+            COUNT(*) FILTER (WHERE regimen_fiscal = 'pendiente') AS pendiente_count,
+            COUNT(*) FILTER (WHERE nif IS NOT NULL) AS with_nif,
+            COUNT(*) FILTER (WHERE registration_number IS NOT NULL) AS with_reg_number,
+            COUNT(*) FILTER (WHERE zone_id IS NOT NULL) AS with_zone,
+            COUNT(*) FILTER (WHERE nif IS NULL AND registration_number IS NULL) AS missing_identifier
+        FROM companies
+    """)
+
+    result = dict(row) if row else {}
+    await cache.set(cache_key, result, ttl=_GLOBAL_STATS_TTL)
+    return result
 
 
 # ── Cross-tabulated analytics (rich JOINs for pro dashboards) ────────────────
@@ -254,8 +276,7 @@ async def get_company_analytics(
 ):
     """Rich cross-tabulated analytics for Sage ERP-quality dashboards.
 
-    Reads from mv_company_analytics (single-row JSONB MV) if available,
-    else falls back to 6 live queries in parallel.
+    Live queries with Redis cache (120s TTL) — no MV dependency.
 
     Returns:
       - by_zone_regime: companies grouped by zone × regime (stacked charts)
@@ -265,20 +286,14 @@ async def get_company_analytics(
       - top_debtors: top 10 companies by outstanding debt
       - monthly_trend: companies created per month (last 12 months)
     """
-    # ── Fast path: read from materialized view ──────────────────────
-    if await _mv_exists(db, "mv_company_analytics"):
-        row = await db.fetchrow("SELECT * FROM mv_company_analytics")
-        if row:
-            return {
-                "by_zone_regime": _ensure_list(row["by_zone_regime"]),
-                "by_forma_juridica": _ensure_list(row["by_forma_juridica"]),
-                "by_city": _ensure_list(row["by_city"]),
-                "debt_by_fee_type": _ensure_list(row["debt_by_fee_type"]),
-                "top_debtors": _ensure_list(row["top_debtors"]),
-                "monthly_trend": _ensure_list(row["monthly_trend"]),
-            }
+    cache = get_cache()
+    cache_key = "company_dashboard:analytics"
 
-    # ── Fallback: 6 live queries in parallel ────────────────────────
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    # ── 6 live queries in parallel ────────────────────────
     import asyncio
 
     async def fetch_zone_regime():
@@ -385,7 +400,7 @@ async def get_company_analytics(
         fetch_monthly_trend(),
     )
 
-    return {
+    result = {
         "by_zone_regime": [dict(r) for r in results[0]],
         "by_forma_juridica": [dict(r) for r in results[1]],
         "by_city": [dict(r) for r in results[2]],
@@ -393,6 +408,8 @@ async def get_company_analytics(
         "top_debtors": [dict(r) for r in results[4]],
         "monthly_trend": [dict(r) for r in results[5]],
     }
+    await cache.set(cache_key, result, ttl=_ANALYTICS_TTL)
+    return result
 
 
 # ── Cron: Refresh Materialized Views ────────────────────────────────────────

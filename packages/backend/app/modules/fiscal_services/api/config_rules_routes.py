@@ -15,6 +15,7 @@ Prefix: /api/v1/config-rules
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from uuid import UUID
+from loguru import logger
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -139,6 +140,12 @@ async def create_config_rule(
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Config rule creation failed: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Error al crear la regla: {type(e).__name__}",
+        )
     return ConfigRuleResponse(**rule)
 
 
@@ -163,6 +170,14 @@ async def update_config_rule(
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        # DB errors (trigger trg_auto_recompute_config failures,
+        # constraint violations, etc.) must not bubble up as 500.
+        logger.error(f"Config rule update failed for {rule_id}: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Error al actualizar la regla: {type(e).__name__}",
+        )
     if not rule:
         raise HTTPException(status_code=404, detail="Config rule not found")
     return ConfigRuleResponse(**rule)
