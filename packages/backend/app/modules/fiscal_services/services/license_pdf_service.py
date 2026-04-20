@@ -347,16 +347,29 @@ class LicensePDFService:
         license_id: str,
         language: str = "es",
     ) -> bytes:
-        """Generate a compact license dossier PDF (target: 1 page A4).
+        """Generate a compact license dossier PDF (target: 1 page A4)."""
+        texts = TRANSLATIONS.get(language, TRANSLATIONS["es"])
+        return await self._generate_license_pdf_with_texts(
+            db, license_id, texts, language
+        )
 
-        Fetches all data from DB and renders the HTML template → PDF.
+    async def _generate_license_pdf_with_texts(
+        self,
+        db: asyncpg.Connection,
+        license_id: str,
+        texts: Dict[str, str],
+        language: str = "es",
+    ) -> bytes:
+        """Internal: generate license PDF with caller-provided texts.
+
+        Thread-safe: does NOT read module-level TRANSLATIONS.
+        Used by both generate_license_pdf (standard) and
+        generate_proforma_pdf (overridden title/disclaimer).
         """
         if not XHTML2PDF_AVAILABLE:
             raise RuntimeError("xhtml2pdf not installed")
 
         from uuid import UUID
-
-        texts = TRANSLATIONS.get(language, TRANSLATIONS["es"])
 
         # Fetch license with company + bundle info
         license_row = await db.fetchrow("""
@@ -544,17 +557,17 @@ class LicensePDFService:
             },
         }
 
-        # Temporarily patch translations for proforma
-        original_texts = TRANSLATIONS.get(language, TRANSLATIONS["es"]).copy()
+        # Build proforma texts WITHOUT mutating module-level TRANSLATIONS
+        # (concurrent requests would see corrupted state during await).
+        base_texts = TRANSLATIONS.get(language, TRANSLATIONS["es"])
         overrides = PROFORMA_OVERRIDES.get(language, PROFORMA_OVERRIDES["es"])
-        patched = {**original_texts, **overrides}
+        proforma_texts = {**base_texts, **overrides}
 
-        # Swap translations, generate, restore
-        TRANSLATIONS[language] = patched
-        try:
-            pdf_bytes = await self.generate_license_pdf(db, license_id, language)
-        finally:
-            TRANSLATIONS[language] = original_texts
+        # Call the internal render directly with our custom texts
+        # instead of going through generate_license_pdf (which reads TRANSLATIONS).
+        pdf_bytes = await self._generate_license_pdf_with_texts(
+            db, license_id, proforma_texts, language
+        )
 
         logger.info(
             f"Proforma PDF generated: {license_id} "
