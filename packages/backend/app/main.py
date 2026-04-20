@@ -155,7 +155,85 @@ async def lifespan(app: FastAPI):
                     logger.warning(f"Counter refresh failed for license {license_id}: {e}")
 
             EventBus.subscribe(EventType.LICENSE_COUNTER_REFRESH, _handle_counter_refresh)
-            logger.info("✅ License counter refresh handler registered")
+
+            # Bundle PDF handler — generates proforma (at payment) and final license (at completion)
+            async def _handle_bundle_pdf(payload):
+                """Generate + store bundle PDF (proforma or final) post-commit."""
+                from uuid import UUID
+                event_type = payload.get("event_type", "")
+                license_id = payload.get("license_id")
+                workflow_code = payload.get("workflow_code")
+                user_email = payload.get("user_email")
+
+                # Only handle bundle payments
+                if not license_id:
+                    return
+                if event_type == "payment.cash_pending" and workflow_code != "BUNDLE_PAYMENT":
+                    return
+
+                try:
+                    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+
+                    async with db_manager.acquire() as conn:
+                        if event_type == "payment.cash_pending":
+                            pdf_bytes = await license_pdf_service.generate_proforma_pdf(
+                                conn, license_id,
+                                payment_reference=payload.get("payment_reference"),
+                            )
+                            doc_type = "proforma"
+                        else:
+                            pdf_bytes = await license_pdf_service.generate_license_pdf(
+                                conn, license_id,
+                            )
+                            doc_type = "license_final"
+
+                    # Store in Firebase (best-effort)
+                    try:
+                        from app.modules.documents.services.storage_service import storage_service
+                        ref = f"LIC-{str(license_id)[:8].upper()}"
+                        filename = f"{doc_type}_{ref}.pdf"
+                        url = await storage_service.upload_bytes(
+                            pdf_bytes, f"licenses/{license_id}/{filename}",
+                            content_type="application/pdf",
+                        )
+                        logger.info(f"Bundle {doc_type} PDF stored: {url}")
+                    except Exception as store_err:
+                        logger.warning(f"PDF storage failed (non-blocking): {store_err}")
+
+                    # Send email with attachment (best-effort)
+                    if user_email and pdf_bytes:
+                        try:
+                            from app.modules.communications.services.email_service import get_email_service
+                            email_svc = get_email_service()
+                            ref = f"LIC-{str(license_id)[:8].upper()}"
+                            subject = (
+                                f"Factura Proforma — {ref}"
+                                if doc_type == "proforma"
+                                else f"Licencia Comercial Completada — {ref}"
+                            )
+                            body = (
+                                f"<p>Adjunto encontrará su {doc_type.replace('_', ' ')}.</p>"
+                                f"<p>Referencia: <strong>{ref}</strong></p>"
+                            )
+                            email_svc.send_email(
+                                to_email=user_email,
+                                subject=subject,
+                                body_html=body,
+                                body_text=f"Referencia: {ref}",
+                                attachments=[
+                                    (f"{doc_type}_{ref}.pdf", pdf_bytes, "application/pdf")
+                                ],
+                            )
+                            logger.info(f"Bundle {doc_type} PDF emailed to {user_email}")
+                        except Exception as email_err:
+                            logger.warning(f"PDF email failed (non-blocking): {email_err}")
+
+                except Exception as e:
+                    logger.error(f"Bundle PDF generation failed: {e}", exc_info=True)
+
+            EventBus.subscribe(EventType.PAYMENT_CASH_PENDING, _handle_bundle_pdf)
+            EventBus.subscribe(EventType.LICENSE_COMPLETED, _handle_bundle_pdf)
+            logger.info("✅ Bundle PDF + counter refresh handlers registered")
 
             # Register verification event handlers (external document verification)
             try:
