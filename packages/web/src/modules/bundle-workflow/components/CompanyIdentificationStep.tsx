@@ -147,6 +147,18 @@ export function CompanyIdentificationStep({ wizard, locale }: CompanyIdentificat
               ))
             )}
           </div>
+          {/* Always show "Register new" below existing companies */}
+          {!wizard.isLoadingCompanies && (
+            <div className="border-t pt-3 mt-3">
+              <Button variant="outline" onClick={wizard.requestNewCompany} className="gap-2 w-full">
+                <Plus className="h-4 w-4" />
+                {labels.newCompany[lang]}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-1.5">
+                {labels.newCompanyDesc[lang]}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
