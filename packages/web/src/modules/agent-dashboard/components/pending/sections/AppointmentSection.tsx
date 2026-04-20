@@ -22,6 +22,7 @@ import {
 import { Calendar, Clock, MapPin, AlertCircle, Loader2, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { agentAppointmentsApi } from '../../../services/appointments-api';
+import { useAgentDashboard } from '../../../hooks/useAgentDashboard';
 import type { RequestPreviewAppointment } from '../../../services/agent-requests-api';
 import type { SlotsCalendarResponse, SlotTimeDetail } from '../../../services/appointments-api';
 
@@ -47,6 +48,8 @@ export function AppointmentSection({
   onAppointmentCreated,
 }: AppointmentSectionProps) {
   const t = useTranslations('agent.pending');
+  const { context } = useAgentDashboard();
+  const agentLocationId = context?.entityLocationId;
 
   // State for scheduling
   const [isScheduling, setIsScheduling] = useState(false);
@@ -84,9 +87,12 @@ export function AppointmentSection({
       );
       setSlotsData(data);
 
-      // Auto-select first location if not selected
+      // Auto-select agent's own location, fallback to first available
       if (!selectedLocationId && data.locationsAvailable.length > 0) {
-        setSelectedLocationId(data.locationsAvailable[0].id);
+        const agentSite = agentLocationId
+          ? data.locationsAvailable.find((l) => l.id === agentLocationId)
+          : null;
+        setSelectedLocationId(agentSite?.id || data.locationsAvailable[0].id);
       }
     } catch (error) {
       console.error('Error loading slots:', error);
@@ -94,7 +100,7 @@ export function AppointmentSection({
     } finally {
       setIsLoading(false);
     }
-  }, [entityCode, weekOffset, selectedLocationId, t]);
+  }, [entityCode, weekOffset, selectedLocationId, agentLocationId, t]);
 
   // Load slots when scheduling mode is activated or location changes
   useEffect(() => {
