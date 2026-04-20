@@ -160,7 +160,7 @@ export function UrgentRequestsWidget({
             ))}
             {totalCount > items.length && (
               <Link
-                href={`/${locale}/dashboard/agent/cnedoge-pasaporte/pasaportes/pending`}
+                href={`/${locale}/dashboard/agent/${entityCode.toLowerCase().replace(/_/g, '-')}/pending`}
               >
                 <Button variant="ghost" size="sm" className="w-full mt-2">
                   {t('widgets.viewAll', { defaultValue: 'Ver todas' })} ({totalCount})

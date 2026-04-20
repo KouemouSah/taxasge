@@ -4155,6 +4155,12 @@ async def get_alerts_widget(
     alerts = []
     now = datetime.utcnow()
 
+    # Build entity slug for action URLs (UPPER_SNAKE → lower-kebab)
+    entity_slug = entity_code.lower().replace('_', '-')
+    # Special case: TESORO → treasury (matches frontend slugToEntityCode)
+    if entity_code == 'TESORO':
+        entity_slug = 'treasury'
+
     if workflow_codes:
         # 1. SLA Violations (error severity)
         sla_violated = await db.fetch("""
@@ -4183,7 +4189,7 @@ async def get_alerts_widget(
                 message=f"La solicitud {row['reference']} ha superado el tiempo de SLA",
                 request_id=str(row['id']),
                 request_reference=row['reference'],
-                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                action_url=f"/dashboard/agent/{entity_slug}/request/{row['id']}",
                 created_at=now.isoformat()
             ))
 
@@ -4218,7 +4224,7 @@ async def get_alerts_widget(
                 message=f"La solicitud {row['reference']} vence en {hours_left:.1f} horas",
                 request_id=str(row['id']),
                 request_reference=row['reference'],
-                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                action_url=f"/dashboard/agent/{entity_slug}/request/{row['id']}",
                 created_at=now.isoformat()
             ))
 
@@ -4241,7 +4247,7 @@ async def get_alerts_widget(
                 message=f"La solicitud {row['reference']} está esperando documentos",
                 request_id=str(row['id']),
                 request_reference=row['reference'],
-                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                action_url=f"/dashboard/agent/{entity_slug}/request/{row['id']}",
                 created_at=now.isoformat()
             ))
 

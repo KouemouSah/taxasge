@@ -139,7 +139,7 @@ export function TodayAppointmentsWidget({
               />
             ))}
             <Link
-              href={`/${locale}/dashboard/agent/cnedoge-pasaporte/pasaportes/appointments`}
+              href={`/${locale}/dashboard/agent/${entityCode.toLowerCase().replace(/_/g, '-')}/appointments`}
             >
               <Button variant="ghost" size="sm" className="w-full mt-2">
                 {t('widgets.viewAllAppointments', { defaultValue: 'Ver todas las citas' })}
