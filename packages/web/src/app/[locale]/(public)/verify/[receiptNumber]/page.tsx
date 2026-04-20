@@ -285,6 +285,10 @@ function isLicense(ref: string): boolean {
   return ref.startsWith('LIC-');
 }
 
+function isCertificate(ref: string): boolean {
+  return ref.startsWith('CLC-');
+}
+
 function isReceiptResult(result: VerificationResult): result is ReceiptResult {
   return result.verification_type === 'receipt';
 }
@@ -312,6 +316,7 @@ export default function VerifyPage() {
   const licenseId = searchParams.get('lid');
   const isSR = isServiceRequest(reference);
   const isLIC = isLicense(reference);
+  const isCERT = isCertificate(reference);
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -332,6 +337,8 @@ export default function VerifyPage() {
 
         if (isSR) {
           url = `${apiUrl}/api/v1/verify/request/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+        } else if (isCERT) {
+          url = `${apiUrl}/api/v1/verify/certificate/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}&lid=${encodeURIComponent(licenseId || '')}`;
         } else if (isLIC) {
           url = `${apiUrl}/api/v1/verify/license/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}&lid=${encodeURIComponent(licenseId || '')}`;
         } else {
@@ -354,7 +361,7 @@ export default function VerifyPage() {
     };
 
     verify();
-  }, [reference, token, isSR, isLIC, licenseId, t]);
+  }, [reference, token, isSR, isLIC, isCERT, licenseId, t]);
 
   const getPaymentMethodLabel = (method?: string): string => {
     if (!method) return '-';

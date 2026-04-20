@@ -486,3 +486,121 @@ async def verify_license(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error de verificacion / Verification error"
             )
+
+
+# =============================================================================
+# Certificate Verification (PUBLIC — no authentication)
+# =============================================================================
+
+class CertificateVerificationResponse(BaseModel):
+    """Public certificate verification result."""
+    valid: bool
+    certificate_number: str
+    message: str
+    company_name: Optional[str] = None
+    representante_legal: Optional[str] = None
+    registration_number: Optional[str] = None
+    commerce_type: Optional[str] = None
+    zone_code: Optional[str] = None
+    city_name: Optional[str] = None
+    fiscal_year: Optional[int] = None
+    total_amount: Optional[float] = None
+    amount_paid: Optional[float] = None
+    completed_at: Optional[str] = None
+
+
+@router.get(
+    "/certificate/{certificate_number}",
+    response_model=CertificateVerificationResponse,
+    summary="Verify commercial license certificate (PUBLIC)",
+)
+async def verify_certificate(
+    certificate_number: str = Path(...),
+    t: str = Query(..., description="HMAC token (24 chars)"),
+    lid: str = Query(..., description="License UUID"),
+):
+    """
+    Verify certificate authenticity (PUBLIC - no auth).
+    Certificate HMAC includes: certificate_number + license_id + amount + fiscal_year.
+    """
+    from uuid import UUID
+    from app.modules.fiscal_services.services.license_pdf_service import LicensePDFService
+
+    try:
+        license_uuid = UUID(lid)
+    except (ValueError, AttributeError):
+        return CertificateVerificationResponse(
+            valid=False, certificate_number=certificate_number,
+            message="Formato invalido / Invalid format",
+        )
+
+    async with db_manager.get_connection() as db:
+        try:
+            row = await db.fetchrow("""
+                SELECT cl.id, cl.fiscal_year, cl.status,
+                       cl.total_amount, cl.amount_paid, cl.completed_at,
+                       c.legal_name, c.representante_legal,
+                       c.registration_number, c.commerce_type,
+                       cz.zone_code, ct.name AS city_name
+                FROM commercial_licenses cl
+                JOIN companies c ON cl.company_id = c.id
+                LEFT JOIN commerce_zones cz ON cl.zone_id = cz.id
+                LEFT JOIN cities ct ON cl.city_id = ct.id
+                WHERE cl.id = $1
+            """, license_uuid)
+
+            if not row:
+                return CertificateVerificationResponse(
+                    valid=False, certificate_number=certificate_number,
+                    message="Certificado no encontrado / Certificate not found",
+                )
+
+            if row["status"] != "complete":
+                return CertificateVerificationResponse(
+                    valid=False, certificate_number=certificate_number,
+                    message="Licencia no completada / License not complete",
+                )
+
+            # Verify certificate-specific HMAC (stronger than license dossier)
+            total_str = str(row["total_amount"] or 0)
+            year_str = str(row["fiscal_year"] or "")
+            if not LicensePDFService.verify_certificate_token(
+                certificate_number, lid, total_str, year_str, t
+            ):
+                logger.warning(f"Certificate verification FAILED: {certificate_number}")
+                return CertificateVerificationResponse(
+                    valid=False, certificate_number=certificate_number,
+                    message="Token invalido — documento posiblemente falsificado / Invalid token — possibly forged",
+                )
+
+            logger.info(f"Certificate {certificate_number} verified OK")
+
+            completed_str = None
+            if row["completed_at"]:
+                try:
+                    completed_str = row["completed_at"].strftime("%d/%m/%Y")
+                except Exception:
+                    completed_str = str(row["completed_at"])
+
+            return CertificateVerificationResponse(
+                valid=True,
+                certificate_number=certificate_number,
+                message="Certificado autentico y valido / Authentic and valid certificate",
+                company_name=row["legal_name"],
+                representante_legal=row["representante_legal"],
+                registration_number=row["registration_number"],
+                commerce_type=row["commerce_type"],
+                zone_code=row["zone_code"],
+                city_name=row["city_name"],
+                fiscal_year=row["fiscal_year"],
+                total_amount=float(row["total_amount"]) if row["total_amount"] else None,
+                amount_paid=float(row["amount_paid"]) if row["amount_paid"] else None,
+                completed_at=completed_str,
+            )
+
+        except Exception as e:
+            logger.error(f"Certificate verification error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error de verificacion / Verification error"
+            )
