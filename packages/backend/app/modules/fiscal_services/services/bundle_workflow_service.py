@@ -111,6 +111,176 @@ class BundleWorkflowService:
         return results
 
     # ================================================================
+    # Citizen — Company detail + payment history
+    # ================================================================
+
+    @staticmethod
+    async def my_company_detail(
+        conn, user_id: UUID, company_id: UUID, fiscal_year: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Get detailed company info with license and obligations for citizen.
+
+        Verifies ownership via user_company_roles.
+        Returns company info + current license + all obligations with statuses.
+        """
+        if not fiscal_year:
+            fiscal_year = datetime.now(timezone.utc).year
+
+        # Verify ownership
+        is_member = await conn.fetchval(
+            "SELECT 1 FROM user_company_roles WHERE user_id = $1 AND company_id = $2",
+            user_id, company_id,
+        )
+        if not is_member:
+            raise ValueError("COMPANY_NOT_OWNED")
+
+        # Company + license
+        row = await conn.fetchrow("""
+            SELECT c.id, c.legal_name, c.nif, c.registration_number,
+                   c.regimen_fiscal, c.commerce_type, c.objeto_social,
+                   c.forma_juridica, c.is_active, c.is_verified,
+                   cz.zone_code, ct.name as city_name,
+                   cl.id as license_id, cl.status as license_status,
+                   cl.fiscal_year, cl.total_amount, cl.amount_paid,
+                   cl.penalty_amount, cl.obligations_total, cl.obligations_paid,
+                   cl.deadline, cl.completed_at, cl.created_at as license_created_at
+            FROM companies c
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN cities ct ON c.city_id = ct.id
+            LEFT JOIN commercial_licenses cl
+                ON cl.company_id = c.id AND cl.fiscal_year = $2
+            WHERE c.id = $1
+        """, company_id, fiscal_year)
+
+        if not row:
+            raise ValueError("COMPANY_NOT_FOUND")
+
+        # Obligations (if license exists)
+        obligations = []
+        if row["license_id"]:
+            obl_rows = await conn.fetch("""
+                SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
+                       lo.status, lo.due_date, lo.paid_at,
+                       fs.name_es as service_name, fs.service_code,
+                       m.name_es as ministry_name
+                FROM license_obligations lo
+                LEFT JOIN fiscal_services fs ON lo.fiscal_service_id = fs.id
+                LEFT JOIN ministries m ON lo.ministry_id = m.id
+                WHERE lo.license_id = $1
+                ORDER BY lo.fee_type, fs.service_code
+            """, row["license_id"])
+            obligations = [
+                {
+                    "id": str(o["id"]),
+                    "fee_type": o["fee_type"],
+                    "amount": float(o["amount"]),
+                    "penalty_amount": float(o["penalty_amount"] or 0),
+                    "status": o["status"],
+                    "due_date": o["due_date"].isoformat() if o["due_date"] else None,
+                    "paid_at": o["paid_at"].isoformat() if o["paid_at"] else None,
+                    "service_name": o["service_name"],
+                    "service_code": o["service_code"],
+                    "ministry_name": o["ministry_name"],
+                }
+                for o in obl_rows
+            ]
+
+        total = float(row["total_amount"] or 0)
+        paid = float(row["amount_paid"] or 0)
+
+        return {
+            "company": {
+                "id": str(row["id"]),
+                "legal_name": row["legal_name"],
+                "nif": row["nif"],
+                "registration_number": row["registration_number"],
+                "regimen_fiscal": row["regimen_fiscal"],
+                "commerce_type": row["commerce_type"],
+                "objeto_social": row["objeto_social"],
+                "forma_juridica": row["forma_juridica"],
+                "is_active": row["is_active"],
+                "is_verified": row["is_verified"],
+                "zone_code": row["zone_code"],
+                "city_name": row["city_name"],
+            },
+            "license": {
+                "id": str(row["license_id"]),
+                "status": row["license_status"],
+                "fiscal_year": row["fiscal_year"],
+                "total_amount": total,
+                "amount_paid": paid,
+                "amount_remaining": total - paid,
+                "penalty_amount": float(row["penalty_amount"] or 0),
+                "obligations_total": row["obligations_total"],
+                "obligations_paid": row["obligations_paid"],
+                "deadline": row["deadline"].isoformat() if row["deadline"] else None,
+                "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+                "expiry_date": f"{row['fiscal_year']}-12-31",
+            } if row["license_id"] else None,
+            "obligations": obligations,
+            "fiscal_year": fiscal_year,
+        }
+
+    @staticmethod
+    async def my_company_payments(
+        conn, user_id: UUID, company_id: UUID, page: int = 1, page_size: int = 20
+    ) -> Dict[str, Any]:
+        """Get payment history for a citizen's company.
+
+        Verifies ownership. Returns service_payments with receipt info.
+        """
+        # Verify ownership
+        is_member = await conn.fetchval(
+            "SELECT 1 FROM user_company_roles WHERE user_id = $1 AND company_id = $2",
+            user_id, company_id,
+        )
+        if not is_member:
+            raise ValueError("COMPANY_NOT_OWNED")
+
+        offset = (page - 1) * page_size
+        rows = await conn.fetch("""
+            SELECT sp.id, sp.payment_reference, sp.amount, sp.currency,
+                   sp.payment_method, sp.workflow_status, sp.fee_type,
+                   sp.entity_code, sp.receipt_number, sp.receipt_url,
+                   sp.created_at, sp.validated_at,
+                   sr.reference as sr_reference
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            WHERE sp.company_id = $1
+            ORDER BY sp.created_at DESC
+            LIMIT $2 OFFSET $3
+        """, company_id, page_size, offset)
+
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM service_payments WHERE company_id = $1",
+            company_id,
+        )
+
+        return {
+            "payments": [
+                {
+                    "id": str(r["id"]),
+                    "reference": r["payment_reference"] or str(r["id"])[:12],
+                    "sr_reference": r["sr_reference"],
+                    "amount": float(r["amount"]),
+                    "currency": r["currency"],
+                    "method": r["payment_method"],
+                    "status": r["workflow_status"],
+                    "fee_type": r["fee_type"],
+                    "entity_code": r["entity_code"],
+                    "receipt_number": r["receipt_number"],
+                    "receipt_url": r["receipt_url"],
+                    "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+                    "validated_at": r["validated_at"].isoformat() if r["validated_at"] else None,
+                }
+                for r in rows
+            ],
+            "total": count,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    # ================================================================
     # Step 0: Search eligible companies (bundle + active)
     # ================================================================
 

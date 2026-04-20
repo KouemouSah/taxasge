@@ -106,6 +106,49 @@ async def get_my_companies_status(
         raise
 
 
+@router.get("/my-companies/{company_id}")
+async def get_my_company_detail(
+    company_id: str,
+    fiscal_year: Optional[int] = Query(None),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Get detailed company info with license + obligations for citizen."""
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
+    try:
+        result = await BundleWorkflowService.my_company_detail(
+            db, user_id, UUID(company_id), fiscal_year
+        )
+        return result
+    except ValueError as e:
+        code = str(e)
+        if code == "COMPANY_NOT_OWNED":
+            raise HTTPException(status_code=403, detail="You don't have access to this company")
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/my-companies/{company_id}/payments")
+async def get_my_company_payments(
+    company_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Get payment history for a citizen's company."""
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
+    try:
+        result = await BundleWorkflowService.my_company_payments(
+            db, user_id, UUID(company_id), page, page_size
+        )
+        return result
+    except ValueError as e:
+        code = str(e)
+        if code == "COMPANY_NOT_OWNED":
+            raise HTTPException(status_code=403, detail="You don't have access to this company")
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.get("/search-company")
 async def search_eligible_company(
     q: str = Query(..., min_length=2, max_length=100),
