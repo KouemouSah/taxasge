@@ -48,6 +48,7 @@ class CompanyRepository:
                 employee_count, establishment_count,
                 address, phone, email, zone_id, city_id,
                 is_active, is_verified,
+                representante_legal,
                 created_at, updated_at
             )
             VALUES (
@@ -58,6 +59,7 @@ class CompanyRepository:
                 $15, $16,
                 $17, $18, $19, $20, $21,
                 $22, $23,
+                $24,
                 NOW(), NOW()
             )
             RETURNING *
@@ -75,6 +77,7 @@ class CompanyRepository:
             company.address, company.phone, company.email,
             company.zone_id, company.city_id,
             company.is_active, company.is_verified,
+            company.representante_legal,
         )
 
         # Add owner as member
