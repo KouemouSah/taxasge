@@ -12,7 +12,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import {
   ClipboardList, Clock, CheckCircle2, Search,
   ChevronLeft, ChevronRight, ChevronDown, RefreshCw, XCircle, DollarSign,
-  Building2, FileCheck, Eye, History,
+  Building2, FileCheck, Eye, History, AlertTriangle,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -157,6 +157,30 @@ export default function OMSAgentDashboardPage() {
       await omsQueueApi.rejectObligation(id, { reason })
       toast({ title: t('queue.rejected') })
       setDetailItem(null)
+      fetchAll()
+    } catch {
+      toast({ title: t('queue.error'), variant: 'destructive' })
+    }
+  }
+
+  const handleEscalate = async (item: AgentQueueItem) => {
+    const reason = window.prompt(t('queue.escalateReason', { defaultValue: 'Motivo de la escalación (min 10 caracteres):' }))
+    if (!reason || reason.length < 10) return
+    // Escalate the service_request linked to this obligation's license
+    try {
+      const { default: apiClient } = await import('@/core/api/client')
+      // Find the SR from the obligation's license
+      const licenseData = await apiClient.get(`/licenses/${item.license_id}`).then(r => r.data)
+      const srId = licenseData?.service_request_id
+      if (!srId) {
+        toast({ title: t('queue.error'), variant: 'destructive' })
+        return
+      }
+      await apiClient.post(`/agent/requests/${srId}/escalate`, {
+        reason,
+        level: 'medium',
+      })
+      toast({ title: t('queue.escalated', { defaultValue: 'Escalada enviada al supervisor' }) })
       fetchAll()
     } catch {
       toast({ title: t('queue.error'), variant: 'destructive' })
@@ -393,6 +417,10 @@ export default function OMSAgentDashboardPage() {
                             onClick={() => handleReject(item.id)}>
                             <XCircle className="h-3.5 w-3.5 text-red-500" />
                           </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.escalate', { defaultValue: 'Escalar' })}
+                            onClick={() => openDetail(item)}>
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -488,6 +516,10 @@ export default function OMSAgentDashboardPage() {
                                 onClick={() => handleReject(item.id)}>
                                 <XCircle className="h-3.5 w-3.5 text-red-500" />
                               </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.escalate', { defaultValue: 'Escalar' })}
+                                onClick={() => handleEscalate(item)}>
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -563,6 +595,10 @@ export default function OMSAgentDashboardPage() {
                     <Button size="sm" variant="destructive" className="h-8 text-xs gap-1"
                       onClick={() => handleReject(detailItem.id)}>
                       <XCircle className="h-3.5 w-3.5" /> {t('queue.reject')}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-amber-600 border-amber-300"
+                      onClick={() => handleEscalate(detailItem)}>
+                      <AlertTriangle className="h-3.5 w-3.5" /> {t('queue.escalate', { defaultValue: 'Escalar' })}
                     </Button>
                   </div>
                 </div>
