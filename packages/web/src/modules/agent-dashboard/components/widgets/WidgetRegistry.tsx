@@ -135,6 +135,18 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
     <OmsObligationsWidget variant="ministry" className={className} />
   ),
 
+  // OMS Supervisor widgets (supervisor_ayuntamiento, supervisor_camara, supervisor_min_*)
+  // These IDs are in roles.dashboard_config for supervisor roles.
+  oms_team_overview: ({ className }) => (
+    <OmsObligationsWidget variant="ministry" className={className} />
+  ),
+  oms_pending_escalations: ({ entityCode, className }) => (
+    <EscalationsWidget entityCode={entityCode} className={className} />
+  ),
+  oms_performance_stats: ({ className }) => (
+    <OmsObligationsWidget variant="completed" className={className} />
+  ),
+
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />
   ),
