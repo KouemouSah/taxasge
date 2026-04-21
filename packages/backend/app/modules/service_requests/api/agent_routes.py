@@ -1380,7 +1380,20 @@ async def make_decision(
         )
 
         appointment_info = None
-        if workflow_data and workflow_data['requires_appointment'] and not existing_cita:
+        if existing_cita:
+            # Citizen already booked — fetch existing appointment details from DB
+            cita_row = await db.fetchrow(
+                "SELECT cita_date, cita_time, cita_location FROM service_requests WHERE id = $1",
+                request_id
+            )
+            if cita_row and cita_row['cita_date']:
+                appointment_info = {
+                    "date": cita_row['cita_date'].isoformat(),
+                    "time": cita_row['cita_time'].isoformat() if cita_row.get('cita_time') else "",
+                    "location": cita_row.get('cita_location') or ""
+                }
+        elif workflow_data and workflow_data['requires_appointment']:
+            # No existing appointment — auto-reserve one
             try:
                 reservation = await appointment_scheduler.reserve_appointment(
                     db=db, service_request_id=request_id,
@@ -1697,9 +1710,26 @@ async def _bg_approve_pdf_and_notify(
                         form_data=form_data,
                     )
                     data_sections = workflow_obj.get_pdf_data_sections(ctx)
-                photo_url = form_data.get('photo_url') or form_data.get('foto_url')
             except Exception as e:
                 logger.warning(f"[bg_approve] Failed to build data_sections for {request_id}: {e}")
+
+            # ── Fetch citizen photo from uploaded documents (photo_carnet) ──
+            photo_url = None
+            try:
+                photo_codes = ("photo_carnet", "fotografias", "foto_carnet")
+                photo_doc = await db.fetchrow("""
+                    SELECT file_path FROM service_request_documents
+                    WHERE service_request_id = $1 AND document_code = ANY($2::text[])
+                    AND file_path IS NOT NULL
+                    LIMIT 1
+                """, request_id, list(photo_codes))
+                if photo_doc and photo_doc['file_path']:
+                    from app.modules.documents.services.firebase_storage_service import firebase_storage_service
+                    photo_url = await firebase_storage_service.get_signed_url(
+                        photo_doc['file_path'], expires_in=600
+                    )
+            except Exception as e:
+                logger.warning(f"[bg_approve] Failed to fetch photo for {request_id}: {e}")
 
             # ── Prepare documents list ──
             documents = []
