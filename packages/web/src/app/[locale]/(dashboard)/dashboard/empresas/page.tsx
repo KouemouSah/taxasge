@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
+import { exportToExcel } from '@/core/utils/export'
 import { useQuery } from '@tanstack/react-query'
 import { bundleWorkflowApi } from '@/modules/bundle-workflow/services/bundle-workflow-api'
 
@@ -59,6 +60,21 @@ export default function MisEmpresasPage() {
           <p className="text-sm text-muted-foreground mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!companies.length) return
+            exportToExcel(companies.map(item => ({
+              Empresa: item.company.legalName,
+              Registro: item.company.registrationNumber || item.company.nif || '',
+              Zona: item.company.zoneCode || '',
+              Ciudad: item.company.cityName || '',
+              Comercio: item.company.commerceType || '',
+              'Estado Licencia': item.licenseStatus || 'Sin licencia',
+              'Obl. Pendientes': item.pendingObligations || 0,
+              'Año Fiscal': item.fiscalYear,
+            })), { fileName: `mis_empresas_${new Date().toISOString().slice(0,10)}`, sheetName: 'Empresas' })
+          }} disabled={!companies.length}>
+            <Building2 className="h-4 w-4 mr-1" /> Excel
+          </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>

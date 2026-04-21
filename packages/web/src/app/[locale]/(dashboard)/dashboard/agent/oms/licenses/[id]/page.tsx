@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { exportToExcel } from '@/core/utils/export'
 import {
   ArrowLeft, Building2, FileCheck,
   CheckCircle2, Download, RefreshCw,
@@ -292,6 +293,19 @@ export default function LicenseDetailPage() {
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleDownloadPDF}>
               <Download className="h-3.5 w-3.5" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => {
+              if (!obligations.length) return
+              exportToExcel(obligations.map(ob => ({
+                Servicio: ob.service_name || ob.fee_type,
+                Entidad: ob.ministry_name || ob.fee_type || '',
+                Monto: ob.amount,
+                Penalidad: ob.penalty_amount || 0,
+                Vencimiento: ob.due_date || '',
+                Estado: ob.status,
+              })), { fileName: `licencia_${licenseId.slice(0, 8)}_obligaciones`, sheetName: 'Obligaciones' })
+            }}>
+              <FileCheck className="h-3.5 w-3.5" /> Excel
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setShowTimeline(!showTimeline)}>
               <History className="h-3.5 w-3.5" /> {showTimeline ? '—' : t('history')}
