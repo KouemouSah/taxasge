@@ -455,15 +455,33 @@ export default function LicenseDetailPage() {
                     <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${color}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{eventLabel(evt.eventType)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{eventLabel(evt.eventType)}</span>
+                          {evt.eventData?.source === "system_auto" && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700 border-green-200">
+                              Auto
+                            </Badge>
+                          )}
+                          {evt.eventData?.source === "admin" && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 border-orange-200">
+                              Admin
+                            </Badge>
+                          )}
+                          {evt.eventData?.source === "agent" && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700 border-blue-200">
+                              Agent
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground">
                           {new Date(evt.createdAt).toLocaleString(locale === "en" ? "en-US" : locale === "fr" ? "fr-FR" : "es-ES")}
                         </span>
                       </div>
-                      {evt.eventData && Object.keys(evt.eventData).length > 0 && (
-                        <pre className="text-xs text-muted-foreground mt-0.5 truncate max-w-[500px]">
-                          {JSON.stringify(evt.eventData)}
-                        </pre>
+                      {evt.eventData?.old_status && evt.eventData?.new_status && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {evt.eventData.old_status} → {evt.eventData.new_status}
+                          {evt.eventData.paid !== undefined && ` (${evt.eventData.paid}/${evt.eventData.total})`}
+                        </p>
                       )}
                     </div>
                   </div>

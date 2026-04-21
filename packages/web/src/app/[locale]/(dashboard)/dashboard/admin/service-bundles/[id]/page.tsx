@@ -39,6 +39,7 @@ export default function BundleDetailPage() {
   const [totalAmount, setTotalAmount] = useState<string>("0")
   const [feeTypeTotals, setFeeTypeTotals] = useState<FeeTypeTotals | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showCode, setShowCode] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -185,17 +186,25 @@ export default function BundleDetailPage() {
 
         {/* Pricing Tab */}
         <TabsContent value="pricing" className="space-y-3">
-          <div className="flex gap-1 flex-wrap">
-            {zones.map((zone) => (
-              <Button
-                key={zone.id}
-                variant={selectedZone === zone.id ? "default" : "outline"}
-                size="sm" className="h-7 text-xs"
-                onClick={() => setSelectedZone(zone.id)}
-              >
-                {zone.zoneCode}
-              </Button>
-            ))}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1 flex-wrap">
+              {zones.map((zone) => (
+                <Button
+                  key={zone.id}
+                  variant={selectedZone === zone.id ? "default" : "outline"}
+                  size="sm" className="h-7 text-xs"
+                  onClick={() => setSelectedZone(zone.id)}
+                >
+                  {zone.zoneCode}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="ghost" size="sm" className="h-7 text-xs"
+              onClick={() => setShowCode(!showCode)}
+            >
+              {showCode ? "Ocultar codigo" : "Mostrar codigo"}
+            </Button>
           </div>
 
           <Card>
@@ -203,7 +212,7 @@ export default function BundleDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">{t("serviceCode")}</TableHead>
+                    {showCode && <TableHead className="w-[80px]">{t("serviceCode")}</TableHead>}
                     <TableHead>{t("serviceName")}</TableHead>
                     <TableHead>{t("ministry")}</TableHead>
                     <TableHead className="w-[80px] text-center">{t("type")}</TableHead>
@@ -214,7 +223,7 @@ export default function BundleDetailPage() {
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-mono text-xs">{item.serviceCode}</TableCell>
+                      {showCode && <TableCell className="font-mono text-xs">{item.serviceCode}</TableCell>}
                       <TableCell className="text-sm">{item.serviceName}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{item.ministryName}</TableCell>
                       <TableCell className="text-center">

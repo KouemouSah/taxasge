@@ -101,7 +101,7 @@ async def get_agent_scope(
     For agents, queries OmsAgentService.resolve_agent_context() (1 SQL query).
     On unexpected DB errors, fails hard (500) to prevent data leaks.
     """
-    if current_user.role not in ("agent",):
+    if current_user.role not in ("agent", "supervisor"):
         return AgentScope.UNSCOPED
 
     try:
@@ -229,6 +229,81 @@ async def get_license_stats(
         processing_mode=scope.processing_mode,
     )
     return stats
+
+
+@router.get("/my-scope", response_model=LicenseListResponse)
+async def list_my_scope_licenses(
+    fiscal_year: Optional[int] = Query(None, ge=2020, le=2100),
+    status: Optional[LicenseStatus] = Query(None),
+    search: Optional[str] = Query(None, max_length=100),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("fiscal_service.view_bundles")),
+):
+    """Supervisor OMS: list licenses scoped to entity_location cities.
+
+    Uses agent_profiles.entity_id → entity_locations.city_id to filter
+    licenses by the supervisor's assigned cities. This ensures supervisors
+    only see licenses within their jurisdiction.
+    """
+    from app.modules.companies.repositories import CompanyRepository
+
+    # Resolve entity → city_ids
+    profile = await db.fetchrow(
+        "SELECT entity_id, is_supervisor FROM agent_profiles "
+        "WHERE user_id = $1 AND is_active = true",
+        UUID(current_user.id),
+    )
+    if not profile or not profile["entity_id"]:
+        return LicenseListResponse(items=[], total=0, page=page, page_size=page_size)
+
+    city_ids = await CompanyRepository().get_entity_city_ids(db, str(profile["entity_id"]))
+    if not city_ids:
+        return LicenseListResponse(items=[], total=0, page=page, page_size=page_size)
+
+    # Build scoped query
+    year = fiscal_year or __import__("datetime").date.today().year
+    conditions = ["cl.fiscal_year = $1", "c.city_id = ANY($2)"]
+    params: list = [year, city_ids]
+    idx = 3
+
+    if status:
+        conditions.append(f"cl.status = ${idx}")
+        params.append(status.value)
+        idx += 1
+    if search:
+        conditions.append(f"c.legal_name ILIKE ${idx}")
+        params.append(f"%{search}%")
+        idx += 1
+
+    where = " AND ".join(conditions)
+    total = await db.fetchval(
+        f"SELECT COUNT(*) FROM commercial_licenses cl "
+        f"JOIN companies c ON cl.company_id = c.id WHERE {where}",
+        *params,
+    )
+
+    offset = (page - 1) * page_size
+    rows = await db.fetch(
+        f"""SELECT cl.*, c.legal_name as company_name, c.commerce_type,
+                   c.nif, cz.zone_code
+            FROM commercial_licenses cl
+            JOIN companies c ON cl.company_id = c.id
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            WHERE {where}
+            ORDER BY cl.updated_at DESC
+            LIMIT ${idx} OFFSET ${idx + 1}""",
+        *params, page_size, offset,
+    )
+
+    return LicenseListResponse(
+        items=[LicenseResponse(**dict(r)) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/", response_model=LicenseListResponse)
@@ -655,3 +730,80 @@ async def download_license_pdf(
             "Content-Disposition": f'attachment; filename="license-{license_id}.pdf"',
         },
     )
+
+
+# ============================================================
+# Batch operations (admin only)
+# ============================================================
+
+@router.post("/admin/renew-batch")
+async def renew_batch(
+    fiscal_year: int = Query(..., ge=2020, le=2100, description="Target fiscal year"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("fiscal_service.manage_bundles")),
+):
+    """Batch-renew all complete licenses for a new fiscal year.
+
+    Finds all licenses with status='complete' for current year and creates
+    new dossiers for the target fiscal year. Skips if target year already exists.
+
+    Returns a report with success/skipped/failed counts.
+    """
+    from datetime import date as _date
+
+    current_year = _date.today().year
+    if fiscal_year <= current_year - 1:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Target year {fiscal_year} is too old. Must be >= {current_year}",
+        )
+
+    # Find all complete licenses for the previous year
+    source_year = fiscal_year - 1
+    candidates = await db.fetch(
+        "SELECT id, company_id, bundle_id FROM commercial_licenses "
+        "WHERE status = 'complete' AND fiscal_year = $1",
+        source_year,
+    )
+
+    results = {"renewed": 0, "skipped": 0, "failed": 0, "errors": []}
+
+    for lic in candidates:
+        # Check if target year already exists
+        dup = await db.fetchval(
+            "SELECT id FROM commercial_licenses "
+            "WHERE company_id = $1 AND bundle_id = $2 AND fiscal_year = $3",
+            lic["company_id"], lic["bundle_id"], fiscal_year,
+        )
+        if dup:
+            results["skipped"] += 1
+            continue
+
+        try:
+            async with db.transaction():
+                await LicenseService.renew_license(
+                    db, lic["id"], fiscal_year,
+                    user_id=UUID(current_user.id),
+                )
+            results["renewed"] += 1
+        except Exception as e:
+            results["failed"] += 1
+            results["errors"].append({
+                "license_id": str(lic["id"]),
+                "error": str(e),
+            })
+            logger.warning(f"Batch renew failed for {lic['id']}: {e}")
+
+    logger.info(
+        f"Batch renewal to {fiscal_year}: "
+        f"{results['renewed']} renewed, {results['skipped']} skipped, "
+        f"{results['failed']} failed (from {len(candidates)} candidates)"
+    )
+
+    return {
+        "fiscal_year": fiscal_year,
+        "source_year": source_year,
+        "candidates": len(candidates),
+        **results,
+    }
