@@ -477,10 +477,10 @@ export default function LicenseDetailPage() {
                           {new Date(evt.createdAt).toLocaleString(locale === "en" ? "en-US" : locale === "fr" ? "fr-FR" : "es-ES")}
                         </span>
                       </div>
-                      {evt.eventData?.old_status && evt.eventData?.new_status && (
+                      {Boolean(evt.eventData?.old_status) && Boolean(evt.eventData?.new_status) && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {String(evt.eventData.old_status)} → {String(evt.eventData.new_status)}
-                          {evt.eventData.paid !== undefined && ` (${String(evt.eventData.paid)}/${String(evt.eventData.total)})`}
+                          {String(evt.eventData!.old_status)} → {String(evt.eventData!.new_status)}
+                          {evt.eventData!.paid !== undefined && ` (${String(evt.eventData!.paid)}/${String(evt.eventData!.total)})`}
                         </p>
                       )}
                     </div>
