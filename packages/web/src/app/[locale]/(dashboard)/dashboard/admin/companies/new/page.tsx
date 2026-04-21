@@ -9,7 +9,7 @@
  * @route /[locale]/dashboard/admin/companies/new
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,12 +23,10 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
-  ArrowLeft, Building2, CheckCircle, Loader2, MapPin,
-  FileText, ChevronLeft, ChevronRight, Plus,
+  ArrowLeft, Building2, CheckCircle, Loader2,
+  FileText, Plus,
 } from 'lucide-react'
 import { companiesAdminApi } from '@/modules/companies/services/api'
-import { companyPublicApi } from '@/modules/companies/services/api'
-import type { PublicZone } from '@/modules/companies/types'
 
 const COMMERCE_TYPES = [
   { value: 'abaceria', label: 'Abacerias, Factorias y Comercio en General' },
