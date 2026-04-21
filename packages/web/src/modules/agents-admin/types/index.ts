@@ -315,6 +315,8 @@ export interface AgentListFilters {
   is_active?: boolean;
   availability?: AgentAvailability;
   search?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
   page?: number;
   page_size?: number;
 }

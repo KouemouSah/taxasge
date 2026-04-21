@@ -23,6 +23,8 @@
 import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import { useSortState } from '@/hooks/use-sort-state'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -133,6 +135,9 @@ export default function AssignmentsPage() {
   const locale = useLocale()
   const dateLocale = dateLocales[locale] || enUS
 
+  // Sort state
+  const [sort, handleSort, sortData] = useSortState()
+
   // State
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -181,6 +186,16 @@ export default function AssignmentsPage() {
       return true
     })
   }, [assignments, searchQuery, priorityFilter])
+
+  // Sort filtered assignments client-side
+  const sortedAssignments = sortData(filteredAssignments as unknown as Record<string, unknown>[], {
+    agent_name: 'string',
+    status: 'string',
+    priority_level: 'number',
+    assigned_at: 'date',
+    deadline: 'date',
+    item_type: 'string',
+  }) as unknown as typeof filteredAssignments
 
   // Selectable assignments (only those that can be modified)
   const selectableAssignments = useMemo(() => {
@@ -476,24 +491,24 @@ export default function AssignmentsPage() {
                       aria-label={t('selectAll') || 'Select all'}
                     />
                   </TableHead>
-                  <TableHead>{t('item') || 'Item'}</TableHead>
-                  <TableHead>{t('agent') || 'Agent'}</TableHead>
-                  <TableHead>{t('status') || 'Status'}</TableHead>
-                  <TableHead>{t('priority') || 'Priority'}</TableHead>
-                  <TableHead>{t('assignedAt') || 'Assigned'}</TableHead>
-                  <TableHead>{t('deadline') || 'Deadline'}</TableHead>
+                  <SortableHeader column="item_type" label={t('item') || 'Item'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="agent_name" label={t('agent') || 'Agent'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="status" label={t('status') || 'Status'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="priority_level" label={t('priority') || 'Priority'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="assigned_at" label={t('assignedAt') || 'Assigned'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="deadline" label={t('deadline') || 'Deadline'} sort={sort} onSort={handleSort} />
                   <TableHead className="text-right">{t('actions') || 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssignments.length === 0 ? (
+                {sortedAssignments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       {t('noAssignmentsFound') || 'No assignments found'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAssignments.map((assignment) => {
+                  sortedAssignments.map((assignment) => {
                     const statusInfo = statusConfig[assignment.status] || statusConfig.assigned
                     const priorityInfo = getPriorityConfig(assignment.priority_level)
                     const StatusIcon = statusInfo.icon

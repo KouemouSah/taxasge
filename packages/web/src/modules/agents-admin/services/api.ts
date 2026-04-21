@@ -167,6 +167,8 @@ export const agentProfilesApi = {
       if (filters.is_active !== undefined) params.append('is_active', String(filters.is_active));
       if (filters.availability) params.append('availability', filters.availability);
       if (filters.search) params.append('search', filters.search);
+      if (filters.sort_by) params.append('sort_by', filters.sort_by);
+      if (filters.sort_order) params.append('sort_order', filters.sort_order);
       if (filters.page) params.append('page', String(filters.page));
       if (filters.page_size) params.append('page_size', String(filters.page_size));
     }
