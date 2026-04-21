@@ -65,7 +65,6 @@ class CompanyRepository:
             RETURNING *
         """
         regimen = company.regimen_fiscal.value if company.regimen_fiscal else 'pendiente'
-        representante = getattr(company, 'representante_legal', None) or ''
         result = await conn.fetchrow(
             query,
             company.legal_name, company.tax_id, company.trade_name,
@@ -78,7 +77,7 @@ class CompanyRepository:
             company.address, company.phone, company.email,
             company.zone_id, company.city_id,
             company.is_active, company.is_verified,
-            representante,
+            company.representante_legal,
         )
 
         # Add owner as member

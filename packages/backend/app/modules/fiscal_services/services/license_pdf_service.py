@@ -279,6 +279,37 @@ class LicensePDFService:
         expected = LicensePDFService.generate_verification_token(license_id, amount)
         return hmac.compare_digest(expected, provided_token)
 
+    @staticmethod
+    def generate_certificate_token(
+        certificate_number: str, license_id: str, amount: str, fiscal_year: str
+    ) -> str:
+        """Generate HMAC-SHA256 token for certificate verification.
+
+        Stronger than license dossier token: includes certificate_number + fiscal_year
+        in the HMAC message. This prevents:
+        - Forging a certificate with a different number but same license_id
+        - Cross-year replay (using a 2025 token for a 2026 certificate)
+        - Amount tampering (amount is part of the message)
+
+        Token is 24 chars (96 bits) — stronger than the 16-char license token.
+        """
+        secret = _get_verification_secret()
+        message = f"cert-verify|{certificate_number}|{license_id}|{amount}|{fiscal_year}"
+        return hmac.new(
+            secret.encode(), message.encode(), hashlib.sha256
+        ).hexdigest()[:24]
+
+    @staticmethod
+    def verify_certificate_token(
+        certificate_number: str, license_id: str, amount: str,
+        fiscal_year: str, provided_token: str
+    ) -> bool:
+        """Verify HMAC token for certificate verification (timing-safe)."""
+        expected = LicensePDFService.generate_certificate_token(
+            certificate_number, license_id, amount, fiscal_year
+        )
+        return hmac.compare_digest(expected, provided_token)
+
     def _group_obligations_by_ministry(
         self, obligations_rows: list, texts: dict
     ) -> tuple:
@@ -572,6 +603,238 @@ class LicensePDFService:
         logger.info(
             f"Proforma PDF generated: {license_id} "
             f"(ref={payment_reference}, {len(pdf_bytes)} bytes)"
+        )
+        return pdf_bytes
+
+    # ================================================================
+    # Certificate — formal document for completed licenses
+    # ================================================================
+
+    # City code mapping for certificate numbering: CLC-2026-MLB-A2-00001
+    CITY_CODES = {
+        "Malabo": "MLB", "Bata": "BTA", "Oyala": "OYA", "Ebebiyin": "EBY",
+        "Mongomo": "MGM", "Evinayong": "EVY", "Luba": "LBA", "Baney": "BNY",
+        "Cogo": "CGO", "Mbini": "MBN", "Micomeseng": "MCM", "Niefang": "NFG",
+        "Nsork": "NSK", "Akurenam": "AKR", "Riaba": "RBA", "Anisok": "ANS",
+        "San Antonio de Pale": "SAP",
+    }
+
+    CERT_TRANSLATIONS = {
+        "es": {
+            "title": "CERTIFICADO DE LICENCIA COMERCIAL",
+            "republic": "República de Guinea Ecuatorial",
+            "system": "Sistema Facil — Gobierno Digital",
+            "validity": "Período de validez",
+            "company_section": "DATOS DE LA EMPRESA",
+            "company_name": "Razón Social",
+            "representative": "Representante Legal",
+            "registration": "N° Registro",
+            "forma_juridica": "Forma Jurídica",
+            "activity": "Actividad",
+            "commerce_type": "Tipo de Comercio",
+            "sector": "Sector",
+            "location_section": "UBICACIÓN",
+            "zone": "Zona Comercial",
+            "city": "Ciudad",
+            "province": "Provincia",
+            "fiscal_section": "RESUMEN FISCAL",
+            "total_obligations": "Total Obligaciones",
+            "total_paid": "Total Pagado",
+            "penalties": "Penalidades",
+            "balance": "Saldo",
+            "seal_text": "LICENCIA COMPLETADA",
+            "completed_on": "Fecha de cumplimiento:",
+            "issued_by": "Emitido digitalmente por el Sistema Facil — Gobierno de Guinea Ecuatorial",
+            "issued_date": "Fecha de emisión",
+            "verify": "Verificar",
+            "legal_text": "Este certificado acredita el cumplimiento de TODAS las obligaciones fiscales del Padrón Empresarial para el año fiscal indicado. Documento oficial con validez legal.",
+            "footer_line": "Certificado generado por Sistema Facil — Gobierno de Guinea Ecuatorial",
+        },
+        "fr": {
+            "title": "CERTIFICAT DE LICENCE COMMERCIALE",
+            "republic": "République de Guinée Équatoriale",
+            "system": "Système Facil — Gouvernement Numérique",
+            "validity": "Période de validité",
+            "company_section": "DONNÉES DE L'ENTREPRISE",
+            "company_name": "Raison Sociale",
+            "representative": "Représentant Légal",
+            "registration": "N° Registre",
+            "forma_juridica": "Forme Juridique",
+            "activity": "Activité",
+            "commerce_type": "Type de Commerce",
+            "sector": "Secteur",
+            "location_section": "LOCALISATION",
+            "zone": "Zone Commerciale",
+            "city": "Ville",
+            "province": "Province",
+            "fiscal_section": "RÉSUMÉ FISCAL",
+            "total_obligations": "Total Obligations",
+            "total_paid": "Total Payé",
+            "penalties": "Pénalités",
+            "balance": "Solde",
+            "seal_text": "LICENCE COMPLÉTÉE",
+            "completed_on": "Date de conformité :",
+            "issued_by": "Émis numériquement par le Système Facil — Gouvernement de Guinée Équatoriale",
+            "issued_date": "Date d'émission",
+            "verify": "Vérifier",
+            "legal_text": "Ce certificat atteste le respect de TOUTES les obligations fiscales du Registre des Entreprises pour l'exercice fiscal indiqué. Document officiel à valeur légale.",
+            "footer_line": "Certificat généré par Système Facil — Gouvernement de Guinée Équatoriale",
+        },
+        "en": {
+            "title": "COMMERCIAL LICENSE CERTIFICATE",
+            "republic": "Republic of Equatorial Guinea",
+            "system": "Facil System — Digital Government",
+            "validity": "Validity period",
+            "company_section": "COMPANY DATA",
+            "company_name": "Legal Name",
+            "representative": "Legal Representative",
+            "registration": "Registration No.",
+            "forma_juridica": "Legal Form",
+            "activity": "Activity",
+            "commerce_type": "Commerce Type",
+            "sector": "Sector",
+            "location_section": "LOCATION",
+            "zone": "Commercial Zone",
+            "city": "City",
+            "province": "Province",
+            "fiscal_section": "FISCAL SUMMARY",
+            "total_obligations": "Total Obligations",
+            "total_paid": "Total Paid",
+            "penalties": "Penalties",
+            "balance": "Balance",
+            "seal_text": "LICENSE COMPLETED",
+            "completed_on": "Completion date:",
+            "issued_by": "Digitally issued by the Facil System — Government of Equatorial Guinea",
+            "issued_date": "Issue date",
+            "verify": "Verify",
+            "legal_text": "This certificate attests compliance with ALL fiscal obligations of the Business Registry for the indicated fiscal year. Official document with legal validity.",
+            "footer_line": "Certificate generated by Facil System — Government of Equatorial Guinea",
+        },
+    }
+
+    def _generate_certificate_number(
+        self, fiscal_year: int, city_name: str, zone_code: str, license_id: str
+    ) -> str:
+        """Generate certificate number: CLC-2026-MLB-A2-00001."""
+        city_code = self.CITY_CODES.get(city_name, city_name[:3].upper() if city_name else "UNK")
+        # Sequence from license_id hash (deterministic, unique)
+        seq = int(license_id.replace("-", "")[:8], 16) % 99999 + 1
+        return f"CLC-{fiscal_year}-{city_code}-{zone_code or 'X'}-{seq:05d}"
+
+    async def generate_license_certificate(
+        self,
+        db: asyncpg.Connection,
+        license_id: str,
+        language: str = "es",
+    ) -> bytes:
+        """Generate formal license certificate PDF for completed licenses.
+
+        Only generates for licenses with status='complete'.
+        Uses a distinct template from the dossier (no disclaimer, formal seal).
+        """
+        if not XHTML2PDF_AVAILABLE:
+            raise RuntimeError("xhtml2pdf not installed")
+
+        from uuid import UUID
+
+        texts = self.CERT_TRANSLATIONS.get(language, self.CERT_TRANSLATIONS["es"])
+
+        # Fetch license + company + owner
+        row = await db.fetchrow("""
+            SELECT cl.*, c.legal_name, c.nif, c.registration_number,
+                   c.forma_juridica, c.regimen_fiscal, c.objeto_social,
+                   c.commerce_type, c.sector_actividad, c.representante_legal,
+                   ct.name AS city_name, ct.provincia, cz.zone_code
+            FROM commercial_licenses cl
+            JOIN companies c ON cl.company_id = c.id
+            LEFT JOIN cities ct ON cl.city_id = ct.id
+            LEFT JOIN commerce_zones cz ON cl.zone_id = cz.id
+            WHERE cl.id = $1
+        """, UUID(license_id))
+
+        if not row:
+            raise ValueError(f"License {license_id} not found")
+
+        if row["status"] != "complete":
+            raise ValueError(
+                f"License {license_id} is not complete (status={row['status']}). "
+                f"Certificate can only be generated for completed licenses."
+            )
+
+        lic = dict(row)
+        certificate_number = self._generate_certificate_number(
+            lic["fiscal_year"],
+            lic.get("city_name", ""),
+            lic.get("zone_code", ""),
+            license_id,
+        )
+
+        # QR verification — certificate-specific HMAC includes certificate_number + fiscal_year
+        # to prevent forgery (different from license dossier token which only uses license_id + amount)
+        from app.config import get_settings
+        app_settings = get_settings()
+        frontend_url = getattr(app_settings, 'FRONTEND_URL', 'https://facil.gq')
+        token = self.generate_certificate_token(
+            certificate_number, license_id,
+            str(lic.get("total_amount", 0)), str(lic.get("fiscal_year", "")),
+        )
+        verification_url = f"{frontend_url}/verify/{certificate_number}?t={token}&lid={license_id}"
+        qr_base64 = self._generate_qr(verification_url)
+
+        # Render
+        cert_template = self._env.get_template("license_certificate.html") if self._env else None
+        if not cert_template:
+            raise RuntimeError("Certificate template not found")
+
+        completion_date = ""
+        if lic.get("completed_at"):
+            try:
+                from datetime import datetime as dt
+                completed = lic["completed_at"]
+                if isinstance(completed, str):
+                    completed = dt.fromisoformat(completed)
+                completion_date = completed.strftime("%d/%m/%Y %H:%M")
+            except Exception:
+                completion_date = str(lic.get("completed_at", ""))
+
+        html = cert_template.render(
+            texts=texts,
+            language=language,
+            logo_base64=self._get_logo_base64(),
+            certificate_number=certificate_number,
+            fiscal_year=lic.get("fiscal_year", ""),
+            print_date=datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+            completion_date=completion_date,
+            company={
+                "legal_name": lic.get("legal_name", ""),
+                "representante_legal": lic.get("representante_legal", ""),
+                "registration_number": lic.get("registration_number"),
+                "nif": lic.get("nif"),
+                "forma_juridica": lic.get("forma_juridica"),
+                "objeto_social": lic.get("objeto_social"),
+                "commerce_type": lic.get("commerce_type"),
+                "sector_actividad": lic.get("sector_actividad"),
+                "zone_code": lic.get("zone_code"),
+                "city_name": lic.get("city_name"),
+                "provincia": lic.get("provincia"),
+            },
+            total_amount=_format_amount(lic.get("total_amount")),
+            paid_amount=_format_amount(lic.get("amount_paid")),
+            penalty_amount=_format_amount(lic.get("penalty_amount")),
+            qr_base64=qr_base64,
+            verification_url=verification_url,
+        )
+
+        # HTML → PDF
+        result = io.BytesIO()
+        pisa_status = pisa.CreatePDF(io.BytesIO(html.encode("utf-8")), dest=result)
+        if pisa_status.err:
+            raise RuntimeError(f"Certificate PDF generation failed: {pisa_status.err}")
+
+        pdf_bytes = result.getvalue()
+        logger.info(
+            f"License certificate generated: {certificate_number} "
+            f"({len(pdf_bytes)} bytes)"
         )
         return pdf_bytes
 

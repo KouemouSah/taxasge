@@ -139,6 +139,7 @@ class BundleWorkflowService:
             SELECT c.id, c.legal_name, c.nif, c.registration_number,
                    c.regimen_fiscal, c.commerce_type, c.objeto_social,
                    c.forma_juridica, c.is_active, c.is_verified,
+                   c.representante_legal,
                    cz.zone_code, ct.name as city_name,
                    cl.id as license_id, cl.status as license_status,
                    cl.fiscal_year, cl.total_amount, cl.amount_paid,
@@ -241,6 +242,7 @@ class BundleWorkflowService:
                 "forma_juridica": row["forma_juridica"],
                 "is_active": row["is_active"],
                 "is_verified": row["is_verified"],
+                "representante_legal": row["representante_legal"],
                 "zone_code": row["zone_code"],
                 "city_name": row["city_name"],
             },
@@ -674,6 +676,7 @@ class BundleWorkflowService:
             forma_juridica=company_data.get("forma_juridica", "autonomo"),
             sector_actividad=company_data.get("sector_actividad"),
             objeto_social=company_data.get("objeto_social"),
+            representante_legal=company_data.get("representante_legal"),
             address=company_data.get("direccion"),
             phone=company_data.get("telefono"),
         )

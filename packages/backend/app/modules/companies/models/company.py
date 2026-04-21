@@ -45,6 +45,9 @@ class CompanyBase(BaseModel):
     registration_number: Optional[str] = Field(None, max_length=30)
     registration_date: Optional[date] = None
 
+    # Legal representative (from OCR empresa.representante_legal) — REQUIRED
+    representante_legal: str = Field(..., min_length=2, max_length=255)
+
     # Activity (from OCR actividad section)
     sector_actividad: Optional[str] = Field(None, max_length=50)
     subsector_actividad: Optional[str] = Field(None, max_length=100)

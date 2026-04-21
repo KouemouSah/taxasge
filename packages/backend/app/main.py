@@ -182,10 +182,10 @@ async def lifespan(app: FastAPI):
                             )
                             doc_type = "proforma"
                         else:
-                            pdf_bytes = await license_pdf_service.generate_license_pdf(
+                            pdf_bytes = await license_pdf_service.generate_license_certificate(
                                 conn, license_id,
                             )
-                            doc_type = "license_final"
+                            doc_type = "certificate"
 
                     # Store in Firebase (best-effort)
                     try:
