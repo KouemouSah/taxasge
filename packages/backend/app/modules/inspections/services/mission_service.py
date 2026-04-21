@@ -319,6 +319,29 @@ class MissionService:
                 "Some agents do not belong to this entity or are inactive"
             )
 
+        # Check for scheduling conflicts (agent already on another mission same day)
+        mission_date = mission["mission_date"]
+        conflicts = await conn.fetch("""
+            SELECT fma.agent_id, fm.title, fm.id AS conflict_mission_id
+            FROM field_mission_agents fma
+            JOIN field_missions fm ON fm.id = fma.mission_id
+            WHERE fma.agent_id = ANY($1::uuid[])
+              AND fm.mission_date = $2
+              AND fm.status IN ('planned', 'in_progress')
+              AND fm.id != $3
+        """, agent_ids, mission_date, mission_id)
+
+        if conflicts:
+            conflict_names = [
+                f"{c['agent_id']} (mission: {c['title'] or str(c['conflict_mission_id'])[:8]})"
+                for c in conflicts
+            ]
+            raise ValueError(
+                f"Scheduling conflict: {len(conflicts)} agent(s) already "
+                f"assigned to another mission on {mission_date}: "
+                + ", ".join(conflict_names)
+            )
+
         # Check max agents from system_rules
         max_agents_rule = await conn.fetchval("""
             SELECT rule_value FROM system_rules
@@ -407,6 +430,88 @@ class MissionService:
             )
 
         return success
+
+    # ============================================================
+    # AGENT STATUS
+    # ============================================================
+
+    VALID_AGENT_TRANSITIONS = {
+        "assigned": {"active", "absent"},
+        "active": {"absent", "completed"},
+        "absent": {"assigned"},
+        "completed": set(),
+    }
+
+    @staticmethod
+    async def update_agent_status(
+        conn, user_id: UUID, mission_id: UUID, agent_id: UUID,
+        new_status: str, reason: Optional[str] = None,
+    ) -> Dict:
+        """Update an agent's status within a mission (supervisor only)."""
+        ctx = await InspectionService.resolve_inspector_context(conn, user_id)
+
+        if not ctx["is_supervisor"]:
+            raise ValueError("Only supervisors can update agent status")
+
+        mission = await MissionRepository.get_by_id(conn, mission_id)
+        if not mission:
+            raise ValueError(f"Mission {mission_id} not found")
+
+        if mission["entity_id"] != ctx["entity_id"]:
+            raise ValueError("Cannot modify another entity's mission")
+
+        if mission["status"] not in ("planned", "in_progress"):
+            raise ValueError(
+                f"Cannot update agents in mission status '{mission['status']}'"
+            )
+
+        # Fetch current agent status
+        agent_row = await conn.fetchrow("""
+            SELECT id, status, notes FROM field_mission_agents
+            WHERE mission_id = $1 AND agent_id = $2
+        """, mission_id, agent_id)
+
+        if not agent_row:
+            raise ValueError(f"Agent {agent_id} not found in mission {mission_id}")
+
+        current = agent_row["status"]
+        allowed = MissionService.VALID_AGENT_TRANSITIONS.get(current, set())
+        if new_status not in allowed:
+            raise ValueError(
+                f"Invalid agent status transition: '{current}' -> '{new_status}'. "
+                f"Allowed: {allowed or 'none'}"
+            )
+
+        updates = {"status": new_status}
+        if new_status == "active":
+            updates["started_at"] = datetime.now(timezone.utc)
+        elif new_status == "absent" and reason:
+            existing_notes = (agent_row["notes"] or "").strip()
+            updates["notes"] = (
+                f"{existing_notes}\n[Absent] {reason}".strip()
+                if existing_notes
+                else f"[Absent] {reason}"
+            )[:2000]
+
+        set_clauses = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates.keys()))
+        values = list(updates.values())
+        await conn.execute(
+            f"UPDATE field_mission_agents SET {set_clauses} "
+            f"WHERE id = $1",
+            agent_row["id"], *values,
+        )
+
+        await _log_audit(
+            conn, user_id, "mission.agent_status_changed", "field_mission",
+            str(mission_id), {
+                "agent_id": str(agent_id),
+                "from": current,
+                "to": new_status,
+                "reason": reason,
+            },
+        )
+
+        return {"agent_id": str(agent_id), "status": new_status}
 
     # ============================================================
     # PLANNING HELPERS

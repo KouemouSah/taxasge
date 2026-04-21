@@ -24,6 +24,7 @@ from app.modules.inspections.models.mission import (
     MissionUpdate,
     MissionAgentBatchAssign,
     MissionCompleteRequest,
+    AgentStatusUpdate,
     MissionResponse,
     MissionListResponse,
     MissionListItem,
@@ -217,6 +218,28 @@ async def complete_mission(
             result = await MissionService.complete_mission(
                 db, UUID(current_user.id), mission_id,
                 notes=data.notes,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
+
+
+@router.put("/{mission_id}/agents/{agent_id}/status")
+async def update_agent_mission_status(
+    mission_id: UUID,
+    agent_id: UUID,
+    data: AgentStatusUpdate,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Update an agent's status within a mission (absent, active, etc.)."""
+    try:
+        async with db.transaction():
+            result = await MissionService.update_agent_status(
+                db, UUID(current_user.id), mission_id, agent_id,
+                new_status=data.status.value,
+                reason=data.reason,
             )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

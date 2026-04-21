@@ -74,6 +74,12 @@ class MissionCompleteRequest(BaseModel):
     notes: Optional[str] = Field(None, max_length=2000)
 
 
+class AgentStatusUpdate(BaseModel):
+    """Update agent status within a mission."""
+    status: MissionAgentStatus
+    reason: Optional[str] = Field(None, max_length=500)
+
+
 # ============================================================
 # Response Models
 # ============================================================
