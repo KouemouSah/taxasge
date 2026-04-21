@@ -424,6 +424,9 @@ class Settings(BaseSettings):
     ANOMALY_CAPACITY_REDUCTION_STEP: int = Field(default=5, env="ANOMALY_CAPACITY_REDUCTION_STEP")
     ANOMALY_UNDERPERFORMER_PENALTY: float = Field(default=0.5, env="ANOMALY_UNDERPERFORMER_PENALTY")
 
+    # Penalty system — disabled by default, enable with PENALTIES_ENABLED=true
+    PENALTIES_ENABLED: bool = Field(default=False, env="PENALTIES_ENABLED")
+
     # Auto-rebalancing
     REBALANCE_OVERLOAD_OFFSET: float = Field(default=1.0, env="REBALANCE_OVERLOAD_OFFSET")
     REBALANCE_UNDERLOAD_OFFSET: float = Field(default=0.5, env="REBALANCE_UNDERLOAD_OFFSET")
