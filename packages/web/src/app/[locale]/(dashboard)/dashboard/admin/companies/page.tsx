@@ -19,7 +19,7 @@ import {
   ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, TrendingUp,
   ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, Download, Brain,
   Briefcase, MapPin, FileText, List, Columns3, X, SlidersHorizontal, Star, Save,
-  MoreHorizontal, ExternalLink, FolderSearch,
+  MoreHorizontal, ExternalLink, FolderSearch, Plus,
 } from "lucide-react"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -612,6 +612,13 @@ export default function AdminCompaniesPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => router.push(`/${locale}/dashboard/admin/companies/new`)}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Nueva Empresa
+          </Button>
           {viewMode === 'kanban' && (
             <Select value={kanbanGroupBy} onValueChange={(v) => setKanbanGroupBy(v as KanbanGroupBy)}>
               <SelectTrigger className="w-[130px] h-8 text-xs">

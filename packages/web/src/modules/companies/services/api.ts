@@ -131,6 +131,34 @@ export const companiesAdminApi = {
 
   classify: (id: string) =>
     post<CompanyClassifyResult>(`/admin/${id}/classify`),
+
+  createWithLicense: (data: {
+    legalName: string
+    commerceType: string
+    zoneCode: string
+    representanteLegal: string
+    nif?: string
+    registrationNumber?: string
+    formaJuridica?: string
+    sectorActividad?: string
+    subsectorActividad?: string
+    objetoSocial?: string
+    address?: string
+    phone?: string
+    email?: string
+    employeeCount?: number
+    cityName?: string
+  }) => post<{
+    company_id: string
+    company_name: string
+    license_id: string
+    license_status: string
+    obligations_count: number
+    total_amount: number
+    zone_code: string
+    fiscal_year: number
+    source: string
+  }>('/admin/create-with-license', data),
 }
 
 // ========== Supervisor API (entity-scoped) ==========

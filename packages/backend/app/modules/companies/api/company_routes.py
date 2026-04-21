@@ -18,6 +18,7 @@ from app.modules.companies.models import (
     CompanyAdminResponse, CompanyAdminListResponse,
     CompanyStatsResponse, CompanySearchResult, CompanyVerifyRequest,
     CompanyClassifyResponse,
+    AdminCompanyCreateRequest, AdminCompanyCreateResponse,
 )
 from app.modules.companies.repositories import CompanyRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -151,6 +152,159 @@ async def admin_classify_company(
         regimen_fiscal=result.regimen_fiscal,
         confidence=result.confidence,
         reason=result.reason,
+    )
+
+
+@router.post("/admin/create-with-license", response_model=AdminCompanyCreateResponse,
+              status_code=status.HTTP_201_CREATED)
+async def admin_create_company_with_license(
+    data: AdminCompanyCreateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("company.manage")),
+):
+    """Create company manually + auto-generate licence and obligations.
+
+    Flow (single transaction):
+    1. Validate zone_code → zone_id
+    2. Validate commerce_type → bundle exists
+    3. Check NIF/registration_number uniqueness
+    4. Create company (regimen_fiscal = 'bundle')
+    5. Open licence for current fiscal year
+    6. Auto-generate obligations from bundle items × zone
+
+    Source tagged as 'admin_manual' for audit trail.
+    """
+    from datetime import date as _date
+    from app.modules.fiscal_services.services.license_service import LicenseService
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    fiscal_year = _date.today().year
+
+    async with db.transaction():
+        # 1. Resolve zone_code → zone_id
+        zone_row = await db.fetchrow(
+            "SELECT id, zone_code, zone_tier FROM commerce_zones WHERE zone_code = $1",
+            data.zone_code.upper(),
+        )
+        if not zone_row:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Zone '{data.zone_code}' not found. Valid: A1-A3, B1-B3, C1-C3, D1-D3",
+            )
+        zone_id = zone_row["id"]
+
+        # 2. Resolve commerce_type → bundle
+        bundle_row = await db.fetchrow(
+            "SELECT id, commerce_type, name_es, processing_mode "
+            "FROM service_bundles WHERE commerce_type = $1 AND is_active = true",
+            data.commerce_type.lower(),
+        )
+        if not bundle_row:
+            valid_types = await db.fetch(
+                "SELECT commerce_type FROM service_bundles WHERE is_active = true ORDER BY commerce_type"
+            )
+            valid_list = ", ".join(r["commerce_type"] for r in valid_types)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Commerce type '{data.commerce_type}' not found. Valid: {valid_list}",
+            )
+        bundle_id = bundle_row["id"]
+
+        # 3. Check uniqueness (NIF or registration_number)
+        if data.nif:
+            dup = await db.fetchval(
+                "SELECT id FROM companies WHERE nif = $1", data.nif,
+            )
+            if dup:
+                raise HTTPException(status_code=409, detail=f"NIF '{data.nif}' already exists")
+        if data.registration_number:
+            dup = await db.fetchval(
+                "SELECT id FROM companies WHERE registration_number = $1",
+                data.registration_number,
+            )
+            if dup:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Registration number '{data.registration_number}' already exists",
+                )
+
+        # 4. Resolve city (optional)
+        city_id = None
+        if data.city_name:
+            city_row = await db.fetchrow(
+                "SELECT id FROM cities WHERE name ILIKE $1 LIMIT 1",
+                data.city_name.strip(),
+            )
+            if city_row:
+                city_id = city_row["id"]
+
+        # 5. Create company
+        tax_id = data.nif or data.registration_number or f"ADMIN-{_date.today().isoformat()}"
+        company_data = CompanyCreate(
+            legal_name=data.legal_name,
+            tax_id=tax_id,
+            nif=data.nif,
+            registration_number=data.registration_number,
+            forma_juridica=data.forma_juridica,
+            sector_actividad=data.sector_actividad,
+            subsector_actividad=data.subsector_actividad,
+            objeto_social=data.objeto_social,
+            commerce_type=data.commerce_type.lower(),
+            regimen_fiscal="bundle",
+            representante_legal=data.representante_legal,
+            address=data.address,
+            phone=data.phone,
+            email=data.email,
+            employee_count=data.employee_count,
+            zone_id=zone_id,
+            city_id=city_id,
+            is_active=True,
+            is_verified=False,
+        )
+
+        company_result = await company_repository.create(db, company_data, user_id)
+        company_id = company_result["id"]
+
+        logger.info(
+            f"Admin {user_id} created company {company_id} "
+            f"({data.legal_name}, {data.commerce_type}, zone={data.zone_code})"
+        )
+
+        # 6. Open licence → auto-generates obligations
+        license_data = {
+            "company_id": company_id,
+            "bundle_id": bundle_id,
+            "zone_id": zone_id,
+            "city_id": city_id,
+            "fiscal_year": fiscal_year,
+            "source": "admin_manual",
+        }
+        license_result = await LicenseService.open_license(
+            conn=db,
+            data=license_data,
+            user_id=user_id,
+        )
+
+        license_id = str(license_result["license"]["id"])
+        obligations_count = license_result["license"].get("obligations_total", 0)
+        total_amount = float(license_result["license"].get("total_amount", 0))
+
+        logger.info(
+            f"Admin created licence {license_id} for company {company_id}: "
+            f"{obligations_count} obligations, {total_amount} XAF"
+        )
+
+    return AdminCompanyCreateResponse(
+        company_id=str(company_id),
+        company_name=data.legal_name,
+        license_id=license_id,
+        license_status="open",
+        obligations_count=obligations_count,
+        total_amount=total_amount,
+        zone_code=data.zone_code.upper(),
+        fiscal_year=fiscal_year,
+        source="admin_manual",
     )
 
 

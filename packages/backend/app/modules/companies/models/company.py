@@ -58,6 +58,9 @@ class CompanyBase(BaseModel):
     employee_count: Optional[int] = Field(None, ge=0)
     establishment_count: Optional[int] = Field(None, ge=0)
 
+    # Representative
+    representante_legal: Optional[str] = Field(None, max_length=255)
+
     # Location
     address: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=20)
@@ -73,6 +76,48 @@ class CompanyBase(BaseModel):
 class CompanyCreate(CompanyBase):
     """Create company schema."""
     pass
+
+
+class AdminCompanyCreateRequest(BaseModel):
+    """Admin company creation with auto-licence generation.
+
+    The admin provides structured data (no OCR needed). The system
+    auto-resolves zone, creates the company, and generates the licence
+    with all obligations for the current fiscal year.
+    """
+    # Required
+    legal_name: str = Field(..., min_length=2, max_length=255)
+    commerce_type: str = Field(..., max_length=50, description="Must match a service_bundles.commerce_type")
+    zone_code: str = Field(..., max_length=5, description="Commerce zone code (A1, B2, C3, etc.)")
+    representante_legal: str = Field(..., min_length=2, max_length=255, description="Legal representative full name")
+
+    # Identification (at least one required)
+    nif: Optional[str] = Field(None, max_length=20)
+    registration_number: Optional[str] = Field(None, max_length=30, description="PE-XXXX format for autonomos")
+
+    # Optional details
+    forma_juridica: Optional[str] = Field(None, max_length=50)
+    sector_actividad: Optional[str] = Field(None, max_length=50)
+    subsector_actividad: Optional[str] = Field(None, max_length=100)
+    objeto_social: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    email: Optional[EmailStr] = None
+    employee_count: Optional[int] = Field(None, ge=0)
+    city_name: Optional[str] = Field(None, max_length=100, description="City name for auto-resolution")
+
+
+class AdminCompanyCreateResponse(BaseModel):
+    """Response for admin company creation."""
+    company_id: str
+    company_name: str
+    license_id: str
+    license_status: str
+    obligations_count: int
+    total_amount: float
+    zone_code: str
+    fiscal_year: int
+    source: str = "admin_manual"
 
 
 class CompanyUpdate(BaseModel):
