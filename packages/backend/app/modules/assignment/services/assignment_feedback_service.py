@@ -151,7 +151,7 @@ class AssignmentFeedbackService:
             UPDATE agent_workloads SET
                 success_rate = COALESCE(agg.global_success_rate, 0),
                 avg_processing_time_hours = COALESCE(agg.global_avg_hours, 0),
-                updated_at = NOW()
+                last_updated_at = NOW()
             FROM (
                 SELECT
                     agent_profile_id,

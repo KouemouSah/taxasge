@@ -1398,48 +1398,53 @@ async def make_decision(
         # For workflows where appointment+payment happen BEFORE agent validation
         # (e.g. CONDUCIR with appointment inversion), DOSSIER_VALIDE is not the
         # citizen-facing final state. Advance to reflect reality.
+        # Wrapped in transaction with FOR UPDATE to prevent race conditions.
         try:
-            advance_data = await db.fetchrow("""
-                SELECT
-                    EXISTS(SELECT 1 FROM service_payments
-                           WHERE service_request_id = $1
-                             AND workflow_status IN ('completed', 'approved_by_agent')
-                    ) AS has_payment,
-                    (sr.cita_date IS NOT NULL) AS has_cita,
-                    sr.status
-                FROM service_requests sr WHERE sr.id = $1
-            """, request_id)
-            if advance_data and advance_data['has_payment'] and advance_data['has_cita']:
-                await db.execute("""
-                    UPDATE service_requests
-                    SET status = 'CITA_SCHEDULED', updated_at = NOW()
-                    WHERE id = $1 AND status = 'DOSSIER_VALIDE'
+            async with db.transaction():
+                advance_data = await db.fetchrow("""
+                    SELECT
+                        EXISTS(SELECT 1 FROM service_payments
+                               WHERE service_request_id = $1
+                                 AND workflow_status IN ('completed', 'approved_by_agent')
+                        ) AS has_payment,
+                        (sr.cita_date IS NOT NULL) AS has_cita,
+                        sr.status::text AS status
+                    FROM service_requests sr
+                    WHERE sr.id = $1
+                    FOR UPDATE
                 """, request_id)
-                await db.execute("""
-                    INSERT INTO service_request_history
-                    (service_request_id, action, previous_status, new_status, performed_by, comment)
-                    VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'CITA_SCHEDULED', $2,
-                            'Auto-advance: payment completed and appointment scheduled')
-                """, request_id, current_user.id)
-                new_status = "CITA_SCHEDULED"
-                logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to CITA_SCHEDULED")
-            elif advance_data and advance_data['has_payment'] and not advance_data['has_cita']:
-                # Payment done but no cita needed or not yet scheduled
-                wf_needs_cita = workflow_data and workflow_data.get('requires_appointment')
-                if not wf_needs_cita:
-                    await db.execute("""
-                        UPDATE service_requests
-                        SET status = 'IN_PROGRESS', updated_at = NOW()
-                        WHERE id = $1 AND status = 'DOSSIER_VALIDE'
-                    """, request_id)
-                    await db.execute("""
-                        INSERT INTO service_request_history
-                        (service_request_id, action, previous_status, new_status, performed_by, comment)
-                        VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'IN_PROGRESS', $2,
-                                'Auto-advance: payment completed, no appointment required')
-                    """, request_id, current_user.id)
-                    new_status = "IN_PROGRESS"
-                    logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to IN_PROGRESS")
+                if advance_data and advance_data['status'] == 'DOSSIER_VALIDE':
+                    if advance_data['has_payment'] and advance_data['has_cita']:
+                        await db.execute("""
+                            UPDATE service_requests
+                            SET status = 'CITA_SCHEDULED', updated_at = NOW()
+                            WHERE id = $1 AND status::text = 'DOSSIER_VALIDE'
+                        """, request_id)
+                        await db.execute("""
+                            INSERT INTO service_request_history
+                            (service_request_id, action, previous_status, new_status, performed_by, comment)
+                            VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'CITA_SCHEDULED', $2,
+                                    'Auto-advance: payment completed and appointment scheduled')
+                        """, request_id, current_user.id)
+                        new_status = "CITA_SCHEDULED"
+                        logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to CITA_SCHEDULED")
+                    elif advance_data['has_payment'] and not advance_data['has_cita']:
+                        # Payment done but no cita needed or not yet scheduled
+                        wf_needs_cita = workflow_data and workflow_data.get('requires_appointment')
+                        if not wf_needs_cita:
+                            await db.execute("""
+                                UPDATE service_requests
+                                SET status = 'IN_PROGRESS', updated_at = NOW()
+                                WHERE id = $1 AND status::text = 'DOSSIER_VALIDE'
+                            """, request_id)
+                            await db.execute("""
+                                INSERT INTO service_request_history
+                                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                                VALUES ($1, 'status_change', 'DOSSIER_VALIDE', 'IN_PROGRESS', $2,
+                                        'Auto-advance: payment completed, no appointment required')
+                            """, request_id, current_user.id)
+                            new_status = "IN_PROGRESS"
+                            logger.info(f"Auto-advanced {request_ref} from DOSSIER_VALIDE to IN_PROGRESS")
         except Exception as e:
             logger.warning(f"Auto-advance check failed for {request_ref}: {e}")
 
@@ -1458,6 +1463,7 @@ async def make_decision(
             agent_name=agent_name,
             agent_id_str=agent_id_str,
             batch_id=batch_id,
+            requires_appointment=bool(workflow_data and workflow_data.get('requires_appointment')),
         )
 
         return {
@@ -1622,6 +1628,7 @@ async def _bg_approve_pdf_and_notify(
     agent_name: str,
     agent_id_str: str,
     batch_id: Optional[UUID],
+    requires_appointment: bool = False,
 ):
     """Background: generate validation PDF, send notification, check batch."""
     pool = await get_db_pool()
@@ -1635,31 +1642,30 @@ async def _bg_approve_pdf_and_notify(
                 except (json.JSONDecodeError, TypeError):
                     form_data = {}
 
-            user_info, docs_rows, tariff_row, agent_entity_row = await asyncio.gather(
-                db.fetchrow(
-                    "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
-                    user_id
-                ),
-                db.fetch("""
-                    SELECT COALESCE(dt.document_name_es, srd.document_name, srd.document_code) as doc_name,
-                           srd.is_valid
-                    FROM service_request_documents srd
-                    LEFT JOIN document_templates dt ON dt.template_code = srd.document_code
-                    WHERE srd.service_request_id = $1
-                """, request_id),
-                db.fetchrow("""
-                    SELECT total_amount, workflow_status, payment_method
-                    FROM service_payments
-                    WHERE service_request_id = $1
-                    ORDER BY created_at DESC LIMIT 1
-                """, request_id),
-                db.fetchrow("""
-                    SELECT el.location_name FROM entity_locations el
-                    JOIN agent_profiles ap ON ap.entity_location_id = el.id
-                    WHERE ap.user_id = $1 AND ap.is_active = true
-                    LIMIT 1
-                """, UUID(agent_id_str)),
+            # Sequential queries — asyncpg forbids concurrent ops on a single connection
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                user_id
             )
+            docs_rows = await db.fetch("""
+                SELECT COALESCE(dt.document_name_es, srd.document_name, srd.document_code) as doc_name,
+                       srd.is_valid
+                FROM service_request_documents srd
+                LEFT JOIN document_templates dt ON dt.template_code = srd.document_code
+                WHERE srd.service_request_id = $1
+            """, request_id)
+            tariff_row = await db.fetchrow("""
+                SELECT total_amount, workflow_status, payment_method
+                FROM service_payments
+                WHERE service_request_id = $1
+                ORDER BY created_at DESC LIMIT 1
+            """, request_id)
+            agent_entity_row = await db.fetchrow("""
+                SELECT el.location_name FROM entity_locations el
+                JOIN agent_profiles ap ON ap.entity_location_id = el.id
+                WHERE ap.user_id = $1 AND ap.is_active = true
+                LIMIT 1
+            """, UUID(agent_id_str))
 
             if not user_info:
                 logger.warning(f"[bg_approve] User {user_id} not found for SR {request_id}")
@@ -1746,19 +1752,18 @@ async def _bg_approve_pdf_and_notify(
                 logger.warning(f"[bg_approve] PDF generation failed for {request_id}: {e}")
 
             # ── Build next_steps message for citizen notification ──
-            # Fetch current SR status (may have been auto-advanced)
-            current_sr_status = await db.fetchval(
-                "SELECT status FROM service_requests WHERE id = $1", request_id
-            ) or "DOSSIER_VALIDE"
-            sr_cita = await db.fetchrow(
-                "SELECT cita_date, cita_time FROM service_requests WHERE id = $1", request_id
+            # Single query: fetch current SR status + cita (may have been auto-advanced)
+            sr_state = await db.fetchrow(
+                "SELECT status::text, cita_date, cita_time FROM service_requests WHERE id = $1",
+                request_id
             )
+            current_sr_status = sr_state['status'] if sr_state else "DOSSIER_VALIDE"
 
             next_steps_es = ""
             next_steps_fr = ""
-            if current_sr_status == "CITA_SCHEDULED" and sr_cita and sr_cita['cita_date']:
-                cita_str = sr_cita['cita_date'].strftime("%d/%m/%Y")
-                hora_str = sr_cita['cita_time'].strftime("%H:%M") if sr_cita.get('cita_time') else ""
+            if current_sr_status == "CITA_SCHEDULED" and sr_state and sr_state['cita_date']:
+                cita_str = sr_state['cita_date'].strftime("%d/%m/%Y")
+                hora_str = sr_state['cita_time'].strftime("%H:%M") if sr_state.get('cita_time') else ""
                 loc = appointment_info.get('location', '') if appointment_info else ''
                 next_steps_es = (
                     f"<strong>Proximos pasos:</strong> Presentese el {cita_str}"
@@ -1778,11 +1783,10 @@ async def _bg_approve_pdf_and_notify(
                     "SELECT EXISTS(SELECT 1 FROM service_payments WHERE service_request_id=$1 "
                     "AND workflow_status IN ('completed','approved_by_agent'))", request_id
                 )
-                wf_needs_cita = workflow_data and workflow_data.get('requires_appointment')
                 if not has_payment:
                     next_steps_es = "<strong>Proximos pasos:</strong> Proceda al pago de las tasas correspondientes."
                     next_steps_fr = "<strong>Prochaines etapes:</strong> Procedez au paiement des frais correspondants."
-                elif wf_needs_cita:
+                elif requires_appointment:
                     next_steps_es = "<strong>Proximos pasos:</strong> Su dossier esta validado. Un rendez-vous sera programado."
                     next_steps_fr = "<strong>Prochaines etapes:</strong> Votre dossier est valide. Un rendez-vous sera programme."
                 else:

@@ -555,14 +555,10 @@ async def get_display_config_for_workflow(
     workflow_code: str,
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
-    permission_service: PermissionService = Depends(get_permission_service),
 ):
-    """Get display configuration for a specific workflow code (exact match)"""
-
-    # Check permission
-    await permission_service.check_permission(
-        current_user.id, "menu.view_mappings", raise_exception=True
-    )
+    """Get display configuration for a specific workflow code (exact match).
+    Read-only endpoint — accessible to any authenticated user (agents need this for preview rendering).
+    """
 
     repo = DisplayConfigRepository(db)
     config = await repo.find_config_for_workflow(workflow_code)

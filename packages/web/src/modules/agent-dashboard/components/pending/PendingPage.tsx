@@ -11,9 +11,10 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { RefreshCw, Filter, Users, UserCheck } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRequestDocsDialog, setShowRequestDocsDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Synchronous guard to prevent double-click / keyboard race conditions
+  const actionInFlightRef = useRef(false);
 
   // Fetch team agents for supervisor filter dropdown
   const { data: teamAgents } = useQuery<Array<{ agent_profile_id: string; agent_name: string }>>({
@@ -159,17 +162,11 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     }
   }, [selectedIndex, requests]);
 
-  // Handle approve action
-  const handleApprove = useCallback(async () => {
-    if (!selectedId) return;
-
-    await agentRequestsApi.makeDecision(selectedId, 'approve', {
-      comments: 'Aprobado desde vista rápida',
-    });
-
-    // Invalidate queries
+  // Shared post-action: invalidate all relevant queries + select next item
+  const afterAction = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
     queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+    queryClient.invalidateQueries({ queryKey: ['entity-queue-stats'] });
 
     // Select next item
     if (selectedIndex < requests.length - 1) {
@@ -180,96 +177,74 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     } else {
       setSelectedId(null);
     }
-  }, [selectedId, selectedIndex, requests, queryClient]);
+  }, [selectedIndex, requests, queryClient]);
+
+  // Handle approve action
+  const handleApprove = useCallback(async () => {
+    if (!selectedId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      await agentRequestsApi.makeDecision(selectedId, 'approve', {
+        comments: 'Aprobado desde vista rápida',
+      });
+      afterAction();
+    } finally {
+      actionInFlightRef.current = false;
+    }
+  }, [selectedId, afterAction]);
 
   // Handle reject action
   const handleReject = useCallback(async (reason: string) => {
-    if (!selectedId) return;
-
-    await agentRequestsApi.makeDecision(selectedId, 'reject', {
-      rejectionReason: reason,
-    });
-
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
-    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
-
-    // Select next item
-    if (selectedIndex < requests.length - 1) {
-      setSelectedId(requests[selectedIndex + 1].id);
-    } else if (selectedIndex > 0) {
-      setSelectedId(requests[selectedIndex - 1].id);
-      setSelectedIndex(selectedIndex - 1);
-    } else {
-      setSelectedId(null);
+    if (!selectedId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      await agentRequestsApi.makeDecision(selectedId, 'reject', {
+        rejectionReason: reason,
+      });
+      afterAction();
+    } finally {
+      actionInFlightRef.current = false;
     }
-  }, [selectedId, selectedIndex, requests, queryClient]);
+  }, [selectedId, afterAction]);
 
   // Handle request documents action
   const handleRequestDocuments = useCallback(async (requestedDocuments: string[], comments: string) => {
-    if (!selectedId) return;
-
-    await agentRequestsApi.makeDecision(selectedId, 'request_documents', {
-      requestedDocuments,
-      comments,
-    });
-
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
-    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
-
-    // Select next item
-    if (selectedIndex < requests.length - 1) {
-      setSelectedId(requests[selectedIndex + 1].id);
-    } else if (selectedIndex > 0) {
-      setSelectedId(requests[selectedIndex - 1].id);
-      setSelectedIndex(selectedIndex - 1);
-    } else {
-      setSelectedId(null);
+    if (!selectedId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      await agentRequestsApi.makeDecision(selectedId, 'request_documents', {
+        requestedDocuments,
+        comments,
+      });
+      afterAction();
+    } finally {
+      actionInFlightRef.current = false;
     }
-  }, [selectedId, selectedIndex, requests, queryClient]);
+  }, [selectedId, afterAction]);
 
   // Handle escalation
   const handleEscalate = useCallback(async (reason: string, priorityBoost: number) => {
-    if (!selectedId) return;
-
-    await agentRequestsApi.escalate(selectedId, reason, priorityBoost);
-
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
-    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
-
-    // Select next item
-    if (selectedIndex < requests.length - 1) {
-      setSelectedId(requests[selectedIndex + 1].id);
-    } else if (selectedIndex > 0) {
-      setSelectedId(requests[selectedIndex - 1].id);
-      setSelectedIndex(selectedIndex - 1);
-    } else {
-      setSelectedId(null);
+    if (!selectedId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      await agentRequestsApi.escalate(selectedId, reason, priorityBoost);
+      afterAction();
+    } finally {
+      actionInFlightRef.current = false;
     }
-  }, [selectedId, selectedIndex, requests, queryClient]);
+  }, [selectedId, afterAction]);
 
   // Handle resolve escalation (de-escalate)
   const handleResolveEscalation = useCallback(async () => {
-    if (!selectedId) return;
-
-    await agentRequestsApi.resolveEscalation(selectedId);
-
-    // Invalidate queries — item will disappear from escalations list
-    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
-    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
-
-    // Select next item
-    if (selectedIndex < requests.length - 1) {
-      setSelectedId(requests[selectedIndex + 1].id);
-    } else if (selectedIndex > 0) {
-      setSelectedId(requests[selectedIndex - 1].id);
-      setSelectedIndex(selectedIndex - 1);
-    } else {
-      setSelectedId(null);
+    if (!selectedId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      await agentRequestsApi.resolveEscalation(selectedId);
+      afterAction();
+    } finally {
+      actionInFlightRef.current = false;
     }
-  }, [selectedId, selectedIndex, requests, queryClient]);
+  }, [selectedId, afterAction]);
 
   // Handle appointment created - refresh preview
   const handleAppointmentCreated = useCallback(() => {
@@ -278,19 +253,24 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
 
   // Handle supervisor takeover (reassign to self)
   const handleTakeover = useCallback(async () => {
-    if (!selectedId || !context?.userId) return;
+    if (!selectedId || !context?.userId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
     setIsProcessing(true);
     try {
       await apiClient.post(`/supervisor/requests/${selectedId}/reassign`, {
         target_agent_id: context.userId,
         reason: 'supervisor_takeover',
       });
-      queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+      toast.success(t('teamView.takeoverSuccess'));
+      afterAction();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(msg || t('teamView.takeoverError'));
     } finally {
+      actionInFlightRef.current = false;
       setIsProcessing(false);
     }
-  }, [selectedId, context?.userId, queryClient]);
+  }, [selectedId, context?.userId, afterAction, t]);
 
   // Keyboard navigation and shortcuts
   useEffect(() => {
@@ -315,7 +295,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
         case 'a':
         case 'A':
           // Quick approve with 'A' key (disabled for history/read-only mode)
-          if (action !== 'history' && selectedId && preview && !showRejectDialog) {
+          if (action !== 'history' && selectedId && preview && !showRejectDialog && !actionInFlightRef.current) {
             e.preventDefault();
             setIsProcessing(true);
             handleApprove().finally(() => setIsProcessing(false));

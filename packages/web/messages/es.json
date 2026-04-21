@@ -9141,7 +9141,9 @@
       "teamView": {
         "assignedTo": "Asignado a: {name}",
         "unassigned": "Sin asignar",
-        "takeover": "Tomar a cargo"
+        "takeover": "Tomar a cargo",
+        "takeoverSuccess": "Solicitud tomada a cargo exitosamente",
+        "takeoverError": "Error al tomar a cargo la solicitud"
       }
     },
     "accessDenied": {
