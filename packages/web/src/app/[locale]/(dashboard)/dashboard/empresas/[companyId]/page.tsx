@@ -15,6 +15,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
+import { exportToExcel } from '@/core/utils/export'
 import Link from 'next/link'
 import {
   ArrowLeft, Building2, MapPin, Calendar, DollarSign, Shield,
@@ -267,7 +268,21 @@ export default function CompanyDetailPage() {
                 <SelectItem value="overdue">{t('filterOverdue')}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-xs text-muted-foreground self-center ml-auto">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1 ml-auto" onClick={() => {
+              if (!filteredObligations.length) return
+              exportToExcel(filteredObligations.map(o => ({
+                Servicio: o.serviceName || '',
+                Tipo: o.feeType,
+                Entidad: o.ministryName || o.feeType || '',
+                Monto: o.amount,
+                Penalidad: o.penaltyAmount,
+                Vencimiento: o.dueDate || '',
+                Estado: o.status,
+              })), { fileName: `${c.legalName.replace(/\s+/g, '_')}_obligaciones`, sheetName: 'Obligaciones' })
+            }}>
+              <Download className="h-3 w-3" /> Excel
+            </Button>
+            <span className="text-xs text-muted-foreground self-center">
               {filteredObligations.length}/{data.obligations.length}
             </span>
           </div>

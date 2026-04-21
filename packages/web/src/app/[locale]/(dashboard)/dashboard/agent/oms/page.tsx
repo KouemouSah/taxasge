@@ -36,6 +36,7 @@ import type { AgentQueueItem, AgentQueueStats, ComplianceEvent } from '@/modules
 
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
+import { exportToExcel } from '@/core/utils/export'
 import { OBLIGATION_STATUS_CONFIG as STATUS_CONFIG, fmtXAF } from '@/modules/oms/utils/formatters'
 
 export default function OMSAgentDashboardPage() {
@@ -234,9 +235,27 @@ export default function OMSAgentDashboardPage() {
           </h1>
           <p className="text-sm text-muted-foreground">{t('queue.subtitle')}</p>
         </div>
+        <div className="flex gap-1">
+        <Button variant="outline" size="sm" onClick={() => {
+          if (!queue?.items?.length) return
+          exportToExcel(queue.items.map(i => ({
+            Empresa: i.company_name || '',
+            NIF: i.company_nif || i.company_registration_number || '',
+            Servicio: i.service_name || '',
+            Tipo: i.fee_type || '',
+            Entidad: i.ministry_name || i.fee_type || '',
+            Monto: i.amount,
+            Penalidad: i.penalty_amount || 0,
+            Vencimiento: i.due_date || '',
+            Estado: i.status,
+          })), { fileName: `obligaciones_oms_${new Date().toISOString().slice(0,10)}`, sheetName: 'Obligaciones' })
+        }} disabled={!queue?.items?.length}>
+          <FileCheck className="h-3.5 w-3.5 mr-1" /> Excel
+        </Button>
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
         </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}

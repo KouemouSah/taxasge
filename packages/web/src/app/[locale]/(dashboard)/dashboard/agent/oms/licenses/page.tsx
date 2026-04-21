@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { exportToExcel } from '@/core/utils/export'
 import {
   FileCheck, Search, ChevronLeft, ChevronRight, RefreshCw,
   TrendingUp, AlertTriangle, DollarSign, Download, Eye,
@@ -159,9 +160,28 @@ export default function OMSLicensesPage() {
           </h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!licenses?.items?.length) return
+            exportToExcel(licenses.items.map(l => ({
+              Empresa: l.company_name || '',
+              NIF_Registro: l.company_nif || l.company_registration_number || '',
+              Zona: l.zone_code || '',
+              'Año Fiscal': l.fiscal_year,
+              'Total Obligaciones': l.total_amount,
+              Pagado: l.amount_paid,
+              Pendiente: (l.total_amount || 0) - (l.amount_paid || 0),
+              'Obl. Total': l.obligations_total,
+              'Obl. Pagadas': l.obligations_paid,
+              Estado: l.status,
+            })), { fileName: `licencias_oms_${new Date().toISOString().slice(0,10)}`, sheetName: 'Licencias' })
+          }} disabled={!licenses?.items?.length}>
+            <FileCheck className="h-3.5 w-3.5 mr-1" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
