@@ -497,7 +497,7 @@ export default function AssignmentsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (sortData(filteredAssignments as unknown as Record<string, unknown>[], { item_type: 'string', agent_name: 'string', status: 'string', priority_level: 'number', assigned_at: 'date', deadline: 'date' }) as typeof filteredAssignments).map((assignment) => {
+                  (sortData(filteredAssignments as unknown as Record<string, unknown>[], { item_type: 'string', agent_name: 'string', status: 'string', priority_level: 'number', assigned_at: 'date', deadline: 'date' }) as unknown as typeof filteredAssignments).map((assignment) => {
                     const statusInfo = statusConfig[assignment.status] || statusConfig.assigned
                     const priorityInfo = getPriorityConfig(assignment.priority_level)
                     const StatusIcon = statusInfo.icon

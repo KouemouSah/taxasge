@@ -167,7 +167,7 @@ export default function ServiceBundlesPage() {
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t("loading")}</TableCell></TableRow>
               ) : !data?.items?.length ? (
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t("noResults")}</TableCell></TableRow>
-              ) : (sortData(data.items as unknown as Record<string, unknown>[], { bundleCode: 'string', nameEs: 'string', commerceType: 'string', itemCount: 'number', isActive: 'boolean' }) as typeof data.items).map((bundle) => (
+              ) : (sortData(data.items as unknown as Record<string, unknown>[], { bundleCode: 'string', nameEs: 'string', commerceType: 'string', itemCount: 'number', isActive: 'boolean' }) as unknown as typeof data.items).map((bundle) => (
                 <TableRow key={bundle.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`${basePath}/${bundle.id}`)}>
                   <TableCell className="font-mono text-xs">{bundle.bundleCode}</TableCell>
                   <TableCell className="font-medium text-sm">{bundle.nameEs}</TableCell>

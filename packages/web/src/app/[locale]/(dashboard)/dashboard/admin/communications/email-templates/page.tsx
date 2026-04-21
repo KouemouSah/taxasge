@@ -379,7 +379,7 @@ export default function EmailTemplatesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(sortData(filteredTemplates as unknown as Record<string, unknown>[], { templateCode: 'string', nameEs: 'string', category: 'string', isActive: 'boolean' }) as typeof filteredTemplates).map((template) => (
+                {(sortData(filteredTemplates as unknown as Record<string, unknown>[], { templateCode: 'string', nameEs: 'string', category: 'string', isActive: 'boolean' }) as unknown as typeof filteredTemplates).map((template) => (
                   <TableRow key={template.id}>
                     <TableCell className="font-mono text-sm">{template.templateCode}</TableCell>
                     <TableCell className="font-medium">{template.nameEs}</TableCell>

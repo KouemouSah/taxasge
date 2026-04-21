@@ -171,8 +171,8 @@ export default function OMSLicensesPage() {
               'Total Obligaciones': l.total_amount,
               Pagado: l.amount_paid,
               Pendiente: (l.total_amount || 0) - (l.amount_paid || 0),
-              'Obl. Total': l.obligationsTotal,
-              'Obl. Pagadas': l.obligationsPaid,
+              'Obl. Total': l.obligations_count,
+              'Obl. Pagadas': l.paid_count,
               Estado: l.status,
             })), { fileName: `licencias_oms_${new Date().toISOString().slice(0,10)}`, sheetName: 'Licencias' })
           }} disabled={!licenses?.items?.length}>

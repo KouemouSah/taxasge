@@ -636,7 +636,7 @@ export default function AgentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(sortAdminData(paginatedAdmins as unknown as Record<string, unknown>[], { first_name: 'string', status: 'string', last_login: 'date', created_at: 'date' }) as typeof paginatedAdmins).map((admin) => (
+                    {(sortAdminData(paginatedAdmins as unknown as Record<string, unknown>[], { first_name: 'string', status: 'string', last_login: 'date', created_at: 'date' }) as unknown as typeof paginatedAdmins).map((admin) => (
                       <TableRow key={admin.id}>
                         <TableCell>
                           <div>

@@ -20,10 +20,7 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
-  Plus, Pencil, Trash2, RefreshCw, Info,
+  Plus, Pencil, Trash2, RefreshCw,
   ChevronLeft, ChevronRight,
 } from "lucide-react"
 import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalServicesTabNav"
@@ -415,7 +412,7 @@ export default function ConfigRulesPage() {
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{t("noResults")}</TableCell>
               </TableRow>
-            ) : (sortData(data.items as unknown as Record<string, unknown>[], { nameEs: 'string', configType: 'string', specificity: 'number', effectiveFrom: 'date', isEnabled: 'boolean' }) as typeof data.items).map(rule => (
+            ) : (sortData(data.items as unknown as Record<string, unknown>[], { nameEs: 'string', configType: 'string', specificity: 'number', effectiveFrom: 'date', isEnabled: 'boolean' }) as unknown as typeof data.items).map(rule => (
               <TableRow key={rule.id} className="hover:bg-muted/50">
                 <TableCell className="text-sm">{rule.nameEs || "—"}</TableCell>
                 <TableCell>
