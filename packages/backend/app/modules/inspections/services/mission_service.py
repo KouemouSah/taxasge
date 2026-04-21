@@ -9,6 +9,8 @@ from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
+from app.core.events.event_bus import EventBus
+from app.core.events.event_types import EventType
 from app.modules.inspections.repositories.mission_repository import (
     MissionRepository,
 )
@@ -29,6 +31,34 @@ VALID_TRANSITIONS = {
 
 class MissionService:
     """Business logic for field mission planning."""
+
+    @staticmethod
+    async def _resolve_zone_names(conn, zone_ids: Optional[List[UUID]]) -> str:
+        """Resolve zone UUIDs to comma-separated names for notifications."""
+        if not zone_ids:
+            return ""
+        rows = await conn.fetch(
+            "SELECT name_es FROM commerce_zones WHERE id = ANY($1::uuid[])",
+            zone_ids,
+        )
+        return ", ".join(r["name_es"] for r in rows)
+
+    @staticmethod
+    async def _get_supervisor_info(conn, user_id: UUID) -> Dict:
+        """Get supervisor name and email for notifications."""
+        row = await conn.fetchrow(
+            "SELECT first_name, last_name, email, phone_number, preferred_language "
+            "FROM users WHERE id = $1",
+            user_id,
+        )
+        if not row:
+            return {}
+        return {
+            "supervisor_name": f"{row['first_name']} {row['last_name']}".strip(),
+            "user_email": row["email"],
+            "user_phone": row["phone_number"],
+            "preferred_language": row["preferred_language"] or "es",
+        }
 
     # ============================================================
     # CREATE
@@ -213,6 +243,37 @@ class MissionService:
             },
         )
 
+        # Publish status change events
+        if new_status in ("in_progress", "cancelled"):
+            agents = await MissionRepository.get_mission_agents(conn, mission_id)
+            zone_names = await MissionService._resolve_zone_names(
+                conn, mission.get("zone_ids"),
+            )
+            event_type = (
+                EventType.MISSION_STARTED if new_status == "in_progress"
+                else EventType.MISSION_CANCELLED
+            )
+            for agent in agents:
+                agent_row = await conn.fetchrow(
+                    "SELECT first_name, last_name, email, phone_number, preferred_language "
+                    "FROM users WHERE id = $1",
+                    agent["agent_id"],
+                )
+                if agent_row:
+                    EventBus.publish_nowait(event_type, {
+                        "user_id": str(agent["agent_id"]),
+                        "user_email": agent_row["email"],
+                        "user_phone": agent_row["phone_number"],
+                        "preferred_language": agent_row["preferred_language"] or "es",
+                        "agent_name": f"{agent_row['first_name']} {agent_row['last_name']}".strip(),
+                        "mission_id": str(mission_id),
+                        "mission_date": str(mission["mission_date"]),
+                        "mission_title": mission.get("title") or str(mission["mission_date"]),
+                        "zone_names": zone_names,
+                        "target_inspections": str(agent.get("target_inspections", 10)),
+                        "agent_count": str(len(agents)),
+                    })
+
         return updated
 
     # ============================================================
@@ -281,6 +342,32 @@ class MissionService:
                 "count": len(agents),
             },
         )
+
+        # Notify each assigned agent
+        zone_names = await MissionService._resolve_zone_names(
+            conn, mission.get("zone_ids"),
+        )
+        sup_info = await MissionService._get_supervisor_info(conn, user_id)
+        for agent_data in agents:
+            agent_row = await conn.fetchrow(
+                "SELECT first_name, last_name, email, phone_number, preferred_language "
+                "FROM users WHERE id = $1",
+                agent_data["agent_id"],
+            )
+            if agent_row:
+                EventBus.publish_nowait(EventType.MISSION_AGENT_ASSIGNED, {
+                    "user_id": str(agent_data["agent_id"]),
+                    "user_email": agent_row["email"],
+                    "user_phone": agent_row["phone_number"],
+                    "preferred_language": agent_row["preferred_language"] or "es",
+                    "agent_name": f"{agent_row['first_name']} {agent_row['last_name']}".strip(),
+                    "mission_id": str(mission_id),
+                    "mission_date": str(mission["mission_date"]),
+                    "mission_title": mission.get("title") or str(mission["mission_date"]),
+                    "zone_names": zone_names,
+                    "target_inspections": str(agent_data.get("target_inspections", 10)),
+                    "supervisor_name": sup_info.get("supervisor_name", ""),
+                })
 
         return result
 
@@ -400,5 +487,42 @@ class MissionService:
                 "notes": notes,
             },
         )
+
+        # Compute summary stats for notification
+        agents = await MissionRepository.get_mission_agents(conn, mission_id)
+        actual_total = sum(a.get("actual_inspections", 0) for a in agents)
+        target_total = sum(a.get("target_inspections", 10) for a in agents)
+
+        stats = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE result = 'conforme') AS conforme,
+                COUNT(*) FILTER (WHERE result = 'non_conforme') AS non_conforme,
+                COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS collected
+            FROM field_inspections
+            WHERE mission_id = $1
+        """, mission_id)
+
+        sup_info = await MissionService._get_supervisor_info(conn, user_id)
+        zone_names = await MissionService._resolve_zone_names(
+            conn, mission.get("zone_ids"),
+        )
+
+        EventBus.publish_nowait(EventType.MISSION_COMPLETED, {
+            "user_id": str(user_id),
+            "user_email": sup_info.get("user_email"),
+            "preferred_language": sup_info.get("preferred_language", "es"),
+            "supervisor_name": sup_info.get("supervisor_name", ""),
+            "mission_id": str(mission_id),
+            "mission_date": str(mission["mission_date"]),
+            "mission_title": mission.get("title") or str(mission["mission_date"]),
+            "actual_inspections": str(actual_total),
+            "target_inspections": str(target_total),
+            "agent_count": str(len(agents)),
+            "conforme_count": str(stats["conforme"] if stats else 0),
+            "non_conforme_count": str(stats["non_conforme"] if stats else 0),
+            "collected_amount": str(stats["collected"] if stats else 0),
+            "completion_notes": notes or "",
+            "zone_names": zone_names,
+        })
 
         return completed

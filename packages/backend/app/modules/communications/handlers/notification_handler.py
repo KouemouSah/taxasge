@@ -354,6 +354,41 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         subject_key="notifications.inspection.seal_approved.subject",
         sms_template_code="SEAL_APPROVED_SMS",
     ),
+
+    # Field Mission Events
+    EventType.MISSION_AGENT_ASSIGNED: NotificationConfig(
+        template_code="mission_agent_assigned",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.mission.assigned.subject",
+        sms_template_code="MISSION_ASSIGNED",
+        requires_user_prefs=False,
+    ),
+    EventType.MISSION_STARTED: NotificationConfig(
+        template_code="mission_started",
+        channels=[NotificationChannel.PUSH],
+        priority="normal",
+    ),
+    EventType.MISSION_COMPLETED: NotificationConfig(
+        template_code="mission_completed_summary",
+        channels=[NotificationChannel.EMAIL],
+        priority="normal",
+        subject_key="notifications.mission.completed.subject",
+    ),
+    EventType.MISSION_CANCELLED: NotificationConfig(
+        template_code="mission_cancelled",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.mission.cancelled.subject",
+        sms_template_code="MISSION_CANCELLED_SMS",
+    ),
+    EventType.MISSION_REMINDER: NotificationConfig(
+        template_code="mission_daily_reminder",
+        channels=[NotificationChannel.SMS, NotificationChannel.PUSH],
+        priority="high",
+        sms_template_code="MISSION_REMINDER",
+        requires_user_prefs=False,
+    ),
 }
 
 # Map template_code → push notification type for mobile deep linking
@@ -367,6 +402,10 @@ _TEMPLATE_TO_PUSH_TYPE: Dict[str, str] = {
     "request_submitted": "REQUEST_SUBMITTED",
     "request_approved": "REQUEST_APPROVED",
     "request_rejected": "REQUEST_REJECTED",
+    "mission_agent_assigned": "MISSION_AGENT_ASSIGNED",
+    "mission_started": "MISSION_STARTED",
+    "mission_cancelled": "MISSION_CANCELLED",
+    "mission_daily_reminder": "MISSION_REMINDER",
 }
 
 

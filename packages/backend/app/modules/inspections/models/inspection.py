@@ -48,6 +48,8 @@ class InspectionCreate(BaseModel):
     """Create a new field inspection."""
     license_id: UUID
     company_id: UUID
+    mission_id: Optional[UUID] = None
+    zone_id: Optional[UUID] = None
     notes: Optional[str] = Field(None, max_length=2000)
 
 

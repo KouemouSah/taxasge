@@ -296,6 +296,28 @@ class EventType(str, Enum):
     """Supervisor approved sealing — company deactivated, license suspended"""
 
     # ==========================================================================
+    # FIELD MISSION EVENTS
+    # ==========================================================================
+
+    MISSION_CREATED = "mission.created"
+    """New field mission planned by supervisor"""
+
+    MISSION_AGENT_ASSIGNED = "mission.agent.assigned"
+    """Agent assigned to a field mission (sent per agent)"""
+
+    MISSION_STARTED = "mission.started"
+    """Mission transitioned to in_progress"""
+
+    MISSION_COMPLETED = "mission.completed"
+    """Mission completed by supervisor (with summary stats)"""
+
+    MISSION_CANCELLED = "mission.cancelled"
+    """Mission cancelled by supervisor"""
+
+    MISSION_REMINDER = "mission.reminder"
+    """Daily reminder for agents assigned to tomorrow's missions"""
+
+    # ==========================================================================
     # SYSTEM EVENTS
     # ==========================================================================
 

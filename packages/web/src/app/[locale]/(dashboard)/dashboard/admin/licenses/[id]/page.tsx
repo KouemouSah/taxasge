@@ -479,8 +479,8 @@ export default function LicenseDetailPage() {
                       </div>
                       {evt.eventData?.old_status && evt.eventData?.new_status && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {evt.eventData.old_status} → {evt.eventData.new_status}
-                          {evt.eventData.paid !== undefined && ` (${evt.eventData.paid}/${evt.eventData.total})`}
+                          {String(evt.eventData.old_status)} → {String(evt.eventData.new_status)}
+                          {evt.eventData.paid !== undefined && ` (${String(evt.eventData.paid)}/${String(evt.eventData.total)})`}
                         </p>
                       )}
                     </div>

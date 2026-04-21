@@ -115,6 +115,8 @@ class InspectionService:
         conn, user_id: UUID,
         license_id: UUID, company_id: UUID,
         notes: Optional[str] = None,
+        mission_id: Optional[UUID] = None,
+        zone_id: Optional[UUID] = None,
     ) -> Dict:
         """Create a new field inspection."""
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
@@ -132,6 +134,12 @@ class InspectionService:
         if license_row["company_id"] != company_id:
             raise ValueError("License does not belong to this company")
 
+        # Resolve zone_id from company if not provided
+        if not zone_id:
+            zone_id = await conn.fetchval(
+                "SELECT zone_id FROM companies WHERE id = $1", company_id,
+            )
+
         # Snapshot obligations at inspection time
         obl_stats = await conn.fetchrow("""
             SELECT
@@ -144,7 +152,7 @@ class InspectionService:
             WHERE license_id = $1
         """, license_id)
 
-        inspection = await InspectionRepository.create(conn, {
+        inspection_data = {
             "agent_id": user_id,
             "agent_profile_id": ctx["agent_profile_id"],
             "entity_id": ctx["entity_id"],
@@ -155,7 +163,27 @@ class InspectionService:
             "unpaid_obligations_count": obl_stats["unpaid"],
             "unpaid_obligations_amount": obl_stats["unpaid_amount"],
             "total_obligations_count": obl_stats["total"],
-        })
+        }
+        if mission_id:
+            inspection_data["mission_id"] = mission_id
+        if zone_id:
+            inspection_data["zone_id"] = zone_id
+
+        inspection = await InspectionRepository.create(conn, inspection_data)
+
+        # Auto-transition: agent assigned→active + mission planned→in_progress
+        if mission_id:
+            await conn.execute("""
+                UPDATE field_mission_agents
+                SET status = 'active', started_at = COALESCE(started_at, NOW())
+                WHERE mission_id = $1 AND agent_id = $2 AND status = 'assigned'
+            """, mission_id, user_id)
+
+            await conn.execute("""
+                UPDATE field_missions
+                SET status = 'in_progress', started_at = COALESCE(started_at, NOW())
+                WHERE id = $1 AND status = 'planned'
+            """, mission_id)
 
         return await InspectionRepository.get_by_id(conn, inspection["id"])
 

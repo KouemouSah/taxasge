@@ -105,6 +105,11 @@ class InternalScheduler:
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
             (
+                "mission-daily-reminder",
+                self._mission_daily_reminder,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
                 "inspection-daily-summary",
                 self._inspection_daily_summary,
                 settings.SCHEDULER_DAILY_INTERVAL,
@@ -518,6 +523,77 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None  # Migration not yet applied
             logger.error(f"Field SLA check failed: {e}")
+        return None
+
+    async def _mission_daily_reminder(self):
+        """Send reminder to agents assigned to tomorrow's planned missions."""
+        from app.database.connection import db_manager
+        from app.core.events.event_bus import EventBus
+        from app.core.events.event_types import EventType
+
+        tomorrow = date.today() + timedelta(days=1)
+        dedup_key = f"scheduler:mission_reminder:{tomorrow.isoformat()}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None
+            await cache.set(dedup_key, "1", ttl=72000)
+        except Exception:
+            pass
+
+        try:
+            async with db_manager.get_connection() as db:
+                rows = await db.fetch("""
+                    SELECT fm.id AS mission_id, fm.mission_date, fm.title, fm.zone_ids,
+                           fma.agent_id, fma.target_inspections,
+                           u.first_name, u.last_name, u.email, u.phone_number,
+                           u.preferred_language
+                    FROM field_missions fm
+                    JOIN field_mission_agents fma ON fma.mission_id = fm.id
+                    JOIN users u ON u.id = fma.agent_id
+                    WHERE fm.mission_date = $1
+                      AND fm.status = 'planned'
+                      AND fma.status = 'assigned'
+                      AND u.status = 'active'
+                """, tomorrow)
+
+                if not rows:
+                    return None
+
+                # Resolve zone names once per mission
+                zone_cache: dict = {}
+                sent = 0
+                for row in rows:
+                    mid = str(row["mission_id"])
+                    if mid not in zone_cache:
+                        zones = await db.fetch(
+                            "SELECT name_es FROM commerce_zones WHERE id = ANY($1::uuid[])",
+                            row["zone_ids"] or [],
+                        )
+                        zone_cache[mid] = ", ".join(z["name_es"] for z in zones)
+
+                    EventBus.publish_nowait(EventType.MISSION_REMINDER, {
+                        "user_id": str(row["agent_id"]),
+                        "user_email": row["email"],
+                        "user_phone": row["phone_number"],
+                        "preferred_language": row["preferred_language"] or "es",
+                        "agent_name": f"{row['first_name']} {row['last_name']}".strip(),
+                        "mission_id": mid,
+                        "mission_date": str(row["mission_date"]),
+                        "mission_title": row["title"] or str(row["mission_date"]),
+                        "zone_names": zone_cache[mid],
+                        "target_inspections": str(row["target_inspections"] or 10),
+                    })
+                    sent += 1
+
+                if sent:
+                    logger.info(f"Mission reminders sent: {sent} agents for {tomorrow}")
+                return {"reminders_sent": sent, "mission_date": str(tomorrow)}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Mission daily reminder failed: {e}")
         return None
 
     async def _inspection_daily_summary(self):

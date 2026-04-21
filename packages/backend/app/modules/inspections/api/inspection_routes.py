@@ -93,6 +93,8 @@ async def create_inspection(
                 db, user_uuid,
                 data.license_id, data.company_id,
                 notes=data.notes,
+                mission_id=data.mission_id,
+                zone_id=data.zone_id,
             )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
