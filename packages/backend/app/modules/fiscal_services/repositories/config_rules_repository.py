@@ -1,5 +1,6 @@
 """Config Rules Repository — Data access for fiscal_config_rules."""
 
+import json
 import logging
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -156,7 +157,7 @@ class ConfigRulesRepository:
             data.get("effective_from"),
             data.get("effective_to"),
             data.get("is_enabled", True),
-            data.get("config", {}),
+            json.dumps(data.get("config", {})) if isinstance(data.get("config", {}), dict) else data.get("config", "{}"),
             data.get("name_es"),
             data.get("description"),
             user_id,
@@ -176,8 +177,12 @@ class ConfigRulesRepository:
         for field in ["effective_from", "effective_to", "is_enabled",
                        "config", "name_es", "description"]:
             if field in data:
+                value = data[field]
+                # JSONB columns need json.dumps() — asyncpg expects str, not dict
+                if field == "config" and isinstance(value, dict):
+                    value = json.dumps(value)
                 sets.append(f"{field} = ${idx}")
-                params.append(data[field])
+                params.append(value)
                 idx += 1
 
         if not sets:
