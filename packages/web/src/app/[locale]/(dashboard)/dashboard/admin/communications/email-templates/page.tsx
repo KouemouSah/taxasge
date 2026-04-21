@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import { useSortState } from '@/hooks/use-sort-state'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,6 +69,7 @@ export default function EmailTemplatesPage() {
   const [pageSize, setPageSize] = useState(20)
   const [starterViewMode, setStarterViewMode] = useState<'grid' | 'list'>('grid')
   const [starterTemplatesExpanded, setStarterTemplatesExpanded] = useState(false)
+  const [sort, handleSort, sortData] = useSortState()
 
   const handlePageSizeChange = (newSize: string) => {
     setPageSize(Number(newSize))
@@ -117,6 +120,14 @@ export default function EmailTemplatesPage() {
       template.subjectEs.toLowerCase().includes(query)
     )
   }) || []
+
+  const sortedTemplates = sortData(filteredTemplates as unknown as Record<string, unknown>[], {
+    templateCode: 'string',
+    nameEs: 'string',
+    subjectEs: 'string',
+    category: 'string',
+    isActive: 'boolean',
+  }) as unknown as typeof filteredTemplates
 
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return
@@ -356,7 +367,7 @@ export default function EmailTemplatesPage() {
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredTemplates.length === 0 ? (
+          ) : sortedTemplates.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">{t('noTemplates') || 'No templates found'}</p>
@@ -365,17 +376,17 @@ export default function EmailTemplatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('code') || 'Code'}</TableHead>
-                  <TableHead>{t('name') || 'Name'}</TableHead>
-                  <TableHead>{t('subject') || 'Subject'}</TableHead>
-                  <TableHead>{t('category') || 'Category'}</TableHead>
+                  <SortableHeader column="templateCode" label={t('code') || 'Code'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="nameEs" label={t('name') || 'Name'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="subjectEs" label={t('subject') || 'Subject'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="category" label={t('category') || 'Category'} sort={sort} onSort={handleSort} />
                   <TableHead>{t('variables') || 'Variables'}</TableHead>
-                  <TableHead>{tCommon('status')}</TableHead>
+                  <SortableHeader column="isActive" label={tCommon('status')} sort={sort} onSort={handleSort} />
                   <TableHead className="text-right">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTemplates.map((template) => (
+                {sortedTemplates.map((template) => (
                   <TableRow key={template.id}>
                     <TableCell className="font-mono text-sm">{template.templateCode}</TableCell>
                     <TableCell className="font-medium">{template.nameEs}</TableCell>

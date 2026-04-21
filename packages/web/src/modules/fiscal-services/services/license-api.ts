@@ -55,6 +55,8 @@ export const licenseApi = {
     fiscalYear?: number
     status?: string
     search?: string
+    sortBy?: string
+    sortOrder?: string
   }) => {
     const sp = new URLSearchParams()
     if (params?.page) sp.set('page', String(params.page))
@@ -64,6 +66,8 @@ export const licenseApi = {
     if (params?.fiscalYear) sp.set('fiscal_year', String(params.fiscalYear))
     if (params?.status) sp.set('status', params.status)
     if (params?.search) sp.set('search', params.search)
+    if (params?.sortBy) sp.set('sort_by', params.sortBy)
+    if (params?.sortOrder) sp.set('sort_order', params.sortOrder)
     const q = sp.toString()
     return get<LicenseListResponse>(`/${q ? `?${q}` : ''}`)
   },

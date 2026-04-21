@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { SortableHeader } from '@/components/ui/sortable-header';
+import { useSortState } from '@/hooks/use-sort-state';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -119,6 +121,10 @@ export default function AgentsPage() {
   const deactivateUserMutation = useDeactivateUser();
   const deleteAgentMutation = useDeleteAgentUser();
 
+  // Client-side sort for current page (data is server-paginated)
+  const [agentSort, handleAgentSort, sortAgentData] = useSortState();
+  const [adminSort, handleAdminSort, sortAdminData] = useSortState();
+
   const agents = agentsData?.items || [];
   const admins = adminsData?.items || [];
   const agentTotal = agentsData?.total || 0;
@@ -141,10 +147,22 @@ export default function AgentsPage() {
 
   // Server-side pagination totals
   const agentTotalPages = Math.max(1, Math.ceil(agentTotal / agentPageSize));
-  const paginatedAgents = filteredAgents; // Already paginated by server
+  const paginatedAgents = sortAgentData(filteredAgents as unknown as Record<string, unknown>[], {
+    user_full_name: 'string',
+    agent_type: 'string',
+    is_active: 'boolean',
+    availability: 'string',
+    current_assignments: 'number',
+    entity_name: 'string',
+  }) as unknown as typeof filteredAgents;
 
   const adminTotalPages = Math.max(1, Math.ceil(adminTotal / adminPageSize));
-  const paginatedAdmins = filteredAdmins; // Already paginated by server
+  const paginatedAdmins = sortAdminData(filteredAdmins as unknown as Record<string, unknown>[], {
+    first_name: 'string',
+    status: 'string',
+    last_login: 'date',
+    created_at: 'date',
+  }) as unknown as typeof filteredAdmins;
 
   // Reset page when filters change
   const resetAgentPage = () => setAgentPage(1);
@@ -442,12 +460,12 @@ export default function AgentsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t('table.agent')}</TableHead>
-                      <TableHead>{t('table.type')}</TableHead>
-                      <TableHead className="hidden lg:table-cell">{t('table.organization')}</TableHead>
-                      <TableHead>{t('table.status')}</TableHead>
-                      <TableHead className="hidden md:table-cell">{t('table.availability')}</TableHead>
-                      <TableHead className="hidden md:table-cell">{t('table.tasks')}</TableHead>
+                      <SortableHeader column="user_full_name" label={t('table.agent')} sort={agentSort} onSort={handleAgentSort} />
+                      <SortableHeader column="agent_type" label={t('table.type')} sort={agentSort} onSort={handleAgentSort} />
+                      <SortableHeader column="entity_name" label={t('table.organization')} sort={agentSort} onSort={handleAgentSort} className="hidden lg:table-cell" />
+                      <SortableHeader column="is_active" label={t('table.status')} sort={agentSort} onSort={handleAgentSort} />
+                      <SortableHeader column="availability" label={t('table.availability')} sort={agentSort} onSort={handleAgentSort} className="hidden md:table-cell" />
+                      <SortableHeader column="current_assignments" label={t('table.tasks')} sort={agentSort} onSort={handleAgentSort} className="hidden md:table-cell" />
                       <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -622,10 +640,10 @@ export default function AgentsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t('table.administrator')}</TableHead>
-                      <TableHead>{t('table.status')}</TableHead>
-                      <TableHead className="hidden md:table-cell">{t('table.lastLogin')}</TableHead>
-                      <TableHead className="hidden lg:table-cell">{t('table.createdAt')}</TableHead>
+                      <SortableHeader column="first_name" label={t('table.administrator')} sort={adminSort} onSort={handleAdminSort} />
+                      <SortableHeader column="status" label={t('table.status')} sort={adminSort} onSort={handleAdminSort} />
+                      <SortableHeader column="last_login" label={t('table.lastLogin')} sort={adminSort} onSort={handleAdminSort} className="hidden md:table-cell" />
+                      <SortableHeader column="created_at" label={t('table.createdAt')} sort={adminSort} onSort={handleAdminSort} className="hidden lg:table-cell" />
                       <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
