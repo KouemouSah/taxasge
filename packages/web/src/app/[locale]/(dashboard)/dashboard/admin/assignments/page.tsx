@@ -91,6 +91,8 @@ import {
   useCancelAssignment,
 } from '@/modules/assignments-admin'
 import type { AssignmentStatus, PriorityLevel } from '@/modules/assignments-admin'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import { useSortState } from '@/hooks/use-sort-state'
 
 // Date-fns locale mapping
 const dateLocales: Record<string, Locale> = {
@@ -132,6 +134,8 @@ export default function AssignmentsPage() {
   const tCommon = useTranslations('common')
   const locale = useLocale()
   const dateLocale = dateLocales[locale] || enUS
+
+  const [sort, handleSort, sortData] = useSortState()
 
   // State
   const [searchQuery, setSearchQuery] = useState('')
@@ -476,12 +480,12 @@ export default function AssignmentsPage() {
                       aria-label={t('selectAll') || 'Select all'}
                     />
                   </TableHead>
-                  <TableHead>{t('item') || 'Item'}</TableHead>
-                  <TableHead>{t('agent') || 'Agent'}</TableHead>
-                  <TableHead>{t('status') || 'Status'}</TableHead>
-                  <TableHead>{t('priority') || 'Priority'}</TableHead>
-                  <TableHead>{t('assignedAt') || 'Assigned'}</TableHead>
-                  <TableHead>{t('deadline') || 'Deadline'}</TableHead>
+                  <SortableHeader column="item_type" label={t('item') || 'Item'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="agent_name" label={t('agent') || 'Agent'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="status" label={t('status') || 'Status'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="priority_level" label={t('priority') || 'Priority'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="assigned_at" label={t('assignedAt') || 'Assigned'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="deadline" label={t('deadline') || 'Deadline'} sort={sort} onSort={handleSort} />
                   <TableHead className="text-right">{t('actions') || 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -493,7 +497,7 @@ export default function AssignmentsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAssignments.map((assignment) => {
+                  (sortData(filteredAssignments as unknown as Record<string, unknown>[], { item_type: 'string', agent_name: 'string', status: 'string', priority_level: 'number', assigned_at: 'date', deadline: 'date' }) as typeof filteredAssignments).map((assignment) => {
                     const statusInfo = statusConfig[assignment.status] || statusConfig.assigned
                     const priorityInfo = getPriorityConfig(assignment.priority_level)
                     const StatusIcon = statusInfo.icon

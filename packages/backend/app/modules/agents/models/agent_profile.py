@@ -173,6 +173,8 @@ class AgentListFilters(BaseModel):
     agent_category: Optional[str] = None  # dgi, treasury, entity, ministry
     availability: Optional[str] = None
     search: Optional[str] = None  # ILIKE search on user email / full_name
+    sort_by: Optional[str] = None
+    sort_order: str = "desc"
     limit: int = 50
     offset: int = 0
 

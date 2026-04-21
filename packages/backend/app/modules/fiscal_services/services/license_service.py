@@ -49,6 +49,8 @@ class LicenseService:
         fee_type: Optional[str] = None,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "desc",
     ) -> Tuple[List[Dict], int]:
         return await LicenseRepository.list_licenses(
             conn, company_id=company_id, bundle_id=bundle_id,
@@ -56,6 +58,7 @@ class LicenseService:
             search=search, page=page, page_size=page_size,
             city_id=city_id, fee_type=fee_type,
             ministry_id=ministry_id, processing_mode=processing_mode,
+            sort_by=sort_by, sort_order=sort_order,
         )
 
     # ==================================================================

@@ -18,6 +18,8 @@ import {
   Plus, Trash2, Pencil,
 } from "lucide-react"
 import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalServicesTabNav"
+import { SortableHeader } from "@/components/ui/sortable-header"
+import { useSortState } from "@/hooks/use-sort-state"
 import { bundleApi, bundleAdminApi } from "@/modules/fiscal-services/services/bundle-api"
 import type { BundleListResponse, BundleStats } from "@/types/service-bundle"
 
@@ -25,6 +27,7 @@ export default function ServiceBundlesPage() {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations("admin.serviceBundles")
+  const [sort, handleSort, sortData] = useSortState()
   const [data, setData] = useState<BundleListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -149,13 +152,13 @@ export default function ServiceBundlesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[120px]">{t("code")}</TableHead>
-                <TableHead>{t("name")}</TableHead>
-                <TableHead className="w-[120px]">{t("type")}</TableHead>
-                <TableHead className="w-[70px] text-center">{t("items")}</TableHead>
+                <SortableHeader column="bundleCode" label={t("code")} sort={sort} onSort={handleSort} className="w-[120px]" />
+                <SortableHeader column="nameEs" label={t("name")} sort={sort} onSort={handleSort} />
+                <SortableHeader column="commerceType" label={t("type")} sort={sort} onSort={handleSort} className="w-[120px]" />
+                <SortableHeader column="itemCount" label={t("items")} sort={sort} onSort={handleSort} className="w-[70px] text-center" />
                 <TableHead className="w-[70px] text-center">{t("zones")}</TableHead>
                 <TableHead className="w-[90px] text-center">{t("payment")}</TableHead>
-                <TableHead className="w-[80px] text-center">{t("status")}</TableHead>
+                <SortableHeader column="isActive" label={t("status")} sort={sort} onSort={handleSort} className="w-[80px] text-center" />
                 <TableHead className="w-[110px]">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -164,7 +167,7 @@ export default function ServiceBundlesPage() {
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t("loading")}</TableCell></TableRow>
               ) : !data?.items?.length ? (
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t("noResults")}</TableCell></TableRow>
-              ) : data.items.map((bundle) => (
+              ) : (sortData(data.items as unknown as Record<string, unknown>[], { bundleCode: 'string', nameEs: 'string', commerceType: 'string', itemCount: 'number', isActive: 'boolean' }) as typeof data.items).map((bundle) => (
                 <TableRow key={bundle.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`${basePath}/${bundle.id}`)}>
                   <TableCell className="font-mono text-xs">{bundle.bundleCode}</TableCell>
                   <TableCell className="font-medium text-sm">{bundle.nameEs}</TableCell>

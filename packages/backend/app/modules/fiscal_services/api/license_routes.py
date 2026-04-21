@@ -329,17 +329,18 @@ async def list_licenses(
     fiscal_year: Optional[int] = Query(None, ge=2020, le=2100),
     status: Optional[LicenseStatus] = Query(None),
     search: Optional[str] = Query(None, max_length=100),
+    sort_by: Optional[str] = Query(None, regex="^(company_name|fiscal_year|status|total_amount|amount_paid|compliance_score|deadline|created_at|zone_code)$"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db=Depends(get_database),
     scope: AgentScope = Depends(get_agent_scope),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
-    """List commercial licenses with filters and pagination.
+    """List commercial licenses with filters, sorting, and pagination.
 
+    sort_by: whitelisted column name. sort_order: asc|desc.
     Agent scope: auto-filtered by agent's city, fee_type, or ministry.
-    Admin/citizen: no scope filter applied.
-    search: ILIKE on company name or bundle name.
     """
     licenses, total = await LicenseService.list_licenses(
         db, company_id=company_id, bundle_id=bundle_id,
@@ -348,6 +349,7 @@ async def list_licenses(
         city_id=scope.city_id, fee_type=scope.fee_type,
         ministry_id=scope.ministry_id,
         processing_mode=scope.processing_mode,
+        sort_by=sort_by, sort_order=sort_order,
     )
     return LicenseListResponse(
         items=[LicenseSummary(**lic) for lic in licenses],

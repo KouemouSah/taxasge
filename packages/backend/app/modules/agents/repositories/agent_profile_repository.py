@@ -25,6 +25,19 @@ class AgentProfileRepository:
     # HELPER METHODS
     # ========================================================================
 
+    _AGENT_SORT_MAP = {
+        "user_full_name": "u.full_name", "user_email": "u.email",
+        "entity_name": "e.name", "agent_type": "ap.agent_type",
+        "is_active": "ap.is_active", "is_supervisor": "ap.is_supervisor",
+        "availability": "aw.availability", "current_assignments": "aw.current_assignments",
+        "created_at": "ap.created_at",
+    }
+
+    def _resolve_agent_sort(self, sort_by: str | None, sort_order: str) -> str:
+        col = self._AGENT_SORT_MAP.get(sort_by or "", "ap.created_at")
+        d = "ASC" if sort_order == "asc" else "DESC"
+        return f"{col} {d}, ap.created_at DESC"
+
     def _process_jsonb_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Process JSONB and array fields for Pydantic compatibility.
 
@@ -447,7 +460,7 @@ class AgentProfileRepository:
             LEFT JOIN ministries m ON COALESCE(ap.ministry_id, e.ministry_id) = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
             {where_clause}
-            ORDER BY ap.created_at DESC
+            ORDER BY {self._resolve_agent_sort(filters.sort_by, filters.sort_order)}
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
 

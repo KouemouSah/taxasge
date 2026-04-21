@@ -47,6 +47,8 @@ import {
 } from '@/modules/communications/hooks/useEmailTemplates'
 import type { EmailTemplateResponse } from '@/modules/communications/types'
 import { STARTER_TEMPLATES } from '@/modules/communications/components/EmailTemplateStarters'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import { useSortState } from '@/hooks/use-sort-state'
 import { toast } from 'sonner'
 
 export default function EmailTemplatesPage() {
@@ -55,6 +57,8 @@ export default function EmailTemplatesPage() {
   const t = useTranslations('admin.communications.email')
   const tCategories = useTranslations('admin.emailTemplates.categories')
   const tCommon = useTranslations('common')
+
+  const [sort, handleSort, sortData] = useSortState()
 
   // State
   const [searchQuery, setSearchQuery] = useState('')
@@ -365,17 +369,17 @@ export default function EmailTemplatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('code') || 'Code'}</TableHead>
-                  <TableHead>{t('name') || 'Name'}</TableHead>
+                  <SortableHeader column="templateCode" label={t('code') || 'Code'} sort={sort} onSort={handleSort} />
+                  <SortableHeader column="nameEs" label={t('name') || 'Name'} sort={sort} onSort={handleSort} />
                   <TableHead>{t('subject') || 'Subject'}</TableHead>
-                  <TableHead>{t('category') || 'Category'}</TableHead>
+                  <SortableHeader column="category" label={t('category') || 'Category'} sort={sort} onSort={handleSort} />
                   <TableHead>{t('variables') || 'Variables'}</TableHead>
-                  <TableHead>{tCommon('status')}</TableHead>
+                  <SortableHeader column="isActive" label={tCommon('status')} sort={sort} onSort={handleSort} />
                   <TableHead className="text-right">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTemplates.map((template) => (
+                {(sortData(filteredTemplates as unknown as Record<string, unknown>[], { templateCode: 'string', nameEs: 'string', category: 'string', isActive: 'boolean' }) as typeof filteredTemplates).map((template) => (
                   <TableRow key={template.id}>
                     <TableCell className="font-mono text-sm">{template.templateCode}</TableCell>
                     <TableCell className="font-medium">{template.nameEs}</TableCell>

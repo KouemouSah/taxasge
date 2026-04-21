@@ -65,6 +65,9 @@ class LicenseRepository:
         fee_type: Optional[str] = None,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
+        # Sorting (whitelist enforced)
+        sort_by: Optional[str] = None,
+        sort_order: str = "desc",
     ) -> Tuple[List[Dict], int]:
         """List licenses with filters, paginated.
 
@@ -148,6 +151,17 @@ class LicenseRepository:
         )
         total = count_row["total"]
 
+        # Sorting — whitelist prevents SQL injection
+        _SORT_MAP = {
+            "company_name": "co.legal_name", "fiscal_year": "cl.fiscal_year",
+            "status": "cl.status", "total_amount": "cl.total_amount",
+            "amount_paid": "cl.amount_paid", "compliance_score": "cl.compliance_score",
+            "deadline": "cl.deadline", "created_at": "cl.created_at",
+            "zone_code": "cz.zone_code",
+        }
+        order_col = _SORT_MAP.get(sort_by or "", "cl.fiscal_year")
+        order_dir = "ASC" if sort_order == "asc" else "DESC"
+
         # Data
         offset = (page - 1) * page_size
         params_data = params + [page_size, offset]
@@ -161,7 +175,7 @@ class LicenseRepository:
             FROM commercial_licenses cl
             {joins}
             {where}
-            ORDER BY cl.fiscal_year DESC, cl.created_at DESC
+            ORDER BY {order_col} {order_dir}, cl.created_at DESC
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params_data)
 

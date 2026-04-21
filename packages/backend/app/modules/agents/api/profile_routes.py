@@ -306,12 +306,14 @@ async def list_profiles(
     availability: Optional[str] = None,
     is_active: Optional[bool] = None,
     search: Optional[str] = Query(None, max_length=100, description="Search by email or name (ILIKE)"),
+    sort_by: Optional[str] = Query(None, regex="^(user_full_name|user_email|entity_name|agent_type|is_active|is_supervisor|availability|current_assignments|created_at)$"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """List agent profiles with optional filters (paginated response)"""
+    """List agent profiles with filters, sorting, and pagination."""
     filters = AgentListFilters(
         agent_type=agent_type,
         is_supervisor=is_supervisor,
@@ -322,6 +324,8 @@ async def list_profiles(
         availability=availability,
         is_active=is_active,
         search=search.strip() if search else None,
+        sort_by=sort_by,
+        sort_order=sort_order,
         limit=page_size,
         offset=(page - 1) * page_size,
     )

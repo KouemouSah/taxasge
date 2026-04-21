@@ -23,6 +23,8 @@ import {
   Plus, AlertTriangle, CheckCircle2,
 } from "lucide-react"
 import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalServicesTabNav"
+import { SortableHeader } from "@/components/ui/sortable-header"
+import { useSortState } from "@/hooks/use-sort-state"
 import { useToast } from "@/hooks/use-toast"
 import { formatXAF } from "@/core/utils/format"
 import { licenseApi, licenseAdminApi } from "@/modules/fiscal-services/services/license-api"
@@ -59,6 +61,7 @@ export default function LicensesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [bundleFilter, setBundleFilter] = useState<string>("all")
   const [bundles, setBundles] = useState<ServiceBundle[]>([])
+  const [sort, handleSort] = useSortState('fiscal_year', 'desc')
   const fetchSeq = useRef(0)
 
   // Create dialog state
@@ -106,6 +109,8 @@ export default function LicensesPage() {
         status: statusFilter === "all" ? undefined : statusFilter,
         bundleId: bundleFilter === "all" ? undefined : bundleFilter,
         search: search || undefined,
+        sortBy: sort.column || undefined,
+        sortOrder: sort.direction,
       })
       if (seq === fetchSeq.current) setData(result)
     } catch {
@@ -115,7 +120,7 @@ export default function LicensesPage() {
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
     }
-  }, [page, fiscalYear, statusFilter, bundleFilter, search, t, toast])
+  }, [page, fiscalYear, statusFilter, bundleFilter, search, sort, t, toast])
 
   useEffect(() => { fetchLicenses() }, [fetchLicenses])
 
@@ -309,15 +314,15 @@ export default function LicensesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("company")}</TableHead>
+              <SortableHeader column="company_name" label={t("company")} sort={sort} onSort={handleSort} />
               <TableHead>{t("bundle")}</TableHead>
-              <TableHead className="w-[60px]">{t("zone")}</TableHead>
-              <TableHead className="w-[60px] text-center">{t("year")}</TableHead>
-              <TableHead className="w-[90px] text-center">{t("status")}</TableHead>
-              <TableHead className="text-right">{t("totalAmount")}</TableHead>
-              <TableHead className="text-right">{t("amountPaid")}</TableHead>
-              <TableHead className="w-[80px] text-center">{t("compliance")}</TableHead>
-              <TableHead className="w-[100px]">{t("deadline")}</TableHead>
+              <SortableHeader column="zone_code" label={t("zone")} sort={sort} onSort={handleSort} className="w-[60px]" />
+              <SortableHeader column="fiscal_year" label={t("year")} sort={sort} onSort={handleSort} className="w-[60px] text-center" />
+              <SortableHeader column="status" label={t("status")} sort={sort} onSort={handleSort} className="w-[90px] text-center" />
+              <SortableHeader column="total_amount" label={t("totalAmount")} sort={sort} onSort={handleSort} className="text-right" />
+              <SortableHeader column="amount_paid" label={t("amountPaid")} sort={sort} onSort={handleSort} className="text-right" />
+              <SortableHeader column="compliance_score" label={t("compliance")} sort={sort} onSort={handleSort} className="w-[80px] text-center" />
+              <SortableHeader column="deadline" label={t("deadline")} sort={sort} onSort={handleSort} className="w-[100px]" />
               <TableHead className="w-[60px]">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>

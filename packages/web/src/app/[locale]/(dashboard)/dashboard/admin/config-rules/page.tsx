@@ -27,6 +27,8 @@ import {
   ChevronLeft, ChevronRight,
 } from "lucide-react"
 import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalServicesTabNav"
+import { SortableHeader } from "@/components/ui/sortable-header"
+import { useSortState } from "@/hooks/use-sort-state"
 import { useToast } from "@/hooks/use-toast"
 import { configRulesApi, configRulesAdminApi } from "@/modules/fiscal-services/services/config-rules-api"
 import { bundleApi } from "@/modules/fiscal-services/services/bundle-api"
@@ -60,6 +62,7 @@ export default function ConfigRulesPage() {
   const { toast } = useToast()
   const monthNames = getMonthNames(locale)
 
+  const [sort, handleSort, sortData] = useSortState()
   const [data, setData] = useState<ConfigRuleListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -394,21 +397,12 @@ export default function ConfigRulesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("name")}</TableHead>
-              <TableHead className="w-[110px]">{t("configType")}</TableHead>
+              <SortableHeader column="nameEs" label={t("name")} sort={sort} onSort={handleSort} />
+              <SortableHeader column="configType" label={t("configType")} sort={sort} onSort={handleSort} className="w-[110px]" />
               <TableHead>{t("scope")}</TableHead>
-              <TableHead className="w-[90px] text-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                      {t("specificity")} <Info className="h-3 w-3" />
-                    </TooltipTrigger>
-                    <TooltipContent><p className="text-xs max-w-[250px]">{t("specificityTooltip")}</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </TableHead>
-              <TableHead className="w-[150px]">{t("effectivePeriod")}</TableHead>
-              <TableHead className="w-[80px] text-center">{t("isEnabled")}</TableHead>
+              <SortableHeader column="specificity" label={t("specificity")} sort={sort} onSort={handleSort} className="w-[90px] text-center" />
+              <SortableHeader column="effectiveFrom" label={t("effectivePeriod")} sort={sort} onSort={handleSort} className="w-[150px]" />
+              <SortableHeader column="isEnabled" label={t("isEnabled")} sort={sort} onSort={handleSort} className="w-[80px] text-center" />
               <TableHead className="w-[80px]">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -421,7 +415,7 @@ export default function ConfigRulesPage() {
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{t("noResults")}</TableCell>
               </TableRow>
-            ) : data.items.map(rule => (
+            ) : (sortData(data.items as unknown as Record<string, unknown>[], { nameEs: 'string', configType: 'string', specificity: 'number', effectiveFrom: 'date', isEnabled: 'boolean' }) as typeof data.items).map(rule => (
               <TableRow key={rule.id} className="hover:bg-muted/50">
                 <TableCell className="text-sm">{rule.nameEs || "—"}</TableCell>
                 <TableCell>
