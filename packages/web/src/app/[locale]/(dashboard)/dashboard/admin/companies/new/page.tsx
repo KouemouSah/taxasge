@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,6 +67,7 @@ interface CreationResult {
 export default function AdminCreateCompanyPage() {
   const router = useRouter()
   const locale = useLocale()
+  const t = useTranslations('admin.companies.createPage')
   const { toast } = useToast()
 
   // Form state
@@ -119,7 +120,7 @@ export default function AdminCreateCompanyPage() {
       setResult(res)
       setRecentIds(prev => [res.company_id, ...prev])
       toast({
-        title: 'Empresa creada',
+        title: t('successToast'),
         description: `${res.company_name} — ${res.obligations_count} obligaciones, ${res.total_amount.toLocaleString()} XAF`,
       })
     } catch (err: unknown) {
@@ -167,21 +168,21 @@ export default function AdminCreateCompanyPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Plus className="h-6 w-6" />
-              Nueva Empresa
+              {t('title')}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Crear empresa con licencia comercial y obligaciones automaticas
+              {t('subtitle')}
             </p>
           </div>
         </div>
         {recentIds.length > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{recentIds.length} creada(s)</span>
+            <span>{recentIds.length} {t('recentCount')}</span>
             <Button
               variant="outline" size="sm"
               onClick={() => navigateToCompany(recentIds[0])}
             >
-              Ver ultima
+              {t('viewLast')}
             </Button>
           </div>
         )}
@@ -194,7 +195,7 @@ export default function AdminCreateCompanyPage() {
             <div className="flex items-start gap-4">
               <CheckCircle className="h-8 w-8 text-green-600 shrink-0" />
               <div className="flex-1 space-y-2">
-                <h3 className="font-semibold text-green-900">Empresa creada correctamente</h3>
+                <h3 className="font-semibold text-green-900">{t('successTitle')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Empresa</span>
@@ -216,16 +217,16 @@ export default function AdminCreateCompanyPage() {
                 <div className="flex gap-2 pt-2">
                   <Badge variant="secondary">{result.fiscal_year}</Badge>
                   <Badge variant="outline" className="text-green-700 border-green-300">
-                    Creacion manual
+                    {t('manualBadge')}
                   </Badge>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
                 <Button size="sm" onClick={() => navigateToCompany(result.company_id)}>
-                  Ver empresa
+                  {t('viewCompany')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleReset}>
-                  Crear otra
+                  {t('createAnother')}
                 </Button>
               </div>
             </div>
@@ -241,13 +242,13 @@ export default function AdminCreateCompanyPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Datos obligatorios
+                {t('requiredFields')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="legalName">Nombre legal *</Label>
+                  <Label htmlFor="legalName">{t('legalName')} *</Label>
                   <Input
                     id="legalName"
                     value={legalName}
@@ -258,7 +259,7 @@ export default function AdminCreateCompanyPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="representante">Representante legal *</Label>
+                  <Label htmlFor="representante">{t('representanteLegal')} *</Label>
                   <Input
                     id="representante"
                     value={representanteLegal}
@@ -272,7 +273,7 @@ export default function AdminCreateCompanyPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Tipo de comercio *</Label>
+                  <Label>{t('commerceType')} *</Label>
                   <Select value={commerceType} onValueChange={setCommerceType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />
@@ -290,7 +291,7 @@ export default function AdminCreateCompanyPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Zona comercial *</Label>
+                  <Label>{t('zone')} *</Label>
                   <Select value={zoneCode} onValueChange={setZoneCode}>
                     <SelectTrigger>
                       <SelectValue placeholder="Zona" />
@@ -324,7 +325,7 @@ export default function AdminCreateCompanyPage() {
 
               {!nif && !registrationNumber && (
                 <p className="text-sm text-amber-600">
-                  * Al menos un identificador (NIF o N de registro) es obligatorio
+                  * {t('identifierRequired')}
                 </p>
               )}
             </CardContent>
@@ -335,13 +336,13 @@ export default function AdminCreateCompanyPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Datos adicionales
+                {t('optionalFields')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Forma juridica</Label>
+                  <Label>{t('formaJuridica')}</Label>
                   <Select value={formaJuridica} onValueChange={setFormaJuridica}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
@@ -354,7 +355,7 @@ export default function AdminCreateCompanyPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="employees">Numero de empleados</Label>
+                  <Label htmlFor="employees">{t('employees')}</Label>
                   <Input
                     id="employees" type="number" min={0}
                     value={employeeCount}
@@ -364,7 +365,7 @@ export default function AdminCreateCompanyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="objetoSocial">Objeto social</Label>
+                <Label htmlFor="objetoSocial">{t('objetoSocial')}</Label>
                 <Textarea
                   id="objetoSocial"
                   value={objetoSocial}
@@ -376,14 +377,14 @@ export default function AdminCreateCompanyPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="address">Direccion</Label>
+                  <Label htmlFor="address">{t('address')}</Label>
                   <Input
                     id="address" value={address}
                     onChange={e => setAddress(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefono</Label>
+                  <Label htmlFor="phone">{t('phone')}</Label>
                   <Input
                     id="phone" value={phone}
                     onChange={e => setPhone(e.target.value)}
@@ -391,7 +392,7 @@ export default function AdminCreateCompanyPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('email')}</Label>
                   <Input
                     id="email" type="email" value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -414,18 +415,18 @@ export default function AdminCreateCompanyPage() {
               type="button" variant="outline"
               onClick={() => router.push(`/${locale}/dashboard/admin/companies`)}
             >
-              Cancelar
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={!canSubmit || submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creando...
+                  {t('submitting')}
                 </>
               ) : (
                 <>
                   <Plus className="h-4 w-4 mr-2" />
-                  Crear empresa + licencia
+                  {t('submit')}
                 </>
               )}
             </Button>
@@ -437,7 +438,7 @@ export default function AdminCreateCompanyPage() {
       {recentIds.length > 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Empresas creadas en esta sesion ({recentIds.length})</CardTitle>
+            <CardTitle className="text-base">{t('recentSession')} ({recentIds.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">

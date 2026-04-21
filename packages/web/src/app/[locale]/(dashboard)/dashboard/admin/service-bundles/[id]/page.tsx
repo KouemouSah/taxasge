@@ -203,7 +203,7 @@ export default function BundleDetailPage() {
               variant="ghost" size="sm" className="h-7 text-xs"
               onClick={() => setShowCode(!showCode)}
             >
-              {showCode ? "Ocultar codigo" : "Mostrar codigo"}
+              {showCode ? t("hideCode") : t("showCode")}
             </Button>
           </div>
 

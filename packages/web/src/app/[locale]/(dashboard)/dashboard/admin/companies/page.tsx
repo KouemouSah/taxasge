@@ -617,7 +617,7 @@ export default function AdminCompaniesPage() {
             onClick={() => router.push(`/${locale}/dashboard/admin/companies/new`)}
           >
             <Plus className="h-4 w-4 mr-1" />
-            Nueva Empresa
+            {t("createPage.newButton")}
           </Button>
           {viewMode === 'kanban' && (
             <Select value={kanbanGroupBy} onValueChange={(v) => setKanbanGroupBy(v as KanbanGroupBy)}>
