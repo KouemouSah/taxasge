@@ -11,6 +11,7 @@ from uuid import UUID
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -220,3 +221,41 @@ async def complete_mission(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return result
+
+
+@router.get("/{mission_id}/report")
+async def download_mission_report(
+    mission_id: UUID,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_reports")),
+):
+    """Download mission completion report as PDF."""
+    from app.modules.inspections.services.inspection_pdf_service import (
+        inspection_pdf_service,
+    )
+
+    try:
+        mission = await MissionService.get_mission(
+            db, UUID(current_user.id), mission_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if mission["status"] != "completed":
+        raise HTTPException(
+            status_code=422,
+            detail="Report only available for completed missions",
+        )
+
+    lang = getattr(current_user, "preferred_language", "es") or "es"
+    pdf_bytes = await inspection_pdf_service.generate_mission_report(
+        db, str(mission_id), language=lang,
+    )
+
+    filename = f"mission_report_{mission['mission_date']}_{str(mission_id)[:8]}.pdf"
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -604,6 +604,103 @@ class InspectionPDFService:
 
         return self._html_to_pdf(html)
 
+    # ============================================================
+    # MISSION REPORT PDF
+    # ============================================================
+
+    async def generate_mission_report(
+        self, db, mission_id: str, language: str = "es",
+    ) -> bytes:
+        """Generate mission completion report PDF with KPIs."""
+        from app.modules.inspections.repositories.mission_repository import MissionRepository
+
+        mission = await MissionRepository.get_by_id(db, UUID(mission_id))
+        if not mission:
+            raise ValueError(f"Mission {mission_id} not found")
+
+        agents = await MissionRepository.get_mission_agents(db, UUID(mission_id))
+
+        # Linked inspections
+        inspections = await db.fetch("""
+            SELECT fi.id, fi.inspection_date, fi.result, fi.status,
+                   fi.payment_collected, fi.payment_amount,
+                   fi.activity_conforme, fi.duration_minutes,
+                   c.legal_name AS company_name, c.nif AS company_nif,
+                   u.first_name || ' ' || u.last_name AS agent_name,
+                   cz.zone_code
+            FROM field_inspections fi
+            JOIN companies c ON c.id = fi.company_id
+            JOIN users u ON u.id = fi.agent_id
+            LEFT JOIN commerce_zones cz ON cz.id = fi.zone_id
+            WHERE fi.mission_id = $1
+            ORDER BY fi.created_at
+        """, UUID(mission_id))
+
+        # Resolve zone names
+        zone_names = []
+        if mission.get("zone_ids"):
+            zones = await db.fetch(
+                "SELECT zone_code, name_es FROM commerce_zones WHERE id = ANY($1::uuid[])",
+                mission["zone_ids"],
+            )
+            zone_names = [f"{z['zone_code']} - {z['name_es']}" for z in zones]
+
+        # Supervisor info
+        sup = await db.fetchrow(
+            "SELECT first_name || ' ' || last_name AS name FROM users WHERE id = $1",
+            mission["supervisor_id"],
+        )
+
+        # KPIs
+        actual_total = sum(a.get("actual_inspections", 0) for a in agents)
+        target_total = sum(a.get("target_inspections", 10) for a in agents)
+        conforme = sum(1 for i in inspections if i["result"] == "conforme")
+        non_conforme = sum(1 for i in inspections if i["result"] == "non_conforme")
+        collected = sum(float(i["payment_amount"] or 0) for i in inspections if i["payment_collected"])
+        avg_duration = 0
+        durations = [i["duration_minutes"] for i in inspections if i["duration_minutes"]]
+        if durations:
+            avg_duration = sum(durations) / len(durations)
+
+        completion_pct = round(actual_total / target_total * 100) if target_total > 0 else 0
+        conformity_rate = round(conforme / len(inspections) * 100) if inspections else 0
+
+        token = self._generate_verification_token("mission", mission_id)
+        qr_url = f"{_get_base_url()}/verify/mission/{mission_id[:8]}?t={token}"
+
+        texts = TRANSLATIONS.get(language, TRANSLATIONS["es"])
+
+        template = self._get_template("mission_report.html")
+        html = template.render(
+            language=language,
+            texts=texts,
+            logo_base64=self._get_logo_base64(),
+            mission_id=mission_id,
+            mission_date=str(mission["mission_date"]),
+            mission_title=mission.get("title") or str(mission["mission_date"]),
+            supervisor_name=sup["name"] if sup else "",
+            location_name=mission.get("location_name", ""),
+            status=mission["status"],
+            zone_names=zone_names,
+            agents=[dict(a) for a in agents],
+            inspections=[dict(i) for i in inspections],
+            actual_total=actual_total,
+            target_total=target_total,
+            completion_pct=completion_pct,
+            conforme=conforme,
+            non_conforme=non_conforme,
+            conformity_rate=conformity_rate,
+            collected_amount=f"{collected:,.0f}",
+            avg_duration=round(avg_duration),
+            started_at=str(mission.get("started_at") or ""),
+            completed_at=str(mission.get("completed_at") or ""),
+            notes=mission.get("notes", ""),
+            qr_base64=self._generate_qr(qr_url),
+            generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        )
+
+        return self._html_to_pdf(html)
+
 
 # Singleton
 inspection_pdf_service = InspectionPDFService()
