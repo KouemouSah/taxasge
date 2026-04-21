@@ -384,7 +384,12 @@ class AgentQueueService:
             f"Result: {result_status}"
         )
 
-        # Feedback loop: record completion for multi-criteria scoring
+        # Feedback loop: record completion for multi-criteria scoring.
+        # CRITICAL: wrapped in a SAVEPOINT so that any SQL error inside
+        # feedback recording does NOT poison the outer transaction.
+        # Without a savepoint, a PostgreSQL error (even caught by try-except)
+        # marks the transaction as "aborted" and the final COMMIT silently
+        # becomes a ROLLBACK — losing the approval status change.
         try:
             from app.modules.assignment.services.assignment_feedback_service import feedback_service
             processing_hours = None
@@ -397,10 +402,11 @@ class AgentQueueService:
                 agent_id,
             )
             if agent_profile_id and workflow_code:
-                await feedback_service.record_completion(
-                    db, agent_profile_id, workflow_code,
-                    processing_hours or 0,
-                )
+                async with db.transaction():  # SAVEPOINT when nested
+                    await feedback_service.record_completion(
+                        db, agent_profile_id, workflow_code,
+                        processing_hours or 0,
+                    )
         except Exception as e:
             logger.warning(f"Feedback recording failed (non-blocking): {e}")
 
@@ -448,6 +454,7 @@ class AgentQueueService:
         )
 
         # Feedback loop: record escalation for multi-criteria scoring
+        # SAVEPOINT protects the outer transaction from feedback SQL errors
         try:
             from app.modules.assignment.services.assignment_feedback_service import feedback_service
             workflow_code = row.get("declaration_type")
@@ -456,9 +463,10 @@ class AgentQueueService:
                 agent_id,
             )
             if agent_profile_id and workflow_code:
-                await feedback_service.record_escalation(
-                    db, agent_profile_id, workflow_code,
-                )
+                async with db.transaction():  # SAVEPOINT when nested
+                    await feedback_service.record_escalation(
+                        db, agent_profile_id, workflow_code,
+                    )
         except Exception as e:
             logger.warning(f"Feedback recording failed (non-blocking): {e}")
 
