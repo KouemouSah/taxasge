@@ -44,8 +44,8 @@ class DatabaseManager:
                     else:
                         raise ValueError("No database connection configuration found")
 
-                pool_min = settings.DATABASE_MIN_CONNECTIONS or 5
-                pool_max = settings.DATABASE_MAX_CONNECTIONS or 20
+                pool_min = settings.DATABASE_MIN_CONNECTIONS
+                pool_max = settings.DATABASE_MAX_CONNECTIONS
                 logger.info(f"  Connection pool: min={pool_min}, max={pool_max}")
 
                 self.pool = await asyncpg.create_pool(

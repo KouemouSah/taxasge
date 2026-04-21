@@ -165,10 +165,9 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = Field(default=30, env="DB_POOL_TIMEOUT")
 
     # Connection Pool Settings (for asyncpg)
-    # CRITICAL: Supabase free tier has ~60 total connections limit
-    # Cloud Run can scale to multiple instances, so keep pool size SMALL
-    DATABASE_MIN_CONNECTIONS: int = Field(default=2, env="DATABASE_MIN_CONNECTIONS")
-    DATABASE_MAX_CONNECTIONS: int = Field(default=5, env="DATABASE_MAX_CONNECTIONS")
+    # Supabase: ~60 total connections limit. With 2 Cloud Run instances: 20×2=40 < 60.
+    DATABASE_MIN_CONNECTIONS: int = Field(default=10, env="DATABASE_MIN_CONNECTIONS")
+    DATABASE_MAX_CONNECTIONS: int = Field(default=20, env="DATABASE_MAX_CONNECTIONS")
     
     # ========================================================================
     # FIREBASE SETTINGS (Using actual GitHub Secrets names)
