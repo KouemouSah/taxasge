@@ -857,6 +857,31 @@ class LicenseService:
             )
             await LicenseService.update_license_counters(conn, lic_id)
 
+        # Notify citizen owners (async, best-effort)
+        try:
+            from app.core.events import EventBus, EventType
+            for lic_id, lic_rows in by_license.items():
+                owner = await conn.fetchrow("""
+                    SELECT u.email, u.first_name, u.last_name, c.legal_name
+                    FROM users u
+                    JOIN user_company_roles ucr ON ucr.user_id = u.id
+                    JOIN commercial_licenses cl ON cl.company_id = ucr.company_id
+                    WHERE cl.id = $1 AND ucr.role = 'company_owner'
+                    LIMIT 1
+                """, lic_id)
+                if owner and owner["email"]:
+                    total = sum(float(r["amount"]) for r in lic_rows)
+                    EventBus.publish_nowait(EventType.OBLIGATION_OVERDUE, {
+                        "license_id": str(lic_id),
+                        "user_email": owner["email"],
+                        "user_name": f"{owner['first_name'] or ''} {owner['last_name'] or ''}".strip(),
+                        "company_name": owner["legal_name"],
+                        "obligations_count": len(lic_rows),
+                        "total_amount": total,
+                    })
+        except Exception as e:
+            logger.warning(f"Failed to publish OBLIGATION_OVERDUE events: {e}")
+
         logger.info(
             f"Overdue check: {len(rows)} obligations flagged, "
             f"{len(by_license)} licenses affected"
@@ -873,7 +898,15 @@ class LicenseService:
 
         Uses the snapshotted penalty_config on each obligation.
         Called by a periodic cron job (e.g., weekly or monthly).
+
+        Guard: only runs if PENALTIES_ENABLED env var is 'true' (default: false).
+        Each obligation's penalty_config must also have rate > 0.
         """
+        from app.config import get_settings
+        settings = get_settings()
+        if not getattr(settings, 'PENALTIES_ENABLED', False):
+            logger.info("Penalties cron: DISABLED (PENALTIES_ENABLED != true)")
+            return 0
         rows = await conn.fetch("""
             SELECT id, license_id, amount, penalty_amount,
                    penalty_config, due_date, fee_type
@@ -937,12 +970,102 @@ class LicenseService:
             await LicenseService.update_license_counters(conn, lic_id)
 
         updated_count = sum(len(evts) for evts in updated_events.values())
+
+        # Notify citizen owners about new penalties (async, best-effort)
         if updated_count > 0:
+            try:
+                from app.core.events import EventBus, EventType
+                for lic_id, events in updated_events.items():
+                    penalty_total = sum(
+                        float(e["event_data"]["new_penalty"]) for e in events
+                    )
+                    owner = await conn.fetchrow("""
+                        SELECT u.email, u.first_name, c.legal_name
+                        FROM users u
+                        JOIN user_company_roles ucr ON ucr.user_id = u.id
+                        JOIN commercial_licenses cl ON cl.company_id = ucr.company_id
+                        WHERE cl.id = $1 AND ucr.role = 'company_owner'
+                        LIMIT 1
+                    """, lic_id)
+                    if owner and owner["email"]:
+                        EventBus.publish_nowait(EventType.OBLIGATION_PENALTY_APPLIED, {
+                            "license_id": str(lic_id),
+                            "user_email": owner["email"],
+                            "user_name": owner["first_name"] or "",
+                            "company_name": owner["legal_name"],
+                            "penalty_total": penalty_total,
+                            "obligations_affected": len(events),
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to publish PENALTY events: {e}")
+
             logger.info(
                 f"Penalties applied: {updated_count} obligations updated, "
                 f"{len(updated_events)} licenses affected"
             )
         return updated_count
+
+    # ==================================================================
+    # Renewal Reminders (cron — annual)
+    # ==================================================================
+
+    @staticmethod
+    async def check_renewal_reminders(conn) -> int:
+        """Check for companies that completed last year but haven't renewed.
+
+        Sends OBLIGATION_REMINDER_SENT event for each company that:
+        - Had a complete license last year (fiscal_year = current - 1)
+        - Does NOT have a license for the current year
+
+        Returns count of reminders sent.
+        """
+        current_year = datetime.now(timezone.utc).year
+
+        rows = await conn.fetch("""
+            SELECT cl.id AS prev_license_id, cl.company_id,
+                   c.legal_name, c.representante_legal,
+                   u.email, u.first_name, u.last_name,
+                   cl.total_amount
+            FROM commercial_licenses cl
+            JOIN companies c ON c.id = cl.company_id
+            LEFT JOIN user_company_roles ucr
+                ON ucr.company_id = c.id AND ucr.role = 'company_owner'
+            LEFT JOIN users u ON u.id = ucr.user_id
+            WHERE cl.fiscal_year = $1
+              AND cl.status = 'complete'
+              AND NOT EXISTS (
+                  SELECT 1 FROM commercial_licenses cl2
+                  WHERE cl2.company_id = cl.company_id
+                    AND cl2.fiscal_year = $2
+              )
+              AND u.email IS NOT NULL
+        """, current_year - 1, current_year)
+
+        if not rows:
+            return 0
+
+        from app.core.events import EventBus, EventType
+
+        sent = 0
+        for row in rows:
+            try:
+                EventBus.publish_nowait(EventType.OBLIGATION_REMINDER_SENT, {
+                    "license_id": str(row["prev_license_id"]),
+                    "user_email": row["email"],
+                    "user_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip(),
+                    "company_name": row["legal_name"],
+                    "fiscal_year": current_year,
+                    "message": f"Su licencia comercial {current_year - 1} fue completada. "
+                               f"Renueve para el año fiscal {current_year}.",
+                })
+                sent += 1
+            except Exception:
+                pass
+
+        logger.info(
+            f"Renewal reminders: {sent}/{len(rows)} sent for FY {current_year}"
+        )
+        return sent
 
     # ==================================================================
     # Events — Read

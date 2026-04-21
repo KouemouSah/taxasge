@@ -104,6 +104,27 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="high",
         subject_key="notifications.license.completed.subject",
     ),
+    EventType.OBLIGATION_OVERDUE: NotificationConfig(
+        template_code="obligation_overdue",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.obligation.overdue.subject",
+        sms_template_code="OBLIGATION_OVERDUE",
+    ),
+    EventType.OBLIGATION_PENALTY_APPLIED: NotificationConfig(
+        template_code="obligation_penalty_applied",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.obligation.penalty.subject",
+        sms_template_code="OBLIGATION_PENALTY_APPLIED",
+    ),
+    EventType.OBLIGATION_REMINDER_SENT: NotificationConfig(
+        template_code="obligation_reminder",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        priority="normal",
+        subject_key="notifications.obligation.reminder.subject",
+        sms_template_code="OBLIGATION_REMINDER",
+    ),
     EventType.OBLIGATION_PROCESSED: NotificationConfig(
         template_code="obligation_processed",
         channels=[NotificationChannel.PUSH],

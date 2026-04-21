@@ -186,6 +186,22 @@ async def cron_obligation_reminders(
     return result
 
 
+@router.post("/cron/renewal-reminders")
+async def cron_renewal_reminders(
+    db=Depends(get_database),
+    _=Depends(verify_cron_auth),
+):
+    """Cron: send renewal reminders for completed licenses from previous year.
+
+    Checks companies that completed FY-1 but don't have a license for current year.
+    Sends email + push notification to company owners.
+
+    Authentication: X-Cron-Secret header. Run daily (effective January-March).
+    """
+    count = await LicenseService.check_renewal_reminders(db)
+    return {"reminders_sent": count}
+
+
 @router.get("/compliance-summary")
 async def get_compliance_summary(
     fiscal_year: int = Query(..., ge=2020, le=2100),
