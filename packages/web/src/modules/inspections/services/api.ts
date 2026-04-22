@@ -228,13 +228,14 @@ export const inspectionApi = {
   createMission: (data: { mission_date: string; entity_location_id?: string; title?: string; notes?: string; zone_ids?: string[] }) =>
     apiClient.post<Mission>('/inspections/missions/', data).then(r => r.data),
 
-  listMissions: (params?: { date_from?: string; date_to?: string; status?: string; page?: number; page_size?: number }) => {
+  listMissions: (params?: { date_from?: string; date_to?: string; status?: string; page?: number; page_size?: number; entity_location_id?: string }) => {
     const sp = new URLSearchParams()
     if (params?.date_from) sp.set('date_from', params.date_from)
     if (params?.date_to) sp.set('date_to', params.date_to)
     if (params?.status) sp.set('status', params.status)
     if (params?.page) sp.set('page', String(params.page))
     if (params?.page_size) sp.set('page_size', String(params.page_size))
+    if (params?.entity_location_id) sp.set('entity_location_id', params.entity_location_id)
     const q = sp.toString()
     return apiClient.get<MissionListResponse>(`/inspections/missions${q ? `?${q}` : ''}`).then(r => r.data)
   },

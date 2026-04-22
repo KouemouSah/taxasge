@@ -68,6 +68,7 @@ async def list_missions(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     status: Optional[str] = Query(None),
+    entity_location_id: Optional[UUID] = Query(None, description="Filter by site (main-office supervisors)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db=Depends(get_database),
@@ -80,6 +81,7 @@ async def list_missions(
             db, UUID(current_user.id),
             date_from=date_from, date_to=date_to,
             status=status, page=page, page_size=page_size,
+            entity_location_id=entity_location_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

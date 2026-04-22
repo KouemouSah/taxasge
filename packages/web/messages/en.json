@@ -9659,6 +9659,7 @@
     }
   },
   "supervisor": {
+    "allSites": "All sites",
     "companyDashboard": {
       "title": "My Zone Companies",
       "noZoneAssigned": "No zone assigned to your profile",

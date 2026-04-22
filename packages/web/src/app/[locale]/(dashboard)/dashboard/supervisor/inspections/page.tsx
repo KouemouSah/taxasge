@@ -167,6 +167,7 @@ export default function SupervisorInspectionDashboard() {
         date_from: start,
         date_to: end.toISOString().slice(0, 10),
         page_size: 50,
+        entity_location_id: locationFilter || undefined,
       })
       setMissions(result.items)
     } catch {
@@ -174,7 +175,7 @@ export default function SupervisorInspectionDashboard() {
     } finally {
       setLoadingMissions(false)
     }
-  }, [missionWeekStart, toast, t])
+  }, [missionWeekStart, locationFilter, toast, t])
 
   useEffect(() => { fetchDashboard() }, [fetchDashboard])
 

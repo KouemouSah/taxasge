@@ -191,9 +191,10 @@ class MissionService:
         """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
-        # Non-main-office: filter to own location only
-        location_filter = None
-        if not ctx.get("is_main_office", False):
+        # Explicit filter from query param takes priority (main-office dropdown)
+        # Non-main-office: forced to own location
+        location_filter = filters.get("entity_location_id")
+        if not location_filter and not ctx.get("is_main_office", False):
             location_filter = ctx.get("entity_location_id")
 
         return await MissionRepository.list_by_entity(
