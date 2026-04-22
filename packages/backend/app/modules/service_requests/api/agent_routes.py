@@ -537,7 +537,7 @@ async def get_queue_stats(
         SELECT
             COUNT(*) FILTER (
                 WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW')
-                  AND sr.assigned_to IS NOT NULL
+                  AND sr.assigned_to = ${agent_user_id_param}
                   AND sr.payment_status = 'completed'
             ) AS pending,
             COUNT(*) FILTER (
@@ -3706,9 +3706,12 @@ async def get_urgent_requests_widget(
     include_assigned: bool = Query(True, description="Include assigned requests"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view"))
 ):
-    """Get urgent and assigned requests for dashboard widget."""
+    """Get urgent and assigned requests for dashboard widget.
+    Scoped to agent's site (entity_location_id) unless global supervisor.
+    """
 
     # Get entity's workflow codes
     entity = await db.fetchrow("""
@@ -3741,6 +3744,19 @@ async def get_urgent_requests_widget(
     priority_condition = "sr.priority::text IN ('URGENT', 'HIGH')"
     assigned_condition = "sr.assigned_to IS NOT NULL" if include_assigned else "FALSE"
 
+    # Site-scope: regular agents and site supervisors see only their site
+    site_filter = ""
+    query_params = [workflow_codes]
+    if not agent_ctx.is_supervisor:
+        # Regular agent: only requests assigned to them
+        site_filter = "AND sr.assigned_to = $2"
+        query_params.append(agent_ctx.user_id)
+    elif not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
+        # Site supervisor: all requests at their site
+        site_filter = "AND (sr.entity_location_id = $2 OR sr.entity_location_id IS NULL)"
+        query_params.append(agent_ctx.entity_location_id)
+    # Global supervisor: no site filter (sees all)
+
     # Main query with SLA calculation
     limit_clause = f"LIMIT {limit}" if limit > 0 else ""
 
@@ -3767,6 +3783,7 @@ async def get_urgent_requests_widget(
           AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
           AND sr.payment_status = 'completed'
           AND ({priority_condition} OR {assigned_condition})
+          {site_filter}
         ORDER BY
             CASE sr.priority
                 WHEN 'URGENT' THEN 1
@@ -3777,7 +3794,7 @@ async def get_urgent_requests_widget(
         {limit_clause}
     """
 
-    rows = await db.fetch(query, workflow_codes)
+    rows = await db.fetch(query, *query_params)
 
     # Calculate SLA status and build response
     now = datetime.utcnow()
@@ -3809,8 +3826,8 @@ async def get_urgent_requests_widget(
             assigned_to=str(row['assigned_to']) if row['assigned_to'] else None
         ))
 
-    # Get totals
-    totals = await db.fetchrow("""
+    # Get totals (same site scope)
+    totals = await db.fetchrow(f"""
         SELECT
             COUNT(*) FILTER (WHERE sr.priority::text = 'URGENT') as total_urgent,
             COUNT(*) FILTER (WHERE sr.priority::text = 'HIGH') as total_high,
@@ -3819,7 +3836,8 @@ async def get_urgent_requests_widget(
         WHERE sr.workflow_code = ANY($1)
           AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
           AND sr.payment_status = 'completed'
-    """, workflow_codes)
+          {site_filter}
+    """, *query_params)
 
     return UrgentRequestsWidgetResponse(
         items=items,
