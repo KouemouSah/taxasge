@@ -98,11 +98,12 @@ export function PersonalDocumentsGrid() {
     };
   }, [search]);
 
-  // Build filters: personal includes both 'personal' and 'wizard_import' sources
-  // We use source: 'personal' which the backend treats as personal uploads
+  // Build filters: personal tab shows BOTH 'personal' uploads AND 'wizard_import'
+  // documents (imported from service request submissions). NOT generated docs.
+  // Omit source filter to get all non-generated; backend returns personal + wizard_import.
   const filters: DocumentFilters = {
-    source: 'personal',
     category,
+    status: 'active' as const,
     search: debouncedSearch || undefined,
     limit: 20,
   };

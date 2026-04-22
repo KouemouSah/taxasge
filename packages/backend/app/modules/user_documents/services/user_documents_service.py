@@ -1058,7 +1058,7 @@ class UserDocumentsService:
         for doc_info in documents:
             source_doc_id = doc_info.get("id")
 
-            # Idempotency: skip if already imported
+            # Idempotency: skip if already imported (by source_document_id)
             if source_doc_id:
                 existing = await db.fetchrow(
                     """SELECT id FROM user_documents
@@ -1072,10 +1072,51 @@ class UserDocumentsService:
                     created_ids.append(existing["id"])
                     continue
 
+            # Content-based deduplication (3-level):
+            # Level 1: SHA-256 hash match (100% reliable — same content)
+            # Level 2: document_type + file_name (fallback when hash unavailable)
+            # Level 3: source_document_id (already checked above — per-SR idempotence)
             document_code = doc_info.get("document_code", "unknown")
             file_hash = doc_info.get("file_hash", "")
 
-            # If no hash provided, generate a placeholder based on path
+            # If hash not in doc_info, try to fetch from uploaded_files table
+            if not file_hash and source_doc_id:
+                try:
+                    stored_hash = await db.fetchval(
+                        "SELECT file_hash FROM uploaded_files WHERE id = $1",
+                        source_doc_id,
+                    )
+                    if stored_hash and len(stored_hash) == 64:
+                        file_hash = stored_hash
+                except Exception:
+                    pass
+
+            # Level 1: hash-based dedup (strongest)
+            if file_hash and len(file_hash) == 64:  # Valid SHA-256
+                hash_dup = await db.fetchrow(
+                    """SELECT id FROM user_documents
+                       WHERE user_id = $1 AND file_hash = $2
+                         AND status = 'active' AND deleted_at IS NULL
+                       LIMIT 1""",
+                    user_id, file_hash,
+                )
+                if hash_dup:
+                    created_ids.append(hash_dup["id"])
+                    continue
+
+            # Level 2: name-based dedup (fallback)
+            name_dup = await db.fetchrow(
+                """SELECT id FROM user_documents
+                   WHERE user_id = $1 AND document_type = $2 AND file_name = $3
+                     AND status = 'active' AND deleted_at IS NULL
+                   LIMIT 1""",
+                user_id, document_code, doc_info.get("file_name", ""),
+            )
+            if name_dup:
+                created_ids.append(name_dup["id"])
+                continue
+
+            # No hash provided and download failed → generate placeholder from path
             if not file_hash:
                 file_hash = hashlib.sha256(
                     doc_info.get("file_path", "").encode()
