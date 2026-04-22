@@ -398,3 +398,154 @@ class MissionRepository:
             )
             WHERE fma.mission_id = $1
         """, mission_id)
+
+    # ============================================================
+    # ANALYTICS
+    # ============================================================
+
+    @staticmethod
+    async def get_mission_analytics(
+        conn, entity_id: UUID,
+        date_from: date, date_to: date,
+        entity_location_id: Optional[UUID] = None,
+    ) -> Dict:
+        """Aggregated mission analytics for a period."""
+        loc_filter = ""
+        params: list = [entity_id, date_from, date_to]
+        if entity_location_id:
+            loc_filter = "AND fm.entity_location_id = $4"
+            params.append(entity_location_id)
+
+        # Summary stats
+        summary = await conn.fetchrow(f"""
+            SELECT
+                COUNT(*) AS total_missions,
+                COUNT(*) FILTER (WHERE fm.status = 'completed') AS completed,
+                COUNT(*) FILTER (WHERE fm.status = 'cancelled') AS cancelled,
+                COUNT(*) FILTER (WHERE fm.status = 'in_progress') AS in_progress,
+                COUNT(*) FILTER (WHERE fm.status = 'planned') AS planned,
+                ROUND(AVG(EXTRACT(EPOCH FROM (fm.completed_at - fm.started_at)) / 3600)
+                    FILTER (WHERE fm.completed_at IS NOT NULL AND fm.started_at IS NOT NULL), 1
+                ) AS avg_duration_hours,
+                COALESCE(SUM(agg.actual), 0) AS total_inspections_actual,
+                COALESCE(SUM(agg.target), 0) AS total_inspections_target,
+                COALESCE(SUM(agg.collected), 0) AS total_collected
+            FROM field_missions fm
+            LEFT JOIN LATERAL (
+                SELECT
+                    SUM(fma.actual_inspections)::int AS actual,
+                    SUM(fma.target_inspections)::int AS target,
+                    COALESCE(SUM(fi_agg.collected), 0) AS collected
+                FROM field_mission_agents fma
+                LEFT JOIN LATERAL (
+                    SELECT COALESCE(SUM(payment_amount), 0) AS collected
+                    FROM field_inspections
+                    WHERE mission_id = fm.id AND payment_collected
+                ) fi_agg ON true
+                WHERE fma.mission_id = fm.id
+            ) agg ON true
+            WHERE fm.entity_id = $1
+              AND fm.mission_date BETWEEN $2 AND $3
+              {loc_filter}
+        """, *params)
+
+        total = summary["total_missions"] or 0
+        completed = summary["completed"] or 0
+        actual = summary["total_inspections_actual"] or 0
+        target = summary["total_inspections_target"] or 0
+
+        # Conformity from inspections linked to missions in period
+        conformity_row = await conn.fetchrow(f"""
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE fi.result = 'conforme') AS conforme
+            FROM field_inspections fi
+            JOIN field_missions fm ON fm.id = fi.mission_id
+            WHERE fm.entity_id = $1
+              AND fm.mission_date BETWEEN $2 AND $3
+              AND fi.result IS NOT NULL
+              {loc_filter}
+        """, *params)
+        conf_total = conformity_row["total"] or 0
+        conformity_rate = round(conformity_row["conforme"] / conf_total * 100, 1) if conf_total > 0 else 0
+
+        # Weekly trends (last 8 weeks or within range)
+        trends = await conn.fetch(f"""
+            SELECT
+                date_trunc('week', fm.mission_date)::date AS week,
+                COUNT(DISTINCT fm.id) AS missions,
+                COALESCE(SUM(fma.actual_inspections), 0)::int AS inspections,
+                ROUND(
+                    COUNT(*) FILTER (WHERE fi.result = 'conforme')::numeric
+                    / NULLIF(COUNT(*) FILTER (WHERE fi.result IS NOT NULL), 0) * 100, 1
+                ) AS conformity
+            FROM field_missions fm
+            LEFT JOIN field_mission_agents fma ON fma.mission_id = fm.id
+            LEFT JOIN field_inspections fi ON fi.mission_id = fm.id
+            WHERE fm.entity_id = $1
+              AND fm.mission_date BETWEEN $2 AND $3
+              {loc_filter}
+            GROUP BY 1
+            ORDER BY 1
+        """, *params)
+
+        # Top agents by mission performance
+        top_agents = await conn.fetch(f"""
+            SELECT
+                u.first_name || ' ' || u.last_name AS agent_name,
+                COUNT(DISTINCT fma.mission_id) AS missions_count,
+                SUM(fma.actual_inspections)::int AS inspections,
+                ROUND(
+                    SUM(fma.actual_inspections)::numeric
+                    / NULLIF(SUM(fma.target_inspections), 0) * 100, 1
+                ) AS avg_target_pct
+            FROM field_mission_agents fma
+            JOIN field_missions fm ON fm.id = fma.mission_id
+            JOIN users u ON u.id = fma.agent_id
+            WHERE fm.entity_id = $1
+              AND fm.mission_date BETWEEN $2 AND $3
+              AND fma.status != 'absent'
+              {loc_filter}
+            GROUP BY u.id, u.first_name, u.last_name
+            ORDER BY inspections DESC
+            LIMIT 10
+        """, *params)
+
+        # Stale zones (> 30 days without inspection)
+        stale_zones = await conn.fetch("""
+            SELECT
+                cz.zone_code, cz.name_es AS zone_name,
+                (CURRENT_DATE - MAX(fi.inspection_date))::int AS days_since,
+                COUNT(lo.id) FILTER (WHERE lo.status IN ('pending','overdue')) AS pending_count
+            FROM commerce_zones cz
+            LEFT JOIN field_inspections fi ON fi.zone_id = cz.id
+                AND fi.entity_id = $1 AND fi.status != 'cancelled'
+            LEFT JOIN commercial_licenses cl ON cl.zone_id = cz.id
+            LEFT JOIN license_obligations lo ON lo.license_id = cl.id
+            GROUP BY cz.id, cz.zone_code, cz.name_es
+            HAVING MAX(fi.inspection_date) IS NULL
+                OR (CURRENT_DATE - MAX(fi.inspection_date)) > 30
+            ORDER BY days_since DESC NULLS FIRST
+            LIMIT 10
+        """, entity_id)
+
+        return {
+            "period": {"date_from": str(date_from), "date_to": str(date_to)},
+            "summary": {
+                "total_missions": total,
+                "completed": completed,
+                "cancelled": summary["cancelled"] or 0,
+                "in_progress": summary["in_progress"] or 0,
+                "planned": summary["planned"] or 0,
+                "completion_rate": round(completed / total * 100, 1) if total > 0 else 0,
+                "avg_duration_hours": float(summary["avg_duration_hours"] or 0),
+                "total_inspections_actual": actual,
+                "total_inspections_target": target,
+                "target_achievement_rate": round(actual / target * 100, 1) if target > 0 else 0,
+                "conformity_rate": conformity_rate,
+                "total_collected": float(summary["total_collected"] or 0),
+            },
+            "trends": [dict(r) for r in trends],
+            "top_agents": [dict(r) for r in top_agents],
+            "stale_zones": [dict(r) for r in stale_zones],
+        }

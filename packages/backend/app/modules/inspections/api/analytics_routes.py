@@ -185,3 +185,45 @@ async def get_priority_zones(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return PriorityZonesResponse(**result)
+
+
+# ============================================================
+# Mission Analytics
+# ============================================================
+
+
+@router.get("/missions")
+async def get_mission_analytics(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    entity_location_id: Optional[UUID] = Query(None, description="Filter by site"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Mission analytics: KPIs, trends, top agents, stale zones."""
+    from datetime import timedelta
+    from app.modules.inspections.services.inspection_service import InspectionService
+    from app.modules.inspections.repositories.mission_repository import MissionRepository
+
+    try:
+        ctx = await InspectionService.resolve_inspector_context(
+            db, UUID(current_user.id),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    # Defaults: last 8 weeks
+    _date_to = date_to or date.today()
+    _date_from = date_from or (_date_to - timedelta(weeks=8))
+
+    # Location scoping
+    loc = entity_location_id
+    if not loc and not ctx.get("is_main_office", False):
+        loc = ctx.get("entity_location_id")
+
+    result = await MissionRepository.get_mission_analytics(
+        db, ctx["entity_id"], _date_from, _date_to,
+        entity_location_id=loc,
+    )
+    return result
