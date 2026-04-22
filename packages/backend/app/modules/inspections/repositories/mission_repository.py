@@ -58,15 +58,25 @@ class MissionRepository:
     @staticmethod
     async def list_by_entity(
         conn, entity_id: UUID,
+        entity_location_id: Optional[UUID] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
         status: Optional[str] = None,
         page: int = 1, page_size: int = 20,
     ) -> Tuple[List[Dict], int]:
-        """Paginated list of missions for an entity."""
+        """Paginated list of missions for an entity.
+
+        If entity_location_id is set, only return missions for that location
+        (non-main-office supervisors).
+        """
         conditions = ["fm.entity_id = $1"]
         params: list = [entity_id]
         idx = 2
+
+        if entity_location_id:
+            conditions.append(f"fm.entity_location_id = ${idx}")
+            params.append(entity_location_id)
+            idx += 1
 
         if date_from:
             conditions.append(f"fm.mission_date >= ${idx}")
@@ -297,13 +307,27 @@ class MissionRepository:
     @staticmethod
     async def get_agents_availability(
         conn, entity_id: UUID, mission_date: date,
+        entity_location_id: Optional[UUID] = None,
     ) -> List[Dict]:
-        """Get agent availability for a specific date."""
-        rows = await conn.fetch("""
+        """Get agent availability for a specific date.
+
+        If entity_location_id is provided, only return agents assigned to that
+        location. This prevents cross-site assignment (e.g., assigning a Bata
+        agent to a Malabo mission).
+        """
+        location_filter = ""
+        params: list = [entity_id, mission_date]
+        if entity_location_id:
+            location_filter = "AND ap.entity_location_id = $3"
+            params.append(entity_location_id)
+
+        rows = await conn.fetch(f"""
             SELECT
                 ap.user_id AS agent_id,
                 ap.id AS agent_profile_id,
                 u.full_name AS agent_name,
+                ap.entity_location_id,
+                el.city AS location_city,
                 NOT EXISTS(
                     SELECT 1 FROM field_mission_agents fma
                     JOIN field_missions fm ON fm.id = fma.mission_id
@@ -324,11 +348,13 @@ class MissionRepository:
                 CASE WHEN ap.is_active THEN 'available' ELSE 'unavailable' END AS availability_status
             FROM agent_profiles ap
             JOIN users u ON u.id = ap.user_id
+            LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
             WHERE ap.entity_id = $1
               AND ap.is_active = true
               AND ap.is_supervisor = false
+              {location_filter}
             ORDER BY u.full_name ASC
-        """, entity_id, mission_date)
+        """, *params)
         return [dict(r) for r in rows]
 
     # ============================================================

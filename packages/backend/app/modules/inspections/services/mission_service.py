@@ -184,11 +184,21 @@ class MissionService:
     async def list_missions(
         conn, user_id: UUID, **filters,
     ) -> Tuple[List[Dict], int]:
-        """List missions for the user's entity."""
+        """List missions for the user's entity.
+
+        Non-main-office supervisors only see their own location's missions.
+        Main-office supervisors see all locations (read-only for other sites).
+        """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
+
+        # Non-main-office: filter to own location only
+        location_filter = None
+        if not ctx.get("is_main_office", False):
+            location_filter = ctx.get("entity_location_id")
 
         return await MissionRepository.list_by_entity(
             conn, ctx["entity_id"],
+            entity_location_id=location_filter,
             date_from=filters.get("date_from"),
             date_to=filters.get("date_to"),
             status=filters.get("status"),
@@ -305,18 +315,39 @@ class MissionService:
                 f"'{mission['status']}'. Must be 'planned' or 'in_progress'."
             )
 
-        # Validate agents belong to the same entity
+        # Validate agents belong to the same entity AND location
         agent_ids = [a["agent_id"] for a in agents]
-        entity_check = await conn.fetchval("""
-            SELECT COUNT(*) FROM agent_profiles
+        mission_location_id = mission["entity_location_id"]
+
+        agent_locations = await conn.fetch("""
+            SELECT user_id, entity_location_id, is_active
+            FROM agent_profiles
             WHERE user_id = ANY($1::uuid[])
               AND entity_id = $2
-              AND is_active = true
         """, agent_ids, ctx["entity_id"])
 
-        if entity_check != len(agent_ids):
+        found_ids = {r["user_id"] for r in agent_locations}
+        missing = [str(a) for a in agent_ids if a not in found_ids]
+        if missing:
             raise ValueError(
-                "Some agents do not belong to this entity or are inactive"
+                f"Agents not found in this entity: {', '.join(missing)}"
+            )
+
+        inactive = [str(r["user_id"]) for r in agent_locations if not r["is_active"]]
+        if inactive:
+            raise ValueError(
+                f"Inactive agents cannot be assigned: {', '.join(inactive)}"
+            )
+
+        wrong_location = [
+            str(r["user_id"]) for r in agent_locations
+            if r["entity_location_id"] and r["entity_location_id"] != mission_location_id
+        ]
+        if wrong_location:
+            raise ValueError(
+                f"Cross-site assignment blocked: {len(wrong_location)} agent(s) "
+                f"belong to a different location than this mission. "
+                f"Agents: {', '.join(wrong_location)}"
             )
 
         # Check for scheduling conflicts (agent already on another mission same day)
@@ -526,11 +557,17 @@ class MissionService:
     @staticmethod
     async def get_agents_availability(
         conn, user_id: UUID, mission_date: date,
+        entity_location_id: Optional[UUID] = None,
     ) -> List[Dict]:
-        """Get agent availability for a specific date."""
+        """Get agent availability for a specific date.
+
+        If entity_location_id is provided, filters agents to that location
+        (prevents cross-site assignment).
+        """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
         return await MissionRepository.get_agents_availability(
             conn, ctx["entity_id"], mission_date,
+            entity_location_id=entity_location_id,
         )
 
     # ============================================================

@@ -108,14 +108,20 @@ async def suggest_zones(
 @router.get("/agents/availability")
 async def get_agents_availability(
     mission_date: date = Query(...),
+    entity_location_id: Optional[UUID] = Query(None, description="Filter agents by location (prevents cross-site assignment)"),
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.manage_missions")),
 ):
-    """Get agent availability for a specific date."""
+    """Get agent availability for a specific date.
+
+    Pass entity_location_id to filter agents to a specific site.
+    Without it, returns all agents across all locations of the entity.
+    """
     try:
         agents = await MissionService.get_agents_availability(
             db, UUID(current_user.id), mission_date,
+            entity_location_id=entity_location_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
