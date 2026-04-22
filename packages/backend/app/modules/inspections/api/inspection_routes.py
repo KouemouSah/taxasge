@@ -304,27 +304,30 @@ async def validate_field_reconciliation(
     if not ctx["is_supervisor"]:
         raise HTTPException(status_code=403, detail="Supervisor only")
 
-    # Verify payment exists, is field_collected, and belongs to supervisor's entity
-    payment = await db.fetchrow("""
-        SELECT id, workflow_status, entity_code, collection_type
-        FROM service_payments
-        WHERE id = $1
-    """, payment_id)
-
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    if payment["workflow_status"] != "field_collected":
-        raise HTTPException(
-            status_code=422,
-            detail=f"Payment is not in 'field_collected' status (current: {payment['workflow_status']})"
-        )
-    if payment["entity_code"] != ctx["entity_code"]:
-        raise HTTPException(status_code=403, detail="Payment belongs to another entity")
-
     # Double validation: field_collected → completed
     # Then trigger the SAME post-payment pipeline as normal
     try:
         async with db.transaction():
+            # Lock payment row — NOWAIT prevents 2 supervisors validating simultaneously.
+            # If another transaction holds the lock, raises asyncpg.LockNotAvailableError
+            # immediately instead of waiting (OWASP A04: race condition prevention).
+            payment = await db.fetchrow("""
+                SELECT id, workflow_status, entity_code, collection_type
+                FROM service_payments
+                WHERE id = $1
+                FOR UPDATE NOWAIT
+            """, payment_id)
+
+            if not payment:
+                raise HTTPException(status_code=404, detail="Payment not found")
+            if payment["workflow_status"] != "field_collected":
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Payment is not in 'field_collected' status (current: {payment['workflow_status']})"
+                )
+            if payment["entity_code"] != ctx["entity_code"]:
+                raise HTTPException(status_code=403, detail="Payment belongs to another entity")
+
             # 1. Update payment to completed
             await db.execute("""
                 UPDATE service_payments
@@ -334,7 +337,7 @@ async def validate_field_reconciliation(
                     validated_at = NOW(),
                     paid_at = NOW(),
                     updated_at = NOW()
-                WHERE id = $2
+                WHERE id = $2 AND workflow_status = 'field_collected'
             """, UUID(current_user.id), payment_id)
 
             # 2. Trigger obligation routing (SAME as treasury validation)
@@ -357,7 +360,15 @@ async def validate_field_reconciliation(
                 f"by supervisor {current_user.id}, {routed} obligations routed"
             )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        err_str = str(e).lower()
+        if "lock" in err_str and ("not available" in err_str or "nowait" in err_str):
+            raise HTTPException(
+                status_code=409,
+                detail="This payment is being validated by another supervisor. Please try again."
+            )
         logger.error(f"Field reconciliation failed: {e}")
         raise HTTPException(status_code=500, detail="Reconciliation validation failed")
 
