@@ -7,10 +7,10 @@
  * Default: supervisor's own location. Dropdown allows switching to other sites.
  *
  * Usage:
+ *   const { locationFilter, setLocationFilter } = useLocationFilterState(profile)
  *   <LocationFilter
  *     entityCode={profile.entity_code}
  *     isMainOffice={profile.is_main_office}
- *     defaultLocationId={profile.entity_location_id}
  *     value={locationFilter}
  *     onChange={setLocationFilter}
  *   />
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { apiClient } from '@/core/api/client'
+import apiClient from '@/core/api/client'
 
 interface EntityLocation {
   id: string
@@ -59,7 +59,6 @@ function useEntityLocations(entityCode: string | undefined) {
 interface LocationFilterProps {
   entityCode: string | undefined
   isMainOffice: boolean
-  defaultLocationId?: string
   value: string // '' = all, UUID = specific location
   onChange: (locationId: string) => void
   className?: string
@@ -68,7 +67,6 @@ interface LocationFilterProps {
 export function LocationFilter({
   entityCode,
   isMainOffice,
-  defaultLocationId,
   value,
   onChange,
   className,
@@ -90,7 +88,7 @@ export function LocationFilter({
   // Find default location label for placeholder
   const currentLabel =
     value && value !== '_all'
-      ? locations.find((l) => l.id === value)
+      ? locations.find((l: EntityLocation) => l.id === value)
       : null
 
   return (
@@ -110,7 +108,7 @@ export function LocationFilter({
           <SelectItem value="_all">
             {t('allSites', { defaultMessage: 'All sites' })}
           </SelectItem>
-          {locations.map((loc) => (
+          {locations.map((loc: EntityLocation) => (
             <SelectItem key={loc.id} value={loc.id}>
               {loc.location_name} — {loc.city}
               {loc.is_main_office ? ' (principal)' : ''}

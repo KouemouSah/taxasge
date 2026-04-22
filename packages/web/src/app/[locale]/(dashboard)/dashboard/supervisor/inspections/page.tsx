@@ -344,7 +344,6 @@ export default function SupervisorInspectionDashboard() {
           <LocationFilter
             entityCode={agentProfile?.entity_code}
             isMainOffice={agentProfile?.is_main_office ?? false}
-            defaultLocationId={agentProfile?.entity_location_id ?? undefined}
             value={locationFilter}
             onChange={setLocationFilter}
             className="ml-4"
