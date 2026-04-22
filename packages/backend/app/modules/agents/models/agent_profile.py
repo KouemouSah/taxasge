@@ -180,6 +180,14 @@ class AgentListFilters(BaseModel):
     offset: int = 0
 
 
+class AgentGlobalStats(BaseModel):
+    """Global agent stats (independent of pagination/filters)."""
+    active: int = 0
+    supervisors: int = 0
+    ministry: int = 0
+    entity: int = 0
+
+
 class AgentListResponse(BaseModel):
     """Paginated response for agent profiles list"""
     items: List["AgentProfileWithDetails"]
@@ -187,6 +195,7 @@ class AgentListResponse(BaseModel):
     page: int
     page_size: int
     pages: int
+    stats: Optional[AgentGlobalStats] = None
 
     class Config:
         from_attributes = True

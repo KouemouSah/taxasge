@@ -59,7 +59,8 @@
         "entity": "Entité",
         "capacity": "Capacité",
         "cases": "Dossiers",
-        "availability": "Disponibilité"
+        "availability": "Disponibilité",
+        "site": "Site"
       },
       "status": {
         "active": "Actif",

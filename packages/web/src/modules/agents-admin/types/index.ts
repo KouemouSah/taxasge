@@ -324,12 +324,20 @@ export interface AgentListFilters {
 /**
  * Paginated agent list response
  */
+export interface AgentGlobalStats {
+  active: number;
+  supervisors: number;
+  ministry: number;
+  entity: number;
+}
+
 export interface AgentListResponse {
   items: AgentProfile[];
   total: number;
   page: number;
   page_size: number;
   pages: number;
+  stats?: AgentGlobalStats;
 }
 
 /**

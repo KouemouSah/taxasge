@@ -336,6 +336,18 @@ async def list_profiles(
     profiles, total = await profile_repository.list_agents(db, filters)
     items = [AgentProfileWithDetails(**p) for p in profiles]
 
+    # Global stats (independent of filters — always shows real totals)
+    from app.modules.agents.models.agent_profile import AgentGlobalStats
+    stats_row = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE is_active) as active,
+            COUNT(*) FILTER (WHERE is_supervisor) as supervisors,
+            COUNT(*) FILTER (WHERE agent_type = 'ministry_agent') as ministry,
+            COUNT(*) FILTER (WHERE agent_type = 'entity_agent') as entity
+        FROM agent_profiles
+    """)
+    stats = AgentGlobalStats(**dict(stats_row)) if stats_row else None
+
     # Calculate total pages
     pages = (total + page_size - 1) // page_size if total > 0 else 1
 
@@ -345,6 +357,7 @@ async def list_profiles(
         page=page,
         page_size=page_size,
         pages=pages,
+        stats=stats,
     )
 
 

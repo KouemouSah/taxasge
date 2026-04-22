@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,22 +59,44 @@ export default function AgentsPage() {
   const tCommon = useTranslations('common');
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('agents');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | AgentType>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [supervisorFilter, setSupervisorFilter] = useState<'all' | 'yes' | 'no'>('all');
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [availabilityFilter, setAvailabilityFilter] = useState<'all' | AgentAvailability>('all');
+  // Filters persisted in URL search params (preserved on back-navigation)
+  const searchParams = useSearchParams();
+  const updateFilter = useCallback((key: string, value: string) => {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (value === 'all' || value === '') { sp.delete(key); } else { sp.set(key, value); }
+    sp.set('page', '1'); // reset page on filter change
+    router.replace(`?${sp.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  const activeTab = searchParams.get('tab') || 'agents';
+  const setActiveTab = (v: string) => { const sp = new URLSearchParams(searchParams.toString()); sp.set('tab', v); router.replace(`?${sp.toString()}`, { scroll: false }); };
+  const typeFilter = (searchParams.get('type') || 'all') as 'all' | AgentType;
+  const setTypeFilter = (v: string) => updateFilter('type', v);
+  const statusFilter = (searchParams.get('status') || 'all') as 'all' | 'active' | 'inactive';
+  const setStatusFilter = (v: string) => updateFilter('status', v);
+  const supervisorFilter = (searchParams.get('supervisor') || 'all') as 'all' | 'yes' | 'no';
+  const setSupervisorFilter = (v: string) => updateFilter('supervisor', v);
+  const entityFilter = searchParams.get('entity') || 'all';
+  const setEntityFilter = (v: string) => updateFilter('entity', v);
+  const availabilityFilter = (searchParams.get('availability') || 'all') as 'all' | AgentAvailability;
+  const setAvailabilityFilter = (v: string) => updateFilter('availability', v);
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('q') || '');
   const [agentSort, handleAgentSort] = useSortState('created_at', 'desc');
   const [adminSort, handleAdminSort, sortAdminData] = useSortState();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  // Pagination state — server-side
-  const [agentPage, setAgentPage] = useState(1);
+  // Pagination state — server-side (read from URL)
+  const agentPage = Number(searchParams.get('page') || '1');
+  const setAgentPage = (v: number | ((p: number) => number)) => {
+    const newPage = typeof v === 'function' ? v(agentPage) : v;
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set('page', String(newPage));
+    router.replace(`?${sp.toString()}`, { scroll: false });
+  };
   const agentPageSize = 20;
   const [adminPage, setAdminPage] = useState(1);
   const adminPageSize = 20;
@@ -156,12 +178,13 @@ export default function AgentsPage() {
   const resetAgentPage = () => setAgentPage(1);
   const resetAdminPage = () => setAdminPage(1);
 
+  // Stats from server totals (not page-level counts)
   const agentStats = {
-    total: agents.length,
-    active: agents.filter((a) => a.is_active).length,
-    supervisors: agents.filter((a) => a.is_supervisor).length,
-    ministry: agents.filter((a) => a.agent_type === 'ministry_agent').length,
-    entity: agents.filter((a) => a.agent_type === 'entity_agent').length,
+    total: agentTotal,
+    active: agentsData?.stats?.active ?? agentTotal,
+    supervisors: agentsData?.stats?.supervisors ?? agents.filter((a) => a.is_supervisor).length,
+    ministry: agentsData?.stats?.ministry ?? agents.filter((a) => a.agent_type === 'ministry_agent').length,
+    entity: agentsData?.stats?.entity ?? agentTotal,
   };
 
   const adminStats = {
@@ -171,7 +194,11 @@ export default function AgentsPage() {
 
   const handleCreateAgent = () => router.push(`/${locale}/dashboard/admin/agents/new?type=agent`);
   const handleCreateAdmin = () => router.push(`/${locale}/dashboard/admin/agents/new?type=admin`);
-  const handleViewAgent = (agent: AgentProfile) => router.push(`/${locale}/dashboard/admin/agents/${agent.id}`);
+  const handleViewAgent = (agent: AgentProfile) => {
+    // Preserve current filters in the detail URL so "back" restores them
+    const returnParams = searchParams.toString();
+    router.push(`/${locale}/dashboard/admin/agents/${agent.id}${returnParams ? `?returnFilters=${encodeURIComponent(returnParams)}` : ''}`);
+  };
   const handleEditAgent = (agent: AgentProfile) => router.push(`/${locale}/dashboard/admin/agents/${agent.id}?mode=edit`);
 
   const handleToggleAgentStatus = async (agent: AgentProfile) => {
@@ -451,6 +478,7 @@ export default function AgentsPage() {
                       <SortableHeader column="user_full_name" label={t('table.agent')} sort={agentSort} onSort={handleAgentSort} />
                       <SortableHeader column="agent_type" label={t('table.type')} sort={agentSort} onSort={handleAgentSort} />
                       <SortableHeader column="entity_name" label={t('table.organization')} sort={agentSort} onSort={handleAgentSort} className="hidden lg:table-cell" />
+                      <TableHead className="hidden xl:table-cell">{t('table.site')}</TableHead>
                       <SortableHeader column="is_active" label={t('table.status')} sort={agentSort} onSort={handleAgentSort} />
                       <SortableHeader column="availability" label={t('table.availability')} sort={agentSort} onSort={handleAgentSort} className="hidden md:table-cell" />
                       <SortableHeader column="current_assignments" label={t('table.tasks')} sort={agentSort} onSort={handleAgentSort} className="hidden md:table-cell" />
@@ -486,6 +514,9 @@ export default function AgentsPage() {
                               )}
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-xs text-muted-foreground">
+                          {agent.location_name || agent.location_city || '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
