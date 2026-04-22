@@ -9093,7 +9093,8 @@
           "resolve": "Resolve",
           "resolved": "Escalation resolved",
           "resolveError": "Error resolving escalation"
-        }
+        },
+        "waitingDocuments": "Waiting for citizen to re-upload documents. Actions will be available once documents are resubmitted."
       },
       "extractedFields": {
         "title": "Extracted Data",

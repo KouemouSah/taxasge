@@ -134,8 +134,10 @@ export function RequestPreview({
 }: RequestPreviewProps) {
   // History action is read-only (no approve/reject buttons)
   // Escalated requests are also read-only (supervisor must decide)
+  // DOCUMENTS_REQUIRED: agent already requested docs — waiting for citizen
   const isEscalationView = action === 'escalations';
-  const isReadOnly = action === 'history' || isEscalationView || !!escalatedAt;
+  const isWaitingDocuments = data.status === 'DOCUMENTS_REQUIRED';
+  const isReadOnly = action === 'history' || isEscalationView || !!escalatedAt || isWaitingDocuments;
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
 
@@ -445,7 +447,17 @@ export function RequestPreview({
         </div>
       </div>
 
-      {/* Actions Footer - Hidden for read-only (history) mode */}
+      {/* Waiting for documents banner */}
+      {isWaitingDocuments && (
+        <div className="px-3 py-3 border-t bg-amber-50">
+          <div className="flex items-center gap-2 text-amber-700">
+            <FileQuestion className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium">{t('waitingDocuments')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Actions Footer - Hidden for read-only (history/escalation/waiting docs) mode */}
       {!isReadOnly && (
         <div className="px-3 py-2 border-t bg-muted/30">
           <div className="flex items-center gap-2">

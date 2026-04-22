@@ -9093,7 +9093,8 @@
           "resolve": "Résoudre",
           "resolved": "Escalade résolue",
           "resolveError": "Erreur lors de la résolution de l'escalade"
-        }
+        },
+        "waitingDocuments": "En attente de documents du citoyen. Les actions seront disponibles lorsque les documents seront renvoyes."
       },
       "extractedFields": {
         "title": "Données Extraites",

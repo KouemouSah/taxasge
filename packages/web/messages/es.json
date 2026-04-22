@@ -9093,7 +9093,8 @@
           "resolve": "Resolver",
           "resolved": "Escalación resuelta",
           "resolveError": "Error al resolver la escalación"
-        }
+        },
+        "waitingDocuments": "Esperando documentos del ciudadano. Las acciones estaran disponibles cuando los documentos sean reenviados."
       },
       "extractedFields": {
         "title": "Datos Extraídos",
