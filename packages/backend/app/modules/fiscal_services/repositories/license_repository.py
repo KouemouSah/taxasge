@@ -65,9 +65,6 @@ class LicenseRepository:
         fee_type: Optional[str] = None,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
-        # Sorting (whitelist enforced)
-        sort_by: Optional[str] = None,
-        sort_order: str = "desc",
     ) -> Tuple[List[Dict], int]:
         """List licenses with filters, paginated.
 
@@ -151,17 +148,6 @@ class LicenseRepository:
         )
         total = count_row["total"]
 
-        # Sorting — whitelist prevents SQL injection
-        _SORT_MAP = {
-            "company_name": "co.legal_name", "fiscal_year": "cl.fiscal_year",
-            "status": "cl.status", "total_amount": "cl.total_amount",
-            "amount_paid": "cl.amount_paid", "compliance_score": "cl.compliance_score",
-            "deadline": "cl.deadline", "created_at": "cl.created_at",
-            "zone_code": "cz.zone_code",
-        }
-        order_col = _SORT_MAP.get(sort_by or "", "cl.fiscal_year")
-        order_dir = "ASC" if sort_order == "asc" else "DESC"
-
         # Data
         offset = (page - 1) * page_size
         params_data = params + [page_size, offset]
@@ -175,7 +161,7 @@ class LicenseRepository:
             FROM commercial_licenses cl
             {joins}
             {where}
-            ORDER BY {order_col} {order_dir}, cl.created_at DESC
+            ORDER BY cl.fiscal_year DESC, cl.created_at DESC
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params_data)
 
@@ -388,6 +374,8 @@ class LicenseRepository:
 
         Uses a single INSERT with multiple VALUES rows (no N+1).
         """
+        import json as _json
+
         if not items:
             return []
 
@@ -408,8 +396,8 @@ class LicenseRepository:
                 item["fee_type"],
                 item["amount"],
                 item.get("due_date"),
-                item.get("penalty_config"),
-                item.get("deadline_config"),
+                _json.dumps(item["penalty_config"]) if isinstance(item.get("penalty_config"), dict) else item.get("penalty_config"),
+                _json.dumps(item["deadline_config"]) if isinstance(item.get("deadline_config"), dict) else item.get("deadline_config"),
             ])
             idx += 9
 
@@ -501,6 +489,8 @@ class LicenseRepository:
           - obligation_id: UUID
           - event_data: Dict
         """
+        import json as _json
+
         if not items:
             return []
 
@@ -509,13 +499,14 @@ class LicenseRepository:
         idx = 1
         for item in items:
             values_parts.append(
-                f"(${idx}, ${idx+1}, ${idx+2}, ${idx+3}, ${idx+4})"
+                f"(${idx}, ${idx+1}, ${idx+2}, ${idx+3}::jsonb, ${idx+4})"
             )
+            ed = item.get("event_data", {})
             params.extend([
                 license_id,
                 item.get("obligation_id"),
                 event_type,
-                item.get("event_data", {}),
+                _json.dumps(ed) if isinstance(ed, dict) else (ed or "{}"),
                 triggered_by,
             ])
             idx += 5

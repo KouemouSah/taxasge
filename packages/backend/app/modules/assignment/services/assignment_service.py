@@ -14,7 +14,7 @@ Handles:
 
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Depends
 from loguru import logger
 
@@ -66,7 +66,7 @@ class AssignmentService:
         """
         deadline = None
         if deadline_days:
-            deadline = datetime.utcnow() + timedelta(days=deadline_days)
+            deadline = datetime.now(timezone.utc) + timedelta(days=deadline_days)
 
         data = AssignmentCreate(
             item_id=item_id,
@@ -245,7 +245,7 @@ class AssignmentService:
             return None
 
         # Calculate new deadline
-        current_deadline = assignment.deadline or datetime.utcnow()
+        current_deadline = assignment.deadline or datetime.now(timezone.utc)
         new_deadline = current_deadline + timedelta(days=additional_days)
 
         # Update via raw SQL since deadline isn't in AssignmentUpdate
@@ -327,7 +327,7 @@ class AssignmentService:
             {"should_escalate": bool, "reason": Optional[str], "urgency": str}
         """
         if current_time is None:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
 
         settings = get_settings()
         reasons: List[str] = []
@@ -410,7 +410,7 @@ class AssignmentService:
         # Cooldown: prevent rapid reassignments
         settings = get_settings()
         if assignment.reassigned_at:
-            hours_since = (datetime.utcnow() - assignment.reassigned_at).total_seconds() / 3600
+            hours_since = (datetime.now(timezone.utc) - assignment.reassigned_at).total_seconds() / 3600
             if hours_since < settings.REASSIGNMENT_COOLDOWN_HOURS:
                 wait_minutes = int((settings.REASSIGNMENT_COOLDOWN_HOURS - hours_since) * 60)
                 errors.append(

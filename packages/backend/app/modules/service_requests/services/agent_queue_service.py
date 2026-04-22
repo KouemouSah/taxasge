@@ -9,7 +9,7 @@ Priority scores from workflows.priority_weight (DB) instead of hardcoded dicts.
 """
 from typing import Optional, Dict, Any, List
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import asyncpg
 from loguru import logger
@@ -180,7 +180,7 @@ class AgentQueueService:
         # Age-based boost: older items get higher priority
         # Ported from legacy agents/services/assignment_service.calculate_priority_score()
         if created_at:
-            age_hours = (datetime.utcnow() - created_at).total_seconds() / 3600
+            age_hours = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
             if age_hours > 72:
                 base_score += Decimal(str(settings.QUEUE_AGE_BOOST_72H))
             elif age_hours > 48:
@@ -277,7 +277,7 @@ class AgentQueueService:
             if instance_sla is not None:
                 sla_hours = instance_sla
 
-        return datetime.utcnow() + timedelta(hours=sla_hours)
+        return datetime.now(timezone.utc) + timedelta(hours=sla_hours)
 
     async def _get_queue_item(
         self,

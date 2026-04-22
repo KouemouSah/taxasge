@@ -7,7 +7,7 @@ Data access layer for communication provider configurations.
 import asyncpg
 import json
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from loguru import logger
 from cryptography.fernet import Fernet
@@ -96,7 +96,7 @@ class ProviderSettingsRepository:
                 data.retry_attempts,
                 data.timeout_seconds,
                 created_by,
-                datetime.utcnow()
+                datetime.now(timezone.utc)
             )
 
             logger.info(f"Created provider settings: {data.provider_code}")
@@ -192,7 +192,7 @@ class ProviderSettingsRepository:
     ) -> Optional[ProviderSettingsResponse]:
         """Update a provider configuration"""
         set_clauses = ["updated_at = $1", "updated_by = $2"]
-        params = [datetime.utcnow(), updated_by]
+        params = [datetime.now(timezone.utc), updated_by]
         param_counter = 3
 
         update_fields = data.model_dump(exclude_unset=True)

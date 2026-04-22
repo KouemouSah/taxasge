@@ -18,7 +18,7 @@ import hmac
 import io
 import os
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -494,7 +494,7 @@ class LicensePDFService:
             logo_base64=self._get_logo_base64(),
             license_ref=license_ref,
             fiscal_year=lic.get("fiscal_year", ""),
-            print_date=datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+            print_date=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"),
             company={
                 "legal_name": lic.get("legal_name", ""),
                 "nif": nif,
@@ -803,7 +803,7 @@ class LicensePDFService:
             logo_base64=self._get_logo_base64(),
             certificate_number=certificate_number,
             fiscal_year=lic.get("fiscal_year", ""),
-            print_date=datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+            print_date=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"),
             completion_date=completion_date,
             company={
                 "legal_name": lic.get("legal_name", ""),

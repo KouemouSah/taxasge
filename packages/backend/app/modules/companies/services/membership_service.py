@@ -7,7 +7,7 @@ Tables: user_company_roles, company_invitations (future)
 
 from typing import Dict, Any, Optional, List
 from loguru import logger
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.modules.companies.models import CompanyMemberRole
 
@@ -111,7 +111,7 @@ class MembershipService:
             "company_id": company_id,
             "previous_owner_id": current_owner_id,
             "new_owner_id": new_owner_id,
-            "transferred_at": datetime.utcnow(),
+            "transferred_at": datetime.now(timezone.utc),
             "previous_owner_role": CompanyMemberRole.COMPANY_ADMIN.value,
         }
 
@@ -205,7 +205,7 @@ class MembershipService:
             "company_id": "mock-company-id",
             "user_id": user_id,
             "role": CompanyMemberRole.COMPANY_MEMBER.value,
-            "accepted_at": datetime.utcnow(),
+            "accepted_at": datetime.now(timezone.utc),
         }
 
     def revoke_invitation(

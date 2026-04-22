@@ -752,6 +752,7 @@ async def upload_inspection_photo(
         )
         import hashlib
         from datetime import datetime as dt
+from datetime import timezone
 
         await ensure_storage_initialized()
 
@@ -764,7 +765,7 @@ async def upload_inspection_photo(
                 "filename": f"inspection-photo-{photo_index}.jpg",
                 "mime_type": file.content_type,
                 "uploadedBy": current_user.id,
-                "uploadedAt": dt.utcnow().isoformat(),
+                "uploadedAt": dt.now(timezone.utc).isoformat(),
                 "applicationId": str(inspection_id),
                 "documentType": "inspection_photo",
             }

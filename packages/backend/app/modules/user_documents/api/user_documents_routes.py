@@ -24,7 +24,7 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncpg
 import base64
 import hashlib
@@ -139,7 +139,7 @@ def _build_document_response(row: Dict[str, Any]) -> UserDocumentResponse:
         days_until_expiry=days_until_expiry,
         expiry_status=expiry_status,
         workflow_tags=workflow_tags,
-        created_at=row.get("created_at", datetime.utcnow()),
+        created_at=row.get("created_at", datetime.now(timezone.utc)),
         updated_at=row.get("updated_at"),
     )
 
@@ -181,7 +181,7 @@ def _build_list_item(row: Dict[str, Any]) -> UserDocumentListItem:
         workflow_tags=row.get("workflow_tags", []) or [],
         thumbnail_path=row.get("thumbnail_path"),
         file_size_bytes=row.get("file_size_bytes", 0),
-        created_at=row.get("created_at", datetime.utcnow()),
+        created_at=row.get("created_at", datetime.now(timezone.utc)),
     )
 
 
@@ -759,7 +759,7 @@ async def list_generated_documents(
             title=row.get("display_name") or row.get("title_es") or row.get("file_name", ""),
             reference_number=row.get("reference_number"),
             file_name=row.get("file_name", ""),
-            created_at=row.get("created_at", datetime.utcnow()),
+            created_at=row.get("created_at", datetime.now(timezone.utc)),
             service_request_id=row.get("source_request_id"),
             verification_code=row.get("verification_code"),
         ))
@@ -2424,7 +2424,7 @@ async def revoke_agent_permission(
         "success": True,
         "permission_id": str(permission_id),
         "is_active": False,
-        "revoked_at": datetime.utcnow().isoformat(),
+        "revoked_at": datetime.now(timezone.utc).isoformat(),
     }
 
 

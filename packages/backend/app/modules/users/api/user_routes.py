@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from app.modules.users.models import (
@@ -42,7 +42,7 @@ async def get_user_profile(
             user_id=current_user.id,
             action="view_profile",
             resource="user_profile",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -106,7 +106,7 @@ async def update_user_profile(
             action="update_profile",
             resource="user_profile",
             metadata={"updated_fields": list(update_data.keys())},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -203,7 +203,7 @@ async def change_password(
                     user_id=current_user.id,
                     action="change_password",
                     resource="user_password",
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 await user_repository.log_user_activity(activity)
             except Exception as log_error:
@@ -217,7 +217,7 @@ async def change_password(
         try:
             from app.core.events import EventBus, EventType
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Publish password changed event - notification handler will send email + SMS
             EventBus.publish_nowait(EventType.USER_PASSWORD_CHANGED, {
@@ -353,7 +353,7 @@ async def upload_avatar(
             action="upload_avatar",
             resource="user_avatar",
             metadata={"filename": file.filename, "content_type": file.content_type},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -400,7 +400,7 @@ async def delete_avatar(
             user_id=current_user.id,
             action="delete_avatar",
             resource="user_avatar",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 

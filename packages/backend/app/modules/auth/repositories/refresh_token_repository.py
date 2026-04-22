@@ -6,7 +6,7 @@ Module: Auth
 Architecture: 3-tier (Routes → Services → Repositories)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from loguru import logger
 import uuid
@@ -92,7 +92,7 @@ class RefreshTokenRepository:
         """
         try:
             token_id = str(uuid.uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Hash the token before storing
             hashed_token = self._hash_token(token_data.token)
@@ -177,7 +177,7 @@ class RefreshTokenRepository:
 
                 # Check if token is expired
                 expires_at = token_data["expires_at"]
-                if expires_at < datetime.utcnow():
+                if expires_at < datetime.now(timezone.utc):
                     logger.warning(f"⚠️ Refresh token expired: {token_data['id']}")
                     return None
 
@@ -294,7 +294,7 @@ class RefreshTokenRepository:
                 WHERE id = $2
             """
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             if conn:
                 await conn.execute(query, now, token_id)
@@ -323,7 +323,7 @@ class RefreshTokenRepository:
             bool: True if revoked successfully
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE refresh_tokens
@@ -363,7 +363,7 @@ class RefreshTokenRepository:
         """
         try:
             hashed_token = self._hash_token(token)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE refresh_tokens
@@ -402,7 +402,7 @@ class RefreshTokenRepository:
             bool: True if revoked successfully
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE refresh_tokens
@@ -441,7 +441,7 @@ class RefreshTokenRepository:
             int: Number of tokens revoked
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE refresh_tokens
@@ -478,7 +478,7 @@ class RefreshTokenRepository:
             int: Number of tokens cleaned up
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE refresh_tokens
@@ -518,7 +518,7 @@ class RefreshTokenRepository:
             int: Number of tokens deleted
         """
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
             query = """
                 DELETE FROM refresh_tokens

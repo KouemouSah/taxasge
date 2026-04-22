@@ -4,7 +4,7 @@ Handles session data access and management using PostgreSQL direct
 """
 
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from loguru import logger
 import uuid
@@ -85,7 +85,7 @@ class SessionRepository:
         """
         try:
             session_id = str(uuid.uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Hash tokens before storage (never store plaintext tokens in DB)
             hashed_access = self._hash_token(session_data.access_token) if session_data.access_token else None
@@ -365,7 +365,7 @@ class SessionRepository:
                 WHERE id = $2
             """
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             if conn:
                 await conn.execute(query, now, session_id)
@@ -394,7 +394,7 @@ class SessionRepository:
             bool: True if revoked successfully
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE sessions
@@ -433,7 +433,7 @@ class SessionRepository:
             int: Number of sessions revoked
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE sessions
@@ -481,7 +481,7 @@ class SessionRepository:
             int: Number of sessions cleaned up
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             query = """
                 UPDATE sessions
@@ -531,7 +531,7 @@ class SessionRepository:
             int: Number of sessions deleted
         """
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
             query = """
                 DELETE FROM sessions

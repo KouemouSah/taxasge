@@ -6,7 +6,7 @@ Service for agent configuration, permissions, and availability management
 
 from typing import Dict, Any, Optional, List
 from loguru import logger
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from decimal import Decimal
 
 
@@ -69,7 +69,7 @@ class AgentService:
             }
         """
         if check_time is None:
-            check_time = datetime.utcnow()
+            check_time = datetime.now(timezone.utc)
 
         working_hours_start = agent.get("working_hours_start")
         working_hours_end = agent.get("working_hours_end")

@@ -22,7 +22,7 @@ Architecture:
 """
 
 import asyncio
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -112,7 +112,7 @@ class CompanyReclassificationService:
             "processed": processed,
             "changed": changed,
             "errors": errors,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         logger.info(f"Annual reclassification complete: {summary}")
         return summary
@@ -193,7 +193,7 @@ class CompanyDataQualityService:
         )
 
         report = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "anomalies": {
                 "missing_identifier": missing_id,
                 "autonomo_without_pe": len(autonomo_no_pe),
@@ -285,7 +285,7 @@ class CompanyComplianceService:
         )
 
         summary = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "upcoming_warnings": len(upcoming),
             "due_today": len(due_today),
             "critical_overdue_updated": len(critical_overdue),

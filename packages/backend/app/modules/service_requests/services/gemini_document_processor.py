@@ -31,7 +31,7 @@ import time
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from enum import Enum
 from loguru import logger
 
@@ -747,7 +747,7 @@ class RiskAnalyzer:
             "recommendations": recommendations,
             "requires_rejection": requires_rejection,
             "requires_review": requires_review,
-            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
             "factors_count": {
                 "critical": sum(1 for rf in risk_factors if rf["severity"] == "critical"),
                 "high": sum(1 for rf in risk_factors if rf["severity"] == "high"),

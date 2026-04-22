@@ -11,7 +11,7 @@ import asyncio
 import json
 from typing import Dict, List, Optional, Type, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 import asyncpg
@@ -414,7 +414,7 @@ class WorkflowEngine:
             # Update context step if successful
             if result.get("success", False):
                 context.current_step = step_number
-                context.updated_at = datetime.utcnow()
+                context.updated_at = datetime.now(timezone.utc)
 
             # Add next step info
             next_step = workflow.get_step(step_number + 1)
@@ -890,7 +890,7 @@ class WorkflowEngine:
 
         # All validations passed - update status to submitted
         context.status = ServiceRequestStatus.SUBMITTED
-        context.submitted_at = datetime.utcnow()
+        context.submitted_at = datetime.now(timezone.utc)
 
         # Save to database
         await self.save_context_to_db(db, context)
@@ -1063,7 +1063,7 @@ class WorkflowEngine:
 
         old_status = context.status
         context.status = new_status
-        context.updated_at = datetime.utcnow()
+        context.updated_at = datetime.now(timezone.utc)
 
         # Record in history
         history_query = """

@@ -344,7 +344,7 @@ class UserRepository(BaseRepository[UserResponse]):
 
             # Generate ID and timestamps
             user_id = str(uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Prepare data for insertion (using REAL Supabase columns)
             data = {
@@ -433,7 +433,7 @@ class UserRepository(BaseRepository[UserResponse]):
         try:
             updates = {
                 "password_hash": password_hash,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             # Always use direct PostgreSQL to bypass Supabase RLS restrictions
@@ -454,7 +454,7 @@ class UserRepository(BaseRepository[UserResponse]):
     async def update_last_login(self, user_id: str) -> bool:
         """Update user's last login timestamp"""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             updates = {
                 "last_login": now,
                 "updated_at": now
@@ -525,7 +525,7 @@ class UserRepository(BaseRepository[UserResponse]):
             active_users = await self.count({"status": UserStatus.active.value})
 
             # New users this month
-            start_of_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             new_users_query = """
                 SELECT COUNT(*) FROM users
                 WHERE created_at >= $1
@@ -684,7 +684,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET password_reset_token = $1,
@@ -717,7 +717,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 SELECT *
                 FROM users
@@ -749,7 +749,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET password_reset_token = NULL,
@@ -791,7 +791,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET email_verification_code = $1,
@@ -824,7 +824,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 SELECT *
                 FROM users
@@ -856,7 +856,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: migrations/module_02/001_add_auth_advanced_columns.sql
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET email_verified = TRUE,
@@ -901,7 +901,7 @@ class UserRepository(BaseRepository[UserResponse]):
         """
         try:
             import json
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET two_factor_enabled = TRUE,
@@ -945,7 +945,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: TASK-M01-011
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET two_factor_enabled = FALSE,
@@ -993,7 +993,7 @@ class UserRepository(BaseRepository[UserResponse]):
         """
         try:
             import json
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET two_factor_backup_codes = $1,
@@ -1078,7 +1078,7 @@ class UserRepository(BaseRepository[UserResponse]):
                 logger.warning(f"🔒 Account locked for user {user_id} for {lockout_minutes}min (attempt #{new_attempts})")
 
             # Update database
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if locked_until:
                 query_update = """
                     UPDATE users
@@ -1127,7 +1127,7 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: Account lockout feature (brute force protection)
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = """
                 UPDATE users
                 SET failed_login_attempts = 0,

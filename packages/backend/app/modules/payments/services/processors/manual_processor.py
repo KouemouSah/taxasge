@@ -11,7 +11,7 @@ and wait for a Treasury agent to validate.
 """
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID, uuid4
 import json
@@ -326,7 +326,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             # 6. Update payment status. validated_by_agent_id stores agent_profiles.id
             # (FK to agent_profiles — enforced by
             # service_payments_validated_by_agent_profile_id_fkey).
-            paid_at = datetime.utcnow()
+            paid_at = datetime.now(timezone.utc)
             update_query = """
                 UPDATE service_payments
                 SET status = 'completed',
@@ -573,7 +573,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
 
     def _generate_reference(self, context: PaymentContext) -> str:
         """Generate unique payment reference for manual payment."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         short_id = str(uuid4())[:8].upper()
         method_prefix = "CSH" if context.payment_method == PaymentMethod.CASH else "CHK"
         return f"{method_prefix}-{timestamp}-{short_id}"
@@ -643,7 +643,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
     async def _generate_receipt_number(self, db: asyncpg.Connection) -> str:
         """Generate unique receipt number."""
         # Format: REC-YYYY-NNNNNN
-        year = datetime.utcnow().year
+        year = datetime.now(timezone.utc).year
         query = """
             SELECT COUNT(*) + 1 as next_num
             FROM service_payments

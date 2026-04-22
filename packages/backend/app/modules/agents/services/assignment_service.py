@@ -121,7 +121,7 @@ These functions have NO equivalent in the modern module yet.
 #             SLA deadline datetime
 #         """
 #         if created_at is None:
-#             created_at = datetime.utcnow()
+#             created_at = datetime.now(timezone.utc)
 #
 #         # Base SLA hours by type
 #         # NOTE: These are OLD types. Modern uses workflows.sla_hours from DB
@@ -166,7 +166,7 @@ These functions have NO equivalent in the modern module yet.
 #         which uses SLA_WARNING_HOURS from settings instead of 25% threshold.
 #         """
 #         if current_time is None:
-#             current_time = datetime.utcnow()
+#             current_time = datetime.now(timezone.utc)
 #
 #         if current_time > sla_deadline:
 #             return "violated"
@@ -205,7 +205,7 @@ These functions have NO equivalent in the modern module yet.
 #             {"should_escalate": bool, "reason": Optional[str], "urgency": str}
 #         """
 #         if current_time is None:
-#             current_time = datetime.utcnow()
+#             current_time = datetime.now(timezone.utc)
 #
 #         reasons = []
 #         urgency = "normal"
@@ -319,7 +319,7 @@ These functions have NO equivalent in the modern module yet.
 #
 #         reassigned_at = assignment.get("reassigned_at")
 #         if reassigned_at:
-#             hours_since = (datetime.utcnow() - reassigned_at).total_seconds() / 3600
+#             hours_since = (datetime.now(timezone.utc) - reassigned_at).total_seconds() / 3600
 #             if hours_since < 1:
 #                 errors.append("Assignment was recently reassigned (wait 1 hour)")
 #

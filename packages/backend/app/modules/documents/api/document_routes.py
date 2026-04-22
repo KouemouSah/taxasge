@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List, Optional, Dict, Any, Union
 from uuid import UUID
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 import json
 import io
@@ -558,7 +558,7 @@ async def run_ocr(
             "ocr_confidence": ocr_result.confidence,
             "extracted_text": ocr_result.text if ocr_result.success else None,
             "ocr_processing_time_ms": ocr_result.processing_time_ms,
-            "processed_at": datetime.utcnow()
+            "processed_at": datetime.now(timezone.utc)
         }
 
         if not ocr_result.success:
@@ -620,7 +620,7 @@ async def _process_document_pipeline(document_id: UUID, processing_mode: Documen
         await document_repository.update(document_id, {
             "ocr_status": DocumentOCRStatus.failed,
             "extraction_status": DocumentExtractionStatus.failed,
-            "error_logs": [{"error": str(e), "timestamp": datetime.utcnow().isoformat()}]
+            "error_logs": [{"error": str(e), "timestamp": datetime.now(timezone.utc).isoformat()}]
         })
 
 
@@ -666,7 +666,7 @@ async def _process_ocr_step(document: Document):
         logger.error(f"OCR step failed: {e}")
         await document_repository.update(document.id, {
             "ocr_status": DocumentOCRStatus.failed,
-            "error_logs": [{"error": f"OCR failed: {str(e)}", "timestamp": datetime.utcnow().isoformat()}]
+            "error_logs": [{"error": f"OCR failed: {str(e)}", "timestamp": datetime.now(timezone.utc).isoformat()}]
         })
 
 
@@ -722,7 +722,7 @@ async def _process_extraction_step(document: Document):
                     logger.error(f"No template found for fiscal service: {template_name}")
                     await document_repository.update(document.id, {
                         "extraction_status": DocumentExtractionStatus.failed,
-                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
+                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.now(timezone.utc).isoformat()}]
                     })
                     return
 
@@ -748,7 +748,7 @@ async def _process_extraction_step(document: Document):
                     logger.error(f"No template found for tax declaration: {template_name}")
                     await document_repository.update(document.id, {
                         "extraction_status": DocumentExtractionStatus.failed,
-                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
+                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.now(timezone.utc).isoformat()}]
                     })
                     return
 
@@ -831,7 +831,7 @@ async def _process_extraction_step(document: Document):
         logger.error(f"Extraction step failed for {document.id}: {e}")
         await document_repository.update(document.id, {
             "extraction_status": DocumentExtractionStatus.failed,
-            "error_logs": [{"error": f"Extraction failed: {str(e)}", "timestamp": datetime.utcnow().isoformat()}]
+            "error_logs": [{"error": f"Extraction failed: {str(e)}", "timestamp": datetime.now(timezone.utc).isoformat()}]
         })
 
 

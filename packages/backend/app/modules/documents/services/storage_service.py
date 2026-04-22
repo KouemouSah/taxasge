@@ -14,7 +14,7 @@ import asyncio
 import tempfile
 import hashlib
 from typing import Any, Dict, List, Optional, Union, Tuple, BinaryIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 from pathlib import Path
 
@@ -322,7 +322,7 @@ class FirebaseStorageService:
             # Set metadata (storage.rules requires: uploadedBy, uploadedAt, applicationId)
             blob_metadata = {
                 "uploadedBy": user_id,  # Required by storage.rules
-                "uploadedAt": datetime.utcnow().isoformat(),  # Required
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),  # Required
                 "applicationId": application_id,  # Required
                 "original_filename": filename,
                 "file_hash": file_hash,
@@ -335,7 +335,7 @@ class FirebaseStorageService:
             blob.metadata = blob_metadata
 
             # Set retention policy
-            retention_date = datetime.utcnow() + timedelta(days=self.config.retention_days)
+            retention_date = datetime.now(timezone.utc) + timedelta(days=self.config.retention_days)
             blob.custom_time = retention_date
 
             # Upload file
@@ -360,7 +360,7 @@ class FirebaseStorageService:
                 file_size=len(content),
                 mime_type=mime_type,
                 file_hash=file_hash,
-                expires_at=datetime.utcnow() + timedelta(hours=24)
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=24)
             )
 
             logger.info(f"User document uploaded: {storage_path} ({len(content)} bytes)")
@@ -423,7 +423,7 @@ class FirebaseStorageService:
             # Set metadata (storage.rules requires: uploadedBy, uploadedAt, applicationId, allowedUsers)
             blob_metadata = {
                 "uploadedBy": allowed_users[0] if allowed_users else "system",  # Premier user autorisé
-                "uploadedAt": datetime.utcnow().isoformat(),
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),
                 "applicationId": application_id,
                 "allowedUsers": ",".join(allowed_users),  # Liste CSV pour metadata
                 "original_filename": filename,
@@ -437,7 +437,7 @@ class FirebaseStorageService:
             blob.metadata = blob_metadata
 
             # Set retention policy
-            retention_date = datetime.utcnow() + timedelta(days=self.config.retention_days)
+            retention_date = datetime.now(timezone.utc) + timedelta(days=self.config.retention_days)
             blob.custom_time = retention_date
 
             # Upload file
@@ -462,7 +462,7 @@ class FirebaseStorageService:
                 file_size=len(content),
                 mime_type=mime_type,
                 file_hash=file_hash,
-                expires_at=datetime.utcnow() + timedelta(hours=24)
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=24)
             )
 
             logger.info(f"Tax attachment uploaded: {storage_path} ({len(content)} bytes)")
@@ -525,10 +525,10 @@ class FirebaseStorageService:
             blob = self.bucket.blob(storage_path)
 
             # Set metadata (storage.rules requires: uploadedBy, uploadedAt, expiresAt)
-            expires_at = datetime.utcnow() + timedelta(minutes=expires_in_minutes)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
             blob_metadata = {
                 "uploadedBy": user_id,
-                "uploadedAt": datetime.utcnow().isoformat(),
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),
                 "expiresAt": expires_at.isoformat(),  # Required by storage.rules
                 "original_filename": filename,
                 "file_hash": file_hash,
@@ -630,7 +630,7 @@ class FirebaseStorageService:
             # Set metadata (storage.rules requires: uploadedBy, uploadedAt, assetType)
             blob_metadata = {
                 "uploadedBy": admin_user_id,
-                "uploadedAt": datetime.utcnow().isoformat(),
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),
                 "assetType": asset_type,  # Required by storage.rules
                 "original_filename": filename,
                 "file_hash": file_hash,
@@ -643,7 +643,7 @@ class FirebaseStorageService:
             blob.metadata = blob_metadata
 
             # Set retention policy (permanent for system assets)
-            blob.custom_time = datetime.utcnow() + timedelta(days=3650)  # 10 years
+            blob.custom_time = datetime.now(timezone.utc) + timedelta(days=3650)  # 10 years
 
             # Upload file
             blob.upload_from_string(
@@ -667,7 +667,7 @@ class FirebaseStorageService:
                 file_size=len(content),
                 mime_type=mime_type,
                 file_hash=file_hash,
-                expires_at=datetime.utcnow() + timedelta(days=365)
+                expires_at=datetime.now(timezone.utc) + timedelta(days=365)
             )
 
             logger.info(f"System asset uploaded: {storage_path} ({len(content)} bytes)")
@@ -728,7 +728,7 @@ class FirebaseStorageService:
             # Set metadata (storage.rules requires: uploadedBy, uploadedAt)
             blob_metadata = {
                 "uploadedBy": user_id,
-                "uploadedAt": datetime.utcnow().isoformat(),
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),
                 "original_filename": filename,
                 "file_hash": file_hash,
                 "file_size": str(len(content))
@@ -740,7 +740,7 @@ class FirebaseStorageService:
             blob.metadata = blob_metadata
 
             # Set retention policy
-            retention_date = datetime.utcnow() + timedelta(days=self.config.retention_days)
+            retention_date = datetime.now(timezone.utc) + timedelta(days=self.config.retention_days)
             blob.custom_time = retention_date
 
             # Upload file
@@ -765,7 +765,7 @@ class FirebaseStorageService:
                 file_size=len(content),
                 mime_type=mime_type,
                 file_hash=file_hash,
-                expires_at=datetime.utcnow() + timedelta(days=30)
+                expires_at=datetime.now(timezone.utc) + timedelta(days=30)
             )
 
             logger.info(f"Profile picture uploaded: {storage_path} ({len(content)} bytes)")
@@ -985,7 +985,7 @@ class FirebaseStorageService:
                 await self.initialize()
 
             deleted_count = 0
-            cutoff_date = datetime.utcnow() - timedelta(days=self.config.retention_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.config.retention_days)
 
             # List all blobs
             blobs = self.bucket.list_blobs()

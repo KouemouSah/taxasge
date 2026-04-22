@@ -4,7 +4,7 @@ Business logic for session management
 TASK-M01-008: Sessions management implementation
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from loguru import logger
 
@@ -64,7 +64,7 @@ class SessionService:
             )
 
             # Filter out expired sessions (business rule 1)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             active_sessions = []
 
             for session in sessions:

@@ -6,7 +6,7 @@ import httpx
 import base64
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from ..models.webhook import (
@@ -155,7 +155,7 @@ class WebhookService:
         webhook = await self.get_webhook(db, webhook_id)
 
         # Prepare test payload
-        test_payload = test_request.test_payload or {"test": True, "timestamp": datetime.utcnow().isoformat()}
+        test_payload = test_request.test_payload or {"test": True, "timestamp": datetime.now(timezone.utc).isoformat()}
 
         # If payload template exists, merge with test data
         if webhook.payload_template:
@@ -164,9 +164,9 @@ class WebhookService:
             payload = test_payload
 
         # Execute webhook
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = await self._execute_webhook(webhook, payload, "test_event")
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
         # Log test execution
@@ -226,9 +226,9 @@ class WebhookService:
                     payload = event_data
 
                 # Execute webhook
-                start_time = datetime.utcnow()
+                start_time = datetime.now(timezone.utc)
                 result = await self._execute_webhook(webhook, payload, event_type)
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
                 # Log execution

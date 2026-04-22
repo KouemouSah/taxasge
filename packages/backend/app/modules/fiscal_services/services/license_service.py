@@ -49,8 +49,6 @@ class LicenseService:
         fee_type: Optional[str] = None,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        sort_order: str = "desc",
     ) -> Tuple[List[Dict], int]:
         return await LicenseRepository.list_licenses(
             conn, company_id=company_id, bundle_id=bundle_id,
@@ -58,7 +56,6 @@ class LicenseService:
             search=search, page=page, page_size=page_size,
             city_id=city_id, fee_type=fee_type,
             ministry_id=ministry_id, processing_mode=processing_mode,
-            sort_by=sort_by, sort_order=sort_order,
         )
 
     # ==================================================================
@@ -228,7 +225,7 @@ class LicenseService:
                    FROM users u
                    JOIN user_company_roles ucr ON ucr.user_id = u.id
                    WHERE ucr.company_id = $1
-                   ORDER BY ucr.created_at ASC LIMIT 1""",
+                   ORDER BY ucr.assigned_at ASC LIMIT 1""",
                 company_id,
             )
 
@@ -295,27 +292,6 @@ class LicenseService:
                 f"Allowed: {allowed}"
             )
 
-        # Business rule guards
-        if new_status == "suspended" and old_status == "complete":
-            raise ValueError(
-                "No se puede suspender una licencia conforme (100% pagada). "
-                "Una licencia completa solo puede cerrarse."
-            )
-
-        if new_status == "closed":
-            # Block closing if any obligation is still being processed by agents
-            processing_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM license_obligations "
-                "WHERE license_id = $1 AND status = 'processing'",
-                license_id,
-            )
-            if processing_count > 0:
-                raise ValueError(
-                    f"No se puede cerrar: {processing_count} obligacion(es) "
-                    f"en curso de tratamiento por los agentes. "
-                    f"Espere a que finalicen."
-                )
-
         update_data = {"status": new_status}
         if new_status == "closed":
             update_data["closed_at"] = datetime.now(timezone.utc)
@@ -336,7 +312,6 @@ class LicenseService:
                 "old_status": old_status,
                 "new_status": new_status,
                 "admin_action": True,
-                "source": "admin",
             },
             triggered_by=user_id,
         )
@@ -422,7 +397,6 @@ class LicenseService:
                     "new_status": new_status,
                     "paid": paid,
                     "total": total,
-                    "source": "system_auto",
                 },
                 triggered_by=user_id,
             )
@@ -455,7 +429,7 @@ class LicenseService:
                         FROM users u
                         JOIN user_company_roles ucr ON ucr.user_id = u.id
                         WHERE ucr.company_id = $1
-                        ORDER BY ucr.created_at ASC LIMIT 1
+                        ORDER BY ucr.assigned_at ASC LIMIT 1
                     """, company_id) if company_id else None
 
                     owner_name = (
@@ -765,26 +739,6 @@ class LicenseService:
             raise ValueError(
                 f"New fiscal year ({new_fiscal_year}) must be greater than "
                 f"previous ({prev['fiscal_year']})"
-            )
-
-        # Guard: only complete licences can be renewed
-        if prev["status"] not in ("complete",):
-            raise ValueError(
-                f"Solo se puede renovar una licencia conforme (status=complete). "
-                f"Estado actual: {prev['status']}. "
-                f"Todas las obligaciones deben estar pagadas y tratadas."
-            )
-
-        # Guard: prevent duplicate fiscal year for same company+bundle
-        dup = await conn.fetchval(
-            "SELECT id FROM commercial_licenses "
-            "WHERE company_id = $1 AND bundle_id = $2 AND fiscal_year = $3",
-            prev["company_id"], prev["bundle_id"], new_fiscal_year,
-        )
-        if dup:
-            raise ValueError(
-                f"Ya existe una licencia para el año fiscal {new_fiscal_year} "
-                f"(id: {dup}). No se puede duplicar."
             )
 
         # Create new license via open_license (handles all validation + items)

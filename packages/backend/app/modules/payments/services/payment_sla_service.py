@@ -582,7 +582,7 @@ class PaymentSLAService:
             f'<th style="padding:8px;border:1px solid #e5e7eb;background-color:{color};color:#fff;text-align:left;">{h}</th>'
             for h in table_headers
         )
-        now = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
+        now = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
 
         return f"""
         <!DOCTYPE html>
@@ -686,7 +686,7 @@ class PaymentSLAService:
         }
 
         tpl = bodies.get(language, bodies["es"])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         html = f"""
         <!DOCTYPE html>

@@ -10,7 +10,7 @@ Only admin users (role_code starts with 'admin') can connect.
 import asyncio
 import json
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
@@ -49,7 +49,7 @@ class WebSocketManager:
         message = json.dumps({
             "type": event_type,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         })
 
         async def _send(user_id: str, ws: WebSocket) -> str | None:

@@ -6,7 +6,7 @@ Service for system rules and configuration management
 
 from typing import Dict, Any, Optional
 from loguru import logger
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 
 class SystemService:
@@ -92,7 +92,7 @@ class SystemService:
         # Basic health check
         health = {
             "status": "healthy",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "checks": {
                 "database": "ok",
                 "storage": "ok",

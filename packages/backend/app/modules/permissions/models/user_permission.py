@@ -2,7 +2,7 @@
 UserPermission Models - User-specific permission overrides
 """
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
@@ -22,7 +22,7 @@ class UserPermissionCreate(UserPermissionBase):
     @validator('expires_at')
     def validate_expires_at(cls, v):
         """Ensure expiration date is in the future"""
-        if v is not None and v <= datetime.utcnow():
+        if v is not None and v <= datetime.now(timezone.utc):
             raise ValueError('Expiration date must be in the future')
         return v
 
@@ -36,7 +36,7 @@ class UserPermissionUpdate(BaseModel):
     @validator('expires_at')
     def validate_expires_at(cls, v):
         """Ensure expiration date is in the future or NULL"""
-        if v is not None and v <= datetime.utcnow():
+        if v is not None and v <= datetime.now(timezone.utc):
             raise ValueError('Expiration date must be in the future or NULL to remove expiration')
         return v
 
@@ -104,7 +104,7 @@ class GrantPermissionToUserRequest(BaseModel):
     @validator('expires_at')
     def validate_expires_at(cls, v):
         """Ensure expiration date is in the future"""
-        if v is not None and v <= datetime.utcnow():
+        if v is not None and v <= datetime.now(timezone.utc):
             raise ValueError('Expiration date must be in the future')
         return v
 

@@ -6,7 +6,7 @@ business logic like notifications, summary calculations, and analytics.
 """
 
 from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from loguru import logger
 import asyncpg
@@ -333,7 +333,7 @@ class AccountantDeadlineService:
                     for d in overdue
                 ),
                 "health_score": self._calculate_health_score(upcoming_30, overdue),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             logger.info(f"Generated deadline analytics for accountant {accountant_user_id}")

@@ -12,7 +12,7 @@ import asyncio
 import json
 import re
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -144,7 +144,7 @@ class UserDocumentsExportService:
                     metadata = {
                         "export_id": export_id,
                         "user_id": str(user_id),
-                        "exported_at": datetime.utcnow().isoformat(),
+                        "exported_at": datetime.now(timezone.utc).isoformat(),
                         "total_documents": downloaded_count,
                         "category_filter": category,
                         "documents": metadata_entries,
@@ -262,7 +262,7 @@ class UserDocumentsExportService:
         blob = firebase_storage_service.bucket.blob(storage_path)
         blob.metadata = {
             "uploadedBy": user_id,
-            "uploadedAt": datetime.utcnow().isoformat(),
+            "uploadedAt": datetime.now(timezone.utc).isoformat(),
             "exportId": export_id,
             "assetType": "vault-export",
         }
@@ -297,7 +297,7 @@ class UserDocumentsExportService:
                     "file_size": file_size,
                     "document_count": document_count,
                     "error": error,
-                    "updated_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
                 await cache.set(
                     f"vault_export:{export_id}",

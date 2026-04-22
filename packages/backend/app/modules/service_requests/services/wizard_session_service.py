@@ -24,7 +24,7 @@ Flow:
 
 import base64
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, List, Tuple
 from uuid import UUID, uuid4
 
@@ -141,7 +141,7 @@ class WizardSessionService:
 
     def _generate_session_id(self, user_id: UUID, workflow_code: str) -> str:
         """Generate unique session ID."""
-        unique = f"{user_id}_{workflow_code}_{uuid4().hex[:8]}_{datetime.utcnow().timestamp()}"
+        unique = f"{user_id}_{workflow_code}_{uuid4().hex[:8]}_{datetime.now(timezone.utc).timestamp()}"
         return f"{WIZARD_SESSION_PREFIX}{hashlib.sha256(unique.encode()).hexdigest()[:16]}"
 
     def _get_cache_key(self, session_id: str) -> str:
@@ -181,7 +181,7 @@ class WizardSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.utcnow() > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
                     logger.info(f"[WizardSession] Session expired: {session_id}")
                     await self.cache.delete(cache_key)
                     raise WizardSessionExpiredError()
@@ -202,7 +202,7 @@ class WizardSessionService:
         cache_key = self._get_cache_key(session_id)
 
         # Update timestamps (Z suffix = UTC, required for correct JS Date parsing)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data["updated_at"] = now.isoformat() + "Z"
         if renew_ttl:
             data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat() + "Z"
@@ -312,7 +312,7 @@ class WizardSessionService:
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                remaining = (expires_at.replace(tzinfo=None) - datetime.utcnow()).total_seconds()
+                remaining = (expires_at.replace(tzinfo=None) - datetime.now(timezone.utc)).total_seconds()
                 ttl_seconds = max(0, int(remaining))
             except (ValueError, TypeError):
                 pass
@@ -414,7 +414,7 @@ class WizardSessionService:
 
         # Create session
         session_id = self._generate_session_id(user_id, workflow_code)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=self.session_ttl)
 
         session_data = {
@@ -575,7 +575,7 @@ class WizardSessionService:
                 )
 
         # Store document in session (including base64 content)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         document_data = {
             "document_code": document_code,
             "file_name": file_name,
@@ -616,11 +616,11 @@ class WizardSessionService:
         # Calculate remaining TTL
         ttl_seconds = self.session_ttl
         expires_at_str = session.get("expires_at")
-        expires_at = datetime.utcnow() + timedelta(seconds=self.session_ttl)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.session_ttl)
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                remaining = (expires_at.replace(tzinfo=None) - datetime.utcnow()).total_seconds()
+                remaining = (expires_at.replace(tzinfo=None) - datetime.now(timezone.utc)).total_seconds()
                 ttl_seconds = max(0, int(remaining))
             except (ValueError, TypeError):
                 pass
@@ -686,7 +686,7 @@ class WizardSessionService:
             )
             confirmed_data = {}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Update document with confirmed data
         session["documents"][document_code]["confirmed_at"] = now.isoformat() + "Z"

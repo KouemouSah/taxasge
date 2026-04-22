@@ -13,7 +13,7 @@ Module: Communications
 import json
 import asyncpg
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from ..models.push_template import (
@@ -246,7 +246,7 @@ class PushTemplateRepository:
 
         # Add updated_at
         updates.append(f"updated_at = ${param_count}")
-        params.append(datetime.utcnow())
+        params.append(datetime.now(timezone.utc))
         param_count += 1
 
         # Add template_id

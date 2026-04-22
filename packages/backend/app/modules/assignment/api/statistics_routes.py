@@ -9,7 +9,7 @@ Version: 1.0 - Initial implementation
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
@@ -385,8 +385,8 @@ async def get_agent_trends(
             detail="You can only view your own trends"
         )
 
-    period_start = datetime.utcnow() - timedelta(days=period_days)
-    period_end = datetime.utcnow()
+    period_start = datetime.now(timezone.utc) - timedelta(days=period_days)
+    period_end = datetime.now(timezone.utc)
 
     # Real time-series query from assignments + service_requests
     trunc_unit = 'day' if granularity == 'daily' else 'week'
@@ -926,7 +926,7 @@ async def get_realtime_summary(
         overloaded_count = sum(1 for a in agents if a.workload_status == "overloaded")
 
         summary = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "active_assignments": len(active_assignments),
             "pending_assignments": len(pending),
             "in_progress_assignments": len(in_progress),

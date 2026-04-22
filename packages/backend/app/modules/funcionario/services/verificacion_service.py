@@ -9,7 +9,7 @@ Handles the business logic for civil servant verification:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import Optional, Dict, Any, List
 from uuid import UUID
@@ -779,7 +779,7 @@ class VerificacionService:
                 "processor": result.get("processor", "unknown"),
                 "status": status,
                 "schema_used": "DIP_GQ_V2",
-                "extracted_at": datetime.utcnow().isoformat(),
+                "extracted_at": datetime.now(timezone.utc).isoformat(),
                 # Risk analysis from Gemini processor
                 "risk_analysis": risk_analysis,
             }
@@ -792,7 +792,7 @@ class VerificacionService:
                 "processor": "error",
                 "status": "error",
                 "error": str(e),
-                "extracted_at": datetime.utcnow().isoformat(),
+                "extracted_at": datetime.now(timezone.utc).isoformat(),
                 "risk_analysis": {
                     "risk_level": "high",
                     "risk_score": 80,
@@ -899,7 +899,7 @@ class VerificacionService:
                 "processor": result.get("processor", "unknown"),
                 "status": status,
                 "schema_used": schema_key,
-                "extracted_at": datetime.utcnow().isoformat(),
+                "extracted_at": datetime.now(timezone.utc).isoformat(),
                 # Risk analysis from Gemini processor
                 "risk_analysis": risk_analysis,
             }
@@ -917,7 +917,7 @@ class VerificacionService:
                 "status": "error",
                 "error": str(e),
                 "schema_used": schema_key,
-                "extracted_at": datetime.utcnow().isoformat(),
+                "extracted_at": datetime.now(timezone.utc).isoformat(),
                 "risk_analysis": {
                     "risk_level": "high",
                     "risk_score": 80,
@@ -1224,7 +1224,7 @@ class VerificacionService:
         # =====================================================================
         verification_data["form_review_confirmed"] = {
             "data": merged_data,
-            "confirmed_at": datetime.utcnow().isoformat(),
+            "confirmed_at": datetime.now(timezone.utc).isoformat(),
             "fields_count": len(merged_data),
             "user_modified_fields": list(form_data.keys()),  # Track what user changed
             "extracted_fields_count": len(extracted_form_data),
@@ -1469,7 +1469,7 @@ class VerificacionService:
         # Add user confirmation with acknowledgment of warnings
         verification_data["confirmacion_usuario"] = {
             "datos_correctos": True,
-            "confirmado_at": datetime.utcnow().isoformat(),
+            "confirmado_at": datetime.now(timezone.utc).isoformat(),
             "warnings_acknowledged": len(warnings) > 0,
             "warnings_count": len(warnings),
         }
@@ -1578,7 +1578,7 @@ class VerificacionService:
                     expires_at=None,  # Matriculas don't expire
                     metadata={
                         "verificacion_id": str(verificacion_id),
-                        "approved_at": datetime.utcnow().isoformat(),
+                        "approved_at": datetime.now(timezone.utc).isoformat(),
                         "verification_type": "agent_manual",
                     },
                     verified_by=str(agent_id),
@@ -1597,7 +1597,7 @@ class VerificacionService:
                 new_data={
                     "verified_identifiers_entry": {
                         "id": identifier_id,
-                        "added_at": datetime.utcnow().isoformat(),
+                        "added_at": datetime.now(timezone.utc).isoformat(),
                         "added_by": str(agent_id),
                     }
                 },

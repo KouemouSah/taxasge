@@ -31,7 +31,7 @@ import asyncio
 import base64
 from typing import Dict, List, Optional, Any
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from loguru import logger
 
@@ -234,7 +234,7 @@ class MastercardGateway(GatewayServiceBase):
                 external_id=order_id,
                 redirect_url=checkout_url,
                 status="pending",
-                expires_at=datetime.utcnow() + timedelta(hours=2),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=2),
             )
 
         except Exception as e:

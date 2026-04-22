@@ -14,7 +14,7 @@ Usage:
 import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class InMemoryCache(CacheBackend):
             return None
 
         expires_at = entry.get("_expires_at")
-        if expires_at and datetime.utcnow() > expires_at:
+        if expires_at and datetime.now(timezone.utc) > expires_at:
             # Expired - remove and return None
             del self._store[key]
             return None
@@ -73,7 +73,7 @@ class InMemoryCache(CacheBackend):
 
     async def set(self, key: str, value: Dict[str, Any], ttl_seconds: int) -> bool:
         """Set value with expiration."""
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
         self._store[key] = {
             **value,
             "_expires_at": expires_at
@@ -89,7 +89,7 @@ class InMemoryCache(CacheBackend):
 
     async def cleanup_expired(self) -> int:
         """Remove all expired entries."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired_keys = [
             k for k, v in self._store.items()
             if v.get("_expires_at") and now > v["_expires_at"]

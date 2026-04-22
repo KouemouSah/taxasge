@@ -8,7 +8,7 @@ Provider: Infobip (y45e8g.api.infobip.com)
 
 import httpx
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -48,7 +48,7 @@ class SmsResult:
         self.status = status
         self.error = error
         self.provider_response = provider_response
-        self.sent_at = datetime.utcnow() if success else None
+        self.sent_at = datetime.now(timezone.utc) if success else None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -326,7 +326,7 @@ class MockSmsProvider(BaseSmsProvider):
         self.sent_messages: List[Dict] = []
 
     def send_sms(self, to: str, message: str, sender_id: Optional[str] = None) -> SmsResult:
-        msg_id = f"mock_{datetime.utcnow().timestamp()}"
+        msg_id = f"mock_{datetime.now(timezone.utc).timestamp()}"
         self.sent_messages.append({
             "to": to,
             "message": message,

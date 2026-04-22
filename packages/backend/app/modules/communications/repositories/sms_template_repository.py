@@ -7,7 +7,7 @@ Handles all database operations for SMS templates table.
 import asyncpg
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from ..models.sms_template import (
@@ -72,7 +72,7 @@ class SmsTemplateRepository:
                 template_data.max_segments,
                 template_data.is_active,
                 created_by,
-                datetime.utcnow()
+                datetime.now(timezone.utc)
             )
 
             logger.info(f"Created SMS template: {template_data.template_code}")
@@ -221,7 +221,7 @@ class SmsTemplateRepository:
         """
         # Build SET clause dynamically based on provided fields
         set_clauses = ["updated_at = $1", "updated_by = $2"]
-        params = [datetime.utcnow(), updated_by]
+        params = [datetime.now(timezone.utc), updated_by]
         param_counter = 3
 
         update_fields = template_data.model_dump(exclude_unset=True)

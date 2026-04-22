@@ -444,10 +444,10 @@ class ServiceRequestService:
         )
 
         # Generate preview ID (unique for this extraction session)
-        preview_id = f"prev_{hashlib.sha256(f'{request_id}{document_code}{datetime.utcnow().isoformat()}'.encode()).hexdigest()[:16]}"
+        preview_id = f"prev_{hashlib.sha256(f'{request_id}{document_code}{datetime.now(timezone.utc).isoformat()}'.encode()).hexdigest()[:16]}"
 
         # Calculate expiry time
-        expires_at = datetime.utcnow() + timedelta(minutes=PREVIEW_EXPIRY_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=PREVIEW_EXPIRY_MINUTES)
 
         # Get risk analysis
         risk_analysis = processing_result.get("risk_analysis", {})
@@ -595,7 +595,7 @@ class ServiceRequestService:
 
         # Check if preview has expired (cache handles TTL but double-check)
         expires_at = datetime.fromisoformat(preview["expires_at"])
-        if datetime.utcnow() > expires_at:
+        if datetime.now(timezone.utc) > expires_at:
             await preview_cache.delete(validation.preview_id)
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
@@ -661,7 +661,7 @@ class ServiceRequestService:
             )
 
         # Use transaction to ensure atomicity - all DB operations succeed or none
-        validated_at = datetime.utcnow()
+        validated_at = datetime.now(timezone.utc)
         doc = None
 
         async with db.transaction():
@@ -1085,7 +1085,7 @@ class ServiceRequestService:
 
         # Add updated_at
         update_fields.append(f"updated_at = ${len(update_values) + 1}")
-        update_values.append(datetime.utcnow())
+        update_values.append(datetime.now(timezone.utc))
 
         # Add request_id as last parameter
         update_values.append(request_id)

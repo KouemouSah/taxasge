@@ -8,7 +8,7 @@ Includes validation certificate generation with photo and barcode.
 from typing import Dict, Any, Optional
 from io import BytesIO
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import base64
 import hashlib
 import hmac as hmac_lib
@@ -530,7 +530,7 @@ class SummaryPDFService:
             data_sections=data_sections,
             tariff=formatted_tariff,
             appointment=formatted_appointment,
-            generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
             qr_code_b64=qr_code_b64,
             photo_base64=photo_base64,
             logo_base64=logo_base64,
@@ -818,8 +818,8 @@ class SummaryPDFService:
             logo_base64=logo_base64,
             barcode_value=barcode_value,
             verify_url=verify_url,
-            validated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
-            generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            validated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+            generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
         )
 
         # Convert HTML to PDF
@@ -961,8 +961,8 @@ class SummaryPDFService:
             qr_code_b64=qr_code_b64,
             verify_url=verify_url,
             payment_status_label=payment_status_label,
-            validated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
-            generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            validated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+            generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
         )
 
         # Convert HTML to PDF

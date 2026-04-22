@@ -6,7 +6,7 @@ Supports: approve, reject, request-info, get-drafts, stats.
 """
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
@@ -335,7 +335,7 @@ class CompanyOnboardingService:
                 if bundle and zone_id:
                     # Use LicenseService.open_license() for the FULL pipeline:
                     # license + zone-specific obligations + events + compliance check
-                    fiscal_year = datetime.utcnow().year
+                    fiscal_year = datetime.now(timezone.utc).year
                     try:
                         license_row = await LicenseService.open_license(
                             conn,

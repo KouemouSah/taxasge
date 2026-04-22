@@ -346,7 +346,7 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
     """
     from app.modules.payments.services.receipt_service import receipt_service
     from app.core.events import EventBus, EventType
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     try:
         # 1. Get payment with all necessary data
@@ -378,7 +378,7 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
                 await BatchPersistService.fan_out_batch_completion(
                     db=db,
                     batch_id=batch["id"],
-                    paid_at=datetime.utcnow(),
+                    paid_at=datetime.now(timezone.utc),
                 )
                 logger.info(
                     f"Batch payment reconciled: batch={batch['id']}, "
@@ -410,7 +410,7 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
             service_data = await db.fetchrow(service_query, service_request_id)
 
         # 4. Update payment status
-        paid_at = datetime.utcnow()
+        paid_at = datetime.now(timezone.utc)
         update_query = """
             UPDATE service_payments
             SET status = 'completed',
@@ -443,7 +443,7 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
         except Exception as e:
             logger.error(f"Failed to generate receipt for BANGE payment {payment_id}: {e}")
             # Generate fallback receipt number
-            year = datetime.utcnow().year
+            year = datetime.now(timezone.utc).year
             count_query = "SELECT COUNT(*) + 1 as n FROM service_payments WHERE receipt_number IS NOT NULL AND EXTRACT(YEAR FROM paid_at) = $1"
             result = await db.fetchrow(count_query, year)
             receipt_number = f"REC-{year}-{result['n']:06d}" if result else f"REC-{year}-000001"
@@ -508,7 +508,7 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
 
         # 7. Publish PAYMENT_COMPLETED event (fallback + notifications)
         try:
-            paid_at = datetime.utcnow()
+            paid_at = datetime.now(timezone.utc)
             await EventBus.publish(EventType.PAYMENT_COMPLETED, {
                 "payment_id": payment_id,
                 "user_id": str(user_id),

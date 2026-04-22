@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query, Background
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
 from loguru import logger
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import io
 import csv
@@ -165,7 +165,7 @@ async def batch_create_declarations(
                 failed_items=0,
                 skipped_items=0,
                 results=[],
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
                 completed_at=None,
                 total_processing_time_ms=0,
                 is_async=True,
@@ -260,7 +260,7 @@ async def batch_submit_declarations(
                 failed_items=0,
                 skipped_items=0,
                 results=[],
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
                 completed_at=None,
                 total_processing_time_ms=0,
                 is_async=True,
@@ -590,7 +590,7 @@ async def _generate_report_async(
         file_url=None,
         file_size_bytes=None,
         expires_at=None,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
         processing_time_ms=None,
         is_async=True,
         progress_url=f"/api/v1/accountant/reports/{report_id}/status",

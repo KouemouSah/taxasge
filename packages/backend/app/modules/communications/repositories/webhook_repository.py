@@ -3,7 +3,7 @@ Repository for webhook configurations and logs
 """
 import asyncpg
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from ..models.webhook import (
@@ -171,7 +171,7 @@ class WebhookRepository:
             return await self.find_by_id(db, webhook_id)
 
         updates.append(f"updated_at = ${param_count}")
-        params.append(datetime.utcnow())
+        params.append(datetime.now(timezone.utc))
         param_count += 1
 
         params.append(webhook_id)

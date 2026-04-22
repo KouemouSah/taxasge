@@ -16,7 +16,7 @@ Key differences from individual WizardSessionService.initiate_payment():
 - Partial submission: only READY items, EXCLUDED items skipped
 """
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Any, Optional
 from uuid import UUID, uuid4
@@ -571,7 +571,7 @@ class BatchPersistService:
                     total_items=len(created_requests),
                     items_ready=len(created_requests),
                     items_submitted=len(created_requests),
-                    submitted_at=datetime.utcnow(),
+                    submitted_at=datetime.now(timezone.utc),
                 )
 
                 # ---------------------------------------------------------------
@@ -752,7 +752,7 @@ class BatchPersistService:
         bange_service = BANGEService()
 
         # Generate batch payment reference
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         short_id = str(uuid4())[:8].upper()
         bange_ref = f"BATCH-{timestamp}-{short_id}"
 

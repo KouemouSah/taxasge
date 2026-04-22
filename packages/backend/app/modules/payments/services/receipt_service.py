@@ -303,7 +303,7 @@ class ReceiptService:
 
     def _generate_receipt_number(self, payment_date: datetime = None) -> str:
         """Generate unique receipt number. Format: REC-YYYYMMDD-XXXXX"""
-        date = payment_date or datetime.utcnow()
+        date = payment_date or datetime.now(timezone.utc)
         date_str = date.strftime("%Y%m%d")
         import random
         suffix = str(random.randint(10000, 99999))
@@ -315,7 +315,7 @@ class ReceiptService:
         Uses pg_advisory_xact_lock to prevent race conditions where two
         concurrent calls could generate the same receipt number.
         """
-        year = datetime.utcnow().year
+        year = datetime.now(timezone.utc).year
         # Acquire advisory lock to serialize receipt number generation
         await db.execute("SELECT pg_advisory_xact_lock(hashtext('receipt_seq'))")
         result = await db.fetchrow(
@@ -366,7 +366,7 @@ class ReceiptService:
             paid_at = paid_at.astimezone(timezone.utc).replace(tzinfo=None)
 
         # Create message to sign: receipt_number|amount|date
-        date_str = paid_at.strftime("%Y%m%d") if paid_at else datetime.utcnow().strftime("%Y%m%d")
+        date_str = paid_at.strftime("%Y%m%d") if paid_at else datetime.now(timezone.utc).strftime("%Y%m%d")
         message = f"{receipt_number}|{amount:.2f}|{date_str}"
 
         # Generate HMAC-SHA256
@@ -724,12 +724,12 @@ class ReceiptService:
             entity_code = agent_location["entity_name"]
 
         # Payment date
-        paid_at = payment_data.get("paid_at") or payment_data.get("created_at") or datetime.utcnow()
+        paid_at = payment_data.get("paid_at") or payment_data.get("created_at") or datetime.now(timezone.utc)
         if isinstance(paid_at, str):
             try:
                 paid_at = datetime.fromisoformat(paid_at.replace("Z", "+00:00"))
             except ValueError:
-                paid_at = datetime.utcnow()
+                paid_at = datetime.now(timezone.utc)
         payment_date = paid_at.strftime("%d/%m/%Y %H:%M")
 
         # Generate secure verification URL for QR code (HMAC-signed)
@@ -780,7 +780,7 @@ class ReceiptService:
             # QR code with secure verification URL
             verification_url=verification_url,
             qr_code_base64=qr_code_base64,
-            generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
         )
 
         # Convert HTML to PDF

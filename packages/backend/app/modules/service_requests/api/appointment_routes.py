@@ -497,8 +497,8 @@ async def get_hold_status(
     hold = await appointment_service.get_hold_status(db, request_id)
 
     if hold:
-        from datetime import datetime
-        now = datetime.now(hold.expires_at.tzinfo) if hold.expires_at.tzinfo else datetime.utcnow()
+        from datetime import datetime, timezone
+        now = datetime.now(hold.expires_at.tzinfo) if hold.expires_at.tzinfo else datetime.now(timezone.utc)
         is_expired = hold.status.value == 'expired' or (
             hold.status.value == 'held' and now > hold.expires_at
         )

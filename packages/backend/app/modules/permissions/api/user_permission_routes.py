@@ -2,7 +2,7 @@
 User Permission API Routes - REST endpoints for user-specific permissions
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
 
@@ -122,7 +122,7 @@ async def grant_permission_to_user(
         404: User or permission not found
     """
     # Validate expiration date if provided
-    if request.expires_at and request.expires_at <= datetime.utcnow():
+    if request.expires_at and request.expires_at <= datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Expiration date must be in the future"
@@ -281,7 +281,7 @@ async def update_user_permission(
         400: Invalid expiration date
     """
     # Validate expiration date if provided
-    if update_data.expires_at and update_data.expires_at <= datetime.utcnow():
+    if update_data.expires_at and update_data.expires_at <= datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Expiration date must be in the future"
@@ -350,7 +350,7 @@ async def cleanup_expired_permissions(
         "success": True,
         "message": f"Cleaned up {deleted_count} expired permissions",
         "deleted_count": deleted_count,
-        "cleaned_at": datetime.utcnow().isoformat()
+        "cleaned_at": datetime.now(timezone.utc).isoformat()
     }
 
 

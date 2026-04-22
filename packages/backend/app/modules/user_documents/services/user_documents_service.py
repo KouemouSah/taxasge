@@ -11,7 +11,7 @@ OWASP A08: File integrity validation via magic bytes (Software and Data Integrit
 import asyncio
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
@@ -239,7 +239,7 @@ class UserDocumentsService:
         blob = firebase_storage_service.bucket.blob(storage_path)
         blob.metadata = {
             "uploadedBy": str(user_id),
-            "uploadedAt": datetime.utcnow().isoformat(),
+            "uploadedAt": datetime.now(timezone.utc).isoformat(),
             "source": "personal",
             "fileHash": file_hash,
         }
@@ -921,9 +921,9 @@ class UserDocumentsService:
                 days_until = None
                 if expiry:
                     if isinstance(expiry, datetime):
-                        days_until = (expiry.date() - datetime.utcnow().date()).days
+                        days_until = (expiry.date() - datetime.now(timezone.utc).date()).days
                     else:
-                        days_until = (expiry - datetime.utcnow().date()).days
+                        days_until = (expiry - datetime.now(timezone.utc).date()).days
 
                 if days_until is not None and days_until <= 30:
                     expiring_items.append({
@@ -1483,7 +1483,7 @@ class UserDocumentsService:
             blob = firebase_storage_service.bucket.blob(thumb_path)
             blob.metadata = {
                 "uploadedBy": user_id,
-                "uploadedAt": datetime.utcnow().isoformat(),
+                "uploadedAt": datetime.now(timezone.utc).isoformat(),
                 "assetType": "thumbnail",
             }
             # Set cache-control for CDN (30 days)

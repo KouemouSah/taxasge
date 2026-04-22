@@ -1412,10 +1412,10 @@ async def get_assignment_stats(
     - Breakdown by item_type
     - Breakdown by assignment_method
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     # Build base query
-    date_threshold = datetime.utcnow() - timedelta(days=days)
+    date_threshold = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Entity scoping for supervisors (not admin)
     is_admin = current_user.role == "admin"

@@ -5,7 +5,7 @@ Handles JWT token generation, validation, and refresh
 
 import jwt
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from loguru import logger
 
@@ -78,9 +78,9 @@ class JWTService:
         try:
             # Calculate expiration
             if expires_delta:
-                expire = datetime.utcnow() + expires_delta
+                expire = datetime.now(timezone.utc) + expires_delta
             else:
-                expire = datetime.utcnow() + timedelta(
+                expire = datetime.now(timezone.utc) + timedelta(
                     minutes=self.access_token_expire_minutes
                 )
 
@@ -89,7 +89,7 @@ class JWTService:
                 "sub": subject,
                 "type": "access",
                 "exp": expire,
-                "iat": datetime.utcnow(),
+                "iat": datetime.now(timezone.utc),
             }
 
             # Add user data if provided
@@ -127,9 +127,9 @@ class JWTService:
         try:
             # Calculate expiration
             if expires_delta:
-                expire = datetime.utcnow() + expires_delta
+                expire = datetime.now(timezone.utc) + expires_delta
             else:
-                expire = datetime.utcnow() + timedelta(
+                expire = datetime.now(timezone.utc) + timedelta(
                     days=self.refresh_token_expire_days
                 )
 
@@ -138,7 +138,7 @@ class JWTService:
                 "sub": subject,
                 "type": "refresh",
                 "exp": expire,
-                "iat": datetime.utcnow(),
+                "iat": datetime.now(timezone.utc),
             }
 
             # Encode token
@@ -282,7 +282,7 @@ class JWTService:
         if expiration is None:
             return True
 
-        return datetime.utcnow() >= expiration
+        return datetime.now(timezone.utc) >= expiration
 
     def get_remaining_time(self, token: str) -> Optional[timedelta]:
         """
@@ -299,7 +299,7 @@ class JWTService:
         if expiration is None:
             return None
 
-        remaining = expiration - datetime.utcnow()
+        remaining = expiration - datetime.now(timezone.utc)
 
         if remaining.total_seconds() <= 0:
             return None

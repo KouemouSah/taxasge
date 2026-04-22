@@ -3287,7 +3287,7 @@ async def get_pending_payments(
     _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Get payments pending Treasury Agent validation"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from loguru import logger
 
     try:
@@ -3966,7 +3966,7 @@ async def validate_payment(
         # Track SLA compliance (was payment validated within SLA target?)
         sla_respected = (
             payment.get("sla_target_date") is None
-            or datetime.utcnow() <= payment["sla_target_date"].replace(tzinfo=None)
+            or datetime.now(timezone.utc) <= payment["sla_target_date"].replace(tzinfo=None)
         )
         await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
 
@@ -4300,7 +4300,7 @@ async def reject_payment(
         # Track SLA compliance
         sla_respected = (
             payment.get("sla_target_date") is None
-            or datetime.utcnow() <= payment["sla_target_date"].replace(tzinfo=None)
+            or datetime.now(timezone.utc) <= payment["sla_target_date"].replace(tzinfo=None)
         )
         await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
 
@@ -4672,7 +4672,7 @@ async def validate_batch_payments(
     _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Validate all payments in a batch atomically"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from uuid import UUID as UUIDType
     from loguru import logger
 
@@ -4716,7 +4716,7 @@ async def validate_batch_payments(
         result = await BatchPersistService.fan_out_batch_completion(
             db=db,
             batch_id=UUIDType(batch_id),
-            paid_at=datetime.utcnow(),
+            paid_at=datetime.now(timezone.utc),
             agent_profile_id=str(agent_profile_id),
         )
 
@@ -4768,7 +4768,7 @@ async def escalate_payment(
     _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Manually escalate a payment to supervisor"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from loguru import logger
 
     tctx = await _get_treasury_context(db, current_user.id)
@@ -6464,7 +6464,7 @@ async def get_supervisor_overview(
         cached["is_main_office"] = is_main_office
         return cached
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     lookback_start = now - timedelta(days=days)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -6756,7 +6756,7 @@ async def get_workload_dashboard(
     if cached:
         return cached
 
-    lookback_start = datetime.utcnow() - timedelta(days=days)
+    lookback_start = datetime.now(timezone.utc) - timedelta(days=days)
 
     # 7 parallel queries — each acquires its own connection from the pool.
     # Q1/Q5/Q7 use mv_agent_daily_workload (materialized view, refreshed every 15min)
@@ -7072,7 +7072,7 @@ async def get_workload_dashboard(
         "kpis": kpis,
         "rankings": rankings,
         "period_days": days,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     await cache.set(cache_key, result, ttl=300)
@@ -8985,11 +8985,11 @@ async def export_analyst_response(
     _=Depends(permission_required("treasury_stat.view")),
 ):
     """Export analyst response as PDF or Markdown."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from io import BytesIO
     from fastapi.responses import StreamingResponse
 
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H%M")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
 
     if request.format == "markdown":
         md = _build_analyst_markdown(request.question, request.answer, request.artifacts or [])
@@ -9028,13 +9028,13 @@ async def export_analyst_response(
 
 def _build_analyst_markdown(question: str, answer: str, artifacts: list) -> str:
     """Build Markdown export of analyst response."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     lines = [
         f"# Análisis Financiero — Tesoro Público GE",
         f"",
         f"**Pregunta**: {question}",
         f"",
-        f"**Fecha**: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"**Fecha**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"",
         f"---",
         f"",

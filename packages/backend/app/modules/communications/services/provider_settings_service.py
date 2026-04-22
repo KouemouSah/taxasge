@@ -7,7 +7,7 @@ Business logic for managing communication provider configurations.
 import asyncpg
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 from fastapi import HTTPException, status
 
@@ -318,7 +318,7 @@ class ProviderSettingsService:
             SET is_default = false, updated_at = $1
             WHERE provider_type = $2 AND is_default = true
         """
-        await db.execute(query, datetime.utcnow(), provider_type.value)
+        await db.execute(query, datetime.now(timezone.utc), provider_type.value)
 
     async def get_active_sms_credentials(
         self,

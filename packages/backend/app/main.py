@@ -7,7 +7,7 @@ import os
 import sys
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uvicorn
 # Note: functions_framework removed in v1.1.8 - Cloud Run uses uvicorn directly
 from fastapi import FastAPI, Request, HTTPException, Depends, status
@@ -650,7 +650,7 @@ async def health_check():
         "service": "taxasge-backend",
         "environment": settings.environment,
         "version": settings.api_version,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "python_version": sys.version,
         "platform": "FastAPI + Cloud Run",
         "checks": {
@@ -760,7 +760,7 @@ async def root():
             "mobile_payments": "BANGE integration",
             "enterprise_support": "B2B declarations"
         },
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "platform": "FastAPI + Cloud Run"
     }
 
@@ -781,7 +781,7 @@ async def debug_routers(request: Request):
         "routers_loaded": routers_loaded,
         "routers_count": len(routers_loaded),
         "auth_loaded": "auth" in routers_loaded,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "environment": settings.environment
     }
 
@@ -835,7 +835,7 @@ async def debug_communications_import(request: Request):
         "communications_loaded": "communications" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -884,7 +884,7 @@ async def debug_enum_import(request: Request):
         "enum_router_loaded": "enums" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -931,7 +931,7 @@ async def debug_support_import(request: Request):
         "support_router_loaded": "support" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -998,7 +998,7 @@ async def debug_service_requests_import(request: Request):
         "documents_loaded": "documents" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -1055,7 +1055,7 @@ async def debug_entity_locations_import(request: Request):
         "entity_locations_loaded": "entity-locations" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -1114,7 +1114,7 @@ async def debug_funcionario_import(request: Request):
         "funcionario_loaded": "funcionario" in routers_loaded,
         "import_success": import_success,
         "import_errors": import_errors,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

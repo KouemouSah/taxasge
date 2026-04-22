@@ -372,7 +372,7 @@ class AuthService:
                 avatar_url=user.avatar_url,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
-                last_login=datetime.utcnow(),
+                last_login=datetime.now(timezone.utc),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
                 role_code=role_code,
@@ -457,7 +457,7 @@ class AuthService:
             )
 
             # Update session with new tokens
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             new_expires_at = now + timedelta(days=7)
 
             # Wrap revoke + create in a transaction to prevent user lockout
@@ -669,7 +669,7 @@ class AuthService:
                         # Check JWT iat: if token was issued recently, allow (first request)
                         iat = payload.get("iat")
                         if iat:
-                            token_age = (datetime.utcnow() - datetime.utcfromtimestamp(iat)).total_seconds()
+                            token_age = (datetime.now(timezone.utc) - datetime.utcfromtimestamp(iat)).total_seconds()
                             if token_age > idle_ttl:
                                 logger.warning(f"Session idle timeout for user {user_id} (age={token_age:.0f}s, limit={idle_ttl}s)")
                                 return None
@@ -726,7 +726,7 @@ class AuthService:
         )
 
         # Calculate session expiration
-        expires_at = datetime.utcnow() + timedelta(
+        expires_at = datetime.now(timezone.utc) + timedelta(
             days=30 if remember_me else 7
         )
 
@@ -806,7 +806,7 @@ class AuthService:
             logger.debug(f"🔍 [PASSWORD_RESET] Generated reset token (length={len(reset_token)})")
 
             # Set expiration (1 hour from now)
-            expires_at = datetime.utcnow() + timedelta(hours=1)
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
             # Hash token before storing in DB (never store plaintext tokens)
             hashed_reset_token = hashlib.sha256(reset_token.encode()).hexdigest()
@@ -1118,7 +1118,7 @@ class AuthService:
                 avatar_url=user.avatar_url,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
-                last_login=datetime.utcnow(),
+                last_login=datetime.now(timezone.utc),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
                 role_code=role_code_2fa,

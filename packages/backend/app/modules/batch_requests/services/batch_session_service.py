@@ -10,7 +10,7 @@ Key differences from individual WizardSessionService:
 import csv
 import hashlib
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 from uuid import UUID, uuid4
 
@@ -63,7 +63,7 @@ class BatchSessionService:
 
     def _generate_session_id(self, user_id: UUID, workflow_code: str) -> str:
         """Generate unique session ID."""
-        unique = f"{user_id}_batch_{workflow_code}_{uuid4().hex[:8]}_{datetime.utcnow().timestamp()}"
+        unique = f"{user_id}_batch_{workflow_code}_{uuid4().hex[:8]}_{datetime.now(timezone.utc).timestamp()}"
         return f"{BATCH_SESSION_PREFIX}{hashlib.sha256(unique.encode()).hexdigest()[:16]}"
 
     def _get_cache_key(self, session_id: str) -> str:
@@ -93,7 +93,7 @@ class BatchSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.utcnow() > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
                     await self.cache.delete(cache_key)
                     raise BatchSessionNotFoundError()
             except (ValueError, TypeError):
@@ -104,7 +104,7 @@ class BatchSessionService:
     async def _save_session(self, session_id: str, data: Dict[str, Any]) -> bool:
         """Save session to cache with TTL renewal."""
         cache_key = self._get_cache_key(session_id)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data["updated_at"] = now.isoformat() + "Z"
         data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat() + "Z"
 
@@ -130,7 +130,7 @@ class BatchSessionService:
     ) -> Dict[str, Any]:
         """Create a new batch session in Redis."""
         session_id = self._generate_session_id(user_id, workflow_code)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         session_data = {
             "session_id": session_id,
@@ -428,7 +428,7 @@ class BatchSessionService:
             "mime_type": mime_type,
             "extraction_data": extraction_data or {},
             "confidence": confidence,
-            "uploaded_at": datetime.utcnow().isoformat() + "Z",
+            "uploaded_at": datetime.now(timezone.utc).isoformat() + "Z",
         }
         session["shared_documents"].append(doc_ref)
 

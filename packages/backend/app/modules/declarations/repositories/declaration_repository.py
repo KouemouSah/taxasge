@@ -14,7 +14,7 @@ Tables:
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 import asyncpg
 
@@ -249,7 +249,7 @@ class DeclarationRepository:
                 return await self.get_by_id(conn, declaration_id)
 
             updates.append(f"updated_at = ${param_idx}")
-            params.append(datetime.utcnow())
+            params.append(datetime.now(timezone.utc))
 
             set_clause = ", ".join(updates)
 

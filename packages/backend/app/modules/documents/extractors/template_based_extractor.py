@@ -8,7 +8,7 @@ Version: 1.0.0
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from loguru import logger
 
@@ -238,8 +238,8 @@ class DeclarationDatabaseMapper:
             "user_id": user_id,
             "declaration_type": declaration_type,
             "status": "draft",
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
         # Map extracted fields

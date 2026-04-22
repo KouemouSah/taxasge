@@ -14,7 +14,7 @@ Date: 2025-12-03
 import asyncio
 import uuid
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from loguru import logger
 import asyncpg
@@ -87,7 +87,7 @@ class BatchOperationsService:
             ValueError: If accountant doesn't have permission
         """
         batch_id = str(uuid.uuid4())
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
         results: List[BatchCreateItemResult] = []
 
         logger.info(
@@ -103,7 +103,7 @@ class BatchOperationsService:
 
         # Process each client
         for client_data in request.clients:
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
 
             try:
                 # Check if accountant has access to this company
@@ -153,7 +153,7 @@ class BatchOperationsService:
                         conn, created_declaration["id"], accountant_user_id
                     )
 
-                processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
                 results.append(
                     BatchCreateItemResult(
@@ -170,7 +170,7 @@ class BatchOperationsService:
                 )
 
             except Exception as e:
-                processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 error_msg = str(e)
 
                 results.append(
@@ -187,7 +187,7 @@ class BatchOperationsService:
                 )
 
         # Calculate summary statistics
-        completed_at = datetime.utcnow()
+        completed_at = datetime.now(timezone.utc)
         total_processing_time = int((completed_at - started_at).total_seconds() * 1000)
 
         successful_count = sum(1 for r in results if r.status == BatchItemStatus.SUCCESS)
@@ -272,7 +272,7 @@ class BatchOperationsService:
             BatchSubmitResponse: Results with per-declaration success/failure
         """
         batch_id = str(uuid.uuid4())
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
         results: List[BatchSubmitItemResult] = []
 
         logger.info(
@@ -286,7 +286,7 @@ class BatchOperationsService:
 
         # Validate accountant has access to all declarations
         for declaration_id in request.declaration_ids:
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
 
             try:
                 # Check if declaration exists
@@ -371,7 +371,7 @@ class BatchOperationsService:
                     conn, declaration_id, accountant_user_id, request.processor_notes
                 )
 
-                processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
                 results.append(
                     BatchSubmitItemResult(
@@ -390,7 +390,7 @@ class BatchOperationsService:
                 logger.info(f"Submitted declaration {declaration_id}")
 
             except Exception as e:
-                processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 error_msg = str(e)
 
                 results.append(
@@ -409,7 +409,7 @@ class BatchOperationsService:
                 logger.error(f"Failed to submit declaration {declaration_id}: {error_msg}")
 
         # Calculate summary statistics
-        completed_at = datetime.utcnow()
+        completed_at = datetime.now(timezone.utc)
         total_processing_time = int((completed_at - started_at).total_seconds() * 1000)
 
         successful_count = sum(1 for r in results if r.status == BatchItemStatus.SUCCESS)
@@ -584,7 +584,7 @@ class BatchOperationsService:
         processor_notes: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Submit a single declaration"""
-        submitted_at = datetime.utcnow()
+        submitted_at = datetime.now(timezone.utc)
 
         query = """
             UPDATE tax_declarations
@@ -638,7 +638,7 @@ class BatchOperationsService:
 
         # Check deadline hasn't passed
         if declaration.get("declaration_deadline"):
-            if declaration["declaration_deadline"] < datetime.utcnow().date():
+            if declaration["declaration_deadline"] < datetime.now(timezone.utc).date():
                 errors.append("declaration_deadline has passed")
 
         # Add more validation rules as needed

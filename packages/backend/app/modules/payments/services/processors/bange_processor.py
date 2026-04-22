@@ -10,7 +10,7 @@ Uses the existing BANGEService for API communication.
 """
 
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 import json
@@ -252,7 +252,7 @@ class BangeProcessor(PaymentProcessorBase):
                 bange_status = await self.bange_service.verify_payment(gateway_transaction_id)
 
                 if bange_status and bange_status.get("status") == "completed":
-                    paid_at = datetime.utcnow()
+                    paid_at = datetime.now(timezone.utc)
                     sr_id = payment.get("service_request_id")
 
                     # ATOMIC: mark_completed + outbox INSERT in same transaction
@@ -391,7 +391,7 @@ class BangeProcessor(PaymentProcessorBase):
 
     def _generate_reference(self, context: PaymentContext) -> str:
         """Generate unique payment reference."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         short_id = str(uuid4())[:8].upper()
         return f"SR-{timestamp}-{short_id}"
 

@@ -71,7 +71,7 @@ import os
 import json
 import functools
 from typing import Any, Optional, Dict, TypeVar, Generic, Callable, Awaitable, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 from loguru import logger
 
@@ -88,10 +88,10 @@ class CacheEntry(Generic[T]):
 
     def __init__(self, value: T, ttl_seconds: int):
         self.value = value
-        self.expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
     def is_expired(self) -> bool:
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 
 class InMemoryCache:
@@ -154,7 +154,7 @@ class InMemoryCache:
             if entry.is_expired():
                 del self._cache[key]
                 return -2
-            remaining = (entry.expires_at - datetime.utcnow()).total_seconds()
+            remaining = (entry.expires_at - datetime.now(timezone.utc)).total_seconds()
             return max(0, int(remaining))
 
     async def incr(self, key: str, amount: int = 1) -> int:
@@ -174,7 +174,7 @@ class InMemoryCache:
             entry = self._cache.get(key)
             if entry is None:
                 return False
-            entry.expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+            entry.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
             return True
 
     async def mget(self, keys: list[str]) -> list[Optional[Any]]:

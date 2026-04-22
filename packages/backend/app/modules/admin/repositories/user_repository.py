@@ -1,6 +1,6 @@
 """User Repository - Data access for user management"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from loguru import logger
 import asyncpg
@@ -165,7 +165,7 @@ class UserRepository:
             return await self.get_by_id(conn, user_id)
 
         updates.append(f"updated_at = ${param_idx}")
-        params.append(datetime.utcnow())
+        params.append(datetime.now(timezone.utc))
 
         query = f"""
             UPDATE users

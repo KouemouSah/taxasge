@@ -6,7 +6,7 @@ CRUD operations and profile management for citizens and businesses
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Path
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 security = HTTPBearer()
@@ -108,7 +108,7 @@ async def list_users(
             action="list_users",
             resource="users",
             metadata={"page": page, "page_size": size, "filters": filters},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -164,7 +164,7 @@ async def create_user(
             action="create_user",
             resource="users",
             metadata={"created_user_id": new_user.id, "role": user_create.role.value},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -194,7 +194,7 @@ async def get_user_stats(
             user_id=admin_user.id,
             action="view_user_stats",
             resource="user_stats",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -246,7 +246,7 @@ async def get_user(
             action="view_user",
             resource="user_profile",
             metadata={"viewed_user_id": user_id},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -381,7 +381,7 @@ async def update_user(
             action="update_user",
             resource="user_profile",
             metadata={"updated_user_id": user_id, "updated_fields": list(update_data.keys()), "email_changed": email_changed},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -443,7 +443,7 @@ async def delete_user(
             action="delete_user",
             resource="users",
             metadata={"deleted_user_id": user_id, "deleted_user_email": user.email},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -491,7 +491,7 @@ async def search_users(
             action="search_users",
             resource="users",
             metadata={"query": q, "filters": search_filter.dict(exclude_none=True)},
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         await user_repository.log_user_activity(activity)
 
@@ -541,7 +541,7 @@ async def get_user_activities(
                 action="view_user_activities",
                 resource="user_activities",
                 metadata={"viewed_user_id": user_id},
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             await user_repository.log_user_activity(activity)
 

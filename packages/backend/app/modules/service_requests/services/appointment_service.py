@@ -14,7 +14,7 @@ by agents AFTER validation.
 Flow:
     DRAFT → DOCUMENTS → REVIEW → SELECT_LOCATION → SELECT_SLOT → PAYMENT → SUBMITTED
 """
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 from dataclasses import dataclass, field
@@ -302,7 +302,7 @@ class AppointmentService:
                     appointment_time=appointment_time,
                     expires_at=row['expires_at'],
                     status=HoldStatus.HELD,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                     # Resolved from entity_locations
                     location_name=location['location_name'] if location else None,
                     location_address=location['location_address'] if location else None,
@@ -312,7 +312,7 @@ class AppointmentService:
                 )
 
                 # Calculate seconds until expiry
-                now = datetime.now(hold.expires_at.tzinfo) if hold.expires_at.tzinfo else datetime.utcnow()
+                now = datetime.now(hold.expires_at.tzinfo) if hold.expires_at.tzinfo else datetime.now(timezone.utc)
                 expires_in = (hold.expires_at - now).total_seconds()
 
                 logger.info(

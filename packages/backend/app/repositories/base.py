@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, List, Optional, Dict, Any
 from uuid import uuid4
 import asyncpg
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from app.database.connection import db_manager, get_database
@@ -150,7 +150,7 @@ class BaseRepository(ABC, Generic[T]):
                 data["id"] = str(uuid4())
 
             # Add timestamps
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             data["created_at"] = now
             data["updated_at"] = now
 
@@ -200,7 +200,7 @@ class BaseRepository(ABC, Generic[T]):
         """
         try:
             # Add updated timestamp
-            updates["updated_at"] = datetime.utcnow()
+            updates["updated_at"] = datetime.now(timezone.utc)
 
             # Build UPDATE query
             set_clauses = []

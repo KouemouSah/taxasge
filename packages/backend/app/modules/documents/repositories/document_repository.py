@@ -9,7 +9,7 @@ Version: 2.0 - Reorganized with core/documents/
 """
 
 from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from loguru import logger
 import json
@@ -99,8 +99,8 @@ class DocumentRepository(BaseRepository[Document]):
             processing_started_at=data.get("processing_started_at"),
             processing_completed_at=data.get("processing_completed_at"),
             processing_duration_ms=data.get("processing_duration_ms"),
-            uploaded_at=data.get("uploaded_at", datetime.utcnow()),
-            updated_at=data.get("updated_at", datetime.utcnow())
+            uploaded_at=data.get("uploaded_at", datetime.now(timezone.utc)),
+            updated_at=data.get("updated_at", datetime.now(timezone.utc))
         )
 
     def _map_from_model(self, model: Document) -> Dict[str, Any]:
@@ -170,11 +170,11 @@ class DocumentRepository(BaseRepository[Document]):
         """
         try:
             from uuid import uuid4
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             # Generate ID and timestamps
             doc_id = uuid4()
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Prepare data for insertion
             data = {
@@ -262,9 +262,9 @@ class DocumentRepository(BaseRepository[Document]):
                 "ocr_text": ocr_text,
                 "ocr_confidence": ocr_confidence,
                 "ocr_provider": ocr_provider,
-                "processing_completed_at": datetime.utcnow(),
+                "processing_completed_at": datetime.now(timezone.utc),
                 "processing_duration_ms": processing_duration_ms,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             return await self.update(str(document_id), updates, use_supabase)
@@ -284,8 +284,8 @@ class DocumentRepository(BaseRepository[Document]):
             updates = {
                 "ocr_status": DocumentOCRStatus.failed.value,
                 "ocr_text": f"ERROR: {error_message}",
-                "processing_completed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "processing_completed_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
             }
 
             return await self.update(str(document_id), updates, use_supabase)
@@ -320,7 +320,7 @@ class DocumentRepository(BaseRepository[Document]):
                 "extraction_status": DocumentExtractionStatus.completed.value,
                 "extracted_data": json.dumps(extracted_data) if isinstance(extracted_data, dict) else extracted_data,
                 "extraction_confidence": extraction_confidence,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             # Add form mapping if provided
@@ -344,7 +344,7 @@ class DocumentRepository(BaseRepository[Document]):
             updates = {
                 "extraction_status": DocumentExtractionStatus.failed.value,
                 "extracted_data": json.dumps({"error": error_message}),
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             return await self.update(str(document_id), updates, use_supabase)
@@ -363,7 +363,7 @@ class DocumentRepository(BaseRepository[Document]):
         try:
             updates = {
                 "validation_status": validation_status.value,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }
 
             return await self.update(str(document_id), updates, use_supabase)
@@ -636,7 +636,7 @@ class DocumentRepository(BaseRepository[Document]):
             # Mark OCR as processing
             await self.update(document_id, {
                 "ocr_status": DocumentOCRStatus.processing.value,
-                "processing_started_at": datetime.utcnow()
+                "processing_started_at": datetime.now(timezone.utc)
             })
 
             # Step 2: Download document from Firebase Storage
@@ -723,7 +723,7 @@ class DocumentRepository(BaseRepository[Document]):
 
             # Update processing completion
             await self.update(document_id, {
-                "processing_completed_at": datetime.utcnow(),
+                "processing_completed_at": datetime.now(timezone.utc),
                 "form_mapping": mapped_data
             })
 

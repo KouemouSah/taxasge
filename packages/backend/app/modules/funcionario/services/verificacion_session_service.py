@@ -17,7 +17,7 @@ import asyncio
 import base64
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, List, Tuple
 from uuid import UUID, uuid4
 
@@ -123,7 +123,7 @@ class VerificacionSessionService:
 
     def _generate_session_id(self, user_id: UUID) -> str:
         """Generate unique session ID."""
-        unique = f"{user_id}_{uuid4().hex[:8]}_{datetime.utcnow().timestamp()}"
+        unique = f"{user_id}_{uuid4().hex[:8]}_{datetime.now(timezone.utc).timestamp()}"
         return f"{SESSION_PREFIX}{hashlib.sha256(unique.encode()).hexdigest()[:16]}"
 
     def _get_cache_key(self, session_id: str) -> str:
@@ -161,7 +161,7 @@ class VerificacionSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.utcnow() > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
                     logger.info(f"[VerificacionSession] Session expired: {session_id}")
                     await self.cache.delete(cache_key)
                     raise SessionExpiredError()
@@ -182,7 +182,7 @@ class VerificacionSessionService:
         cache_key = self._get_cache_key(session_id)
 
         # Update timestamps
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data["updated_at"] = now.isoformat()
         if renew_ttl:
             data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat()
@@ -321,7 +321,7 @@ class VerificacionSessionService:
         # CREATE SESSION
         # =====================================================================
         session_id = self._generate_session_id(user_id)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=self.session_ttl)
 
         # Create session data
@@ -454,7 +454,7 @@ class VerificacionSessionService:
             )
 
         # Store document in session
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         document_data = {
             "file_name": file_name,
             "file_size": file_size,
@@ -857,7 +857,7 @@ class VerificacionSessionService:
             logger.info(f"[VerificacionSession] Firebase uploads complete for session {session_id}")
 
             # 5b. Build final verification_data for database
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             final_verification_data = {
                 "matricula": matricula,
@@ -1013,7 +1013,7 @@ class VerificacionSessionService:
                 )
 
             auto_verification_data = {
-                "checked_at": datetime.utcnow().isoformat(),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
                 "pre_verified": result.verified,
                 "source": result.source if result.verified else None,
                 "verified_at": result.verified_at.isoformat() if result.verified_at else None,
@@ -1041,7 +1041,7 @@ class VerificacionSessionService:
                             "matricula": matricula,
                             "user_id": str(user_id),
                             "source": result.source,
-                            "timestamp": datetime.utcnow().isoformat() + "Z",
+                            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
                             "metadata": {
                                 "action_required": "agent_review",
                                 "priority": "high",
@@ -1065,7 +1065,7 @@ class VerificacionSessionService:
             logger.error(f"[VerificacionSession] Auto-verification error for {matricula}: {e}")
             # Don't fail the submission, just log the error
             return {
-                "checked_at": datetime.utcnow().isoformat(),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
                 "pre_verified": False,
                 "error": str(e),
                 "reason": "verification_error",

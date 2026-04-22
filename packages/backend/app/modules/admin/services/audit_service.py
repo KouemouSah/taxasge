@@ -6,7 +6,7 @@ Service for audit trail management
 
 from typing import Dict, Any, Optional
 from loguru import logger
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class AuditService:
@@ -48,7 +48,7 @@ class AuditService:
             "new_values": new_values,
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
 
         logger.info(

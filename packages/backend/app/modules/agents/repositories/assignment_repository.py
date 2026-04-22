@@ -3,7 +3,7 @@
 from typing import Optional, List, Dict, Any
 from loguru import logger
 import asyncpg
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.modules.agents.models import (
     AssignmentCreate,
@@ -134,7 +134,7 @@ class AssignmentRepository:
             return await self.get_assignment_by_id(conn, assignment_id)
 
         updates.append(f"updated_at = ${param_idx}")
-        params.append(datetime.utcnow())
+        params.append(datetime.now(timezone.utc))
 
         query = f"""
             UPDATE assignments

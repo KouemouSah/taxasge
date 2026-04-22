@@ -12,7 +12,7 @@ New code should import BANGEGateway directly from:
 import httpx
 from typing import Dict, List, Optional, Any
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 from app.modules.payments.models.payment import (
@@ -81,7 +81,7 @@ class BANGEService:
             amount=payment_request.amount,
             currency=payment_request.currency,
             expires_at=gw_response.expires_at,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
     async def verify_payment(

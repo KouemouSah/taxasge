@@ -33,7 +33,7 @@ AGENT ENDPOINTS:
 import base64
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -911,7 +911,7 @@ async def preview_document_extraction(
         preview_id = f"vf_{verificacion_id}_{document_code}_{hashlib.sha256(content).hexdigest()[:12]}"
 
         # Calculate expiration
-        expires_at = datetime.utcnow() + timedelta(seconds=PREVIEW_CACHE_TTL_SECONDS)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=PREVIEW_CACHE_TTL_SECONDS)
 
         # Store in preview cache with base64-encoded content
         # This allows the content to be safely serialized to Redis/JSON
@@ -927,7 +927,7 @@ async def preview_document_extraction(
             "confidence": extraction_result.get("confidence", 0),
             "processor": extraction_result.get("processor", "unknown"),
             "extraction_status": extraction_result.get("status", "error"),
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": expires_at.isoformat(),
         }
 
@@ -1082,7 +1082,7 @@ async def validate_and_save_document(
         # ===================================================================
         logger.info(f"[Verificacion] Saving to database: verificacion={verificacion_id}, doc={document_code}")
 
-        validated_at = datetime.utcnow().isoformat()
+        validated_at = datetime.now(timezone.utc).isoformat()
 
         # Build document data with Firebase info
         document_data = {

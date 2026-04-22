@@ -281,9 +281,9 @@ async def get_queue(
     for item in items:
         sla_status = "on_track"
         if item.get('sla_deadline'):
-            from datetime import datetime
+            from datetime import datetime, timezone
             deadline = item['sla_deadline']
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if deadline.replace(tzinfo=None) < now:
                 sla_status = "violated"
             elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
@@ -614,9 +614,9 @@ async def get_my_queue(
     for item in items:
         sla_status = "on_track"
         if item.get('sla_deadline'):
-            from datetime import datetime
+            from datetime import datetime, timezone
             deadline = item['sla_deadline']
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if deadline.replace(tzinfo=None) < now:
                 sla_status = "violated"
             elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
@@ -2910,7 +2910,7 @@ async def get_entity_service_requests(
 
     # Transform to response
     items = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for row in rows:
         sla_status = "on_track"
         if row['sla_deadline']:
@@ -3369,7 +3369,7 @@ async def get_request_preview(
     if row['submitted_at'] and row['sla_hours']:
         from datetime import timedelta
         sla_deadline = row['submitted_at'] + timedelta(hours=row['sla_hours'])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         deadline_naive = sla_deadline.replace(tzinfo=None) if sla_deadline.tzinfo else sla_deadline
 
         remaining = (deadline_naive - now).total_seconds() / 3600
@@ -3600,7 +3600,7 @@ async def update_verification_checklist(
         **current_details,
         "checklist": body.checklist,
         "last_updated_by": str(current_user.id),
-        "last_updated_at": datetime.utcnow().isoformat()
+        "last_updated_at": datetime.now(timezone.utc).isoformat()
     }
 
     if body.notes:
@@ -3797,7 +3797,7 @@ async def get_urgent_requests_widget(
     rows = await db.fetch(query, *query_params)
 
     # Calculate SLA status and build response
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     items = []
     for row in rows:
         sla_status = "on_track"
@@ -3935,7 +3935,7 @@ async def get_today_appointments_widget(
     rows = await db.fetch(query, workflow_codes)
 
     # Build response with is_past calculation
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     current_time = now.time()
     items = []
     upcoming_count = 0
@@ -4176,7 +4176,7 @@ async def get_alerts_widget(
     workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
 
     alerts = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Build entity slug for action URLs (UPPER_SNAKE → lower-kebab)
     entity_slug = entity_code.lower().replace('_', '-')

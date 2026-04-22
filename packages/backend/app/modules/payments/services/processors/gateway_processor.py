@@ -18,7 +18,7 @@ The GatewayProcessor is NOT bank-specific. It only knows about:
 """
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 import json
@@ -266,7 +266,7 @@ class GatewayProcessor(PaymentProcessorBase):
                 gw_status = await self.gateway.verify_payment(gateway_transaction_id)
 
                 if gw_status.paid:
-                    paid_at = gw_status.paid_at or datetime.utcnow()
+                    paid_at = gw_status.paid_at or datetime.now(timezone.utc)
                     sr_id = payment.get("service_request_id")
 
                     # ATOMIC: mark_completed + outbox INSERT
@@ -411,7 +411,7 @@ class GatewayProcessor(PaymentProcessorBase):
 
     def _generate_reference(self, context: PaymentContext) -> str:
         """Generate unique payment reference."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         short_id = str(uuid4())[:8].upper()
         return f"SR-{timestamp}-{short_id}"
 

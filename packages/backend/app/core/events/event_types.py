@@ -8,7 +8,7 @@ Centralized event type definitions for the event bus system.
 
 from enum import Enum
 from typing import TypedDict, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class EventType(str, Enum):
@@ -395,7 +395,7 @@ def create_event_payload(
     """
     payload: EventPayload = {
         "event_type": event_type.value,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         **kwargs
     }
     return payload

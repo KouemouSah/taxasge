@@ -4,7 +4,7 @@ Orchestrates repository and cache for homepage data
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncpg
 import redis.asyncio as redis
 from loguru import logger
@@ -62,7 +62,7 @@ class HomepageService:
         stats_data = await self.repository.get_stats()
 
         # Add timestamp
-        stats_data["last_updated"] = datetime.utcnow().isoformat()
+        stats_data["last_updated"] = datetime.now(timezone.utc).isoformat()
 
         # Step 3: Cache for future requests
         await self.cache.cache_stats(stats_data)
@@ -128,7 +128,7 @@ class HomepageService:
             "total_categories": len(categories),
             "total_services": total_services,
             "categories": [cat.model_dump() for cat in categories],
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
 
         # Step 4: Cache for future requests
@@ -167,7 +167,7 @@ class HomepageService:
                 results["invalidated"].append("categories")
 
         results["success"] = len(results["invalidated"]) > 0
-        results["timestamp"] = datetime.utcnow().isoformat()
+        results["timestamp"] = datetime.now(timezone.utc).isoformat()
 
         return results
 
