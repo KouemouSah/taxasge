@@ -1540,6 +1540,31 @@ class WizardSessionService:
                 db=db, user_id=user_id, service_request_id=service_request_id,
             )
 
+            # Store summary PDF in Firebase + vault (non-blocking)
+            if pdf_attachment:
+                try:
+                    from app.modules.documents.services.storage_service import storage_service
+                    from app.modules.user_documents.services.vault_registry import register_document_in_vault
+
+                    pdf_name, pdf_bytes_att, _ = pdf_attachment[0]
+                    summary_url = await storage_service.upload_bytes(
+                        pdf_bytes_att,
+                        f"summaries/{service_request_id}/{pdf_name}",
+                        content_type="application/pdf",
+                    )
+                    if summary_url:
+                        await register_document_in_vault(
+                            db,
+                            user_id=user_id,
+                            file_path=summary_url,
+                            file_name=pdf_name,
+                            document_type="CITIZEN_SUMMARY",
+                            document_category="fiscal",
+                            source_request_id=service_request_id,
+                        )
+                except Exception as vault_err:
+                    logger.warning(f"Summary vault storage failed: {vault_err}")
+
             # Fetch user info for email notification
             user_email = None
             user_name = None

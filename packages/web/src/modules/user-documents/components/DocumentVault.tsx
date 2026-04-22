@@ -155,7 +155,9 @@ export function DocumentVault() {
   const searchParams = useSearchParams();
   const { data: stats, isLoading: statsLoading } = useDocumentStats();
   const { unreadCount } = useDocumentAlerts();
-  const [activeTab, setActiveTab] = useState('personal');
+  // Support deep-link to tab: ?tab=generated opens generated docs tab
+  const initialTab = searchParams.get('tab') || 'personal';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [uploadOpen, setUploadOpen] = useState(false);
   // Agent settings panel (opened via gear icon OR ?settings=agent deep-link)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);

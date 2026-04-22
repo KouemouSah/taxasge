@@ -904,6 +904,25 @@ class ReceiptService:
         except Exception as e:
             logger.warning(f"Could not insert into payment_receipts: {e}")
 
+        # Register in user's vault (Mes Documents)
+        if receipt_url:
+            try:
+                from uuid import UUID as _UUID
+                from app.modules.user_documents.services.vault_registry import register_document_in_vault
+                await register_document_in_vault(
+                    db,
+                    user_id=_UUID(user_id),
+                    file_path=receipt_url,
+                    file_name=filename,
+                    document_type="PAYMENT_RECEIPT",
+                    document_category="payments",
+                    source_request_id=_UUID(str(service_request_id)) if service_request_id else None,
+                    document_number=receipt_number,
+                    holder_name=user_data.get("full_name") or user_data.get("name") or "",
+                )
+            except Exception as vault_err:
+                logger.warning(f"Vault registration failed for receipt {receipt_number}: {vault_err}")
+
         logger.info(f"Receipt {receipt_number} generated and stored for payment {payment_id}")
 
         # Auto-register in user vault (Documents > Generados tab)

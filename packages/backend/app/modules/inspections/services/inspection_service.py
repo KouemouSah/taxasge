@@ -424,6 +424,30 @@ class InspectionService:
                     pdf_bytes,
                     "application/pdf",
                 ))
+                # Store in Firebase + vault
+                try:
+                    from app.modules.documents.services.storage_service import storage_service
+                    from app.modules.user_documents.services.vault_registry import register_document_in_vault
+                    med_filename = f"mise-en-demeure-{str(inspection_id)[:8]}.pdf"
+                    med_url = await storage_service.upload_bytes(
+                        pdf_bytes, f"inspections/{inspection_id}/{med_filename}",
+                        content_type="application/pdf",
+                    )
+                    if med_url and owner:
+                        company_id = inspection.get("company_id")
+                        owner_id = await conn.fetchval(
+                            "SELECT user_id FROM user_company_roles WHERE company_id = $1 AND role = 'company_owner' LIMIT 1",
+                            company_id,
+                        ) if company_id else None
+                        if owner_id:
+                            await register_document_in_vault(
+                                conn, user_id=owner_id,
+                                file_path=med_url, file_name=med_filename,
+                                document_type="MISE_EN_DEMEURE", document_category="inspections",
+                                holder_name=inspection.get("company_name"),
+                            )
+                except Exception as vault_err:
+                    logger.warning(f"MED vault storage failed: {vault_err}")
             except Exception as pdf_err:
                 logger.warning(f"MED PDF generation failed: {pdf_err}")
 
@@ -644,6 +668,29 @@ class InspectionService:
                         pdf_bytes,
                         "application/pdf",
                     ))
+                    # Store in Firebase + vault
+                    try:
+                        from app.modules.documents.services.storage_service import storage_service
+                        from app.modules.user_documents.services.vault_registry import register_document_in_vault
+                        seal_filename = f"pv-scelle-{str(inspection_id)[:8]}.pdf"
+                        seal_url = await storage_service.upload_bytes(
+                            pdf_bytes, f"inspections/{inspection_id}/{seal_filename}",
+                            content_type="application/pdf",
+                        )
+                        if seal_url:
+                            owner_id = await conn.fetchval(
+                                "SELECT user_id FROM user_company_roles WHERE company_id = $1 AND role = 'company_owner' LIMIT 1",
+                                inspection["company_id"],
+                            ) if inspection.get("company_id") else None
+                            if owner_id:
+                                await register_document_in_vault(
+                                    conn, user_id=owner_id,
+                                    file_path=seal_url, file_name=seal_filename,
+                                    document_type="SEAL_ORDER", document_category="inspections",
+                                    holder_name=inspection.get("company_name"),
+                                )
+                    except Exception as vault_err:
+                        logger.warning(f"Seal vault storage failed: {vault_err}")
                 except Exception as pdf_err:
                     logger.warning(f"Seal PDF generation failed: {pdf_err}")
 

@@ -179,7 +179,7 @@ export default function CompanyDetailPage() {
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0 flex-wrap">
-          <Link href={`/${locale}/dashboard/documents?category=fiscal&company=${c.id}`}>
+          <Link href={`/${locale}/dashboard/documents?tab=generated`}>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
               <FolderOpen className="h-3.5 w-3.5" /> {t('viewDocuments', { defaultValue: 'Documentos' })}
             </Button>
