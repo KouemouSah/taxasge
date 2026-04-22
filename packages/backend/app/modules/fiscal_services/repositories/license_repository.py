@@ -7,6 +7,24 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 
+def _license_sort_clause(sort_by: Optional[str], sort_order: str = "desc") -> str:
+    """Build ORDER BY clause from whitelisted sort column (SQL injection safe)."""
+    ALLOWED = {
+        "company_name": "co.legal_name",
+        "fiscal_year": "cl.fiscal_year",
+        "status": "cl.status",
+        "total_amount": "cl.total_amount",
+        "amount_paid": "cl.amount_paid",
+        "compliance_score": "cl.compliance_score",
+        "deadline": "cl.deadline",
+        "created_at": "cl.created_at",
+        "zone_code": "cz.zone_code",
+    }
+    direction = "ASC" if sort_order.lower() == "asc" else "DESC"
+    col = ALLOWED.get(sort_by or "", "cl.fiscal_year")
+    return f"{col} {direction}, cl.created_at DESC"
+
+
 class LicenseRepository:
     """Repository for the OMS (Obligation Management System) tables."""
 
@@ -65,12 +83,16 @@ class LicenseRepository:
         fee_type: Optional[str] = None,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
+        # Sorting
+        sort_by: Optional[str] = None,
+        sort_order: str = "desc",
     ) -> Tuple[List[Dict], int]:
-        """List licenses with filters, paginated.
+        """List licenses with filters, paginated, sortable.
 
         Agent scope: city_id filters by license city, fee_type/ministry_id
         filters by having at least one matching obligation (EXISTS subquery).
         search: ILIKE on company legal_name or bundle name_es.
+        sort_by: whitelisted column name. sort_order: asc|desc.
         """
         conditions = []
         params = []
@@ -161,7 +183,7 @@ class LicenseRepository:
             FROM commercial_licenses cl
             {joins}
             {where}
-            ORDER BY cl.fiscal_year DESC, cl.created_at DESC
+            ORDER BY {_license_sort_clause(sort_by, sort_order)}
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params_data)
 
