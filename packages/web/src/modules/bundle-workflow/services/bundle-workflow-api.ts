@@ -139,6 +139,7 @@ export interface CompanyDetailResponse {
     amountPaid: number; amountRemaining: number; penaltyAmount: number
     obligationsTotal: number; obligationsPaid: number
     deadline: string | null; completedAt: string | null; expiryDate: string
+    certificateNumber: string | null; certificateUrl: string | null
   } | null
   obligations: Array<{
     id: string; feeType: string; amount: number; penaltyAmount: number
