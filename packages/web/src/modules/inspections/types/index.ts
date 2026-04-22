@@ -481,3 +481,51 @@ export interface LiveStatusResponse {
   counters: LiveStatusCounters
   cached_at?: string
 }
+
+// ============================================================
+// MISSION ANALYTICS
+// ============================================================
+
+export interface MissionAnalyticsSummary {
+  total_missions: number
+  completed: number
+  cancelled: number
+  in_progress: number
+  planned: number
+  completion_rate: number
+  avg_duration_hours: number
+  total_inspections_actual: number
+  total_inspections_target: number
+  target_achievement_rate: number
+  conformity_rate: number
+  total_collected: number
+}
+
+export interface MissionTrendPoint {
+  week: string
+  missions: number
+  inspections: number
+  conformity: number | null
+}
+
+export interface MissionTopAgent {
+  agent_name: string
+  missions_count: number
+  inspections: number
+  avg_target_pct: number | null
+}
+
+export interface MissionStaleZone {
+  zone_code: string
+  zone_name: string | null
+  days_since: number | null
+  pending_count: number
+}
+
+export interface MissionAnalyticsResponse {
+  period: { date_from: string; date_to: string }
+  summary: MissionAnalyticsSummary
+  trends: MissionTrendPoint[]
+  top_agents: MissionTopAgent[]
+  stale_zones: MissionStaleZone[]
+}

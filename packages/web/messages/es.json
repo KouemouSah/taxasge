@@ -11057,6 +11057,26 @@
       "overallProgress": "Progreso global",
       "addAgentsPanel": "Añadir agentes disponibles"
     },
+    "missions": {
+      "planning": "Planificación",
+      "attribution": "Atribución",
+      "dashboard": "Dashboard",
+      "completed": "Misiones completadas",
+      "inspections": "Inspecciones",
+      "conformity": "Conformidad",
+      "collected": "Recaudado",
+      "weeklyTrends": "Tendencias semanales",
+      "topAgents": "Mejores agentes",
+      "staleZones": "Zonas que requieren atención",
+      "missionsLabel": "Misiones",
+      "noActive": "Ninguna misión activa",
+      "available": "Agentes disponibles",
+      "assign": "Asignar",
+      "agentsAssigned": "Agentes asignados",
+      "agentRemoved": "Agente retirado",
+      "noAvailable": "No hay agentes disponibles",
+      "noAgents": "Sin agentes asignados"
+    },
     "presets": {
       "title": "Filtros guardados",
       "save": "Guardar filtro",

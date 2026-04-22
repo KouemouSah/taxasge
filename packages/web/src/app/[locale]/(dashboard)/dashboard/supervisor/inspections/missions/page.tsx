@@ -1,14 +1,27 @@
 'use client'
 
+/**
+ * Missions Hub — 3 tabs: Planning, Attribution, Dashboard
+ *
+ * Planning: Calendar + create mission (existing)
+ * Attribution: Manage agent assignments across active missions (new)
+ * Dashboard: KPIs, trends, top agents (new)
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, CalendarDays } from 'lucide-react'
+import { ArrowLeft, CalendarDays, Users, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { inspectionApi } from '@/modules/inspections/services/api'
 import { MissionCalendar } from '@/modules/inspections/components/MissionCalendar'
 import { MissionPlanPanel } from '@/modules/inspections/components/MissionPlanPanel'
+import { MissionAttributionTab } from '@/modules/inspections/components/MissionAttributionTab'
+import { MissionDashboardTab } from '@/modules/inspections/components/MissionDashboardTab'
+import { LocationFilter, useLocationFilterState } from '@/modules/inspections/components/LocationFilter'
+import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard'
 import type { MissionListItem } from '@/modules/inspections/types'
 
 // ---------------------------------------------------------------------------
@@ -39,6 +52,10 @@ export default function MissionsPage() {
   const { toast } = useToast()
   const t = useTranslations('inspection')
 
+  const { data: agentProfile } = useAgentProfile()
+  const { locationFilter, setLocationFilter } = useLocationFilterState(agentProfile)
+
+  const [activeTab, setActiveTab] = useState('planning')
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
   const [missions, setMissions] = useState<MissionListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +81,7 @@ export default function MissionsPage() {
         date_from: ws,
         date_to: weekEnd,
         page_size: 50,
+        entity_location_id: locationFilter || undefined,
       })
       setMissions(result.items)
     } catch {
@@ -71,9 +89,11 @@ export default function MissionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [weekStart, toast, t])
+  }, [weekStart, locationFilter, toast, t])
 
-  useEffect(() => { fetchMissions() }, [fetchMissions])
+  useEffect(() => {
+    if (activeTab === 'planning') fetchMissions()
+  }, [fetchMissions, activeTab])
 
   const handleWeekChange = useCallback((ws: string) => {
     setWeekStart(ws)
@@ -86,7 +106,7 @@ export default function MissionsPage() {
   }, [fetchMissions])
 
   return (
-    <div className="flex flex-col gap-4 p-4 max-h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex flex-col gap-3 p-4 max-h-[calc(100vh-64px)] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -98,47 +118,78 @@ export default function MissionsPage() {
           </Button>
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold">{t('mission.title') || 'Missions'}</h1>
+            <h1 className="text-lg font-bold">{t('mission.title', { defaultMessage: 'Missions' })}</h1>
           </div>
+          <LocationFilter
+            entityCode={agentProfile?.entity_code}
+            isMainOffice={agentProfile?.is_main_office ?? false}
+            value={locationFilter}
+            onChange={setLocationFilter}
+          />
         </div>
 
-        {/* Week stats badges */}
-        <div className="hidden md:flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
-            {stats.planned} {t('mission.planned')}
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            {stats.inProgress} {t('mission.in_progress')}
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            {stats.completed} {t('mission.completed')}
-          </span>
-          <span className="tabular-nums font-medium text-foreground">
-            {stats.totalInspections}/{stats.totalTarget} {t('mission.inspections')}
-          </span>
-        </div>
+        {/* Week stats badges (planning tab only) */}
+        {activeTab === 'planning' && (
+          <div className="hidden md:flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              {stats.planned} {t('mission.planned', { defaultMessage: 'planned' })}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              {stats.inProgress} {t('mission.in_progress', { defaultMessage: 'in progress' })}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              {stats.completed} {t('mission.completed', { defaultMessage: 'completed' })}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Mission plan panel (inline collapsible) */}
-      <MissionPlanPanel
-        open={showPlan}
-        onClose={() => setShowPlan(false)}
-        onMissionCreated={handleMissionCreated}
-      />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="flex-shrink-0">
+          <TabsTrigger value="planning" className="gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {t('missions.planning', { defaultMessage: 'Planning' })}
+          </TabsTrigger>
+          <TabsTrigger value="attribution" className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            {t('missions.attribution', { defaultMessage: 'Attribution' })}
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" />
+            {t('missions.dashboard', { defaultMessage: 'Dashboard' })}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Calendar */}
-      <div className="flex-1 overflow-y-auto">
-        <MissionCalendar
-          missions={missions}
-          loading={loading}
-          onMissionClick={(id) => router.push(`/${locale}/dashboard/supervisor/inspections/missions/${id}`)}
-          onWeekChange={handleWeekChange}
-          onCreateMission={() => setShowPlan(true)}
-        />
-      </div>
+        {/* Planning Tab */}
+        <TabsContent value="planning" className="flex-1 overflow-y-auto mt-3">
+          <MissionPlanPanel
+            open={showPlan}
+            onClose={() => setShowPlan(false)}
+            onMissionCreated={handleMissionCreated}
+          />
+          <MissionCalendar
+            missions={missions}
+            loading={loading}
+            onMissionClick={(id) => router.push(`/${locale}/dashboard/supervisor/inspections/missions/${id}`)}
+            onWeekChange={handleWeekChange}
+            onCreateMission={() => setShowPlan(true)}
+          />
+        </TabsContent>
+
+        {/* Attribution Tab */}
+        <TabsContent value="attribution" className="flex-1 overflow-y-auto mt-3">
+          <MissionAttributionTab locationFilter={locationFilter || undefined} />
+        </TabsContent>
+
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="flex-1 overflow-y-auto mt-3">
+          <MissionDashboardTab locationFilter={locationFilter || undefined} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

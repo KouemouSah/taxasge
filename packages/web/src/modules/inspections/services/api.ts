@@ -258,8 +258,16 @@ export const inspectionApi = {
   suggestZones: () =>
     apiClient.get<ZoneSuggestion[]>('/inspections/missions/suggest-zones').then(r => r.data),
 
-  getAgentsAvailability: (missionDate: string) =>
-    apiClient.get<AgentAvailability[]>(`/inspections/missions/agents/availability?mission_date=${missionDate}`).then(r => r.data),
+  getAgentsAvailability: (missionDate: string, entityLocationId?: string) => {
+    const sp = new URLSearchParams({ mission_date: missionDate })
+    if (entityLocationId) sp.set('entity_location_id', entityLocationId)
+    return apiClient.get<AgentAvailability[]>(`/inspections/missions/agents/availability?${sp}`).then(r => r.data)
+  },
+
+  autoAssignMission: (missionId: string, targetTotal = 50) =>
+    apiClient.post<{ mission_id: string; target_total: number; agents_proposed: number; proposals: Array<{ agent_id: string; agent_profile_id: string; target_inspections: number }> }>(
+      `/inspections/missions/${missionId}/auto-assign?target_total=${targetTotal}`
+    ).then(r => r.data),
 
   // ============================================================
   // ANALYTICS
@@ -372,4 +380,10 @@ export const inspectionApi = {
       .get(`/inspections/export/pdf${q ? `?${q}` : ''}`, { responseType: 'blob' })
       .then(r => r.data as Blob)
   },
+
+  // --- Mission Analytics ---
+  getMissionAnalytics: (params?: { date_from?: string; date_to?: string; entity_location_id?: string }) =>
+    apiClient.get<import('../types').MissionAnalyticsResponse>('/inspections/analytics/missions', {
+      params: params ?? undefined,
+    }).then(r => r.data),
 }

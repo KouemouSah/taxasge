@@ -11057,6 +11057,26 @@
       "overallProgress": "Overall progress",
       "addAgentsPanel": "Add available agents"
     },
+    "missions": {
+      "planning": "Planning",
+      "attribution": "Attribution",
+      "dashboard": "Dashboard",
+      "completed": "Missions completed",
+      "inspections": "Inspections",
+      "conformity": "Conformity",
+      "collected": "Collected",
+      "weeklyTrends": "Weekly trends",
+      "topAgents": "Top agents",
+      "staleZones": "Zones requiring attention",
+      "missionsLabel": "Missions",
+      "noActive": "No active missions",
+      "available": "Available agents",
+      "assign": "Assign",
+      "agentsAssigned": "Agents assigned",
+      "agentRemoved": "Agent removed",
+      "noAvailable": "No agents available",
+      "noAgents": "No agents assigned"
+    },
     "presets": {
       "title": "Saved filters",
       "save": "Save filter",
