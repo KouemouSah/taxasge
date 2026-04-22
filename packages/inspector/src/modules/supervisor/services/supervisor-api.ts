@@ -70,6 +70,8 @@ export interface Mission {
   title: string | null;
   notes: string | null;
   status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  entity_id: string;
+  entity_location_id: string;
   agents: MissionAgent[];
   created_at: string;
 }
@@ -77,8 +79,10 @@ export interface Mission {
 export interface MissionAgent {
   agent_id: string;
   agent_name: string;
+  status: 'assigned' | 'active' | 'completed' | 'absent';
   assigned_zones: string[] | null;
   target_inspections: number | null;
+  actual_inspections: number;
 }
 
 export interface MissionListResponse {
