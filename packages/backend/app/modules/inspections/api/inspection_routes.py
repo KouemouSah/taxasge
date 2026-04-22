@@ -752,7 +752,6 @@ async def upload_inspection_photo(
         )
         import hashlib
         from datetime import datetime as dt
-from datetime import timezone
 
         await ensure_storage_initialized()
 

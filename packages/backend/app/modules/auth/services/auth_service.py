@@ -213,7 +213,6 @@ class AuthService:
             # LOCKOUT CHECK: Verify account is not locked BEFORE password verification
             locked_until = await self.user_repo.check_account_lockout(user_id)
             if locked_until:
-                from datetime import timezone
                 remaining_seconds = (locked_until - datetime.now(timezone.utc)).total_seconds()
                 # Ensure at least 1 minute is shown (round up)
                 remaining_minutes = max(1, int((remaining_seconds + 59) / 60))

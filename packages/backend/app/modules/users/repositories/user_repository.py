@@ -1035,8 +1035,6 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: Account lockout feature (brute force protection)
         """
         try:
-            from datetime import timezone
-
             # Get current user data to check IP
             query_get = """
                 SELECT failed_login_attempts, last_failed_ip, locked_until
@@ -1159,8 +1157,6 @@ class UserRepository(BaseRepository[UserResponse]):
         Source: Account lockout feature (brute force protection)
         """
         try:
-            from datetime import timezone
-
             query = """
                 SELECT locked_until
                 FROM users
