@@ -28,8 +28,6 @@ export default function SealReviewScreen() {
   const [rejectNotes, setRejectNotes] = useState('');
   const [error, setError] = useState('');
 
-  if (isLoading || !inspection) return <LoadingScreen />;
-
   const handleApprove = useCallback(() => {
     Alert.alert(
       t('seal.approve'),
@@ -66,6 +64,8 @@ export default function SealReviewScreen() {
       setError(extractApiError(err).message);
     }
   }, [rejectNotes, approveMutation, t]);
+
+  if (isLoading || !inspection) return <LoadingScreen />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

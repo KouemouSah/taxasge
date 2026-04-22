@@ -36,8 +36,6 @@ export default function MiseEnDemeureScreen() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  if (isLoading || !inspection) return <LoadingScreen />;
-
   const toggleObligation = (obId: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -86,6 +84,8 @@ export default function MiseEnDemeureScreen() {
       ],
     );
   }, [selected, deadlineHours, notes, medMutation, t]);
+
+  if (isLoading || !inspection) return <LoadingScreen />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

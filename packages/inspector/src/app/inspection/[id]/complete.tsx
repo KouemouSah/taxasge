@@ -33,10 +33,8 @@ export default function CompleteInspectionScreen() {
   const [signatureResult, setSignatureResult] = useState<SignatureResult | null>(null);
   const [error, setError] = useState('');
 
-  if (isLoading || !inspection) return <LoadingScreen />;
-
-  // Predict result
-  const isConforme = inspection.activity_conforme === true && inspection.unpaid_obligations_count === 0;
+  // Predict result (safe even before data loads — defaults to non_conforme)
+  const isConforme = inspection?.activity_conforme === true && inspection?.unpaid_obligations_count === 0;
   const predictedResult = isConforme ? 'conforme' : 'non_conforme';
   const resultColor = isConforme ? (custom.status.conforme as string) : (custom.status.nonConforme as string);
 
@@ -73,6 +71,8 @@ export default function CompleteInspectionScreen() {
       ],
     );
   }, [id, signatureResult, notes, predictedResult, completeMutation, updateMutation, t]);
+
+  if (isLoading || !inspection) return <LoadingScreen />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

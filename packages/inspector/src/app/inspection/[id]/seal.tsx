@@ -41,8 +41,6 @@ export default function SealProposeScreen() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  if (isLoading || !inspection) return <LoadingScreen />;
-
   const handleSubmit = useCallback(() => {
     if (!reason) {
       setError(t('seal.selectReason'));
@@ -76,6 +74,8 @@ export default function SealProposeScreen() {
       ],
     );
   }, [reason, notes, sealMutation, t]);
+
+  if (isLoading || !inspection) return <LoadingScreen />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
