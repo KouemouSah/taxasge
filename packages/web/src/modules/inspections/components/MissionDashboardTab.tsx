@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   CalendarDays, CheckCircle2, Target, TrendingUp, DollarSign,
-  Clock, Users, MapPin, AlertTriangle,
+  Users, MapPin, AlertTriangle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +16,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { Progress } from '@/components/ui/progress'
 import { inspectionApi } from '@/modules/inspections/services/api'
 import type { MissionAnalyticsResponse } from '@/modules/inspections/types'
 

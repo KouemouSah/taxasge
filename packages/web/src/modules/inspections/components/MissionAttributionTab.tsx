@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
-  Users, Plus, Bot, UserX, Trash2, ChevronDown, ChevronUp, Target,
+  Users, Plus, Bot, Trash2, ChevronDown, ChevronUp, Target,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -220,7 +220,7 @@ export function MissionAttributionTab({ locationFilter }: Props) {
                           agent.status === 'absent' ? 'bg-red-500' :
                           agent.status === 'completed' ? 'bg-gray-400' : 'bg-blue-500'
                         }`} />
-                        <span className="flex-1 text-sm">{agent.full_name ?? agent.agent_name ?? agent.agent_id}</span>
+                        <span className="flex-1 text-sm">{agent.agent_name ?? agent.agent_id}</span>
                         <span className="text-xs text-muted-foreground">
                           {agent.actual_inspections ?? 0}/{agent.target_inspections ?? 10}
                         </span>
