@@ -21,7 +21,7 @@ import {
   ArrowLeft, Building2, MapPin, Calendar, DollarSign, Shield,
   CheckCircle2, Clock, AlertTriangle, XCircle, Download,
   CreditCard, Eye, ArrowUpDown, RefreshCw, FileWarning,
-  Lock, Receipt, ChevronLeft, ChevronRight,
+  Lock, Receipt, ChevronLeft, ChevronRight, FolderOpen, Award,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -178,7 +178,19 @@ export default function CompanyDetailPage() {
             {c.commerceType && <Badge variant="secondary" className="text-[10px] h-4">{c.commerceType}</Badge>}
           </div>
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex gap-1.5 shrink-0 flex-wrap">
+          <Link href={`/${locale}/dashboard/documents?category=fiscal&company=${c.id}`}>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+              <FolderOpen className="h-3.5 w-3.5" /> {t('viewDocuments', { defaultValue: 'Documentos' })}
+            </Button>
+          </Link>
+          {lic && lic.certificateUrl && (
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1 text-green-700 border-green-300" asChild>
+              <a href={lic.certificateUrl} target="_blank" rel="noopener noreferrer">
+                <Award className="h-3.5 w-3.5" /> {t('downloadCertificate')}
+              </a>
+            </Button>
+          )}
           {lic && (
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
               <a href={`/api/v1/licenses/${lic.id}/download-pdf?language=${locale}`} target="_blank" rel="noopener noreferrer">
