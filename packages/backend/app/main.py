@@ -188,17 +188,79 @@ async def lifespan(app: FastAPI):
                             doc_type = "certificate"
 
                     # Store in Firebase (best-effort)
+                    stored_url = None
                     try:
                         from app.modules.documents.services.storage_service import storage_service
                         ref = f"LIC-{str(license_id)[:8].upper()}"
                         filename = f"{doc_type}_{ref}.pdf"
-                        url = await storage_service.upload_bytes(
+                        stored_url = await storage_service.upload_bytes(
                             pdf_bytes, f"licenses/{license_id}/{filename}",
                             content_type="application/pdf",
                         )
-                        logger.info(f"Bundle {doc_type} PDF stored: {url}")
+                        logger.info(f"Bundle {doc_type} PDF stored: {stored_url}")
                     except Exception as store_err:
                         logger.warning(f"PDF storage failed (non-blocking): {store_err}")
+
+                    # Persist certificate URL + number in BD (best-effort)
+                    if doc_type == "certificate" and stored_url:
+                        try:
+                            from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+                            cert_number = license_pdf_service._generate_certificate_number(
+                                payload.get("fiscal_year", 2026),
+                                "", "", license_id,
+                            )
+                            async with db_manager.acquire() as conn2:
+                                await conn2.execute("""
+                                    UPDATE commercial_licenses
+                                    SET certificate_url = $1,
+                                        certificate_number = $2,
+                                        certificate_generated_at = NOW()
+                                    WHERE id = $3::uuid
+                                """, stored_url, cert_number, license_id)
+                            logger.info(f"Certificate {cert_number} persisted for license {license_id}")
+                        except Exception as persist_err:
+                            logger.warning(f"Certificate persist failed: {persist_err}")
+
+                    # Register in user's vault (Mes Documents)
+                    if stored_url:
+                        try:
+                            from uuid import UUID as _UUID
+                            from app.modules.user_documents.services.vault_registry import register_document_in_vault
+                            from datetime import date as _date
+
+                            # Find company owner(s) for vault registration
+                            async with db_manager.acquire() as conn3:
+                                owners = await conn3.fetch("""
+                                    SELECT u.id, c.representante_legal, c.legal_name, cl.fiscal_year
+                                    FROM users u
+                                    JOIN user_company_roles ucr ON ucr.user_id = u.id
+                                    JOIN commercial_licenses cl ON cl.company_id = ucr.company_id
+                                    WHERE cl.id = $1::uuid AND ucr.role = 'company_owner'
+                                """, license_id)
+
+                                vault_doc_type = {
+                                    "proforma": "PROFORMA_INVOICE",
+                                    "certificate": "LICENSE_CERTIFICATE",
+                                }.get(doc_type, "LICENSE_DOSSIER")
+
+                                sr_id = payload.get("service_request_id")
+
+                                for owner in owners:
+                                    fy = owner["fiscal_year"] or 2026
+                                    await register_document_in_vault(
+                                        conn3,
+                                        user_id=owner["id"],
+                                        file_path=stored_url,
+                                        file_name=f"{doc_type}_{ref}.pdf",
+                                        document_type=vault_doc_type,
+                                        document_category="fiscal",
+                                        source_request_id=_UUID(sr_id) if sr_id else None,
+                                        document_number=cert_number if doc_type == "certificate" else None,
+                                        holder_name=owner["representante_legal"] or owner["legal_name"],
+                                        expiry_date=_date(fy, 12, 31),
+                                    )
+                        except Exception as vault_err:
+                            logger.warning(f"Vault registration failed: {vault_err}")
 
                     # Send email with attachment (best-effort)
                     if user_email and pdf_bytes:

@@ -11,6 +11,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.database.connection import get_database
+from app.core.rate_limit import rate_limit_dep
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
@@ -101,6 +102,7 @@ async def batch_process_obligations(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
+    __: None = Depends(rate_limit_dep(max_requests=30, window_seconds=60)),
 ):
     """Batch process multiple obligations (processing -> completed).
 
@@ -156,6 +158,7 @@ async def process_obligation(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
+    __: None = Depends(rate_limit_dep(max_requests=60, window_seconds=60)),
 ):
     """Process obligation: processing -> completed.
 
@@ -185,6 +188,7 @@ async def reject_obligation(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
+    __: None = Depends(rate_limit_dep(max_requests=60, window_seconds=60)),
 ):
     """Reject obligation: processing -> paid (re-routable).
 

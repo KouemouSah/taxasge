@@ -144,7 +144,8 @@ class BundleWorkflowService:
                    cl.id as license_id, cl.status as license_status,
                    cl.fiscal_year, cl.total_amount, cl.amount_paid,
                    cl.penalty_amount, cl.obligations_total, cl.obligations_paid,
-                   cl.deadline, cl.completed_at, cl.created_at as license_created_at
+                   cl.deadline, cl.completed_at, cl.created_at as license_created_at,
+                   cl.certificate_number, cl.certificate_url
             FROM companies c
             LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
             LEFT JOIN cities ct ON c.city_id = ct.id
@@ -259,6 +260,8 @@ class BundleWorkflowService:
                 "deadline": row["deadline"].isoformat() if row["deadline"] else None,
                 "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
                 "expiry_date": f"{row['fiscal_year']}-12-31",
+                "certificate_number": row.get("certificate_number"),
+                "certificate_url": row.get("certificate_url"),
             } if row["license_id"] else None,
             "obligations": obligations,
             "inspections": inspections,
