@@ -282,6 +282,42 @@ async def create_company(
     except Exception as e:
         logger.warning(f"Auto-classification failed for company {company_id}: {e}")
 
+    # Auto-create license for bundle companies with zone (non-blocking)
+    if result.get("regimen_fiscal") == "bundle" and result.get("zone_id"):
+        try:
+            from datetime import datetime, timezone
+            from app.modules.fiscal_services.services.license_service import LicenseService
+            from app.modules.fiscal_services.repositories.bundle_repository import BundleRepository
+
+            fiscal_year = datetime.now(timezone.utc).year
+            # Find the bundle matching this commerce_type
+            commerce_type = result.get("commerce_type")
+            if commerce_type:
+                bundle = await db.fetchrow(
+                    "SELECT id FROM service_bundles WHERE commerce_type = $1 AND is_active = true LIMIT 1",
+                    commerce_type,
+                )
+                if bundle:
+                    # Check no license exists yet for this year
+                    existing = await db.fetchval(
+                        "SELECT id FROM commercial_licenses WHERE company_id = $1 AND fiscal_year = $2",
+                        company_id, fiscal_year,
+                    )
+                    if not existing:
+                        await LicenseService.open_license(db, {
+                            "company_id": company_id,
+                            "bundle_id": bundle["id"],
+                            "zone_id": result["zone_id"],
+                            "city_id": result.get("city_id"),
+                            "fiscal_year": fiscal_year,
+                        }, user_id)
+                        logger.info(
+                            f"Auto-created license for company {company_id} "
+                            f"(bundle={commerce_type}, FY={fiscal_year})"
+                        )
+        except Exception as e:
+            logger.warning(f"Auto-license creation failed for {company_id}: {e}")
+
     return CompanyResponse(**result)
 
 
