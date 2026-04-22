@@ -1488,7 +1488,7 @@ _STATUS_PHASE_MAP = {
     "NOTA_UPLOADED": "upload",
     "SUBMITTED": "confirmation",
     "UNDER_REVIEW": "confirmation",
-    "DOSSIER_VALIDE": "payment",
+    "DOSSIER_VALIDE": "confirmation",
     "PAYMENT_PENDING": "payment",
     "PAYMENT_PROCESSING": "payment",
     "PAYMENT_FAILED": "payment",

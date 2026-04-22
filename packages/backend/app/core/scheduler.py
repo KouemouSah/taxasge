@@ -296,7 +296,7 @@ class InternalScheduler:
                 LEFT JOIN appointment_reservations ar
                     ON ar.service_request_id = sr.id
                 WHERE sr.cita_date = $1
-                AND sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAID')
+                AND sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'COMPLETED', 'PAID')
                 AND (ar.reminder_sent_at IS NULL OR ar.id IS NULL)
             """, tomorrow)
 
