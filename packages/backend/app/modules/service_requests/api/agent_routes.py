@@ -536,12 +536,12 @@ async def get_queue_stats(
     stats = await db.fetchrow(f"""
         SELECT
             COUNT(*) FILTER (
-                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW')
                   AND sr.assigned_to IS NOT NULL
                   AND sr.payment_status = 'completed'
             ) AS pending,
             COUNT(*) FILTER (
-                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW')
                   AND sr.assigned_to = ${agent_user_id_param}
             ) AS assigned,
             COUNT(*) FILTER (
@@ -554,7 +554,7 @@ async def get_queue_stats(
             ) AS escalated,
             COUNT(*) FILTER (
                 WHERE sr.submitted_at IS NOT NULL
-                  AND sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                  AND sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW')
                   AND sr.submitted_at + (COALESCE(w.sla_hours, 72) * INTERVAL '1 hour') < NOW()
             ) AS sla_violations,
             COALESCE(AVG(
@@ -2662,11 +2662,14 @@ class ServiceRequestPreview(BaseModel):
 
 
 class ActionStatusMapping:
-    """Map dashboard actions to database statuses"""
+    """Map dashboard actions to database statuses.
+    Approval flow: SUBMITTED → COMPLETED (direct) or DOSSIER_VALIDE (edge: cita needed).
+    CITA_SCHEDULED/IN_PROGRESS are legacy statuses — kept in HISTORY for backward compat.
+    """
     PENDING = ["SUBMITTED", "UNDER_REVIEW", "DOCUMENTS_REQUIRED"]
     VALIDATION = ["DOSSIER_VALIDE", "PENDING_NOTA_INGRESO", "NOTA_UPLOADED"]
-    APPOINTMENTS = ["CITA_SCHEDULED", "IN_PROGRESS"]
-    HISTORY = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+    APPOINTMENTS = []  # No longer used — appointments are tracked via cita_date column
+    HISTORY = ["COMPLETED", "CITA_SCHEDULED", "IN_PROGRESS", "REJECTED", "CANCELLED", "EXPIRED"]
     # Escalations uses escalated=true filter, not status-based
     ESCALATIONS = None
 
@@ -6311,12 +6314,12 @@ async def complete_appointment_by_reservation(
         WHERE id = $1
     """, reservation_id, current_user.id, notes)
 
-    # Update service request status to IN_PROGRESS
+    # Update service request status — advance non-terminal statuses to COMPLETED
     sr_status = reservation['sr_status']
-    if sr_status in ('CITA_SCHEDULED',):
+    if sr_status not in ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED'):
         await db.execute("""
             UPDATE service_requests
-            SET status = 'IN_PROGRESS', updated_at = NOW()
+            SET status = 'COMPLETED', updated_at = NOW()
             WHERE id = $1
         """, reservation['service_request_id'])
 
@@ -6324,7 +6327,7 @@ async def complete_appointment_by_reservation(
     await db.execute("""
         INSERT INTO service_request_history
         (service_request_id, action, previous_status, new_status, performed_by, comment)
-        VALUES ($1, 'appointment_completed', $2, 'IN_PROGRESS', $3, $4)
+        VALUES ($1, 'appointment_completed', $2, 'COMPLETED', $3, $4)
     """, reservation['service_request_id'], sr_status, current_user.id,
         notes or "Appointment completed")
 
