@@ -156,7 +156,7 @@ export const supervisorApi = {
   listMissions: (params?: { date_from?: string; date_to?: string; status?: string }) =>
     apiGet<MissionListResponse>(API_ENDPOINTS.missions.list, params as Record<string, unknown>),
 
-  createMission: (data: { mission_date: string; title?: string; notes?: string }) =>
+  createMission: (data: { mission_date: string; title?: string; notes?: string; zone_ids?: string[] }) =>
     apiPost<Mission>(API_ENDPOINTS.missions.create, data),
 
   getMission: (id: string) =>

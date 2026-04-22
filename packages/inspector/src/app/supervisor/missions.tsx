@@ -3,8 +3,8 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Button, Divider, FAB, Modal, Portal, Text, TextInput } from 'react-native-paper';
+import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Checkbox, Chip, Divider, FAB, Modal, Portal, Text, TextInput } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +44,7 @@ export default function MissionsScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newNotes, setNewNotes] = useState('');
+  const [selectedZones, setSelectedZones] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
 
   const missions = data?.items ?? [];
@@ -56,10 +57,12 @@ export default function MissionsScreen() {
         mission_date: newDate,
         title: newTitle.trim() || undefined,
         notes: newNotes.trim() || undefined,
+        zone_ids: selectedZones.size > 0 ? Array.from(selectedZones) : undefined,
       });
       setShowCreate(false);
       setNewTitle('');
       setNewNotes('');
+      setSelectedZones(new Set());
     } catch (err) {
       setError(extractApiError(err).message);
     }
@@ -221,6 +224,44 @@ export default function MissionsScreen() {
             maxLength={2000}
             style={styles.input}
           />
+          {/* Zone selection */}
+          {suggestions && suggestions.length > 0 && (
+            <View style={styles.zoneSection}>
+              <Text variant="labelMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 6 }}>
+                {t('supervisor.zones', { defaultValue: 'Zones' })} ({selectedZones.size})
+              </Text>
+              <ScrollView style={{ maxHeight: 150 }}>
+                {suggestions.map((z: ZoneSuggestion) => (
+                  <Pressable
+                    key={z.zone_id ?? z.zone_code}
+                    style={styles.zoneRow}
+                    onPress={() => {
+                      setSelectedZones((prev) => {
+                        const next = new Set(prev);
+                        const key = z.zone_id ?? z.zone_code;
+                        if (next.has(key)) next.delete(key); else next.add(key);
+                        return next;
+                      });
+                    }}
+                  >
+                    <Checkbox
+                      status={selectedZones.has(z.zone_id ?? z.zone_code) ? 'checked' : 'unchecked'}
+                      color={colors.primary}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
+                        {z.zone_code} — {z.zone_name ?? ''}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                        {z.suggested_priority ?? ''} • {z.pending_obligations_count ?? 0} pending
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {error ? (
             <Text variant="bodySmall" style={{ color: colors.error, marginBottom: 8 }}>{error}</Text>
           ) : null}
@@ -260,7 +301,9 @@ const styles = StyleSheet.create({
   missionBody: { flex: 1, gap: 1 },
   missionRight: { alignItems: 'flex-end', gap: 4 },
   fab: { position: 'absolute', right: 16 },
-  modal: { marginHorizontal: 24, padding: 24, borderRadius: 12 },
+  modal: { marginHorizontal: 24, padding: 24, borderRadius: 12, maxHeight: '85%' },
   input: { marginBottom: 12 },
+  zoneSection: { marginBottom: 12 },
+  zoneRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
 });

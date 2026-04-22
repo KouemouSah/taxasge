@@ -79,7 +79,7 @@ export function useMissions(params?: { date_from?: string; date_to?: string; sta
 export function useCreateMission() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { mission_date: string; title?: string; notes?: string }) =>
+    mutationFn: (data: { mission_date: string; title?: string; notes?: string; zone_ids?: string[] }) =>
       supervisorApi.createMission(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.missions });
