@@ -374,6 +374,8 @@ class LicenseRepository:
 
         Uses a single INSERT with multiple VALUES rows (no N+1).
         """
+        import json as _json
+
         if not items:
             return []
 
@@ -394,8 +396,8 @@ class LicenseRepository:
                 item["fee_type"],
                 item["amount"],
                 item.get("due_date"),
-                item.get("penalty_config"),
-                item.get("deadline_config"),
+                _json.dumps(item["penalty_config"]) if isinstance(item.get("penalty_config"), dict) else item.get("penalty_config"),
+                _json.dumps(item["deadline_config"]) if isinstance(item.get("deadline_config"), dict) else item.get("deadline_config"),
             ])
             idx += 9
 
@@ -487,6 +489,8 @@ class LicenseRepository:
           - obligation_id: UUID
           - event_data: Dict
         """
+        import json as _json
+
         if not items:
             return []
 
@@ -495,13 +499,14 @@ class LicenseRepository:
         idx = 1
         for item in items:
             values_parts.append(
-                f"(${idx}, ${idx+1}, ${idx+2}, ${idx+3}, ${idx+4})"
+                f"(${idx}, ${idx+1}, ${idx+2}, ${idx+3}::jsonb, ${idx+4})"
             )
+            ed = item.get("event_data", {})
             params.extend([
                 license_id,
                 item.get("obligation_id"),
                 event_type,
-                item.get("event_data", {}),
+                _json.dumps(ed) if isinstance(ed, dict) else (ed or "{}"),
                 triggered_by,
             ])
             idx += 5

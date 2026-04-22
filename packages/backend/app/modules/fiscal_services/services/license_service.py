@@ -225,7 +225,7 @@ class LicenseService:
                    FROM users u
                    JOIN user_company_roles ucr ON ucr.user_id = u.id
                    WHERE ucr.company_id = $1
-                   ORDER BY ucr.created_at ASC LIMIT 1""",
+                   ORDER BY ucr.assigned_at ASC LIMIT 1""",
                 company_id,
             )
 
@@ -429,7 +429,7 @@ class LicenseService:
                         FROM users u
                         JOIN user_company_roles ucr ON ucr.user_id = u.id
                         WHERE ucr.company_id = $1
-                        ORDER BY ucr.created_at ASC LIMIT 1
+                        ORDER BY ucr.assigned_at ASC LIMIT 1
                     """, company_id) if company_id else None
 
                     owner_name = (
