@@ -67,6 +67,8 @@ import { toast } from 'sonner';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
+import { LocationFilter, useLocationFilterState } from '@/modules/inspections/components/LocationFilter';
+import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard';
 import type { AgentListItem, AgentAssignmentItem } from '../../types';
 import { WORKLOAD_STATUS_COLORS, AVAILABILITY_COLORS, formatSuccessRate, getSuccessRateColor } from '../../types';
 
@@ -78,6 +80,8 @@ export default function TeamAgentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [includeUnavailable, setIncludeUnavailable] = useState(false);
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const { data: agentProfile } = useAgentProfile();
+  const { locationFilter, setLocationFilter } = useLocationFilterState(agentProfile);
   const [sourceAgent, setSourceAgent] = useState<AgentListItem | null>(null);
   const [targetAgentId, setTargetAgentId] = useState<string>('');
   const [selectedAssignments, setSelectedAssignments] = useState<Set<string>>(new Set());
@@ -142,11 +146,11 @@ export default function TeamAgentsPage() {
 
   // Fetch agents - uses GET /supervisor/agents
   const { data: agents, isLoading, isError, error, refetch } = useQuery<AgentListItem[]>({
-    queryKey: ['supervisor', 'agents', includeUnavailable],
+    queryKey: ['supervisor', 'agents', includeUnavailable, locationFilter],
     queryFn: async () => {
-      const response = await apiClient.get('/supervisor/agents', {
-        params: { include_unavailable: includeUnavailable }
-      });
+      const params: Record<string, string | boolean> = { include_unavailable: includeUnavailable };
+      if (locationFilter) params.entity_location_id = locationFilter;
+      const response = await apiClient.get('/supervisor/agents', { params });
       return response.data;
     },
   });
@@ -274,6 +278,13 @@ export default function TeamAgentsPage() {
                 className="pl-9"
               />
             </div>
+            <LocationFilter
+              entityCode={agentProfile?.entity_code}
+              isMainOffice={agentProfile?.is_main_office ?? false}
+              defaultLocationId={agentProfile?.entity_location_id ?? undefined}
+              value={locationFilter}
+              onChange={setLocationFilter}
+            />
             <div className="flex items-center gap-2">
               <Switch
                 id="include-unavailable"

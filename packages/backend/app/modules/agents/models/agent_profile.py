@@ -169,6 +169,7 @@ class AgentListFilters(BaseModel):
     ministry_id: Optional[int] = None
     entity_id: Optional[UUID] = None
     entity_code: Optional[str] = None  # Filter by entity code (e.g. CNEDOGE, DGT)
+    entity_location_id: Optional[UUID] = None  # Filter by site (Malabo, Bata, etc.)
     is_active: Optional[bool] = True
     agent_category: Optional[str] = None  # dgi, treasury, entity, ministry
     availability: Optional[str] = None

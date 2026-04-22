@@ -411,14 +411,21 @@ async def verify_license(
 
 @router.get("/supervisor/dashboard", response_model=SupervisorDashboardResponse)
 async def get_supervisor_dashboard(
+    entity_location_id: Optional[UUID] = Query(None, description="Filter stats by site location"),
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.view_entity")),
 ):
-    """Supervisor inspection dashboard with KPIs, alerts, pending seals."""
+    """Supervisor inspection dashboard with KPIs, alerts, pending seals.
+
+    Main-office supervisors can pass entity_location_id to scope stats
+    to a specific site. Without it, shows all locations aggregated.
+    Non-main-office supervisors are always scoped to their own site.
+    """
     try:
         result = await InspectionService.get_supervisor_dashboard(
             db, UUID(current_user.id),
+            entity_location_id=entity_location_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))

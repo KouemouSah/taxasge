@@ -619,6 +619,7 @@ async def get_escalation_count(
 @router.get("/agents", response_model=List[AgentListItem])
 async def list_agents(
     include_unavailable: bool = Query(False, description="Include unavailable agents"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by site location UUID (main-office supervisors only)"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
     _: None = Depends(permission_required("agent.view"))
@@ -652,7 +653,7 @@ async def list_agents(
         # Get agents - scoped by entity_id + site for entity supervisors
         max_capacity = 100.0 if include_unavailable else 80.0
         entity_id = agent_ctx.get("entity_id")
-        effective_location = _get_effective_location_id(agent_ctx)
+        effective_location = _get_effective_location_id(agent_ctx, explicit_location_id=entity_location_id)
         agents_workloads = await workload_repo.get_available_agents(
             db=db,
             max_workload_pct=max_capacity,

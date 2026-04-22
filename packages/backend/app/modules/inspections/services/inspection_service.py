@@ -706,8 +706,13 @@ class InspectionService:
     @staticmethod
     async def get_supervisor_dashboard(
         conn, user_id: UUID,
+        entity_location_id: Optional[UUID] = None,
     ) -> Dict:
-        """Get supervisor inspection dashboard data."""
+        """Get supervisor inspection dashboard data.
+
+        If entity_location_id is provided, scopes stats to that site.
+        Non-main-office supervisors are auto-scoped to their own location.
+        """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
         if not ctx["is_supervisor"]:
@@ -715,9 +720,14 @@ class InspectionService:
 
         entity_id = ctx["entity_id"]
 
+        # Auto-scope non-main-office supervisors to their location
+        location_filter = entity_location_id
+        if not ctx.get("is_main_office", False) and not location_filter:
+            location_filter = ctx.get("entity_location_id")
+
         # CTE-based dashboard: 1 query for all stats
         cte_data = await InspectionRepository.get_supervisor_dashboard_cte(
-            conn, entity_id
+            conn, entity_id, entity_location_id=location_filter,
         )
 
         # Sequential — asyncpg does NOT support concurrent queries on single connection

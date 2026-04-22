@@ -525,13 +525,24 @@ class InspectionRepository:
         }
 
     @staticmethod
-    async def get_supervisor_dashboard_cte(conn, entity_id: UUID) -> Dict:
+    async def get_supervisor_dashboard_cte(
+        conn, entity_id: UUID,
+        entity_location_id: Optional[UUID] = None,
+    ) -> Dict:
         """CTE-based supervisor dashboard — single query instead of 5.
 
         Returns today_stats, week_stats, pending_seals_count, overdue_med,
         unreconciled_cash in one round-trip.
+
+        If entity_location_id is provided, scopes all stats to that location.
         """
-        row = await conn.fetchrow("""
+        loc_filter = ""
+        params: list = [entity_id]
+        if entity_location_id:
+            loc_filter = "AND entity_location_id = $2"
+            params.append(entity_location_id)
+
+        row = await conn.fetchrow(f"""
             WITH today_stats AS (
                 SELECT
                     COUNT(*) AS total,
@@ -543,7 +554,7 @@ class InspectionRepository:
                     COUNT(*) FILTER (WHERE payment_collected) AS payments_collected,
                     COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS total_collected
                 FROM field_inspections
-                WHERE entity_id = $1 AND inspection_date = CURRENT_DATE
+                WHERE entity_id = $1 {loc_filter} AND inspection_date = CURRENT_DATE
             ),
             week_stats AS (
                 SELECT
@@ -556,21 +567,21 @@ class InspectionRepository:
                     COUNT(*) FILTER (WHERE payment_collected) AS payments_collected,
                     COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS total_collected
                 FROM field_inspections
-                WHERE entity_id = $1 AND inspection_date >= CURRENT_DATE - 7
+                WHERE entity_id = $1 {loc_filter} AND inspection_date >= CURRENT_DATE - 7
             ),
             pending AS (
                 SELECT COUNT(*) AS cnt FROM field_inspections
-                WHERE entity_id = $1 AND status = 'seal_proposed'
+                WHERE entity_id = $1 {loc_filter} AND status = 'seal_proposed'
             ),
             overdue AS (
                 SELECT COUNT(*) AS cnt FROM field_inspections
-                WHERE entity_id = $1 AND mise_en_demeure_issued
+                WHERE entity_id = $1 {loc_filter} AND mise_en_demeure_issued
                   AND mise_en_demeure_deadline < NOW() AND status = 'mise_en_demeure'
             ),
             cash AS (
                 SELECT COUNT(*) AS cnt, COALESCE(SUM(payment_amount), 0) AS total
                 FROM field_inspections
-                WHERE entity_id = $1 AND payment_collected
+                WHERE entity_id = $1 {loc_filter} AND payment_collected
                   AND inspection_date >= CURRENT_DATE - 7
             )
             SELECT
@@ -580,7 +591,7 @@ class InspectionRepository:
                 (SELECT cnt FROM overdue) AS overdue_med,
                 (SELECT cnt FROM cash) AS cash_count,
                 (SELECT total FROM cash) AS cash_amount
-        """, entity_id)
+        """, *params)
 
         if not row:
             return {}

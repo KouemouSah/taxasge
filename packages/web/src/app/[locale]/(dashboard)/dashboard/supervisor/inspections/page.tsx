@@ -35,6 +35,8 @@ import { ZoneAnalyticsTable } from '@/modules/inspections/components/ZoneAnalyti
 import { MissionCalendar } from '@/modules/inspections/components/MissionCalendar'
 import { MissionPlanPanel } from '@/modules/inspections/components/MissionPlanPanel'
 import { LiveStatusPanel } from '@/modules/inspections/components/LiveStatusPanel'
+import { LocationFilter, useLocationFilterState } from '@/modules/inspections/components/LocationFilter'
+import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard'
 import type {
   SupervisorDashboard, FieldPayment,
   AgentPerformanceResponse, ZoneAnalyticsResponse,
@@ -55,6 +57,12 @@ export default function SupervisorInspectionDashboard() {
   const router = useRouter()
   const { toast } = useToast()
   const t = useTranslations('inspection')
+
+  // --- Agent profile for location filter ---
+  const { data: agentProfile } = useAgentProfile()
+
+  // --- Location filter: defaults to supervisor's own site ---
+  const { locationFilter, setLocationFilter } = useLocationFilterState(agentProfile)
 
   // --- Core dashboard ---
   const [data, setData] = useState<SupervisorDashboard | null>(null)
@@ -100,14 +108,14 @@ export default function SupervisorInspectionDashboard() {
   const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true)
-      const result = await inspectionApi.getSupervisorDashboard()
+      const result = await inspectionApi.getSupervisorDashboard(locationFilter || undefined)
       setData(result)
     } catch {
       toast({ title: t('common.error'), description: 'Dashboard', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
-  }, [toast, t])
+  }, [toast, t, locationFilter])
 
   const fetchFieldPayments = useCallback(async () => {
     try {
@@ -333,6 +341,14 @@ export default function SupervisorInspectionDashboard() {
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-green-700" />
           <h1 className="text-lg font-bold">{t('supervisor.title')}</h1>
+          <LocationFilter
+            entityCode={agentProfile?.entity_code}
+            isMainOffice={agentProfile?.is_main_office ?? false}
+            defaultLocationId={agentProfile?.entity_location_id ?? undefined}
+            value={locationFilter}
+            onChange={setLocationFilter}
+            className="ml-4"
+          />
         </div>
         <ExportButton
           filters={{ tab: activeTab }}

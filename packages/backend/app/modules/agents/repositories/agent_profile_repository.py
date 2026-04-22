@@ -386,6 +386,11 @@ class AgentProfileRepository:
             params.append(filters.entity_code)
             param_idx += 1
 
+        if filters.entity_location_id:
+            where_conditions.append(f"ap.entity_location_id = ${param_idx}")
+            params.append(str(filters.entity_location_id))
+            param_idx += 1
+
         if filters.is_active is not None:
             where_conditions.append(f"ap.is_active = ${param_idx}")
             params.append(filters.is_active)

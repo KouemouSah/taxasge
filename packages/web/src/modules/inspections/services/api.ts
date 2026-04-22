@@ -121,8 +121,10 @@ export const inspectionApi = {
       .then(r => r.data)
   },
 
-  getSupervisorDashboard: () =>
-    apiClient.get<SupervisorDashboard>('/inspections/supervisor/dashboard').then(r => r.data),
+  getSupervisorDashboard: (entityLocationId?: string) =>
+    apiClient.get<SupervisorDashboard>('/inspections/supervisor/dashboard', {
+      params: entityLocationId ? { entity_location_id: entityLocationId } : undefined,
+    }).then(r => r.data),
 
   getLiveStatus: () =>
     apiClient.get<LiveStatusResponse>('/inspections/supervisor/live-status').then(r => r.data),
