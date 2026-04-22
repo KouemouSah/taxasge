@@ -128,6 +128,51 @@ async def get_agents_availability(
     return [AgentAvailability(**a) for a in agents]
 
 
+@router.post("/{mission_id}/auto-assign")
+async def auto_assign_agents(
+    mission_id: UUID,
+    target_total: int = Query(50, ge=10, le=200, description="Total inspections target"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Propose optimal agent assignments for a mission using scoring algorithm.
+
+    Returns ranked list of agents with scores. Supervisor reviews and confirms
+    via POST /missions/{id}/agents to finalize the assignment.
+    """
+    from app.modules.inspections.services.mission_auto_assigner import MissionAutoAssigner
+
+    try:
+        mission = await MissionService.get_mission(
+            db, UUID(current_user.id), mission_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if mission["status"] not in ("planned", "in_progress"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot auto-assign to mission in status '{mission['status']}'"
+        )
+
+    proposed = await MissionAutoAssigner.propose_assignments(
+        db,
+        mission_id=mission_id,
+        entity_id=mission["entity_id"],
+        entity_location_id=mission["entity_location_id"],
+        zone_ids=mission.get("zone_ids"),
+        target_total=target_total,
+    )
+
+    return {
+        "mission_id": str(mission_id),
+        "target_total": target_total,
+        "agents_proposed": len(proposed),
+        "proposals": proposed,
+    }
+
+
 # ============================================================
 # Dynamic paths — /{mission_id}
 # ============================================================

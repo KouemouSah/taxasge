@@ -67,6 +67,10 @@ export const API_ENDPOINTS = {
     removeAgent: (id: string, agentId: string) =>
       `/inspections/missions/${id}/agents/${agentId}` as const,
     complete: (id: string) => `/inspections/missions/${id}/complete` as const,
+    autoAssign: (id: string) => `/inspections/missions/${id}/auto-assign` as const,
+    agentStatus: (id: string, agentId: string) =>
+      `/inspections/missions/${id}/agents/${agentId}/status` as const,
+    report: (id: string) => `/inspections/missions/${id}/report` as const,
   },
 
   analytics: {

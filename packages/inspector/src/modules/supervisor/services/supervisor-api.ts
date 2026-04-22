@@ -87,10 +87,44 @@ export interface MissionListResponse {
 }
 
 export interface ZoneSuggestion {
+  zone_id: string;
   zone_code: string;
   zone_name: string | null;
   priority_score: number;
-  reason: string;
+  suggested_priority: string;
+  days_since_last_inspection: number | null;
+  pending_obligations_count: number;
+}
+
+export interface AgentAvailability {
+  agent_id: string;
+  agent_profile_id: string;
+  agent_name: string;
+  is_available: boolean;
+  current_mission: string | null;
+  working_days: number[] | null;
+  availability_status: string;
+  entity_location_id: string | null;
+  location_city: string | null;
+}
+
+export interface AutoAssignProposal {
+  agent_id: string;
+  agent_profile_id: string;
+  agent_name: string;
+  score: number;
+  zone_expertise: number;
+  recent_workload: number;
+  conformity_rate: number;
+  target_inspections: number;
+  assigned_zones: string[];
+}
+
+export interface AutoAssignResponse {
+  mission_id: string;
+  target_total: number;
+  agents_proposed: number;
+  proposals: AutoAssignProposal[];
 }
 
 // ---------------------------------------------------------------------------
@@ -133,4 +167,32 @@ export const supervisorApi = {
 
   suggestZones: () =>
     apiGet<ZoneSuggestion[]>(API_ENDPOINTS.missions.suggestZones),
+
+  getAgentsAvailability: (missionDate: string, entityLocationId?: string) =>
+    apiGet<AgentAvailability[]>(API_ENDPOINTS.missions.agentAvailability, {
+      mission_date: missionDate,
+      ...(entityLocationId ? { entity_location_id: entityLocationId } : {}),
+    } as Record<string, unknown>),
+
+  updateMission: (id: string, data: { title?: string; notes?: string; zone_ids?: string[]; status?: string }) =>
+    apiPut<Mission>(API_ENDPOINTS.missions.update(id), data),
+
+  assignAgents: (missionId: string, agents: Array<{
+    agent_id: string;
+    agent_profile_id: string;
+    assigned_zones?: string[];
+    target_inspections?: number;
+  }>) =>
+    apiPost<MissionAgent[]>(API_ENDPOINTS.missions.assignAgents(missionId), { agents }),
+
+  removeAgent: (missionId: string, agentId: string) =>
+    apiDelete(API_ENDPOINTS.missions.removeAgent(missionId, agentId)),
+
+  updateAgentStatus: (missionId: string, agentId: string, status: string, reason?: string) =>
+    apiPut(API_ENDPOINTS.missions.agentStatus(missionId, agentId), { status, reason }),
+
+  autoAssign: (missionId: string, targetTotal?: number) =>
+    apiPost<AutoAssignResponse>(API_ENDPOINTS.missions.autoAssign(missionId), {}, {
+      params: targetTotal ? { target_total: targetTotal } : undefined,
+    } as Record<string, unknown>),
 };

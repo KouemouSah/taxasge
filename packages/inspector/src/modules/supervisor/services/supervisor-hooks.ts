@@ -106,3 +106,68 @@ export function useZoneSuggestions(enabled = true) {
     staleTime: 10 * 60_000,
   });
 }
+
+export function useMissionDetail(id: string) {
+  return useQuery({
+    queryKey: KEYS.mission(id),
+    queryFn: () => supervisorApi.getMission(id),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
+
+export function useAgentsAvailability(missionDate: string, entityLocationId?: string) {
+  return useQuery({
+    queryKey: ['supervisor', 'agents-availability', missionDate, entityLocationId],
+    queryFn: () => supervisorApi.getAgentsAvailability(missionDate, entityLocationId),
+    enabled: !!missionDate,
+    staleTime: 2 * 60_000,
+  });
+}
+
+export function useAssignAgents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ missionId, agents }: {
+      missionId: string;
+      agents: Array<{ agent_id: string; agent_profile_id: string; target_inspections?: number }>;
+    }) => supervisorApi.assignAgents(missionId, agents),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.missions });
+    },
+  });
+}
+
+export function useRemoveAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ missionId, agentId }: { missionId: string; agentId: string }) =>
+      supervisorApi.removeAgent(missionId, agentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.missions });
+    },
+  });
+}
+
+export function useUpdateAgentStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ missionId, agentId, status, reason }: {
+      missionId: string; agentId: string; status: string; reason?: string;
+    }) => supervisorApi.updateAgentStatus(missionId, agentId, status, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.missions });
+    },
+  });
+}
+
+export function useAutoAssign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ missionId, targetTotal }: { missionId: string; targetTotal?: number }) =>
+      supervisorApi.autoAssign(missionId, targetTotal),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.missions });
+    },
+  });
+}
