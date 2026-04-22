@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from app.core.errors import TranslatedException, ErrorCode
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timezone
 import asyncio
 import asyncpg
 import json

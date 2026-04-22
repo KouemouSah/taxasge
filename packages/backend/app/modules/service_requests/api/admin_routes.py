@@ -14,7 +14,7 @@ from enum import Enum
 import asyncpg
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 

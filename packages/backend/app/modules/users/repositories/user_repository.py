@@ -5,7 +5,7 @@ Handles user data persistence with PostgreSQL and Supabase
 
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from loguru import logger
 
 from app.repositories.base import BaseRepository
@@ -340,7 +340,7 @@ class UserRepository(BaseRepository[UserResponse]):
         """Create new user with password hash"""
         try:
             from uuid import uuid4
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             # Generate ID and timestamps
             user_id = str(uuid4())

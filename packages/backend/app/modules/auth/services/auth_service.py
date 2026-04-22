@@ -5,7 +5,7 @@ Orchestrates authentication operations using repositories and services
 
 import asyncio
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 from loguru import logger
 
