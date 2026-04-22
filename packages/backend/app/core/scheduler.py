@@ -157,9 +157,10 @@ class InternalScheduler:
 
     async def _run_periodic(self, name: str, handler, interval_seconds: int):
         """Execute handler on a fixed interval with error isolation."""
-        # Stagger initial delay: 15s base + 2s per job to avoid pool saturation
+        # Stagger initial delay: 30s base + 5s per job to avoid pool saturation
+        # (17 jobs × 5s = 85s spread — prevents all jobs hitting the pool simultaneously)
         InternalScheduler._stagger_counter += 1
-        initial_delay = 15 + (InternalScheduler._stagger_counter * 2)
+        initial_delay = 30 + (InternalScheduler._stagger_counter * 5)
         await asyncio.sleep(initial_delay)
 
         while self._running:
@@ -601,6 +602,7 @@ class InternalScheduler:
         from app.database.connection import db_manager
 
         # Dedup: only send once per day (Redis key with 20h TTL)
+        # If Redis is unavailable, SKIP (don't send without dedup guarantee)
         dedup_key = f"scheduler:daily_summary:{date.today().isoformat()}"
         try:
             from app.core.cache import get_cache
@@ -609,7 +611,8 @@ class InternalScheduler:
                 return None  # Already sent today
             await cache.set(dedup_key, "1", ttl=72000)  # 20h TTL
         except Exception:
-            pass  # Proceed if cache unavailable
+            logger.warning("Daily summary: Redis unavailable — SKIPPING to prevent duplicate sends")
+            return None
 
         async with db_manager.get_connection() as db:
             # Get all active supervisors with inspection permissions
@@ -761,6 +764,7 @@ class InternalScheduler:
         from app.database.connection import db_manager
 
         # Dedup: only send once per week (Redis key with 6-day TTL)
+        # If Redis is unavailable, SKIP the job (don't send without dedup guarantee)
         week_key = f"{date.today().isocalendar()[0]}-W{date.today().isocalendar()[1]:02d}"
         dedup_key = f"scheduler:weekly_digest:{week_key}"
         try:
@@ -770,7 +774,8 @@ class InternalScheduler:
                 return None  # Already sent this week
             await cache.set(dedup_key, "1", ttl=518400)  # 6 days TTL
         except Exception:
-            pass  # Proceed if cache unavailable
+            logger.warning("Weekly digest: Redis unavailable — SKIPPING to prevent duplicate sends")
+            return None  # SKIP instead of proceeding without dedup
 
         async with db_manager.get_connection() as db:
             supervisors = await db.fetch("""
@@ -1205,6 +1210,20 @@ class InternalScheduler:
         import json as json_mod
         from app.database.connection import db_manager
         from app.config import get_settings
+
+        # Dedup: only send once per week (Redis key with 6-day TTL)
+        # If Redis unavailable, SKIP to prevent duplicate sends on cold starts
+        week_key = f"{date.today().isocalendar()[0]}-W{date.today().isocalendar()[1]:02d}"
+        dedup_key = f"scheduler:supervisor_weekly:{week_key}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None
+            await cache.set(dedup_key, "1", ttl=518400)
+        except Exception:
+            logger.warning("Supervisor weekly: Redis unavailable — SKIPPING")
+            return None
 
         settings = get_settings()
 
