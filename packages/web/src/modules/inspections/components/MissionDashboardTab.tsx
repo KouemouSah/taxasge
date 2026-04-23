@@ -73,8 +73,8 @@ export function MissionDashboardTab({ locationFilter }: Props) {
   // Build heatmap matrix
   const matrix = useMemo(() => {
     if (!data?.agent_zone_matrix?.length) return null
-    const agents = [...new Set(data.agent_zone_matrix.map((c: AgentZoneCell) => c.agent_name))]
-    const zones = [...new Set(data.agent_zone_matrix.map((c: AgentZoneCell) => c.zone_code))].sort()
+    const agents = Array.from(new Set(data.agent_zone_matrix.map((c: AgentZoneCell) => c.agent_name)))
+    const zones = Array.from(new Set(data.agent_zone_matrix.map((c: AgentZoneCell) => c.zone_code))).sort()
     const lookup: Record<string, number> = {}
     data.agent_zone_matrix.forEach((c: AgentZoneCell) => {
       lookup[`${c.agent_name}|${c.zone_code}`] = c.inspections
