@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
-  Users, Plus, Bot, Trash2, ChevronDown, ChevronUp, Target,
+  Users, Plus, Bot, Trash2, ChevronDown, ChevronUp,
   Calendar, UserX, Activity,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
