@@ -118,45 +118,45 @@ async def get_my_zone_stats(
     current_user: Dict[str, Any] = Depends(get_current_user),
     _=Depends(permission_required("company.view_entity_scoped")),
 ):
-    """Supervisor's zone stats — filtered to their assigned zone."""
+    """Supervisor's zone stats — live query with Redis cache."""
     zone_id = await get_agent_zone_id(db, current_user.id)
     if not zone_id:
         raise HTTPException(status_code=404, detail="No zone assigned to your profile")
 
-    if await _mv_exists(db, "mv_company_stats_by_zone"):
-        row = await db.fetchrow(
-            "SELECT * FROM mv_company_stats_by_zone WHERE zone_id = $1",
-            UUID(zone_id),
-        )
-    else:
-        row = await db.fetchrow("""
-            SELECT
-                cz.id AS zone_id, cz.zone_code, cz.zone_tier, cz.name_es AS zone_name,
-                COUNT(c.id) AS total_companies,
-                COUNT(c.id) FILTER (WHERE c.is_active) AS active_companies,
-                COUNT(c.id) FILTER (WHERE c.is_active AND NOT c.is_verified) AS pending_verification,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'bundle') AS bundle_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'declarativo') AS declarativo_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'exento') AS exento_count,
-                COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'pendiente') AS pendiente_count,
-                COUNT(DISTINCT cl.id) AS active_licenses,
-                COALESCE(SUM(cl.total_amount), 0) AS total_obligations_amount,
-                COALESCE(SUM(cl.amount_paid), 0) AS total_paid_amount,
-                COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) AS total_debt,
-                CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
-                     THEN ROUND(COALESCE(SUM(cl.amount_paid), 0) * 100.0 / SUM(cl.total_amount), 1)
-                     ELSE 0 END AS recovery_rate_pct
-            FROM commerce_zones cz
-            LEFT JOIN companies c ON c.zone_id = cz.id
-            LEFT JOIN commercial_licenses cl ON cl.company_id = c.id
-                AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
-            WHERE cz.id = $1
-            GROUP BY cz.id, cz.zone_code, cz.zone_tier, cz.name_es
-        """, UUID(zone_id))
+    cache = get_cache()
+    cache_key = f"company_dashboard:zone_mine:{zone_id}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
 
-    if not row:
-        return {"zone": None}
-    return {"zone": dict(row)}
+    row = await db.fetchrow("""
+        SELECT
+            cz.id AS zone_id, cz.zone_code, cz.zone_tier, cz.name_es AS zone_name,
+            COUNT(c.id) AS total_companies,
+            COUNT(c.id) FILTER (WHERE c.is_active) AS active_companies,
+            COUNT(c.id) FILTER (WHERE c.is_active AND NOT c.is_verified) AS pending_verification,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'bundle') AS bundle_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'declarativo') AS declarativo_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'exento') AS exento_count,
+            COUNT(c.id) FILTER (WHERE c.regimen_fiscal = 'pendiente') AS pendiente_count,
+            COUNT(DISTINCT cl.id) AS active_licenses,
+            COALESCE(SUM(cl.total_amount), 0) AS total_obligations_amount,
+            COALESCE(SUM(cl.amount_paid), 0) AS total_paid_amount,
+            COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) AS total_debt,
+            CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
+                 THEN ROUND(COALESCE(SUM(cl.amount_paid), 0) * 100.0 / SUM(cl.total_amount), 1)
+                 ELSE 0 END AS recovery_rate_pct
+        FROM commerce_zones cz
+        LEFT JOIN companies c ON c.zone_id = cz.id
+        LEFT JOIN commercial_licenses cl ON cl.company_id = c.id
+            AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+        WHERE cz.id = $1
+        GROUP BY cz.id, cz.zone_code, cz.zone_tier, cz.name_es
+    """, UUID(zone_id))
+
+    result = {"zone": dict(row)} if row else {"zone": None}
+    await cache.set(cache_key, result, ttl=_ZONE_STATS_TTL)
+    return result
 
 
 # ── Ministry Stats (Supervisor Ministère) ────────────────────────────────────
@@ -175,41 +175,40 @@ async def get_ministry_stats(
     if not ministry_id:
         raise HTTPException(status_code=404, detail="No ministry assigned to your profile")
 
-    if await _mv_exists(db, "mv_obligation_stats_by_ministry"):
-        rows = await db.fetch(
-            "SELECT * FROM mv_obligation_stats_by_ministry "
-            "WHERE ministry_id = $1 ORDER BY zone_code, fee_type",
-            ministry_id,
-        )
-    else:
-        rows = await db.fetch("""
-            SELECT
-                lo.ministry_id, lo.fee_type,
-                cz.id AS zone_id, cz.zone_code,
-                COUNT(DISTINCT cl.company_id) AS companies_count,
-                COUNT(lo.id) AS obligations_count,
-                COUNT(lo.id) FILTER (WHERE lo.status = 'paid') AS paid_count,
-                COUNT(lo.id) FILTER (WHERE lo.status = 'overdue') AS overdue_count,
-                COALESCE(SUM(lo.amount), 0) AS total_amount,
-                COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'paid'), 0) AS paid_amount,
-                COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'overdue'), 0) AS overdue_amount,
-                COALESCE(SUM(lo.penalty_amount), 0) AS total_penalties
-            FROM license_obligations lo
-            JOIN commercial_licenses cl ON lo.license_id = cl.id
-            JOIN companies c ON cl.company_id = c.id
-            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
-            WHERE cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
-              AND lo.ministry_id = $1
-            GROUP BY lo.ministry_id, lo.fee_type, cz.id, cz.zone_code
-            ORDER BY cz.zone_code, lo.fee_type
-        """, ministry_id)
+    cache = get_cache()
+    cache_key = f"company_dashboard:ministry:{ministry_id}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    rows = await db.fetch("""
+        SELECT
+            lo.ministry_id, lo.fee_type,
+            cz.id AS zone_id, cz.zone_code,
+            COUNT(DISTINCT cl.company_id) AS companies_count,
+            COUNT(lo.id) AS obligations_count,
+            COUNT(lo.id) FILTER (WHERE lo.status = 'paid') AS paid_count,
+            COUNT(lo.id) FILTER (WHERE lo.status = 'overdue') AS overdue_count,
+            COALESCE(SUM(lo.amount), 0) AS total_amount,
+            COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'paid'), 0) AS paid_amount,
+            COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'overdue'), 0) AS overdue_amount,
+            COALESCE(SUM(lo.penalty_amount), 0) AS total_penalties
+        FROM license_obligations lo
+        JOIN commercial_licenses cl ON lo.license_id = cl.id
+        JOIN companies c ON cl.company_id = c.id
+        LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+        WHERE cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+          AND lo.ministry_id = $1
+        GROUP BY lo.ministry_id, lo.fee_type, cz.id, cz.zone_code
+        ORDER BY cz.zone_code, lo.fee_type
+    """, ministry_id)
 
     # Aggregate totals
     total_amount = sum(float(r["total_amount"]) for r in rows)
     paid_amount = sum(float(r["paid_amount"]) for r in rows)
     overdue_amount = sum(float(r["overdue_amount"]) for r in rows)
 
-    return {
+    result = {
         "ministry_id": ministry_id,
         "zones": [dict(r) for r in rows],
         "totals": {
@@ -219,6 +218,8 @@ async def get_ministry_stats(
             "recovery_rate_pct": round(paid_amount * 100 / total_amount, 1) if total_amount > 0 else 0,
         },
     }
+    await cache.set(cache_key, result, ttl=_ZONE_STATS_TTL)
+    return result
 
 
 # ── Global Stats (Admin Overview) ───────────────────────────────────────────

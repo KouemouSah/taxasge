@@ -93,7 +93,7 @@ class BatchSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt:
                     await self.cache.delete(cache_key)
                     raise BatchSessionNotFoundError()
             except (ValueError, TypeError):

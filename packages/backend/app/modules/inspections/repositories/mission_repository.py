@@ -252,15 +252,42 @@ class MissionRepository:
     # ============================================================
 
     @staticmethod
-    async def suggest_zones(conn, entity_id: UUID, limit: int = 10) -> List[Dict]:
+    async def suggest_zones(
+        conn, entity_id: UUID, limit: int = 10,
+        entity_location_id: Optional[UUID] = None,
+    ) -> List[Dict]:
         """Suggest zones based on inspection coverage and pending obligations.
 
-        Uses 2 CTEs:
-        1. last_inspected: MAX(inspection_date) per zone for this entity
-        2. zone_obligations: COUNT pending/overdue obligations per zone
-        Priority score = (pending_count * days_since_last / 30) — higher = more urgent.
+        If entity_location_id is provided, only zones with companies in that
+        location's city are returned (relevant for AYUNTAMIENTO/CAMARA_COMERCIO).
         """
-        rows = await conn.fetch("""
+        loc_filter_fi = ""
+        loc_filter_lo = ""
+        params: list = [entity_id]
+
+        if entity_location_id:
+            # Get city_id for this location
+            city_id = await conn.fetchval(
+                "SELECT city_id FROM entity_locations WHERE id = $1",
+                entity_location_id,
+            )
+            if city_id:
+                params.append(city_id)
+                city_param = f"${len(params)}"
+                loc_filter_fi = f"AND fi.entity_location_id = ${len(params) - 1 + 1}"
+                loc_filter_lo = f"AND c.city_id = {city_param}"
+                # Re-build: fi filter uses entity_location_id, lo filter uses city_id
+                loc_filter_fi = ""  # inspections already entity-scoped
+                # Filter obligations by city through companies
+                loc_filter_lo = f"""
+                    AND cl.id IN (
+                        SELECT cl2.id FROM commercial_licenses cl2
+                        JOIN companies c2 ON c2.id = cl2.company_id
+                        WHERE c2.city_id = {city_param}
+                    )
+                """
+
+        rows = await conn.fetch(f"""
             WITH last_inspected AS (
                 SELECT cl.zone_id,
                        MAX(fi.inspection_date) AS last_inspection_date
@@ -275,6 +302,7 @@ class MissionRepository:
                 FROM license_obligations lo
                 JOIN commercial_licenses cl ON cl.id = lo.license_id
                 WHERE lo.status IN ('pending', 'overdue')
+                {loc_filter_lo}
                 GROUP BY cl.zone_id
             )
             SELECT
@@ -300,8 +328,8 @@ class MissionRepository:
                 (COALESCE(zo.pending_count, 0) *
                  COALESCE(CURRENT_DATE - li.last_inspection_date, 9999)
                  / 30.0) DESC
-            LIMIT $2
-        """, entity_id, limit)
+            LIMIT ${len(params) + 1}
+        """, *params, limit)
         return [dict(r) for r in rows]
 
     @staticmethod

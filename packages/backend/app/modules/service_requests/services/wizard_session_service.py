@@ -181,7 +181,7 @@ class WizardSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt:
                     logger.info(f"[WizardSession] Session expired: {session_id}")
                     await self.cache.delete(cache_key)
                     raise WizardSessionExpiredError()
@@ -312,7 +312,7 @@ class WizardSessionService:
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                remaining = (expires_at.replace(tzinfo=None) - datetime.now(timezone.utc)).total_seconds()
+                remaining = (expires_at - datetime.now(timezone.utc)).total_seconds()
                 ttl_seconds = max(0, int(remaining))
             except (ValueError, TypeError):
                 pass
@@ -620,7 +620,7 @@ class WizardSessionService:
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                remaining = (expires_at.replace(tzinfo=None) - datetime.now(timezone.utc)).total_seconds()
+                remaining = (expires_at - datetime.now(timezone.utc)).total_seconds()
                 ttl_seconds = max(0, int(remaining))
             except (ValueError, TypeError):
                 pass

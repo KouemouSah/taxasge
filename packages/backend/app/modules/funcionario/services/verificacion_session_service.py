@@ -161,7 +161,7 @@ class VerificacionSessionService:
         if expires_at:
             try:
                 exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) > exp_dt.replace(tzinfo=None):
+                if datetime.now(timezone.utc) > exp_dt:
                     logger.info(f"[VerificacionSession] Session expired: {session_id}")
                     await self.cache.delete(cache_key)
                     raise SessionExpiredError()

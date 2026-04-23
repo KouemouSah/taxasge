@@ -284,9 +284,9 @@ async def get_queue(
             from datetime import datetime, timezone
             deadline = item['sla_deadline']
             now = datetime.now(timezone.utc)
-            if deadline.replace(tzinfo=None) < now:
+            if deadline < now:
                 sla_status = "violated"
-            elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
+            elif (deadline - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         result.append(QueueItemResponse(
@@ -617,9 +617,9 @@ async def get_my_queue(
             from datetime import datetime, timezone
             deadline = item['sla_deadline']
             now = datetime.now(timezone.utc)
-            if deadline.replace(tzinfo=None) < now:
+            if deadline < now:
                 sla_status = "violated"
-            elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
+            elif (deadline - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         result.append(QueueItemResponse(
@@ -2916,7 +2916,7 @@ async def get_entity_service_requests(
         if row['sla_deadline']:
             deadline = row['sla_deadline']
             if hasattr(deadline, 'replace'):
-                deadline = deadline.replace(tzinfo=None)
+                deadline = deadline
             if deadline < now:
                 sla_status = "violated"
             elif (deadline - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
@@ -3370,7 +3370,7 @@ async def get_request_preview(
         from datetime import timedelta
         sla_deadline = row['submitted_at'] + timedelta(hours=row['sla_hours'])
         now = datetime.now(timezone.utc)
-        deadline_naive = sla_deadline.replace(tzinfo=None) if sla_deadline.tzinfo else sla_deadline
+        deadline_naive = sla_deadline if sla_deadline.tzinfo else sla_deadline
 
         remaining = (deadline_naive - now).total_seconds() / 3600
         sla_remaining_hours = round(remaining, 1)
@@ -3805,7 +3805,7 @@ async def get_urgent_requests_widget(
         if row['sla_deadline']:
             deadline = row['sla_deadline']
             if hasattr(deadline, 'replace'):
-                deadline = deadline.replace(tzinfo=None)
+                deadline = deadline
             sla_deadline_str = deadline.isoformat()
             if deadline < now:
                 sla_status = "violated"
@@ -4238,7 +4238,7 @@ async def get_alerts_widget(
 
         for row in sla_at_risk:
             deadline = row['deadline']
-            hours_left = (deadline.replace(tzinfo=None) - now).total_seconds() / 3600
+            hours_left = (deadline - now).total_seconds() / 3600
             alerts.append(AlertItem(
                 id=f"sla_risk_{row['id']}",
                 type="sla_warning",

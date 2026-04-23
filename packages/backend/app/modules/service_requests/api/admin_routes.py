@@ -3966,7 +3966,7 @@ async def validate_payment(
         # Track SLA compliance (was payment validated within SLA target?)
         sla_respected = (
             payment.get("sla_target_date") is None
-            or datetime.now(timezone.utc) <= payment["sla_target_date"].replace(tzinfo=None)
+            or datetime.now(timezone.utc) <= payment["sla_target_date"]
         )
         await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
 
@@ -4300,7 +4300,7 @@ async def reject_payment(
         # Track SLA compliance
         sla_respected = (
             payment.get("sla_target_date") is None
-            or datetime.now(timezone.utc) <= payment["sla_target_date"].replace(tzinfo=None)
+            or datetime.now(timezone.utc) <= payment["sla_target_date"]
         )
         await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
 

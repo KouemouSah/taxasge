@@ -551,9 +551,17 @@ class MissionService:
 
     @staticmethod
     async def suggest_zones(conn, user_id: UUID) -> List[Dict]:
-        """Suggest zones for mission planning based on coverage gaps."""
+        """Suggest zones for mission planning based on coverage gaps.
+
+        Auto-scopes to supervisor's location for city-scoped entities
+        (AYUNTAMIENTO, CAMARA_COMERCIO).
+        """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
-        return await MissionRepository.suggest_zones(conn, ctx["entity_id"])
+        location_id = ctx.get("entity_location_id")
+        return await MissionRepository.suggest_zones(
+            conn, ctx["entity_id"],
+            entity_location_id=location_id,
+        )
 
     @staticmethod
     async def get_agents_availability(
