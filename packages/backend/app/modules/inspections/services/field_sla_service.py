@@ -439,7 +439,7 @@ class FieldSLAService:
               )
             GROUP BY ap.user_id, u.full_name, u.email, ap.entity_id, e.code
             HAVING MAX(fi.inspection_date) IS NULL
-               OR MAX(fi.inspection_date) < CURRENT_DATE - $1
+               OR MAX(fi.inspection_date) < CURRENT_DATE - $1::int
         """, inactive_days)
 
         if not inactive_rows:
