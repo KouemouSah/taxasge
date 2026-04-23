@@ -20,7 +20,7 @@ import { FileText, Image as ImageIcon, File, Download } from 'lucide-react';
 // ---------------------------------------------------------------------------
 
 interface DocumentPreviewProps {
-  mimeType: string;
+  mimeType: string | undefined | null;
   thumbnailUrl?: string;
   fileName: string;
   onDownload: () => void;
@@ -39,7 +39,7 @@ export function DocumentPreview({
   const t = useTranslations('userDocuments.detail');
 
   // ---- Image preview ----
-  if (mimeType.startsWith('image/')) {
+  if (mimeType && mimeType.startsWith('image/')) {
     if (thumbnailUrl) {
       return (
         <div className="relative w-full rounded-lg overflow-hidden bg-muted border">

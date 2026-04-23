@@ -100,10 +100,9 @@ export function PersonalDocumentsGrid() {
 
   // Build filters: personal tab shows BOTH 'personal' uploads AND 'wizard_import'
   // documents (imported from service request submissions). NOT generated docs.
-  // Omit source filter to get all non-generated; backend returns personal + wizard_import.
+  // Omit source filter — backend returns all sources. Generated docs are in their own tab.
   const filters: DocumentFilters = {
     category,
-    status: 'active' as const,
     search: debouncedSearch || undefined,
     limit: 20,
   };

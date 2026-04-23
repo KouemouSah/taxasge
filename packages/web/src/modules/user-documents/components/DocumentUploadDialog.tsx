@@ -53,7 +53,8 @@ interface DocumentUploadDialogProps {
 // File icon helper
 // ---------------------------------------------------------------------------
 
-function getFileIcon(mimeType: string) {
+function getFileIcon(mimeType: string | undefined | null) {
+  if (!mimeType) return File;
   if (mimeType.startsWith('image/')) return ImageIcon;
   if (mimeType === 'application/pdf') return FileText;
   return File;

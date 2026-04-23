@@ -68,7 +68,8 @@ const CATEGORY_COLORS: Record<DocumentCategory, string> = {
 // File icon selector
 // ---------------------------------------------------------------------------
 
-function getFileIcon(mimeType: string) {
+function getFileIcon(mimeType: string | undefined | null) {
+  if (!mimeType) return File;
   if (mimeType.startsWith('image/')) return ImageIcon;
   if (mimeType === 'application/pdf') return FileText;
   return File;
