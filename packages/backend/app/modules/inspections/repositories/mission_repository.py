@@ -1,7 +1,7 @@
 """Mission Repository — Data access layer for field mission planning."""
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -603,8 +603,8 @@ class MissionRepository:
     ) -> Dict:
         """Compare current period with previous period of same length."""
         period_days = (date_to - date_from).days
-        prev_to = date_from - __import__('datetime').timedelta(days=1)
-        prev_from = prev_to - __import__('datetime').timedelta(days=period_days)
+        prev_to = date_from - timedelta(days=1)
+        prev_from = prev_to - timedelta(days=period_days)
 
         loc_filter = ""
         params: list = [entity_id, prev_from, prev_to]

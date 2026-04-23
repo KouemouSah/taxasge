@@ -11089,7 +11089,11 @@
       "period": "Período",
       "statusBreakdown": "Estado misiones",
       "allCovered": "Todas las zonas cubiertas",
-      "agentZoneMatrix": "Cobertura Agente × Zona"
+      "agentZoneMatrix": "Cobertura Agente × Zona",
+      "agentWorkload": "Carga de trabajo agentes",
+      "autoAssign": "Auto-asignar",
+      "markAbsent": "Marcar ausente",
+      "busy": "Ocupado"
     },
     "presets": {
       "title": "Filtros guardados",
