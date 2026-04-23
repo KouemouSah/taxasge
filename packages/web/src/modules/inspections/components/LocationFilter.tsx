@@ -4,6 +4,7 @@
  * LocationFilter — Reusable site/location filter for main-office supervisors.
  *
  * Only renders if the user is_main_office and there are 2+ locations.
+ * NEVER renders for AYUNTAMIENTO / CAMARA_COMERCIO (city-scoped entities).
  * Default: supervisor's own location. Dropdown allows switching to other sites.
  *
  * Usage:
@@ -15,6 +16,9 @@
  *     onChange={setLocationFilter}
  *   />
  */
+
+// Entities with city-level jurisdiction — NO cross-site visibility
+const CITY_SCOPED_ENTITIES = ['AYUNTAMIENTO', 'CAMARA_COMERCIO']
 
 import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -82,6 +86,10 @@ export function LocationFilter({
     [onChange]
   )
 
+  // Never show for city-scoped entities (AYUNTAMIENTO, CAMARA_COMERCIO)
+  const isCityScoped = entityCode && CITY_SCOPED_ENTITIES.includes(entityCode)
+  if (isCityScoped) return null
+
   // Only show for main-office supervisors with multiple locations
   if (!isMainOffice || locations.length <= 1) return null
 
@@ -130,19 +138,36 @@ export function LocationFilter({
  */
 function useLocationFilterState(profile: {
   entity_location_id?: string | null
+  entity_code?: string
   is_main_office?: boolean
 } | null | undefined) {
   const [value, setValue] = useState('')
   const [initialized, setInitialized] = useState(false)
 
-  useEffect(() => {
-    if (!initialized && profile?.entity_location_id && profile?.is_main_office) {
-      setValue(profile.entity_location_id)
-      setInitialized(true)
-    }
-  }, [profile, initialized])
+  const isCityScoped = profile?.entity_code &&
+    CITY_SCOPED_ENTITIES.includes(profile.entity_code)
 
-  return { locationFilter: value, setLocationFilter: setValue, isReady: initialized }
+  useEffect(() => {
+    if (!initialized && profile?.entity_location_id) {
+      // City-scoped entities: ALWAYS lock to own site
+      // Main-office national entities: default to own site (switchable)
+      if (isCityScoped || profile?.is_main_office) {
+        setValue(profile.entity_location_id)
+        setInitialized(true)
+      }
+    }
+  }, [profile, initialized, isCityScoped])
+
+  // City-scoped: setter is a no-op (locked to own site)
+  const setLocationFilter = useCallback(
+    (v: string) => {
+      if (isCityScoped) return // locked
+      setValue(v)
+    },
+    [isCityScoped]
+  )
+
+  return { locationFilter: value, setLocationFilter, isReady: initialized }
 }
 
 export { useEntityLocations, useLocationFilterState }

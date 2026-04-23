@@ -10674,7 +10674,8 @@
       "supervision": "Inspection Supervision",
       "overview": "Dashboard",
       "pendingSeals": "Pending Seals",
-      "agentPerformance": "Agent Performance"
+      "agentPerformance": "Agent Performance",
+      "missions": "Missions"
     },
     "field": {
       "title": "Field Control",
@@ -11075,7 +11076,20 @@
       "agentsAssigned": "Agents assigned",
       "agentRemoved": "Agent removed",
       "noAvailable": "No agents available",
-      "noAgents": "No agents assigned"
+      "noAgents": "No agents assigned",
+      "avgDuration": "Average",
+      "inspLabel": "insp.",
+      "daysSince": "Days",
+      "pending": "Pending",
+      "priority": "Priority",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "never": "Never",
+      "period": "Period",
+      "statusBreakdown": "Mission status",
+      "allCovered": "All zones covered",
+      "agentZoneMatrix": "Agent × Zone coverage"
     },
     "presets": {
       "title": "Saved filters",

@@ -576,4 +576,108 @@ class MissionRepository:
             "trends": [dict(r) for r in trends],
             "top_agents": [dict(r) for r in top_agents],
             "stale_zones": [dict(r) for r in stale_zones],
+            "status_breakdown": {
+                "planned": summary["planned"] or 0,
+                "in_progress": summary["in_progress"] or 0,
+                "completed": completed,
+                "cancelled": summary["cancelled"] or 0,
+            },
+            "deltas": await MissionRepository._compute_deltas(
+                conn, entity_id, date_from, date_to, entity_location_id,
+                current_summary={
+                    "total": total, "completed": completed,
+                    "actual": actual, "target": target,
+                    "conformity": conformity_rate,
+                    "collected": float(summary["total_collected"] or 0),
+                },
+            ),
+            "agent_zone_matrix": await MissionRepository._get_agent_zone_matrix(
+                conn, entity_id, date_from, date_to, entity_location_id,
+            ),
         }
+
+    @staticmethod
+    async def _compute_deltas(
+        conn, entity_id: UUID, date_from: date, date_to: date,
+        entity_location_id: Optional[UUID], current_summary: Dict,
+    ) -> Dict:
+        """Compare current period with previous period of same length."""
+        period_days = (date_to - date_from).days
+        prev_to = date_from - __import__('datetime').timedelta(days=1)
+        prev_from = prev_to - __import__('datetime').timedelta(days=period_days)
+
+        loc_filter = ""
+        params: list = [entity_id, prev_from, prev_to]
+        if entity_location_id:
+            loc_filter = "AND fm.entity_location_id = $4"
+            params.append(entity_location_id)
+
+        prev = await conn.fetchrow(f"""
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE fm.status = 'completed') AS completed,
+                COALESCE(SUM(agg.actual), 0) AS actual,
+                COALESCE(SUM(agg.target), 0) AS target,
+                COALESCE(SUM(agg.collected), 0) AS collected
+            FROM field_missions fm
+            LEFT JOIN LATERAL (
+                SELECT SUM(fma.actual_inspections)::int AS actual,
+                       SUM(fma.target_inspections)::int AS target,
+                       COALESCE(SUM(fi_agg.collected), 0) AS collected
+                FROM field_mission_agents fma
+                LEFT JOIN LATERAL (
+                    SELECT COALESCE(SUM(payment_amount), 0) AS collected
+                    FROM field_inspections WHERE mission_id = fm.id AND payment_collected
+                ) fi_agg ON true
+                WHERE fma.mission_id = fm.id
+            ) agg ON true
+            WHERE fm.entity_id = $1
+              AND fm.mission_date BETWEEN $2 AND $3
+              {loc_filter}
+        """, *params)
+
+        def delta(current: float, previous: float) -> float:
+            if previous == 0:
+                return 100.0 if current > 0 else 0.0
+            return round((current - previous) / previous * 100, 1)
+
+        prev_total = prev["total"] or 0
+        prev_completed = prev["completed"] or 0
+        prev_actual = prev["actual"] or 0
+
+        return {
+            "missions": delta(current_summary["total"], prev_total),
+            "completion": delta(current_summary["completed"], prev_completed),
+            "inspections": delta(current_summary["actual"], prev_actual),
+            "collected": delta(current_summary["collected"], float(prev["collected"] or 0)),
+        }
+
+    @staticmethod
+    async def _get_agent_zone_matrix(
+        conn, entity_id: UUID, date_from: date, date_to: date,
+        entity_location_id: Optional[UUID],
+    ) -> List[Dict]:
+        """Agent × Zone inspection count matrix for heatmap."""
+        loc_filter = ""
+        params: list = [entity_id, date_from, date_to]
+        if entity_location_id:
+            loc_filter = "AND fi.entity_location_id = $4"
+            params.append(entity_location_id)
+
+        rows = await conn.fetch(f"""
+            SELECT
+                u.first_name || ' ' || u.last_name AS agent_name,
+                cz.zone_code,
+                COUNT(*)::int AS inspections
+            FROM field_inspections fi
+            JOIN users u ON u.id = fi.agent_id
+            LEFT JOIN commerce_zones cz ON cz.id = fi.zone_id
+            WHERE fi.entity_id = $1
+              AND fi.inspection_date BETWEEN $2 AND $3
+              AND fi.status != 'cancelled'
+              AND cz.zone_code IS NOT NULL
+              {loc_filter}
+            GROUP BY u.first_name, u.last_name, cz.zone_code
+            ORDER BY u.first_name, cz.zone_code
+        """, *params)
+        return [dict(r) for r in rows]

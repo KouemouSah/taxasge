@@ -10674,7 +10674,8 @@
       "supervision": "Supervisión Inspecciones",
       "overview": "Dashboard",
       "pendingSeals": "Scellés Pendientes",
-      "agentPerformance": "Rendimiento Agentes"
+      "agentPerformance": "Rendimiento Agentes",
+      "missions": "Misiones"
     },
     "field": {
       "title": "Control Terrain",
@@ -11075,7 +11076,20 @@
       "agentsAssigned": "Agentes asignados",
       "agentRemoved": "Agente retirado",
       "noAvailable": "No hay agentes disponibles",
-      "noAgents": "Sin agentes asignados"
+      "noAgents": "Sin agentes asignados",
+      "avgDuration": "Promedio",
+      "inspLabel": "insp.",
+      "daysSince": "Días",
+      "pending": "Pendientes",
+      "priority": "Prioridad",
+      "high": "Alto",
+      "medium": "Medio",
+      "low": "Bajo",
+      "never": "Nunca",
+      "period": "Período",
+      "statusBreakdown": "Estado misiones",
+      "allCovered": "Todas las zonas cubiertas",
+      "agentZoneMatrix": "Cobertura Agente × Zona"
     },
     "presets": {
       "title": "Filtros guardados",

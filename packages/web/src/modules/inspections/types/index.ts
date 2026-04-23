@@ -522,10 +522,33 @@ export interface MissionStaleZone {
   pending_count: number
 }
 
+export interface MissionDeltas {
+  missions: number
+  completion: number
+  inspections: number
+  collected: number
+}
+
+export interface MissionStatusBreakdown {
+  planned: number
+  in_progress: number
+  completed: number
+  cancelled: number
+}
+
+export interface AgentZoneCell {
+  agent_name: string
+  zone_code: string
+  inspections: number
+}
+
 export interface MissionAnalyticsResponse {
   period: { date_from: string; date_to: string }
   summary: MissionAnalyticsSummary
   trends: MissionTrendPoint[]
   top_agents: MissionTopAgent[]
   stale_zones: MissionStaleZone[]
+  deltas: MissionDeltas
+  status_breakdown: MissionStatusBreakdown
+  agent_zone_matrix: AgentZoneCell[]
 }
