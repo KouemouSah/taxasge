@@ -222,7 +222,7 @@ class EventBus:
         # Ensure payload has timestamp and event_type
         full_payload: EventPayload = {
             "event_type": event_type.value,
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             **(payload or {})
         }
 

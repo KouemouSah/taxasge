@@ -105,8 +105,8 @@ class BatchSessionService:
         """Save session to cache with TTL renewal."""
         cache_key = self._get_cache_key(session_id)
         now = datetime.now(timezone.utc)
-        data["updated_at"] = now.isoformat() + "Z"
-        data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat() + "Z"
+        data["updated_at"] = now.isoformat()
+        data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat()
 
         try:
             success = await self.cache.set(cache_key, data, self.session_ttl)
@@ -144,9 +144,9 @@ class BatchSessionService:
             "item_documents": {},
             "form_data_grid": {},
             "tariff": None,
-            "created_at": now.isoformat() + "Z",
-            "updated_at": now.isoformat() + "Z",
-            "expires_at": (now + timedelta(seconds=self.session_ttl)).isoformat() + "Z",
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "expires_at": (now + timedelta(seconds=self.session_ttl)).isoformat(),
         }
 
         saved = await self._save_session(session_id, session_data)
@@ -428,7 +428,7 @@ class BatchSessionService:
             "mime_type": mime_type,
             "extraction_data": extraction_data or {},
             "confidence": confidence,
-            "uploaded_at": datetime.now(timezone.utc).isoformat() + "Z",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
         }
         session["shared_documents"].append(doc_ref)
 

@@ -1041,7 +1041,7 @@ class VerificacionSessionService:
                             "matricula": matricula,
                             "user_id": str(user_id),
                             "source": result.source,
-                            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                             "metadata": {
                                 "action_required": "agent_review",
                                 "priority": "high",

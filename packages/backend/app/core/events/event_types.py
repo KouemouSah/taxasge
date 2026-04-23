@@ -395,7 +395,7 @@ def create_event_payload(
     """
     payload: EventPayload = {
         "event_type": event_type.value,
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         **kwargs
     }
     return payload

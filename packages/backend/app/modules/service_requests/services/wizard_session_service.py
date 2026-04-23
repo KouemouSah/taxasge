@@ -203,9 +203,9 @@ class WizardSessionService:
 
         # Update timestamps (Z suffix = UTC, required for correct JS Date parsing)
         now = datetime.now(timezone.utc)
-        data["updated_at"] = now.isoformat() + "Z"
+        data["updated_at"] = now.isoformat()
         if renew_ttl:
-            data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat() + "Z"
+            data["expires_at"] = (now + timedelta(seconds=self.session_ttl)).isoformat()
 
         try:
             success = await self.cache.set(cache_key, data, self.session_ttl)
@@ -435,9 +435,9 @@ class WizardSessionService:
             "tariff": None,
             "validation_results": None,
             "has_errors": False,
-            "created_at": now.isoformat() + "Z",
-            "updated_at": now.isoformat() + "Z",
-            "expires_at": expires_at.isoformat() + "Z",
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
             "ip_address": ip_address,
             "user_agent": user_agent,
         }
@@ -588,7 +588,7 @@ class WizardSessionService:
             "extraction_status": extraction_result.get("status", "pending"),
             "risk_analysis": extraction_result.get("risk_analysis"),
             "doc_hash": extraction_result.get("doc_hash"),
-            "previewed_at": now.isoformat() + "Z",
+            "previewed_at": now.isoformat(),
             "confirmed_at": None,
             "user_corrections": None,
         }
@@ -689,7 +689,7 @@ class WizardSessionService:
         now = datetime.now(timezone.utc)
 
         # Update document with confirmed data
-        session["documents"][document_code]["confirmed_at"] = now.isoformat() + "Z"
+        session["documents"][document_code]["confirmed_at"] = now.isoformat()
         session["documents"][document_code]["user_corrections"] = confirmed_data
         if user_notes:
             session["documents"][document_code]["user_notes"] = user_notes

@@ -49,7 +49,7 @@ class WebSocketManager:
         message = json.dumps({
             "type": event_type,
             "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
         async def _send(user_id: str, ws: WebSocket) -> str | None:
