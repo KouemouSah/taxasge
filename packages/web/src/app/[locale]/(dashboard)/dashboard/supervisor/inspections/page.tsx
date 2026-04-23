@@ -731,6 +731,16 @@ export default function SupervisorInspectionDashboard() {
 
         {/* ============ TAB 5: Missions ============ */}
         <TabsContent value="missions" className="flex-1 overflow-y-auto mt-2 space-y-3">
+          <div className="flex justify-end mb-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => router.push(`/${locale}/dashboard/supervisor/inspections/missions`)}
+              className="gap-1.5"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              {t('mission.viewAll') || 'Hub Missions'}
+            </Button>
+          </div>
           <MissionPlanPanel
             open={showMissionPlan}
             onClose={() => setShowMissionPlan(false)}
