@@ -8,7 +8,7 @@ Prefix: /api/v1/inspections
 import logging
 from typing import Optional
 from uuid import UUID
-from datetime import date
+from datetime import date, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
