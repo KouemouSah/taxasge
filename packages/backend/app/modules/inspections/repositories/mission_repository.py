@@ -594,6 +594,9 @@ class MissionRepository:
             "agent_zone_matrix": await MissionRepository._get_agent_zone_matrix(
                 conn, entity_id, date_from, date_to, entity_location_id,
             ),
+            "zone_conformity": await MissionRepository._get_zone_conformity(
+                conn, entity_id, date_from, date_to, entity_location_id,
+            ),
         }
 
     @staticmethod
@@ -679,5 +682,40 @@ class MissionRepository:
               {loc_filter}
             GROUP BY u.first_name, u.last_name, cz.zone_code
             ORDER BY u.first_name, cz.zone_code
+        """, *params)
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    async def _get_zone_conformity(
+        conn, entity_id: UUID, date_from: date, date_to: date,
+        entity_location_id: Optional[UUID],
+    ) -> List[Dict]:
+        """Conformity rate per zone — cross-dimensional analysis."""
+        loc_filter = ""
+        params: list = [entity_id, date_from, date_to]
+        if entity_location_id:
+            loc_filter = "AND fi.entity_location_id = $4"
+            params.append(entity_location_id)
+
+        rows = await conn.fetch(f"""
+            SELECT
+                cz.zone_code,
+                cz.name_es AS zone_name,
+                COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE fi.result = 'conforme')::int AS conforme,
+                COUNT(*) FILTER (WHERE fi.result = 'non_conforme')::int AS non_conforme,
+                ROUND(
+                    COUNT(*) FILTER (WHERE fi.result = 'conforme')::numeric
+                    / NULLIF(COUNT(*) FILTER (WHERE fi.result IS NOT NULL), 0) * 100, 1
+                ) AS conformity_rate
+            FROM field_inspections fi
+            JOIN commerce_zones cz ON cz.id = fi.zone_id
+            WHERE fi.entity_id = $1
+              AND fi.inspection_date BETWEEN $2 AND $3
+              AND fi.status != 'cancelled'
+              {loc_filter}
+            GROUP BY cz.zone_code, cz.name_es
+            ORDER BY conformity_rate ASC NULLS LAST
+            LIMIT 12
         """, *params)
         return [dict(r) for r in rows]

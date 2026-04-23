@@ -11093,7 +11093,11 @@
       "agentWorkload": "Charge de travail agents",
       "autoAssign": "Auto-assigner",
       "markAbsent": "Marquer absent",
-      "busy": "Occupé"
+      "busy": "Occupé",
+      "zoneConformity": "Conformité par zone",
+      "conforme": "Conforme",
+      "nonConforme": "Non conforme",
+      "targetReached": "objectif atteint"
     },
     "presets": {
       "title": "Filtres sauvegardés",

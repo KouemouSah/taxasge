@@ -11093,7 +11093,11 @@
       "agentWorkload": "Agent workload",
       "autoAssign": "Auto-assign",
       "markAbsent": "Mark absent",
-      "busy": "Busy"
+      "busy": "Busy",
+      "zoneConformity": "Conformity by zone",
+      "conforme": "Conforme",
+      "nonConforme": "Non conforme",
+      "targetReached": "target reached"
     },
     "presets": {
       "title": "Saved filters",

@@ -24,7 +24,7 @@ import { Line, Doughnut, Bar } from 'react-chartjs-2'
 import {
   CalendarDays, CheckCircle2, Target, DollarSign,
   TrendingUp, TrendingDown, MapPin, AlertTriangle,
-  Trophy, Plus,
+  Trophy, Plus, Download,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/table'
 import { inspectionApi } from '@/modules/inspections/services/api'
 import type {
-  MissionAnalyticsResponse, MissionTrendPoint, AgentZoneCell,
+  MissionAnalyticsResponse, MissionTrendPoint, AgentZoneCell, ZoneConformity,
 } from '@/modules/inspections/types'
 
 ChartJS.register(
@@ -95,6 +95,37 @@ export function MissionDashboardTab({ locationFilter }: Props) {
       </div>
     )
   }
+
+  // Export CSV
+  const exportCSV = useCallback((d: MissionAnalyticsResponse) => {
+    const rows: string[] = [
+      'Metric,Value',
+      `Missions completed,${d.summary.completed}/${d.summary.total_missions}`,
+      `Completion rate,${d.summary.completion_rate}%`,
+      `Inspections,${d.summary.total_inspections_actual}/${d.summary.total_inspections_target}`,
+      `Conformity,${d.summary.conformity_rate}%`,
+      `Collected,${d.summary.total_collected} XAF`,
+      `Avg duration,${d.summary.avg_duration_hours}h`,
+      '',
+      'Week,Missions,Inspections,Conformity%',
+      ...d.trends.map((p: MissionTrendPoint) => `${p.week},${p.missions},${p.inspections},${p.conformity ?? ''}`),
+      '',
+      'Agent,Missions,Inspections,Target%',
+      ...d.top_agents.map(a => `${a.agent_name},${a.missions_count},${a.inspections},${a.avg_target_pct ?? ''}`),
+      '',
+      'Zone,Total,Conforme,Non conforme,Conformity%',
+      ...(d.zone_conformity ?? []).map((z: ZoneConformity) =>
+        `${z.zone_code} ${z.zone_name ?? ''},${z.total},${z.conforme},${z.non_conforme},${z.conformity_rate ?? ''}`
+      ),
+    ]
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `mission_analytics_${d.period.date_from}_${d.period.date_to}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }, [])
 
   const s = data.summary
   const d = data.deltas
@@ -248,7 +279,21 @@ export function MissionDashboardTab({ locationFilter }: Props) {
                   responsive: true, maintainAspectRatio: false,
                   indexAxis: 'y' as const,
                   scales: { x: { beginAtZero: true } },
-                  plugins: { legend: { display: false } },
+                  plugins: { legend: { display: false },
+                    tooltip: { callbacks: { afterLabel: (ctx: { dataIndex: number }) => {
+                      const agent = data.top_agents[ctx.dataIndex]
+                      return agent ? `${agent.avg_target_pct ?? 0}% ${t('missions.targetReached', { defaultMessage: 'target' })}` : ''
+                    }}}
+                  },
+                  onClick: (_evt: unknown, elements: Array<{ index: number }>) => {
+                    if (elements.length > 0) {
+                      const idx = elements[0].index
+                      const agent = data.top_agents[idx]
+                      if (agent) {
+                        router.push(`/${locale}/dashboard/supervisor/inspections/agents`)
+                      }
+                    }
+                  },
                 }} />
               </div>
             ) : (
@@ -348,10 +393,57 @@ export function MissionDashboardTab({ locationFilter }: Props) {
         </Card>
       )}
 
-      {/* Period */}
-      <p className="text-xs text-muted-foreground text-center">
-        {t('missions.period', { defaultMessage: 'Period' })}: {data.period.date_from} — {data.period.date_to}
-      </p>
+      {/* Row 5: Conformity × Zone */}
+      {data.zone_conformity && data.zone_conformity.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              {t('missions.zoneConformity', { defaultMessage: 'Conformity by zone' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-52">
+              <Bar
+                data={{
+                  labels: data.zone_conformity.map((z: ZoneConformity) => z.zone_code),
+                  datasets: [
+                    {
+                      label: t('missions.conforme', { defaultMessage: 'Conforme' }),
+                      data: data.zone_conformity.map((z: ZoneConformity) => z.conforme),
+                      backgroundColor: '#22c55e',
+                      borderRadius: 3,
+                    },
+                    {
+                      label: t('missions.nonConforme', { defaultMessage: 'Non conforme' }),
+                      data: data.zone_conformity.map((z: ZoneConformity) => z.non_conforme),
+                      backgroundColor: '#ef4444',
+                      borderRadius: 3,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                  plugins: { legend: { position: 'bottom' as const, labels: { boxWidth: 10 } } },
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Footer: Period + Export */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {t('missions.period', { defaultMessage: 'Period' })}: {data.period.date_from} — {data.period.date_to}
+        </p>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportCSV(data)}>
+          <Download className="h-3.5 w-3.5" />
+          {t('common.export', { defaultMessage: 'Export CSV' })}
+        </Button>
+      </div>
     </div>
   )
 }

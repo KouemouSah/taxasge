@@ -542,6 +542,15 @@ export interface AgentZoneCell {
   inspections: number
 }
 
+export interface ZoneConformity {
+  zone_code: string
+  zone_name: string | null
+  total: number
+  conforme: number
+  non_conforme: number
+  conformity_rate: number | null
+}
+
 export interface MissionAnalyticsResponse {
   period: { date_from: string; date_to: string }
   summary: MissionAnalyticsSummary
@@ -551,4 +560,5 @@ export interface MissionAnalyticsResponse {
   deltas: MissionDeltas
   status_breakdown: MissionStatusBreakdown
   agent_zone_matrix: AgentZoneCell[]
+  zone_conformity: ZoneConformity[]
 }
