@@ -129,6 +129,47 @@ class InternalScheduler:
                 self._refresh_effective_permissions,
                 60,  # Every 60 seconds — lightweight CONCURRENTLY refresh
             ),
+            # ── Module crons (HTTP endpoint equivalents run internally) ──
+            (
+                "refresh-company-stats",
+                self._refresh_company_stats,
+                900,  # Every 15 min — refresh company dashboard MVs
+            ),
+            (
+                "license-flag-overdue",
+                self._license_flag_overdue,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "license-apply-penalties",
+                self._license_apply_penalties,
+                settings.SCHEDULER_WEEKLY_INTERVAL,
+            ),
+            (
+                "license-obligation-reminders",
+                self._license_obligation_reminders,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "license-renewal-reminders",
+                self._license_renewal_reminders,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "auth-cleanup",
+                self._auth_cleanup,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "cleanup-abandoned-requests",
+                self._cleanup_abandoned_requests,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "inspection-auto-approve-seals",
+                self._inspection_auto_approve_seals,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -1355,6 +1396,162 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             raise
+
+
+    # ================================================================
+    # Module crons — call the same logic as HTTP endpoints internally
+    # ================================================================
+
+    async def _refresh_company_stats(self):
+        """Refresh company dashboard materialized views (every 15 min)."""
+        from app.database.connection import db_manager
+
+        views = [
+            "mv_company_stats_by_zone",
+            "mv_obligation_stats_by_ministry",
+            "mv_company_global_stats",
+            "mv_company_analytics",
+        ]
+        refreshed = []
+        async with db_manager.get_connection() as db:
+            for view in views:
+                try:
+                    exists = await db.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = $1)",
+                        view,
+                    )
+                    if not exists:
+                        continue
+                    try:
+                        await db.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")
+                    except Exception:
+                        await db.execute(f"REFRESH MATERIALIZED VIEW {view}")
+                    refreshed.append(view)
+                except Exception as e:
+                    if "does not exist" not in str(e):
+                        logger.warning(f"Failed to refresh {view}: {e}")
+        if refreshed:
+            logger.info(f"Company stats MVs refreshed: {', '.join(refreshed)}")
+        return {"refreshed": refreshed}
+
+    async def _license_flag_overdue(self):
+        """Flag overdue obligations past due_date (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                async with db.transaction():
+                    from app.modules.fiscal_services.services.license_service import LicenseService
+                    count = await LicenseService.flag_overdue_obligations(db)
+                    if count:
+                        logger.info(f"License flag-overdue: {count} flagged")
+                    return {"flagged": count}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"License flag-overdue failed: {e}")
+        return None
+
+    async def _license_apply_penalties(self):
+        """Apply penalties on overdue obligations (weekly)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                async with db.transaction():
+                    from app.modules.fiscal_services.services.license_service import LicenseService
+                    count = await LicenseService.apply_penalties(db)
+                    if count:
+                        logger.info(f"License penalties applied: {count}")
+                    return {"updated": count}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"License apply-penalties failed: {e}")
+        return None
+
+    async def _license_obligation_reminders(self):
+        """Send tiered obligation reminders (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.fiscal_services.services.oms_reminder_service import OmsReminderService
+                svc = OmsReminderService()
+                result = await svc.run_reminder_check(db)
+                if result and result.get("total_sent"):
+                    logger.info(f"Obligation reminders: {result}")
+                return result
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Obligation reminders failed: {e}")
+        return None
+
+    async def _license_renewal_reminders(self):
+        """Send renewal reminders for completed licenses from previous year (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.fiscal_services.services.license_service import LicenseService
+                count = await LicenseService.check_renewal_reminders(db)
+                if count:
+                    logger.info(f"Renewal reminders sent: {count}")
+                return {"reminders_sent": count}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Renewal reminders failed: {e}")
+        return None
+
+    async def _auth_cleanup(self):
+        """Cleanup expired sessions, tokens, and pending registrations (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                r1 = await db.execute("DELETE FROM sessions WHERE expires_at < NOW()")
+                r2 = await db.execute("DELETE FROM refresh_tokens WHERE expires_at < NOW()")
+                r3 = await db.execute("DELETE FROM pending_registrations WHERE expires_at < NOW()")
+                sessions = int(r1.split()[-1]) if r1 else 0
+                tokens = int(r2.split()[-1]) if r2 else 0
+                regs = int(r3.split()[-1]) if r3 else 0
+                total = sessions + tokens + regs
+                if total > 0:
+                    logger.info(f"Auth cleanup: {sessions} sessions, {tokens} tokens, {regs} registrations")
+                return {"sessions": sessions, "tokens": tokens, "registrations": regs}
+        except Exception as e:
+            logger.error(f"Auth cleanup failed: {e}")
+        return None
+
+    async def _cleanup_abandoned_requests(self):
+        """Cleanup abandoned DRAFT service requests (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.service_requests.services.service_request_service import ServiceRequestService
+                result = await ServiceRequestService.cleanup_abandoned_requests(db)
+                if result and result.get("deleted", 0) > 0:
+                    logger.info(f"Abandoned requests cleanup: {result}")
+                return result
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Abandoned requests cleanup failed: {e}")
+        return None
+
+    async def _inspection_auto_approve_seals(self):
+        """Auto-approve seal proposals after timeout (daily)."""
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.inspections.services.inspection_service import InspectionService
+                svc = InspectionService()
+                count = await svc.auto_approve_expired_seals(db)
+                if count:
+                    logger.info(f"Auto-approved seals: {count}")
+                return {"auto_approved": count}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Auto-approve seals failed: {e}")
+        return None
 
 
 # Singleton
