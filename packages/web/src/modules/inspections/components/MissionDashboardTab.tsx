@@ -82,21 +82,7 @@ export function MissionDashboardTab({ locationFilter }: Props) {
     return { agents, zones, lookup }
   }, [data?.agent_zone_matrix])
 
-  if (loading || !data) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-72 rounded-lg" />
-          <Skeleton className="h-72 rounded-lg" />
-        </div>
-      </div>
-    )
-  }
-
-  // Export CSV
+  // Export CSV — must be declared before early return (React hooks rule)
   const exportCSV = useCallback((d: MissionAnalyticsResponse) => {
     const rows: string[] = [
       'Metric,Value',
@@ -126,6 +112,20 @@ export function MissionDashboardTab({ locationFilter }: Props) {
     link.click()
     URL.revokeObjectURL(url)
   }, [])
+
+  if (loading || !data) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
+        </div>
+      </div>
+    )
+  }
 
   const s = data.summary
   const d = data.deltas
