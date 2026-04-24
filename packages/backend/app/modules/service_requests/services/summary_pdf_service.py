@@ -756,8 +756,10 @@ class SummaryPDFService:
         # Generate barcode value
         barcode_value = self.generate_barcode_value(request_number)
 
-        # Get verify URL from settings
-        verify_url = settings.FRONTEND_URL
+        # Generate verification URL with token (same pattern as solicitud PDF)
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        sr_token = self._generate_sr_verification_token(request_number)
+        verify_url = f"{frontend_url}/verify/{request_number}?t={sr_token}"
 
         # Prepare documents with status
         prepared_documents = []
@@ -911,8 +913,8 @@ class SummaryPDFService:
 
         frontend_url = settings.FRONTEND_URL.rstrip("/")
         sr_token = self._generate_sr_verification_token(request_number)
-        verify_url = f"{frontend_url}"
-        qr_code_b64 = self._generate_qr_with_logo(f"{frontend_url}/verify/{request_number}?t={sr_token}", size=180)
+        verify_url = f"{frontend_url}/verify/{request_number}?t={sr_token}"
+        qr_code_b64 = self._generate_qr_with_logo(verify_url, size=180)
 
         # Format tariff
         def format_amount(amount) -> str:
