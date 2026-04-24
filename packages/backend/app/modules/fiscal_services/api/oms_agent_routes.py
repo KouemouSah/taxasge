@@ -102,7 +102,7 @@ async def batch_process_obligations(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
-    __: None = Depends(rate_limit_dep(max_requests=30, window_seconds=60)),
+    __: None = Depends(rate_limit_dep(endpoint="/oms/batch-process", user_max=30, user_window=60)),
 ):
     """Batch process multiple obligations (processing -> completed).
 
@@ -158,7 +158,7 @@ async def process_obligation(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
-    __: None = Depends(rate_limit_dep(max_requests=60, window_seconds=60)),
+    __: None = Depends(rate_limit_dep(endpoint="/oms/obligation", user_max=60, user_window=60)),
 ):
     """Process obligation: processing -> completed.
 
@@ -188,7 +188,7 @@ async def reject_obligation(
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
-    __: None = Depends(rate_limit_dep(max_requests=60, window_seconds=60)),
+    __: None = Depends(rate_limit_dep(endpoint="/oms/obligation", user_max=60, user_window=60)),
 ):
     """Reject obligation: processing -> paid (re-routable).
 
