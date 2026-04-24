@@ -943,3 +943,9 @@ async def download_seal_pdf(
             "Content-Disposition": f'attachment; filename="seal-pv-{inspection_id}.pdf"',
         },
     )
+
+
+# Include mission sub-router — MUST be at the end so /missions/* routes
+# are registered BEFORE /{inspection_id} catch-all in the same router.
+from app.modules.inspections.api.mission_routes import router as _mission_router
+router.include_router(_mission_router)

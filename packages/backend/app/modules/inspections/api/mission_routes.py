@@ -37,7 +37,7 @@ from app.modules.inspections.services.mission_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/inspections/missions", tags=["Inspection Missions"])
+router = APIRouter(prefix="/missions", tags=["Inspection Missions"])
 
 
 # ============================================================

@@ -1709,8 +1709,8 @@ try:
         analytics_router as inspection_analytics_router,
         filter_export_router as inspection_filter_export_router,
     )
-    # Order matters: specific prefixes BEFORE catch-all {inspection_id} routes
-    app.include_router(inspection_mission_router, prefix="/api/v1", tags=["inspection-missions"])
+    # Mission routes included inside inspections_router via router.include_router()
+    # to avoid /{inspection_id} catch-all matching /missions/* paths
     app.include_router(inspection_analytics_router, prefix="/api/v1", tags=["inspection-analytics"])
     app.include_router(inspection_filter_export_router, prefix="/api/v1", tags=["inspection-filters-export"])
     app.include_router(inspections_router, prefix="/api/v1", tags=["field-inspections"])

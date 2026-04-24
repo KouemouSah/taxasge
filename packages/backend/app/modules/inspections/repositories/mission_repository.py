@@ -535,8 +535,14 @@ class MissionRepository:
             LIMIT 10
         """, *params)
 
-        # Stale zones (> 30 days without inspection)
-        stale_zones = await conn.fetch("""
+        # Stale zones (> 30 days without inspection), location-scoped
+        stale_loc_filter = ""
+        stale_params: list = [entity_id]
+        if entity_location_id:
+            stale_loc_filter = "AND fi.entity_location_id = $2"
+            stale_params.append(entity_location_id)
+
+        stale_zones = await conn.fetch(f"""
             SELECT
                 cz.zone_code, cz.name_es AS zone_name,
                 (CURRENT_DATE - MAX(fi.inspection_date))::int AS days_since,
@@ -544,6 +550,7 @@ class MissionRepository:
             FROM commerce_zones cz
             LEFT JOIN field_inspections fi ON fi.zone_id = cz.id
                 AND fi.entity_id = $1 AND fi.status != 'cancelled'
+                {stale_loc_filter}
             LEFT JOIN commercial_licenses cl ON cl.zone_id = cz.id
             LEFT JOIN license_obligations lo ON lo.license_id = cl.id
             GROUP BY cz.id, cz.zone_code, cz.name_es
@@ -551,7 +558,7 @@ class MissionRepository:
                 OR (CURRENT_DATE - MAX(fi.inspection_date)) > 30
             ORDER BY days_since DESC NULLS FIRST
             LIMIT 10
-        """, entity_id)
+        """, *stale_params)
 
         return {
             "period": {"date_from": str(date_from), "date_to": str(date_to)},
