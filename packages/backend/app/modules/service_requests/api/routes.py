@@ -1776,9 +1776,19 @@ async def get_request_detail_view(
                 sr_company_id
             ) if sr_company_id else None
 
+            # Fetch license metadata for certificate link
+            lic_meta = await db.fetchrow(
+                "SELECT status, certificate_url, certificate_number FROM commercial_licenses WHERE id = $1",
+                sr_license_id,
+            )
+
             bundle_details = {
                 "company_name": comp_row["legal_name"] if comp_row else None,
                 "registration_number": comp_row["registration_number"] if comp_row else None,
+                "license_status": lic_meta["status"] if lic_meta else None,
+                "certificate_url": lic_meta["certificate_url"] if lic_meta else None,
+                "certificate_number": lic_meta["certificate_number"] if lic_meta else None,
+                "company_id": str(sr_company_id) if sr_company_id else None,
                 "splits": [
                     {
                         "entity_code": r["entity_code"],
@@ -2054,6 +2064,59 @@ async def download_citizen_summary_pdf(
                 logger.warning(f"Could not get photo URL: {photo_err}")
             break
 
+    # Build bundle_details for BUNDLE_PAYMENT workflows
+    pdf_bundle_details = None
+    pdf_sr_license_id = await db.fetchval(
+        "SELECT commercial_license_id FROM service_requests WHERE id = $1",
+        request_id,
+    ) if request.workflow_code == "BUNDLE_PAYMENT" else None
+    if request.workflow_code == "BUNDLE_PAYMENT" and pdf_sr_license_id:
+        try:
+            bd_rows = await db.fetch("""
+                SELECT sp.entity_code, sp.total_amount, sp.workflow_status,
+                       ent.name AS entity_name
+                FROM service_payments sp
+                LEFT JOIN entities ent ON ent.code = sp.entity_code
+                WHERE sp.service_request_id = $1
+                ORDER BY sp.entity_code
+            """, request_id)
+            obl_rows = await db.fetch("""
+                SELECT lo.fee_type, lo.amount, lo.status,
+                       fs.name_es AS service_name
+                FROM license_obligations lo
+                LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+                WHERE lo.license_id = $1
+                  AND lo.payment_id IN (
+                      SELECT id FROM service_payments WHERE service_request_id = $2
+                  )
+                ORDER BY lo.fee_type, fs.name_es
+            """, pdf_sr_license_id, request_id)
+            sr_company_id = await db.fetchval(
+                "SELECT company_id FROM service_requests WHERE id = $1", request_id
+            )
+            comp_row = await db.fetchrow(
+                "SELECT legal_name, registration_number FROM companies WHERE id = $1",
+                sr_company_id
+            ) if sr_company_id else None
+
+            pdf_bundle_details = {
+                "company_name": comp_row["legal_name"] if comp_row else None,
+                "registration_number": comp_row["registration_number"] if comp_row else None,
+                "splits": [
+                    {"entity_code": r["entity_code"], "entity_name": r["entity_name"],
+                     "amount": float(r["total_amount"]), "status": r["workflow_status"]}
+                    for r in bd_rows
+                ],
+                "obligations": [
+                    {"service_name": r["service_name"] or r["fee_type"],
+                     "amount": float(r["amount"]), "status": r["status"], "fee_type": r["fee_type"]}
+                    for r in obl_rows
+                ],
+                "total_amount": sum(float(r["total_amount"]) for r in bd_rows),
+            }
+        except Exception as bd_err:
+            logger.warning(f"Could not build bundle details for PDF: {bd_err}")
+
     # Generate PDF
     pdf_bytes = await summary_pdf_service.generate_summary_pdf(
         request_number=request.reference,
@@ -2066,6 +2129,7 @@ async def download_citizen_summary_pdf(
         language=language,
         photo_url=photo_url,
         payment_status=request.payment_status,
+        bundle_details=pdf_bundle_details,
     )
 
     # Return PDF response

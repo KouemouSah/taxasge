@@ -335,66 +335,127 @@ export default function ServiceRequestDetailPage() {
               </Card>
 
               {/* Bundle Details — conditional for BUNDLE_PAYMENT */}
-              {detailView.bundle_details && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Building2 className="h-5 w-5" />
-                      {detailView.bundle_details.company_name || 'Paquete Fiscal'}
-                      {detailView.bundle_details.registration_number && (
-                        <span className="text-sm font-normal text-muted-foreground">
-                          RC: {detailView.bundle_details.registration_number}
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Payment splits by entity */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {detailView.bundle_details.splits?.map((split, idx) => (
-                        <div key={idx} className="p-3 rounded-lg border">
-                          <p className="text-xs text-muted-foreground">{split.entity_name || split.entity_code}</p>
-                          <p className="text-lg font-bold">
-                            {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', { maximumFractionDigits: 0 }).format(split.amount)} XAF
-                          </p>
-                          <Badge className={split.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                            {split.status === 'completed' ? (
-                              <><CheckCircle className="h-3 w-3 mr-1" />{t('status.paid') || 'Validado'}</>
-                            ) : (
-                              <><Clock className="h-3 w-3 mr-1" />{t('status.payment_processing') || 'En proceso'}</>
-                            )}
-                          </Badge>
-                          {split.receipt_number && (
-                            <p className="text-[10px] text-muted-foreground mt-1">{split.receipt_number}</p>
+              {detailView.bundle_details && (() => {
+                const bd = detailView.bundle_details
+                const fmtXAF = (n: number) => new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', { maximumFractionDigits: 0 }).format(n) + ' XAF'
+                const paidObls = bd.obligations?.filter(o => ['completed', 'paid', 'processing'].includes(o.status)) || []
+                const pendingObls = bd.obligations?.filter(o => !['completed', 'paid', 'processing'].includes(o.status)) || []
+                const paidTotal = paidObls.reduce((s, o) => s + o.amount, 0)
+                const remainingTotal = (bd.total_amount || 0) - paidTotal
+                const FEE_COLORS: Record<string, string> = { tesoro: 'bg-blue-100 text-blue-800', municipal: 'bg-amber-100 text-amber-800', chamber: 'bg-indigo-100 text-indigo-800' }
+
+                return (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Building2 className="h-5 w-5" />
+                          {bd.company_name || 'Paquete Fiscal'}
+                          {bd.registration_number && (
+                            <span className="text-sm font-normal text-muted-foreground">RC: {bd.registration_number}</span>
                           )}
+                        </CardTitle>
+                        {bd.certificate_url && (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+                            <a href={bd.certificate_url} target="_blank" rel="noopener noreferrer">
+                              <Download className="h-3 w-3" />
+                              {locale === 'fr' ? 'Telecharger Licence' : locale === 'en' ? 'Download License' : 'Descargar Licencia'}
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      {bd.certificate_number && (
+                        <CardDescription className="font-mono text-xs">{bd.certificate_number}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* KPI: Total / Paid / Remaining */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center p-2 rounded-lg bg-muted/50">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
+                          <p className="font-bold text-sm">{fmtXAF(bd.total_amount || 0)}</p>
                         </div>
-                      ))}
-                    </div>
-                    {/* Obligations list */}
-                    <div>
-                      <p className="text-sm font-medium flex items-center gap-1 mb-2">
-                        <Package className="h-4 w-4" />
-                        {detailView.bundle_details.obligations?.length || 0} {t('obligations') || 'obligaciones'}
-                      </p>
-                      <div className="space-y-1">
-                        {detailView.bundle_details.obligations?.map((obl, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-muted/50">
-                            <span className="text-muted-foreground truncate mr-2">{obl.service_name}</span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="font-mono text-xs">
-                                {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', { maximumFractionDigits: 0 }).format(obl.amount)} XAF
-                              </span>
-                              {obl.status === 'completed' && <CheckCircle className="h-3 w-3 text-green-500" />}
-                              {obl.status === 'processing' && <Clock className="h-3 w-3 text-blue-500" />}
-                              {obl.status === 'payment_pending' && <CreditCard className="h-3 w-3 text-yellow-500" />}
-                            </div>
+                        <div className="text-center p-2 rounded-lg bg-green-50">
+                          <p className="text-[10px] text-green-700 uppercase tracking-wider">
+                            {locale === 'fr' ? 'Paye' : locale === 'en' ? 'Paid' : 'Pagado'}
+                          </p>
+                          <p className="font-bold text-sm text-green-700">{fmtXAF(paidTotal)}</p>
+                        </div>
+                        <div className="text-center p-2 rounded-lg bg-red-50">
+                          <p className="text-[10px] text-red-700 uppercase tracking-wider">
+                            {locale === 'fr' ? 'Restant' : locale === 'en' ? 'Remaining' : 'Restante'}
+                          </p>
+                          <p className="font-bold text-sm text-red-700">{fmtXAF(remainingTotal)}</p>
+                        </div>
+                      </div>
+
+                      {/* Payment splits by entity */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {bd.splits?.map((split: any, idx: number) => (
+                          <div key={idx} className="p-3 rounded-lg border">
+                            <p className="text-xs text-muted-foreground">{split.entity_name || split.entity_code}</p>
+                            <p className="text-lg font-bold">{fmtXAF(split.amount)}</p>
+                            <Badge className={split.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                              {split.status === 'completed' ? (
+                                <><CheckCircle className="h-3 w-3 mr-1" />{t('status.paid') || 'Validado'}</>
+                              ) : (
+                                <><Clock className="h-3 w-3 mr-1" />{t('status.payment_processing') || 'En proceso'}</>
+                              )}
+                            </Badge>
+                            {split.receipt_number && (
+                              <p className="text-[10px] text-muted-foreground mt-1">{split.receipt_number}</p>
+                            )}
                           </div>
                         ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+
+                      {/* Obligations — paid */}
+                      {paidObls.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium flex items-center gap-1 mb-2 text-green-700">
+                            <CheckCircle className="h-4 w-4" />
+                            {paidObls.length} {locale === 'fr' ? 'obligations payees' : locale === 'en' ? 'paid obligations' : 'obligaciones pagadas'}
+                          </p>
+                          <div className="space-y-1">
+                            {paidObls.map((obl: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm py-1.5 px-2 rounded bg-green-50/50">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                  <span className="truncate">{obl.service_name}</span>
+                                  <Badge className={`text-[9px] h-4 ${FEE_COLORS[obl.fee_type] || 'bg-gray-100 text-gray-700'}`}>{obl.fee_type?.toUpperCase()}</Badge>
+                                </div>
+                                <span className="font-mono text-xs shrink-0 ml-2">{fmtXAF(obl.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Obligations — pending */}
+                      {pendingObls.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium flex items-center gap-1 mb-2 text-amber-700">
+                            <Clock className="h-4 w-4" />
+                            {pendingObls.length} {locale === 'fr' ? 'obligations en attente' : locale === 'en' ? 'pending obligations' : 'obligaciones pendientes'}
+                          </p>
+                          <div className="space-y-1">
+                            {pendingObls.map((obl: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm py-1.5 px-2 rounded bg-amber-50/50">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <CreditCard className="h-3 w-3 text-amber-500 shrink-0" />
+                                  <span className="truncate text-muted-foreground">{obl.service_name}</span>
+                                  <Badge className={`text-[9px] h-4 ${FEE_COLORS[obl.fee_type] || 'bg-gray-100 text-gray-700'}`}>{obl.fee_type?.toUpperCase()}</Badge>
+                                </div>
+                                <span className="font-mono text-xs shrink-0 ml-2">{fmtXAF(obl.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })()}
 
               {/* Dynamic Data Sections with highlight blocks (Pago/Cita/Anterior) */}
               {data_sections.length > 0 && (

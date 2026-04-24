@@ -27,6 +27,131 @@ router = APIRouter(prefix="/bundle-workflow", tags=["bundle-workflow"])
 
 
 # ================================================================
+# Post-commit: generate summary PDF → vault + email (non-blocking)
+# ================================================================
+
+async def _post_commit_bundle_pdf(
+    db, result: dict, user_id: UUID, current_user, license_id: str, obligation_ids: list,
+):
+    """Generate bundle solicitud PDF, store in vault, attach to email.
+
+    Mirrors wizard_session_service._generate_summary_pdf_attachment() for
+    non-bundle workflows. Called AFTER the transaction commits so the SR
+    and obligations exist in the DB.
+    """
+    from app.modules.service_requests.services.summary_pdf_service import summary_pdf_service
+    from app.modules.user_documents.services.vault_registry import register_document_in_vault
+    from app.core.events import EventBus, EventType
+
+    sr_id = result.get("service_request_id")
+    reference = await db.fetchval(
+        "SELECT reference FROM service_requests WHERE id = $1::uuid", sr_id,
+    )
+    if not reference:
+        return
+
+    # Fetch bundle details for the PDF
+    lic_id = UUID(license_id)
+    bd_rows = await db.fetch("""
+        SELECT sp.entity_code, sp.total_amount, sp.workflow_status,
+               ent.name AS entity_name
+        FROM service_payments sp
+        LEFT JOIN entities ent ON ent.code = sp.entity_code
+        WHERE sp.service_request_id = $1::uuid
+        ORDER BY sp.entity_code
+    """, sr_id)
+    obl_rows = await db.fetch("""
+        SELECT lo.fee_type, lo.amount, lo.status,
+               fs.name_es AS service_name
+        FROM license_obligations lo
+        LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+        WHERE lo.license_id = $1
+          AND lo.id = ANY($2::uuid[])
+        ORDER BY lo.fee_type, fs.name_es
+    """, lic_id, obligation_ids)
+    comp_row = await db.fetchrow("""
+        SELECT c.legal_name, c.registration_number
+        FROM companies c JOIN commercial_licenses cl ON cl.company_id = c.id
+        WHERE cl.id = $1
+    """, lic_id)
+
+    bundle_details = {
+        "company_name": comp_row["legal_name"] if comp_row else None,
+        "registration_number": comp_row["registration_number"] if comp_row else None,
+        "splits": [
+            {"entity_code": r["entity_code"], "entity_name": r["entity_name"],
+             "amount": float(r["total_amount"]), "status": r["workflow_status"]}
+            for r in bd_rows
+        ],
+        "obligations": [
+            {"service_name": r["service_name"] or r["fee_type"],
+             "amount": float(r["amount"]), "status": r["status"], "fee_type": r["fee_type"]}
+            for r in obl_rows
+        ],
+        "total_amount": sum(float(r["total_amount"]) for r in bd_rows),
+    }
+
+    # Generate PDF with obligations
+    pdf_bytes = await summary_pdf_service.generate_summary_pdf(
+        request_number=reference,
+        workflow_name="Licencia Comercial - Paquete Fiscal",
+        solicitud_type="expedicion",
+        documents=[],
+        tariff={"base_amount": bundle_details["total_amount"],
+                "additional_fees": [], "total_amount": bundle_details["total_amount"]},
+        data_sections=[],
+        language="es",
+        payment_status="processing",
+        bundle_details=bundle_details,
+    )
+    pdf_name = f"solicitud_{reference}.pdf"
+
+    # Store in Firebase
+    try:
+        from app.modules.documents.services.storage_service import firebase_storage_service
+        summary_url = await firebase_storage_service.upload_bytes(
+            pdf_bytes, f"summaries/{sr_id}/{pdf_name}", content_type="application/pdf",
+        )
+    except Exception as store_err:
+        logger.warning(f"Bundle summary Firebase upload failed: {store_err}")
+        summary_url = None
+
+    # Register in vault ("Mes Documents")
+    if summary_url:
+        try:
+            await register_document_in_vault(
+                db, user_id=user_id,
+                file_path=summary_url, file_name=pdf_name,
+                document_type="CITIZEN_SUMMARY", document_category="fiscal",
+                source_request_id=UUID(sr_id),
+            )
+        except Exception as vault_err:
+            logger.warning(f"Bundle summary vault registration failed: {vault_err}")
+
+    # Publish REQUEST_SUBMITTED with PDF attachment → email
+    user_email = getattr(current_user, 'email', None) or (
+        await db.fetchval("SELECT email FROM users WHERE id = $1", user_id)
+    )
+    user_name = getattr(current_user, 'full_name', None) or (
+        await db.fetchval("SELECT first_name || ' ' || last_name FROM users WHERE id = $1", user_id)
+    )
+    user_phone = getattr(current_user, 'phone_number', None) or (
+        await db.fetchval("SELECT phone_number FROM users WHERE id = $1", user_id)
+    )
+
+    EventBus.publish_nowait(EventType.REQUEST_SUBMITTED, {
+        "request_id": sr_id,
+        "user_id": str(user_id),
+        "user_email": user_email,
+        "user_phone": user_phone,
+        "user_name": user_name,
+        "workflow_code": "BUNDLE_PAYMENT",
+        "reference": reference,
+        "attachments": [(pdf_name, pdf_bytes, "application/pdf")],
+    })
+
+
+# ================================================================
 # Pydantic Request/Response Models
 # ================================================================
 
@@ -147,6 +272,57 @@ async def get_my_company_payments(
         if code == "COMPANY_NOT_OWNED":
             raise HTTPException(status_code=403, detail="You don't have access to this company")
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/my-companies/{company_id}/license-pdf")
+async def download_my_license_pdf(
+    company_id: str,
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Download license PDF for citizen's own company (no agent permission needed).
+
+    Verifies ownership via user_company_roles before generating PDF.
+    """
+    from fastapi.responses import Response
+    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
+
+    # Verify citizen owns this company
+    ownership = await db.fetchval(
+        "SELECT 1 FROM user_company_roles WHERE user_id = $1 AND company_id = $2",
+        user_id, UUID(company_id),
+    )
+    if not ownership:
+        raise HTTPException(status_code=403, detail="You don't have access to this company")
+
+    # Find active license for this company
+    license_id = await db.fetchval("""
+        SELECT id FROM commercial_licenses
+        WHERE company_id = $1 AND status != 'cancelled'
+        ORDER BY fiscal_year DESC LIMIT 1
+    """, UUID(company_id))
+    if not license_id:
+        raise HTTPException(status_code=404, detail="No license found for this company")
+
+    try:
+        pdf_bytes = await license_pdf_service.generate_license_pdf(
+            db, str(license_id), language
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="license-{company_id}.pdf"',
+        },
+    )
 
 
 @router.get("/search-company")
@@ -348,6 +524,14 @@ async def initiate_bundle_payment(
                 phone_number=body.phone_number,
                 wizard_session_id=body.wizard_session_id,
             )
+
+        # Post-commit: generate summary PDF → vault + email (non-blocking)
+        try:
+            await _post_commit_bundle_pdf(
+                db, result, user_id, current_user, body.license_id, obligation_uuids,
+            )
+        except Exception as pdf_err:
+            logger.warning(f"[BundleWorkflow] Post-commit PDF failed (non-blocking): {pdf_err}")
 
         return result
 
