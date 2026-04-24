@@ -119,7 +119,7 @@ export default function MissionsPage() {
           </Button>
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold">{t('mission.title', { defaultMessage: 'Missions' })}</h1>
+            <h1 className="text-lg font-bold">{t('missions.missionsLabel', { defaultMessage: 'Missions' })}</h1>
           </div>
           <LocationFilter
             entityCode={agentProfile?.entity_code}

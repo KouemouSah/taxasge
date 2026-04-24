@@ -39,7 +39,7 @@ const RECURRENCE_COLORS: Record<string, string> = {
   monthly: 'bg-orange-100 text-orange-800',
 }
 
-const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAYS_OF_WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export function MissionTemplatesTab({ locationFilter: _locationFilter }: Props) {
   const t = useTranslations('inspection')
@@ -167,7 +167,7 @@ export function MissionTemplatesTab({ locationFilter: _locationFilter }: Props) 
                     </Badge>
                     {tpl.day_of_week != null && (
                       <span className="text-xs text-muted-foreground">
-                        {DAYS_OF_WEEK[tpl.day_of_week]}
+                        {t(`missions.days.${DAYS_OF_WEEK_KEYS[tpl.day_of_week]}`, { defaultMessage: DAYS_OF_WEEK_KEYS[tpl.day_of_week] })}
                       </span>
                     )}
                     {tpl.day_of_month != null && (
@@ -247,8 +247,8 @@ export function MissionTemplatesTab({ locationFilter: _locationFilter }: Props) 
                 <Select value={String(formDayOfWeek)} onValueChange={v => setFormDayOfWeek(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DAYS_OF_WEEK.map((day, i) => (
-                      <SelectItem key={i} value={String(i)}>{day}</SelectItem>
+                    {DAYS_OF_WEEK_KEYS.map((day, i) => (
+                      <SelectItem key={i} value={String(i)}>{t(`missions.days.${day}`, { defaultMessage: day })}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

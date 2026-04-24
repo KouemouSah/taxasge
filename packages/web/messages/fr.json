@@ -10861,7 +10861,17 @@
       "error": "Erreur",
       "loading": "Chargement...",
       "refresh": "Actualiser",
-      "back": "Retour"
+      "back": "Retour",
+      "all": "Tous",
+      "name": "Nom",
+      "create": "Créer",
+      "export": "Exporter CSV",
+      "noData": "Aucune donnée",
+      "week": "Semaine",
+      "agent": "Agent",
+      "zone": "Zone",
+      "info": "Information",
+      "add": "Ajouter"
     },
     "pendingSeals": {
       "title": "Scellés en attente d'approbation",
@@ -11118,7 +11128,16 @@
       "templatesDesc": "Les modèles créent automatiquement des missions selon la récurrence.",
       "inspPerAgent": "insp/agent",
       "defaultAgentsLabel": "agents",
-      "zonesLabel": "zones"
+      "zonesLabel": "zones",
+      "days": {
+        "mon": "Lundi",
+        "tue": "Mardi",
+        "wed": "Mercredi",
+        "thu": "Jeudi",
+        "fri": "Vendredi",
+        "sat": "Samedi",
+        "sun": "Dimanche"
+      }
     },
     "presets": {
       "title": "Filtres sauvegardés",
@@ -11206,7 +11225,8 @@
       "refreshing": "Actualisation...",
       "lastUpdate": "Mis à jour : {time}",
       "autoRefresh": "Auto-refresh toutes les 30s"
-    }
+    },
+    "notes": "Notes"
   },
   "paymentResult": {
     "loading": "Verification de votre paiement...",

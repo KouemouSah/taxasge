@@ -10861,7 +10861,17 @@
       "error": "Error",
       "loading": "Loading...",
       "refresh": "Refresh",
-      "back": "Back"
+      "back": "Back",
+      "all": "All",
+      "name": "Name",
+      "create": "Create",
+      "export": "Export CSV",
+      "noData": "No data",
+      "week": "Week",
+      "agent": "Agent",
+      "zone": "Zone",
+      "info": "Information",
+      "add": "Add"
     },
     "pendingSeals": {
       "title": "Seals pending approval",
@@ -11118,7 +11128,16 @@
       "templatesDesc": "Templates auto-create missions on the configured schedule.",
       "inspPerAgent": "insp/agent",
       "defaultAgentsLabel": "agents",
-      "zonesLabel": "zones"
+      "zonesLabel": "zones",
+      "days": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
     },
     "presets": {
       "title": "Saved filters",
@@ -11206,7 +11225,8 @@
       "refreshing": "Refreshing...",
       "lastUpdate": "Updated: {time}",
       "autoRefresh": "Auto-refresh every 30s"
-    }
+    },
+    "notes": "Notes"
   },
   "paymentResult": {
     "loading": "Verifying your payment...",

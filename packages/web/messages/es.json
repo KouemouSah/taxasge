@@ -10861,7 +10861,17 @@
       "error": "Error",
       "loading": "Cargando...",
       "refresh": "Actualizar",
-      "back": "Volver"
+      "back": "Volver",
+      "all": "Todos",
+      "name": "Nombre",
+      "create": "Crear",
+      "export": "Exportar CSV",
+      "noData": "Sin datos",
+      "week": "Semana",
+      "agent": "Agente",
+      "zone": "Zona",
+      "info": "Información",
+      "add": "Añadir"
     },
     "pendingSeals": {
       "title": "Scellés pendientes de aprobación",
@@ -11118,7 +11128,16 @@
       "templatesDesc": "Los modelos crean misiones automáticamente según la recurrencia.",
       "inspPerAgent": "insp/agente",
       "defaultAgentsLabel": "agentes",
-      "zonesLabel": "zonas"
+      "zonesLabel": "zonas",
+      "days": {
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado",
+        "sun": "Domingo"
+      }
     },
     "presets": {
       "title": "Filtros guardados",
@@ -11206,7 +11225,8 @@
       "refreshing": "Actualizando...",
       "lastUpdate": "Actualizado: {time}",
       "autoRefresh": "Auto-refresh cada 30s"
-    }
+    },
+    "notes": "Notas"
   },
   "paymentResult": {
     "loading": "Verificando su pago...",
