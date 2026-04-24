@@ -191,11 +191,17 @@ class MissionService:
         """
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
-        # Explicit filter from query param takes priority (main-office dropdown)
-        # Non-main-office: forced to own location
+        # City-scoped entities (AYUNTAMIENTO, CAMARA_COMERCIO): ALWAYS forced
+        # to own location, even if is_main_office=True. These entities have
+        # municipal jurisdiction — no cross-site visibility.
+        CITY_SCOPED = {"AYUNTAMIENTO", "CAMARA_COMERCIO"}
+        entity_code = ctx.get("entity_code", "")
+        is_city_scoped = entity_code in CITY_SCOPED
+
         location_filter = filters.get("entity_location_id")
-        if not location_filter and not ctx.get("is_main_office", False):
-            location_filter = ctx.get("entity_location_id")
+        if not location_filter:
+            if is_city_scoped or not ctx.get("is_main_office", False):
+                location_filter = ctx.get("entity_location_id")
 
         return await MissionRepository.list_by_entity(
             conn, ctx["entity_id"],

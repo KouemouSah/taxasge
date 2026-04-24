@@ -767,9 +767,12 @@ class InspectionService:
 
         entity_id = ctx["entity_id"]
 
-        # Auto-scope non-main-office supervisors to their location
+        # City-scoped entities (AYUNTAMIENTO, CAMARA_COMERCIO): always forced
+        # to own location. National entities: only non-main-office forced.
+        CITY_SCOPED = {"AYUNTAMIENTO", "CAMARA_COMERCIO"}
+        is_city_scoped = ctx.get("entity_code", "") in CITY_SCOPED
         location_filter = entity_location_id
-        if not ctx.get("is_main_office", False) and not location_filter:
+        if not location_filter and (is_city_scoped or not ctx.get("is_main_office", False)):
             location_filter = ctx.get("entity_location_id")
 
         # CTE-based dashboard: 1 query for all stats

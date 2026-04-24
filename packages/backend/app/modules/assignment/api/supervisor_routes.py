@@ -86,10 +86,12 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
             ap.entity_id,
             ap.entity_location_id,
             m.ministry_code,
-            COALESCE(el.is_main_office, false) AS is_main_office
+            COALESCE(el.is_main_office, false) AS is_main_office,
+            e.code AS entity_code
         FROM agent_profiles ap
         LEFT JOIN ministries m ON ap.ministry_id = m.id
         LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        LEFT JOIN entities e ON e.id = ap.entity_id
         WHERE ap.user_id = $1 AND ap.is_active = true
     """
     result = await db.fetchrow(query, user_id)
@@ -119,6 +121,7 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
         "ministry_code": result.get("ministry_code"),
         "entity_location_id": result.get("entity_location_id"),
         "is_main_office": result.get("is_main_office", False),
+        "entity_code": result.get("entity_code", ""),
     }
 
 
@@ -127,12 +130,19 @@ def _get_effective_location_id(agent_ctx: Dict[str, Any], explicit_location_id: 
     Resolve effective entity_location_id for site-scoping.
 
     Rules:
-    - Non-main-office supervisor: ALWAYS auto-scoped to their own site (ignore explicit param)
-    - Main-office supervisor: use explicit param if provided, otherwise None (= all sites)
+    - AYUNTAMIENTO / CAMARA_COMERCIO: ALWAYS forced to own site (city jurisdiction)
+    - Non-main-office supervisor: ALWAYS auto-scoped to their own site
+    - Main-office supervisor (national entities): use explicit param if provided, otherwise None (= all sites)
     - Admin: use explicit param if provided, otherwise None (= all sites)
     """
+    CITY_SCOPED = {"AYUNTAMIENTO", "CAMARA_COMERCIO"}
     sup_location_id = agent_ctx.get("entity_location_id")
     sup_is_main = agent_ctx.get("is_main_office", False)
+    entity_code = agent_ctx.get("entity_code", "")
+
+    # City-scoped entities: ALWAYS forced to own site
+    if entity_code in CITY_SCOPED and sup_location_id:
+        return str(sup_location_id)
 
     if sup_location_id and not sup_is_main:
         # Site supervisor: forced to their own location

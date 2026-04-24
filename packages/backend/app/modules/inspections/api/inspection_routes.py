@@ -470,9 +470,11 @@ async def get_live_agent_status(
     if not ctx["is_supervisor"]:
         raise HTTPException(status_code=403, detail="Supervisor only")
 
-    # Location scoping: secondary-site supervisors see only their site agents
+    # Location scoping — city-scoped entities always forced to own location
+    CITY_SCOPED = {"AYUNTAMIENTO", "CAMARA_COMERCIO"}
+    is_city_scoped = ctx.get("entity_code", "") in CITY_SCOPED
     location_id = None
-    if not ctx.get("is_main_office", False):
+    if is_city_scoped or not ctx.get("is_main_office", False):
         location_id = ctx.get("entity_location_id")
 
     result = await InspectionService.get_live_agent_status(

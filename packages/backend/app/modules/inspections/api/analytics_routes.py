@@ -217,9 +217,11 @@ async def get_mission_analytics(
     _date_to = date_to or date.today()
     _date_from = date_from or (_date_to - timedelta(weeks=8))
 
-    # Location scoping
+    # Location scoping — city-scoped entities always forced to own location
+    CITY_SCOPED = {"AYUNTAMIENTO", "CAMARA_COMERCIO"}
+    is_city_scoped = ctx.get("entity_code", "") in CITY_SCOPED
     loc = entity_location_id
-    if not loc and not ctx.get("is_main_office", False):
+    if not loc and (is_city_scoped or not ctx.get("is_main_office", False)):
         loc = ctx.get("entity_location_id")
 
     result = await MissionRepository.get_mission_analytics(
