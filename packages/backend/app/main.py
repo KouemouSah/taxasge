@@ -1703,15 +1703,15 @@ except Exception as e:
 
 # Try to load field inspections router (Module - Field Inspections)
 try:
-    from app.modules.inspections.api import (
-        router as inspections_router,
-        mission_router as inspection_mission_router,
-        analytics_router as inspection_analytics_router,
-        filter_export_router as inspection_filter_export_router,
-    )
-    # CRITICAL ORDER: mission_router MUST be registered BEFORE inspections_router.
-    # inspections_router has GET /inspections/{inspection_id} which catches /inspections/missions
-    # if mission_router is registered after. FastAPI resolves by app-level registration order.
+    # CRITICAL: Import mission_routes DIRECTLY (not via __init__) to avoid
+    # circular import that causes empty router registration.
+    from app.modules.inspections.api.mission_routes import router as inspection_mission_router
+    from app.modules.inspections.api.analytics_routes import router as inspection_analytics_router
+    from app.modules.inspections.api.filter_export_routes import router as inspection_filter_export_router
+    from app.modules.inspections.api.inspection_routes import router as inspections_router
+
+    # CRITICAL ORDER: mission_router FIRST — its prefix /inspections/missions
+    # must be matched before inspections_router's /inspections/{inspection_id}
     app.include_router(inspection_mission_router, prefix="/api/v1", tags=["inspection-missions"])
     app.include_router(inspection_analytics_router, prefix="/api/v1", tags=["inspection-analytics"])
     app.include_router(inspection_filter_export_router, prefix="/api/v1", tags=["inspection-filters-export"])
