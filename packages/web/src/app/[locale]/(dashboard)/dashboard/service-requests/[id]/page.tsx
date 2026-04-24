@@ -43,7 +43,6 @@ import {
   Download,
   Clock,
   Building2,
-  Package,
 } from 'lucide-react'
 import { useDetailView } from '@/modules/service-requests/hooks/useWorkflowQueries'
 import { useWorkflowTranslations, workflowNameKey } from '@/hooks/use-workflow-translations'
