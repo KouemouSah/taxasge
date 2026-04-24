@@ -93,6 +93,14 @@ export default function CompanyDetailPage() {
   const companyId = params.companyId as string
   const [year] = useState(new Date().getFullYear())
 
+  // All companies (for quick navigation dropdown)
+  const { data: companiesData } = useQuery({
+    queryKey: ['my-companies', year],
+    queryFn: () => bundleWorkflowApi.getMyCompanies(year),
+    staleTime: 120_000,
+  })
+  const allCompanies = companiesData?.companies ?? []
+
   // Data
   const { data, isLoading } = useQuery({
     queryKey: ['company-detail', companyId, year],
@@ -164,6 +172,21 @@ export default function CompanyDetailPage() {
         <Button variant="ghost" size="icon" onClick={() => router.push(`/${locale}/dashboard/empresas`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        {/* Quick navigation between companies */}
+        {allCompanies.length > 1 && (
+          <Select value={companyId} onValueChange={(v: string) => router.push(`/${locale}/dashboard/empresas/${v}`)}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {allCompanies.map(item => (
+                <SelectItem key={item.company.id} value={item.company.id} className="text-xs">
+                  {item.company.legalName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold flex items-center gap-2 flex-wrap">
             <Building2 className="h-5 w-5 shrink-0" />
