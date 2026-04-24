@@ -1398,6 +1398,10 @@ export interface DetailViewResponse {
   bundle_details?: {
     company_name?: string | null
     registration_number?: string | null
+    company_id?: string | null
+    license_status?: string | null
+    certificate_url?: string | null
+    certificate_number?: string | null
     total_amount?: number
     splits?: Array<{
       entity_code: string

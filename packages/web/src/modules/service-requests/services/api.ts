@@ -1433,6 +1433,7 @@ class ServiceRequestsApiClient {
       documents: DetailViewResponse['documents']
       workflow_name_es: string
       solicitud_type_display?: string | null
+      bundle_details?: DetailViewResponse['bundle_details']
     }
 
     const backend = await this.request<BackendDetailViewResponse>(`/${requestId}/detail-view`)
@@ -1453,6 +1454,7 @@ class ServiceRequestsApiClient {
       documents: backend.documents || [],
       workflow_name_es: backend.workflow_name_es,
       solicitud_type_display: backend.solicitud_type_display,
+      bundle_details: backend.bundle_details,
     }
   }
 
