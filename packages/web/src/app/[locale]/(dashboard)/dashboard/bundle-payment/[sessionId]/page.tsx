@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useRef } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, X, Clock, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -43,11 +43,17 @@ const navLabels = {
 export default function BundlePaymentWizardPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const locale = ((params?.locale as string) || 'es') as 'es' | 'fr' | 'en'
   const sessionId = params?.sessionId as string
   const lang = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'es'
 
+  // Deep-link params from entry page
+  const companyIdParam = searchParams.get('companyId')
+  const modeParam = searchParams.get('mode')
+
   const wizard = useBundleWizard()
+  const autoSelectDone = useRef(false)
 
   // Load existing session on mount (session was already created by entry page or redirect)
   useEffect(() => {
@@ -55,6 +61,27 @@ export default function BundlePaymentWizardPage() {
       wizard.loadSession(sessionId)
     }
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select company or skip to new company flow based on query params
+  useEffect(() => {
+    if (autoSelectDone.current) return
+
+    // mode=new → skip to document upload (new company flow)
+    if (modeParam === 'new') {
+      autoSelectDone.current = true
+      wizard.requestNewCompany()
+      return
+    }
+
+    // companyId → auto-select from user's companies once loaded
+    if (companyIdParam && wizard.myCompanies.length > 0) {
+      const match = wizard.myCompanies.find(m => m.company.id === companyIdParam)
+      if (match) {
+        autoSelectDone.current = true
+        wizard.selectCompany(match.company)
+      }
+    }
+  }, [companyIdParam, modeParam, wizard.myCompanies]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Determine visible steps (skip doc upload if company exists)
   const visibleSteps = wizard.companyExists
@@ -66,7 +93,13 @@ export default function BundlePaymentWizardPage() {
   const isConfirmation = wizard.currentStep === BundleStep.CONFIRMATION
 
   const handleCancel = () => {
-    router.push(`/${locale}/dashboard`)
+    // Return to previous page (empresas detail, bundle-payment list, or dashboard)
+    // instead of always going to dashboard
+    if (window.history.length > 2) {
+      router.back()
+    } else {
+      router.push(`/${locale}/dashboard/empresas`)
+    }
   }
 
   // Expired overlay

@@ -11,11 +11,11 @@ Usage:
 
     @router.post(
         "/my-expensive-endpoint",
-        dependencies=[Depends(rate_limit_dep(
+        dependencies=[rate_limit_dep(
             endpoint="my_endpoint",
             user_max=10, user_window=60,
             ip_max=30, ip_window=60,
-        ))],
+        )],
     )
     async def handler(...): ...
 

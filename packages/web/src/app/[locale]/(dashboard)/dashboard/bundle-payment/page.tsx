@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Loader2, Receipt } from 'lucide-react'
 import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
 
@@ -31,8 +31,14 @@ const labels = {
 export default function BundlePaymentEntryPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const locale = (params?.locale as string) || 'es'
   const lang = (locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'es') as 'es' | 'fr' | 'en'
+
+  // Deep-link: ?companyId=xxx pre-selects the company in the wizard
+  // ?mode=new skips to upload step (for "Registrar nueva empresa")
+  const companyId = searchParams.get('companyId')
+  const mode = searchParams.get('mode')
 
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +52,12 @@ export default function BundlePaymentEntryPage() {
           solicitud_type: 'expedicion',
         })
         if (!cancelled && session?.sessionId) {
-          router.replace(`/${locale}/dashboard/bundle-payment/${session.sessionId}`)
+          // Pass companyId and mode as query params to the wizard
+          const qs = new URLSearchParams()
+          if (companyId) qs.set('companyId', companyId)
+          if (mode) qs.set('mode', mode)
+          const qsStr = qs.toString()
+          router.replace(`/${locale}/dashboard/bundle-payment/${session.sessionId}${qsStr ? '?' + qsStr : ''}`)
         }
       } catch (e) {
         if (!cancelled) {

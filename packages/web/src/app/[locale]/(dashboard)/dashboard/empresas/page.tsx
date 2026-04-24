@@ -78,7 +78,7 @@ export default function MisEmpresasPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Link href={`/${locale}/dashboard/bundle-payment`}>
+          <Link href={`/${locale}/dashboard/bundle-payment?mode=new`}>
             <Button size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
               {t('newCompany')}
@@ -100,7 +100,7 @@ export default function MisEmpresasPage() {
               <p className="text-lg font-medium">{t('noCompanies')}</p>
               <p className="text-sm text-muted-foreground mt-1">{t('noCompaniesDesc')}</p>
             </div>
-            <Link href={`/${locale}/dashboard/bundle-payment`}>
+            <Link href={`/${locale}/dashboard/bundle-payment?mode=new`}>
               <Button className="gap-2 mt-2">
                 <Plus className="h-4 w-4" />
                 {t('startBundle')}
