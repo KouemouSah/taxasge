@@ -754,7 +754,7 @@ class InternalScheduler:
                     WHERE fm.mission_date = $1
                       AND fm.status = 'in_progress'
                       AND COALESCE(agg.target, 0) > 0
-                      AND COALESCE(agg.actual, 0)::float / agg.target < 0.5
+                      AND COALESCE(agg.actual, 0)::float / NULLIF(COALESCE(agg.target, 0), 0) < 0.5
                 """, today)
 
                 sent = 0
@@ -915,6 +915,7 @@ class InternalScheduler:
                                     entity_id, entity_location_id, supervisor_id,
                                     mission_date, title, notes, zone_ids, status
                                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'planned')
+                                ON CONFLICT (entity_id, entity_location_id, mission_date) DO NOTHING
                                 RETURNING id
                             """,
                                 tpl["entity_id"],
@@ -925,6 +926,10 @@ class InternalScheduler:
                                 tpl["notes"],
                                 tpl["zone_ids"],
                             )
+
+                            if not mission:
+                                # UNIQUE conflict — mission already exists
+                                continue
 
                             mission_id = mission["id"]
 

@@ -175,6 +175,15 @@ async def create_template(
     if recurrence == "monthly" and data.get("day_of_month") is None:
         raise HTTPException(status_code=422, detail="day_of_month required for monthly")
 
+    # Resolve entity_location_id — always use supervisor's own location
+    # Never allow cross-entity location injection (OWASP A01)
+    location_id = ctx.get("entity_location_id")
+    if not location_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Cannot create template: supervisor has no entity_location_id"
+        )
+
     row = await db.fetchrow("""
         INSERT INTO mission_templates (
             entity_id, entity_location_id, created_by,
@@ -184,7 +193,7 @@ async def create_template(
         RETURNING *
     """,
         ctx["entity_id"],
-        ctx.get("entity_location_id") or data.get("entity_location_id"),
+        location_id,
         UUID(current_user.id),
         data["name"],
         recurrence,
@@ -218,16 +227,22 @@ async def update_template(
     if template["entity_id"] != ctx["entity_id"]:
         raise HTTPException(status_code=403, detail="Cannot modify another entity's template")
 
-    allowed = {"name", "recurrence", "day_of_week", "day_of_month", "zone_ids",
-               "default_agent_ids", "target_inspections_per_agent", "notes", "is_active"}
-    updates = {k: v for k, v in data.items() if k in allowed}
+    # Whitelist of updatable columns — prevents SQL injection via column names
+    ALLOWED_COLUMNS = frozenset({
+        "name", "recurrence", "day_of_week", "day_of_month", "zone_ids",
+        "default_agent_ids", "target_inspections_per_agent", "notes", "is_active",
+    })
+    updates = {k: v for k, v in data.items() if k in ALLOWED_COLUMNS}
     if not updates:
         raise HTTPException(status_code=422, detail="No valid fields to update")
 
-    set_parts = [f"{k} = ${i+2}" for i, k in enumerate(updates.keys())]
+    # Build parameterized SET clause (column names from frozenset, not user input)
+    cols = list(updates.keys())
+    set_parts = [f"{col} = ${i+2}" for i, col in enumerate(cols)]
+    vals = [updates[col] for col in cols]
     row = await db.fetchrow(
         f"UPDATE mission_templates SET {', '.join(set_parts)} WHERE id = $1 RETURNING *",
-        template_id, *updates.values(),
+        template_id, *vals,
     )
     return dict(row) if row else {}
 

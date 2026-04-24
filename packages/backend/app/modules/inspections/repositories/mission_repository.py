@@ -274,10 +274,6 @@ class MissionRepository:
             if city_id:
                 params.append(city_id)
                 city_param = f"${len(params)}"
-                loc_filter_fi = f"AND fi.entity_location_id = ${len(params) - 1 + 1}"
-                loc_filter_lo = f"AND c.city_id = {city_param}"
-                # Re-build: fi filter uses entity_location_id, lo filter uses city_id
-                loc_filter_fi = ""  # inspections already entity-scoped
                 # Filter obligations by city through companies
                 loc_filter_lo = f"""
                     AND cl.id IN (
@@ -328,7 +324,7 @@ class MissionRepository:
                 (COALESCE(zo.pending_count, 0) *
                  COALESCE(CURRENT_DATE - li.last_inspection_date, 9999)
                  / 30.0) DESC
-            LIMIT ${len(params) + 1}
+            LIMIT ${len(params) + 1}::int
         """, *params, limit)
         return [dict(r) for r in rows]
 
