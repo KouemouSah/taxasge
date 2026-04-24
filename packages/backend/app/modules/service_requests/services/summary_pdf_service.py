@@ -497,7 +497,11 @@ class SummaryPDFService:
         # Fetch citizen photo as base64 (non-blocking on failure)
         photo_base64 = None
         if photo_url:
-            photo_base64 = await self.fetch_photo_as_base64(photo_url)
+            if photo_url.startswith("data:"):
+                # Already a data URI (from wizard session cache) — use directly
+                photo_base64 = photo_url
+            else:
+                photo_base64 = await self.fetch_photo_as_base64(photo_url)
 
         # Get logo as base64
         logo_base64 = self.get_logo_base64()
@@ -744,7 +748,7 @@ class SummaryPDFService:
         solicitud_labels = self.SOLICITUD_TYPE_LABELS.get(language, self.SOLICITUD_TYPE_LABELS["es"])
 
         # Fetch photo as base64
-        photo_base64 = await self.fetch_photo_as_base64(photo_url) if photo_url else None
+        photo_base64 = (photo_url if photo_url and photo_url.startswith("data:") else await self.fetch_photo_as_base64(photo_url)) if photo_url else None
 
         # Get logo
         logo_base64 = self.get_logo_base64()
@@ -899,7 +903,7 @@ class SummaryPDFService:
         )
 
         # Photo
-        photo_base64 = await self.fetch_photo_as_base64(photo_url) if photo_url else None
+        photo_base64 = (photo_url if photo_url and photo_url.startswith("data:") else await self.fetch_photo_as_base64(photo_url)) if photo_url else None
 
         # Logo + barcode + QR
         logo_base64 = self.get_logo_base64()

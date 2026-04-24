@@ -1410,6 +1410,16 @@ class WizardSessionService:
                 }
             solicitud_type = session.get("solicitud_type", "expedicion")
 
+            # Fetch citizen photo from session documents (photo_carnet)
+            photo_url = None
+            photo_codes = ("photo_carnet", "fotografias", "foto_carnet")
+            for doc_code, doc_data in session.get("documents", {}).items():
+                if doc_code in photo_codes and doc_data.get("content_b64"):
+                    # Photo is stored as base64 in session — build data URI directly
+                    mime = doc_data.get("mime_type", "image/jpeg")
+                    photo_url = f"data:{mime};base64,{doc_data['content_b64']}"
+                    break
+
             pdf_bytes = await summary_pdf_service.generate_summary_pdf(
                 request_number=reference,
                 workflow_name=workflow_name,
@@ -1419,6 +1429,7 @@ class WizardSessionService:
                 data_sections=data_sections,
                 appointment=appointment_for_pdf,
                 language="es",
+                photo_url=photo_url,
             )
             filename = f"solicitud_{reference}.pdf"
             logger.info(f"[WizardSession] Generated summary PDF for {reference} ({len(pdf_bytes)} bytes)")
