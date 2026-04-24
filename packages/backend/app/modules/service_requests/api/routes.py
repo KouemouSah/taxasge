@@ -1776,9 +1776,19 @@ async def get_request_detail_view(
                 sr_company_id
             ) if sr_company_id else None
 
+            # Fetch license metadata for certificate link
+            lic_meta = await db.fetchrow(
+                "SELECT status, certificate_url, certificate_number FROM commercial_licenses WHERE id = $1",
+                sr_license_id,
+            )
+
             bundle_details = {
                 "company_name": comp_row["legal_name"] if comp_row else None,
                 "registration_number": comp_row["registration_number"] if comp_row else None,
+                "license_status": lic_meta["status"] if lic_meta else None,
+                "certificate_url": lic_meta["certificate_url"] if lic_meta else None,
+                "certificate_number": lic_meta["certificate_number"] if lic_meta else None,
+                "company_id": str(sr_company_id) if sr_company_id else None,
                 "splits": [
                     {
                         "entity_code": r["entity_code"],
