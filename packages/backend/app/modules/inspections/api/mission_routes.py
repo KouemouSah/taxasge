@@ -130,6 +130,130 @@ async def get_agents_availability(
     return [AgentAvailability(**a) for a in agents]
 
 
+# ============================================================
+# Templates (recurring missions)
+# ============================================================
+
+
+@router.get("/templates")
+async def list_templates(
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """List recurring mission templates for the supervisor's entity."""
+    from app.modules.inspections.services.inspection_service import InspectionService
+    ctx = await InspectionService.resolve_inspector_context(db, UUID(current_user.id))
+    rows = await db.fetch("""
+        SELECT mt.*, u.first_name || ' ' || u.last_name AS created_by_name
+        FROM mission_templates mt
+        JOIN users u ON u.id = mt.created_by
+        WHERE mt.entity_id = $1
+        ORDER BY mt.is_active DESC, mt.name
+    """, ctx["entity_id"])
+    return [dict(r) for r in rows]
+
+
+@router.post("/templates", status_code=201)
+async def create_template(
+    data: dict,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Create a recurring mission template."""
+    from app.modules.inspections.services.inspection_service import InspectionService
+    ctx = await InspectionService.resolve_inspector_context(db, UUID(current_user.id))
+
+    recurrence = data.get("recurrence")
+    if recurrence not in ("daily", "weekly", "biweekly", "monthly"):
+        raise HTTPException(status_code=422, detail="Invalid recurrence type")
+
+    if recurrence in ("weekly", "biweekly") and data.get("day_of_week") is None:
+        raise HTTPException(status_code=422, detail="day_of_week required for weekly/biweekly")
+
+    if recurrence == "monthly" and data.get("day_of_month") is None:
+        raise HTTPException(status_code=422, detail="day_of_month required for monthly")
+
+    row = await db.fetchrow("""
+        INSERT INTO mission_templates (
+            entity_id, entity_location_id, created_by,
+            name, recurrence, day_of_week, day_of_month,
+            zone_ids, default_agent_ids, target_inspections_per_agent, notes
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+    """,
+        ctx["entity_id"],
+        ctx.get("entity_location_id") or data.get("entity_location_id"),
+        UUID(current_user.id),
+        data["name"],
+        recurrence,
+        data.get("day_of_week"),
+        data.get("day_of_month"),
+        data.get("zone_ids"),
+        data.get("default_agent_ids"),
+        data.get("target_inspections_per_agent", 10),
+        data.get("notes"),
+    )
+    return dict(row)
+
+
+@router.put("/templates/{template_id}")
+async def update_template(
+    template_id: UUID,
+    data: dict,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Update a mission template (toggle active, change config)."""
+    from app.modules.inspections.services.inspection_service import InspectionService
+    ctx = await InspectionService.resolve_inspector_context(db, UUID(current_user.id))
+
+    template = await db.fetchrow(
+        "SELECT entity_id FROM mission_templates WHERE id = $1", template_id,
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    if template["entity_id"] != ctx["entity_id"]:
+        raise HTTPException(status_code=403, detail="Cannot modify another entity's template")
+
+    allowed = {"name", "recurrence", "day_of_week", "day_of_month", "zone_ids",
+               "default_agent_ids", "target_inspections_per_agent", "notes", "is_active"}
+    updates = {k: v for k, v in data.items() if k in allowed}
+    if not updates:
+        raise HTTPException(status_code=422, detail="No valid fields to update")
+
+    set_parts = [f"{k} = ${i+2}" for i, k in enumerate(updates.keys())]
+    row = await db.fetchrow(
+        f"UPDATE mission_templates SET {', '.join(set_parts)} WHERE id = $1 RETURNING *",
+        template_id, *updates.values(),
+    )
+    return dict(row) if row else {}
+
+
+@router.delete("/templates/{template_id}", status_code=204)
+async def delete_template(
+    template_id: UUID,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Delete a mission template."""
+    from app.modules.inspections.services.inspection_service import InspectionService
+    ctx = await InspectionService.resolve_inspector_context(db, UUID(current_user.id))
+
+    template = await db.fetchrow(
+        "SELECT entity_id FROM mission_templates WHERE id = $1", template_id,
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    if template["entity_id"] != ctx["entity_id"]:
+        raise HTTPException(status_code=403, detail="Cannot delete another entity's template")
+
+    await db.execute("DELETE FROM mission_templates WHERE id = $1", template_id)
+
+
 @router.post("/{mission_id}/auto-assign")
 async def auto_assign_agents(
     mission_id: UUID,

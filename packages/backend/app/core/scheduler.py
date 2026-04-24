@@ -135,6 +135,11 @@ class InternalScheduler:
                 settings.SCHEDULER_WEEKLY_INTERVAL,
             ),
             (
+                "mission-auto-create",
+                self._mission_auto_create,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
                 "inspection-weekly-digest",
                 self._inspection_weekly_digest,
                 settings.SCHEDULER_WEEKLY_INTERVAL,
@@ -838,6 +843,143 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             logger.error(f"Mission stale cleanup failed: {e}")
+        return None
+
+    async def _mission_auto_create(self):
+        """Auto-create missions from recurring templates.
+
+        Checks all active templates and creates missions for today if:
+        - daily: always
+        - weekly: today matches day_of_week
+        - biweekly: today matches day_of_week AND week is even
+        - monthly: today matches day_of_month
+
+        Skips if mission already exists for that template+date (dedup via last_created_at).
+        After creation, auto-assigns default agents if configured.
+        """
+        from app.database.connection import db_manager
+        from app.core.events.event_bus import EventBus
+        from app.core.events.event_types import EventType
+
+        today = date.today()
+        weekday = today.weekday()  # 0=Monday
+        week_number = today.isocalendar()[1]
+        day_of_month = today.day
+
+        try:
+            async with db_manager.get_connection() as db:
+                templates = await db.fetch("""
+                    SELECT * FROM mission_templates
+                    WHERE is_active = true
+                """)
+
+                if not templates:
+                    return {"created": 0}
+
+                created = 0
+                for tpl in templates:
+                    rec = tpl["recurrence"]
+
+                    # Check if today matches the recurrence pattern
+                    should_create = False
+                    if rec == "daily":
+                        should_create = True
+                    elif rec == "weekly":
+                        should_create = (tpl["day_of_week"] == weekday)
+                    elif rec == "biweekly":
+                        should_create = (tpl["day_of_week"] == weekday and week_number % 2 == 0)
+                    elif rec == "monthly":
+                        should_create = (tpl["day_of_month"] == day_of_month)
+
+                    if not should_create:
+                        continue
+
+                    # Dedup: skip if already created today
+                    if tpl["last_created_at"] and tpl["last_created_at"].date() == today:
+                        continue
+
+                    # Check UNIQUE constraint (entity_id, entity_location_id, mission_date)
+                    existing = await db.fetchval("""
+                        SELECT id FROM field_missions
+                        WHERE entity_id = $1 AND entity_location_id = $2 AND mission_date = $3
+                    """, tpl["entity_id"], tpl["entity_location_id"], today)
+
+                    if existing:
+                        continue
+
+                    # Create mission
+                    try:
+                        async with db.transaction():
+                            mission = await db.fetchrow("""
+                                INSERT INTO field_missions (
+                                    entity_id, entity_location_id, supervisor_id,
+                                    mission_date, title, notes, zone_ids, status
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'planned')
+                                RETURNING id
+                            """,
+                                tpl["entity_id"],
+                                tpl["entity_location_id"],
+                                tpl["created_by"],
+                                today,
+                                f"{tpl['name']} ({today.isoformat()})",
+                                tpl["notes"],
+                                tpl["zone_ids"],
+                            )
+
+                            mission_id = mission["id"]
+
+                            # Auto-assign default agents
+                            agent_ids = tpl["default_agent_ids"] or []
+                            for agent_id in agent_ids:
+                                # Verify agent is active and available
+                                profile = await db.fetchrow("""
+                                    SELECT id FROM agent_profiles
+                                    WHERE user_id = $1 AND entity_id = $2
+                                      AND is_active = true AND is_supervisor = false
+                                """, agent_id, tpl["entity_id"])
+
+                                if profile:
+                                    # Check no conflict
+                                    conflict = await db.fetchval("""
+                                        SELECT 1 FROM field_mission_agents fma
+                                        JOIN field_missions fm ON fm.id = fma.mission_id
+                                        WHERE fma.agent_id = $1 AND fm.mission_date = $2
+                                          AND fm.status IN ('planned', 'in_progress')
+                                    """, agent_id, today)
+
+                                    if not conflict:
+                                        await db.execute("""
+                                            INSERT INTO field_mission_agents (
+                                                mission_id, agent_id, agent_profile_id,
+                                                target_inspections, status
+                                            ) VALUES ($1, $2, $3, $4, 'assigned')
+                                        """, mission_id, agent_id, profile["id"],
+                                            tpl["target_inspections_per_agent"])
+
+                            # Update template last_created
+                            await db.execute("""
+                                UPDATE mission_templates
+                                SET last_created_at = NOW(), last_created_mission_id = $1
+                                WHERE id = $2
+                            """, mission_id, tpl["id"])
+
+                            created += 1
+                            logger.info(
+                                f"Auto-created mission from template '{tpl['name']}' "
+                                f"({tpl['recurrence']}) for {today}"
+                            )
+
+                    except Exception as e:
+                        logger.warning(f"Failed to create mission from template {tpl['id']}: {e}")
+                        continue
+
+                if created:
+                    logger.info(f"Mission auto-create: {created} missions from templates")
+                return {"created": created, "templates_checked": len(templates)}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Mission auto-create failed: {e}")
         return None
 
     async def _inspection_daily_summary(self):
