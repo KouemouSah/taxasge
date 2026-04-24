@@ -1709,8 +1709,10 @@ try:
         analytics_router as inspection_analytics_router,
         filter_export_router as inspection_filter_export_router,
     )
-    # Mission routes included inside inspections_router via router.include_router()
-    # to avoid /{inspection_id} catch-all matching /missions/* paths
+    # CRITICAL ORDER: mission_router MUST be registered BEFORE inspections_router.
+    # inspections_router has GET /inspections/{inspection_id} which catches /inspections/missions
+    # if mission_router is registered after. FastAPI resolves by app-level registration order.
+    app.include_router(inspection_mission_router, prefix="/api/v1", tags=["inspection-missions"])
     app.include_router(inspection_analytics_router, prefix="/api/v1", tags=["inspection-analytics"])
     app.include_router(inspection_filter_export_router, prefix="/api/v1", tags=["inspection-filters-export"])
     app.include_router(inspections_router, prefix="/api/v1", tags=["field-inspections"])
