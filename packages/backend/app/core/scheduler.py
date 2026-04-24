@@ -898,6 +898,38 @@ class InternalScheduler:
                     if tpl["last_created_at"] and tpl["last_created_at"].date() == today:
                         continue
 
+                    # Validation: check agent availability
+                    default_agents = tpl["default_agent_ids"] or []
+                    if not default_agents:
+                        # No default agents configured — check if any agents available
+                        avail_count = await db.fetchval("""
+                            SELECT COUNT(*) FROM agent_profiles
+                            WHERE entity_id = $1 AND entity_location_id = $2
+                              AND is_active = true AND is_supervisor = false
+                        """, tpl["entity_id"], tpl["entity_location_id"])
+                        if not avail_count or avail_count == 0:
+                            logger.warning(
+                                f"Template '{tpl['name']}': skipped — no agents available "
+                                f"at location {tpl['entity_location_id']}"
+                            )
+                            continue
+
+                    # Validation: check last mission completion rate
+                    if tpl["last_created_mission_id"]:
+                        last_stats = await db.fetchrow("""
+                            SELECT COALESCE(SUM(actual_inspections), 0) AS actual,
+                                   COALESCE(SUM(target_inspections), 0) AS target
+                            FROM field_mission_agents
+                            WHERE mission_id = $1
+                        """, tpl["last_created_mission_id"])
+                        if last_stats and last_stats["target"] > 0:
+                            last_rate = last_stats["actual"] / last_stats["target"]
+                            if last_rate < 0.3:
+                                logger.warning(
+                                    f"Template '{tpl['name']}': last mission had "
+                                    f"{int(last_rate*100)}% completion — creating anyway"
+                                )
+
                     # Check UNIQUE constraint (entity_id, entity_location_id, mission_date)
                     existing = await db.fetchval("""
                         SELECT id FROM field_missions

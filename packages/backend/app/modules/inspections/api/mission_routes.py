@@ -269,6 +269,114 @@ async def delete_template(
     await db.execute("DELETE FROM mission_templates WHERE id = $1", template_id)
 
 
+@router.post("/templates/{template_id}/run")
+async def run_template(
+    template_id: UUID,
+    data: dict = {},
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.manage_missions")),
+):
+    """Manually run a template to create a mission for a specific date."""
+    from datetime import datetime as dt
+    from app.modules.inspections.services.inspection_service import InspectionService
+
+    ctx = await InspectionService.resolve_inspector_context(db, UUID(current_user.id))
+
+    tpl = await db.fetchrow("SELECT * FROM mission_templates WHERE id = $1", template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    if tpl["entity_id"] != ctx["entity_id"]:
+        raise HTTPException(status_code=403, detail="Cannot run another entity's template")
+    if not tpl["is_active"]:
+        raise HTTPException(status_code=422, detail="Template is inactive")
+
+    # Target date: provided or tomorrow
+    mission_date_str = data.get("mission_date")
+    if mission_date_str:
+        try:
+            mission_date = date.fromisoformat(mission_date_str) if isinstance(mission_date_str, str) else mission_date_str
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid date format (YYYY-MM-DD)")
+    else:
+        from datetime import timedelta as td
+        mission_date = date.today() + td(days=1)
+
+    if mission_date < date.today():
+        raise HTTPException(status_code=422, detail="Cannot create mission in the past")
+
+    # Check UNIQUE
+    existing = await db.fetchval("""
+        SELECT id FROM field_missions
+        WHERE entity_id = $1 AND entity_location_id = $2 AND mission_date = $3
+    """, tpl["entity_id"], tpl["entity_location_id"], mission_date)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Mission already exists for this location on {mission_date}"
+        )
+
+    try:
+        async with db.transaction():
+            mission = await db.fetchrow("""
+                INSERT INTO field_missions (
+                    entity_id, entity_location_id, supervisor_id,
+                    mission_date, title, notes, zone_ids, status
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'planned')
+                RETURNING *
+            """,
+                tpl["entity_id"], tpl["entity_location_id"],
+                UUID(current_user.id), mission_date,
+                f"{tpl['name']} ({mission_date.isoformat()})",
+                tpl["notes"], tpl["zone_ids"],
+            )
+
+            # Auto-assign default agents
+            assigned = 0
+            for agent_id in (tpl["default_agent_ids"] or []):
+                profile = await db.fetchrow("""
+                    SELECT id FROM agent_profiles
+                    WHERE user_id = $1 AND entity_id = $2 AND is_active = true AND is_supervisor = false
+                """, agent_id, tpl["entity_id"])
+                if not profile:
+                    continue
+
+                conflict = await db.fetchval("""
+                    SELECT 1 FROM field_mission_agents fma
+                    JOIN field_missions fm ON fm.id = fma.mission_id
+                    WHERE fma.agent_id = $1 AND fm.mission_date = $2
+                      AND fm.status IN ('planned', 'in_progress')
+                """, agent_id, mission_date)
+                if conflict:
+                    continue
+
+                await db.execute("""
+                    INSERT INTO field_mission_agents (
+                        mission_id, agent_id, agent_profile_id,
+                        target_inspections, status
+                    ) VALUES ($1, $2, $3, $4, 'assigned')
+                """, mission["id"], agent_id, profile["id"],
+                    tpl["target_inspections_per_agent"])
+                assigned += 1
+
+            # Update template tracking
+            await db.execute("""
+                UPDATE mission_templates
+                SET last_created_at = NOW(), last_created_mission_id = $1
+                WHERE id = $2
+            """, mission["id"], template_id)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create mission: {e}")
+
+    return {
+        "mission_id": str(mission["id"]),
+        "mission_date": str(mission_date),
+        "agents_assigned": assigned,
+        "template_name": tpl["name"],
+    }
+
+
 @router.post("/{mission_id}/auto-assign")
 async def auto_assign_agents(
     mission_id: UUID,

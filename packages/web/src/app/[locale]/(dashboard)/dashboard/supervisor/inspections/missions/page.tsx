@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, CalendarDays, Users, BarChart3 } from 'lucide-react'
+import { ArrowLeft, CalendarDays, Users, BarChart3, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { inspectionApi } from '@/modules/inspections/services/api'
@@ -20,6 +20,7 @@ import { MissionCalendar } from '@/modules/inspections/components/MissionCalenda
 import { MissionPlanPanel } from '@/modules/inspections/components/MissionPlanPanel'
 import { MissionAttributionTab } from '@/modules/inspections/components/MissionAttributionTab'
 import { MissionDashboardTab } from '@/modules/inspections/components/MissionDashboardTab'
+import { MissionTemplatesTab } from '@/modules/inspections/components/MissionTemplatesTab'
 import { LocationFilter, useLocationFilterState } from '@/modules/inspections/components/LocationFilter'
 import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard'
 import type { MissionListItem } from '@/modules/inspections/types'
@@ -162,6 +163,10 @@ export default function MissionsPage() {
             <BarChart3 className="h-3.5 w-3.5" />
             {t('missions.dashboard', { defaultMessage: 'Dashboard' })}
           </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-1.5">
+            <Clock className="h-3.5 w-3.5" />
+            {t('missions.templates', { defaultMessage: 'Templates' })}
+          </TabsTrigger>
         </TabsList>
 
         {/* Planning Tab */}
@@ -188,6 +193,11 @@ export default function MissionsPage() {
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="flex-1 overflow-y-auto mt-3">
           <MissionDashboardTab locationFilter={locationFilter || undefined} />
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="flex-1 overflow-y-auto mt-3">
+          <MissionTemplatesTab locationFilter={locationFilter || undefined} />
         </TabsContent>
       </Tabs>
     </div>

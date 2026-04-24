@@ -270,6 +270,31 @@ export const inspectionApi = {
     ).then(r => r.data),
 
   // ============================================================
+  // TEMPLATES
+  // ============================================================
+
+  listTemplates: () =>
+    apiClient.get<import('../types').MissionTemplate[]>('/inspections/missions/templates').then(r => r.data),
+
+  createTemplate: (data: {
+    name: string; recurrence: string; day_of_week?: number; day_of_month?: number;
+    zone_ids?: string[]; default_agent_ids?: string[]; target_inspections_per_agent?: number; notes?: string;
+  }) =>
+    apiClient.post<import('../types').MissionTemplate>('/inspections/missions/templates', data).then(r => r.data),
+
+  updateTemplate: (id: string, data: Record<string, unknown>) =>
+    apiClient.put<import('../types').MissionTemplate>(`/inspections/missions/templates/${id}`, data).then(r => r.data),
+
+  deleteTemplate: (id: string) =>
+    apiClient.delete(`/inspections/missions/templates/${id}`),
+
+  runTemplate: (id: string, missionDate?: string) =>
+    apiClient.post<{ mission_id: string; mission_date: string; agents_assigned: number; template_name: string }>(
+      `/inspections/missions/templates/${id}/run`,
+      missionDate ? { mission_date: missionDate } : {},
+    ).then(r => r.data),
+
+  // ============================================================
   // ANALYTICS
   // ============================================================
 

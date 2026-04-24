@@ -562,3 +562,24 @@ export interface MissionAnalyticsResponse {
   agent_zone_matrix: AgentZoneCell[]
   zone_conformity: ZoneConformity[]
 }
+
+// ============================================================
+// MISSION TEMPLATES
+// ============================================================
+
+export interface MissionTemplate {
+  id: string
+  name: string
+  recurrence: 'daily' | 'weekly' | 'biweekly' | 'monthly'
+  day_of_week: number | null
+  day_of_month: number | null
+  zone_ids: string[] | null
+  default_agent_ids: string[] | null
+  target_inspections_per_agent: number
+  notes: string | null
+  is_active: boolean
+  last_created_at: string | null
+  last_created_mission_id: string | null
+  created_by_name?: string
+  created_at: string
+}
