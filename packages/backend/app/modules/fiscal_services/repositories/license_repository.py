@@ -1,5 +1,6 @@
 """License Repository — Data access for commercial_licenses, license_obligations, license_compliance_events."""
 
+import json as _json
 import logging
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -585,7 +586,15 @@ class LicenseRepository:
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params_data)
 
-        return [dict(r) for r in rows], total
+        results = []
+        for r in rows:
+            d = dict(r)
+            # asyncpg returns JSONB as str (no global codec) — parse to dict
+            ed = d.get("event_data")
+            if isinstance(ed, str):
+                d["event_data"] = _json.loads(ed)
+            results.append(d)
+        return results, total
 
     # ==================================================================
     # Agent Queue (OMS Post-Payment Processing)
