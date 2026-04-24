@@ -493,7 +493,16 @@ async def cron_auto_approve_seals(
 
 
 # ============================================================
-# Dynamic paths — /{id}
+# SUB-ROUTERS — MUST be included BEFORE /{inspection_id} catch-all
+# FastAPI resolves routes in declaration order within a router.
+# ============================================================
+
+from app.modules.inspections.api.mission_routes import router as _mission_router
+router.include_router(_mission_router)
+
+
+# ============================================================
+# Dynamic paths — /{id} (catch-all AFTER sub-routers)
 # ============================================================
 
 
@@ -945,7 +954,4 @@ async def download_seal_pdf(
     )
 
 
-# Include mission sub-router — MUST be at the end so /missions/* routes
-# are registered BEFORE /{inspection_id} catch-all in the same router.
-from app.modules.inspections.api.mission_routes import router as _mission_router
-router.include_router(_mission_router)
+# (mission sub-router included above dynamic paths section)
