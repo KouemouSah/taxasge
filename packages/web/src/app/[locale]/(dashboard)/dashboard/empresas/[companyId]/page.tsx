@@ -215,10 +215,10 @@ export default function CompanyDetailPage() {
             </Button>
           )}
           {lic && (
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
-              <a href={`/api/v1/licenses/${lic.id}/download-pdf?language=${locale}`} target="_blank" rel="noopener noreferrer">
-                <Download className="h-3.5 w-3.5" /> {t('downloadLicense')}
-              </a>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1"
+              onClick={() => bundleWorkflowApi.downloadLicensePdf(companyId, locale)}
+            >
+              <Download className="h-3.5 w-3.5" /> {t('downloadLicense')}
             </Button>
           )}
           <Link href={`/${locale}/dashboard/bundle-payment?companyId=${c.id}`}>

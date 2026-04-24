@@ -123,6 +123,21 @@ export const bundleWorkflowApi = {
   /** Payment history for a company (paginated) */
   getMyCompanyPayments: (companyId: string, page = 1, pageSize = 20) =>
     get<CompanyPaymentsResponse>(`/my-companies/${companyId}/payments`, { page, page_size: pageSize }),
+
+  /** Download license PDF for citizen's own company */
+  downloadLicensePdf: async (companyId: string, language = 'es'): Promise<void> => {
+    const { data } = await apiClient.get(
+      `${BASE}/my-companies/${companyId}/license-pdf?language=${language}`,
+      { responseType: 'blob' },
+    )
+    const blob = new Blob([data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `license-${companyId}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }
 
 // ========== Citizen Company Types ==========

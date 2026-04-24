@@ -149,6 +149,57 @@ async def get_my_company_payments(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.get("/my-companies/{company_id}/license-pdf")
+async def download_my_license_pdf(
+    company_id: str,
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Download license PDF for citizen's own company (no agent permission needed).
+
+    Verifies ownership via user_company_roles before generating PDF.
+    """
+    from fastapi.responses import Response
+    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+
+    user_id = UUID(current_user.id if hasattr(current_user, 'id') else current_user.get("sub"))
+
+    # Verify citizen owns this company
+    ownership = await db.fetchval(
+        "SELECT 1 FROM user_company_roles WHERE user_id = $1 AND company_id = $2",
+        user_id, UUID(company_id),
+    )
+    if not ownership:
+        raise HTTPException(status_code=403, detail="You don't have access to this company")
+
+    # Find active license for this company
+    license_id = await db.fetchval("""
+        SELECT id FROM commercial_licenses
+        WHERE company_id = $1 AND status != 'cancelled'
+        ORDER BY fiscal_year DESC LIMIT 1
+    """, UUID(company_id))
+    if not license_id:
+        raise HTTPException(status_code=404, detail="No license found for this company")
+
+    try:
+        pdf_bytes = await license_pdf_service.generate_license_pdf(
+            db, str(license_id), language
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="license-{company_id}.pdf"',
+        },
+    )
+
+
 @router.get("/search-company")
 async def search_eligible_company(
     q: str = Query(..., min_length=2, max_length=100),

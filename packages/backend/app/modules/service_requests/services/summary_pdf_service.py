@@ -406,6 +406,7 @@ class SummaryPDFService:
         language: str = "es",
         photo_url: Optional[str] = None,
         payment_status: Optional[str] = None,
+        bundle_details: Optional[Dict[str, Any]] = None,
     ) -> bytes:
         """
         Generate a PDF summary for a service request.
@@ -518,6 +519,43 @@ class SummaryPDFService:
         verify_url = f"{frontend_url}/verify/{request_number}?t={sr_token}"
         qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
 
+        # Format bundle obligations for PDF (if present)
+        formatted_bundle = None
+        if bundle_details:
+            obl_status_labels = {
+                "es": {"completed": "Pagada", "processing": "En proceso", "paid": "Pagada", "pending": "Pendiente", "payment_pending": "Pago pendiente", "selected": "Seleccionada", "overdue": "Vencida"},
+                "fr": {"completed": "Payee", "processing": "En cours", "paid": "Payee", "pending": "En attente", "payment_pending": "Paiement en attente", "selected": "Selectionnee", "overdue": "Echue"},
+                "en": {"completed": "Paid", "processing": "Processing", "paid": "Paid", "pending": "Pending", "payment_pending": "Payment pending", "selected": "Selected", "overdue": "Overdue"},
+            }
+            sl = obl_status_labels.get(language, obl_status_labels["es"])
+            paid_total = sum(o["amount"] for o in bundle_details.get("obligations", []) if o["status"] in ("completed", "paid", "processing"))
+            total = bundle_details.get("total_amount", 0)
+            formatted_bundle = {
+                "company_name": bundle_details.get("company_name"),
+                "registration_number": bundle_details.get("registration_number"),
+                "total_amount": format_amount(total),
+                "paid_amount": format_amount(paid_total),
+                "remaining_amount": format_amount(total - paid_total),
+                "splits": [
+                    {
+                        "entity_name": s.get("entity_name") or s.get("entity_code", "—"),
+                        "amount": format_amount(s["amount"]),
+                        "status": sl.get(s["status"], s["status"]),
+                    }
+                    for s in bundle_details.get("splits", [])
+                ],
+                "obligations": [
+                    {
+                        "service_name": o["service_name"],
+                        "fee_type": o["fee_type"].upper(),
+                        "amount": format_amount(o["amount"]),
+                        "status": sl.get(o["status"], o["status"]),
+                        "is_paid": o["status"] in ("completed", "paid", "processing"),
+                    }
+                    for o in bundle_details.get("obligations", [])
+                ],
+            }
+
         # Render template
         template = self.env.get_template("citizen_summary_pdf.html")
         html_content = template.render(
@@ -536,6 +574,7 @@ class SummaryPDFService:
             logo_base64=logo_base64,
             payment_status_label=payment_status_label,
             verify_url=verify_url,
+            bundle=formatted_bundle,
         )
 
         # Convert HTML to PDF
