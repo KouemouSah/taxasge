@@ -110,6 +110,16 @@ class InternalScheduler:
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
             (
+                "mission-start-alert",
+                self._mission_start_alert,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "mission-progress-alert",
+                self._mission_progress_alert,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
                 "inspection-daily-summary",
                 self._inspection_daily_summary,
                 settings.SCHEDULER_DAILY_INTERVAL,
@@ -117,6 +127,11 @@ class InternalScheduler:
             (
                 "supervisor-weekly-report",
                 self._supervisor_weekly_report,
+                settings.SCHEDULER_WEEKLY_INTERVAL,
+            ),
+            (
+                "mission-stale-cleanup",
+                self._mission_stale_cleanup,
                 settings.SCHEDULER_WEEKLY_INTERVAL,
             ),
             (
@@ -636,6 +651,193 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             logger.error(f"Mission daily reminder failed: {e}")
+        return None
+
+    async def _mission_start_alert(self):
+        """Alert supervisors about today's missions that haven't started yet.
+
+        Runs daily. Sends push notification if a mission scheduled for today
+        is still in 'planned' status (not yet transitioned to in_progress).
+        """
+        from app.database.connection import db_manager
+        from app.core.events.event_bus import EventBus
+        from app.core.events.event_types import EventType
+
+        today = date.today()
+        dedup_key = f"scheduler:mission_start_alert:{today.isoformat()}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None
+            await cache.set(dedup_key, "1", ttl=72000)
+        except Exception:
+            pass
+
+        try:
+            async with db_manager.get_connection() as db:
+                rows = await db.fetch("""
+                    SELECT fm.id, fm.title, fm.mission_date, fm.supervisor_id,
+                           u.email, u.first_name, u.last_name, u.preferred_language,
+                           (SELECT COUNT(*) FROM field_mission_agents
+                            WHERE mission_id = fm.id) AS agent_count
+                    FROM field_missions fm
+                    JOIN users u ON u.id = fm.supervisor_id
+                    WHERE fm.mission_date = $1
+                      AND fm.status = 'planned'
+                """, today)
+
+                sent = 0
+                for row in rows:
+                    EventBus.publish_nowait(EventType.MISSION_REMINDER, {
+                        "user_id": str(row["supervisor_id"]),
+                        "user_email": row["email"],
+                        "preferred_language": row["preferred_language"] or "es",
+                        "agent_name": f"{row['first_name']} {row['last_name']}".strip(),
+                        "mission_id": str(row["id"]),
+                        "mission_date": str(today),
+                        "mission_title": row["title"] or str(today),
+                        "zone_names": "",
+                        "target_inspections": str(row["agent_count"]),
+                    })
+                    sent += 1
+
+                if sent:
+                    logger.info(f"Mission start alerts: {sent} missions not started today")
+                return {"alerts_sent": sent}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Mission start alert failed: {e}")
+        return None
+
+    async def _mission_progress_alert(self):
+        """Alert supervisors about in-progress missions below 50% target.
+
+        Runs daily (afternoon). Checks missions in_progress today where
+        actual inspections < 50% of target.
+        """
+        from app.database.connection import db_manager
+        from app.core.events.event_bus import EventBus
+        from app.core.events.event_types import EventType
+
+        today = date.today()
+        dedup_key = f"scheduler:mission_progress_alert:{today.isoformat()}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            if await cache.get(dedup_key):
+                return None
+            await cache.set(dedup_key, "1", ttl=72000)
+        except Exception:
+            pass
+
+        try:
+            async with db_manager.get_connection() as db:
+                rows = await db.fetch("""
+                    SELECT fm.id, fm.title, fm.mission_date, fm.supervisor_id,
+                           u.email, u.first_name, u.last_name, u.preferred_language,
+                           COALESCE(agg.actual, 0) AS actual,
+                           COALESCE(agg.target, 0) AS target
+                    FROM field_missions fm
+                    JOIN users u ON u.id = fm.supervisor_id
+                    LEFT JOIN LATERAL (
+                        SELECT SUM(actual_inspections)::int AS actual,
+                               SUM(target_inspections)::int AS target
+                        FROM field_mission_agents WHERE mission_id = fm.id
+                    ) agg ON true
+                    WHERE fm.mission_date = $1
+                      AND fm.status = 'in_progress'
+                      AND COALESCE(agg.target, 0) > 0
+                      AND COALESCE(agg.actual, 0)::float / agg.target < 0.5
+                """, today)
+
+                sent = 0
+                for row in rows:
+                    pct = round(row["actual"] / row["target"] * 100) if row["target"] > 0 else 0
+                    EventBus.publish_nowait(EventType.MISSION_REMINDER, {
+                        "user_id": str(row["supervisor_id"]),
+                        "user_email": row["email"],
+                        "preferred_language": row["preferred_language"] or "es",
+                        "agent_name": f"{row['first_name']} {row['last_name']}".strip(),
+                        "mission_id": str(row["id"]),
+                        "mission_date": str(today),
+                        "mission_title": f"{row['title'] or today} ({pct}%)",
+                        "zone_names": f"{row['actual']}/{row['target']}",
+                        "target_inspections": str(row["target"]),
+                    })
+                    sent += 1
+
+                if sent:
+                    logger.info(f"Mission progress alerts: {sent} missions below 50%")
+                return {"alerts_sent": sent}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Mission progress alert failed: {e}")
+        return None
+
+    async def _mission_stale_cleanup(self):
+        """Auto-cancel missions that were planned but never started.
+
+        Runs weekly. Cancels missions where:
+        - status = 'planned'
+        - mission_date < today - 7 days
+        Notifies supervisors of cancelled missions.
+        """
+        from app.database.connection import db_manager
+        from app.core.events.event_bus import EventBus
+        from app.core.events.event_types import EventType
+
+        cutoff = date.today() - timedelta(days=7)
+
+        try:
+            async with db_manager.get_connection() as db:
+                # Find stale missions
+                stale = await db.fetch("""
+                    SELECT fm.id, fm.title, fm.mission_date, fm.supervisor_id,
+                           u.email, u.first_name, u.last_name, u.preferred_language
+                    FROM field_missions fm
+                    JOIN users u ON u.id = fm.supervisor_id
+                    WHERE fm.status = 'planned'
+                      AND fm.mission_date < $1
+                """, cutoff)
+
+                if not stale:
+                    return {"cancelled": 0}
+
+                ids = [row["id"] for row in stale]
+
+                # Cancel them
+                await db.execute("""
+                    UPDATE field_missions
+                    SET status = 'cancelled', updated_at = NOW()
+                    WHERE id = ANY($1::uuid[])
+                      AND status = 'planned'
+                """, ids)
+
+                # Notify supervisors
+                for row in stale:
+                    EventBus.publish_nowait(EventType.MISSION_CANCELLED, {
+                        "user_id": str(row["supervisor_id"]),
+                        "user_email": row["email"],
+                        "preferred_language": row["preferred_language"] or "es",
+                        "agent_name": f"{row['first_name']} {row['last_name']}".strip(),
+                        "mission_id": str(row["id"]),
+                        "mission_date": str(row["mission_date"]),
+                        "mission_title": row["title"] or str(row["mission_date"]),
+                        "cancellation_reason": "Auto-cancelled: mission date passed 7+ days ago",
+                        "zone_names": "",
+                        "target_inspections": "",
+                        "agent_count": "",
+                    })
+
+                logger.info(f"Mission stale cleanup: {len(stale)} missions auto-cancelled")
+                return {"cancelled": len(stale)}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Mission stale cleanup failed: {e}")
         return None
 
     async def _inspection_daily_summary(self):
