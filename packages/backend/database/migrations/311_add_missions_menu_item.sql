@@ -1,15 +1,19 @@
 -- Migration 311: Add missions menu item to supervisor inspection menus
 --
--- Adds a direct "Missions" entry in the inspection_supervision menu group
--- for all supervisor roles that have inspection.manage_missions permission.
+-- Adds "Missions" entry in the inspection_supervision menu group.
+-- Uses 'menus' key (not 'items') matching actual menu_config structure.
+-- Safe: only adds if missions_hub not already present.
+--
+-- NOTE: Applied directly via Python script on 2026-04-24 for all 9 supervisor roles.
+-- This SQL is kept for documentation and future environments.
 
 BEGIN;
 
--- Update supervisor_ayuntamiento and supervisor_camara
+-- For each supervisor role that has inspection_supervision but not missions_hub:
 UPDATE roles
 SET menu_config = jsonb_set(
     menu_config,
-    '{items}',
+    '{menus}',
     (
         SELECT jsonb_agg(
             CASE
@@ -17,12 +21,12 @@ SET menu_config = jsonb_set(
                     jsonb_set(
                         item,
                         '{items}',
-                        (item->'items') || '[{"id":"missions_hub","href":"/dashboard/supervisor/inspections/missions","icon":"CalendarDays","titleKey":"inspection.nav.missions","permission":"inspection.manage_missions"}]'::jsonb
+                        COALESCE(item->'items', '[]'::jsonb) || '[{"id":"missions_hub","href":"/dashboard/supervisor/inspections/missions","icon":"CalendarDays","titleKey":"inspection.nav.missions","permission":"inspection.manage_missions"}]'::jsonb
                     )
                 ELSE item
             END
         )
-        FROM jsonb_array_elements(menu_config->'items') AS item
+        FROM jsonb_array_elements(menu_config->'menus') AS item
     )
 )
 WHERE code IN (
@@ -33,12 +37,7 @@ WHERE code IN (
     'supervisor_tesoro'
 )
 AND menu_config IS NOT NULL
-AND menu_config->'items' IS NOT NULL
--- Only if missions_hub not already present
-AND NOT EXISTS (
-    SELECT 1 FROM jsonb_array_elements(menu_config->'items') AS item,
-                  jsonb_array_elements(item->'items') AS sub
-    WHERE sub->>'id' = 'missions_hub'
-);
+AND menu_config->'menus' IS NOT NULL
+AND NOT (menu_config::text LIKE '%missions_hub%');
 
 COMMIT;
