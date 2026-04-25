@@ -62,6 +62,26 @@ const TYPE_STYLE: Record<string, { icon: typeof FileText; color: string }> = {
     icon: FileText,
     color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   },
+  LICENSE_CERTIFICATE: {
+    icon: Award,
+    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  },
+  CITIZEN_SUMMARY: {
+    icon: FileText,
+    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  },
+  MISE_EN_DEMEURE: {
+    icon: FileText,
+    color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  },
+  SEAL_ORDER: {
+    icon: FileText,
+    color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  },
+  PAYMENT_RECEIPT: {
+    icon: Receipt,
+    color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  },
 };
 
 function getTypeStyle(generationType: string) {

@@ -11435,6 +11435,10 @@
         "request_summary": "Request summary",
         "appointment_confirmation": "Appointment confirmation",
         "certificate": "Certificate",
+        "LICENSE_CERTIFICATE": "License certificate",
+        "CITIZEN_SUMMARY": "Citizen summary",
+        "MISE_EN_DEMEURE": "Formal notice",
+        "SEAL_ORDER": "Seal order",
         "notification_letter": "Notification letter"
       },
       "download": "Download",

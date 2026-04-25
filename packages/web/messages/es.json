@@ -11431,10 +11431,15 @@
       "emptyDescription": "Los certificados, recibos y otros documentos generados aparecerán aquí automáticamente",
       "types": {
         "payment_receipt": "Recibo de pago",
+        "PAYMENT_RECEIPT": "Recibo de pago",
         "request_validation": "Validación de solicitud",
         "request_summary": "Resumen de solicitud",
         "appointment_confirmation": "Confirmación de cita",
         "certificate": "Certificado",
+        "LICENSE_CERTIFICATE": "Certificado de licencia",
+        "CITIZEN_SUMMARY": "Resumen del ciudadano",
+        "MISE_EN_DEMEURE": "Aviso de requerimiento",
+        "SEAL_ORDER": "Orden de precinto",
         "notification_letter": "Carta de notificación"
       },
       "download": "Descargar",

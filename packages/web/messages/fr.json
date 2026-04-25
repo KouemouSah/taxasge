@@ -11431,10 +11431,15 @@
       "noDocumentsDesc": "Les documents générés par la plateforme (reçus, certificats) apparaîtront ici",
       "types": {
         "payment_receipt": "Reçu de paiement",
+        "PAYMENT_RECEIPT": "Reçu de paiement",
         "request_validation": "Validation de demande",
         "request_summary": "Résumé de demande",
         "appointment_confirmation": "Confirmation de rendez-vous",
         "certificate": "Certificat",
+        "LICENSE_CERTIFICATE": "Certificat de licence",
+        "CITIZEN_SUMMARY": "Résumé citoyen",
+        "MISE_EN_DEMEURE": "Mise en demeure",
+        "SEAL_ORDER": "Ordre de scellé",
         "notification_letter": "Lettre de notification"
       },
       "download": "Télécharger",
