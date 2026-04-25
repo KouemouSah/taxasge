@@ -11282,7 +11282,7 @@
       "expiring": "Por vencer",
       "quota": "Espacio",
       "quotaUsed": "{used} / {max} MB",
-      "wizardImported": "Importados"
+      "wizardImported": "{count} Importados"
     },
     "grid": {
       "search": "Buscar un documento...",
@@ -11566,14 +11566,20 @@
       "all": "Todos",
       "certificate": "Certificados",
       "receipt": "Recibos",
-      "summary_pdf": "Resúmenes",
-      "declaration": "Declaraciones"
+      "payment_receipt": "Recibos",
+      "request_summary": "Resúmenes",
+      "summary": "Resúmenes",
+      "attestation": "Certificaciones",
+      "confirmation": "Confirmaciones"
     },
     "generatedLabels": {
       "certificate": "Certificado",
       "receipt": "Recibo",
-      "summary_pdf": "Resumen",
-      "declaration": "Declaración"
+      "payment_receipt": "Recibo de pago",
+      "request_summary": "Resumen de solicitud",
+      "summary": "Resumen",
+      "attestation": "Certificación",
+      "confirmation": "Confirmación"
     },
     "vaultPicker": {
       "title": "Seleccionar desde Mis Documentos",

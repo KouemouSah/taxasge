@@ -118,7 +118,10 @@ export interface UserDocument {
 export interface UserDocumentListItem {
   id: string;
   document_type: string;
+  /** Backend sends 'category', kept for compat */
   document_category: DocumentCategory;
+  /** Backend field name — preferred */
+  category?: DocumentCategory;
   file_name: string;
   display_name?: string;
   expiry_date?: string;

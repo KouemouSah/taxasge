@@ -116,8 +116,9 @@ export function DocumentCard({
   const [isDownloading, setIsDownloading] = useState(false);
 
   const FileIcon = getFileIcon(doc.mime_type);
-  const categoryLabel = CATEGORY_LABELS[doc.document_category]?.[locale] ?? doc.document_category;
-  const categoryColor = CATEGORY_COLORS[doc.document_category] ?? CATEGORY_COLORS.other;
+  const cat = doc.category || doc.document_category || 'other';
+  const categoryLabel = CATEGORY_LABELS[cat]?.[locale] ?? cat;
+  const categoryColor = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.other;
   const displayName = doc.display_name || doc.file_name;
 
   // Lazy-load thumbnail URL when thumbnail_path is available

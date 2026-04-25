@@ -42,13 +42,25 @@ const TYPE_STYLE: Record<string, { icon: typeof FileText; color: string }> = {
     icon: Receipt,
     color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   },
-  summary_pdf: {
+  payment_receipt: {
+    icon: Receipt,
+    color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  },
+  summary: {
     icon: FileText,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   },
-  declaration: {
+  request_summary: {
+    icon: FileText,
+    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  },
+  attestation: {
     icon: FileText,
     color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  },
+  confirmation: {
+    icon: FileText,
+    color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   },
 };
 
@@ -84,7 +96,8 @@ function formatFileSize(bytes?: number): string {
 // Type filter options
 // ---------------------------------------------------------------------------
 
-const TYPE_FILTER_VALUES = [undefined, 'certificate', 'receipt', 'summary_pdf', 'declaration'] as const;
+// Filter values must match backend GenerationType + actual DB values
+const TYPE_FILTER_VALUES = [undefined, 'certificate', 'payment_receipt', 'request_summary', 'attestation'] as const;
 
 // ---------------------------------------------------------------------------
 // Component

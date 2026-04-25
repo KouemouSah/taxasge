@@ -11282,7 +11282,7 @@
       "expiring": "Expiring",
       "quota": "Storage",
       "quotaUsed": "{used} / {max} MB",
-      "wizardImported": "Imported"
+      "wizardImported": "{count} Imported"
     },
     "grid": {
       "search": "Search for a document...",
@@ -11566,14 +11566,20 @@
       "all": "All",
       "certificate": "Certificates",
       "receipt": "Receipts",
-      "summary_pdf": "Summaries",
-      "declaration": "Declarations"
+      "payment_receipt": "Receipts",
+      "request_summary": "Summaries",
+      "summary": "Summaries",
+      "attestation": "Attestations",
+      "confirmation": "Confirmations"
     },
     "generatedLabels": {
       "certificate": "Certificate",
       "receipt": "Receipt",
-      "summary_pdf": "Summary",
-      "declaration": "Declaration"
+      "payment_receipt": "Payment receipt",
+      "request_summary": "Request summary",
+      "summary": "Summary",
+      "attestation": "Attestation",
+      "confirmation": "Confirmation"
     },
     "vaultPicker": {
       "title": "Select from My Documents",
