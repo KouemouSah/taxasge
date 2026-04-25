@@ -204,6 +204,8 @@ export interface ReadinessResult {
 export interface GeneratedDocument {
   id: string;
   generation_type: string;
+  /** Primary title from backend */
+  title?: string;
   title_es?: string;
   title_fr?: string;
   title_en?: string;

@@ -135,11 +135,16 @@ export function GeneratedDocumentsGrid() {
   // Get localized title
   const getTitle = useCallback(
     (doc: GeneratedDocument): string => {
-      if (locale === 'fr' && doc.title_fr) return doc.title_fr;
-      if (locale === 'en' && doc.title_en) return doc.title_en;
-      return doc.title_es || doc.file_name;
+      // Use i18n translation keys — no need for backend multilingual fields
+      const typeKey = doc.generation_type || 'other';
+      const translated = t(`generated.types.${typeKey}`);
+      // If key exists in translations, use it; otherwise fallback to backend fields
+      if (translated && !translated.startsWith('userDocuments.')) {
+        return translated;
+      }
+      return doc.title_es || doc.title || doc.file_name;
     },
-    [locale]
+    [t]
   );
 
   return (
