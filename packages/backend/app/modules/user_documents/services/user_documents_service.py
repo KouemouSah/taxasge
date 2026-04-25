@@ -1357,6 +1357,37 @@ class UserDocumentsService:
                 continue
         return None
 
+    # Mapping: wizard document_code → Gemini classified type
+    # Used to normalize document codes from wizard to classification types
+    WIZARD_CODE_TO_TYPE = {
+        "dip": "national_id",
+        "dip_ge": "national_id",
+        "dip_ge_v1": "national_id",
+        "documento_identidad": "national_id",
+        "pasaporte_antiguo": "passport",
+        "pasaporte": "passport",
+        "passport": "passport",
+        "partida_nacimiento": "birth_certificate",
+        "certificado_nacimiento": "birth_certificate",
+        "carnet_conducir": "driving_license",
+        "permiso_conduccion": "driving_license",
+        "permiso_residencia": "residence_permit",
+        "tarjeta_residencia": "residence_permit",
+        "photo_carnet": "photo",
+        "fotografias": "photo",
+        "foto_carnet": "photo",
+        "certificado_medico": "medical_certificate",
+        "examen_medico": "medical_certificate",
+        "certificado_penales": "criminal_record",
+        "antecedentes_penales": "criminal_record",
+        "tarjeta_circulacion": "vehicle_registration",
+        "permiso_circulacion": "vehicle_registration",
+        "certificado_solvencia": "financial_certificate",
+        "autorizacion_parental": "parental_authorization",
+        "documento_representante_1": "legal_representative",
+        "documento_representante_2": "legal_representative",
+    }
+
     def _build_workflow_tags(
         self, document_code: str, gemini_result: Dict
     ) -> List[Dict]:
@@ -1364,8 +1395,14 @@ class UserDocumentsService:
         Build workflow tags based on document type classification.
 
         Maps common document types to the workflows that use them.
+        Normalizes wizard document codes to Gemini classification types.
         Returns a list of tag dicts for create_workflow_tags().
         """
+        # Normalize wizard codes to classification types
+        normalized_code = self.WIZARD_CODE_TO_TYPE.get(
+            document_code.lower(), document_code
+        )
+
         # Mapping: document_type -> list of (workflow_code, relevance_score)
         type_to_workflows = {
             "passport": [
@@ -1414,7 +1451,7 @@ class UserDocumentsService:
             ],
         }
 
-        workflow_entries = type_to_workflows.get(document_code, [])
+        workflow_entries = type_to_workflows.get(normalized_code, [])
 
         # Also check Gemini result for additional workflow suggestions
         suggested_workflows = gemini_result.get("suggested_workflows", [])
