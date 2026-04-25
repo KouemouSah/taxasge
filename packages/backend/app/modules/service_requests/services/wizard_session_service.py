@@ -759,6 +759,107 @@ class WizardSessionService:
         workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
         return self._session_to_response(session, workflow)
 
+    async def use_vault_document(
+        self,
+        session_id: str,
+        user_id: UUID,
+        document_code: str,
+        vault_document_id: str,
+        db,
+    ) -> WizardSessionResponse:
+        """
+        Use an existing vault document in the wizard session.
+
+        Instead of uploading a file, copies the vault document's metadata
+        and extraction data into the session. On persist, the vault's
+        file_path will be reused (no Firebase re-upload).
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for authorization
+            document_code: Document code to fill (e.g., 'dip')
+            vault_document_id: UUID string of the vault document
+            db: asyncpg connection
+
+        Returns:
+            Updated WizardSessionResponse
+        """
+        logger.info(
+            f"[WizardSession] Use vault document: session={session_id}, "
+            f"doc={document_code}, vault_id={vault_document_id}"
+        )
+
+        session = await self._get_session(session_id, user_id)
+
+        # Validate vault document ownership and existence
+        vault_doc = await db.fetchrow(
+            """SELECT id, file_path, file_name, file_size_bytes, mime_type,
+                      file_hash, extraction_data, extraction_confidence,
+                      extraction_status, display_name, document_type,
+                      expiry_date, holder_name, document_number
+               FROM user_documents
+               WHERE id = $1 AND user_id = $2
+                 AND status = 'active' AND deleted_at IS NULL""",
+            UUID(vault_document_id),
+            user_id,
+        )
+
+        if not vault_doc:
+            raise WizardSessionError(
+                "Documento no encontrado en el cofre.",
+                "VAULT_DOCUMENT_NOT_FOUND",
+            )
+
+        # Build document data compatible with session format
+        now = datetime.now(timezone.utc)
+        extraction = {}
+        if vault_doc["extraction_data"]:
+            import json as _json
+            raw = vault_doc["extraction_data"]
+            extraction = _json.loads(raw) if isinstance(raw, str) else raw
+
+        document_data = {
+            "document_code": document_code,
+            "file_name": vault_doc["file_name"],
+            "file_size": vault_doc["file_size_bytes"],
+            "mime_type": vault_doc["mime_type"],
+            # NO content_b64 — persist will detect vault_document_id and skip Firebase
+            "vault_document_id": vault_document_id,
+            "vault_file_path": vault_doc["file_path"],
+            "extraction": extraction,
+            "confidence": float(vault_doc["extraction_confidence"] or 0),
+            "processor": "vault_reuse",
+            "extraction_status": vault_doc["extraction_status"] or "completed",
+            "risk_analysis": None,
+            "doc_hash": vault_doc["file_hash"],
+            "previewed_at": now.isoformat(),
+            "confirmed_at": now.isoformat(),  # Auto-confirmed (already validated)
+            "user_corrections": None,
+        }
+
+        # Update session documents
+        if "documents" not in session:
+            session["documents"] = {}
+        session["documents"][document_code] = document_data
+
+        # Merge extraction into extracted_data
+        if "extracted_data" not in session:
+            session["extracted_data"] = {}
+        session["extracted_data"][document_code] = extraction
+
+        # Save session (renews TTL)
+        success = await self._save_session(session_id, session, renew_ttl=True)
+        if not success:
+            raise WizardSessionError("Error al guardar el documento del cofre.")
+
+        logger.info(
+            f"[WizardSession] Vault document linked: session={session_id}, "
+            f"doc={document_code}, vault_file={vault_doc['file_name']}"
+        )
+
+        workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
+        return self._session_to_response(session, workflow)
+
     async def save_form_data(
         self,
         session_id: str,
@@ -1281,42 +1382,57 @@ class WizardSessionService:
 
         # 2. Upload documents to Firebase and create document records
         #    Phase 1 dedup: if file already in vault → reuse file_path, skip Firebase
+        #    Phase 2 vault-reuse: if vault_document_id present → use vault_file_path directly
         for doc_code, doc_data in session.get("documents", {}).items():
-            file_content = base64.b64decode(doc_data["content_b64"])
             doc_hash = doc_data.get("doc_hash")
 
-            # Check if this exact file already exists in the user's vault
-            vault_match = None
-            if doc_hash and len(doc_hash) == 64:
-                vault_match = await db.fetchrow(
-                    """SELECT file_path FROM user_documents
-                       WHERE user_id = $1 AND file_hash = $2
-                         AND status = 'active' AND deleted_at IS NULL
-                       LIMIT 1""",
-                    user_id_uuid, doc_hash,
-                )
-
-            if vault_match:
-                # Reuse existing Firebase file — zero storage cost
-                file_path = vault_match["file_path"]
+            # Phase 2: vault document selected via use-vault endpoint
+            if doc_data.get("vault_document_id") and doc_data.get("vault_file_path"):
+                file_path = doc_data["vault_file_path"]
                 logger.info(
-                    f"[WizardSession] Reusing vault file for {doc_code}: "
-                    f"hash={doc_hash[:12]}, path={file_path}"
+                    f"[WizardSession] Using vault doc for {doc_code}: "
+                    f"vault_id={doc_data['vault_document_id']}, path={file_path}"
                 )
+            elif doc_data.get("content_b64"):
+                file_content = base64.b64decode(doc_data["content_b64"])
+
+                # Phase 1: check if hash matches existing vault doc
+                vault_match = None
+                if doc_hash and len(doc_hash) == 64:
+                    vault_match = await db.fetchrow(
+                        """SELECT file_path FROM user_documents
+                           WHERE user_id = $1 AND file_hash = $2
+                             AND status = 'active' AND deleted_at IS NULL
+                           LIMIT 1""",
+                        user_id_uuid, doc_hash,
+                    )
+
+                if vault_match:
+                    # Reuse existing Firebase file — zero storage cost
+                    file_path = vault_match["file_path"]
+                    logger.info(
+                        f"[WizardSession] Reusing vault file for {doc_code}: "
+                        f"hash={doc_hash[:12]}, path={file_path}"
+                    )
+                else:
+                    upload_result = await firebase_storage_service.upload_user_document(
+                        user_id=str(user_id_uuid),
+                        application_id=str(service_request_id),
+                        file=file_content,
+                        metadata={
+                            "filename": doc_data["file_name"],
+                            "mime_type": doc_data["mime_type"],
+                            "document_code": doc_code,
+                            "document_name": doc_data.get("document_name") or doc_code,
+                        }
+                    )
+                    file_path = upload_result.file_path
+                    uploaded_files.append(file_path)
             else:
-                upload_result = await firebase_storage_service.upload_user_document(
-                    user_id=str(user_id_uuid),
-                    application_id=str(service_request_id),
-                    file=file_content,
-                    metadata={
-                        "filename": doc_data["file_name"],
-                        "mime_type": doc_data["mime_type"],
-                        "document_code": doc_code,
-                        "document_name": doc_data.get("document_name") or doc_code,
-                    }
+                logger.warning(
+                    f"[WizardSession] Document {doc_code} has no content or vault ref, skipping"
                 )
-                file_path = upload_result.file_path
-                uploaded_files.append(file_path)
+                continue
 
             doc_record = await document_repository.add_document(
                 db=db,

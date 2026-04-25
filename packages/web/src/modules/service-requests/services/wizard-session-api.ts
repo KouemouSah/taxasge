@@ -367,6 +367,36 @@ class WizardSessionApiClient {
   }
 
   // ==========================================================================
+  // VAULT DOCUMENT (Phase 2 — auto-fill from vault)
+  // ==========================================================================
+
+  /**
+   * Use a vault document in the wizard session (no file upload needed).
+   * POST /wizard-sessions/{sessionId}/documents/use-vault
+   *
+   * @param sessionId - Session ID
+   * @param documentCode - Document code to fill (e.g. 'dip')
+   * @param vaultDocumentId - UUID of the vault document
+   */
+  async useVaultDocument(
+    sessionId: string,
+    documentCode: string,
+    vaultDocumentId: string
+  ): Promise<WizardSession> {
+    const raw = await this.request<BackendWizardSessionResponse>(
+      `/${sessionId}/documents/use-vault`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          document_code: documentCode,
+          vault_document_id: vaultDocumentId,
+        }),
+      }
+    )
+    return transformSession(raw)
+  }
+
+  // ==========================================================================
   // FORM DATA
   // ==========================================================================
 

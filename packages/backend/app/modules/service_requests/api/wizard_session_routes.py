@@ -360,6 +360,67 @@ async def delete_wizard_document(
 
 
 # =============================================================================
+# USE VAULT DOCUMENT (Phase 2 — auto-fill from vault)
+# =============================================================================
+
+from pydantic import BaseModel, Field as PydField
+
+
+class UseVaultDocumentRequest(BaseModel):
+    """Request body for selecting a vault document for a wizard step."""
+    document_code: str = PydField(
+        ..., description="Document code to fill (e.g. 'dip', 'pasaporte_antiguo')"
+    )
+    vault_document_id: str = PydField(
+        ..., description="ID of the vault document to use (UUID string)"
+    )
+
+
+@router.post(
+    "/{session_id}/documents/use-vault",
+    response_model=WizardSessionResponse,
+    summary="Select a vault document for the wizard",
+    description="""
+    Use an existing document from the user's vault instead of uploading.
+
+    **Flow:**
+    1. Validates that the vault document belongs to the authenticated user
+    2. Copies extraction data from vault to wizard session
+    3. Marks the document as "uploaded" in the session
+    4. No file re-upload needed — persist will reuse the vault file path
+
+    **Use case:** User already has a valid DIP in their vault.
+    Instead of re-uploading, they select it from the vault picker.
+    """,
+)
+async def use_vault_document(
+    session_id: str = Path(..., description="The wizard session ID"),
+    body: UseVaultDocumentRequest = Body(...),
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """Select a vault document for use in a wizard session."""
+    try:
+        result = await wizard_session_service.use_vault_document(
+            session_id=session_id,
+            user_id=current_user.id,
+            document_code=body.document_code,
+            vault_document_id=body.vault_document_id,
+            db=db,
+        )
+
+        logger.info(
+            f"[WizardAPI] Vault document used: session={session_id}, "
+            f"doc={body.document_code}, vault_id={body.vault_document_id}"
+        )
+
+        return result
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
 # SAVE FORM DATA
 # =============================================================================
 

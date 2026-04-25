@@ -380,6 +380,19 @@ class ReadinessItem(BaseModel):
         None,
         description="Days until the matched document expires. None if missing or no expiry.",
     )
+    # Phase 2: vault document reference for auto-fill
+    vault_document_id: Optional[UUID] = Field(
+        None,
+        description="ID of the matching vault document (for auto-fill in wizard).",
+    )
+    vault_display_name: Optional[str] = Field(
+        None,
+        description="Display name of the matching vault document.",
+    )
+    vault_file_name: Optional[str] = Field(
+        None,
+        description="File name of the matching vault document.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

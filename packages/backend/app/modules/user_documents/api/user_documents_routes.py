@@ -2126,25 +2126,42 @@ from app.modules.user_documents.utils.category_inference import (
 )
 
 
+class _VaultDocInfo:
+    """Lightweight container for vault document info used by readiness checks."""
+    __slots__ = ("days", "doc_id", "display_name", "file_name")
+
+    def __init__(self, days, doc_id, display_name, file_name):
+        self.days = days
+        self.doc_id = doc_id
+        self.display_name = display_name
+        self.file_name = file_name
+
+
 async def _build_user_doc_map(
     db: asyncpg.Connection,
     user_id: UUID,
-) -> Dict[str, Optional[int]]:
-    """Pre-fetch user's active vault documents and build a type -> best expiry days map.
+) -> Dict[str, "_VaultDocInfo"]:
+    """Pre-fetch user's active vault documents and build a type -> best match map.
 
     Uses idx_ud_user_active partial index (status='active' AND deleted_at IS NULL).
     Called once and reused across multiple readiness checks to avoid N+1 queries.
+
+    Returns a dict mapping document_type -> _VaultDocInfo with:
+    - days: days until expiry (None if no expiry)
+    - doc_id: UUID of the best matching vault document
+    - display_name: human-readable name
+    - file_name: original file name
     """
     from datetime import date as date_type
 
     user_docs = await db.fetch(
-        """SELECT document_type, expiry_date
+        """SELECT id, document_type, expiry_date, display_name, file_name
            FROM user_documents
            WHERE user_id = $1 AND status = 'active' AND deleted_at IS NULL""",
         user_id,
     )
 
-    user_doc_map: Dict[str, Optional[int]] = {}
+    user_doc_map: Dict[str, _VaultDocInfo] = {}
     today = date_type.today()
     for doc in user_docs:
         doc_type = doc["document_type"]
@@ -2155,11 +2172,21 @@ async def _build_user_doc_map(
                 expiry = expiry.date()
             days = (expiry - today).days
 
-        # Keep the best (longest) expiry for each type
+        info = _VaultDocInfo(
+            days=days,
+            doc_id=doc["id"],
+            display_name=doc["display_name"] or doc["file_name"],
+            file_name=doc["file_name"],
+        )
+
+        # Keep the best (longest expiry) for each type
         if doc_type not in user_doc_map or (
-            days is not None and (user_doc_map[doc_type] is None or days > user_doc_map[doc_type])
+            days is not None and (
+                user_doc_map[doc_type].days is None
+                or days > user_doc_map[doc_type].days
+            )
         ):
-            user_doc_map[doc_type] = days
+            user_doc_map[doc_type] = info
 
     return user_doc_map
 
@@ -2242,16 +2269,23 @@ async def _compute_readiness(
         name = req["name"]
 
         if code in user_doc_map:
-            days = user_doc_map[code]
-            if days is not None and days <= 30:
+            info = user_doc_map[code]
+            vault_kwargs = {
+                "vault_document_id": info.doc_id,
+                "vault_display_name": info.display_name,
+                "vault_file_name": info.file_name,
+            }
+            if info.days is not None and info.days <= 30:
                 expiring_items.append(ReadinessItem(
                     code=code, name=name, status="expiring",
-                    days_until_expiry=days,
+                    days_until_expiry=info.days,
+                    **vault_kwargs,
                 ))
             else:
                 ready_items.append(ReadinessItem(
                     code=code, name=name, status="ready",
-                    days_until_expiry=days,
+                    days_until_expiry=info.days,
+                    **vault_kwargs,
                 ))
         else:
             missing_items.append(ReadinessItem(

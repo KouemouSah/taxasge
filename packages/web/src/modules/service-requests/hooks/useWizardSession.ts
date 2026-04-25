@@ -341,6 +341,40 @@ export function useWizardSession(): UseWizardSessionReturn {
   )
 
   // ==========================================================================
+  // USE VAULT DOCUMENT (Phase 2 — auto-fill from vault)
+  // ==========================================================================
+
+  const useVaultDocument = useCallback(
+    async (documentCode: string, vaultDocumentId: string): Promise<boolean> => {
+      if (!session) {
+        setError('No hay sesion activa')
+        return false
+      }
+      try {
+        setUploadingDocs((prev) => new Set(prev).add(documentCode))
+        setError(null)
+        const updated = await wizardSessionApi.useVaultDocument(
+          session.sessionId,
+          documentCode,
+          vaultDocumentId
+        )
+        setSession(updated)
+        return true
+      } catch (err) {
+        handleError(err)
+        return false
+      } finally {
+        setUploadingDocs((prev) => {
+          const next = new Set(prev)
+          next.delete(documentCode)
+          return next
+        })
+      }
+    },
+    [session, handleError]
+  )
+
+  // ==========================================================================
   // FORM DATA
   // ==========================================================================
 
@@ -635,6 +669,7 @@ export function useWizardSession(): UseWizardSessionReturn {
     previewDocument,
     confirmDocument,
     deleteDocument,
+    useVaultDocument,
 
     // Form data
     saveFormData,

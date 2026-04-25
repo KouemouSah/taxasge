@@ -193,6 +193,7 @@ export default function SessionWizardPage() {
     previewDocument,
     confirmDocument,
     deleteDocument,
+    useVaultDocument,
     saveFormData,
     preparePayment,
     initiatePayment,
@@ -708,6 +709,33 @@ export default function SessionWizardPage() {
     [deleteDocument]
   )
 
+  // Handle select from vault (Phase 2)
+  const handleSelectFromVault = useCallback(
+    async (documentCode: string, vaultDocumentId: string, _documentName: string) => {
+      const success = await useVaultDocument(documentCode, vaultDocumentId)
+      if (success) {
+        // Mark as uploaded in local previews
+        setDocumentPreviews((prev) => ({
+          ...prev,
+          [documentCode]: {
+            fileName: _documentName,
+            fileSize: 0,
+            extraction: {},
+            confidence: 1.0,
+            processor: 'vault_reuse',
+            extractionStatus: 'completed',
+            needsCorrection: false,
+            riskAnalysis: null,
+            crossValidation: null,
+            expiresAt: '',
+            ttlSeconds: 0,
+          } as DocumentPreview,
+        }))
+      }
+    },
+    [useVaultDocument]
+  )
+
   // Handle go back from mismatch blocker
   const handleMismatchBlockerBack = useCallback(() => {
     setShowMismatchBlocker(false)
@@ -1103,6 +1131,10 @@ export default function SessionWizardPage() {
                       locale={locale as 'es' | 'fr' | 'en'}
                       onUpload={(file) => handleDocumentUpload(doc.code, file)}
                       onDelete={doc.uploaded ? () => handleDeleteDocument(doc.code) : undefined}
+                      onSelectFromVault={(vaultId, vaultName) =>
+                        handleSelectFromVault(doc.code, vaultId, vaultName)
+                      }
+                      workflowCode={session?.workflowCode}
                       maxSizeMB={doc.code === 'photo_carnet' ? 2 : 5}
                       disabled={isDocumentUploading(doc.code)}
                     />
