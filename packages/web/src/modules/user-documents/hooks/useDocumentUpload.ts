@@ -17,6 +17,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { computeFileHash } from '@/core/utils/file-hash';
 import { userDocumentsApi } from '../services/api';
 import { userDocumentKeys } from './useUserDocuments';
 import type { UploadResult } from '../types';
@@ -211,6 +212,49 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
       updateFileState(key, { status: 'uploading', progress: 10 });
 
       try {
+        // Phase 1 dedup: compute SHA-256 client-side BEFORE upload
+        updateFileState(key, { progress: 15 });
+        let fileHash: string | undefined;
+        try {
+          fileHash = await computeFileHash(file);
+        } catch {
+          // Web Crypto unavailable (rare) — proceed without pre-check
+        }
+
+        // Pre-check: if hash matches an existing vault document → skip upload
+        if (fileHash) {
+          updateFileState(key, { progress: 20 });
+          try {
+            const check = await userDocumentsApi.checkHash(fileHash);
+            if (check.exists && check.document) {
+              // File already in vault — return as duplicate, zero upload
+              const dupResult: UploadResult = {
+                id: check.document.id,
+                status: 'duplicate',
+                file_name: check.document.file_name || file.name,
+                file_size_bytes: file.size,
+                duplicate: { existing_document_id: check.document.id },
+                archived_count: 0,
+              };
+              updateFileState(key, {
+                status: 'duplicate',
+                progress: 100,
+                result: dupResult,
+              });
+
+              toast({
+                title: check.document.display_name || file.name,
+                description: 'Documento ya existe en el cofre. Reutilizado.',
+              });
+
+              queryClient.invalidateQueries({ queryKey: userDocumentKeys.lists() });
+              return dupResult;
+            }
+          } catch {
+            // check-hash failed (network, etc.) — proceed with normal upload
+          }
+        }
+
         // Progress simulation: jump to 30% on request start
         updateFileState(key, { progress: 30 });
 
@@ -242,7 +286,9 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
         }
 
         // Poll for processing completion (classification + extraction)
-        pollProcessingStatus(result.id);
+        if (!isDuplicate) {
+          pollProcessingStatus(result.id);
+        }
 
         return result;
       } catch (err) {

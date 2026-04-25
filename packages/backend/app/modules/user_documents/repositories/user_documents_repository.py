@@ -404,12 +404,13 @@ class UserDocumentsRepository:
         file_hash: str,
     ) -> Optional[Dict]:
         """
-        Find an existing non-deleted document with the same file_hash for this user.
-        Used for deduplication before upload.
+        Find an existing ACTIVE document with the same file_hash for this user.
+        Only active documents block re-upload — archived/expired can be re-uploaded.
         """
         row = await db.fetchrow(
             """SELECT * FROM user_documents
-               WHERE user_id = $1 AND file_hash = $2 AND deleted_at IS NULL
+               WHERE user_id = $1 AND file_hash = $2
+                 AND status = 'active' AND deleted_at IS NULL
                LIMIT 1""",
             user_id,
             file_hash,

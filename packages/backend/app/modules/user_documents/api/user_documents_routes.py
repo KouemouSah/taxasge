@@ -18,6 +18,7 @@ from fastapi import (
     Query,
     Path,
     Request,
+    Response,
     UploadFile,
     status,
 )
@@ -231,13 +232,14 @@ def _encode_cursor(created_at: datetime, doc_id: UUID) -> str:
     5. Create DB record
     6. Trigger async Gemini classification + extraction
 
-    **Deduplication:** If an identical file (same hash) already exists
-    in the vault, the upload still proceeds but the response includes
-    a `duplicate` field with the existing document ID.
+    **Deduplication:** If an identical file (same SHA-256 hash) already exists
+    in the vault, the existing document is returned with status='duplicate'
+    and HTTP 200. No new file is stored — zero Firebase/DB overhead.
     """,
 )
 async def upload_document(
     request: Request,
+    response: Response,
     file: UploadFile = File(..., description="Document file (PDF, JPG, PNG, WebP)"),
     document_type_hint: Optional[str] = Query(
         None,
@@ -334,13 +336,38 @@ async def upload_document(
     # --- Compute file hash ---
     file_hash = hashlib.sha256(file_content).hexdigest()
 
-    # --- Duplicate detection ---
-    duplicate_info = None
+    # --- Duplicate detection — BLOCK true duplicates (Phase 1 dedup) ---
     existing = await user_documents_repository.find_duplicate(db, current_user.id, file_hash)
     if existing:
-        duplicate_info = DuplicateInfo(existing_document_id=existing["id"])
+        # Same file already in vault → return existing doc, NO new Firebase upload
+        logger.info(
+            f"[UserDocuments] Duplicate blocked: hash={file_hash[:12]}, "
+            f"existing_id={existing['id']}, user={current_user.id}"
+        )
+        try:
+            await user_documents_repository.log_access(
+                db=db,
+                doc_id=existing["id"],
+                accessed_by=current_user.id,
+                access_type="duplicate_detected",
+                access_context="vault_upload_dedup",
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
 
-    # --- Store file ---
+        response.status_code = status.HTTP_200_OK
+        return UploadResult(
+            id=existing["id"],
+            status="duplicate",
+            file_name=existing.get("file_name", file_name),
+            file_size_bytes=existing.get("file_size_bytes", file_size),
+            duplicate=DuplicateInfo(existing_document_id=existing["id"]),
+            archived_count=0,
+        )
+
+    # --- Store file (no duplicate — proceed with upload) ---
     file_path = f"user-documents/{current_user.id}/{file_hash[:12]}_{file_name}"
 
     try:
@@ -377,6 +404,31 @@ async def upload_document(
             file_hash=file_hash,
             display_name=notes and file_name or None,
             notes=notes,
+        )
+    except asyncpg.UniqueViolationError:
+        # Race condition: another concurrent upload of the same file won the insert.
+        # Recover gracefully: return the existing document as duplicate.
+        logger.info(
+            f"[UserDocuments] Race condition caught: hash={file_hash[:12]}, "
+            f"user={current_user.id}. Returning existing document."
+        )
+        existing = await user_documents_repository.find_duplicate(
+            db, current_user.id, file_hash
+        )
+        if existing:
+            response.status_code = status.HTTP_200_OK
+            return UploadResult(
+                id=existing["id"],
+                status="duplicate",
+                file_name=existing.get("file_name", file_name),
+                file_size_bytes=existing.get("file_size_bytes", file_size),
+                duplicate=DuplicateInfo(existing_document_id=existing["id"]),
+                archived_count=0,
+            )
+        # Shouldn't happen — but fallback to generic error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Concurrent upload conflict.", "code": "RACE_CONDITION"},
         )
     except Exception as e:
         logger.error(f"[UserDocuments] DB insert failed: {e}")
@@ -567,10 +619,21 @@ async def bulk_upload_documents(
 
         file_hash = hashlib.sha256(file_content).hexdigest()
 
-        duplicate_info = None
+        # --- Duplicate detection — BLOCK true duplicates (Phase 1 dedup) ---
         existing = await user_documents_repository.find_duplicate(db, current_user.id, file_hash)
         if existing:
-            duplicate_info = DuplicateInfo(existing_document_id=existing["id"])
+            logger.info(
+                f"[UserDocuments] Bulk dedup: hash={file_hash[:12]}, "
+                f"existing_id={existing['id']}, user={current_user.id}"
+            )
+            results.append(UploadResult(
+                id=existing["id"],
+                status="duplicate",
+                file_name=file.filename or "document",
+                file_size_bytes=file_size,
+                duplicate=DuplicateInfo(existing_document_id=existing["id"]),
+            ))
+            continue
 
         file_name = file.filename or "document"
         file_path = f"user-documents/{current_user.id}/{file_hash[:12]}_{file_name}"
@@ -629,7 +692,6 @@ async def bulk_upload_documents(
             status="processing",
             file_name=file_name,
             file_size_bytes=file_size,
-            duplicate=duplicate_info,
         ))
 
     logger.info(
@@ -638,6 +700,89 @@ async def bulk_upload_documents(
     )
 
     return results
+
+
+# =============================================================================
+# CHECK-HASH — Quick duplicate check by SHA-256 (Phase 1 dedup)
+# =============================================================================
+
+
+class HashCheckResponse(BaseModel):
+    """Response for the hash check endpoint."""
+    exists: bool = Field(..., description="True if a document with this hash exists in the vault.")
+    document: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Basic info about the existing document (id, display_name, file_name, expiry_date, status).",
+    )
+
+
+@router.get(
+    "/check-hash/{file_hash}",
+    response_model=HashCheckResponse,
+    summary="Check if a file already exists in vault by SHA-256 hash",
+    description="""
+    Quick pre-upload check: given a SHA-256 hash computed client-side,
+    determine if this exact file already exists in the user's vault.
+
+    Returns the existing document's basic info if found, enabling
+    the frontend to skip the upload entirely and reuse the vault copy.
+    """,
+)
+async def check_hash(
+    file_hash: str = Path(
+        ...,
+        min_length=64,
+        max_length=64,
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 hex digest of the file (64 lowercase hex chars).",
+    ),
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """Check if a document with the given SHA-256 hash exists in the user's vault."""
+    # Rate limit: 30 checks per minute per user
+    is_allowed, _ = await check_rate_limit(
+        str(current_user.id), "/user-documents/check-hash", max_requests=30, window_seconds=60
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "rate_limit_exceeded", "retry_after": 60},
+        )
+
+    existing = await user_documents_repository.find_duplicate(
+        db, current_user.id, file_hash
+    )
+
+    if not existing:
+        return HashCheckResponse(exists=False, document=None)
+
+    # Return lightweight info — enough for the frontend to decide
+    expiry_status = None
+    if existing.get("expiry_date"):
+        from datetime import date as date_type
+        exp = existing["expiry_date"]
+        if isinstance(exp, date_type):
+            today = date_type.today()
+            if exp < today:
+                expiry_status = "expired"
+            elif (exp - today).days <= 30:
+                expiry_status = "expiring_soon"
+            else:
+                expiry_status = "valid"
+
+    return HashCheckResponse(
+        exists=True,
+        document={
+            "id": str(existing["id"]),
+            "display_name": existing.get("display_name") or existing.get("file_name", ""),
+            "file_name": existing.get("file_name", ""),
+            "document_type": existing.get("document_type", ""),
+            "expiry_date": str(existing["expiry_date"]) if existing.get("expiry_date") else None,
+            "expiry_status": expiry_status,
+            "status": existing.get("status", "active"),
+        },
+    )
 
 
 # =============================================================================

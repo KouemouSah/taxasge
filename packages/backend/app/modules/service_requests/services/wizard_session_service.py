@@ -543,12 +543,16 @@ class WizardSessionService:
         is_photo = extraction_schema_key is None and "photo" in document_code.lower()
         if is_photo:
             logger.info(f"[WizardSession] Photo document, skipping OCR: {document_code}")
+            # Compute SHA-256 hash even for photos (Phase 1 dedup)
+            import hashlib as _hashlib
+            photo_hash = _hashlib.sha256(file_content).hexdigest()
             extraction_result = {
                 "extraction": {},
                 "confidence": 1.0,
                 "processor": "photo_validation",
                 "status": "success",
                 "document_type": document_code,
+                "doc_hash": photo_hash,
             }
         else:
             # Extract document data using Gemini
@@ -1276,22 +1280,43 @@ class WizardSessionService:
             )
 
         # 2. Upload documents to Firebase and create document records
+        #    Phase 1 dedup: if file already in vault → reuse file_path, skip Firebase
         for doc_code, doc_data in session.get("documents", {}).items():
             file_content = base64.b64decode(doc_data["content_b64"])
+            doc_hash = doc_data.get("doc_hash")
 
-            upload_result = await firebase_storage_service.upload_user_document(
-                user_id=str(user_id_uuid),
-                application_id=str(service_request_id),
-                file=file_content,
-                metadata={
-                    "filename": doc_data["file_name"],
-                    "mime_type": doc_data["mime_type"],
-                    "document_code": doc_code,
-                    "document_name": doc_data.get("document_name") or doc_code,
-                }
-            )
-            file_path = upload_result.file_path
-            uploaded_files.append(file_path)
+            # Check if this exact file already exists in the user's vault
+            vault_match = None
+            if doc_hash and len(doc_hash) == 64:
+                vault_match = await db.fetchrow(
+                    """SELECT file_path FROM user_documents
+                       WHERE user_id = $1 AND file_hash = $2
+                         AND status = 'active' AND deleted_at IS NULL
+                       LIMIT 1""",
+                    user_id_uuid, doc_hash,
+                )
+
+            if vault_match:
+                # Reuse existing Firebase file — zero storage cost
+                file_path = vault_match["file_path"]
+                logger.info(
+                    f"[WizardSession] Reusing vault file for {doc_code}: "
+                    f"hash={doc_hash[:12]}, path={file_path}"
+                )
+            else:
+                upload_result = await firebase_storage_service.upload_user_document(
+                    user_id=str(user_id_uuid),
+                    application_id=str(service_request_id),
+                    file=file_content,
+                    metadata={
+                        "filename": doc_data["file_name"],
+                        "mime_type": doc_data["mime_type"],
+                        "document_code": doc_code,
+                        "document_name": doc_data.get("document_name") or doc_code,
+                    }
+                )
+                file_path = upload_result.file_path
+                uploaded_files.append(file_path)
 
             doc_record = await document_repository.add_document(
                 db=db,

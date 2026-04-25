@@ -241,6 +241,9 @@ export interface UploadResult {
   status: 'processing' | 'duplicate';
   file_name: string;
   file_size_bytes: number;
+  /** Populated when status='duplicate' — info about the existing document */
+  duplicate?: { existing_document_id: string };
+  /** @deprecated Use duplicate?.existing_document_id */
   existing_document_id?: string;
   /** Number of older versions auto-archived during upload */
   archived_count?: number;

@@ -524,21 +524,24 @@ class DuplicateInfo(BaseModel):
 
 
 class UploadResult(BaseModel):
-    """Response returned after a successful document upload.
+    """Response returned after a document upload attempt.
 
-    The document enters processing immediately (Gemini classification + extraction).
+    Status meanings:
+    - 'processing': New document uploaded, Gemini classification running async.
+    - 'duplicate': Identical file already in vault. No new upload performed.
+      The `id` points to the existing document.
     """
 
-    id: UUID = Field(..., description="Newly created document ID.")
-    status: Literal["processing"] = Field(
+    id: UUID = Field(..., description="Document ID (new or existing if duplicate).")
+    status: Literal["processing", "duplicate"] = Field(
         "processing",
-        description="Always 'processing' — classification and extraction happen async.",
+        description="'processing' = new upload, 'duplicate' = reused existing.",
     )
     file_name: str = Field(..., description="Original file name as uploaded.")
     file_size_bytes: int = Field(..., ge=0, description="File size in bytes.")
     duplicate: Optional[DuplicateInfo] = Field(
         None,
-        description="Populated when a duplicate hash was detected. Upload still proceeds.",
+        description="Populated when a duplicate hash was detected.",
     )
     archived_count: int = Field(
         0,

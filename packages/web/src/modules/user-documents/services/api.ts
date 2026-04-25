@@ -170,6 +170,35 @@ export const userDocumentsApi = {
   },
 
   // ===========================================================================
+  // DEDUP — Pre-upload hash check (Phase 1)
+  // ===========================================================================
+
+  /**
+   * Check if a file with the given SHA-256 hash already exists in vault.
+   * BACKEND: GET /api/v1/user-documents/check-hash/{file_hash}
+   *
+   * @param fileHash - SHA-256 hex digest (64 chars)
+   * @returns { exists, document? } — document has id, display_name, expiry_status
+   */
+  checkHash: async (
+    fileHash: string
+  ): Promise<{
+    exists: boolean;
+    document?: {
+      id: string;
+      display_name: string;
+      file_name: string;
+      document_type: string;
+      expiry_date: string | null;
+      expiry_status: string | null;
+      status: string;
+    };
+  }> => {
+    const response = await apiClient.get(`${BASE}/check-hash/${fileHash}`);
+    return response.data;
+  },
+
+  // ===========================================================================
   // LIST & GET
   // ===========================================================================
 
