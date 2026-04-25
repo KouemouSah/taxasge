@@ -190,6 +190,11 @@ class InternalScheduler:
                 self._inspection_auto_approve_seals,
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
+            (
+                "document-intelligence-scan",
+                self._document_intelligence_scan,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -1932,6 +1937,41 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             logger.error(f"Auto-approve seals failed: {e}")
+        return None
+
+
+    async def _document_intelligence_scan(self):
+        """Document Intelligence daily scan — proactive agent (daily).
+
+        Runs 7 operations:
+        1. Scan expirations → create tiered alerts (90d, 60d, 30d, 7d, expired)
+        2. Create proactive preparations for Level 2 users
+        3. Scan missing documents for in-progress service requests
+        4. Mark expired documents (status → 'expired')
+        5. Purge soft-deleted documents > 30 days (RGPD)
+        6. Cleanup stale agent memories
+        7. Enforce retention policy (archive > 5 years)
+        """
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                from app.modules.user_documents.services.proactive_agent_service import (
+                    ProactiveAgentService,
+                )
+                agent = ProactiveAgentService()
+                result = await agent.daily_scan(db)
+                if result:
+                    total = sum(
+                        v for k, v in result.items()
+                        if isinstance(v, int) and k != "errors"
+                    )
+                    if total > 0:
+                        logger.info(f"Document intelligence scan: {result}")
+                return result
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"Document intelligence scan failed: {e}")
         return None
 
 

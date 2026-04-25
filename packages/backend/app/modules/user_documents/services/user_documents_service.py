@@ -1140,6 +1140,16 @@ class UserDocumentsService:
 
             created_ids.append(record["id"])
 
+            # Build and save workflow tags for readiness scoring
+            workflow_tags = self._build_workflow_tags(document_code, {})
+            if workflow_tags:
+                try:
+                    await user_documents_repository.create_workflow_tags(
+                        db=db, doc_id=record["id"], tags=workflow_tags
+                    )
+                except Exception:
+                    pass  # Non-blocking — tags are best-effort
+
         if created_ids:
             await self._invalidate_user_cache(user_id)
 

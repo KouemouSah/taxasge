@@ -1717,6 +1717,48 @@ class WizardSessionService:
                 f"request_id={service_request_id}, reference={reference}"
             )
 
+            # Auto-import wizard documents into user vault (non-blocking)
+            try:
+                from app.modules.user_documents.services.user_documents_service import (
+                    user_documents_service,
+                )
+                # Build document list from service_request_documents
+                sr_docs = await db.fetch(
+                    """SELECT id, document_code, file_path, file_name,
+                              file_size, mime_type, file_hash
+                       FROM service_request_documents
+                       WHERE service_request_id = $1""",
+                    service_request_id,
+                )
+                if sr_docs:
+                    docs_for_import = [
+                        {
+                            "id": doc["id"],
+                            "document_code": doc["document_code"],
+                            "file_path": doc["file_path"],
+                            "file_name": doc["file_name"],
+                            "file_size_bytes": doc["file_size"] or 0,
+                            "mime_type": doc["mime_type"] or "application/octet-stream",
+                            "file_hash": doc["file_hash"] or "",
+                        }
+                        for doc in sr_docs
+                    ]
+                    imported = await user_documents_service.auto_import_from_wizard(
+                        db=db,
+                        user_id=user_id,
+                        service_request_id=service_request_id,
+                        documents=docs_for_import,
+                    )
+                    if imported:
+                        logger.info(
+                            f"[WizardSession] Auto-imported {len(imported)} wizard docs "
+                            f"into vault for user {user_id}"
+                        )
+            except Exception as import_err:
+                logger.warning(
+                    f"[WizardSession] Vault auto-import failed (non-blocking): {import_err}"
+                )
+
             # Generate PDF attachment for email notification + vault registration
             workflow = workflow_engine.get_workflow_by_string(session.get("workflow_code", ""))
             pdf_attachment = await self._generate_summary_pdf_attachment(

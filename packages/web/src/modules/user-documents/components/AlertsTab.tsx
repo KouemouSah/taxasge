@@ -10,6 +10,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,8 +82,17 @@ function formatDate(dateStr: string, locale: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
+// Action labels and routes for suggested_action codes
+const ACTION_LABELS: Record<string, Record<string, string>> = {
+  start_renewal: { es: 'Renovar', fr: 'Renouveler', en: 'Renew' },
+  view_document: { es: 'Ver documento', fr: 'Voir document', en: 'View document' },
+  plan_renewal: { es: 'Planificar', fr: 'Planifier', en: 'Plan renewal' },
+  upload_document: { es: 'Subir documento', fr: 'Telecharger', en: 'Upload' },
+};
+
 export function AlertsTab() {
   const locale = useLocale() as 'es' | 'fr' | 'en';
+  const router = useRouter();
   const t = useTranslations('userDocuments');
   const {
     alerts,
@@ -92,6 +102,52 @@ export function AlertsTab() {
     markRead,
     dismiss,
   } = useDocumentAlerts();
+
+  // Handle suggested action click — navigate to appropriate page
+  const handleActionClick = useCallback(
+    (alert: DocumentAlert) => {
+      const action = alert.suggested_action;
+      const params = alert.action_params as Record<string, string> | null;
+
+      switch (action) {
+        case 'start_renewal':
+        case 'plan_renewal': {
+          // Navigate to new service request wizard
+          const workflowScope = params?.workflow_scope || '';
+          if (workflowScope) {
+            router.push(`/${locale}/dashboard/service-requests/new?workflow=${workflowScope}`);
+          } else {
+            router.push(`/${locale}/dashboard/service-requests/new`);
+          }
+          break;
+        }
+        case 'view_document': {
+          // Navigate to document detail in vault
+          const docId = params?.document_id;
+          if (docId) {
+            router.push(`/${locale}/dashboard/mis-documentos?doc=${docId}`);
+          } else {
+            router.push(`/${locale}/dashboard/mis-documentos`);
+          }
+          break;
+        }
+        case 'upload_document': {
+          // Navigate to vault upload
+          router.push(`/${locale}/dashboard/mis-documentos?tab=personal`);
+          break;
+        }
+        default:
+          // Fallback: navigate to vault
+          router.push(`/${locale}/dashboard/mis-documentos`);
+      }
+
+      // Mark as actioned
+      if (!alert.is_read) {
+        markRead(alert.id);
+      }
+    },
+    [locale, router, markRead]
+  );
 
   // Get localized title
   const getTitle = useCallback(
@@ -253,8 +309,10 @@ export function AlertsTab() {
                                       variant="link"
                                       size="sm"
                                       className="h-auto p-0 text-xs"
+                                      onClick={() => handleActionClick(alert)}
                                     >
-                                      {alert.suggested_action}
+                                      {ACTION_LABELS[alert.suggested_action]?.[locale]
+                                        || alert.suggested_action}
                                       <ChevronRight className="ml-1 h-3 w-3" />
                                     </Button>
                                   )}
