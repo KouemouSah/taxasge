@@ -405,7 +405,7 @@ class WorkflowOrchestratorService:
                     "code": doc["document_code"],
                     "file_name": doc["file_name"],
                     "confidence": vault_confidence,
-                    "auto_confirmed": True,
+                    "auto_confirmed": vault_confidence >= 0.85,
                 })
 
                 logger.info(

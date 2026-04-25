@@ -947,6 +947,11 @@ class WizardSessionService:
             raw = vault_doc["extraction_data"]
             extraction = _json.loads(raw) if isinstance(raw, str) else raw
 
+        vault_confidence = float(vault_doc["extraction_confidence"] or 0)
+        # Only auto-confirm if vault extraction had high confidence
+        # Low confidence docs need manual review in form_review step
+        auto_confirmed = vault_confidence >= 0.85
+
         document_data = {
             "document_code": document_code,
             "file_name": vault_doc["file_name"],
@@ -956,14 +961,17 @@ class WizardSessionService:
             "vault_document_id": vault_document_id,
             "vault_file_path": vault_doc["file_path"],
             "extraction": extraction,
-            "confidence": float(vault_doc["extraction_confidence"] or 0),
+            "confidence": vault_confidence,
             "processor": "vault_reuse",
             "extraction_status": vault_doc["extraction_status"] or "completed",
-            "risk_analysis": None,
+            "risk_analysis": None,  # Not re-computed for vault docs (already validated at upload)
             "doc_hash": vault_doc["file_hash"],
             "previewed_at": now.isoformat(),
-            "confirmed_at": now.isoformat(),  # Auto-confirmed (already validated)
+            "confirmed_at": now.isoformat() if auto_confirmed else None,
             "user_corrections": None,
+            # Preserve identity fields for downstream cross-validation
+            "holder_name": vault_doc["holder_name"],
+            "document_number": vault_doc["document_number"],
         }
 
         # Update session documents
