@@ -342,11 +342,15 @@ export const userDocumentsApi = {
       limit,
     });
 
-    const response = await apiClient.get<{
-      items: GeneratedDocument[];
-      next_cursor?: string;
-    }>(`${BASE}/generated`, { params });
-    return response.data;
+    const response = await apiClient.get(`${BASE}/generated`, { params });
+    const data = response.data;
+
+    // Backend returns flat array List[GeneratedDocumentResponse],
+    // frontend expects { items, next_cursor }. Normalize both formats.
+    if (Array.isArray(data)) {
+      return { items: data as GeneratedDocument[], next_cursor: undefined };
+    }
+    return data as { items: GeneratedDocument[]; next_cursor?: string };
   },
 
   /**

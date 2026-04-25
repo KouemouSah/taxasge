@@ -475,7 +475,10 @@ class GeneratedDocumentResponse(BaseModel):
     generation_type: GenerationType = Field(
         ..., description="Type of generated document."
     )
-    title: str = Field(..., description="Document title.")
+    title: str = Field("", description="Document title (primary).")
+    title_es: Optional[str] = Field(None, description="Title in Spanish.")
+    title_fr: Optional[str] = Field(None, description="Title in French.")
+    title_en: Optional[str] = Field(None, description="Title in English.")
     reference_number: Optional[str] = Field(
         None, description="Official reference number."
     )
@@ -502,8 +505,14 @@ class AlertResponse(BaseModel):
     id: UUID = Field(..., description="Alert unique identifier.")
     alert_type: AlertType = Field(..., description="Type of alert.")
     severity: AlertSeverity = Field(..., description="Alert severity level.")
-    title: str = Field(..., description="Alert title (localized).")
-    message: str = Field(..., description="Alert body message (localized).")
+    title: str = Field("", description="Alert title (primary/fallback).")
+    title_es: Optional[str] = Field(None, description="Title in Spanish.")
+    title_fr: Optional[str] = Field(None, description="Title in French.")
+    title_en: Optional[str] = Field(None, description="Title in English.")
+    message: str = Field("", description="Alert body message (primary/fallback).")
+    message_es: Optional[str] = Field(None, description="Message in Spanish.")
+    message_fr: Optional[str] = Field(None, description="Message in French.")
+    message_en: Optional[str] = Field(None, description="Message in English.")
     suggested_action: Optional[str] = Field(
         None,
         description="Suggested action label (e.g. 'Renew now', 'Upload replacement').",

@@ -898,10 +898,14 @@ async def list_generated_documents(
 
     results = []
     for row in rows:
+        title_es = row.get("title_es") or row.get("display_name") or row.get("file_name", "")
         results.append(GeneratedDocumentResponse(
             id=row["id"],
             generation_type=row.get("generation_type", "receipt"),
-            title=row.get("display_name") or row.get("title_es") or row.get("file_name", ""),
+            title=title_es,
+            title_es=title_es,
+            title_fr=row.get("title_fr"),
+            title_en=row.get("title_en"),
             reference_number=row.get("reference_number"),
             file_name=row.get("file_name", ""),
             created_at=row.get("created_at", datetime.now(timezone.utc)),
@@ -1112,7 +1116,13 @@ async def get_alerts(
             alert_type=row["alert_type"],
             severity=row["severity"],
             title=row.get("title_es", ""),
+            title_es=row.get("title_es"),
+            title_fr=row.get("title_fr"),
+            title_en=row.get("title_en"),
             message=row.get("message_es", ""),
+            message_es=row.get("message_es"),
+            message_fr=row.get("message_fr"),
+            message_en=row.get("message_en"),
             suggested_action=row.get("suggested_action"),
             action_params=row.get("action_params"),
             is_read=row.get("is_read", False),

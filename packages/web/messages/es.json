@@ -11352,6 +11352,9 @@
       "noAlertsDesc": "Todos sus documentos están al día",
       "emptyTitle": "Sin alertas activas",
       "emptyDescription": "Todos sus documentos están al día. Le notificaremos cuando un documento requiera su atención.",
+      "total": "{count} alertas",
+      "unread": "{count} sin leer",
+      "critical": "{count} urgentes",
       "markRead": "Marcar como leído",
       "dismiss": "Ocultar",
       "severity": {
@@ -11423,6 +11426,8 @@
     "generated": {
       "noDocuments": "Sin documentos generados",
       "noDocumentsDesc": "Los documentos generados por la plataforma (recibos, certificados) aparecerán aquí",
+      "emptyTitle": "Sin documentos generados",
+      "emptyDescription": "Los certificados, recibos y otros documentos generados aparecerán aquí automáticamente",
       "types": {
         "payment_receipt": "Recibo de pago",
         "request_validation": "Validación de solicitud",

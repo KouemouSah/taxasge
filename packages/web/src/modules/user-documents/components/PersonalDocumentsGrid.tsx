@@ -108,13 +108,18 @@ export function PersonalDocumentsGrid() {
   };
 
   const {
-    documents,
+    documents: allDocuments,
     totalCount,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
   } = useUserDocuments(filters);
+
+  // Exclude platform-generated docs (they belong in the Generados tab)
+  const documents = allDocuments.filter(
+    (doc) => doc.source !== 'platform_generated'
+  );
 
   // Infinite scroll observer
   const loadMoreRef = useRef<HTMLDivElement>(null);
