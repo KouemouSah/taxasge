@@ -143,7 +143,7 @@ export function AlertsTab() {
 
       // Mark as actioned
       if (!alert.is_read) {
-        markRead(alert.id);
+        markRead.mutate({ alertId: alert.id });
       }
     },
     [locale, router, markRead]

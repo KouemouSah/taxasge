@@ -384,80 +384,37 @@ class WorkflowOrchestratorService:
               AND (ud.expiry_date IS NULL OR ud.expiry_date >= CURRENT_DATE)
         """, user_id, workflow_code)
 
+        from app.modules.service_requests.services.wizard_session_service import (
+            wizard_session_service,
+        )
+
         for doc in vault_docs:
             try:
-                # Download file from Firebase
-                file_content = await self._download_from_firebase(doc["file_path"])
-                if not file_content:
-                    failed.append({
-                        "code": doc["document_code"],
-                        "reason": "download_failed",
-                    })
-                    continue
+                # Use vault document directly — zero Firebase download/upload overhead
+                vault_confidence = float(doc["extraction_confidence"] or 0)
 
-                # Upload into wizard session via preview
-                from app.modules.service_requests.services.wizard_session_service import (
-                    wizard_session_service,
-                )
-
-                preview_result = await wizard_session_service.preview_document(
+                await wizard_session_service.use_vault_document(
                     session_id=session_id,
                     user_id=UUID(user_id),
                     document_code=doc["document_code"],
-                    file_content=file_content,
-                    file_name=doc["file_name"],
-                    mime_type=doc["mime_type"],
+                    vault_document_id=str(doc["id"]),
+                    db=db,
                 )
-
-                # Auto-confirm if high confidence (from vault extraction)
-                vault_confidence = float(doc["extraction_confidence"] or 0)
-                preview_confidence = getattr(preview_result, 'confidence', 0) or 0
-
-                if preview_confidence >= 0.85 or vault_confidence >= 0.85:
-                    # Resolve extraction from 3 sources, then VALIDATE shape.
-                    # `doc["extraction_data"]` may be double-JSON-encoded
-                    # (string of JSON) or already a parsed dict; we need
-                    # the final result to be a dict otherwise downstream
-                    # identity checks crash with `'str' object has no
-                    # attribute 'get'` on the next preview call.
-                    raw_extraction = (
-                        getattr(preview_result, 'extraction', {}) or
-                        (
-                            json.loads(doc["extraction_data"])
-                            if isinstance(doc["extraction_data"], str)
-                            else doc["extraction_data"]
-                        ) or
-                        {}
-                    )
-                    if not isinstance(raw_extraction, dict):
-                        logger.warning(
-                            f"Vault doc {doc['document_code']} extraction is "
-                            f"{type(raw_extraction).__name__}, not dict — "
-                            f"using empty dict to avoid downstream crashes"
-                        )
-                        raw_extraction = {}
-                    await wizard_session_service.confirm_document(
-                        session_id=session_id,
-                        user_id=UUID(user_id),
-                        document_code=doc["document_code"],
-                        confirmed_data=raw_extraction,
-                        user_notes="Auto-loaded from vault",
-                    )
 
                 loaded.append({
                     "code": doc["document_code"],
                     "file_name": doc["file_name"],
-                    "confidence": max(preview_confidence, vault_confidence),
-                    "auto_confirmed": preview_confidence >= 0.85 or vault_confidence >= 0.85,
+                    "confidence": vault_confidence,
+                    "auto_confirmed": True,
                 })
 
                 logger.info(
-                    f"Loaded vault doc {doc['document_code']} into session {session_id} "
-                    f"(confidence: {max(preview_confidence, vault_confidence):.0%})"
+                    f"Vault doc {doc['document_code']} linked to session {session_id} "
+                    f"via use_vault_document (confidence: {vault_confidence:.0%})"
                 )
 
             except Exception as e:
-                logger.warning(f"Failed to load vault doc {doc['document_code']}: {e}")
+                logger.warning(f"Failed to link vault doc {doc['document_code']}: {e}")
                 failed.append({
                     "code": doc["document_code"],
                     "reason": str(e),

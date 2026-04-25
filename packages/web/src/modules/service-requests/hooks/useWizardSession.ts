@@ -64,6 +64,7 @@ export interface UseWizardSessionReturn {
   previewDocument: (documentCode: string, file: File) => Promise<DocumentPreview | null>
   confirmDocument: (data: DocumentConfirmRequest) => Promise<boolean>
   deleteDocument: (documentCode: string) => Promise<boolean>
+  useVaultDocument: (documentCode: string, vaultDocumentId: string) => Promise<boolean>
 
   // Form data
   saveFormData: (data: FormDataSaveRequest) => Promise<boolean>

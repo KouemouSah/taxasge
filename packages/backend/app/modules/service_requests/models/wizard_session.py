@@ -151,6 +151,10 @@ class WizardSessionCreate(BaseModel):
     sub_type: Optional[str] = Field(None, description="Workflow-specific sub-type")
     motivo: Optional[str] = Field(None, description="Reason for renovacion")
     is_minor: bool = Field(default=False, description="Is the applicant a minor?")
+    auto_fill_vault: bool = Field(
+        default=False,
+        description="Auto-fill documents from vault if matching docs exist.",
+    )
 
     @field_validator("workflow_code")
     @classmethod

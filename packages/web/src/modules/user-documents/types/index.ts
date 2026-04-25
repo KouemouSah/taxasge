@@ -172,7 +172,13 @@ export interface ReadinessItem {
   code: string;
   name: string;
   status?: string;
+  days_until_expiry?: number | null;
+  /** @deprecated Use days_until_expiry */
   days?: number;
+  // Phase 2: vault document reference for auto-fill
+  vault_document_id?: string | null;
+  vault_display_name?: string | null;
+  vault_file_name?: string | null;
 }
 
 /**

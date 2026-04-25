@@ -374,6 +374,8 @@ class WizardSessionService:
         is_minor: bool = False,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
+        auto_fill_vault: bool = False,
+        db=None,
     ) -> WizardSessionResponse:
         """
         Start a new wizard session in cache.
@@ -449,7 +451,117 @@ class WizardSessionService:
 
         logger.info(f"[WizardSession] Session created: {session_id}, expires_at={expires_at}")
 
+        # Phase 2: auto-fill vault documents if requested and DB available
+        if auto_fill_vault and db:
+            try:
+                await self._auto_fill_from_vault(
+                    session_id, session_data, user_id, workflow_code.upper(), db
+                )
+                # Reload session after modifications
+                session_data = await self._get_session(session_id, user_id)
+            except Exception as e:
+                logger.warning(
+                    f"[WizardSession] Auto-fill vault failed (non-blocking): {e}"
+                )
+
         return self._session_to_response(session_data, workflow)
+
+    async def _auto_fill_from_vault(
+        self,
+        session_id: str,
+        session_data: Dict,
+        user_id: UUID,
+        workflow_code: str,
+        db,
+    ) -> None:
+        """Auto-fill wizard session with matching vault documents.
+
+        Queries workflow_document_requirements + user_documents to find
+        active, non-expired vault docs that match the workflow's requirements.
+        Each match is loaded into the session via the same logic as use_vault_document.
+        """
+        # Get required documents for this workflow
+        required_docs = await db.fetch(
+            """SELECT document_code
+               FROM workflow_document_requirements
+               WHERE workflow_code = $1 AND is_active = TRUE
+               ORDER BY display_order""",
+            workflow_code,
+        )
+        if not required_docs:
+            return
+
+        from datetime import date as date_type
+        today = date_type.today()
+
+        filled_count = 0
+        for req in required_docs:
+            doc_code = req["document_code"]
+
+            # Find the best active vault document for this code
+            vault_doc = await db.fetchrow(
+                """SELECT id, file_path, file_name, file_size_bytes, mime_type,
+                          file_hash, extraction_data, extraction_confidence,
+                          extraction_status, display_name, document_type,
+                          expiry_date, holder_name, document_number
+                   FROM user_documents
+                   WHERE user_id = $1
+                     AND document_type = $2
+                     AND status = 'active'
+                     AND deleted_at IS NULL
+                     AND (expiry_date IS NULL OR expiry_date > $3)
+                   ORDER BY
+                     CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END,
+                     expiry_date DESC
+                   LIMIT 1""",
+                user_id, doc_code, today,
+            )
+
+            if not vault_doc:
+                continue
+
+            # Load into session (same logic as use_vault_document but inline)
+            now = datetime.now(timezone.utc)
+            extraction = {}
+            if vault_doc["extraction_data"]:
+                import json as _json
+                raw = vault_doc["extraction_data"]
+                extraction = _json.loads(raw) if isinstance(raw, str) else raw
+
+            document_data = {
+                "document_code": doc_code,
+                "file_name": vault_doc["file_name"],
+                "file_size": vault_doc["file_size_bytes"],
+                "mime_type": vault_doc["mime_type"],
+                "vault_document_id": str(vault_doc["id"]),
+                "vault_file_path": vault_doc["file_path"],
+                "extraction": extraction,
+                "confidence": float(vault_doc["extraction_confidence"] or 0),
+                "processor": "vault_reuse",
+                "extraction_status": vault_doc["extraction_status"] or "completed",
+                "risk_analysis": None,
+                "doc_hash": vault_doc["file_hash"],
+                "previewed_at": now.isoformat(),
+                "confirmed_at": now.isoformat(),
+                "user_corrections": None,
+            }
+
+            if "documents" not in session_data:
+                session_data["documents"] = {}
+            session_data["documents"][doc_code] = document_data
+
+            if "extracted_data" not in session_data:
+                session_data["extracted_data"] = {}
+            session_data["extracted_data"][doc_code] = extraction
+
+            filled_count += 1
+
+        if filled_count > 0:
+            await self._save_session(session_id, session_data, renew_ttl=False)
+            logger.info(
+                f"[WizardSession] Auto-filled {filled_count} vault docs "
+                f"for session {session_id}"
+            )
 
     async def get_session(
         self,

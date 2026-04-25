@@ -142,6 +142,7 @@ async def start_wizard_session(
     data: WizardSessionCreate,
     request: Request,
     current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
 ):
     """Start a new wizard session."""
     ip_address, user_agent = _get_client_info(request)
@@ -156,6 +157,8 @@ async def start_wizard_session(
             is_minor=data.is_minor,
             ip_address=ip_address,
             user_agent=user_agent,
+            auto_fill_vault=data.auto_fill_vault,
+            db=db if data.auto_fill_vault else None,
         )
 
         logger.info(
