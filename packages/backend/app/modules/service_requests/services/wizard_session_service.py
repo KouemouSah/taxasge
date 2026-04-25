@@ -519,6 +519,23 @@ class WizardSessionService:
                 "INVALID_MIME_TYPE"
             )
 
+        # Validate file integrity (OWASP A08: magic bytes — Phase 5)
+        from app.modules.user_documents.services.user_documents_service import (
+            validate_file_integrity,
+        )
+        is_valid, integrity_error = validate_file_integrity(
+            file_content, file_name, mime_type
+        )
+        if not is_valid:
+            logger.warning(
+                f"[WizardSession] File integrity check failed for "
+                f"'{file_name}': {integrity_error}"
+            )
+            raise WizardDocumentValidationError(
+                f"Archivo rechazado: {integrity_error}",
+                "FILE_INTEGRITY_FAILED",
+            )
+
         # Get session
         session = await self._get_session(session_id, user_id)
 
@@ -851,6 +868,21 @@ class WizardSessionService:
         success = await self._save_session(session_id, session, renew_ttl=True)
         if not success:
             raise WizardSessionError("Error al guardar el documento del cofre.")
+
+        # Audit trail: log vault document selection (OWASP A09 — Phase 5)
+        try:
+            from app.modules.user_documents.repositories.user_documents_repository import (
+                user_documents_repository,
+            )
+            await user_documents_repository.log_access(
+                db=db,
+                doc_id=UUID(vault_document_id),
+                accessed_by=user_id,
+                access_type="vault_selection",
+                access_context=f"wizard_session:{session_id}",
+            )
+        except Exception as e:
+            logger.debug(f"[WizardSession] Vault selection audit log failed (non-blocking): {e}")
 
         logger.info(
             f"[WizardSession] Vault document linked: session={session_id}, "
