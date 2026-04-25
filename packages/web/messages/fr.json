@@ -11372,6 +11372,7 @@
       "canStart": "Prêt à démarrer",
       "notReady": "Documents manquants",
       "startProcedure": "Démarrer la démarche",
+      "vaultHint": "Vos documents seront disponibles depuis le coffre pendant la démarche",
       "askAssistant": "Préparer avec l'assistant",
       "noWorkflows": "Effectuez votre première démarche pour voir vos statistiques de préparation",
       "emptyTitle": "Aucune donnée de préparation",

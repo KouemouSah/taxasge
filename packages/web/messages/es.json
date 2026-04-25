@@ -11372,6 +11372,7 @@
       "canStart": "Listo para iniciar",
       "notReady": "Documentos faltantes",
       "startProcedure": "Iniciar el trámite",
+      "vaultHint": "Sus documentos estarán disponibles desde el cofre durante el trámite",
       "askAssistant": "Preparar con el asistente",
       "noWorkflows": "Realice su primer trámite para ver sus estadísticas de preparación",
       "emptyTitle": "Sin datos de preparación",

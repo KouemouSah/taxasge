@@ -218,6 +218,13 @@ function ReadinessCard({ result }: { result: ReadinessResult }) {
           </div>
         )}
 
+        {/* Vault auto-fill hint */}
+        {result.can_start && (
+          <p className="text-[10px] text-muted-foreground mt-2">
+            {t('readiness.vaultHint')}
+          </p>
+        )}
+
         {/* Action buttons */}
         <div className="flex gap-2 mt-2">
           {result.can_start && (

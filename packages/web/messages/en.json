@@ -11372,6 +11372,7 @@
       "canStart": "Ready to start",
       "notReady": "Missing documents",
       "startProcedure": "Start procedure",
+      "vaultHint": "Your documents will be available from the vault during the procedure",
       "askAssistant": "Prepare with assistant",
       "noWorkflows": "Complete your first procedure to see your readiness statistics",
       "emptyTitle": "No readiness data",
