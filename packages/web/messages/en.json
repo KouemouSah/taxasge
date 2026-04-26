@@ -11431,6 +11431,7 @@
       "emptyDescription": "Certificates, receipts and other generated documents will appear here automatically",
       "types": {
         "payment_receipt": "Payment receipt",
+        "PAYMENT_RECEIPT": "Payment receipt",
         "request_validation": "Request validation",
         "request_summary": "Request summary",
         "appointment_confirmation": "Appointment confirmation",
