@@ -380,7 +380,7 @@ async def upload_document(
         upload_result = await firebase_storage_service.upload_user_document(
             user_id=str(current_user.id),
             application_id=file_hash[:12],
-            file=file,
+            file=file_content,
             metadata={"source": "vault", "document_type_hint": document_type_hint or ""},
         )
         file_path = upload_result.file_path
@@ -648,7 +648,7 @@ async def bulk_upload_documents(
             upload_result = await firebase_storage_service.upload_user_document(
                 user_id=str(current_user.id),
                 application_id=file_hash[:12],
-                file=file,
+                file=file_content,
                 metadata={"source": "vault_bulk"},
             )
             file_path = upload_result.file_path
