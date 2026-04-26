@@ -171,7 +171,7 @@ export function VaultDocumentPicker({
                 {documents.map((doc) => {
                   const Icon = getFileIcon(doc.mime_type);
                   const isSelected = selectedId === doc.id;
-                  const categoryLabel = CATEGORY_LABELS[doc.document_category]?.[locale] ?? doc.document_category;
+                  const categoryLabel = CATEGORY_LABELS[doc.category]?.[locale] ?? doc.category;
 
                   return (
                     <button
@@ -202,7 +202,7 @@ export function VaultDocumentPicker({
                           <Badge
                             variant="secondary"
                             className={`text-[10px] px-1.5 py-0 ${
-                              CATEGORY_COLORS[doc.document_category] ?? CATEGORY_COLORS.other
+                              CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.other
                             }`}
                           >
                             {categoryLabel}

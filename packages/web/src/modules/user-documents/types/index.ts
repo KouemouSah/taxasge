@@ -39,7 +39,7 @@ export type DocumentStatus = 'active' | 'archived' | 'expired' | 'deleted';
 export type ExtractionStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 /** Computed expiry status based on expiry_date vs current date */
-export type ExpiryStatus = 'valid' | 'expiring_soon' | 'expired';
+export type ExpiryStatus = 'valid' | 'expiring_soon' | 'expired' | 'no_expiry';
 
 /** Alert severity levels */
 export type AlertSeverity = 'info' | 'warning' | 'critical';
@@ -65,50 +65,47 @@ export interface WorkflowTag {
  * BACKEND: UserDocumentResponse
  */
 export interface UserDocument {
+  // Primary — matches backend UserDocumentResponse exactly
   id: string;
   user_id: string;
-  source: DocumentSource;
-  source_request_id?: string;
-  source_document_id?: string;
   document_type: string;
-  document_category: DocumentCategory;
-  template_code?: string;
-  file_path: string;
+  category: DocumentCategory;
+  source: DocumentSource;
+  status: DocumentStatus;
+  // File info
   file_name: string;
+  display_name?: string;
   file_size_bytes: number;
   mime_type: string;
   file_hash: string;
   thumbnail_path?: string;
-  extraction_data: Record<string, unknown>;
-  extraction_confidence?: number;
-  extraction_status: ExtractionStatus;
-  document_number?: string;
-  holder_name?: string;
-  issue_date?: string;
-  expiry_date?: string;
-  issuing_authority?: string;
-  classification_method: string;
+  // Classification
+  classification_method?: string;
   classification_confidence?: number;
-  display_name?: string;
+  // Extraction
+  extraction_status: ExtractionStatus;
+  extraction_confidence?: number;
+  extracted_data?: Record<string, unknown>;
+  // Identity (denormalized from extraction)
+  holder_name?: string;
+  document_number?: string;
+  issuing_authority?: string;
+  // Dates
+  expiry_date?: string;
+  issue_date?: string;
+  // User metadata
   notes?: string;
-  is_favorite: boolean;
   color_label?: string;
-  status: DocumentStatus;
   is_verified: boolean;
-  verified_at?: string;
-  replaces_document_id?: string;
-  title_es?: string;
-  title_fr?: string;
-  title_en?: string;
-  reference_number?: string;
-  verification_code?: string;
-  generation_type?: string;
-  created_at: string;
-  updated_at: string;
-  // Computed fields
+  // Source tracking
+  source_request_id?: string;
+  // Computed
   days_until_expiry?: number;
   expiry_status?: ExpiryStatus;
-  workflow_tags?: WorkflowTag[];
+  workflow_tags?: string[];
+  // Timestamps
+  created_at: string;
+  updated_at?: string;
 }
 
 /**
@@ -116,12 +113,10 @@ export interface UserDocument {
  * BACKEND: UserDocumentListItem
  */
 export interface UserDocumentListItem {
+  // Matches backend UserDocumentListItem exactly
   id: string;
   document_type: string;
-  /** Backend sends 'category', kept for compat */
-  document_category: DocumentCategory;
-  /** Backend field name — preferred */
-  category?: DocumentCategory;
+  category: DocumentCategory;
   file_name: string;
   display_name?: string;
   expiry_date?: string;
@@ -132,12 +127,9 @@ export interface UserDocumentListItem {
   is_verified: boolean;
   workflow_tags?: string[];
   thumbnail_path?: string;
-  holder_name?: string;
-  document_number?: string;
-  extraction_confidence?: number;
-  created_at: string;
-  file_size_bytes: number;
   mime_type: string;
+  file_size_bytes: number;
+  created_at: string;
 }
 
 /**
@@ -225,22 +217,24 @@ export interface GeneratedDocument {
  * BACKEND: DocumentAlert
  */
 export interface DocumentAlert {
+  // Matches backend AlertResponse exactly
   id: string;
   alert_type: string;
   severity: AlertSeverity;
-  title_es: string;
+  title: string;
+  title_es?: string;
   title_fr?: string;
   title_en?: string;
-  message_es: string;
+  message: string;
+  message_es?: string;
   message_fr?: string;
   message_en?: string;
   suggested_action?: string;
   action_params?: Record<string, unknown>;
   is_read: boolean;
   is_dismissed: boolean;
-  trigger_date: string;
+  trigger_date?: string;
   created_at: string;
-  user_document_id?: string;
 }
 
 /**

@@ -130,7 +130,11 @@ def _build_document_response(row: Dict[str, Any]) -> UserDocumentResponse:
         classification_method=row.get("classification_method"),
         classification_confidence=row.get("classification_confidence"),
         extraction_status=row.get("extraction_status", "pending"),
+        extraction_confidence=row.get("extraction_confidence"),
         extracted_data=row.get("extraction_data"),
+        holder_name=row.get("holder_name"),
+        document_number=row.get("document_number"),
+        issuing_authority=row.get("issuing_authority"),
         expiry_date=row.get("expiry_date"),
         issue_date=row.get("issue_date"),
         notes=row.get("notes"),
@@ -181,6 +185,7 @@ def _build_list_item(row: Dict[str, Any]) -> UserDocumentListItem:
         is_verified=row.get("is_verified", False),
         workflow_tags=row.get("workflow_tags", []) or [],
         thumbnail_path=row.get("thumbnail_path"),
+        mime_type=row.get("mime_type", "application/octet-stream"),
         file_size_bytes=row.get("file_size_bytes", 0),
         created_at=row.get("created_at", datetime.now(timezone.utc)),
     )
@@ -847,11 +852,26 @@ async def list_user_documents(
         last = rows[-1]
         next_cursor = _encode_cursor(last["created_at"], last["id"])
 
-    # Get total count (lightweight query)
+    # Get total count with SAME filters as list query
+    count_conditions = ["user_id = $1", "deleted_at IS NULL", "status != 'deleted'"]
+    count_params: list = [current_user.id]
+    idx = 2
+    if source:
+        count_conditions.append(f"source = ${idx}")
+        count_params.append(source)
+        idx += 1
+    if category:
+        count_conditions.append(f"document_category = ${idx}")
+        count_params.append(category)
+        idx += 1
+    if status_filter:
+        count_conditions.append(f"status = ${idx}")
+        count_params.append(status_filter)
+        idx += 1
+    count_where = " AND ".join(count_conditions)
     total_count_row = await db.fetchrow(
-        """SELECT COUNT(*) AS cnt FROM user_documents
-           WHERE user_id = $1 AND deleted_at IS NULL AND status != 'deleted'""",
-        current_user.id,
+        f"SELECT COUNT(*) AS cnt FROM user_documents WHERE {count_where}",
+        *count_params,
     )
     total_count = total_count_row["cnt"] if total_count_row else 0
 

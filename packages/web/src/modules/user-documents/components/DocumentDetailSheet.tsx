@@ -241,21 +241,22 @@ export function DocumentDetailSheet({
   // Derived values
   const displayName = doc?.display_name || doc?.file_name || '';
   const categoryLabel =
-    doc ? (CATEGORY_LABELS[doc.document_category]?.[locale] ?? doc.document_category) : '';
+    doc ? (CATEGORY_LABELS[doc.category]?.[locale] ?? doc.category) : '';
   const categoryColor = doc
-    ? (CATEGORY_COLORS[doc.document_category] ?? CATEGORY_COLORS.other)
+    ? (CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.other)
     : '';
   const statusColor = doc
     ? (STATUS_COLORS[doc.status] ?? STATUS_COLORS.active)
     : '';
 
-  const extractionEntries = doc?.extraction_data
-    ? Object.entries(doc.extraction_data).filter(
+  const extractionEntries = doc?.extracted_data
+    ? Object.entries(doc.extracted_data).filter(
         ([, value]) => value !== null && value !== undefined && value !== ''
       )
     : [];
 
-  const workflowTagStrings = doc?.workflow_tags?.map((wt) => wt.workflow_code) ?? [];
+  // Backend sends workflow_tags as flat string[] of workflow codes
+  const workflowTagStrings = (doc?.workflow_tags ?? []).filter(Boolean);
   const versionsList = (versions as UserDocumentListItem[] | undefined) ?? [];
 
   // -------------------------------------------------------------------------

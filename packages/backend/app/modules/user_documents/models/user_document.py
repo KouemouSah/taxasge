@@ -225,9 +225,17 @@ class UserDocumentResponse(BaseModel):
     extraction_status: ExtractionStatus = Field(
         "pending", description="Status of AI data extraction."
     )
+    extraction_confidence: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="AI extraction confidence (0-1)."
+    )
     extracted_data: Optional[Dict[str, Any]] = Field(
         None, description="Structured data extracted by Gemini."
     )
+
+    # Identity fields (denormalized from extraction_data)
+    holder_name: Optional[str] = Field(None, description="Document holder name.")
+    document_number: Optional[str] = Field(None, description="Document number (e.g. DIP number).")
+    issuing_authority: Optional[str] = Field(None, description="Issuing authority.")
 
     # Expiry tracking
     expiry_date: Optional[date] = Field(None, description="Document expiry date.")
@@ -283,6 +291,7 @@ class UserDocumentListItem(BaseModel):
     is_verified: bool = False
     workflow_tags: List[str] = Field(default_factory=list)
     thumbnail_path: Optional[str] = None
+    mime_type: str = "application/octet-stream"
     file_size_bytes: int = 0
     created_at: datetime
 

@@ -149,12 +149,12 @@ export function AlertsTab() {
     [locale, router, markRead]
   );
 
-  // Get localized title
+  // Get localized title — backend sends title + title_es/fr/en
   const getTitle = useCallback(
     (alert: DocumentAlert): string => {
       if (locale === 'fr' && alert.title_fr) return alert.title_fr;
       if (locale === 'en' && alert.title_en) return alert.title_en;
-      return alert.title_es;
+      return alert.title_es || alert.title || '';
     },
     [locale]
   );
@@ -164,7 +164,7 @@ export function AlertsTab() {
     (alert: DocumentAlert): string => {
       if (locale === 'fr' && alert.message_fr) return alert.message_fr;
       if (locale === 'en' && alert.message_en) return alert.message_en;
-      return alert.message_es;
+      return alert.message_es || alert.message || '';
     },
     [locale]
   );
@@ -301,7 +301,7 @@ export function AlertsTab() {
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
                                   <span className="text-[10px] text-muted-foreground">
-                                    {formatDate(alert.trigger_date, locale)}
+                                    {alert.trigger_date ? formatDate(alert.trigger_date, locale) : ''}
                                   </span>
 
                                   {alert.suggested_action && (
