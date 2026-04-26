@@ -56,9 +56,11 @@ AlertSeverity = Literal["info", "warning", "critical"]
 
 GenerationType = Literal[
     "receipt",
+    "payment_receipt",
     "certificate",
     "attestation",
     "summary",
+    "request_summary",
     "confirmation",
 ]
 
