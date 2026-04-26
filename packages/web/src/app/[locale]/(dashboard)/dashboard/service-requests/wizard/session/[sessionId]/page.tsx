@@ -193,7 +193,7 @@ export default function SessionWizardPage() {
     previewDocument,
     confirmDocument,
     deleteDocument,
-    useVaultDocument,
+    linkVaultDocument,
     saveFormData,
     preparePayment,
     initiatePayment,
@@ -712,7 +712,7 @@ export default function SessionWizardPage() {
   // Handle select from vault (Phase 2)
   const handleSelectFromVault = useCallback(
     async (documentCode: string, vaultDocumentId: string, _documentName: string) => {
-      const success = await useVaultDocument(documentCode, vaultDocumentId)
+      const success = await linkVaultDocument(documentCode, vaultDocumentId)
       if (success) {
         // Mark as uploaded in local previews
         setDocumentPreviews((prev) => ({
@@ -733,7 +733,7 @@ export default function SessionWizardPage() {
         }))
       }
     },
-    [useVaultDocument]
+    [linkVaultDocument]
   )
 
   // Handle go back from mismatch blocker

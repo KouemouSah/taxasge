@@ -64,7 +64,7 @@ export interface UseWizardSessionReturn {
   previewDocument: (documentCode: string, file: File) => Promise<DocumentPreview | null>
   confirmDocument: (data: DocumentConfirmRequest) => Promise<boolean>
   deleteDocument: (documentCode: string) => Promise<boolean>
-  useVaultDocument: (documentCode: string, vaultDocumentId: string) => Promise<boolean>
+  linkVaultDocument: (documentCode: string, vaultDocumentId: string) => Promise<boolean>
 
   // Form data
   saveFormData: (data: FormDataSaveRequest) => Promise<boolean>
@@ -345,7 +345,7 @@ export function useWizardSession(): UseWizardSessionReturn {
   // USE VAULT DOCUMENT (Phase 2 — auto-fill from vault)
   // ==========================================================================
 
-  const useVaultDocument = useCallback(
+  const linkVaultDocument = useCallback(
     async (documentCode: string, vaultDocumentId: string): Promise<boolean> => {
       if (!session) {
         setError('No hay sesion activa')
@@ -670,7 +670,7 @@ export function useWizardSession(): UseWizardSessionReturn {
     previewDocument,
     confirmDocument,
     deleteDocument,
-    useVaultDocument,
+    linkVaultDocument,
 
     // Form data
     saveFormData,
