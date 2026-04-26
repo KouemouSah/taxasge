@@ -120,7 +120,8 @@ export function DocumentCard({
   const categoryColor = CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.other;
   const displayName = doc.display_name || doc.file_name;
 
-  // Lazy-load thumbnail URL when thumbnail_path is available
+  // Lazy-load thumbnail: use thumbnail_path if available, else download URL for images
+  const isImage = doc.mime_type?.startsWith('image/');
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   useEffect(() => {
     if (doc.thumbnail_path) {
@@ -128,8 +129,14 @@ export function DocumentCard({
         .getThumbnailUrl(doc.id)
         .then((res) => setThumbUrl(res.url))
         .catch(() => {});
+    } else if (isImage) {
+      // No thumbnail generated — use signed download URL as inline preview
+      userDocumentsApi
+        .getDownloadUrl(doc.id)
+        .then((res) => setThumbUrl(res.url))
+        .catch(() => {});
     }
-  }, [doc.id, doc.thumbnail_path]);
+  }, [doc.id, doc.thumbnail_path, isImage]);
 
   // Handle download
   const handleDownload = useCallback(async () => {
@@ -190,6 +197,10 @@ export function DocumentCard({
                 loading="lazy"
                 onError={() => setThumbUrl(null)}
               />
+            </div>
+          ) : doc.mime_type === 'application/pdf' ? (
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/20 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-red-500" />
             </div>
           ) : (
             <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center">

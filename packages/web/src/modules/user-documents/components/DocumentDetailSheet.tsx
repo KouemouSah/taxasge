@@ -173,25 +173,30 @@ export function DocumentDetailSheet({
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(undefined);
   const [extractionOpen, setExtractionOpen] = useState(false);
 
-  // Fetch thumbnail when document changes
+  // Fetch thumbnail or download URL for inline preview
+  const isImageDoc = doc?.mime_type?.startsWith('image/');
   useEffect(() => {
     setThumbnailUrl(undefined);
-    if (!documentId || !doc?.thumbnail_path) return;
+    if (!documentId) return;
 
     let cancelled = false;
-    userDocumentsApi
-      .getThumbnailUrl(documentId)
-      .then((result) => {
-        if (!cancelled) setThumbnailUrl(result.url);
-      })
-      .catch(() => {
-        // Silent fail - preview will show placeholder
-      });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [documentId, doc?.thumbnail_path]);
+    if (doc?.thumbnail_path) {
+      // Use pre-generated thumbnail
+      userDocumentsApi
+        .getThumbnailUrl(documentId)
+        .then((result) => { if (!cancelled) setThumbnailUrl(result.url); })
+        .catch(() => {});
+    } else if (isImageDoc) {
+      // No thumbnail — use signed download URL directly for images
+      userDocumentsApi
+        .getDownloadUrl(documentId)
+        .then((result) => { if (!cancelled) setThumbnailUrl(result.url); })
+        .catch(() => {});
+    }
+
+    return () => { cancelled = true; };
+  }, [documentId, doc?.thumbnail_path, isImageDoc]);
 
   // Handlers
   const handleDownload = useCallback(async () => {
