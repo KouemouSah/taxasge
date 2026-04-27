@@ -366,6 +366,26 @@ function ProfileScreenContent() {
 
         <Divider />
 
+        {/* ── My data — RGPD art. 20 export ── */}
+        <View style={{ backgroundColor: colors.surface }}>
+          <List.Subheader style={{ color: colors.primary }}>
+            {t('settings.myData', { defaultValue: 'My data' })}
+          </List.Subheader>
+          <List.Item
+            title={t('settings.exportData.title', {
+              defaultValue: 'Export my data',
+            })}
+            description={t('settings.exportData.subtitleShort', {
+              defaultValue: 'JSON download — RGPD art. 20',
+            })}
+            left={(props) => <List.Icon {...props} icon="download-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/settings/account/export' as never)}
+          />
+        </View>
+
+        <Divider />
+
         {/* ── Danger zone — RGPD account deletion ── */}
         <View style={{ backgroundColor: colors.surface }}>
           <List.Subheader style={{ color: colors.error }}>

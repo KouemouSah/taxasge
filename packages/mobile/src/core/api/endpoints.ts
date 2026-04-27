@@ -62,6 +62,8 @@ export const API_ENDPOINTS = {
     deviceToken: '/users/profile/device-token',
     /** DELETE — RGPD soft-delete. Body: { password, confirmation: "DELETE" }. */
     deleteAccount: '/users/profile',
+    /** GET — RGPD art. 20 data export. Returns JSON with Content-Disposition. */
+    exportData: '/users/profile/export',
   },
 
   // -------------------------------------------------------------------------

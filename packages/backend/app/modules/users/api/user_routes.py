@@ -416,6 +416,130 @@ async def delete_avatar(
         )
 
 
+@router.get("/profile/export", status_code=status.HTTP_200_OK)
+async def export_user_data(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Export the authenticated user's data as a JSON document — RGPD art. 20
+    (right to data portability).
+
+    V1: synchronous aggregation, capped to a 90-day window for the high-cardinality
+    tables (payments, service_requests, audit_logs) so the response stays small
+    enough to ship without an async job pipeline.
+
+    Returns: a JSON body with `Content-Disposition: attachment` so mobile clients
+    can write it straight to a file and let the user share it.
+    """
+    import uuid
+
+    from fastapi.responses import JSONResponse
+
+    try:
+        try:
+            user_uuid = uuid.UUID(str(current_user.id))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user ID format",
+            )
+
+        async with db_manager.get_connection() as db:
+            profile = await db.fetchrow(
+                """
+                SELECT id, email, first_name, last_name, full_name, phone_number,
+                       document_type, document_number, role, status, preferred_language,
+                       email_notifications, push_notifications, sms_notifications,
+                       email_verified, phone_verified, address, city, avatar_url,
+                       two_factor_enabled, last_login, created_at, updated_at
+                FROM users
+                WHERE id = $1
+                """,
+                user_uuid,
+            )
+            if not profile:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found",
+                )
+
+            payments = await db.fetch(
+                """
+                SELECT id, base_amount, penalties, interest, currency, payment_type,
+                       payment_method, status, bank_reference, bank_transaction_id,
+                       paid_at, created_at, updated_at
+                FROM payments
+                WHERE user_id = $1
+                  AND created_at >= NOW() - INTERVAL '90 days'
+                ORDER BY created_at DESC
+                LIMIT 1000
+                """,
+                user_uuid,
+            )
+
+            service_requests = await db.fetch(
+                """
+                SELECT id, reference, workflow_code, status::text AS status,
+                       payment_status, paid_at, created_at, updated_at
+                FROM service_requests
+                WHERE user_id = $1
+                  AND created_at >= NOW() - INTERVAL '90 days'
+                ORDER BY created_at DESC
+                LIMIT 1000
+                """,
+                user_uuid,
+            )
+
+        # Pydantic / asyncpg records: serialise the values explicitly so JSON
+        # encoding can't trip on UUID / Decimal / datetime types.
+        def _to_dict(row):
+            return {k: (str(v) if v is not None else None) for k, v in dict(row).items()}
+
+        payload = {
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_for_user_id": str(user_uuid),
+            "rgpd_basis": "Article 20 — right to data portability",
+            "window_days": 90,
+            "profile": _to_dict(profile),
+            "payments": [_to_dict(p) for p in payments],
+            "service_requests": [_to_dict(r) for r in service_requests],
+            "counts": {
+                "payments": len(payments),
+                "service_requests": len(service_requests),
+            },
+        }
+
+        # Activity log — the user is auditing themselves, but we still record
+        # the request so a future incident response can see who pulled what.
+        try:
+            activity = UserActivity(
+                user_id=current_user.id,
+                action="export_data",
+                resource="user_profile",
+                timestamp=datetime.now(timezone.utc),
+            )
+            await user_repository.log_user_activity(activity)
+        except Exception as log_error:
+            logger.warning(f"Failed to log export activity: {log_error}")
+
+        return JSONResponse(
+            content=payload,
+            headers={
+                "Content-Disposition": f'attachment; filename="facil-export-{user_uuid}.json"',
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting data for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error exporting data",
+        )
+
+
 @router.delete("/profile", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(
     body: AccountDeleteRequest,

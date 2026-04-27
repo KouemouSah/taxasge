@@ -417,6 +417,19 @@
     "notifications": {
       "title": "Notifications"
     },
+    "myData": "My data",
+    "exportData": {
+      "title": "Export my data",
+      "subtitle": "Data portability right — RGPD art. 20",
+      "subtitleShort": "JSON download — RGPD art. 20",
+      "description": "Download a JSON file with your profile, your payments and your service requests for the last 90 days. You can save it to Drive, your files, or send it to yourself.",
+      "note": "No documents (PDF / images) are included — only their metadata.",
+      "cta": "Download my data",
+      "preparing": "Preparing your data...",
+      "shareTitle": "Share my Facil data export",
+      "savedTo": "Saved to {{uri}}",
+      "errorBody": "Could not export your data. Please try again."
+    },
     "deleteAccount": {
       "title": "Delete my account",
       "warning": "This action cannot be undone after 30 days.",

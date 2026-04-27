@@ -417,6 +417,19 @@
     "notifications": {
       "title": "Notifications"
     },
+    "myData": "Mes données",
+    "exportData": {
+      "title": "Exporter mes données",
+      "subtitle": "Droit à la portabilité — RGPD art. 20",
+      "subtitleShort": "Téléchargement JSON — RGPD art. 20",
+      "description": "Téléchargez un fichier JSON avec votre profil, vos paiements et vos demandes des 90 derniers jours. Vous pouvez le sauvegarder sur Drive, vos fichiers, ou vous l'envoyer par e-mail.",
+      "note": "Les documents (PDF / images) ne sont pas inclus — seules leurs métadonnées.",
+      "cta": "Télécharger mes données",
+      "preparing": "Préparation de vos données...",
+      "shareTitle": "Partager mon export de données",
+      "savedTo": "Enregistré dans {{uri}}",
+      "errorBody": "Impossible d'exporter vos données. Réessayez."
+    },
     "deleteAccount": {
       "title": "Supprimer mon compte",
       "warning": "Cette action est irréversible après 30 jours.",
