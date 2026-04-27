@@ -60,6 +60,8 @@ export const API_ENDPOINTS = {
     deleteAvatar: '/users/profile/avatar',
     /** Register a push notification device token (FCM/APNs). NEW — required for P1. */
     deviceToken: '/users/profile/device-token',
+    /** DELETE — RGPD soft-delete. Body: { password, confirmation: "DELETE" }. */
+    deleteAccount: '/users/profile',
   },
 
   // -------------------------------------------------------------------------
@@ -346,16 +348,26 @@ export const API_ENDPOINTS = {
   //            (router prefix /support, included with /api/v1)
   // -------------------------------------------------------------------------
   support: {
+    /** GET — categories visible to the current user (target_role-filtered server-side). */
     categories: '/support/categories',
-    categoryDetail: (id: string) => `/support/categories/${id}` as const,
+    categoryDetail: (id: number) => `/support/categories/${id}` as const,
+    /** GET admin — all tickets ; POST — create a new ticket. */
     tickets: '/support/tickets',
+    /** Alias kept for the citizen-facing client. */
+    createTicket: '/support/tickets',
+    /** GET — paginated list of the current user's tickets. */
     myTickets: '/support/tickets/my',
-    ticketDetail: (id: string) => `/support/tickets/${id}` as const,
+    /** GET / PUT — single ticket. BD verified: support_tickets.id is INTEGER. */
+    ticket: (id: number) => `/support/tickets/${id}` as const,
+    ticketDetail: (id: number) => `/support/tickets/${id}` as const,
     ticketByNumber: (ticketNumber: string) =>
       `/support/tickets/by-number/${ticketNumber}` as const,
-    ticketUpdate: (id: string) => `/support/tickets/${id}` as const,
-    ticketClose: (id: string) => `/support/tickets/${id}/close` as const,
-    ticketMessages: (id: string) => `/support/tickets/${id}/messages` as const,
+    ticketUpdate: (id: number) => `/support/tickets/${id}` as const,
+    /** POST — owner or admin can close. */
+    closeTicket: (id: number) => `/support/tickets/${id}/close` as const,
+    ticketClose: (id: number) => `/support/tickets/${id}/close` as const,
+    /** GET / POST — message thread. */
+    ticketMessages: (id: number) => `/support/tickets/${id}/messages` as const,
   },
 
   // -------------------------------------------------------------------------

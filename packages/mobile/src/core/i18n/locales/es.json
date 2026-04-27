@@ -397,7 +397,40 @@
     "security": "Seguridad",
     "preferences": "Preferencias",
     "appLock": "Bloqueo biométrico",
-    "appLockDesc": "Bloquear la app tras 5 min en segundo plano"
+    "appLockDesc": "Bloquear la app tras 5 min en segundo plano",
+    "dangerZone": "Zona peligrosa",
+    "biometric": {
+      "title": "Inicio de sesión biométrico",
+      "toggle": "Usar inicio de sesión biométrico",
+      "description": "Inicia sesión con tu huella o rostro tras introducir tu contraseña una vez.",
+      "note": "Las credenciales se eliminan al cerrar sesión y al desactivar la opción.",
+      "unavailable": "La autenticación biométrica no está disponible o no está configurada en este dispositivo.",
+      "confirmTitle": "Verifica tu identidad",
+      "confirmBody": "Introduce tu contraseña para activar el inicio biométrico.",
+      "enabled": "Inicio biométrico activado",
+      "disabled": "Inicio biométrico desactivado",
+      "requires2fa": "Desactiva la 2FA antes de activar el inicio biométrico."
+    },
+    "notifications": {
+      "title": "Notificaciones"
+    },
+    "deleteAccount": {
+      "title": "Eliminar mi cuenta",
+      "warning": "Esta acción no se puede deshacer pasados 30 días.",
+      "bullet1": "Tus sesiones activas se cerrarán inmediatamente.",
+      "bullet2": "Tus registros fiscales permanecerán en el ledger de auditoría como exige la ley.",
+      "bullet3": "Tus datos personales se eliminarán a los 30 días salvo que contactes con soporte.",
+      "typeDelete": "Escribe DELETE para confirmar",
+      "typeDeleteHint": "Debe ser exactamente la palabra DELETE en mayúsculas.",
+      "cta": "Eliminar mi cuenta de forma permanente",
+      "confirmTitle": "¿Eliminar tu cuenta?",
+      "confirmBody": "Tu cuenta se marcará para eliminación. Tienes 30 días para deshacer la acción antes de que los datos se borren definitivamente.",
+      "confirmAction": "Eliminar",
+      "errors": {
+        "wrongPassword": "Contraseña incorrecta.",
+        "alreadyDeleted": "La cuenta ya está marcada para eliminación."
+      }
+    }
   },
   "roles": {
     "citizen": "Ciudadano",
@@ -422,11 +455,61 @@
     "description": "Descripción",
     "category": "Categoría",
     "priority": "Prioridad",
+    "list": {
+      "title": "Mis tickets",
+      "empty": "No tienes tickets de soporte",
+      "filter": {
+        "all": "Todos",
+        "active": "Activos",
+        "open": "Abiertos",
+        "resolved": "Resueltos",
+        "closed": "Cerrados"
+      },
+      "messages_one": "1 mensaje",
+      "messages_other": "{{count}} mensajes"
+    },
+    "new": {
+      "title": "Nuevo ticket de soporte",
+      "selectCategory": "Selecciona una categoría",
+      "subjectPlaceholder": "Resume tu problema en una frase",
+      "descriptionPlaceholder": "Describe tu problema con el mayor detalle posible",
+      "submit": "Enviar ticket",
+      "errors": {
+        "subjectTooShort": "El asunto debe tener al menos 5 caracteres",
+        "descriptionTooShort": "La descripción debe tener al menos 10 caracteres",
+        "categoryRequired": "Selecciona una categoría",
+        "submitFailed": "No se pudo crear el ticket. Vuelve a intentarlo."
+      }
+    },
+    "detail": {
+      "title": "Detalle del ticket",
+      "ticketNumber": "N° de ticket",
+      "createdAt": "Creado",
+      "category": "Categoría",
+      "replyPlaceholder": "Escribe tu respuesta...",
+      "send": "Enviar",
+      "close": "Marcar como resuelto",
+      "closeConfirm": "¿Marcar este ticket como resuelto?",
+      "closeConfirmBody": "No podrás añadir nuevos mensajes después.",
+      "closed": "Este ticket está cerrado",
+      "errorLoading": "No se pudo cargar el ticket",
+      "errorLoadingMessages": "No se pudieron cargar los mensajes"
+    },
     "status": {
       "open": "Abierto",
       "in_progress": "En proceso",
+      "pending_user": "Esperando respuesta",
       "resolved": "Resuelto",
       "closed": "Cerrado"
+    },
+    "priority": {
+      "low": "Baja",
+      "normal": "Normal",
+      "high": "Alta",
+      "urgent": "Urgente"
+    },
+    "a11y": {
+      "item": "{{subject}}, estado {{status}}, ticket {{number}}"
     },
     "sendMessage": "Enviar mensaje"
   },

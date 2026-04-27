@@ -397,7 +397,40 @@
     "security": "Security",
     "preferences": "Preferences",
     "appLock": "Biometric lock",
-    "appLockDesc": "Lock app after 5 min in background"
+    "appLockDesc": "Lock app after 5 min in background",
+    "dangerZone": "Danger zone",
+    "biometric": {
+      "title": "Biometric login",
+      "toggle": "Use biometric login",
+      "description": "Sign in with your fingerprint or face after entering your password once.",
+      "note": "Stored credentials are wiped on sign-out and on toggle off.",
+      "unavailable": "Biometric authentication is not available or not enrolled on this device.",
+      "confirmTitle": "Confirm your identity",
+      "confirmBody": "Enter your account password to enable biometric login.",
+      "enabled": "Biometric login enabled",
+      "disabled": "Biometric login disabled",
+      "requires2fa": "Disable 2FA before enabling biometric login."
+    },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "deleteAccount": {
+      "title": "Delete my account",
+      "warning": "This action cannot be undone after 30 days.",
+      "bullet1": "Your active sessions will be signed out immediately.",
+      "bullet2": "Your fiscal records remain in the audit ledger as required by law.",
+      "bullet3": "Personal data is purged after 30 days unless you contact support.",
+      "typeDelete": "Type DELETE to confirm",
+      "typeDeleteHint": "Must be the exact uppercase word DELETE.",
+      "cta": "Permanently delete my account",
+      "confirmTitle": "Delete your account?",
+      "confirmBody": "Your account will be marked for deletion. You have 30 days to undo before all data is permanently erased.",
+      "confirmAction": "Delete",
+      "errors": {
+        "wrongPassword": "Incorrect password.",
+        "alreadyDeleted": "Account already scheduled for deletion."
+      }
+    }
   },
   "roles": {
     "citizen": "Citizen",
@@ -422,11 +455,61 @@
     "description": "Description",
     "category": "Category",
     "priority": "Priority",
+    "list": {
+      "title": "My tickets",
+      "empty": "No support tickets yet",
+      "filter": {
+        "all": "All",
+        "active": "Active",
+        "open": "Open",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      },
+      "messages_one": "1 message",
+      "messages_other": "{{count}} messages"
+    },
+    "new": {
+      "title": "New support ticket",
+      "selectCategory": "Pick a category",
+      "subjectPlaceholder": "Summarize your issue in one sentence",
+      "descriptionPlaceholder": "Describe your issue in as much detail as possible",
+      "submit": "Submit ticket",
+      "errors": {
+        "subjectTooShort": "Subject must be at least 5 characters",
+        "descriptionTooShort": "Description must be at least 10 characters",
+        "categoryRequired": "Pick a category",
+        "submitFailed": "Could not create the ticket. Please try again."
+      }
+    },
+    "detail": {
+      "title": "Ticket detail",
+      "ticketNumber": "Ticket number",
+      "createdAt": "Created",
+      "category": "Category",
+      "replyPlaceholder": "Type your reply...",
+      "send": "Send",
+      "close": "Mark as resolved",
+      "closeConfirm": "Mark this ticket as resolved?",
+      "closeConfirmBody": "You won't be able to add new messages.",
+      "closed": "This ticket is closed",
+      "errorLoading": "Could not load the ticket",
+      "errorLoadingMessages": "Could not load messages"
+    },
     "status": {
       "open": "Open",
       "in_progress": "In progress",
+      "pending_user": "Awaiting your reply",
       "resolved": "Resolved",
       "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "a11y": {
+      "item": "{{subject}}, status {{status}}, ticket {{number}}"
     },
     "sendMessage": "Send message"
   },
