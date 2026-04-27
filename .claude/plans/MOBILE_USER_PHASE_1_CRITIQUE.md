@@ -74,14 +74,37 @@
 
 ## 4. Dette explicite — iOS APNs
 
-Code mobile fonctionne sur iOS dès que :
+**Mise à jour (post-revue user)** : `taxasge/config/` contient déjà les vrais
+fichiers Firebase pour 2 environnements :
 
-1. **`GoogleService-Info.plist`** ajouté à `packages/mobile/` (à télécharger depuis Firebase Console > iOS app `com.taxasge.app`).
-2. **APNs Auth Key (.p8)** uploadée dans Firebase Console > Project Settings > Cloud Messaging > Apple app config (avec Team ID + Key ID).
-3. **EAS credentials** : `eas credentials -p ios` pour configurer l'entitlement Apple Push Notifications + provisioning profile.
-4. **Apple Developer account** : enregistrement bundle id `com.taxasge.app` + Push Notifications capability activée.
+| Fichier | Projet Firebase |
+|---------|----------------|
+| `config/GoogleService-Info.dev.plist` | taxasge-dev (sender 392159428433) |
+| `config/GoogleService-Info.pro.plist` | taxasge-pro (sender 430718042574) |
+| `config/google-services.dev.json` | taxasge-dev |
+| `config/google-services.prod.json` | taxasge-pro |
 
-Sans ces étapes externes (hors code), l'app build pour iOS mais le device token APNs sera vide. Test iOS reporté à P10 (release flow EAS + store submission). **Aucune dette de code mobile** — uniquement opérations Firebase/Apple Console.
+Le `packages/mobile/google-services.json` à la racine du package est une copie
+de la variante DEV (déjà tracké git, commit `3de631e1`). **Pendant la revue,
+j'ai dupliqué `config/GoogleService-Info.dev.plist` → `packages/mobile/GoogleService-Info.plist`
+et ajouté `googleServicesFile: "./GoogleService-Info.plist"` dans `app.json` ios.**
+
+Restent côté ops (hors code mobile) :
+
+1. **APNs Auth Key (.p8)** uploadée dans Firebase Console > Project Settings >
+   Cloud Messaging > Apple app config (Team ID + Key ID). À vérifier sur le
+   projet `taxasge-dev` (et `taxasge-pro` avant store).
+2. **EAS credentials** : `eas credentials -p ios` pour activer l'entitlement
+   Apple Push Notifications + provisioning profile.
+3. **Apple Developer** : bundle id `com.taxasge.app` enregistré, capability
+   "Push Notifications" activée.
+
+**Dette environnementale identifiée (hors scope P1)** : `eas.json` ne fait
+aucun switch dev/prod côté Firebase. Les profils `preview` et `production`
+pointent tous deux sur le backend staging et utilisent la config Firebase
+DEV. Avant le release prod (P10), il faudra wirer un script ou un `prebuild`
+hook qui copie le bon `.plist` / `.json` selon le profile. **Ticket à créer**
+pour P10 (build production).
 
 ## 5. Smoke tests — état réel
 

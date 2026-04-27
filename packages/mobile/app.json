@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.taxasge.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "Facil necesita acceso a la cámara para escanear documentos",
         "NSPhotoLibraryUsageDescription": "Facil necesita acceso a las fotos para adjuntar documentos",
