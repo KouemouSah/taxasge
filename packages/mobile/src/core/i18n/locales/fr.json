@@ -1,4 +1,7 @@
 {
+  "bundleWizard": {
+    "registrationNumberPlaceholder": "PE-000000"
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Erreur",
