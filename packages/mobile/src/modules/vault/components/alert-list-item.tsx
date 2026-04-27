@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,7 +36,7 @@ function pickI18nField<T extends Record<string, unknown>>(
   return typeof fallback === 'string' ? fallback : '';
 }
 
-export function AlertListItem({ alert, onPress, onLongPress }: AlertListItemProps) {
+function AlertListItemImpl({ alert, onPress, onLongPress }: AlertListItemProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const severity = alert.severity as keyof typeof SEVERITY_COLOR;
@@ -97,3 +97,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
+/** Memoized — vault alerts list re-renders on tab switch + cache refresh. */
+export const AlertListItem = memo(AlertListItemImpl);

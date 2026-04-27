@@ -4,7 +4,7 @@
  * divider between rows, ripple on press.
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -56,7 +56,7 @@ function expiryBadge(item: UserDocumentListItemT, errorColor: string, warningCol
   return null;
 }
 
-export function DocumentListItem({ item, onPress, onLongPress }: DocumentListItemProps) {
+function DocumentListItemImpl({ item, onPress, onLongPress }: DocumentListItemProps) {
   const { colors } = useAppTheme();
   const iconName = MIME_ICON[item.mime_type] ?? 'file-document-outline';
   const categoryColor =
@@ -126,3 +126,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+/** Memoized — vault list re-renders on tab switch + cache refresh. */
+export const DocumentListItem = memo(DocumentListItemImpl);

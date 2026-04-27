@@ -5,7 +5,7 @@
  * indicates the channel, divider between rows, ripple on press.
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
@@ -39,7 +39,7 @@ function formatRelative(epoch: number, locale: string): string {
   return new Date(epoch).toLocaleDateString(locale);
 }
 
-export function NotificationItem({
+function NotificationItemImpl({
   notification,
   onPress,
   onLongPress,
@@ -115,3 +115,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 });
+
+/**
+ * Memoized — the inbox FlatList re-renders on every refresh and badge update.
+ * Reference equality on the `onPress`/`onLongPress` callbacks (parent must
+ * use `useCallback`) is enough to skip rerenders for unchanged rows.
+ */
+export const NotificationItem = memo(NotificationItemImpl);

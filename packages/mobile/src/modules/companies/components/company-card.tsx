@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ interface CompanyCardProps {
   onPress: (company: CompanyResponse) => void;
 }
 
-export function CompanyCard({ company, onPress }: CompanyCardProps) {
+function CompanyCardImpl({ company, onPress }: CompanyCardProps) {
   const { colors } = useAppTheme();
   const isBundle = company.regimen_fiscal === 'bundle';
 
@@ -71,3 +71,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+
+/** Memoized — the companies FlatList may rerender on filter or search changes. */
+export const CompanyCard = memo(CompanyCardImpl);
