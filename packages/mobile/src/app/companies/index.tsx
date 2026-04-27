@@ -64,6 +64,11 @@ export default function CompaniesIndexScreen() {
               tintColor={colors.primary}
             />
           }
+          // P8.3 — perf knobs (CompanyCard variable height ⇒ no getItemLayout).
+          initialNumToRender={10}
+          maxToRenderPerBatch={15}
+          windowSize={10}
+          removeClippedSubviews
         />
       )}
 

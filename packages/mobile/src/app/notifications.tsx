@@ -107,6 +107,11 @@ export default function NotificationsScreen() {
         contentContainerStyle={notifications.length === 0 ? styles.emptyContent : undefined}
         onRefresh={refresh}
         refreshing={false}
+        // P8.3 — perf knobs (NotificationItem may grow with multi-line, no getItemLayout).
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
       />
     </SafeAreaView>
   );

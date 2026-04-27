@@ -5,7 +5,8 @@
  * Hidden via href:null when authenticated (replaced by Profile tab).
  */
 
-import { StyleSheet, View, Image } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Text, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -40,7 +41,7 @@ export default function AccountScreen() {
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
       <View style={s.content}>
         {/* Logo */}
-        <Image source={APP_LOGO} style={s.logo} resizeMode="contain" />
+        <Image source={APP_LOGO} style={s.logo} contentFit="contain" cachePolicy="memory-disk" />
 
         {/* Title */}
         <Text variant="headlineSmall" style={{ fontWeight: '600', color: colors.onSurface, marginTop: 20 }}>

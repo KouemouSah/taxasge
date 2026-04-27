@@ -6,7 +6,8 @@
  * 3. Otherwise → (tabs)
  */
 
-import { View, Image, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { Text } from 'react-native-paper';
 import { Redirect } from 'expo-router';
 
@@ -39,7 +40,9 @@ export default function Index() {
         <Image
           source={APP_LOGO}
           style={{ width: 140, height: 46, marginBottom: 24 }}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          transition={150}
         />
         <ActivityIndicator size="large" color="#0D6E3F" />
       </View>

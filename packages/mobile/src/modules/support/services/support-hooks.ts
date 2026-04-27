@@ -13,6 +13,7 @@ import * as supportApi from './support-api';
 import type {
   MyTicketsFilters,
   SupportMessagePayload,
+  SupportTicket,
   SupportTicketCreatePayload,
 } from '../types/support.types';
 
@@ -95,11 +96,42 @@ export function usePostTicketMessage(ticketId: number) {
   });
 }
 
+/**
+ * Close a ticket with **optimistic update** (P8.6) — the detail card flips
+ * to "resolved" the moment the user taps the action, and rolls back to the
+ * previous status if the backend rejects.
+ */
 export function useCloseTicket() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (ticketId: number) => supportApi.closeTicket(ticketId),
-    onSuccess: (_data, ticketId) => {
+
+    onMutate: async (ticketId: number) => {
+      const detailKey = SUPPORT_QUERY_KEYS.ticket(ticketId);
+      // Pause refetches so the optimistic write isn't immediately overwritten.
+      await queryClient.cancelQueries({ queryKey: detailKey });
+
+      const previous = queryClient.getQueryData<SupportTicket>(detailKey);
+      if (previous) {
+        queryClient.setQueryData<SupportTicket>(detailKey, {
+          ...previous,
+          status: 'resolved',
+          resolved_at: new Date().toISOString(),
+        });
+      }
+      return { previous };
+    },
+
+    onError: (_err, ticketId, context) => {
+      // Rollback the cached ticket if the backend rejects the close.
+      if (context?.previous) {
+        queryClient.setQueryData(SUPPORT_QUERY_KEYS.ticket(ticketId), context.previous);
+      }
+    },
+
+    onSettled: (_data, _err, ticketId) => {
+      // Re-sync once the dust has settled — covers both success (status may
+      // have moved to "closed" rather than "resolved") and rollback paths.
       queryClient.invalidateQueries({ queryKey: SUPPORT_QUERY_KEYS.ticket(ticketId) });
       queryClient.invalidateQueries({ queryKey: ['support', 'my-tickets'] });
     },

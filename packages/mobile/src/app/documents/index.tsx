@@ -136,6 +136,11 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
+        // P8.3 — perf knobs.
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
       />
     );
   };
@@ -180,6 +185,10 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
       />
     );
   };

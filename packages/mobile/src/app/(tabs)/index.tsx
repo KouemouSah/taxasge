@@ -9,7 +9,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, Image, Pressable, Dimensions } from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl, Pressable, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import {
   Text,
   Surface,
@@ -216,7 +217,7 @@ function PublicHome() {
 
           {/* ── Header: Logo + Language selector ── */}
           <View style={pubStyles.headerRow}>
-            <Image source={APP_LOGO} style={pubStyles.logo} resizeMode="contain" />
+            <Image source={APP_LOGO} style={pubStyles.logo} contentFit="contain" cachePolicy="memory-disk" />
             <View style={pubStyles.langRow}>
               {LANGUAGES.map((l) => (
                 <Pressable
@@ -255,7 +256,7 @@ function PublicHome() {
             >
               {HERO_SLIDES.map((item, i) => item.isLogo ? (
                 <View key={i} style={[pubStyles.heroSlideLogo, { width: HERO_WIDTH }]}>
-                  <Image source={APP_LOGO} style={pubStyles.heroLogoBig} resizeMode="contain" />
+                  <Image source={APP_LOGO} style={pubStyles.heroLogoBig} contentFit="contain" cachePolicy="memory-disk" />
                   <Text style={pubStyles.heroLogoTitle}>
                     {t(`home.hero.${item.titleKey}`)}
                   </Text>
@@ -638,7 +639,7 @@ function AuthDashboard() {
       {/* ═══ APP HEADER (dashboard only) ═══ */}
       <View style={[styles.appHeader, { backgroundColor: colors.surface }]}>
         <View style={styles.headerRow}>
-          <Image source={APP_LOGO} style={styles.headerLogo} resizeMode="contain" />
+          <Image source={APP_LOGO} style={styles.headerLogo} contentFit="contain" cachePolicy="memory-disk" />
           <NotificationBellButton color={colors.onSurface} />
         </View>
         <View style={[styles.headerLine, { backgroundColor: colors.primary }]} />

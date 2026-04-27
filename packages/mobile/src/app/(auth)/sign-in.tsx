@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, Image, Pressable, Alert, BackHandler } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, Pressable, Alert, BackHandler } from 'react-native';
+import { Image } from 'expo-image';
 import { Text, TextInput, Button, Surface, HelperText, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
@@ -146,7 +147,9 @@ export default function SignInScreen() {
             <Image
               source={require('../../../assets/images/logo_hd.png')}
               style={styles.logo}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={150}
             />
             <Text
               variant="bodyLarge"
