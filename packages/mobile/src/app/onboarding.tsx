@@ -27,10 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 
-import { useAppTheme } from '@core/theme';
-import { setApiLocale } from '@core/api/client';
 import { storage } from '@core/storage/mmkv';
-import type { SupportedLanguage } from '@core/config/types';
 
 const ONBOARDING_KEY = 'onboarding_completed';
 const TOP_RATIO = 0.52;
@@ -131,11 +128,10 @@ const WORD_CLOUD = [
   { text: 'Mobile', size: 42, top: '15%', left: '25%', rotate: '9deg' },
 ];
 
-const LANGUAGES: Array<{ code: SupportedLanguage; label: string; flag: string }> = [
-  { code: 'es', label: 'Español', flag: '🇬🇶' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-];
+// LANGUAGES picker removed from the last slide (overlapped the bottom
+// controls on small phones with i18n-stretched labels). Locale change
+// stays available through Profile → Preferences once authenticated, and
+// i18next still falls back to the device's system locale by default.
 
 // ---------------------------------------------------------------------------
 // Animated border circle — blinking border around children
@@ -213,16 +209,12 @@ function AnimatedRocketIcon({ size, iconName }: { size: number; iconName: string
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
-  const { colors } = useAppTheme();
+  const { t } = useTranslation();
   // Reactive dimensions — survives device rotation and split-screen better
   // than the cached Dimensions.get('window') we used to call at module-load.
   const { width: SW, height: SH } = useWindowDimensions();
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedLang, setSelectedLang] = useState<SupportedLanguage>(
-    (i18n.language as SupportedLanguage) || 'es',
-  );
   const flatListRef = useRef<FlatList>(null);
   const isLastSlide = currentIndex === SLIDES.length - 1;
 
@@ -235,12 +227,6 @@ export default function OnboardingScreen() {
   }, [currentIndex, isLastSlide]);
 
   const handleSkip = useCallback(() => completeOnboarding(), []);
-
-  const handleLanguageChange = useCallback(async (lang: SupportedLanguage) => {
-    setSelectedLang(lang);
-    await i18n.changeLanguage(lang);
-    setApiLocale(lang);
-  }, [i18n]);
 
   const completeOnboarding = useCallback(() => {
     storage.set(ONBOARDING_KEY, true);
@@ -500,38 +486,14 @@ export default function OnboardingScreen() {
             {t(item.descKey)}
           </Text>
 
-          {/* Language selector on last slide */}
-          {index === SLIDES.length - 1 && (
-            <View style={s.langContainer}>
-              <View style={s.langRow}>
-                {LANGUAGES.map((lang) => (
-                  <Pressable
-                    key={lang.code}
-                    onPress={() => handleLanguageChange(lang.code)}
-                    style={[
-                      s.langBtn,
-                      selectedLang === lang.code && { backgroundColor: item.accent, borderColor: item.accent },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 16 }}>{lang.flag}</Text>
-                    <Text
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={{
-                        color: selectedLang === lang.code ? '#fff' : '#424242',
-                        marginLeft: 6,
-                        fontWeight: '600',
-                        fontSize: 13,
-                        flexShrink: 1,
-                      }}
-                    >
-                      {lang.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
+          {/* Language selector intentionally removed on the last slide:
+              the row of three flag chips overlapped the absolute bottom
+              controls (Explore / Sign-up / Sign-in / dots) on small phones
+              with i18n-stretched labels. The language picker remains
+              available from Profile → Preferences once the user is in the
+              app, and i18next still falls back to the system locale by
+              default — so no functionality is lost, only the redundant
+              cluttering UI on first launch. */}
         </View>
       </View>
     );
@@ -721,18 +683,6 @@ const s = StyleSheet.create({
   titleUniform: { fontSize: 72, fontWeight: '900', letterSpacing: 2, lineHeight: 80 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   desc: { fontSize: 18, lineHeight: 28, color: '#555' },
-
-  // Language
-  langContainer: { marginTop: 10 },
-  langRow: { flexDirection: 'row', gap: 6 },
-  /** flex: 1 so the three buttons share the row evenly; numberOfLines + adjustsFontSizeToFit
-      on the inner label handles long words like "Français" / "English" / "Español". */
-  langBtn: {
-    flex: 1,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 8, paddingVertical: 8,
-    borderRadius: 24, borderWidth: 1.5, borderColor: '#D0D0D0',
-  },
 
   // Controls
   controls: {
