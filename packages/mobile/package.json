@@ -13,9 +13,15 @@
     "types:gen": "openapi-typescript https://taxasge-backend-staging-392159428433.us-central1.run.app/openapi.json -o src/core/api/openapi-types.ts",
     "types:gen-local": "openapi-typescript http://localhost:8000/openapi.json -o src/core/api/openapi-types.ts",
     "prebuild": "expo prebuild",
-    "build:dev": "eas build --profile development",
-    "build:preview": "eas build --profile preview",
-    "build:prod": "eas build --profile production"
+    "build:dev": "eas build --profile development --platform android",
+    "build:dev:ios": "eas build --profile development --platform ios",
+    "build:dev:all": "eas build --profile development --platform all",
+    "build:preview": "eas build --profile preview --platform android",
+    "build:preview:ios": "eas build --profile preview --platform ios",
+    "build:preview:all": "eas build --profile preview --platform all",
+    "build:prod": "eas build --profile production --platform android",
+    "build:prod:ios": "eas build --profile production --platform ios",
+    "build:prod:all": "eas build --profile production --platform all"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

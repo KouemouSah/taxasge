@@ -99,12 +99,13 @@ Restent côté ops (hors code mobile) :
 3. **Apple Developer** : bundle id `com.taxasge.app` enregistré, capability
    "Push Notifications" activée.
 
-**Dette environnementale identifiée (hors scope P1)** : `eas.json` ne fait
-aucun switch dev/prod côté Firebase. Les profils `preview` et `production`
-pointent tous deux sur le backend staging et utilisent la config Firebase
-DEV. Avant le release prod (P10), il faudra wirer un script ou un `prebuild`
-hook qui copie le bon `.plist` / `.json` selon le profile. **Ticket à créer**
-pour P10 (build production).
+**Choix d'environnement (acté avec le user)** : staging Cloud Run sert
+actuellement de production. `eas.json` reflète ce choix volontaire — les
+profils `preview` et `production` pointent tous deux sur l'URL staging et
+utilisent la config Firebase DEV. **Pas de dette à traiter**. Si un jour
+un projet Firebase prod distinct devient nécessaire, le switch se fera via
+un `prebuild` hook ou variantes EAS — `taxasge/config/` contient déjà les
+fichiers prod (`google-services.prod.json`, `GoogleService-Info.pro.plist`).
 
 ## 5. Smoke tests — état réel
 

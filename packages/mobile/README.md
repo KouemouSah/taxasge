@@ -23,26 +23,53 @@ Mobile client for **Facil**, the Equatorial Guinea government digital services p
 
 The mobile app uses **two independent pipelines** that work together:
 
-### 1. EAS Build (artefact production)
+### 1. EAS Build (artefact production — runs on expo.dev cloud)
 
-Cloud builds for native binaries (APK, AAB, IPA). Profiles in `eas.json`.
+All `npm run build:*` scripts dispatch to the Expo cloud build service (https://expo.dev). The local terminal only orchestrates and prints the build URL — actual compilation, signing, and artefact storage happen on Expo's infrastructure. Builds keep running even if you close the terminal.
+
+Profiles live in `eas.json`. Per-platform and `:all` (Android + iOS in parallel) variants are exposed:
 
 ```bash
-npm run build:dev       # Internal dev client (.apk / .ipa for testing)
-npm run build:preview   # Stakeholder preview build
-npm run build:prod      # Store-ready release
+# Single platform (Android by default to match Play Store flow)
+npm run build:dev          # development profile, Android APK + dev client
+npm run build:preview      # preview profile, Android APK
+npm run build:prod         # production profile, Android AAB
+
+# iOS only
+npm run build:dev:ios
+npm run build:preview:ios
+npm run build:prod:ios
+
+# Both platforms in parallel — single command, two cloud jobs
+npm run build:dev:all
+npm run build:preview:all
+npm run build:prod:all
 ```
+
+`build:dev:ios` (and `:all` for development) builds an iOS Simulator binary by default — see `eas.json` `development.ios.simulator: true`. Switch to a real-device profile when going to TestFlight.
+
+You can also run any of these directly: `eas build --profile <name> --platform <android|ios|all>`.
 
 **Never** run `expo prebuild` and build natively unless debugging a native module locally — EAS handles iOS/Android toolchains in the cloud.
 
-### 2. GitHub Actions (CI quality gates + EAS triggering)
+### 2. GitHub Actions (CI quality gates + EAS dispatch)
 
-Runs on every push / PR to validate the codebase before EAS spends build minutes. Workflows live in `.github/workflows/` (mobile-specific jobs):
+Two workflows ship in `.github/workflows/`:
+
+| Workflow | Purpose |
+|----------|---------|
+| `mobile-build.yml` | Native Android build directly on the GitHub runner (Gradle). Faster feedback for Android-only iterations; produces `*.apk` + `*.aab` as workflow artefacts. |
+| `mobile-eas-build.yml` | Dispatches an EAS Cloud build (Android + iOS in parallel). Use for cross-platform release candidates and store submissions. Requires the `EXPO_TOKEN` secret. |
+
+CI quality gates (always-on):
 
 - **Type check** — `npm run type-check` (must be 0 errors).
 - **Lint** — `npm run lint` (max-warnings 100).
-- **OpenAPI drift** — regenerate `openapi-types.ts` against staging and fail if it diverges from the committed file.
-- **EAS dispatch** — on a release tag, trigger `eas build` via [`expo/expo-github-action`](https://github.com/expo/expo-github-action).
+- **OpenAPI drift** — regenerate `openapi-types.ts` against staging and fail if it diverges from the committed file (planned).
+
+`mobile-eas-build.yml` is triggered by:
+- **Manual dispatch** (`workflow_dispatch`) with a profile + platform selector.
+- **Tag push** (`v*.*.*`) → automatically builds both platforms with the `production` profile.
 
 > **Rule** (CLAUDE.md): no manual cloud builds for the backend (`gcloud`). Mobile follows the same spirit — push to remote, let GitHub Actions + EAS run the pipeline. Local `eas build` invocations are reserved for ad-hoc preview builds.
 
