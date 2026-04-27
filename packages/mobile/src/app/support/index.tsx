@@ -1,102 +1,200 @@
 /**
- * Support Tickets List — Placeholder
- *
- * Displays user's support tickets with status indicators.
- *
- * TODO: Wire up to GET /support/tickets
+ * Support Tickets — list of the current user's tickets.
+ * Connected to `GET /support/tickets/my` (P6.3).
  */
 
-import { StyleSheet, View, ScrollView } from 'react-native';
-import { Text, Button, FAB, Surface } from 'react-native-paper';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Chip,
+  Divider,
+  FAB,
+  IconButton,
+  Text,
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { AuthGuard } from '@core/auth/auth-guard';
+import { EmptyState } from '@components/ui/empty-state';
+import {
+  TicketListItem,
+  useMyTickets,
+  type SupportTicket,
+  type TicketStatus,
+} from '@modules/support';
 
-export default function SupportListScreen() {
+const FILTERS = ['all', 'open', 'resolved', 'closed'] as const;
+type Filter = (typeof FILTERS)[number];
+
+const ITEM_HEIGHT = 64;
+
+function SupportListContent() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const status: TicketStatus | undefined = filter === 'all' ? undefined : filter;
+
+  const {
+    data,
+    isLoading,
+    isRefetching,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    error,
+  } = useMyTickets({ status, page_size: 20 });
+
+  const tickets: SupportTicket[] = useMemo(
+    () => data?.pages.flatMap((page) => page.tickets) ?? [],
+    [data],
+  );
+
+  const handlePress = useCallback(
+    (id: number) => {
+      router.push(`/support/${id}` as never);
+    },
+    [router],
+  );
+
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: SupportTicket }) => (
+      <TicketListItem item={item} onPress={handlePress} />
+    ),
+    [handlePress],
+  );
+
+  const renderFooter = useCallback(() => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }, [isFetchingNextPage, colors.primary]);
+
+  const renderEmpty = useCallback(() => {
+    if (isLoading) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      );
+    }
+    if (error) {
+      const message = error instanceof Error ? error.message : t('errors.serverError');
+      return (
+        <EmptyState
+          icon="alert-circle-outline"
+          title={t('common.error')}
+          description={message}
+          actionLabel={t('common.retry')}
+          onAction={() => refetch()}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon="headset"
+        title={t('support.list.empty')}
+        description={t('support.title')}
+        actionLabel={t('support.newTicket')}
+        onAction={() => router.push('/support/new' as never)}
+      />
+    );
+  }, [isLoading, error, colors.primary, refetch, router, t]);
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
       <View
         style={[
-          styles.header,
-          {
-            padding: spacing.md,
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.outlineVariant,
-          },
+          styles.topBar,
+          { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant },
         ]}
       >
-        <Button
-          mode="text"
-          icon="arrow-left"
-          onPress={() => router.back()}
-          compact
+        <IconButton icon="arrow-left" size={22} onPress={() => router.back()} />
+        <Text
+          variant="titleMedium"
+          style={{ color: colors.onSurface, fontWeight: '600', flex: 1 }}
+          numberOfLines={1}
         >
-          {t('common.back')}
-        </Button>
-        <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '600' }}>
-          {t('support.title')}
+          {t('support.list.title')}
         </Text>
-        <View style={{ width: 80 }} />
       </View>
 
-      {/* Content — empty state */}
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { padding: spacing.md }]}
-      >
-        <Surface
-          style={[
-            styles.emptyState,
-            {
-              padding: spacing.xl,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.surface,
-              marginTop: spacing.xl,
-            },
-          ]}
-          elevation={0}
+      <View style={[styles.filterBar, { paddingHorizontal: spacing.md }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipRow, { gap: spacing.xs }]}
         >
-          <MaterialCommunityIcons
-            name="headset"
-            size={64}
-            color={colors.outlineVariant}
-          />
-          <Text
-            variant="titleMedium"
-            style={[
-              styles.emptyTitle,
-              { color: colors.onSurfaceVariant, marginTop: spacing.md },
-            ]}
-          >
-            {t('support.title')}
-          </Text>
-          <Text
-            variant="bodyMedium"
-            style={[
-              styles.emptyDescription,
-              { color: colors.outline, marginTop: spacing.xs },
-            ]}
-          >
-            {t('common.noResults')}
-          </Text>
-        </Surface>
-      </ScrollView>
+          {FILTERS.map((f) => (
+            <Chip
+              key={f}
+              selected={filter === f}
+              onPress={() => setFilter(f)}
+              mode={filter === f ? 'flat' : 'outlined'}
+              style={
+                filter === f ? { backgroundColor: colors.primaryContainer } : undefined
+              }
+              textStyle={
+                filter === f
+                  ? { color: colors.onPrimaryContainer }
+                  : { color: colors.onSurfaceVariant }
+              }
+              compact
+            >
+              {t(`support.list.filter.${f}`, { defaultValue: f })}
+            </Chip>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* FAB to create new ticket */}
+      <FlatList
+        data={tickets}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item.id)}
+        ItemSeparatorComponent={Divider}
+        contentContainerStyle={[
+          styles.listContent,
+          tickets.length === 0 && styles.listEmpty,
+          { paddingTop: spacing.sm, paddingBottom: 96 },
+        ]}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        showsVerticalScrollIndicator={false}
+        getItemLayout={(_, index) => ({
+          length: ITEM_HEIGHT,
+          offset: ITEM_HEIGHT * index,
+          index,
+        })}
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
+      />
+
       <FAB
         icon="plus"
         label={t('support.newTicket')}
-        onPress={() => router.push('/support/new')}
+        onPress={() => router.push('/support/new' as never)}
         style={[
           styles.fab,
           { backgroundColor: colors.primary, borderRadius: borderRadius.xl },
@@ -108,30 +206,26 @@ export default function SupportListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
+  container: { flex: 1 },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
+    paddingRight: 8,
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontWeight: '600',
-  },
-  emptyDescription: {
-    textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-  },
+  filterBar: { paddingVertical: 8 },
+  chipRow: { flexDirection: 'row', paddingVertical: 4 },
+  listContent: { flexGrow: 1 },
+  listEmpty: { flex: 1 },
+  footer: { paddingVertical: 16, alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fab: { position: 'absolute', bottom: 16, right: 16 },
 });
+
+export default function SupportListScreen() {
+  return (
+    <AuthGuard>
+      <SupportListContent />
+    </AuthGuard>
+  );
+}

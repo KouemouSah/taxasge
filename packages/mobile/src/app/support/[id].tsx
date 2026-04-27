@@ -1,43 +1,131 @@
 /**
- * Support Ticket Detail Screen — Placeholder
+ * Support Ticket Detail — connected to support API (P6.3).
  *
- * Shows a support ticket conversation with:
- * - Ticket subject and status
- * - Message history
- * - Input to send new messages
- *
- * TODO: Wire up to GET /support/tickets/{id} and POST /support/tickets/{id}/messages
+ * Reads:
+ *   - GET /support/tickets/{id}             → ticket header
+ *   - GET /support/tickets/{id}/messages    → thread (citizens never see is_internal)
+ * Writes:
+ *   - POST /support/tickets/{id}/messages   → reply (always is_internal=false)
+ *   - POST /support/tickets/{id}/close      → "mark as resolved"
  */
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { Text, Button, TextInput, Surface, Chip } from 'react-native-paper';
+import {
+  ActivityIndicator,
+  Button,
+  IconButton,
+  Snackbar,
+  Surface,
+  Text,
+  TextInput,
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { AuthGuard } from '@core/auth/auth-guard';
+import { useAuth } from '@core/hooks/use-auth';
+import { formatDate } from '@core/utils/format';
+import {
+  MessageBubble,
+  TicketPriorityBadge,
+  TicketStatusBadge,
+  useCloseTicket,
+  usePostTicketMessage,
+  useTicket,
+  useTicketMessages,
+} from '@modules/support';
 
-export default function SupportTicketDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+const TICKET_ID_RE = /^[0-9]{1,18}$/;
+
+function SupportTicketDetailContent() {
+  const params = useLocalSearchParams<{ id: string }>();
+  const idRaw = params.id ?? '';
+  const ticketId = TICKET_ID_RE.test(idRaw) ? Number(idRaw) : null;
+
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { colors, spacing, borderRadius } = useAppTheme();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const [messageText, setMessageText] = useState('');
+  const ticketQuery = useTicket(ticketId);
+  const messagesQuery = useTicketMessages(ticketId);
+  const postMessage = usePostTicketMessage(ticketId ?? 0);
+  const closeTicket = useCloseTicket();
 
-  const handleSend = () => {
-    if (!messageText.trim()) return;
-    // TODO: POST /support/tickets/{id}/messages
-    setMessageText('');
+  const [draft, setDraft] = useState('');
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+
+  // Auto-scroll to bottom whenever the message list grows.
+  useEffect(() => {
+    if (!messagesQuery.data) return;
+    const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(id);
+  }, [messagesQuery.data]);
+
+  if (ticketId == null) {
+    return (
+      <SafeAreaView
+        style={[styles.container, styles.centered, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.error} />
+        <Text variant="bodyMedium" style={{ color: colors.error, marginTop: 12 }}>
+          {t('support.detail.errorLoading')}
+        </Text>
+        <Button mode="outlined" style={{ marginTop: 16 }} onPress={() => router.back()}>
+          {t('common.back')}
+        </Button>
+      </SafeAreaView>
+    );
+  }
+
+  const ticket = ticketQuery.data;
+  const messages = messagesQuery.data ?? [];
+
+  const isClosed = ticket?.status === 'closed' || ticket?.status === 'resolved';
+  const canSend = !isClosed && draft.trim().length > 0 && !postMessage.isPending;
+
+  const handleSend = async () => {
+    if (!canSend) return;
+    try {
+      await postMessage.mutateAsync({ content: draft.trim() });
+      setDraft('');
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : t('errors.serverError'));
+    }
+  };
+
+  const handleClose = () => {
+    Alert.alert(
+      t('support.detail.closeConfirm'),
+      t('support.detail.closeConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await closeTicket.mutateAsync(ticketId);
+            } catch (e) {
+              setSnackbar(e instanceof Error ? e.message : t('errors.serverError'));
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -45,141 +133,196 @@ export default function SupportTicketDetailScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
       <View
         style={[
-          styles.header,
-          {
-            padding: spacing.md,
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.outlineVariant,
-          },
+          styles.topBar,
+          { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant },
         ]}
       >
-        <Button
-          mode="text"
-          icon="arrow-left"
-          onPress={() => router.back()}
-          compact
+        <IconButton icon="arrow-left" size={22} onPress={() => router.back()} />
+        <Text
+          variant="titleMedium"
+          style={{ color: colors.onSurface, fontWeight: '600', flex: 1 }}
+          numberOfLines={1}
         >
-          {t('common.back')}
-        </Button>
-        <View style={styles.headerCenter}>
-          <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600' }}>
-            Ticket #{id}
-          </Text>
-          <Chip
-            mode="flat"
-            compact
-            style={{ backgroundColor: colors.primaryContainer }}
-            textStyle={{ color: colors.onPrimaryContainer, fontSize: 10 }}
-          >
-            {t('support.status.open')}
-          </Chip>
-        </View>
-        <View style={{ width: 80 }} />
+          {ticket?.ticket_number ?? t('support.detail.title')}
+        </Text>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
-      >
-        {/* Messages placeholder */}
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={[styles.messagesContent, { padding: spacing.md }]}
+      {ticketQuery.isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : ticketQuery.error || !ticket ? (
+        <View style={styles.centered}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text variant="bodyMedium" style={{ color: colors.error, marginTop: 12 }}>
+            {t('support.detail.errorLoading')}
+          </Text>
+          <Button mode="contained" style={{ marginTop: 16 }} onPress={() => ticketQuery.refetch()}>
+            {t('common.retry')}
+          </Button>
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={styles.flex1}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Surface
             style={[
-              styles.emptyState,
+              styles.headerCard,
               {
-                padding: spacing.xl,
+                marginHorizontal: spacing.md,
+                marginTop: spacing.sm,
+                padding: spacing.md,
                 borderRadius: borderRadius.md,
                 backgroundColor: colors.surface,
+                gap: 6,
               },
             ]}
             elevation={0}
           >
-            <MaterialCommunityIcons
-              name="message-text-outline"
-              size={48}
-              color={colors.outlineVariant}
-            />
-            <Text
-              variant="bodyMedium"
-              style={{ color: colors.onSurfaceVariant, marginTop: spacing.sm, textAlign: 'center' }}
-            >
-              {t('common.loading')}
+            <Text variant="titleSmall" style={{ color: colors.onSurface }}>
+              {ticket.subject}
+            </Text>
+            <View style={styles.badgesRow}>
+              <TicketStatusBadge status={ticket.status} compact />
+              <TicketPriorityBadge priority={ticket.priority} compact />
+            </View>
+            <Text variant="bodySmall" style={{ color: colors.outline }}>
+              {ticket.category_name ?? '—'} · {formatDate(ticket.created_at)}
             </Text>
           </Surface>
-        </ScrollView>
 
-        {/* Input bar */}
-        <Surface
-          style={[
-            styles.inputBar,
-            {
-              padding: spacing.sm,
-              backgroundColor: colors.surface,
-              borderTopColor: colors.outlineVariant,
-            },
-          ]}
-          elevation={2}
-        >
-          <TextInput
-            value={messageText}
-            onChangeText={setMessageText}
-            placeholder={t('support.sendMessage')}
-            mode="outlined"
-            style={[styles.input, { backgroundColor: colors.surface }]}
-            outlineStyle={{ borderRadius: borderRadius.xl }}
-            dense
-            right={
-              <TextInput.Icon
-                icon="send"
-                onPress={handleSend}
-                disabled={!messageText.trim()}
-                color={messageText.trim() ? colors.primary : colors.outline}
+          <ScrollView
+            ref={scrollRef}
+            style={styles.flex1}
+            contentContainerStyle={[styles.thread, { paddingVertical: spacing.sm }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text
+              variant="bodyMedium"
+              style={[styles.description, { color: colors.onSurfaceVariant, paddingHorizontal: spacing.md }]}
+            >
+              {ticket.description}
+            </Text>
+
+            {messagesQuery.isLoading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : messagesQuery.error ? (
+              <Text style={{ color: colors.error, textAlign: 'center', marginTop: 16 }}>
+                {t('support.detail.errorLoadingMessages')}
+              </Text>
+            ) : (
+              messages.map((m) => (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  isMine={user?.id ? String(m.sender_id) === String(user.id) : false}
+                />
+              ))
+            )}
+          </ScrollView>
+
+          {/* Reply / close zone */}
+          {isClosed ? (
+            <View
+              style={[
+                styles.closedBar,
+                { borderTopColor: colors.outlineVariant, backgroundColor: colors.surfaceVariant },
+              ]}
+            >
+              <MaterialCommunityIcons name="lock-outline" size={18} color={colors.outline} />
+              <Text style={{ color: colors.outline, marginLeft: 8 }}>
+                {t('support.detail.closed')}
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.replyBar,
+                { borderTopColor: colors.outlineVariant, backgroundColor: colors.surface, padding: spacing.sm },
+              ]}
+            >
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder={t('support.detail.replyPlaceholder')}
+                mode="outlined"
+                multiline
+                style={{ flex: 1 }}
+                returnKeyType="send"
+                onSubmitEditing={handleSend}
+                blurOnSubmit={false}
               />
-            }
-            onSubmitEditing={handleSend}
-            returnKeyType="send"
-          />
-        </Surface>
-      </KeyboardAvoidingView>
+              <View style={{ gap: 6, marginLeft: 8 }}>
+                <IconButton
+                  mode="contained"
+                  icon="send"
+                  size={22}
+                  iconColor={colors.onPrimary}
+                  containerColor={colors.primary}
+                  disabled={!canSend}
+                  onPress={handleSend}
+                />
+                <IconButton
+                  mode="outlined"
+                  icon="check-circle-outline"
+                  size={20}
+                  onPress={handleClose}
+                  disabled={closeTicket.isPending}
+                />
+              </View>
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      )}
+
+      <Snackbar
+        visible={!!snackbar}
+        onDismiss={() => setSnackbar(null)}
+        duration={4000}
+      >
+        {snackbar ?? ''}
+      </Snackbar>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
+  container: { flex: 1 },
+  flex1: { flex: 1 },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
+    paddingRight: 8,
   },
-  headerCenter: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  messagesContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-  },
-  inputBar: {
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  headerCard: {},
+  badgesRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  thread: { paddingBottom: 16 },
+  description: { marginBottom: 12 },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     borderTopWidth: 1,
   },
-  input: {
-    flex: 1,
+  closedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    padding: 12,
   },
 });
+
+export default function SupportTicketDetailScreen() {
+  return (
+    <AuthGuard>
+      <SupportTicketDetailContent />
+    </AuthGuard>
+  );
+}
