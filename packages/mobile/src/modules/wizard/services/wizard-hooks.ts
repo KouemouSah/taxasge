@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as wizardApi from './wizard-api';
+import { logger } from '@core/logging/logger';
 import type {
   WizardSessionCreate,
   WizardSession,
@@ -208,7 +209,7 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
       return config;
     } catch (e) {
       // Non-fatal: the wizard can still work without config (fallback to legacy steps)
-      console.warn('[useWizardSession] Failed to load workflow config:', e);
+      logger.warn('useWizardSession', 'Failed to load workflow config', { err: String(e) });
       return null;
     } finally {
       setIsLoadingConfig(false);

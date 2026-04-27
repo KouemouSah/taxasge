@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@core/hooks/use-auth';
+import { logger } from '@core/logging/logger';
 import {
   type DeviceTokenRegistrationStatus,
   type NativeDeviceToken,
@@ -59,10 +60,7 @@ export function useDeviceTokenRegistration(): UseDeviceTokenRegistrationResult {
       await registerDeviceToken(token);
       setStatus('registered');
     } catch (err) {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.warn('[notifications] registration failed:', err);
-      }
+      logger.error('notifications', err, 'registration failed');
       setStatus('error');
     }
   }, []);
@@ -81,10 +79,7 @@ export function useDeviceTokenRegistration(): UseDeviceTokenRegistrationResult {
       try {
         await registerDeviceToken(rotated);
       } catch (err) {
-        if (__DEV__) {
-          // eslint-disable-next-line no-console
-          console.warn('[notifications] rotation re-register failed:', err);
-        }
+        logger.error('notifications', err, 'rotation re-register failed');
       }
     });
     return unsubscribe;

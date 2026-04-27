@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as servicesApi from './services-api';
+import { logger } from '@core/logging/logger';
 import type { ServiceSearchFilters, ServiceSearchResponse } from '../types/services.types';
 
 export const SERVICES_QUERY_KEYS = {
@@ -100,9 +101,7 @@ export function useServiceSearch(debounceMs = 300, language = 'es') {
           const total = data.total_results ?? data.total ?? 0;
           hasMoreRef.current = items.length < total;
         } catch (error) {
-          if (__DEV__) {
-            console.warn('[ServiceSearch] Search failed:', error);
-          }
+          logger.error('ServiceSearch', error, 'Search failed');
           setSearchError(error instanceof Error ? error.message : 'Search failed');
         } finally {
           setIsSearching(false);

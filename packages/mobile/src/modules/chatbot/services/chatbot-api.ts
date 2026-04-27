@@ -8,6 +8,7 @@
 
 import { apiPost } from '@core/api/client';
 import { API_ENDPOINTS } from '@core/api/endpoints';
+import { logger } from '@core/logging/logger';
 import type { ChatRequest, ChatResponse, FeedbackRequest } from '../types/chatbot.types';
 
 const MAX_RETRIES = 2;
@@ -30,7 +31,7 @@ export async function sendChatMessage(req: ChatRequest): Promise<ChatResponse> {
 
       // Wait before retry (exponential backoff)
       if (attempt < MAX_RETRIES) {
-        console.warn(`[Chatbot] Attempt ${attempt + 1} failed, retrying in ${RETRY_DELAY_MS * (attempt + 1)}ms...`);
+        logger.warn('Chatbot', `Attempt ${attempt + 1} failed, retrying in ${RETRY_DELAY_MS * (attempt + 1)}ms`);
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
       }
     }
