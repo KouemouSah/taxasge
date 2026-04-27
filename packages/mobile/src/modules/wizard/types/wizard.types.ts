@@ -212,6 +212,12 @@ export interface InitiatePaymentRequest {
   payment_method: string;
   phone_number?: string;
   treasury_location_id?: string;
+  /**
+   * Optional client-supplied return URL for the BANGE redirect. Backend
+   * whitelists `facil://*` schemes and same-origin URLs (cf. backend Pydantic
+   * validator on `WizardInitiatePaymentRequest.return_url`).
+   */
+  return_url?: string;
 }
 
 export interface InitiatePaymentResult {

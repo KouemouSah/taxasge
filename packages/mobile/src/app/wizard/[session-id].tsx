@@ -406,12 +406,27 @@ export default function WizardSessionScreen() {
         {/* Payment */}
         {currentStep && currentStep.type === 'payment' && !paymentResult && (
           <StepPayment
+            sessionId={sessionId}
             preparePayment={wizard.preparePayment}
             initiatePayment={wizard.initiatePayment}
             isSaving={isSaving}
             onPaymentComplete={(result) => {
               setPaymentResult(result);
-              // Advance to confirmation
+              // For gateway-redirect flows (BANGE Mobile Money) the user is now
+              // either still in the in-app browser or has just been deep-linked
+              // back to the app. Either way, send them straight to the
+              // payment-result polling screen — the in-wizard confirmation step
+              // is only meaningful for non-gateway flows (cash/check).
+              if (result.success && result.redirect_url && result.service_request_id) {
+                const params = new URLSearchParams({
+                  session_id: sessionId,
+                  service_request_id: result.service_request_id,
+                });
+                if (result.payment_id) params.set('payment_id', result.payment_id);
+                router.replace(`/wizard/payment-result?${params.toString()}` as never);
+                return;
+              }
+              // Non-gateway flows: advance to the inline confirmation step.
               const confirmIdx = steps.findIndex((s) => s.type === 'confirmation');
               if (confirmIdx >= 0) setCurrentStepIndex(confirmIdx);
             }}

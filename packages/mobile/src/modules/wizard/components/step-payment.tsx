@@ -3,6 +3,7 @@ import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text, Button, Divider, RadioButton, TextInput, ActivityIndicator, HelperText } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import * as WebBrowser from 'expo-web-browser';
 
 import { useAppTheme } from '@core/theme';
 import { formatCurrency } from '@core/utils/format';
@@ -19,10 +20,26 @@ import type {
 // ---------------------------------------------------------------------------
 
 interface StepPaymentProps {
+  /**
+   * Optional — when provided, the wizard builds a `facil://wizard/payment-result`
+   * deep link as the BANGE return_url so the user is brought back into the app
+   * after Mobile Money checkout. Validated server-side against the
+   * `MOBILE_DEEP_LINK_SCHEMES` whitelist + FRONTEND_URL origin.
+   */
+  sessionId?: string;
   preparePayment: () => Promise<PreparePaymentResult>;
   initiatePayment: (data: InitiatePaymentRequest) => Promise<InitiatePaymentResult>;
   isSaving: boolean;
   onPaymentComplete: (result: InitiatePaymentResult) => void;
+}
+
+/**
+ * Build the deep link the backend should hand to BANGE as `return_url`.
+ * `service_request_id` is appended after the call (we don't have it yet here).
+ */
+function buildReturnUrl(sessionId: string | undefined): string | undefined {
+  if (!sessionId) return undefined;
+  return `facil://wizard/payment-result?session_id=${encodeURIComponent(sessionId)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +58,7 @@ const METHOD_ICONS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export function StepPayment({
+  sessionId,
   preparePayment,
   initiatePayment,
   isSaving,
@@ -101,18 +119,32 @@ export function StepPayment({
     if (!canPay) return;
     setPaying(true);
     try {
+      const returnUrl = buildReturnUrl(sessionId);
       const request: InitiatePaymentRequest = {
         payment_method: selectedMethod,
         ...(needsPhone && phoneNumber ? { phone_number: phoneNumber } : {}),
+        ...(returnUrl ? { return_url: returnUrl } : {}),
       };
       const result = await initiatePayment(request);
+      // For BANGE Mobile Money flows the backend hands back a `redirect_url` to
+      // the gateway. Open it in the in-app browser so it can hand control back
+      // to us via the deep link `facil://wizard/payment-result?...`. For cash /
+      // check / bank transfer there's no redirect — fall straight through.
+      if (result.success && result.redirect_url) {
+        try {
+          await WebBrowser.openBrowserAsync(result.redirect_url);
+        } catch {
+          // Browser failure is non-fatal — the parent will still navigate to
+          // the result screen which polls the backend for status.
+        }
+      }
       onPaymentComplete(result);
     } catch {
       // Error handled by parent hook
     } finally {
       setPaying(false);
     }
-  }, [canPay, selectedMethod, needsPhone, phoneNumber, initiatePayment, onPaymentComplete]);
+  }, [canPay, selectedMethod, needsPhone, phoneNumber, sessionId, initiatePayment, onPaymentComplete]);
 
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {

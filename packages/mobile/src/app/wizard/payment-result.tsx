@@ -1,154 +1,206 @@
 /**
- * Payment Result Screen
+ * Payment Result Screen — wizard exit after BANGE checkout (deep link target).
  *
- * Deep link handler for BANGE payment return.
- * The BANGE Mobile Money redirect URL points here after payment.
+ * URL pattern: `facil://wizard/payment-result?session_id=...&service_request_id=...&payment_id=...&status=...`
  *
- * URL pattern: facil://wizard/payment-result?session_id=...&status=...
+ * Behavior:
+ * - Polls `GET /service-requests/{service_request_id}/payment/status` every 3s
+ *   while the backend reports a non-terminal status.
+ * - Stops automatically on `completed | failed | cancelled | refunded` or after
+ *   100 attempts (~5 min) — caps the timeout safely.
+ * - 5 UI states: loading initial, polling-in-progress, completed, failed, timeout.
  *
- * TODO: Wire up to verify payment status via
- *       GET /wizard-sessions/{sessionId}/payment-status
+ * Backend route (already in place):
+ *   `routes.py:1204` — `PaymentStatusResponse {status, paid, payment_id, amount, currency, payment_method, completed_at}`
  */
 
-import { useEffect, useState } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
-import { Text, Button, Surface } from 'react-native-paper';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Button, Surface, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { usePaymentStatusPolling } from '@modules/payments';
+
+const MAX_ATTEMPTS = 100;
+const POLL_INTERVAL_MS = 3000;
+const POLL_TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS;
+
+type UIPhase = 'loading' | 'polling' | 'completed' | 'failed' | 'timeout';
 
 export default function PaymentResultScreen() {
   const params = useLocalSearchParams<{
     session_id?: string;
+    service_request_id?: string;
+    payment_id?: string;
     status?: string;
   }>();
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
 
-  const [isVerifying, setIsVerifying] = useState(true);
-  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failed' | 'pending'>('pending');
+  const serviceRequestId = params.service_request_id ?? null;
 
+  const polling = usePaymentStatusPolling(serviceRequestId, {
+    enabled: !!serviceRequestId,
+    intervalMs: POLL_INTERVAL_MS,
+    maxAttempts: MAX_ATTEMPTS,
+  });
+
+  // Independent fail-safe timeout: if backend never reports a terminal status
+  // within ~5 min, switch to the "timeout" phase regardless of the polling hook.
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    // TODO: Verify payment with backend
-    const timer = setTimeout(() => {
-      setIsVerifying(false);
-      setPaymentStatus(params.status === 'success' ? 'success' : 'pending');
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [params.status]);
+    if (!serviceRequestId) return undefined;
+    setTimedOut(false);
+    const t = setTimeout(() => setTimedOut(true), POLL_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [serviceRequestId]);
 
-  const statusConfig = {
-    success: {
-      icon: 'check-circle-outline' as const,
-      color: colors.success,
-      label: t('payment.status.completed'),
-    },
-    failed: {
-      icon: 'close-circle-outline' as const,
-      color: colors.error,
-      label: t('payment.status.failed'),
-    },
-    pending: {
-      icon: 'clock-outline' as const,
-      color: colors.warning,
-      label: t('payment.status.processing'),
-    },
+  const phase: UIPhase = useMemo(() => {
+    if (!serviceRequestId) {
+      return params.status === 'failed' ? 'failed' : 'timeout';
+    }
+    const status = polling.data?.status;
+    if (status === 'completed' || status === 'refunded') return 'completed';
+    if (status === 'failed' || status === 'cancelled') return 'failed';
+    if (timedOut) return 'timeout';
+    if (polling.isLoading || !polling.data) return 'loading';
+    return 'polling';
+  }, [
+    serviceRequestId,
+    params.status,
+    polling.isLoading,
+    polling.data,
+    timedOut,
+  ]);
+
+  const config = (() => {
+    switch (phase) {
+      case 'completed':
+        return {
+          icon: 'check-circle-outline' as const,
+          color: '#1B5E20',
+          title: t('payments.result.completed'),
+        };
+      case 'failed':
+        return {
+          icon: 'close-circle-outline' as const,
+          color: colors.error,
+          title: t('payments.result.failed'),
+        };
+      case 'timeout':
+        return {
+          icon: 'clock-alert-outline' as const,
+          color: '#F57F17',
+          title: t('payments.result.timeout'),
+        };
+      case 'polling':
+        return {
+          icon: 'progress-clock' as const,
+          color: colors.primary,
+          title: t('payments.result.processing'),
+        };
+      case 'loading':
+      default:
+        return {
+          icon: 'progress-clock' as const,
+          color: colors.primary,
+          title: t('payments.result.checking'),
+        };
+    }
+  })();
+
+  const showSpinner = phase === 'loading' || phase === 'polling';
+  const paymentId = polling.data?.payment_id ?? params.payment_id ?? null;
+
+  const handleViewRequest = () => {
+    if (!serviceRequestId) {
+      router.replace('/(tabs)/requests' as never);
+      return;
+    }
+    router.replace(`/(tabs)/requests/${serviceRequestId}` as never);
   };
 
-  const config = statusConfig[paymentStatus];
+  const handleViewPayment = () => {
+    if (!paymentId) return;
+    const target = serviceRequestId
+      ? `/(tabs)/payments/${paymentId}?serviceRequestId=${serviceRequestId}`
+      : `/(tabs)/payments/${paymentId}`;
+    router.replace(target as never);
+  };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.content, { padding: spacing.lg }]}>
-        {isVerifying ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text
-              variant="bodyLarge"
-              style={[
-                styles.loadingText,
-                { color: colors.onSurfaceVariant, marginTop: spacing.md },
-              ]}
-            >
-              {t('payment.status.processing')}...
-            </Text>
-          </View>
-        ) : (
-          <Surface
-            style={[
-              styles.resultCard,
-              {
-                padding: spacing.xl,
-                borderRadius: borderRadius.lg,
-                backgroundColor: colors.surface,
-              },
-            ]}
-            elevation={1}
+        <Surface
+          style={[
+            styles.card,
+            {
+              padding: spacing.xl,
+              borderRadius: borderRadius.lg,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          elevation={1}
+        >
+          {showSpinner ? (
+            <ActivityIndicator size="large" color={config.color} style={{ marginBottom: 12 }} />
+          ) : (
+            <MaterialCommunityIcons name={config.icon} size={72} color={config.color} />
+          )}
+          <Text
+            variant="titleMedium"
+            style={[styles.title, { color: colors.onSurface, marginTop: spacing.md }]}
           >
-            <MaterialCommunityIcons
-              name={config.icon}
-              size={80}
-              color={config.color}
-            />
-            <Text
-              variant="headlineSmall"
-              style={[
-                styles.statusLabel,
-                { color: colors.onSurface, marginTop: spacing.md },
-              ]}
-            >
-              {config.label}
-            </Text>
-            {params.session_id && (
-              <Text
-                variant="bodySmall"
-                style={{ color: colors.outline, marginTop: spacing.sm }}
-              >
-                Session: {params.session_id}
-              </Text>
-            )}
+            {config.title}
+          </Text>
+
+          {phase === 'completed' ? (
+            <View style={{ marginTop: spacing.lg, gap: 12, width: '100%' }}>
+              {paymentId ? (
+                <Button mode="contained" icon="receipt" onPress={handleViewPayment}>
+                  {t('payments.result.viewReceipt')}
+                </Button>
+              ) : null}
+              <Button mode="outlined" icon="file-document-outline" onPress={handleViewRequest}>
+                {t('payments.result.viewRequest')}
+              </Button>
+            </View>
+          ) : null}
+
+          {phase === 'failed' ? (
+            <View style={{ marginTop: spacing.lg, gap: 12, width: '100%' }}>
+              <Button mode="contained" icon="refresh" onPress={() => polling.refetch()}>
+                {t('payments.result.retry')}
+              </Button>
+              <Button mode="outlined" onPress={() => router.replace('/(tabs)' as never)}>
+                {t('payments.result.goHome')}
+              </Button>
+            </View>
+          ) : null}
+
+          {phase === 'timeout' ? (
             <Button
-              mode="contained"
-              onPress={() => router.replace('/(tabs)/requests')}
-              style={{ marginTop: spacing.xl }}
-              icon="arrow-right"
+              mode="outlined"
+              style={{ marginTop: spacing.lg }}
+              onPress={handleViewRequest}
             >
-              {t('requests.title')}
+              {t('payments.result.viewRequest')}
             </Button>
-          </Surface>
-        )}
+          ) : null}
+        </Surface>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-  },
-  loadingText: {
-    textAlign: 'center',
-  },
-  resultCard: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  statusLabel: {
-    fontWeight: '700',
-    textAlign: 'center',
-  },
+  container: { flex: 1 },
+  content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  card: { alignItems: 'center', width: '100%', maxWidth: 420 },
+  title: { fontWeight: '700', textAlign: 'center' },
 });
