@@ -458,7 +458,21 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "You have no notifications",
+    "empty": {
+      "title": "No notifications",
+      "body": "Your notifications will appear here when you receive them."
+    },
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "actions": {
+      "markAllRead": "Mark all as read",
+      "delete": "Delete"
+    },
+    "permission": {
+      "title": "Enable notifications",
+      "enable": "Tap to allow push alerts",
+      "openSettings": "Tap to open system settings"
+    },
     "markRead": "Mark as read"
   },
   "detail": {

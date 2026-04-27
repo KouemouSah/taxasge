@@ -458,7 +458,21 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "Vous n'avez pas de notifications",
+    "empty": {
+      "title": "Aucune notification",
+      "body": "Vos notifications apparaîtront ici dès leur réception."
+    },
+    "unreadCount_one": "{{count}} non lue",
+    "unreadCount_other": "{{count}} non lues",
+    "actions": {
+      "markAllRead": "Tout marquer comme lu",
+      "delete": "Supprimer"
+    },
+    "permission": {
+      "title": "Activer les notifications",
+      "enable": "Touchez pour autoriser les alertes push",
+      "openSettings": "Touchez pour ouvrir les réglages système"
+    },
     "markRead": "Marquer comme lue"
   },
   "detail": {
