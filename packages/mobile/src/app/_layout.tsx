@@ -37,6 +37,7 @@ import {
 } from '@core/notifications';
 import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
+import { initSentry, SentryErrorBoundary } from '@core/observability/sentry';
 import '@core/i18n';
 
 // Suppress known React 19 + New Architecture internal warnings
@@ -143,6 +144,10 @@ function usePrefetchCatalogs() {
  * critical path lean.
  */
 function DeferredEffects() {
+  // Sentry init — idempotent, no-op when DSN absent or in __DEV__.
+  useEffect(() => {
+    initSentry();
+  }, []);
   // Channels + foreground handler — idempotent.
   useEffect(() => {
     void initNotifications();
@@ -248,10 +253,15 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>
-              <ErrorBoundary>
-                <StatusBar style="auto" />
-                <RootNavigator />
-              </ErrorBoundary>
+              {/* SentryErrorBoundary captures uncaught errors and forwards them
+                  to Sentry; the inner local ErrorBoundary still renders the
+                  i18n-aware fallback UI so the user sees something useful. */}
+              <SentryErrorBoundary>
+                <ErrorBoundary>
+                  <StatusBar style="auto" />
+                  <RootNavigator />
+                </ErrorBoundary>
+              </SentryErrorBoundary>
             </AppLockProvider>
           </AuthProvider>
         </ThemeProvider>

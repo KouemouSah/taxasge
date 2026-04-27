@@ -39,6 +39,7 @@ import {
   setUserProfile,
 } from '@core/auth/auth-storage';
 import { clearBiometricCredentials } from '@core/security/biometric-login';
+import { setSentryUser } from '@core/observability/sentry';
 import type {
   RegisterData,
   TokenRefreshResponse,
@@ -414,6 +415,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Non-auth errors: keep current state (stale profile is better than none)
     }
   }, []);
+
+  // -------------------------------------------------------------------
+  // Sentry user context — keep in sync with the auth state.
+  // No PII (no email, no phone) — only id / role / preferred_language.
+  // -------------------------------------------------------------------
+
+  useEffect(() => {
+    if (state.user) {
+      setSentryUser({
+        id: String(state.user.id),
+        role: state.user.role,
+        locale: state.user.preferred_language ?? undefined,
+      });
+    } else if (!state.isLoading) {
+      setSentryUser(null);
+    }
+  }, [state.user, state.isLoading]);
 
   // -------------------------------------------------------------------
   // Context Value (memoized to prevent unnecessary re-renders)
