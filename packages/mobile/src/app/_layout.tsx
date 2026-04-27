@@ -13,7 +13,10 @@
 import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import { Stack } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -51,16 +54,56 @@ SplashScreen.preventAutoHideAsync();
 // Idempotent — safe to fire-and-forget at module load.
 void initNotifications();
 
+// gcTime needs to be ≥ persisted maxAge so the persister can re-hydrate a cache
+// entry without it being garbage-collected first.
+const PERSISTED_MAX_AGE = 24 * 60 * 60 * 1000; // 24h
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 2 * 60 * 1000, // 2 min
-      gcTime: 10 * 60 * 1000, // 10 min
+      gcTime: PERSISTED_MAX_AGE,
       retry: 2,
       refetchOnWindowFocus: false,
     },
   },
 });
+
+/**
+ * Whitelist of query-key prefixes that survive an app restart. Anything that
+ * is rate-limited, role-scoped or sensitive (auth tokens, sessions, payment
+ * status polling, support thread messages) is excluded so that:
+ *   1. cold start renders the cached catalog instantly while the network
+ *      refetches in background;
+ *   2. logging out on one device doesn't leak someone else's data on the next
+ *      app launch (the persister storage key is shared, but only stable
+ *      reference data is ever written there).
+ */
+const PERSISTED_QUERY_PREFIXES: readonly string[] = [
+  // Slow catalog data — services, ministries, fiscal-services, bundles config
+  'fiscal-services',
+  'workflows',
+  'directory',
+  'bundles',
+  // Public-shape reference lists (target_role-filtered server-side)
+  'support-categories',
+];
+
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: 'facil:rq-cache:v1',
+  // 1MB cap to stay polite with AsyncStorage SQLite quota on Android.
+  serialize: (data) => JSON.stringify(data),
+  deserialize: (str) => JSON.parse(str),
+});
+
+const dehydrateOptions = {
+  shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string } }) => {
+    if (query.state.status !== 'success') return false;
+    const prefix = String(query.queryKey[0] ?? '');
+    return PERSISTED_QUERY_PREFIXES.includes(prefix);
+  },
+};
 
 /**
  * Prefetch slow catalog data in background AFTER splash is hidden.
@@ -164,7 +207,17 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: PERSISTED_MAX_AGE,
+          dehydrateOptions,
+          // Bumping the buster invalidates every persisted cache on next launch.
+          // Bump on schema changes or when whitelisted query shapes evolve.
+          buster: 'v1',
+        }}
+      >
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>
@@ -175,7 +228,7 @@ export default function RootLayout() {
             </AppLockProvider>
           </AuthProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </GestureHandlerRootView>
   );
 }
