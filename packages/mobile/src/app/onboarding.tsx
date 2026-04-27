@@ -13,7 +13,7 @@ import {
   StyleSheet,
   View,
   FlatList,
-  Dimensions,
+  useWindowDimensions,
   Pressable,
   Image,
   Animated,
@@ -32,9 +32,14 @@ import { setApiLocale } from '@core/api/client';
 import { storage } from '@core/storage/mmkv';
 import type { SupportedLanguage } from '@core/config/types';
 
-const { width: SW, height: SH } = Dimensions.get('window');
 const ONBOARDING_KEY = 'onboarding_completed';
 const TOP_RATIO = 0.52;
+/** Vertical padding reserved at the bottom of the white card for the absolute
+ *  controls overlay. The last slide stacks: explore button (~40dp) + auth
+ *  buttons row (~46dp) + dots (~14dp) + safe-area inset + paddingBottom 8.
+ *  Bumping a touch generously to absorb i18n font-scaling. */
+const CONTROLS_HEIGHT_LAST = 180;
+const CONTROLS_HEIGHT_DEFAULT = 100;
 
 // ---------------------------------------------------------------------------
 // Slide config
@@ -210,6 +215,9 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
+  // Reactive dimensions — survives device rotation and split-screen better
+  // than the cached Dimensions.get('window') we used to call at module-load.
+  const { width: SW, height: SH } = useWindowDimensions();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedLang, setSelectedLang] = useState<SupportedLanguage>(
@@ -260,7 +268,7 @@ export default function OnboardingScreen() {
     return (
       <View style={[s.slide, { width: SW }]}>
         {/* ═══ TOP: colored bg + animation + deco ═══ */}
-        <View style={[s.topSection, { backgroundColor: item.bgTop }]}>
+        <View style={[s.topSection, { height: SH * TOP_RATIO, backgroundColor: item.bgTop }]}>
           {/* Futuristic lines */}
           <View style={[s.futureLine, { top: '15%', transform: [{ rotate: '-8deg' }], backgroundColor: 'rgba(255,255,255,0.08)' }]} />
           <View style={[s.futureLine, { top: '55%', transform: [{ rotate: '-3deg' }], backgroundColor: 'rgba(255,255,255,0.07)' }]} />
@@ -361,7 +369,7 @@ export default function OnboardingScreen() {
                     source={item.animation}
                     autoPlay
                     loop
-                    style={s.lottieCentered}
+                    style={[s.lottieCentered, { width: SW * 0.75, height: SW * 0.75 }]}
                   />
                 </AnimatedBorderCircle>
               </View>
@@ -370,7 +378,7 @@ export default function OnboardingScreen() {
                 source={item.animation}
                 autoPlay
                 loop
-                style={s.lottie}
+                style={[s.lottie, { width: SW * 0.98, height: SW * 0.98 }]}
               />
             )
           ) : item.icon ? (
@@ -383,8 +391,21 @@ export default function OnboardingScreen() {
           <View style={s.curveOverlay} />
         </View>
 
-        {/* ═══ BOTTOM: white card with text + watermark ═══ */}
-        <View style={s.bottomSection}>
+        {/* ═══ BOTTOM: white card with text + watermark ═══
+            The absolute controls overlay sits on top of this card; we reserve
+            CONTROLS_HEIGHT_* at the bottom so the inner content (subtitle /
+            description / language picker) never slips under the buttons. */}
+        <View
+          style={[
+            s.bottomSection,
+            {
+              paddingBottom:
+                index === SLIDES.length - 1
+                  ? CONTROLS_HEIGHT_LAST
+                  : CONTROLS_HEIGHT_DEFAULT,
+            },
+          ]}
+        >
           {/* Watermark: icon, image, or none */}
           {item.noWatermark ? null : item.watermarkIcon ? (
             <View style={s.watermarkIconWrap}>
@@ -414,12 +435,17 @@ export default function OnboardingScreen() {
               /* Line 1 big, Line 2: small connector + big word */
               <>
                 {parts[0] && (
-                  <Text style={[s.titleUniform, { color: item.accent }]}>
+                  <Text
+                    style={[s.titleUniform, { color: item.accent }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.55}
+                  >
                     {parts[0]}
                   </Text>
                 )}
                 {parts[1] && (
-                  <Text style={{ lineHeight: 80 }}>
+                  <Text style={{ lineHeight: 80 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
                     {/* Split "et Sécurisé" → "et" small + "Sécurisé" big */}
                     <Text style={{ fontSize: 39, fontWeight: '400', color: item.accent, opacity: 0.6 }}>
                       {parts[1].split(' ')[0]}{' '}
@@ -431,23 +457,32 @@ export default function OnboardingScreen() {
                 )}
               </>
             ) : (
-              /* Default: small line + BIG line (with optional scale) */
+              /* Default: small line + BIG line (with optional scale).
+                 `adjustsFontSizeToFit` + `numberOfLines={1}` so long words like
+                 "Maintenant" / "Inmediatamente" gracefully shrink to fit one
+                 line instead of wrapping mid-word and overlapping the bottom
+                 controls. */
               <>
                 {parts[0] && (
-                  <Text style={[s.titleSmall, { color: item.accent }]}>
+                  <Text style={[s.titleSmall, { color: item.accent }]} numberOfLines={1} adjustsFontSizeToFit>
                     {parts[0]}
                   </Text>
                 )}
                 {parts[1] && (
-                  <Text style={[
-                    s.titleBig,
-                    { color: item.accent },
-                    item.titleBigScale ? {
-                      fontSize: 100 * item.titleBigScale,
-                      lineHeight: 106 * item.titleBigScale,
-                      letterSpacing: 4 * item.titleBigScale,
-                    } : undefined,
-                  ]}>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                    style={[
+                      s.titleBig,
+                      { color: item.accent },
+                      item.titleBigScale ? {
+                        fontSize: 100 * item.titleBigScale,
+                        lineHeight: 106 * item.titleBigScale,
+                        letterSpacing: 4 * item.titleBigScale,
+                      } : undefined,
+                    ]}
+                  >
                     {parts[1]}
                   </Text>
                 )}
@@ -478,8 +513,18 @@ export default function OnboardingScreen() {
                       selectedLang === lang.code && { backgroundColor: item.accent, borderColor: item.accent },
                     ]}
                   >
-                    <Text style={{ fontSize: 18 }}>{lang.flag}</Text>
-                    <Text style={{ color: selectedLang === lang.code ? '#fff' : '#424242', marginLeft: 6, fontWeight: '600', fontSize: 13 }}>
+                    <Text style={{ fontSize: 16 }}>{lang.flag}</Text>
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={{
+                        color: selectedLang === lang.code ? '#fff' : '#424242',
+                        marginLeft: 6,
+                        fontWeight: '600',
+                        fontSize: 13,
+                        flexShrink: 1,
+                      }}
+                    >
                       {lang.label}
                     </Text>
                   </Pressable>
@@ -610,9 +655,10 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   slide: { flex: 1 },
 
-  // Top colored section — flex-end pushes Lottie to bottom (touching curve)
+  // Top colored section — flex-end pushes Lottie to bottom (touching curve).
+  // The actual height comes from the slide's inline style (computed from
+  // useWindowDimensions × TOP_RATIO so rotation / split-screen update it).
   topSection: {
-    height: SH * TOP_RATIO,
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 0,
@@ -624,8 +670,11 @@ const s = StyleSheet.create({
   cloudShape: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 40 },
   cloudShapeSmall: { position: 'absolute', width: 70, height: 30, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 15 },
   decoCircle: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'transparent' },
-  lottie: { width: SW * 0.98, height: SW * 0.98, maxWidth: 448, maxHeight: 448 },
-  lottieCentered: { width: SW * 0.75, height: SW * 0.75, maxWidth: 350, maxHeight: 350 },
+  // lottie / lottieCentered sizes are computed per-slide from
+  // useWindowDimensions and applied as inline styles below. Caps via maxWidth /
+  // maxHeight prevent oversize on tablets.
+  lottie: { maxWidth: 448, maxHeight: 448 },
+  lottieCentered: { maxWidth: 350, maxHeight: 350 },
   rocketCenter: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
@@ -675,10 +724,13 @@ const s = StyleSheet.create({
 
   // Language
   langContainer: { marginTop: 10 },
-  langRow: { flexDirection: 'row', gap: 8 },
+  langRow: { flexDirection: 'row', gap: 6 },
+  /** flex: 1 so the three buttons share the row evenly; numberOfLines + adjustsFontSizeToFit
+      on the inner label handles long words like "Français" / "English" / "Español". */
   langBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 8,
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 8, paddingVertical: 8,
     borderRadius: 24, borderWidth: 1.5, borderColor: '#D0D0D0',
   },
 
