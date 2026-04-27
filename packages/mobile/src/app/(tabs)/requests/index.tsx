@@ -20,6 +20,7 @@ import { ScrollView } from 'react-native';
 import { useAppTheme } from '@core/theme';
 import { AuthGuard } from '@core/auth/auth-guard';
 import { EmptyState } from '@components/ui/empty-state';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import { useRequests } from '@modules/service-requests';
 import type { ServiceRequestListItem } from '@modules/service-requests';
 import { RequestListItem } from '@modules/service-requests/components/request-list-item';
@@ -38,6 +39,9 @@ const STATUS_FILTERS = [
 ] as const;
 
 type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+/** Matches RequestListItem layout (12dp pad + 2 lines + 12dp pad + Divider 1px). */
+const ROW_HEIGHT = 65;
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -143,8 +147,10 @@ function RequestsListContent() {
   const renderEmpty = useCallback(() => {
     if (isLoading) {
       return (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonListItem key={`sk-${i}`} />
+          ))}
         </View>
       );
     }
@@ -253,6 +259,16 @@ function RequestsListContent() {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        // P8.3 — perf knobs (RequestListItem is 64dp tall, padding+2 lines).
+        getItemLayout={(_, index) => ({
+          length: ROW_HEIGHT,
+          offset: ROW_HEIGHT * index,
+          index,
+        })}
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
       />
 
       {/* FAB */}

@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@core/theme';
 import { AuthGuard } from '@core/auth/auth-guard';
 import { EmptyState } from '@components/ui/empty-state';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import {
   TicketListItem,
   useMyTickets,
@@ -86,8 +87,10 @@ function SupportListContent() {
   const renderEmpty = useCallback(() => {
     if (isLoading) {
       return (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonListItem key={`sk-${i}`} />
+          ))}
         </View>
       );
     }

@@ -31,6 +31,7 @@ import {
 } from '@modules/fiscal-services';
 import type { MinistryItem, FiscalServiceItem } from '@modules/fiscal-services';
 import { EmptyState } from '@components/ui/empty-state';
+import { SkeletonListItem } from '@components/ui/skeleton';
 
 // ---------------------------------------------------------------------------
 // Ministry icon mapping (by keyword in name)
@@ -252,7 +253,13 @@ export default function ServicesScreen() {
 
   const renderSearchContent = () => {
     if (isSearching) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
+      return (
+        <View>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonListItem key={`sk-${i}`} />
+          ))}
+        </View>
+      );
     }
     if (results && (results.results || results.services || []).length > 0) {
       return (
@@ -263,6 +270,11 @@ export default function ServicesScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
+          // P8.3 — perf knobs (variable item height ⇒ no getItemLayout).
+          initialNumToRender={12}
+          maxToRenderPerBatch={20}
+          windowSize={10}
+          removeClippedSubviews
           ListFooterComponent={isLoadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} /> : null}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
