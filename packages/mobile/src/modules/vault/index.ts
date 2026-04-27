@@ -38,3 +38,5 @@ export {
   getExportDownload,
 } from './services/vault-hooks';
 export { computeFileHash, readFileMeta } from './services/vault-hash';
+export { VaultPickerSheet } from './components/vault-picker-sheet';
+export { ReadinessBanner } from './components/readiness-banner';
