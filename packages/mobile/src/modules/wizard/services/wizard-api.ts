@@ -95,8 +95,11 @@ export async function deleteDocument(
 /** Use a document already stored in the user's vault (P2/P4 integration). */
 export async function useVaultDocument(
   sessionId: string,
-  payload: { document_id: string; document_code: string },
+  payload: { vault_document_id: string; document_code: string },
 ): Promise<WizardSession> {
+  // Backend `UseVaultDocumentRequest` expects `vault_document_id` (NOT
+  // `document_id`). Mobile P0 declared the wrong field name; fixed in P4
+  // before the first real call.
   return apiPost<WizardSession>(
     API_ENDPOINTS.wizardSessions.useVaultDocument(sessionId),
     payload,

@@ -566,6 +566,20 @@
         "replace": "Remplacer"
       }
     },
+    "picker": {
+      "title": "Choisissez un document du coffre",
+      "subtitle": "Documents compatibles avec \"{{documentCode}}\"",
+      "empty": "Aucun document de ce type dans votre coffre.",
+      "goToVault": "Ouvrir le coffre"
+    },
+    "readiness": {
+      "banner": {
+        "titleAllReady": "Tous vos documents sont prêts ({{ready}}/{{total}})",
+        "titlePartial": "{{ready}}/{{total}} documents prêts dans votre coffre",
+        "missing": "{{count}} manquant(s)",
+        "expiring": "{{count}} bientôt expiré(s)"
+      }
+    },
     "errors": {
       "mime_invalid": "Seuls les PDF, JPG, PNG et WebP sont acceptés.",
       "file_too_large": "Le fichier dépasse 10 Mo.",
@@ -779,7 +793,12 @@
       "deleteFailed": "Erreur lors de la suppression.",
       "permissionRequired": "Permission requise",
       "cameraPermissionMessage": "L'accès à l'appareil photo est nécessaire.",
-      "galleryPermissionMessage": "L'accès à la galerie est nécessaire."
+      "galleryPermissionMessage": "L'accès à la galerie est nécessaire.",
+      "vault": {
+        "fromVault": "Depuis le coffre",
+        "success": "Document du coffre utilisé",
+        "error": "Impossible d'utiliser le document du coffre"
+      }
     },
     "preview": {
       "title": "Aperçu du document",

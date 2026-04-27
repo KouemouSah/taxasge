@@ -566,6 +566,20 @@
         "replace": "Replace"
       }
     },
+    "picker": {
+      "title": "Pick a document from the vault",
+      "subtitle": "Documents compatible with \"{{documentCode}}\"",
+      "empty": "No matching document in your vault.",
+      "goToVault": "Open the vault"
+    },
+    "readiness": {
+      "banner": {
+        "titleAllReady": "All your documents are ready ({{ready}}/{{total}})",
+        "titlePartial": "{{ready}}/{{total}} documents ready in your vault",
+        "missing": "{{count}} missing",
+        "expiring": "{{count}} expiring"
+      }
+    },
     "errors": {
       "mime_invalid": "Only PDF, JPG, PNG and WebP files are accepted.",
       "file_too_large": "File exceeds the 10 MB limit.",
@@ -779,7 +793,12 @@
       "deleteFailed": "Failed to delete document.",
       "permissionRequired": "Permission required",
       "cameraPermissionMessage": "Camera access is required to take photos.",
-      "galleryPermissionMessage": "Gallery access is required to select photos."
+      "galleryPermissionMessage": "Gallery access is required to select photos.",
+      "vault": {
+        "fromVault": "From the vault",
+        "success": "Vault document used",
+        "error": "Could not use the vault document"
+      }
     },
     "preview": {
       "title": "Document preview",

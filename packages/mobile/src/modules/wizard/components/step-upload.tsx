@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -12,15 +12,18 @@ import {
   ActivityIndicator,
   Divider,
   TouchableRipple,
-  Button,
+  Snackbar,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
 import type { WizardRequiredDocument, DocumentPreview } from '../types/wizard.types';
+import { useVaultReadinessForWorkflow, VaultPickerSheet } from '@modules/vault';
+import * as wizardApi from '../services/wizard-api';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -36,6 +39,10 @@ interface StepUploadProps {
   ) => Promise<DocumentPreview>;
   onDeleteDocument: (documentCode: string) => Promise<void>;
   onDocumentPreview: (preview: DocumentPreview) => void;
+  /** Optional — when provided enables the "Depuis le coffre" auto-fill flow. */
+  sessionId?: string;
+  /** Optional — required alongside sessionId for the vault picker. */
+  workflowCode?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,11 +61,54 @@ export function StepUpload({
   onUploadDocument,
   onDeleteDocument,
   onDocumentPreview,
+  sessionId,
+  workflowCode,
 }: StepUploadProps) {
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
+  const queryClient = useQueryClient();
   const [deletingDocs, setDeletingDocs] = useState<Set<string>>(new Set());
   const [isCompressing, setIsCompressing] = useState(false);
+  const [pickerFor, setPickerFor] = useState<WizardRequiredDocument | null>(null);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+
+  // Vault readiness drives whether the "Depuis le coffre" option appears.
+  // Only fetched when both sessionId and workflowCode are provided AND the
+  // user is authenticated (the hook itself is gated on workflowCode != null).
+  const readiness = useVaultReadinessForWorkflow(
+    sessionId && workflowCode ? workflowCode : null,
+  );
+
+  /** Map { document_code → vault_document_id } for ready vault docs. */
+  const vaultByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of readiness.data?.ready ?? []) {
+      if (item.vault_document_id) map.set(item.code, item.vault_document_id);
+    }
+    return map;
+  }, [readiness.data]);
+
+  const useVaultMutation = useMutation({
+    mutationFn: ({
+      documentCode,
+      vaultDocumentId,
+    }: {
+      documentCode: string;
+      vaultDocumentId: string;
+    }) =>
+      wizardApi.useVaultDocument(sessionId as string, {
+        document_code: documentCode,
+        vault_document_id: vaultDocumentId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wizard-session', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['vault', 'readiness', workflowCode] });
+      setSnackbar(t('wizard.upload.vault.success'));
+    },
+    onError: () => {
+      setSnackbar(t('wizard.upload.vault.error'));
+    },
+  });
 
   // ── Image compression ────────────────────────────────────────────────
 
@@ -110,7 +160,8 @@ export function StepUpload({
 
   const handlePickDocument = useCallback(
     (doc: WizardRequiredDocument) => {
-      Alert.alert(t('wizard.upload.selectSource'), undefined, [
+      const vaultDocId = vaultByCode.get(doc.code);
+      const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [
         {
           text: t('wizard.upload.camera'),
           onPress: async () => {
@@ -153,10 +204,35 @@ export function StepUpload({
             }
           },
         },
-        { text: t('common.cancel'), style: 'cancel' },
-      ]);
+      ];
+      if (vaultDocId) {
+        buttons.push({
+          text: t('wizard.upload.vault.fromVault'),
+          onPress: () => setPickerFor(doc),
+        });
+      }
+      buttons.push({ text: t('common.cancel'), style: 'cancel' });
+      Alert.alert(t('wizard.upload.selectSource'), undefined, buttons);
     },
-    [pickFromCamera, pickFromGallery, compressImage, onUploadDocument, onDocumentPreview, t],
+    [
+      pickFromCamera,
+      pickFromGallery,
+      compressImage,
+      onUploadDocument,
+      onDocumentPreview,
+      t,
+      vaultByCode,
+    ],
+  );
+
+  const handleVaultSelect = useCallback(
+    (vaultDocumentId: string) => {
+      if (!pickerFor) return;
+      const docCode = pickerFor.code;
+      setPickerFor(null);
+      useVaultMutation.mutate({ documentCode: docCode, vaultDocumentId });
+    },
+    [pickerFor, useVaultMutation],
   );
 
   // ── Delete handler ───────────────────────────────────────────────────
@@ -298,6 +374,26 @@ export function StepUpload({
           <Text variant="bodyMedium" style={{ color: colors.onSurface, marginTop: 8 }}>{t('wizard.upload.compressing')}</Text>
         </View>
       )}
+
+      {/* Vault picker for the active document */}
+      {sessionId && workflowCode && pickerFor ? (
+        <VaultPickerSheet
+          visible={!!pickerFor}
+          workflowCode={workflowCode}
+          documentCode={pickerFor.code}
+          loading={useVaultMutation.isPending}
+          onCancel={() => setPickerFor(null)}
+          onSelect={handleVaultSelect}
+        />
+      ) : null}
+
+      <Snackbar
+        visible={!!snackbar}
+        onDismiss={() => setSnackbar(null)}
+        duration={3000}
+      >
+        {snackbar ?? ''}
+      </Snackbar>
     </View>
   );
 }
