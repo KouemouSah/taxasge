@@ -33,6 +33,7 @@ export type NotificationType =
   | 'document_expiring'
   | 'license_issued'
   | 'request_submitted'
+  | 'company_invitation'
   | 'generic';
 
 /** Raw push payload `data` map (all values are strings — FCM/APNs constraint). */

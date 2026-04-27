@@ -31,6 +31,7 @@ const TYPE_TO_ROUTE: Partial<Record<NotificationType, RouteBuilder>> = {
   support_ticket_replied: (id) => `/support/${encodeURIComponent(id)}`,
   document_expiring: (id) => `/documents/${encodeURIComponent(id)}`,
   license_issued: (id) => `/service-requests/${encodeURIComponent(id)}`,
+  company_invitation: (id) => `/companies/${encodeURIComponent(id)}`,
 };
 
 const FALLBACK_ROUTE = '/(tabs)/notifications';

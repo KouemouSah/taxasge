@@ -220,6 +220,7 @@
       "newRequest": "New Request",
       "myRequests": "My Requests",
       "myDocuments": "My Documents",
+      "myCompanies": "My Companies",
       "support": "Support"
     },
     "noRequests": "You don't have any requests yet",
@@ -570,6 +571,111 @@
       "file_too_large": "File exceeds the 10 MB limit.",
       "quota_exceeded": "Your vault is full. Remove documents to continue.",
       "rate_limit": "Too many uploads. Try again in a few minutes.",
+      "unknown": "An unexpected error occurred."
+    }
+  },
+  "companies": {
+    "title": "My Companies",
+    "empty": {
+      "title": "No companies",
+      "body": "Register your companies to manage their licences and obligations.",
+      "cta": "Create a company"
+    },
+    "create": {
+      "title": "New company",
+      "action": "Create"
+    },
+    "edit": {
+      "title": "Edit company",
+      "action": "Save"
+    },
+    "detail": {
+      "loading": "Loading…",
+      "loadError": "Could not load the company",
+      "noMembers": "No members yet",
+      "sections": {
+        "info": "Information",
+        "license": "Bundle licence",
+        "members": "Members",
+        "payments": "Payments"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "manageMembers": "Manage",
+        "downloadLicense": "Download licence (PDF)"
+      }
+    },
+    "form": {
+      "fields": {
+        "legalName": "Legal name",
+        "taxId": "Tax ID",
+        "representanteLegal": "Legal representative",
+        "regimenFiscal": "Fiscal regime",
+        "formaJuridica": "Legal form",
+        "sectorActividad": "Sector",
+        "cityName": "City",
+        "provincia": "Province",
+        "address": "Address",
+        "email": "Email",
+        "phone": "Phone"
+      },
+      "validation": {
+        "legalNameRequired": "Legal name is required",
+        "taxIdRequired": "Tax ID is required",
+        "representanteRequired": "Legal representative is required",
+        "emailInvalid": "Invalid email"
+      },
+      "classificationHint": "After creation, the fiscal regime may be adjusted automatically based on the data.",
+      "actions": {
+        "submit": "Save"
+      }
+    },
+    "members": {
+      "title": "Members",
+      "roles": {
+        "company_owner": "Owner",
+        "company_admin": "Administrator",
+        "company_accountant": "Accountant",
+        "company_member": "Member"
+      },
+      "roleDescriptions": {
+        "company_admin": "Can manage members and edit the company",
+        "company_accountant": "Access to obligations and payments",
+        "company_member": "Read-only"
+      },
+      "add": {
+        "title": "Add a member",
+        "confirm": "Add",
+        "success": "Member added",
+        "fields": {
+          "userId": "User ID",
+          "userIdHelp": "Ask your collaborator for their user ID in the app.",
+          "role": "Role"
+        },
+        "errors": {
+          "invalidId": "Invalid ID format"
+        }
+      },
+      "role": {
+        "success": "Role updated"
+      },
+      "remove": {
+        "title": "Remove member",
+        "body": "Are you sure you want to remove {{name}}?",
+        "confirm": "Remove",
+        "success": "Member removed"
+      }
+    },
+    "delete": {
+      "title": "Delete company",
+      "body": "This action is irreversible. To confirm, type the exact name: {{name}}",
+      "placeholder": "Legal name",
+      "confirm": "Permanently delete",
+      "success": "Company deleted"
+    },
+    "errors": {
+      "deleteFailed": "Could not delete the company",
       "unknown": "An unexpected error occurred."
     }
   },

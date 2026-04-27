@@ -220,6 +220,7 @@
       "newRequest": "Nouvelle demande",
       "myRequests": "Mes demandes",
       "myDocuments": "Mes documents",
+      "myCompanies": "Mes entreprises",
       "support": "Support"
     },
     "noRequests": "Vous n'avez pas encore de demandes",
@@ -570,6 +571,111 @@
       "file_too_large": "Le fichier dépasse 10 Mo.",
       "quota_exceeded": "Votre coffre est plein. Supprimez des documents pour continuer.",
       "rate_limit": "Trop de téléversements. Réessayez dans quelques minutes.",
+      "unknown": "Une erreur inattendue s'est produite."
+    }
+  },
+  "companies": {
+    "title": "Mes entreprises",
+    "empty": {
+      "title": "Aucune entreprise",
+      "body": "Enregistrez vos entreprises pour gérer leurs licences et obligations.",
+      "cta": "Créer une entreprise"
+    },
+    "create": {
+      "title": "Nouvelle entreprise",
+      "action": "Créer"
+    },
+    "edit": {
+      "title": "Modifier l'entreprise",
+      "action": "Enregistrer"
+    },
+    "detail": {
+      "loading": "Chargement…",
+      "loadError": "Impossible de charger l'entreprise",
+      "noMembers": "Aucun membre pour l'instant",
+      "sections": {
+        "info": "Informations",
+        "license": "Licence bundle",
+        "members": "Membres",
+        "payments": "Paiements"
+      },
+      "actions": {
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "manageMembers": "Gérer",
+        "downloadLicense": "Télécharger la licence (PDF)"
+      }
+    },
+    "form": {
+      "fields": {
+        "legalName": "Raison sociale",
+        "taxId": "NIF / CIF",
+        "representanteLegal": "Représentant légal",
+        "regimenFiscal": "Régime fiscal",
+        "formaJuridica": "Forme juridique",
+        "sectorActividad": "Secteur d'activité",
+        "cityName": "Ville",
+        "provincia": "Province",
+        "address": "Adresse",
+        "email": "Email",
+        "phone": "Téléphone"
+      },
+      "validation": {
+        "legalNameRequired": "Raison sociale requise",
+        "taxIdRequired": "NIF / CIF requis",
+        "representanteRequired": "Représentant légal requis",
+        "emailInvalid": "Email invalide"
+      },
+      "classificationHint": "Après la création, le régime fiscal peut être ajusté automatiquement selon les données.",
+      "actions": {
+        "submit": "Enregistrer"
+      }
+    },
+    "members": {
+      "title": "Membres",
+      "roles": {
+        "company_owner": "Propriétaire",
+        "company_admin": "Administrateur",
+        "company_accountant": "Comptable",
+        "company_member": "Membre"
+      },
+      "roleDescriptions": {
+        "company_admin": "Peut gérer les membres et modifier l'entreprise",
+        "company_accountant": "Accès aux obligations et paiements",
+        "company_member": "Lecture seule"
+      },
+      "add": {
+        "title": "Ajouter un membre",
+        "confirm": "Ajouter",
+        "success": "Membre ajouté",
+        "fields": {
+          "userId": "ID utilisateur",
+          "userIdHelp": "Demandez à votre collaborateur son ID utilisateur dans l'application.",
+          "role": "Rôle"
+        },
+        "errors": {
+          "invalidId": "Format d'ID invalide"
+        }
+      },
+      "role": {
+        "success": "Rôle mis à jour"
+      },
+      "remove": {
+        "title": "Supprimer le membre",
+        "body": "Êtes-vous sûr de supprimer {{name}} ?",
+        "confirm": "Supprimer",
+        "success": "Membre supprimé"
+      }
+    },
+    "delete": {
+      "title": "Supprimer l'entreprise",
+      "body": "Cette action est irréversible. Pour confirmer, tapez le nom exact : {{name}}",
+      "placeholder": "Raison sociale",
+      "confirm": "Supprimer définitivement",
+      "success": "Entreprise supprimée"
+    },
+    "errors": {
+      "deleteFailed": "Impossible de supprimer l'entreprise",
       "unknown": "Une erreur inattendue s'est produite."
     }
   },
