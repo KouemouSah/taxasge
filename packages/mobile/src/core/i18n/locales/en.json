@@ -458,6 +458,66 @@
     "pay": "Pay",
     "receipt": "Receipt"
   },
+  "payments": {
+    "tabs": { "title": "Payments" },
+    "list": {
+      "title": "My payments",
+      "empty": "No payments yet",
+      "filter": {
+        "all": "All",
+        "pending": "Pending",
+        "completed": "Completed",
+        "failed": "Failed"
+      }
+    },
+    "detail": {
+      "title": "Payment detail",
+      "breakdown": "Breakdown",
+      "baseAmount": "Base amount",
+      "penalties": "Penalties",
+      "interest": "Interest",
+      "total": "Total",
+      "method": "Method",
+      "reference": "Reference",
+      "transactionId": "Transaction ID",
+      "createdAt": "Created at",
+      "paidAt": "Paid at",
+      "viewRequest": "View request",
+      "errorLoading": "Could not load payment"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    },
+    "method": {
+      "mobile_money": "BANGE Mobile Money",
+      "card": "Card",
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash",
+      "check": "Check",
+      "bange_wallet": "BANGE Wallet"
+    },
+    "receipt": {
+      "download": "Download receipt",
+      "unavailable": "Receipt unavailable",
+      "openError": "Could not open receipt"
+    },
+    "result": {
+      "checking": "Verifying payment...",
+      "processing": "Payment in progress, please stay in the app",
+      "completed": "Payment successful!",
+      "failed": "Payment failed",
+      "timeout": "Verification in progress, you will be notified",
+      "viewReceipt": "View receipt",
+      "viewRequest": "View request",
+      "retry": "Retry",
+      "goHome": "Back home"
+    }
+  },
   "notifications": {
     "title": "Notifications",
     "empty": {

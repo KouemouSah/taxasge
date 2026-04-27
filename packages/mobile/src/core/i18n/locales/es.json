@@ -458,6 +458,66 @@
     "pay": "Pagar",
     "receipt": "Recibo"
   },
+  "payments": {
+    "tabs": { "title": "Pagos" },
+    "list": {
+      "title": "Mis pagos",
+      "empty": "Aún no tienes pagos",
+      "filter": {
+        "all": "Todos",
+        "pending": "Pendientes",
+        "completed": "Completados",
+        "failed": "Fallidos"
+      }
+    },
+    "detail": {
+      "title": "Detalle del pago",
+      "breakdown": "Desglose",
+      "baseAmount": "Monto base",
+      "penalties": "Penalidades",
+      "interest": "Intereses",
+      "total": "Total",
+      "method": "Método",
+      "reference": "Referencia",
+      "transactionId": "ID de transacción",
+      "createdAt": "Creado el",
+      "paidAt": "Pagado el",
+      "viewRequest": "Ver solicitud",
+      "errorLoading": "No se pudo cargar el pago"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "completed": "Completado",
+      "failed": "Fallido",
+      "cancelled": "Cancelado",
+      "refunded": "Reembolsado"
+    },
+    "method": {
+      "mobile_money": "BANGE Mobile Money",
+      "card": "Tarjeta",
+      "bank_transfer": "Transferencia",
+      "cash": "Efectivo",
+      "check": "Cheque",
+      "bange_wallet": "BANGE Wallet"
+    },
+    "receipt": {
+      "download": "Descargar recibo",
+      "unavailable": "Recibo no disponible",
+      "openError": "No se pudo abrir el recibo"
+    },
+    "result": {
+      "checking": "Verificando el pago...",
+      "processing": "Pago en curso, no salgas de la app",
+      "completed": "¡Pago realizado!",
+      "failed": "El pago no se completó",
+      "timeout": "Verificación en curso, recibirás una notificación",
+      "viewReceipt": "Ver recibo",
+      "viewRequest": "Ver solicitud",
+      "retry": "Reintentar",
+      "goHome": "Volver al inicio"
+    }
+  },
   "notifications": {
     "title": "Notificaciones",
     "empty": {

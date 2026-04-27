@@ -296,6 +296,15 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/payments/${id}` as const,
     createPlan: (id: string) => `/payments/${id}/plan` as const,
     planDetail: (planId: string) => `/payments/plans/${planId}` as const,
+    /**
+     * Poll the payment status for a service request after a Mobile Money payment
+     * has been initiated via the wizard. Used by `wizard/payment-result` and the
+     * payments detail screen for in-flight transactions.
+     *
+     * Backend: app/modules/service_requests/api/routes.py:1204 (PaymentStatusResponse).
+     */
+    serviceRequestStatus: (requestId: string) =>
+      `/service-requests/${requestId}/payment/status` as const,
   },
 
   // -------------------------------------------------------------------------

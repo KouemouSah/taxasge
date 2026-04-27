@@ -458,6 +458,66 @@
     "pay": "Payer",
     "receipt": "Reçu"
   },
+  "payments": {
+    "tabs": { "title": "Paiements" },
+    "list": {
+      "title": "Mes paiements",
+      "empty": "Aucun paiement pour l'instant",
+      "filter": {
+        "all": "Tous",
+        "pending": "En attente",
+        "completed": "Terminés",
+        "failed": "Échoués"
+      }
+    },
+    "detail": {
+      "title": "Détail du paiement",
+      "breakdown": "Détail",
+      "baseAmount": "Montant de base",
+      "penalties": "Pénalités",
+      "interest": "Intérêts",
+      "total": "Total",
+      "method": "Méthode",
+      "reference": "Référence",
+      "transactionId": "ID de transaction",
+      "createdAt": "Créé le",
+      "paidAt": "Payé le",
+      "viewRequest": "Voir la demande",
+      "errorLoading": "Impossible de charger le paiement"
+    },
+    "status": {
+      "pending": "En attente",
+      "processing": "En traitement",
+      "completed": "Terminé",
+      "failed": "Échoué",
+      "cancelled": "Annulé",
+      "refunded": "Remboursé"
+    },
+    "method": {
+      "mobile_money": "BANGE Mobile Money",
+      "card": "Carte",
+      "bank_transfer": "Virement",
+      "cash": "Espèces",
+      "check": "Chèque",
+      "bange_wallet": "BANGE Wallet"
+    },
+    "receipt": {
+      "download": "Télécharger le reçu",
+      "unavailable": "Reçu indisponible",
+      "openError": "Impossible d'ouvrir le reçu"
+    },
+    "result": {
+      "checking": "Vérification du paiement...",
+      "processing": "Paiement en cours, ne quittez pas l'application",
+      "completed": "Paiement réussi !",
+      "failed": "Le paiement a échoué",
+      "timeout": "Vérification en cours, vous recevrez une notification",
+      "viewReceipt": "Voir le reçu",
+      "viewRequest": "Voir la demande",
+      "retry": "Réessayer",
+      "goHome": "Retour à l'accueil"
+    }
+  },
   "notifications": {
     "title": "Notifications",
     "empty": {
