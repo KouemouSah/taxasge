@@ -88,6 +88,20 @@ export type ChatResponse = Schemas['ChatResponse'];
 export type ChatHistoryMessage = Schemas['ChatHistoryMessage'];
 
 // ---------------------------------------------------------------------------
+// Companies (CRUD + members)
+// ---------------------------------------------------------------------------
+export type CompanyCreate = Schemas['CompanyCreate'];
+export type CompanyUpdate = Schemas['CompanyUpdate'];
+export type CompanyResponse = Schemas['CompanyResponse'];
+export type CompanyListResponse = Schemas['CompanyListResponse'];
+export type CompanyMember = Schemas['CompanyMember'];
+export type CompanyMemberRole = Schemas['CompanyMemberRole'];
+export type AddMemberRequest = Schemas['AddMemberRequest'];
+export type UpdateMemberRoleRequest = Schemas['UpdateMemberRoleRequest'];
+export type CompanyInfo = Schemas['CompanyInfo'];
+export type CompanySearchResult = Schemas['CompanySearchResult'];
+
+// ---------------------------------------------------------------------------
 // Document Vault (user_documents)
 // ---------------------------------------------------------------------------
 export type UserDocumentResponse = Schemas['UserDocumentResponse'];
