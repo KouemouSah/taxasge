@@ -167,16 +167,26 @@ export const SentryErrorBoundary = Sentry.ErrorBoundary;
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 // Equatorial Guinea phone formats: +240222123456, 222123456, 555..., 333..., 551...
 const PHONE_RE = /(?:\+?240\s*)?(?:222|555|551|333)\d{6}/g;
-// Tax IDs (NIF) — alphanumeric strings of 9-12 chars adjacent to "NIF" or
-// "tax" markers. Conservative pattern to avoid stripping legit identifiers.
-const NIF_RE = /\b(?:NIF|nif|TAX|tax)[\s:]*[A-Z0-9]{6,12}\b/g;
+// NIF / tax IDs captured in two passes:
+//   (a) labeled form: "NIF: 12345678X" / "TAX 9876XYZ" / "RUC ..." — easy.
+//   (b) bare form: 8-12 char alphanumeric **with at least one letter AND one
+//       digit** so internal hex UUIDs (no letters above F? false positive
+//       there, accepted) and pure-digit IDs are NOT stripped by mistake.
+const NIF_LABELED_RE = /\b(?:NIF|nif|TAX|tax|RUC|ruc)[\s:#-]*[A-Z0-9]{6,12}\b/g;
+const NIF_BARE_RE =
+  /\b(?=[A-Z0-9]{8,12}\b)(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{8,12}\b/g;
+// Generic identity document numbers — DNI / passport / driver licence labels
+// that appear in audit logs around the workflows.
+const DOC_RE = /\b(?:DNI|dni|PASS|pass|DUI|dui|CC|cc)[\s:#-]*[A-Z0-9]{6,15}\b/g;
 
 function redact(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   return value
     .replace(EMAIL_RE, '[REDACTED-email]')
     .replace(PHONE_RE, '[REDACTED-phone]')
-    .replace(NIF_RE, '[REDACTED-nif]');
+    .replace(NIF_LABELED_RE, '[REDACTED-nif]')
+    .replace(NIF_BARE_RE, '[REDACTED-nif]')
+    .replace(DOC_RE, '[REDACTED-doc]');
 }
 
 function scrubPiiFromEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {

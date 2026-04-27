@@ -40,6 +40,7 @@ import {
 } from '@core/auth/auth-storage';
 import { clearBiometricCredentials } from '@core/security/biometric-login';
 import { setSentryUser } from '@core/observability/sentry';
+import { reportDeviceIntegrity } from '@core/security/device-integrity';
 import type {
   RegisterData,
   TokenRefreshResponse,
@@ -421,6 +422,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // No PII (no email, no phone) — only id / role / preferred_language.
   // -------------------------------------------------------------------
 
+  // Track the previous authenticated user id so we can detect a *new* login
+  // (vs. just a profile refresh) and re-run the device integrity check.
+  const lastReportedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (state.user) {
       setSentryUser({
@@ -428,8 +433,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         role: state.user.role,
         locale: state.user.preferred_language ?? undefined,
       });
+      // Refire device integrity on every fresh login (different user id, or
+      // first sign-in this session). Cold-start case is still covered by
+      // <DeferredEffects /> in the root layout — together they cover both
+      // "first launch" and "user switched account".
+      const id = String(state.user.id);
+      if (lastReportedUserIdRef.current !== id) {
+        lastReportedUserIdRef.current = id;
+        void reportDeviceIntegrity();
+      }
     } else if (!state.isLoading) {
       setSentryUser(null);
+      lastReportedUserIdRef.current = null;
     }
   }, [state.user, state.isLoading]);
 

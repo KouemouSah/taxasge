@@ -23,7 +23,9 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app"
+        "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app",
+        "SENTRY_ORG": "taxasge",
+        "SENTRY_PROJECT": "react-native"
       }
     },
     "production": {
@@ -32,7 +34,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app"
+        "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app",
+        "SENTRY_ORG": "taxasge",
+        "SENTRY_PROJECT": "react-native"
       }
     }
   },

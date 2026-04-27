@@ -477,6 +477,19 @@ async def export_user_data(
                 """,
                 user_uuid,
             )
+            # Total count for truncation signaling — only counts when we hit the
+            # limit so we don't pay the COUNT cost for the common case.
+            payments_total = (
+                await db.fetchval(
+                    """
+                    SELECT COUNT(*) FROM payments
+                    WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+                    """,
+                    user_uuid,
+                )
+                if len(payments) >= 1000
+                else len(payments)
+            )
 
             service_requests = await db.fetch(
                 """
@@ -489,6 +502,17 @@ async def export_user_data(
                 LIMIT 1000
                 """,
                 user_uuid,
+            )
+            service_requests_total = (
+                await db.fetchval(
+                    """
+                    SELECT COUNT(*) FROM service_requests
+                    WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+                    """,
+                    user_uuid,
+                )
+                if len(service_requests) >= 1000
+                else len(service_requests)
             )
 
         # Pydantic / asyncpg records: serialise the values explicitly so JSON
@@ -505,8 +529,16 @@ async def export_user_data(
             "payments": [_to_dict(p) for p in payments],
             "service_requests": [_to_dict(r) for r in service_requests],
             "counts": {
-                "payments": len(payments),
-                "service_requests": len(service_requests),
+                "payments_returned": len(payments),
+                "payments_total_in_window": int(payments_total or len(payments)),
+                "payments_truncated": payments_total is not None
+                and int(payments_total) > len(payments),
+                "service_requests_returned": len(service_requests),
+                "service_requests_total_in_window": int(
+                    service_requests_total or len(service_requests)
+                ),
+                "service_requests_truncated": service_requests_total is not None
+                and int(service_requests_total) > len(service_requests),
             },
         }
 

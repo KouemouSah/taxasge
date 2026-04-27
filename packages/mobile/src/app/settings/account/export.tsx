@@ -45,8 +45,11 @@ function AccountExportContent() {
     try {
       // Pull the JSON payload — backend already attaches a Content-Disposition
       // header but axios surfaces only the body for us, so we re-stringify.
+      // The default 30s axios timeout would cut a power user with hundreds of
+      // payments mid-aggregation; bump to 60s for this endpoint specifically.
       const response = await apiClient.get(API_ENDPOINTS.users.exportData, {
         responseType: 'json',
+        timeout: 60_000,
       });
 
       const filename = `facil-export-${Date.now()}.json`;
