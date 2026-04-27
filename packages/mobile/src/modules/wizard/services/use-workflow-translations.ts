@@ -19,6 +19,7 @@ import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { apiGet } from '@core/api/client';
+import { API_ENDPOINTS } from '@core/api/endpoints';
 import { getCurrentLanguage } from '@core/i18n';
 import type { SupportedLanguage } from '@core/i18n';
 
@@ -91,7 +92,7 @@ function normalizeTitleToKey(titleEs: string): string {
 export function useWorkflowTranslations(): UseWorkflowTranslationsReturn {
   const { data, isLoading, isSuccess } = useQuery<TranslationMap>({
     queryKey: ['workflow-translations'],
-    queryFn: () => apiGet<TranslationMap>('/translations/system/export/workflow'),
+    queryFn: () => apiGet<TranslationMap>(API_ENDPOINTS.translations.systemWorkflow),
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 2 * 60 * 60 * 1000, // 2 hours
     retry: 2,

@@ -42,7 +42,7 @@ export async function sendChatMessage(req: ChatRequest): Promise<ChatResponse> {
 /** POST /chatbot/feedback — best-effort, non-blocking */
 export async function submitFeedback(req: FeedbackRequest): Promise<void> {
   try {
-    await apiPost('/chatbot/feedback', req);
+    await apiPost(API_ENDPOINTS.chatbot.feedback, req);
   } catch {
     // Best-effort — never fail the UI
   }

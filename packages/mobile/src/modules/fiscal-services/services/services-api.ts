@@ -21,11 +21,18 @@ export async function getServices(
   return apiGet<FiscalServiceListResponse>(API_ENDPOINTS.fiscalServices.list, params);
 }
 
-/** POST /homepage/search (public, translated — same endpoint as web) */
+/**
+ * POST /homepage/search (public, translated — same endpoint as web).
+ *
+ * NOTE: this is intentionally homepage.search (not fiscalServices.search).
+ * The backend exposes both — homepage.search returns the translated/public
+ * shape used by the catalog UI; fiscalServices.search returns
+ * FiscalServiceListResponse used by other flows.
+ */
 export async function searchServices(
   filters: ServiceSearchFilters,
 ): Promise<ServiceSearchResponse> {
-  return apiPost<ServiceSearchResponse>(API_ENDPOINTS.fiscalServices.search, filters);
+  return apiPost<ServiceSearchResponse>(API_ENDPOINTS.homepage.search, filters);
 }
 
 /** GET /fiscal-services/{id}/details */
