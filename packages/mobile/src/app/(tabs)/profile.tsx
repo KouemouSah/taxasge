@@ -275,6 +275,18 @@ function ProfileScreenContent() {
 
         <Divider />
 
+        {/* ── Activity ── */}
+        <View style={{ backgroundColor: colors.surface }}>
+          <List.Item
+            title={t('payments.list.title')}
+            left={(props) => <List.Icon {...props} icon="cash-multiple" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/(tabs)/payments' as never)}
+          />
+        </View>
+
+        <Divider />
+
         {/* ── Preferences ── */}
         <View style={{ backgroundColor: colors.surface }}>
           <List.Subheader style={{ color: colors.primary }}>

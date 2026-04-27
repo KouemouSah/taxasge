@@ -119,6 +119,15 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* ── Hidden: Payments stack (reached from profile, request detail, wizard) ── */}
+      <Tabs.Screen
+        name="payments"
+        options={{
+          href: null,
+          title: t('payments.tabs.title'),
+        }}
+      />
     </Tabs>
   );
 }
