@@ -353,23 +353,28 @@ export function useBulkAction() {
   });
 }
 
-export function useExportFlow() {
-  return {
-    start: useMutation({
-      mutationFn: (category?: string) => vaultApi.startExport(category),
-    }),
-    status: (exportId: string | null) =>
-      useQuery({
-        queryKey: exportId ? ['vault', 'export', 'status', exportId] : ['vault', 'export', 'status', 'disabled'],
-        queryFn: () => vaultApi.getExportStatus(exportId as string),
-        enabled: !!exportId,
-        refetchInterval: (query) => {
-          const data = query.state.data as vaultApi.ExportStatusResponse | undefined;
-          if (!data) return 3000;
-          if (data.status === 'completed' || data.status === 'failed') return false;
-          return 3000;
-        },
-      }),
-    download: (exportId: string) => vaultApi.getExportDownload(exportId),
-  };
+export function useStartExport() {
+  return useMutation({
+    mutationFn: (category?: string) => vaultApi.startExport(category),
+  });
+}
+
+export function useExportStatus(exportId: string | null) {
+  return useQuery({
+    queryKey: exportId
+      ? ['vault', 'export', 'status', exportId]
+      : ['vault', 'export', 'status', 'disabled'],
+    queryFn: () => vaultApi.getExportStatus(exportId as string),
+    enabled: !!exportId,
+    refetchInterval: (query) => {
+      const data = query.state.data as vaultApi.ExportStatusResponse | undefined;
+      if (!data) return 3000;
+      if (data.status === 'completed' || data.status === 'failed') return false;
+      return 3000;
+    },
+  });
+}
+
+export function getExportDownload(exportId: string) {
+  return vaultApi.getExportDownload(exportId);
 }

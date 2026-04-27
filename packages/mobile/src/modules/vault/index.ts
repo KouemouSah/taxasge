@@ -33,6 +33,8 @@ export {
   useThumbnailUrl,
   // Bulk + export
   useBulkAction,
-  useExportFlow,
+  useStartExport,
+  useExportStatus,
+  getExportDownload,
 } from './services/vault-hooks';
 export { computeFileHash, readFileMeta } from './services/vault-hash';
