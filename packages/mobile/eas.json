@@ -17,7 +17,8 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -Pandroid.enableMinifyInReleaseBuilds=true"
       },
       "ios": {
         "simulator": true
@@ -31,7 +32,8 @@
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease -Pandroid.enableMinifyInReleaseBuilds=true"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app",
