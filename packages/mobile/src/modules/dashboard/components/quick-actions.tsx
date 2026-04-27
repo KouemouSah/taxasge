@@ -14,6 +14,7 @@ export function QuickActions() {
     { icon: 'plus-circle-outline', label: t('dashboard.quickActions.newRequest'), route: '/wizard/select-workflow' as const },
     { icon: 'file-document-multiple-outline', label: t('dashboard.quickActions.myRequests'), route: '/(tabs)/requests' as const },
     { icon: 'folder-outline', label: t('dashboard.quickActions.myDocuments'), route: '/documents' as const },
+    { icon: 'domain', label: t('dashboard.quickActions.myCompanies'), route: '/companies' as const },
     { icon: 'headset', label: t('dashboard.quickActions.support'), route: '/support' as const },
   ];
 

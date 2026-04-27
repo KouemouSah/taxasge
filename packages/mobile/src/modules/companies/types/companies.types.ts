@@ -45,10 +45,19 @@ export const ASSIGNABLE_MEMBER_ROLES: AssignableMemberRole[] = [
   'company_member',
 ];
 
-/** Hardcoded enum of fiscal regimes shown in the Company form picker. */
-export type RegimenFiscal = 'bundle' | 'estimacion_objetiva' | 'estimacion_directa' | 'pendiente';
+/** Fiscal regime enum — sourced directly from the backend RegimenFiscal Pydantic enum. */
+export type RegimenFiscal = 'bundle' | 'declarativo' | 'exento' | 'pendiente';
 
-/** Form values used by the create + edit company forms (RHF + zod). */
+/** Form values used by the create + edit company forms (RHF + zod).
+ *
+ * Aligned with backend `CompanyCreate` / `CompanyUpdate` Pydantic schemas.
+ * `city_name` / `provincia` are *not* editable — they appear on responses
+ * via a denormalised lookup but the writable column is `city_id`. Until
+ * we ship a city picker, we just don't expose them in the form.
+ *
+ * `representante_legal` is in `CompanyCreate` but NOT in `CompanyUpdate`.
+ * Edit screens skip it from the PUT payload.
+ */
 export interface CompanyFormValues {
   legal_name: string;
   tax_id: string;
@@ -59,8 +68,6 @@ export interface CompanyFormValues {
   forma_juridica?: string | null;
   sector_actividad?: string | null;
   address?: string | null;
-  city_name?: string | null;
-  provincia?: string | null;
   email?: string | null;
   phone?: string | null;
 }

@@ -147,6 +147,11 @@ function RootNavigator() {
       <Stack.Screen name="documents/index" />
       <Stack.Screen name="documents/[id]" />
       <Stack.Screen name="documents/upload" />
+      <Stack.Screen name="companies/index" />
+      <Stack.Screen name="companies/[id]" />
+      <Stack.Screen name="companies/new" />
+      <Stack.Screen name="companies/[id]/edit" />
+      <Stack.Screen name="companies/[id]/members" />
       <Stack.Screen name="bundle-wizard" />
       <Stack.Screen name="calculator/index" />
       <Stack.Screen name="calculator/history" />
