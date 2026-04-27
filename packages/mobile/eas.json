@@ -29,6 +29,13 @@
         "SENTRY_PROJECT": "react-native"
       }
     },
+    "preview-device": {
+      "extends": "preview",
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "android": {
