@@ -345,7 +345,43 @@ function ProfileScreenContent() {
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => router.push('/settings/sessions')}
           />
+          <Divider style={styles.insetDivider} />
+          <List.Item
+            title={t('settings.biometric.title', { defaultValue: 'Biometric login' })}
+            left={(props) => <List.Icon {...props} icon="fingerprint" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/settings/biometric' as never)}
+          />
+          <Divider style={styles.insetDivider} />
+          <List.Item
+            title={t('settings.notifications.title', {
+              defaultValue: t('profile.notifications'),
+            })}
+            left={(props) => <List.Icon {...props} icon="bell-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/settings/notifications' as never)}
+          />
           <AppLockToggle />
+        </View>
+
+        <Divider />
+
+        {/* ── Danger zone — RGPD account deletion ── */}
+        <View style={{ backgroundColor: colors.surface }}>
+          <List.Subheader style={{ color: colors.error }}>
+            {t('settings.dangerZone', { defaultValue: 'Danger zone' })}
+          </List.Subheader>
+          <List.Item
+            title={t('settings.deleteAccount.title', {
+              defaultValue: 'Delete my account',
+            })}
+            left={(props) => (
+              <List.Icon {...props} icon="trash-can-outline" color={colors.error} />
+            )}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            titleStyle={{ color: colors.error }}
+            onPress={() => router.push('/settings/account/delete' as never)}
+          />
         </View>
 
         <Divider />
