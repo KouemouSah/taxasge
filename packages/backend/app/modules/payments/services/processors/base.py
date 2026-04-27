@@ -120,6 +120,11 @@ class PaymentContext:
     # For idempotency
     idempotency_key: Optional[str] = None
 
+    # Optional client-supplied return URL for the payment gateway redirect.
+    # Used by mobile clients to deep-link back into the app after BANGE checkout.
+    # Validated upstream against the MOBILE_DEEP_LINK_SCHEMES whitelist + FRONTEND_URL origin.
+    return_url: Optional[str] = None
+
     def get_total_amount(self) -> Decimal:
         """Get total amount from tariff_breakdown if available, else amount."""
         if self.tariff_breakdown:

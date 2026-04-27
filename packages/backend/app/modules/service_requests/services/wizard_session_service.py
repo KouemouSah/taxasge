@@ -1975,6 +1975,7 @@ class WizardSessionService:
         user_phone: Optional[str] = None,
         user_name: Optional[str] = None,
         treasury_location_id: Optional[str] = None,
+        return_url: Optional[str] = None,
     ) -> WizardInitiatePaymentResponse:
         """
         Atomically persist session to database AND initiate payment.
@@ -2171,6 +2172,7 @@ class WizardSessionService:
                     service_name=workflow.service_name_es if workflow else None,
                     reference_number=reference,
                     metadata=payment_metadata,
+                    return_url=return_url,
                 )
 
                 payment_result = await payment_processor_registry.initiate_payment(db, payment_context)

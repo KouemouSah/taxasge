@@ -374,12 +374,56 @@ class WizardInitiatePaymentRequest(BaseModel):
     payment_method: str = Field(..., description="Payment method: mobile_money, card, bank_transfer, cash, check")
     phone_number: Optional[str] = Field(None, description="Phone number (required for mobile_money)")
     treasury_location_id: Optional[str] = Field(None, description="Treasury office location ID for cash/check payments")
+    return_url: Optional[str] = Field(
+        None,
+        max_length=512,
+        description=(
+            "Optional return URL for the payment gateway redirect (used by mobile clients to deep-link "
+            "back into the app after BANGE checkout). Must use one of the allowed mobile schemes "
+            "(e.g. 'facil://...') or share the same origin as the configured FRONTEND_URL. "
+            "If omitted, the backend uses the default web FRONTEND_URL."
+        ),
+    )
+
+    @field_validator("return_url")
+    @classmethod
+    def _validate_return_url(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        from urllib.parse import urlparse
+        from app.config import settings
+
+        allowed_schemes = {
+            s.strip().lower()
+            for s in (settings.MOBILE_DEEP_LINK_SCHEMES or "").split(",")
+            if s.strip()
+        }
+        parsed = urlparse(value)
+        scheme = (parsed.scheme or "").lower()
+        if not scheme:
+            raise ValueError("return_url must be an absolute URL with a scheme")
+
+        if scheme in allowed_schemes:
+            return value
+
+        if scheme in ("http", "https"):
+            frontend = urlparse(settings.FRONTEND_URL)
+            if not frontend.netloc:
+                raise ValueError("FRONTEND_URL is misconfigured; cannot validate return_url origin")
+            if parsed.netloc.lower() != frontend.netloc.lower():
+                raise ValueError(
+                    "return_url origin is not allowed (must match FRONTEND_URL or use a registered mobile scheme)"
+                )
+            return value
+
+        raise ValueError(f"return_url scheme '{scheme}' is not allowed")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "payment_method": "mobile_money",
-                "phone_number": "+240222123456"
+                "phone_number": "+240222123456",
+                "return_url": "facil://wizard/payment-result?session_id=abc&service_request_id=def"
             }
         }
 

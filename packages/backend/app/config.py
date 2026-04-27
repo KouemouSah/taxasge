@@ -114,6 +114,10 @@ class Settings(BaseSettings):
     # Production domain: taxasge.emacsah.com
     FRONTEND_URL: str = Field(default="https://taxasge.emacsah.com", env="FRONTEND_URL")
 
+    # Whitelisted mobile deep-link schemes for payment return_url validation.
+    # Comma-separated. The mobile app uses 'facil' (cf. packages/mobile/app.json).
+    MOBILE_DEEP_LINK_SCHEMES: str = Field(default="facil", env="MOBILE_DEEP_LINK_SCHEMES")
+
     # Backend API Base URL (for webhooks callbacks)
     # Cloud Run URL or custom domain
     API_BASE_URL: str = Field(default="https://taxasge-backend-staging-677954753182.europe-west1.run.app", env="API_BASE_URL")
