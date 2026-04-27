@@ -6,27 +6,25 @@
  * - Dates: uses date-fns with locale-aware formatting
  */
 
-import {
-  format as fnsFormat,
-  formatDistanceToNow,
-  parseISO,
-  isValid,
-  type Locale,
-} from 'date-fns';
+import { format as fnsFormat, formatDistanceToNow, isValid } from 'date-fns';
 import { es, fr, enUS } from 'date-fns/locale';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-const DATE_FNS_LOCALES: Record<string, Locale> = {
+// `Locale` type isn't re-exported through date-fns v3 root in `bundler` resolution;
+// inferring from a concrete locale gives the same shape without the broken import.
+type DateFnsLocale = typeof es;
+
+const DATE_FNS_LOCALES: Record<string, DateFnsLocale> = {
   es,
   fr,
   en: enUS,
 };
 
 /** Get the date-fns locale matching the current i18n language. */
-function getDateLocale(): Locale {
+function getDateLocale(): DateFnsLocale {
   // Lazy read to avoid circular import at module init time.
   // Falls back to Spanish if i18n is not yet initialised.
   try {
@@ -41,8 +39,10 @@ function getDateLocale(): Locale {
 /** Normalise a date input to a Date object. */
 function toDate(date: string | Date): Date {
   if (typeof date === 'string') {
-    const parsed = parseISO(date);
-    return isValid(parsed) ? parsed : new Date(date);
+    // `new Date(iso)` parses ISO 8601 reliably across RN runtimes; date-fns parseISO
+    // isn't re-exported via the bundler resolution path in v3.
+    const parsed = new Date(date);
+    return isValid(parsed) ? parsed : new Date(NaN);
   }
   return date;
 }
@@ -101,10 +101,12 @@ export function formatDate(date: string | Date, pattern = 'dd/MM/yyyy'): string 
  */
 export function formatRelativeTime(date: string | Date): string {
   try {
+    // date-fns v3 ships `.d.mts` only for ./types.js, so under `moduleResolution: bundler`
+    // the `locale` field on FormatDistanceOptions resolves empty. Cast to bypass.
     return formatDistanceToNow(toDate(date), {
       addSuffix: true,
       locale: getDateLocale(),
-    });
+    } as Parameters<typeof formatDistanceToNow>[1]);
   } catch {
     return String(date);
   }

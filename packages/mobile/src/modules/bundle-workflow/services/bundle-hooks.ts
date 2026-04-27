@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Linking } from 'react-native';
 import * as bundleApi from './bundle-api';
+import * as wizardApi from '@modules/wizard/services/wizard-api';
 import type {
   BundleStep,
   CompanySummary,
@@ -20,6 +21,12 @@ import type {
   ProcessingMode,
   PaymentMethod,
 } from '../types';
+
+/**
+ * Document code expected by the backend for the bundle company evidence
+ * (certificado de empadronamiento / business registration). Aligned with the web flow.
+ */
+const BUNDLE_COMPANY_DOCUMENT_CODE = 'certificado_padron';
 
 export function useBundleWizard() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -35,7 +42,11 @@ export function useBundleWizard() {
   const searchDebounceRef = useRef<NodeJS.Timeout>(null);
   const searchSeqRef = useRef(0);
 
-  // Step 1: Document upload
+  // Step 1: Document upload (requires a wizard session — same flow as web).
+  // Backend rejects /wizard-sessions/preview-document (no such route); the correct
+  // endpoint is POST /wizard-sessions/{sessionId}/documents/preview?document_code=...
+  // We create a BUNDLE_PAYMENT wizard session before the first upload (TTL 30min Redis).
+  const [wizardSessionId, setWizardSessionId] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -123,23 +134,47 @@ export function useBundleWizard() {
     setIsUploading(true);
     setError(null);
     try {
-      // Use the wizard session's document preview API
-      const formData = new FormData();
-      formData.append('file', { uri, type: mimeType, name: 'certificado_padron.pdf' } as any);
-      formData.append('document_type', 'certificado_padron');
+      // Step 1: ensure a BUNDLE_PAYMENT wizard session exists (idempotent within hook lifetime).
+      let sessionId = wizardSessionId;
+      if (!sessionId) {
+        const session = await wizardApi.createSession({
+          workflow_code: 'BUNDLE_PAYMENT',
+          solicitud_type: 'expedicion',
+        });
+        sessionId = session.session_id;
+        setWizardSessionId(sessionId);
+      }
 
-      // Direct API call since wizard session may not be created yet
-      const { apiUpload } = await import('@core/api/client');
-      const result = await apiUpload('/wizard-sessions/preview-document', formData);
-      setDocumentPreview(result as DocumentPreview);
+      // Step 2: derive a sensible filename so backend MIME detection picks the right extension.
+      const ext = mimeType === 'application/pdf' ? 'pdf'
+        : mimeType === 'image/png' ? 'png'
+        : mimeType === 'image/webp' ? 'webp'
+        : 'jpg';
+      const fileName = `${BUNDLE_COMPANY_DOCUMENT_CODE}.${ext}`;
+
+      // Step 3: upload via the canonical wizard preview endpoint.
+      const result = await wizardApi.previewDocument(
+        sessionId,
+        BUNDLE_COMPANY_DOCUMENT_CODE,
+        uri,
+        fileName,
+      );
+      setDocumentPreview(result);
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Upload failed');
+      setError(e?.response?.data?.detail || e?.response?.data?.message || 'Upload failed');
     } finally { setIsUploading(false); }
-  }, []);
+  }, [wizardSessionId]);
 
-  const deleteDocument = useCallback(() => {
+  const deleteDocument = useCallback(async () => {
+    if (wizardSessionId) {
+      try {
+        await wizardApi.deleteDocument(wizardSessionId, BUNDLE_COMPANY_DOCUMENT_CODE);
+      } catch {
+        // ignore — frontend state is the source of truth for the wizard UI
+      }
+    }
     setDocumentPreview(null);
-  }, []);
+  }, [wizardSessionId]);
 
   // ── Step 2: Classification ──
 
