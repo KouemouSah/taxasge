@@ -69,6 +69,14 @@
 
 **Hors scope V1** : Tax Declarations + Accountant module — non actifs côté web (corrections architecture + règles métier en cours).
 
+**iOS skip P1→P9** : pas d'Apple Developer Account aujourd'hui (décision 2026-04-27).
+Toutes les phases mobile **se valident sur Android uniquement** jusqu'en P10.
+Le code mobile reste plateforme-agnostique (Expo gère iOS automatiquement à la
+recompile). En **P10**, souscription Apple Dev Program ($99/an) + setup
+credentials EAS + smoke tests iOS sur iPhone physique. APNs (push iOS) ne
+peut **pas** être validé avant P10 car APNs ne fonctionne que sur device réel
+(jamais sur Simulator).
+
 ---
 
 ## 3. PHASE-BY-PHASE — Checklists générales

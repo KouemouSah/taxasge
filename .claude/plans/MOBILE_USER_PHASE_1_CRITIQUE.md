@@ -72,7 +72,34 @@
 
 ---
 
-## 4. Dette explicite — iOS APNs
+## 4. Décision iOS pour Phase 1 — reportée à Phase 10
+
+**Décision actée 2026-04-27** : pas d'Apple Developer Account aujourd'hui ($99/an
+pas encore engagés). Le build iOS pour P1 est donc **explicitement skip**, et
+toute la validation push notifs Phase 1 se fait sur Android uniquement.
+
+Justification expert :
+- APNs (Apple Push Notification service) ne fonctionne **que sur iPhone
+  physique** — jamais sur le Simulator iOS. Sans Apple Developer Account,
+  impossible de signer un IPA installable sur device → impossible de tester
+  un push iOS réel → **builder iOS pour P1 ne servirait à rien**.
+- L'architecture FCM/APNs côté code mobile (`core/notifications/device-token-service.ts`)
+  est **plateforme-agnostique** : `getDevicePushTokenAsync()` retourne le bon
+  token natif selon `Platform.OS`. Le code iOS est compilable, juste pas
+  testable end-to-end aujourd'hui.
+- Tentative de dispatch confirmée : `eas build --profile preview --platform ios`
+  échoue proprement avec « EAS CLI couldn't find any credentials suitable
+  for internal distribution » (cf. logs EAS). Aucun changement de code
+  nécessaire pour ce skip — c'est une dette de provisioning, pas de code.
+
+Quand iOS reviendra (Phase 10) :
+1. Souscrire Apple Developer Program ($99/an).
+2. `eas credentials -p ios` interactif une fois pour générer dist cert + provisioning profile.
+3. APNs Auth Key (.p8) uploadée dans Firebase Console > Cloud Messaging.
+4. `eas build --platform ios --profile preview` puis test sur iPhone réel.
+5. Validation push notifs iOS = même checklist que celle déjà passée sur Android (V1, V3-V6, V12).
+
+## 4bis. Anciennes notes APNs (info pour Phase 10)
 
 **Mise à jour (post-revue user)** : `taxasge/config/` contient déjà les vrais
 fichiers Firebase pour 2 environnements :
