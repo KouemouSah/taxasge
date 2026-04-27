@@ -20,10 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import { useWizardSession } from '@modules/wizard';
 import { StepSelection } from '@modules/wizard/components/step-selection';
 import * as wizardApi from '@modules/wizard/services/wizard-api';
 import type { WorkflowConfig, WorkflowStepConfig } from '@modules/wizard';
+import { ReadinessBanner } from '@modules/vault';
 import {
   useWorkflowTranslations,
   workflowNameKey,
@@ -34,6 +36,7 @@ export default function WizardCreateScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const { workflow_code } = useLocalSearchParams<{ workflow_code: string; service_id?: string }>();
+  const { isAuthenticated } = useAuth();
 
   const { createSession, isLoading: isSessionLoading, error: sessionError } = useWizardSession();
   const { tw } = useWorkflowTranslations();
@@ -189,6 +192,15 @@ export default function WizardCreateScreen() {
             : workflowConfig?.service_name_es || workflow_code.replace(/_/g, ' ')}
         </Text>
       </View>
+
+      {/* Vault readiness pre-flight — only when authenticated; renders nothing
+          while data is undefined so there's no skeleton flash. */}
+      {isAuthenticated && workflow_code ? (
+        <ReadinessBanner
+          workflowCode={workflow_code}
+          onPress={() => router.push('/documents' as never)}
+        />
+      ) : null}
 
       {error && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>

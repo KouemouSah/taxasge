@@ -1,8 +1,8 @@
 # PHASE 4 — Auto-critique & DoD Validation
 
-**Date** : 2026-04-27
+**Date** : 2026-04-27 (mis à jour P4.5 le 2026-04-27)
 **Phase** : `MOBILE_USER_PHASE_4_DETAILED.md`
-**Statut global** : ✅ Code livré + checklist #35 complète passée. Bug latent P0 corrigé en passant. ⏳ Validation device.
+**Statut global** : ✅ Code livré + checklist #35 complète passée. Bug latent P0 corrigé en passant. **P4.5 livré** : `<ReadinessBanner>` câblé dans `app/wizard/create.tsx` (gated `isAuthenticated`) + `sessionId`/`workflowCode` propagés à `<StepUpload>` dans `app/wizard/[session-id].tsx`. ⏳ Validation device.
 
 ---
 
@@ -48,7 +48,7 @@
 | V1 | Bouton "Depuis le coffre" visible si vault doc compatible | Test device | ⏳ Code complet |
 | V2 | Tap → sheet filtre par document_code | Test device | ⏳ Code complet (filtre `document_type === documentCode`) |
 | V3 | Sélection → POST use-vault → wizard refresh | Test device | ⏳ Code complet, payload aligné |
-| V4 | ReadinessBanner sur écran wizard initial | Test device | ⏳ Composant livré, intégration au wizard initial **non livrée** (voir gap §6) |
+| V4 | ReadinessBanner sur écran wizard initial | Test device | ✅ Câblé P4.5 dans `app/wizard/create.tsx` (rendu conditionnel `isAuthenticated && workflow_code`) — ⏳ test device |
 | V5 | Tap banner → navigate vers vault | Test device | ⏳ Code complet sur le composant |
 | V6 | Aucune régression upload classique | Test device | ✅ Modifs purement additives (props optionnelles, comportement inchangé sans sessionId/workflowCode) |
 | V7 | tsc 0 erreur | CI | ✅ |
@@ -64,7 +64,7 @@
 
 ### 5.1 Risques élevés
 
-**R1. step-upload props optionnelles non passées par le parent** — `sessionId` et `workflowCode` sont optionnels. Si le caller (probablement `app/wizard/[session-id].tsx` ou un orchestrator) ne les passe pas, le bouton "Depuis le coffre" n'apparaît jamais et le bug est silencieux. **Mitigation** : Le code fonctionne (modifs purement additives), juste la feature dormante. À câbler au caller dans une session future ou en P4.5 si urgent.
+**R1. step-upload props optionnelles non passées par le parent** — ✅ **Résolu P4.5** : `app/wizard/[session-id].tsx` passe maintenant `sessionId={sessionId}` et `workflowCode={session.workflow_code}` à `<StepUpload>`. Plus de feature dormante. Modifs purement additives — la branche sans props reste fonctionnelle.
 
 ### 5.2 Risques moyens
 
@@ -81,18 +81,24 @@
 ## 6. Gap honnête
 
 1. **Test device physique** — V1-V5 + V6 partial. APK EAS encore à installer.
-2. **`ReadinessBanner` non câblé dans le flow wizard** — le composant existe + est testé TS, mais l'intégration dans `step-selection.tsx` (ou le wrapper d'écran wizard) n'a pas été faite cette session. À ajouter en P4.5 (1-2h) ou en début P5. Réutilisable tel quel.
-3. **`step-upload` câblage parent** — les props `sessionId` + `workflowCode` doivent être passées par l'orchestrator du wizard. Pas livré cette session. P4.5 ou P5.
+2. ~~**`ReadinessBanner` non câblé dans le flow wizard**~~ ✅ **Livré P4.5** dans `app/wizard/create.tsx` (juste après le titre, avant l'erreur, conditionné `isAuthenticated && workflow_code`). Tap → `router.push('/documents')`.
+3. ~~**`step-upload` câblage parent**~~ ✅ **Livré P4.5** dans `app/wizard/[session-id].tsx` ligne ~369-370 (`sessionId={sessionId}` + `workflowCode={session.workflow_code}`).
+
+### 6.bis P4.5 — Validation
+- `tsc --noEmit` : 0 erreur ✅
+- ESLint : 82 warnings (< 100) ✅ (aucun warning dans les fichiers modifiés)
+- Pas de paths HTTP hardcodés dans `app/wizard/*.tsx` ✅
+- Modifs additives : `<ReadinessBanner>` rendu conditionnellement, `<StepUpload>` props optionnelles, zéro régression sur les workflows non authentifiés ou sans vault
 
 ---
 
 ## 7. Recommandation push
 
 OK pour commits locaux automatiques (mémoire #32). Avant push remote :
-1. Build EAS Android preview pour intégrer P4.
-2. Câblage `sessionId`/`workflowCode` au caller de `<StepUpload>` (P4.5).
-3. Câblage `<ReadinessBanner>` dans le flow wizard initial (P4.5).
-4. Test device.
+1. Build EAS Android preview pour intégrer P4 + P4.5.
+2. ~~Câblage `sessionId`/`workflowCode`~~ ✅ Livré P4.5.
+3. ~~Câblage `<ReadinessBanner>`~~ ✅ Livré P4.5.
+4. Test device (utilisateur authentifié → readiness banner visible sur create + bouton "Depuis le coffre" visible sur upload-step si vault doc compatible).
 
 ---
 

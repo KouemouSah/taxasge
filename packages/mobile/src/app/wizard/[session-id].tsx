@@ -366,6 +366,8 @@ export default function WizardSessionScreen() {
               setDocumentPreview(preview);
               setShowPreview(true);
             }}
+            sessionId={sessionId}
+            workflowCode={session.workflow_code}
           />
         )}
 
