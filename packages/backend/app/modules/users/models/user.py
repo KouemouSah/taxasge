@@ -5,7 +5,7 @@ Pydantic v2 models for user management and authentication
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, EmailStr, validator, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, validator, field_validator, ConfigDict
 from enum import Enum
 import phonenumbers
 
@@ -286,3 +286,30 @@ class UserNotificationPreferences(BaseModel):
     payment_confirmations: bool = Field(default=True, description="Payment confirmations")
     system_updates: bool = Field(default=False, description="System update notifications")
     marketing_communications: bool = Field(default=False, description="Marketing communications")
+
+
+class AccountDeleteRequest(BaseModel):
+    """
+    Request body for `DELETE /users/profile`.
+
+    The double-confirmation (current password + literal "DELETE" string) defends
+    against accidental account deletion via stolen-session deep links or UI
+    misclicks. The backend then soft-deletes (sets `users.deleted_at`) and
+    revokes all sessions / refresh tokens for the user.
+    """
+    password: str = Field(
+        ...,
+        min_length=1,
+        description="Current account password — verified via bcrypt before any state change.",
+    )
+    confirmation: str = Field(
+        ...,
+        description="Must be the exact literal string 'DELETE' to confirm intent.",
+    )
+
+    @field_validator("confirmation")
+    @classmethod
+    def _confirmation_literal(cls, value: str) -> str:
+        if value != "DELETE":
+            raise ValueError("confirmation must be the literal string 'DELETE'")
+        return value

@@ -18,6 +18,7 @@ from app.modules.users.models.user import (
     UserStats,
     UserActivity,
     UserNotificationPreferences,
+    AccountDeleteRequest,
 )
 
 __all__ = [
@@ -35,4 +36,5 @@ __all__ = [
     "UserStats",
     "UserActivity",
     "UserNotificationPreferences",
+    "AccountDeleteRequest",
 ]

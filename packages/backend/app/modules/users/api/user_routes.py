@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from loguru import logger
 
 from app.modules.users.models import (
-    UserUpdate, UserResponse, PasswordChange, UserActivity
+    UserUpdate, UserResponse, PasswordChange, UserActivity, AccountDeleteRequest
 )
 from app.modules.users.repositories import UserRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -413,4 +413,124 @@ async def delete_avatar(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error deleting avatar"
+        )
+
+
+@router.delete("/profile", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    body: AccountDeleteRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Delete (soft-delete) the authenticated user's account — RGPD art. 17.
+
+    The account is not erased synchronously. Instead:
+
+    1. The supplied password is verified via bcrypt — wrong password ⇒ 400.
+    2. The Pydantic validator on `confirmation` enforces the exact literal
+       string `"DELETE"` so a misclick or replay cannot trigger this route.
+    3. `users.deleted_at` is set to NOW() (migration 313 introduced the column).
+       The email is suffixed with `.deleted-<uuid>` so the address can be reused
+       for a fresh registration without colliding on the unique index.
+    4. All refresh_tokens for the user are revoked, and active sessions are
+       marked `revoked` — the next API call from any device will fail.
+    5. An audit-log entry records the deletion (entity_type=`user`,
+       action=`soft_delete`).
+
+    A separate cron purges `deleted_at < NOW() - 30 days` rows, giving the user
+    a 30-day grace period in case of mistake (regulatory best practice).
+
+    Returns: 204 No Content on success.
+    """
+    import uuid
+
+    try:
+        try:
+            user_uuid = uuid.UUID(str(current_user.id))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user ID format",
+            )
+
+        async with db_manager.get_connection() as db:
+            row = await db.fetchrow(
+                "SELECT password_hash, deleted_at, email FROM users WHERE id = $1",
+                user_uuid,
+            )
+            if not row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found",
+                )
+            if row["deleted_at"] is not None:
+                # Idempotent — already deleted, but signal it for the client.
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Account already scheduled for deletion",
+                )
+
+            password_service = PasswordService()
+            if not password_service.verify_password(body.password, row["password_hash"]):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Current password is incorrect",
+                )
+
+            # All state changes in a single transaction so a failure leaves
+            # neither a half-deleted account nor zombie sessions.
+            async with db.transaction():
+                deleted_email = f"{row['email']}.deleted-{user_uuid}"
+                await db.execute(
+                    """
+                    UPDATE users
+                    SET deleted_at = NOW(),
+                        email = $1,
+                        status = 'deactivated',
+                        updated_at = NOW()
+                    WHERE id = $2
+                    """,
+                    deleted_email,
+                    user_uuid,
+                )
+                await db.execute(
+                    """
+                    UPDATE refresh_tokens
+                    SET is_revoked = TRUE, revoked_at = NOW(), updated_at = NOW()
+                    WHERE user_id = $1 AND is_revoked = FALSE
+                    """,
+                    user_uuid,
+                )
+                await db.execute(
+                    """
+                    UPDATE sessions
+                    SET status = 'revoked'
+                    WHERE user_id = $1 AND status = 'active'
+                    """,
+                    user_uuid,
+                )
+                await db.execute(
+                    """
+                    INSERT INTO audit_logs (
+                        user_id, entity_type, entity_id, action, new_values
+                    ) VALUES ($1, 'user', $2, 'soft_delete', $3::jsonb)
+                    """,
+                    user_uuid,
+                    str(user_uuid),
+                    '{"reason": "user_requested_account_deletion"}',
+                )
+
+        logger.info(
+            f"User {user_uuid} soft-deleted (email rotated, tokens+sessions revoked)"
+        )
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting account for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error deleting account",
         )
