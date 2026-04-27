@@ -506,6 +506,10 @@
       "unavailable": "Reçu indisponible",
       "openError": "Impossible d'ouvrir le reçu"
     },
+    "unknownMethod": "Paiement",
+    "a11y": {
+      "item": "{{title}}, statut {{status}}, {{amount}}"
+    },
     "result": {
       "checking": "Vérification du paiement...",
       "processing": "Paiement en cours, ne quittez pas l'application",

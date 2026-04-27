@@ -118,6 +118,39 @@ Pour P5.2-5.5 mobile :
 
 ---
 
-## 8. Next — Phase 6
+## 8. Audit expert mobile (post-implémentation, 2026-04-27)
+
+Délégué à un agent expert React Native / Expo SDK 54 — verdict : 3 BLOCKERS, 10 IMPORTANT, 4 MINOR. Re-vérifié chaque claim contre la BD/Pydantic avant fix. Résultat :
+
+### Blockers réels (corrigés)
+| Bug | Fix |
+|-----|-----|
+| `bange_wallet` dans `PaymentMethod` TS — **mort** depuis migration 167 ("dropped dead column"), pas dans Pydantic | Retiré du type avec docstring explicative pour éviter régression future |
+| `PaymentStatusPolled.payment_method` typé `PaymentMethod \| null` mais backend renvoie `Optional[str]` raw form_data (`routes.py:1249`) — pas validé | Relâché à `string \| null` avec docstring |
+
+### Audit faux (réfuté à la lecture du code)
+- `completed_at` était présenté comme manquant — il est ligne 76 du TS depuis le départ.
+- `ReceiptDownloadButton` accusé de "20× refetch sur scroll" — il n'est rendu que dans `[id].tsx` (1× par mount detail), jamais dans la FlatList.
+
+### Important corrigés
+| Bug | Fix |
+|-----|-----|
+| `PaymentListItem` sans `accessibilityLabel`/`accessibilityRole` — non WCAG | Ajout label i18n `payments.a11y.item` (3 langues) + `accessibilityRole="button"` |
+| `PaymentStatusBadge` + `PaymentListItem` couleurs hardcodées light — illisible en dark mode | Palettes `isDark` adaptées (≥4.5:1 dans les 2 schémas) |
+| `usePaymentStatusPolling` ne pause pas au blur de l'écran ni en background — drain batterie | `useFocusEffect` + `AppState` listener — `enabled` + `refetchInterval` retournent `false` quand l'écran ou l'app est blur/background |
+| `serviceRequestId` query param non validé — risque injection | Regex UUID v4 strict (36 chars hex+dash) avant utilisation comme path API |
+| `FlatList` payments sans optims natives — jank sur scroll long | `getItemLayout` (ITEM_HEIGHT 63), `initialNumToRender:15`, `maxToRenderPerBatch:20`, `windowSize:10`, `removeClippedSubviews` |
+| `PaymentListItem` rerender à chaque scroll — pas memoizé | `memo()` + `onPress(id)` callback stable (parent l'expose en `useCallback`, plus d'inline closure) |
+| `title` fallback à `''` si `payment_method` null | Fallback `payments.unknownMethod` 3 langues |
+
+### Non-fixés (assumés / hors scope)
+- **Tabbar 5/6 onglets** : `Paiements` reste hidden tab, accès via Profile. Décision UX. Réversible 1 ligne.
+- **`useMutation` payments** : pas de mutation exposée — flow paiement passe par `wizard.initiatePayment()`. Documenté dans plan §6.
+- **iOS Universal Links** : V1 utilise scheme `facil://` (custom URL scheme). Universal Links = V2.
+- **`expo-web-browser` close detection** : Expo Router gère le retour deep link automatiquement. Le polling rattrape l'état.
+
+---
+
+## 9. Next — Phase 6
 
 P6 = Support tickets + Appointments management + Settings (4-5 jours). Aucune dépendance bloquante P5.

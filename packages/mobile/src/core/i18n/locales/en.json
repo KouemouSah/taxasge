@@ -506,6 +506,10 @@
       "unavailable": "Receipt unavailable",
       "openError": "Could not open receipt"
     },
+    "unknownMethod": "Payment",
+    "a11y": {
+      "item": "{{title}}, status {{status}}, {{amount}}"
+    },
     "result": {
       "checking": "Verifying payment...",
       "processing": "Payment in progress, please stay in the app",

@@ -146,13 +146,21 @@ function PaymentDetailContent({
   );
 }
 
+// Strict UUIDv4-shaped (or any 36-char hex+dash) check — defends against
+// open-redirect-style query injection on params we forward to API requests.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function PaymentDetailScreenContent() {
   const params = useLocalSearchParams<{ id: string; serviceRequestId?: string }>();
-  const id = params.id ?? '';
+  const id = UUID_RE.test(params.id ?? '') ? (params.id as string) : '';
   // Service request ID is not exposed by `PaymentResponse`; the caller (request
   // detail screen, wizard payment-result) passes it as a query param so we can
-  // resolve the receipt and the "View request" CTA.
-  const serviceRequestId = params.serviceRequestId ?? null;
+  // resolve the receipt and the "View request" CTA. Validated to UUID shape
+  // before being fed into any subsequent API request.
+  const serviceRequestId =
+    params.serviceRequestId && UUID_RE.test(params.serviceRequestId)
+      ? params.serviceRequestId
+      : null;
   const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();

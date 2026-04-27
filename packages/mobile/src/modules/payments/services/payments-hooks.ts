@@ -2,7 +2,11 @@
  * Payments React Query hooks.
  */
 
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
+import { AppState, type AppStateStatus } from 'react-native';
+
 import * as paymentsApi from './payments-api';
 import {
   TERMINAL_PAYMENT_STATUSES,
@@ -67,6 +71,12 @@ interface UsePaymentStatusPollingOptions {
  * Polls `GET /service-requests/{requestId}/payment/status` while the payment
  * is in a non-terminal state. Stops automatically when the backend reports
  * `completed | failed | cancelled | refunded`, or after `maxAttempts` refetches.
+ *
+ * Battery / data-plan friendly:
+ * - Pauses while the screen is blurred (navigation away) via `useFocusEffect`.
+ * - Pauses while the app is backgrounded via `AppState`.
+ * - `refetchOnWindowFocus: false` to avoid duplicate fetches on foreground
+ *   resume — the interval-driven query will pick up immediately on its own.
  */
 export function usePaymentStatusPolling(
   serviceRequestId: string | null | undefined,
@@ -75,13 +85,36 @@ export function usePaymentStatusPolling(
   const intervalMs = options.intervalMs ?? 3000;
   const maxAttempts = options.maxAttempts ?? 100;
 
+  const [focused, setFocused] = useState(true);
+  const [foregrounded, setForegrounded] = useState(
+    AppState.currentState === 'active',
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
+  // App background / foreground transitions
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      setForegrounded(next === 'active');
+    });
+    return () => sub.remove();
+  }, []);
+
+  const isActive = focused && foregrounded;
+
   return useQuery({
     queryKey: PAYMENTS_QUERY_KEYS.serviceRequestStatus(serviceRequestId ?? ''),
     queryFn: () =>
       paymentsApi.getServiceRequestPaymentStatus(serviceRequestId as string),
-    enabled: !!serviceRequestId && options.enabled !== false,
+    enabled: !!serviceRequestId && options.enabled !== false && isActive,
     staleTime: 0,
     refetchInterval: (query) => {
+      if (!isActive) return false;
       const data = query.state.data;
       if (data && TERMINAL_PAYMENT_STATUSES.has(data.status)) return false;
       const fetchCount = query.state.dataUpdateCount + query.state.errorUpdateCount;

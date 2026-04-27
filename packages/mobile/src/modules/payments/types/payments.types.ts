@@ -14,14 +14,19 @@ export type PaymentStatus =
   | 'cancelled'
   | 'refunded';
 
-/** Matches `payment_method_enum` in DB + `PaymentMethod` in Pydantic. */
+/**
+ * Mirrors backend Pydantic `PaymentMethod` (payment.py:33-39).
+ * Note: `bange_wallet` was dropped by migration 167 ("dead column, never used")
+ * and is intentionally absent here despite still appearing as a display label
+ * in `treasury_export_service.py`. Do NOT add it back without re-introducing
+ * the enum value in Pydantic first.
+ */
 export type PaymentMethod =
   | 'mobile_money'
   | 'card'
   | 'bank_transfer'
   | 'cash'
-  | 'check'
-  | 'bange_wallet';
+  | 'check';
 
 /** Matches `payment_type_enum` in DB + `PaymentType` in Pydantic. */
 export type PaymentType = 'full' | 'partial' | 'installment' | 'complementary';
@@ -65,6 +70,11 @@ export interface PaymentListResponse {
 /**
  * Response of `GET /service-requests/{request_id}/payment/status`.
  * Mirrors `PaymentStatusResponse` (service_request.py:626).
+ *
+ * Note: `payment_method` is sourced from `service_requests.form_data.payment_method`
+ * which is a free-form string the backend does not validate against the
+ * `PaymentMethod` enum (`routes.py:1249`). We therefore type it as a raw string
+ * and let the UI fall back gracefully when an unknown value comes through.
  */
 export interface PaymentStatusPolled {
   status: PaymentStatus;
@@ -72,7 +82,7 @@ export interface PaymentStatusPolled {
   payment_id: string | null;
   amount: number | null;
   currency: string;
-  payment_method: PaymentMethod | null;
+  payment_method: string | null;
   completed_at: string | null;
 }
 

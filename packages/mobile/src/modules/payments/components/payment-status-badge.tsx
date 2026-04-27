@@ -16,29 +16,54 @@ interface PaymentStatusBadgeProps {
 
 type BadgeColors = { bg: string; text: string };
 
-function getColors(status: PaymentStatus, colors: AppTheme['colors']): BadgeColors {
+function getColors(
+  status: PaymentStatus,
+  colors: AppTheme['colors'],
+  isDark: boolean,
+): BadgeColors {
+  // Dark-mode palette — desaturated background + bright on-surface text
+  // (verified ≥ 4.5:1 contrast against the dark surface tokens).
+  if (isDark) {
+    switch (status) {
+      case 'pending':
+        return { bg: '#3E2C00', text: '#FFCC80' };
+      case 'processing':
+        return { bg: '#3E2200', text: '#FFB74D' };
+      case 'completed':
+        return { bg: '#1B3320', text: '#A5D6A7' };
+      case 'failed':
+        return { bg: '#3E1A1A', text: '#EF9A9A' };
+      case 'cancelled':
+        return { bg: colors.surfaceVariant, text: colors.outline };
+      case 'refunded':
+        return { bg: '#0D2440', text: '#90CAF9' };
+      default:
+        return { bg: colors.surfaceVariant, text: colors.onSurfaceVariant };
+    }
+  }
+  // Light-mode palette — pastel background + dark accent text (≥ 4.5:1).
   switch (status) {
     case 'pending':
-      return { bg: '#FFF8E1', text: '#F57F17' }; // amber
+      return { bg: '#FFF8E1', text: '#7A4F00' };
     case 'processing':
-      return { bg: '#FFF3E0', text: '#E65100' }; // orange
+      return { bg: '#FFF3E0', text: '#7A2E00' };
     case 'completed':
-      return { bg: '#E8F5E9', text: '#1B5E20' }; // green dark
+      return { bg: '#E8F5E9', text: '#1B5E20' };
     case 'failed':
-      return { bg: '#FFEBEE', text: '#C62828' }; // red
+      return { bg: '#FFEBEE', text: '#8B1A1A' };
     case 'cancelled':
       return { bg: colors.surfaceVariant, text: colors.outline };
     case 'refunded':
-      return { bg: '#E3F2FD', text: '#1565C0' }; // blue
+      return { bg: '#E3F2FD', text: '#0D3D6B' };
     default:
       return { bg: colors.surfaceVariant, text: colors.onSurfaceVariant };
   }
 }
 
 export function PaymentStatusBadge({ status, compact }: PaymentStatusBadgeProps) {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
-  const badge = getColors(status, colors);
+  const badge = getColors(status, colors, isDark);
   const label = t(`payments.status.${status}`, {
     defaultValue: status.charAt(0).toUpperCase() + status.slice(1),
   });

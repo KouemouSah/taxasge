@@ -6,6 +6,7 @@
  * Line 2: Reference · Date relative ........................ Amount
  */
 
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,67 +18,99 @@ import type { Payment, PaymentStatus } from '../types/payments.types';
 
 interface PaymentListItemProps {
   item: Payment;
-  onPress: () => void;
+  /** Receives the payment id — keep this callback stable (useCallback) for `memo` to work. */
+  onPress: (paymentId: string) => void;
 }
 
-function getStatusDotColor(status: PaymentStatus): string {
+function getStatusDotColor(status: PaymentStatus, isDark: boolean): string {
+  // Dot uses bright/saturated colors on both schemes — small surface area, high glance value.
   switch (status) {
     case 'pending':
-      return '#FFC107';
+      return isDark ? '#FFCA28' : '#FFC107';
     case 'processing':
-      return '#FF9800';
+      return isDark ? '#FFA726' : '#FF9800';
     case 'completed':
-      return '#1B5E20';
+      return isDark ? '#66BB6A' : '#1B5E20';
     case 'failed':
-      return '#F44336';
+      return isDark ? '#EF5350' : '#F44336';
     case 'cancelled':
-      return '#9E9E9E';
+      return isDark ? '#BDBDBD' : '#9E9E9E';
     case 'refunded':
-      return '#1565C0';
+      return isDark ? '#42A5F5' : '#1565C0';
     default:
-      return '#9E9E9E';
+      return isDark ? '#BDBDBD' : '#9E9E9E';
   }
 }
 
-function getStatusTextColor(status: PaymentStatus): string {
+function getStatusTextColor(status: PaymentStatus, isDark: boolean): string {
+  // Text contrast tuned ≥ 4.5:1 against the surface in each scheme.
+  if (isDark) {
+    switch (status) {
+      case 'pending':
+        return '#FFCC80';
+      case 'processing':
+        return '#FFB74D';
+      case 'completed':
+        return '#A5D6A7';
+      case 'failed':
+        return '#EF9A9A';
+      case 'cancelled':
+        return '#BDBDBD';
+      case 'refunded':
+        return '#90CAF9';
+      default:
+        return '#BDBDBD';
+    }
+  }
   switch (status) {
     case 'pending':
-      return '#F57F17';
+      return '#7A4F00';
     case 'processing':
-      return '#E65100';
+      return '#7A2E00';
     case 'completed':
       return '#1B5E20';
     case 'failed':
-      return '#C62828';
+      return '#8B1A1A';
     case 'cancelled':
-      return '#757575';
+      return '#616161';
     case 'refunded':
-      return '#1565C0';
+      return '#0D3D6B';
     default:
-      return '#757575';
+      return '#616161';
   }
 }
 
-export function PaymentListItem({ item, onPress }: PaymentListItemProps) {
-  const { colors, spacing } = useAppTheme();
+function PaymentListItemImpl({ item, onPress }: PaymentListItemProps) {
+  const { colors, spacing, isDark } = useAppTheme();
   const { t } = useTranslation();
 
-  const dotColor = getStatusDotColor(item.status);
-  const statusColor = getStatusTextColor(item.status);
+  const dotColor = getStatusDotColor(item.status, isDark);
+  const statusColor = getStatusTextColor(item.status, isDark);
   const statusLabel = t(`payments.status.${item.status}`, {
     defaultValue: item.status,
   });
   const methodLabel = t(`payments.method.${item.payment_method}`, {
-    defaultValue: item.payment_method.replace(/_/g, ' '),
+    defaultValue: item.payment_method
+      ? item.payment_method.replace(/_/g, ' ')
+      : t('payments.unknownMethod', 'Pago'),
   });
   const title = item.fiscal_service_name || methodLabel;
   const reference = item.bank_reference || item.id.slice(0, 8);
   const timeAgo = formatRelativeTime(item.paid_at || item.created_at);
 
+  const a11yLabel = t('payments.a11y.item', {
+    title,
+    status: statusLabel,
+    amount: formatCurrency(item.amount, item.currency),
+    defaultValue: `${title}, ${statusLabel}, ${formatCurrency(item.amount, item.currency)}`,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onPress(item.id)}
       android_ripple={{ color: colors.primaryContainer }}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
       style={[
         styles.container,
         { paddingHorizontal: spacing.md, paddingVertical: 12 },
@@ -142,3 +175,10 @@ const styles = StyleSheet.create({
   },
   amount: { fontSize: 13, fontWeight: '600', marginLeft: 8 },
 });
+
+/**
+ * Memoized — list re-renders on filter change or pagination land, but identity
+ * of `item` and `onPress` is stable thanks to the parent's keyExtractor + useCallback.
+ * Avoids re-rendering 20+ items on each scroll tick.
+ */
+export const PaymentListItem = memo(PaymentListItemImpl);

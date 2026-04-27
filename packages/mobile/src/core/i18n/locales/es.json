@@ -506,6 +506,10 @@
       "unavailable": "Recibo no disponible",
       "openError": "No se pudo abrir el recibo"
     },
+    "unknownMethod": "Pago",
+    "a11y": {
+      "item": "{{title}}, estado {{status}}, {{amount}}"
+    },
     "result": {
       "checking": "Verificando el pago...",
       "processing": "Pago en curso, no salgas de la app",

@@ -25,6 +25,10 @@ import {
 const FILTERS = ['all', 'pending', 'completed', 'failed'] as const;
 type Filter = (typeof FILTERS)[number];
 
+// Matches PaymentListItem layout: 12 (top pad) + ~38 (two lines) + 12 (bot pad)
+// + 1 (Divider). Keep in sync with payment-list-item.tsx and the divider.
+const ITEM_HEIGHT = 63;
+
 function PaymentsListContent() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -62,7 +66,7 @@ function PaymentsListContent() {
 
   const renderItem = useCallback(
     ({ item }: { item: Payment }) => (
-      <PaymentListItem item={item} onPress={() => handlePress(item.id)} />
+      <PaymentListItem item={item} onPress={handlePress} />
     ),
     [handlePress],
   );
@@ -162,6 +166,17 @@ function PaymentsListContent() {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        // Perf — payment items have a fixed height (12 + 2-line content + 12).
+        // Pinning getItemLayout lets RN skip layout passes during scroll.
+        getItemLayout={(_, index) => ({
+          length: ITEM_HEIGHT,
+          offset: ITEM_HEIGHT * index,
+          index,
+        })}
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={10}
+        removeClippedSubviews
       />
     </SafeAreaView>
   );
