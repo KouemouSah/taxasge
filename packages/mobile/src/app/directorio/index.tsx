@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { AppMenuButton } from '@components/ui/app-menu';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import { useDirectorySearch } from '@modules/directory';
 import type { DirectoryCompany, DirectorySearchResponse } from '@modules/directory';
 
@@ -162,8 +163,10 @@ export default function DirectorioScreen() {
 
       {/* List */}
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonListItem key={`sk-${i}`} />
+          ))}
         </View>
       ) : (
         <FlatList

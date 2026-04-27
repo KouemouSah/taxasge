@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import { apiPost } from '@core/api/client';
 import { API_ENDPOINTS } from '@core/api/endpoints';
 import { useSessions } from '@modules/auth/services/auth-hooks';
@@ -133,8 +134,10 @@ export default function SessionsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
+      <View>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonListItem key={`sk-${i}`} />
+        ))}
       </View>
     );
   }

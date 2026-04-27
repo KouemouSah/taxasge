@@ -11,6 +11,7 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, FlatList, Pressable, Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import { Text, Button, ActivityIndicator, Divider, Chip, Snackbar, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -540,10 +541,12 @@ export default function LicenciasScreen() {
   );
 }
 
-function LoadingView({ colors }: { colors: any }) {
+function LoadingView({ colors: _colors }: { colors: any }) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" color={colors.primary} />
+    <View>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <SkeletonListItem key={`sk-${i}`} />
+      ))}
     </View>
   );
 }

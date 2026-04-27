@@ -11,6 +11,7 @@ import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
+import { SkeletonListItem } from '@components/ui/skeleton';
 import { CompanyCard } from '@modules/companies/components/company-card';
 import { CompanyEmptyState } from '@modules/companies/components/company-empty-state';
 import { useCompaniesList } from '@modules/companies';
@@ -37,8 +38,10 @@ export default function CompaniesIndexScreen() {
       </Appbar.Header>
 
       {list.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonListItem key={`sk-${i}`} />
+          ))}
         </View>
       ) : (
         <FlatList
