@@ -169,6 +169,20 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # The @sentry/react-native Gradle plugin tries to auto-upload
+          # sourcemaps via sentry-cli during the build (since P9.2). It needs
+          # SENTRY_AUTH_TOKEN to do so — and we deliberately do NOT expose
+          # that secret here because:
+          #   1. EAS Build is the canonical channel for production-grade
+          #      builds; it has the token in `eas env` (preview + production)
+          #      and uploads the sourcemaps from there.
+          #   2. GitHub Actions runs as a CI gate (lint / typecheck / build
+          #      smoke test). Uploading sourcemaps on every CI commit would
+          #      pollute Sentry with noise releases.
+          # Setting SENTRY_DISABLE_AUTO_UPLOAD=true tells the plugin to
+          # generate the sourcemap files locally but skip the upload, keeping
+          # the build green without ever needing the auth token here.
+          SENTRY_DISABLE_AUTO_UPLOAD: 'true'
         run: |
           cd ${{ env.WORKING_DIR }}/android
           chmod +x gradlew
