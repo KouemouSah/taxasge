@@ -26,7 +26,16 @@ import { Platform } from 'react-native';
  *
  * encryptionKey provides basic obfuscation for non-sensitive data on native.
  * Web does not support encryptionKey — omitted on web platform.
- * This is NOT a substitute for SecureStore for sensitive data.
+ * **This is NOT a substitute for SecureStore for sensitive data** — the
+ * contract above is the load-bearing one.
+ *
+ * Audit note (P9.5 / S4 from MOBILE_HOLISTIC_AUDIT_2026_04_27.md): the key
+ * below is hardcoded. Migrating it to a SecureStore-derived value requires
+ * making the MMKV bootstrap async (so we can read the key first), which
+ * cascades into every synchronous `storage.getString(...)` call site at boot
+ * time and is therefore deferred to a dedicated V1.5 refactor. The current
+ * exposure is *bounded by the contract above*: an attacker who reverse-
+ * engineers the key only sees UI preferences, never tokens or PII.
  */
 export const storage = new MMKV({
   id: 'facil-app-storage',

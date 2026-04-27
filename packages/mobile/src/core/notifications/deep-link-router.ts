@@ -14,7 +14,33 @@
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 
+import { logger } from '@core/logging/logger';
 import type { NotificationDataPayload, NotificationType } from './types';
+
+/**
+ * Allow-list of top-level path segments deep links may target.
+ *
+ * Anything outside this list — whether it comes from a malformed
+ * `data.deep_link`, a typo, or a hostile crafted push — falls back to the
+ * notifications inbox so the app never navigates to an unexpected screen.
+ */
+const ALLOWED_PATH_PREFIXES: ReadonlySet<string> = new Set([
+  'payments',
+  'service-requests',
+  'appointments',
+  'support',
+  'documents',
+  'companies',
+  'wizard',
+  'notifications',
+  '(tabs)',
+]);
+
+function pathSegmentIsAllowed(rawPath: string): boolean {
+  // Strip leading slash, split on `/`, take the first non-empty segment.
+  const first = rawPath.replace(/^\/+/, '').split(/[/?#]/, 1)[0];
+  return ALLOWED_PATH_PREFIXES.has(first);
+}
 
 type RouteBuilder = (entityId: string) => string;
 
@@ -46,14 +72,22 @@ export function resolveRouteFromPayload(
   if (!data) return FALLBACK_ROUTE;
 
   // 1. Explicit deep_link field — strip the scheme so Expo Router gets a path.
+  // Reject paths whose first segment isn't in the explicit allow-list, so a
+  // hostile push payload cannot navigate the app to an arbitrary route.
   if (data.deep_link) {
     const parsed = Linking.parse(data.deep_link);
     if (parsed.path) {
-      return `/${parsed.path}`;
+      const candidate = `/${parsed.path}`;
+      if (pathSegmentIsAllowed(parsed.path)) {
+        return candidate;
+      }
+      logger.warn('DeepLink', 'Rejected unlisted deep_link path', {
+        path: parsed.path,
+      });
     }
   }
 
-  // 2. Type + entity_id mapping.
+  // 2. Type + entity_id mapping (already produces routes inside the allow-list).
   const type = data.type as NotificationType | undefined;
   if (type && data.entity_id) {
     const builder = TYPE_TO_ROUTE[type];

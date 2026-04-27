@@ -49,29 +49,40 @@ export async function hasBiometricCredentials(): Promise<boolean> {
 
 /**
  * Store credentials securely after successful login.
- * requireAuthentication: true → Android Keystore requires biometric to READ back.
- * No biometric needed to WRITE (we just authenticated via API).
+ *
+ * P9.4 (S1 fix): the credential entries are now persisted with
+ * `requireAuthentication: true`, which **wires the OS keystore to require
+ * biometric / device credential authentication on every READ**. Before this
+ * change the password could be read on a momentarily-unlocked device by any
+ * code with `expo-secure-store` access. Now the platform itself blocks the
+ * read until the user's fingerprint / face / PIN is presented.
+ *
+ * V1.5 / V2 plan: switch to a refresh-token-only model so we don't store a
+ * plaintext password at all. That refactor is bigger (it changes the auth
+ * bootstrap flow) and is tracked separately — this commit closes the
+ * defense-in-depth gap without breaking the existing UX.
  */
 export async function saveBiometricCredentials(email: string, password: string): Promise<void> {
   const opts: SecureStore.SecureStoreOptions = {
     requireAuthentication: true,
     authenticationPrompt: 'Verificar identidad',
   };
-  // Store without auth requirement (writing after verified login)
-  await SecureStore.setItemAsync(CRED_EMAIL_KEY, email);
-  await SecureStore.setItemAsync(CRED_PASS_KEY, password);
+  await SecureStore.setItemAsync(CRED_EMAIL_KEY, email, opts);
+  await SecureStore.setItemAsync(CRED_PASS_KEY, password, opts);
 }
 
 /**
- * Retrieve credentials — Keystore triggers biometric prompt automatically
- * via requireAuthentication on the stored items.
+ * Retrieve credentials — the keystore now triggers biometric prompt
+ * automatically because the entries were written with `requireAuthentication`.
  *
- * Note: expo-secure-store on Android uses requireAuthentication at READ time
- * only if set at WRITE time. Since we store without it (for UX), we do
- * an explicit biometric check before reading.
+ * We still do an explicit `LocalAuthentication.authenticateAsync()` first so
+ * that we get a deterministic prompt even on legacy entries that were saved
+ * before the P9.4 change (older versions of the app stored credentials
+ * without requireAuthentication; on a fresh install everything goes through
+ * the new path).
  */
 export async function getBiometricCredentials(): Promise<BiometricCredentials | null> {
-  // Explicit biometric gate — hardware-level protection
+  // Explicit biometric gate (covers legacy entries + UX consistency)
   const authResult = await LocalAuthentication.authenticateAsync({
     promptMessage: 'Verificar identidad',
     fallbackLabel: 'PIN',
@@ -81,9 +92,16 @@ export async function getBiometricCredentials(): Promise<BiometricCredentials | 
 
   if (!authResult.success) return null;
 
+  // Pass the same options on read so the OS knows it should not skip the
+  // hardware-backed auth check. Falls through gracefully for legacy entries.
+  const readOpts: SecureStore.SecureStoreOptions = {
+    requireAuthentication: true,
+    authenticationPrompt: 'Verificar identidad',
+  };
+
   try {
-    const email = await SecureStore.getItemAsync(CRED_EMAIL_KEY);
-    const password = await SecureStore.getItemAsync(CRED_PASS_KEY);
+    const email = await SecureStore.getItemAsync(CRED_EMAIL_KEY, readOpts);
+    const password = await SecureStore.getItemAsync(CRED_PASS_KEY, readOpts);
     if (!email || !password) return null;
     return { email, password };
   } catch {

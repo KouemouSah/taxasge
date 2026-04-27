@@ -28,6 +28,7 @@
         "foregroundImage": "./assets/images/icon_facil.png"
       },
       "edgeToEdgeEnabled": true,
+      "allowBackup": false,
       "permissions": [
         "INTERNET",
         "CAMERA",
@@ -80,7 +81,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

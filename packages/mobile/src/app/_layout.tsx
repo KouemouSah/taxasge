@@ -38,6 +38,7 @@ import {
 import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
 import { initSentry, SentryErrorBoundary } from '@core/observability/sentry';
+import { reportDeviceIntegrity } from '@core/security/device-integrity';
 import '@core/i18n';
 
 // Suppress known React 19 + New Architecture internal warnings
@@ -147,6 +148,12 @@ function DeferredEffects() {
   // Sentry init — idempotent, no-op when DSN absent or in __DEV__.
   useEffect(() => {
     initSentry();
+  }, []);
+  // Device integrity check — non-blocking telemetry only. Logs a Sentry
+  // breadcrumb + warning when the device fingerprint looks suspicious
+  // (emulator, generic SDK build, etc.).
+  useEffect(() => {
+    void reportDeviceIntegrity();
   }, []);
   // Channels + foreground handler — idempotent.
   useEffect(() => {
