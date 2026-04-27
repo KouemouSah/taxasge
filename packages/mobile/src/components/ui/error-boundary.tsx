@@ -11,6 +11,7 @@ import { Text, Button } from 'react-native-paper';
 
 import { spacing } from '@core/theme';
 import i18n from '@core/i18n';
+import { captureException } from '@core/observability/sentry';
 
 // ---------------------------------------------------------------------------
 // Props & State
@@ -36,6 +37,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
+  }
+
+  /**
+   * Forward the captured error to Sentry. Without this, the parent
+   * `SentryErrorBoundary` never sees the error because *this* boundary
+   * intercepts it first via `getDerivedStateFromError`. The capture is a
+   * no-op when Sentry is inactive (DEV / no DSN).
+   */
+  override componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    captureException(error, {
+      tag: 'ErrorBoundary',
+      extra: { componentStack: info.componentStack ?? '' },
+    });
   }
 
   private resetError = () => {

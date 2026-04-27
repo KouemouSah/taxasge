@@ -37,7 +37,7 @@ import {
 } from '@core/notifications';
 import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
-import { initSentry, SentryErrorBoundary } from '@core/observability/sentry';
+import { initSentry } from '@core/observability/sentry';
 import { reportDeviceIntegrity } from '@core/security/device-integrity';
 import '@core/i18n';
 
@@ -260,15 +260,16 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <AppLockProvider>
-              {/* SentryErrorBoundary captures uncaught errors and forwards them
-                  to Sentry; the inner local ErrorBoundary still renders the
-                  i18n-aware fallback UI so the user sees something useful. */}
-              <SentryErrorBoundary>
-                <ErrorBoundary>
-                  <StatusBar style="auto" />
-                  <RootNavigator />
-                </ErrorBoundary>
-              </SentryErrorBoundary>
+              {/* Single ErrorBoundary — its componentDidCatch forwards every
+                  caught error to Sentry via `captureException`, which is a
+                  no-op in dev. Wrapping it in a separate SentryErrorBoundary
+                  would have been redundant: the inner boundary already swallows
+                  errors via `getDerivedStateFromError`, so the outer one would
+                  never receive them. */}
+              <ErrorBoundary>
+                <StatusBar style="auto" />
+                <RootNavigator />
+              </ErrorBoundary>
             </AppLockProvider>
           </AuthProvider>
         </ThemeProvider>
