@@ -1,50 +1,137 @@
-# Welcome to your Expo app 👋
+# Facil — Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile client for **Facil**, the Equatorial Guinea government digital services platform. React Native + Expo SDK 54, consuming the FastAPI backend at `packages/backend/`.
 
-## Get started
+> Part of the `taxasge` monorepo. See repository root `CLAUDE.md` for project-wide rules.
 
-1. Install dependencies
+## Stack
 
-   ```bash
-   npm install
-   ```
+| Concern | Choice |
+|---------|--------|
+| Runtime | React Native 0.81 (Hermes) on iOS + Android |
+| Framework | Expo SDK 54 (managed workflow with custom dev clients) |
+| Routing | Expo Router (file-based, `src/app/**`) |
+| State | TanStack Query (server) + Zustand (client) + MMKV (persisted) |
+| UI | React Native Paper (Material Design 3) |
+| Forms | React Hook Form + Zod |
+| i18n | i18next (es / fr / en) |
+| HTTP | Axios with interceptors (`src/core/api/client.ts`) |
+| Tokens | `expo-secure-store` (refresh) + MMKV (access) |
+| Push | `expo-notifications` for permissions/token retrieval; backend talks **FCM/APNs directly** (not Expo Push Service) |
 
-2. Start the app
+## Build & Deploy Pipelines
 
-   ```bash
-   npx expo start
-   ```
+The mobile app uses **two independent pipelines** that work together:
 
-In the output, you'll find options to open the app in a
+### 1. EAS Build (artefact production)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Cloud builds for native binaries (APK, AAB, IPA). Profiles in `eas.json`.
 
 ```bash
-npm run reset-project
+npm run build:dev       # Internal dev client (.apk / .ipa for testing)
+npm run build:preview   # Stakeholder preview build
+npm run build:prod      # Store-ready release
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**Never** run `expo prebuild` and build natively unless debugging a native module locally — EAS handles iOS/Android toolchains in the cloud.
 
-## Learn more
+### 2. GitHub Actions (CI quality gates + EAS triggering)
 
-To learn more about developing your project with Expo, look at the following resources:
+Runs on every push / PR to validate the codebase before EAS spends build minutes. Workflows live in `.github/workflows/` (mobile-specific jobs):
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **Type check** — `npm run type-check` (must be 0 errors).
+- **Lint** — `npm run lint` (max-warnings 100).
+- **OpenAPI drift** — regenerate `openapi-types.ts` against staging and fail if it diverges from the committed file.
+- **EAS dispatch** — on a release tag, trigger `eas build` via [`expo/expo-github-action`](https://github.com/expo/expo-github-action).
 
-## Join the community
+> **Rule** (CLAUDE.md): no manual cloud builds for the backend (`gcloud`). Mobile follows the same spirit — push to remote, let GitHub Actions + EAS run the pipeline. Local `eas build` invocations are reserved for ad-hoc preview builds.
 
-Join our community of developers creating universal apps.
+## Local Development
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+# From repo root
+npm install --legacy-peer-deps
+
+# Then in this package
+cd packages/mobile
+npm start                  # Expo dev server (Metro)
+npm run android            # Build & run on connected Android device
+npm run ios                # Build & run on iOS simulator (macOS only)
+```
+
+## API & Backend Contract
+
+Mobile consumes the FastAPI backend. The contract is enforced at three layers:
+
+| Layer | File | Purpose |
+|-------|------|---------|
+| Paths | `src/core/api/endpoints.ts` | Single Source of Truth for every URL the app calls. Aligned with `packages/backend/app/main.py`. **Never hardcode paths in modules** — always import from `API_ENDPOINTS`. |
+| Types (raw) | `src/core/api/openapi-types.ts` | Auto-generated from the backend's `/openapi.json`. **Do not edit by hand.** |
+| Types (curated) | `src/core/api/api-types.ts` | Readable aliases over `openapi-types.ts` for the schemas mobile actually uses. |
+
+### Regenerating types
+
+```bash
+npm run types:gen          # From staging (default — recommended for CI/PR work)
+npm run types:gen-local    # From a local backend (uvicorn on :8000)
+```
+
+Both commands fetch `openapi.json` and overwrite `src/core/api/openapi-types.ts`. Commit the regenerated file alongside any backend schema change to keep the mobile contract in sync.
+
+### Adding a new endpoint
+
+1. Add the path to `endpoints.ts` under the matching backend module section, with a comment referencing the router file (e.g. `app/modules/auth/api/auth_routes.py`).
+2. If the backend exposes a Pydantic response model, regenerate `openapi-types.ts` and add a curated alias in `api-types.ts`.
+3. Use the path **only** via `API_ENDPOINTS.<module>.<key>` in the service file. No `/api/v1/...` literals in module code.
+
+## Project Structure
+
+```
+packages/mobile/
+├── eas.json                      # EAS Build profiles
+├── app.json                      # Expo config (icons, splash, plugins)
+├── src/
+│   ├── app/                      # Expo Router file-based routing
+│   ├── core/
+│   │   ├── api/                  # client, endpoints, openapi-types, api-types
+│   │   ├── auth/                 # auth provider, token storage
+│   │   ├── i18n/                 # i18next setup + translations
+│   │   └── ui/                   # theme, navigation primitives
+│   ├── modules/                  # Feature modules (one per domain)
+│   │   ├── auth/
+│   │   ├── bundle-workflow/
+│   │   ├── chatbot/
+│   │   ├── dashboard/
+│   │   ├── directory/
+│   │   ├── fiscal-services/
+│   │   ├── profile/
+│   │   ├── service-requests/
+│   │   └── wizard/
+│   └── components/               # Cross-module shared UI
+└── assets/                       # Fonts, images, lottie animations
+```
+
+Each module follows the convention `components/ + hooks/ + services/ + types/`.
+
+## Quality Commands
+
+```bash
+npm run type-check    # tsc --noEmit (0 errors expected)
+npm run lint          # expo lint
+npm test              # When test suite is added
+```
+
+## Push Notifications (P1 architecture)
+
+The app uses **native FCM (Android) and APNs (iOS) tokens**, not Expo Push Service:
+
+- `expo-notifications` is used for **permissions UI** and to obtain the **native device token** via `getDevicePushTokenAsync()`.
+- The token is registered via `POST /users/profile/device-token` and stored server-side.
+- The backend (`packages/backend/`) calls FCM/APNs **directly** using `firebase-admin` and the APNs HTTP/2 API.
+- This avoids the Expo Push proxy (one less external dependency) and supports data-only payloads for silent deep-link delivery.
+
+## Documentation
+
+- Repository root: [`CLAUDE.md`](../../CLAUDE.md) — project-wide rules and architecture.
+- Phase plans: `.claude/plans/MOBILE_USER_PHASE_*.md`.
+- Backend contract: regenerate via `npm run types:gen`, source = `app/main.py`.
