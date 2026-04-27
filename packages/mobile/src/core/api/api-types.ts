@@ -86,3 +86,20 @@ export type PaymentCreate = Schemas['PaymentCreate'];
 export type ChatRequest = Schemas['ChatRequest'];
 export type ChatResponse = Schemas['ChatResponse'];
 export type ChatHistoryMessage = Schemas['ChatHistoryMessage'];
+
+// ---------------------------------------------------------------------------
+// Document Vault (user_documents)
+// ---------------------------------------------------------------------------
+export type UserDocumentResponse = Schemas['UserDocumentResponse'];
+export type UserDocumentListItem = Schemas['UserDocumentListItem'];
+export type UserDocumentListResponse = Schemas['UserDocumentListResponse'];
+export type UserDocumentStats = Schemas['UserDocumentStats'];
+export type UserDocumentUpdate = Schemas['UserDocumentUpdate'];
+export type UserDocumentBulkAction = Schemas['UserDocumentBulkAction'];
+export type UploadResult = Schemas['UploadResult'];
+export type HashCheckResponse = Schemas['HashCheckResponse'];
+export type AlertResponse = Schemas['AlertResponse'];
+export type GeneratedDocumentResponse = Schemas['GeneratedDocumentResponse'];
+export type ReadinessResult = Schemas['ReadinessResult'];
+export type ReadinessItem = Schemas['ReadinessItem'];
+export type UseVaultDocumentRequest = Schemas['UseVaultDocumentRequest'];
