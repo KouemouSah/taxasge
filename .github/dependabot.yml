@@ -31,6 +31,24 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 3
+    # Packages whose versions are pinned by the Expo SDK. Bumping them
+    # independently breaks peer dependencies (e.g. react-native-reanimated
+    # <-> react-native-worklets, react <-> react-native) and floods CI with
+    # un-mergeable PRs. Keep them in lockstep with Expo SDK upgrades.
+    ignore:
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@react-native-community/*"
+      - dependency-name: "@react-navigation/*"
+      - dependency-name: "@expo/*"
+      # ESLint 10 ships a flat-config-only API that Expo's preset doesn't
+      # support yet; pin until expo lint catches up.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/packages/inspector"
@@ -41,6 +59,19 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 3
+    # Same Expo SDK lockstep policy as packages/mobile.
+    ignore:
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@react-native-community/*"
+      - dependency-name: "@react-navigation/*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

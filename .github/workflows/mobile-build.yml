@@ -69,7 +69,7 @@ jobs:
           cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
 
       - name: Install dependencies
-        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline
+        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline --legacy-peer-deps
 
       - name: TypeScript check
         run: cd ${{ env.WORKING_DIR }} && npx tsc --noEmit --pretty
@@ -123,7 +123,7 @@ jobs:
             gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline
+        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline --legacy-peer-deps
 
       - name: Expo prebuild
         run: cd ${{ env.WORKING_DIR }} && npx expo prebuild --platform android --clean --no-install
@@ -162,12 +162,17 @@ jobs:
             GRADLE_PROPS="$GRADLE_PROPS -PFACIL_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
           fi
 
+          # build.gradle hardcodes `shrinkResources true` for release; that
+          # only works when minify is also on, so we must pass
+          # enableMinifyInReleaseBuilds=true here. Without it Gradle aborts
+          # with "Removing unused resources requires unused code shrinking
+          # to be turned on" (regression from commit 310c3be).
           ./gradlew ${{ matrix.gradle_task }} \
             --no-daemon \
             --build-cache \
             --parallel \
             --max-workers=2 \
-            -Pandroid.enableShrinkResourcesInReleaseBuilds=true \
+            -Pandroid.enableMinifyInReleaseBuilds=true \
             $GRADLE_PROPS
 
       - name: Verify output
