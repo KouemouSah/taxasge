@@ -25,6 +25,14 @@ import { AuthProvider } from '@core/auth/auth-provider';
 import { useAuth } from '@core/hooks/use-auth';
 import { ErrorBoundary } from '@components/ui/error-boundary';
 import { AppLockProvider } from '@core/security/app-lock';
+import {
+  initNotifications,
+  getInitialNotificationResponse,
+  routeFromPayload,
+  type NotificationDataPayload,
+} from '@core/notifications';
+import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
+import { useNotifications } from '@modules/notifications/hooks/use-notifications';
 import '@core/i18n';
 
 // Suppress known React 19 + New Architecture internal warnings
@@ -38,6 +46,10 @@ LogBox.ignoreLogs([
 
 // Keep splash screen visible while providers initialize
 SplashScreen.preventAutoHideAsync();
+
+// Configure notification foreground display + Android channels.
+// Idempotent — safe to fire-and-forget at module load.
+void initNotifications();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,17 +94,41 @@ function usePrefetchCatalogs() {
  * Hides the splash screen only after auth bootstrap finishes.
  */
 function RootNavigator() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   // Subscribe to language changes so the entire tree re-renders when i18n locale switches
   useTranslation();
   // Prefetch catalog data in background
   usePrefetchCatalogs();
+  // Register device token with the backend after auth bootstrap.
+  // No-ops while unauthenticated; idempotent on repeat calls.
+  useDeviceTokenRegistration();
+  // Subscribe to incoming pushes (foreground display + tap routing + MMKV).
+  useNotifications();
 
   useEffect(() => {
     if (!isLoading) {
       SplashScreen.hideAsync();
     }
   }, [isLoading]);
+
+  // Cold-start deep link: if the app was launched by tapping a push, route to
+  // the target only AFTER auth bootstrap finishes — earlier and we'd land on
+  // /index which would re-redirect away.
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    let cancelled = false;
+    void (async () => {
+      const response = await getInitialNotificationResponse();
+      if (cancelled || !response) return;
+      const data = response.notification.request.content.data as
+        | NotificationDataPayload
+        | undefined;
+      routeFromPayload(data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, isAuthenticated]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -107,6 +143,7 @@ function RootNavigator() {
       />
       <Stack.Screen name="settings" />
       <Stack.Screen name="support" />
+      <Stack.Screen name="notifications" />
       <Stack.Screen name="bundle-wizard" />
       <Stack.Screen name="calculator/index" />
       <Stack.Screen name="calculator/history" />

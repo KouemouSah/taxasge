@@ -36,6 +36,7 @@ import { RecentPaymentsList } from '@modules/dashboard/components/recent-payment
 import { NotificationsList } from '@modules/dashboard/components/notifications-list';
 import { AppointmentCard } from '@modules/dashboard/components/appointment-card';
 import { QuickActions } from '@modules/dashboard/components/quick-actions';
+import { NotificationBellButton } from '@modules/notifications/components/notification-bell-button';
 
 const APP_LOGO = require('../../../assets/images/logo_hd.png');
 
@@ -636,7 +637,10 @@ function AuthDashboard() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* ═══ APP HEADER (dashboard only) ═══ */}
       <View style={[styles.appHeader, { backgroundColor: colors.surface }]}>
-        <Image source={APP_LOGO} style={styles.headerLogo} resizeMode="contain" />
+        <View style={styles.headerRow}>
+          <Image source={APP_LOGO} style={styles.headerLogo} resizeMode="contain" />
+          <NotificationBellButton color={colors.onSurface} />
+        </View>
         <View style={[styles.headerLine, { backgroundColor: colors.primary }]} />
       </View>
 
@@ -723,7 +727,8 @@ const styles = StyleSheet.create({
 
   // App header
   appHeader: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 },
-  headerLogo: { height: 28, width: 100, alignSelf: 'flex-start' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLogo: { height: 28, width: 100 },
   headerLine: { height: 1.5, marginTop: 8 },
 
   // Compact stats
