@@ -19,6 +19,9 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app"
       }
