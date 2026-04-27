@@ -75,7 +75,11 @@ jobs:
         run: cd ${{ env.WORKING_DIR }} && npx tsc --noEmit --pretty
 
       - name: ESLint
-        run: cd ${{ env.WORKING_DIR }} && npx eslint src --ext .ts,.tsx --max-warnings=50 --quiet
+        # Threshold aligned with the project memory #35 contract (100 warnings cap).
+        # `--quiet` filters output to errors only; the cap still drives the exit code.
+        # `continue-on-error: true` keeps the build moving when warnings creep up,
+        # but failing strictly on errors is enforced by the cap.
+        run: cd ${{ env.WORKING_DIR }} && npx eslint src --ext .ts,.tsx --max-warnings=100
         continue-on-error: true  # Don't block build on lint warnings
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -100,6 +104,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Sanitize ref_name for artifact naming. PR triggers expose `ref_name`
+      # as `<NUMBER>/merge` (with a slash), which GitHub Actions rejects in
+      # artifact names. Replace any character outside [A-Za-z0-9._-] with `-`
+      # so push, tag and PR triggers all produce valid names.
+      - name: Compute safe ref slug
+        id: slug
+        shell: bash
+        run: |
+          REF="${GITHUB_REF_NAME//[^A-Za-z0-9._-]/-}"
+          # Collapse repeats and trim leading/trailing dashes for cosmetics.
+          REF=$(echo "$REF" | sed -E 's/-+/-/g; s/^-//; s/-$//')
+          # Fall back to "ref" if everything got stripped (shouldn't happen).
+          [ -z "$REF" ] && REF="ref"
+          echo "ref_safe=$REF" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -210,7 +229,7 @@ jobs:
         if: matrix.format == 'apk'
         uses: actions/upload-artifact@v4
         with:
-          name: facil-apk-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-apk-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: |
             ${{ env.WORKING_DIR }}/android/${{ matrix.output_path }}/*-release*.apk
           retention-days: 30
@@ -220,7 +239,7 @@ jobs:
         if: matrix.format == 'aab'
         uses: actions/upload-artifact@v4
         with:
-          name: facil-aab-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-aab-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: ${{ env.WORKING_DIR }}/android/${{ matrix.output_path }}/*.aab
           retention-days: 90
           if-no-files-found: warn
@@ -234,17 +253,26 @@ jobs:
     needs: build
     if: always() && needs.build.result == 'success'
     steps:
+      - name: Compute safe ref slug
+        id: slug
+        shell: bash
+        run: |
+          REF="${GITHUB_REF_NAME//[^A-Za-z0-9._-]/-}"
+          REF=$(echo "$REF" | sed -E 's/-+/-/g; s/^-//; s/-$//')
+          [ -z "$REF" ] && REF="ref"
+          echo "ref_safe=$REF" >> "$GITHUB_OUTPUT"
+
       - name: Download APK artifacts
         uses: actions/download-artifact@v4
         with:
-          name: facil-apk-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-apk-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: apk-output
         continue-on-error: true
 
       - name: Download AAB artifacts
         uses: actions/download-artifact@v4
         with:
-          name: facil-aab-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-aab-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: aab-output
         continue-on-error: true
 
@@ -298,16 +326,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute safe ref slug
+        id: slug
+        shell: bash
+        run: |
+          REF="${GITHUB_REF_NAME//[^A-Za-z0-9._-]/-}"
+          REF=$(echo "$REF" | sed -E 's/-+/-/g; s/^-//; s/-$//')
+          [ -z "$REF" ] && REF="ref"
+          echo "ref_safe=$REF" >> "$GITHUB_OUTPUT"
+
       - name: Download APK
         uses: actions/download-artifact@v4
         with:
-          name: facil-apk-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-apk-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: release-apk
 
       - name: Download AAB
         uses: actions/download-artifact@v4
         with:
-          name: facil-aab-${{ github.ref_name }}-${{ github.sha }}
+          name: facil-aab-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: release-aab
 
       - name: Create Release
