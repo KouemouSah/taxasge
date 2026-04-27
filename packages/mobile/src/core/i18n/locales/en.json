@@ -219,6 +219,7 @@
     "quickActions": {
       "newRequest": "New Request",
       "myRequests": "My Requests",
+      "myDocuments": "My Documents",
       "support": "Support"
     },
     "noRequests": "You don't have any requests yet",
@@ -474,6 +475,103 @@
       "openSettings": "Tap to open system settings"
     },
     "markRead": "Mark as read"
+  },
+  "vault": {
+    "title": "My Documents",
+    "tabs": {
+      "uploads": "My files",
+      "generated": "Generated",
+      "alerts": "Alerts"
+    },
+    "search": {
+      "placeholder": "Search the vault…"
+    },
+    "filters": {
+      "all": "All",
+      "personal": "Personal",
+      "wizard": "From requests",
+      "generated": "Generated",
+      "expiring": "Expiring",
+      "expired": "Expired"
+    },
+    "quota": {
+      "label": "{{used}} of {{total}} MB"
+    },
+    "empty": {
+      "uploads": {
+        "title": "No documents yet",
+        "body": "Upload your IDs, contracts and licences so they're always one tap away.",
+        "cta": "Add a document"
+      },
+      "generated": {
+        "title": "No generated documents",
+        "body": "Receipts and certificates issued by the platform will show up here."
+      },
+      "alerts": {
+        "title": "No alerts",
+        "body": "We'll notify you when a document is about to expire."
+      }
+    },
+    "alerts": {
+      "fallbackMessage": "Tap to see details"
+    },
+    "detail": {
+      "loading": "Loading document…",
+      "loadError": "Could not load the document",
+      "processing": "Processing document…",
+      "openFailed": "Could not open the file",
+      "archived": "Document archived",
+      "deleted": "Document deleted",
+      "actions": {
+        "open": "Open",
+        "archive": "Archive",
+        "delete": "Delete",
+        "reclassify": "Reclassify"
+      },
+      "sections": {
+        "metadata": "Information",
+        "extraction": "Extracted data",
+        "versions": "Versions"
+      },
+      "fields": {
+        "documentType": "Document type",
+        "holderName": "Holder",
+        "documentNumber": "Number",
+        "expiryDate": "Expires",
+        "fileSize": "Size",
+        "createdAt": "Uploaded"
+      }
+    },
+    "upload": {
+      "title": "Upload a document",
+      "uploading": "Uploading…",
+      "success": "Document added",
+      "picker": {
+        "camera": "Camera",
+        "gallery": "Gallery",
+        "document": "Files"
+      },
+      "fields": {
+        "documentTypeHint": "Type (optional)",
+        "documentTypeHintHelp": "E.g. dip, passport, rental_contract",
+        "notes": "Notes (optional)"
+      },
+      "actions": {
+        "upload": "Add to vault"
+      },
+      "duplicate": {
+        "title": "Duplicate document",
+        "body": "This file already exists in your vault. Do you want to replace the previous copy?",
+        "replace": "Replace"
+      }
+    },
+    "errors": {
+      "mime_invalid": "Only PDF, JPG, PNG and WebP files are accepted.",
+      "file_too_large": "File exceeds the 10 MB limit.",
+      "quota_exceeded": "Your vault is full. Remove documents to continue.",
+      "rate_limit": "Too many uploads. Try again in a few minutes.",
+      "unknown": "An unexpected error occurred."
+    }
   },
   "detail": {
     "documents": "Documents",

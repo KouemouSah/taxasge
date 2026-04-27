@@ -219,6 +219,7 @@
     "quickActions": {
       "newRequest": "Nueva Solicitud",
       "myRequests": "Mis Solicitudes",
+      "myDocuments": "Mis Documentos",
       "support": "Soporte"
     },
     "noRequests": "Aún no tienes solicitudes",
@@ -474,6 +475,103 @@
       "openSettings": "Toca para abrir los ajustes del sistema"
     },
     "markRead": "Marcar como leída"
+  },
+  "vault": {
+    "title": "Mis Documentos",
+    "tabs": {
+      "uploads": "Mis archivos",
+      "generated": "Generados",
+      "alerts": "Alertas"
+    },
+    "search": {
+      "placeholder": "Buscar en el coffre…"
+    },
+    "filters": {
+      "all": "Todos",
+      "personal": "Personales",
+      "wizard": "Trámites",
+      "generated": "Generados",
+      "expiring": "Expiran",
+      "expired": "Vencidos"
+    },
+    "quota": {
+      "label": "{{used}} de {{total}} MB"
+    },
+    "empty": {
+      "uploads": {
+        "title": "Sin documentos",
+        "body": "Sube tus identificaciones, contratos o licencias para tenerlos siempre a mano.",
+        "cta": "Añadir documento"
+      },
+      "generated": {
+        "title": "Sin documentos generados",
+        "body": "Aquí aparecerán los recibos y certificados emitidos por la plataforma."
+      },
+      "alerts": {
+        "title": "Sin alertas",
+        "body": "Te avisaremos cuando un documento esté por vencer."
+      }
+    },
+    "alerts": {
+      "fallbackMessage": "Toca para ver el detalle"
+    },
+    "detail": {
+      "loading": "Cargando documento…",
+      "loadError": "No se pudo cargar el documento",
+      "processing": "Procesando documento…",
+      "openFailed": "No se pudo abrir el archivo",
+      "archived": "Documento archivado",
+      "deleted": "Documento eliminado",
+      "actions": {
+        "open": "Abrir",
+        "archive": "Archivar",
+        "delete": "Eliminar",
+        "reclassify": "Reclasificar"
+      },
+      "sections": {
+        "metadata": "Información",
+        "extraction": "Datos extraídos",
+        "versions": "Versiones"
+      },
+      "fields": {
+        "documentType": "Tipo de documento",
+        "holderName": "Titular",
+        "documentNumber": "Número",
+        "expiryDate": "Vence",
+        "fileSize": "Tamaño",
+        "createdAt": "Subido"
+      }
+    },
+    "upload": {
+      "title": "Subir documento",
+      "uploading": "Subiendo…",
+      "success": "Documento subido",
+      "picker": {
+        "camera": "Cámara",
+        "gallery": "Galería",
+        "document": "Archivos"
+      },
+      "fields": {
+        "documentTypeHint": "Tipo (opcional)",
+        "documentTypeHintHelp": "Ej. dip, pasaporte, contrato_alquiler",
+        "notes": "Notas (opcional)"
+      },
+      "actions": {
+        "upload": "Subir al coffre"
+      },
+      "duplicate": {
+        "title": "Documento duplicado",
+        "body": "Este archivo ya existe en tu coffre. ¿Quieres reemplazar la copia anterior?",
+        "replace": "Reemplazar"
+      }
+    },
+    "errors": {
+      "mime_invalid": "Solo aceptamos PDF, JPG, PNG o WebP.",
+      "file_too_large": "El archivo supera los 10 MB.",
+      "quota_exceeded": "Has llenado tu coffre. Borra documentos antes de continuar.",
+      "rate_limit": "Demasiadas subidas. Inténtalo en unos minutos.",
+      "unknown": "Ha ocurrido un error inesperado."
+    }
   },
   "detail": {
     "documents": "Documentos",
