@@ -682,7 +682,10 @@ const s = StyleSheet.create({
   titleBig: { fontSize: 100, fontWeight: '900', letterSpacing: 4, lineHeight: 106, marginBottom: 6, marginLeft: -4 },
   titleUniform: { fontSize: 72, fontWeight: '900', letterSpacing: 2, lineHeight: 80 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
-  desc: { fontSize: 18, lineHeight: 28, color: '#555' },
+  // Bottom margin separates the description ("Lancez votre première demande.")
+  // from the absolute-positioned "Explorer sans compte" CTA below. Without it
+  // the paragraph and the button visually merge — see debug/tesoro/onboard.jpg.
+  desc: { fontSize: 18, lineHeight: 28, color: '#555', marginBottom: 28 },
 
   // Controls
   controls: {
