@@ -111,6 +111,8 @@ gcloud-config/
 # Claude Code (keep agent files but ignore session data)
 .claude/.agent/Sessions/
 .claude/settings.local.json
+.claude/worktrees/
+.claude/scheduled_tasks.lock
 .mcp.json
 
 # Documentation drafts (keep final docs only)
