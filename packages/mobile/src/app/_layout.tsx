@@ -114,6 +114,17 @@ const dehydrateOptions = {
  * Prefetch slow catalog data in background AFTER splash is hidden.
  * Delayed 3s to avoid competing with auth bootstrap for network/CPU.
  * Non-blocking, errors silently ignored.
+ *
+ * Why we prefetch instead of letting each screen fetch on mount:
+ * users on cellular often pay the round-trip cost the first time they open
+ * /services or /companies. Fetching at boot when bandwidth is already in
+ * use (auth, dashboard) hides the latency behind the first paint and lands
+ * the data in the persisted React Query cache for the rest of the session.
+ *
+ * The query keys here MUST match the ones used by the consumer hooks
+ * (`useMinistries`, `useCategories`, `useBundleCommerceTypes`, …) — that
+ * is what makes React Query reuse this prefetch instead of triggering a
+ * second network request when the user navigates to the tab.
  */
 function usePrefetchCatalogs() {
   useEffect(() => {
@@ -121,16 +132,38 @@ function usePrefetchCatalogs() {
       const baseUrl = process.env.EXPO_PUBLIC_API_URL;
       if (!baseUrl) return;
       const api = `${baseUrl}/api/v1`;
-      // Fire and forget — no await, no blocking
+      const lang = 'es'; // matches default in useMinistries()/useCategories()
+
+      // Slow catalog (Service tab) — main offender on m9.jpg infinite spinner.
+      // Reference data — 24 h stale (matches services-hooks.ts CATALOG_STALE_TIME).
+      queryClient.prefetchQuery({
+        queryKey: ['fiscal-services', 'ministries', lang],
+        queryFn: () =>
+          fetch(`${api}/fiscal-services/ministries?language=${lang}`)
+            .then((r) => r.json())
+            .catch(() => []),
+        staleTime: 24 * 60 * 60_000,
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['fiscal-services', 'categories', lang],
+        queryFn: () =>
+          fetch(`${api}/fiscal-services/categories?language=${lang}`)
+            .then((r) => r.json())
+            .catch(() => []),
+        staleTime: 24 * 60 * 60_000,
+      });
+
+      // Bundle reference (commerce types / zones) — used by /companies +
+      // bundle wizard.
       queryClient.prefetchQuery({
         queryKey: ['bundles', 'commerce-types'],
         queryFn: () => fetch(`${api}/service-bundles/commerce-types`).then(r => r.json()).catch(() => []),
-        staleTime: 60 * 60_000,
+        staleTime: 24 * 60 * 60_000,
       });
       queryClient.prefetchQuery({
         queryKey: ['bundles', 'zones'],
         queryFn: () => fetch(`${api}/service-bundles/zones`).then(r => r.json()).catch(() => []),
-        staleTime: 60 * 60_000,
+        staleTime: 24 * 60 * 60_000,
       });
     }, 3000); // Delay 3s after mount — let auth bootstrap finish first
     return () => clearTimeout(timer);

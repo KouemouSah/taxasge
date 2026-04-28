@@ -1,8 +1,31 @@
 /**
  * Fiscal Services React Query Hooks
+ *
+ * Tuning rationale (slow-network friendliness)
+ * --------------------------------------------
+ * Equatorial Guinea has a non-trivial number of users on 3G / patchy LTE.
+ * The catalog data here (ministries / categories / popular services) is
+ * effectively reference data — it changes a few times per year, not per
+ * request. We push the staleTime to 24 h so that as long as the user has
+ * something in the persisted React Query cache (configured in
+ * app/_layout.tsx with a 24 h maxAge / gcTime) the screen renders
+ * **instantly** on cold start, and we only refetch in background when
+ * stale. Combined with `placeholderData: keepPreviousData`, the UI never
+ * shows a spinner once the user has run the app once on Wi-Fi.
+ *
+ * Mobile-data degraded UX flow:
+ *   - cold start, has persisted cache  -> renders cached list, refetches silently
+ *   - cold start, no persisted cache   -> renders ActivityIndicator + retry
+ *                                          fallback (cf. (tabs)/services/index.tsx)
+ *   - cache stale (>24 h) on cellular  -> still serves the cached list while
+ *                                          refetching in background
+ *
+ * If the catalog truly needs to be fresher (admin update window), call
+ * `queryClient.invalidateQueries({ queryKey: ['fiscal-services'] })` from
+ * the admin surface to force a refetch.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as servicesApi from './services-api';
 import { logger } from '@core/logging/logger';
@@ -17,40 +40,47 @@ export const SERVICES_QUERY_KEYS = {
   search: (q: string) => ['fiscal-services', 'search', q] as const,
 } as const;
 
-/** Ministries list — cached 1 hour */
+/** 24 hours — see file-level rationale. */
+const CATALOG_STALE_TIME = 24 * 60 * 60 * 1000;
+
+/** Ministries list — reference data, cached 24 h, served-while-revalidate. */
 export function useMinistries(language = 'es') {
   return useQuery({
     queryKey: [...SERVICES_QUERY_KEYS.ministries, language],
     queryFn: () => servicesApi.getMinistries(language),
-    staleTime: 60 * 60_000,
+    staleTime: CATALOG_STALE_TIME,
+    placeholderData: keepPreviousData,
   });
 }
 
-/** Categories list — cached 1 hour */
+/** Categories list — reference data, cached 24 h. */
 export function useCategories(language = 'es') {
   return useQuery({
     queryKey: [...SERVICES_QUERY_KEYS.categories, language],
     queryFn: () => servicesApi.getCategories(language),
-    staleTime: 60 * 60_000,
+    staleTime: CATALOG_STALE_TIME,
+    placeholderData: keepPreviousData,
   });
 }
 
-/** Popular services — cached 1 hour */
+/** Popular services — refresh more often than ministries (admin-curated). */
 export function usePopularServices(limit = 10) {
   return useQuery({
     queryKey: [...SERVICES_QUERY_KEYS.popular, limit],
     queryFn: () => servicesApi.getPopularServices(limit),
-    staleTime: 60 * 60_000,
+    staleTime: 6 * 60 * 60 * 1000, // 6 h — popular ranking shifts during the day
+    placeholderData: keepPreviousData,
   });
 }
 
-/** Service detail — cached 1 hour */
+/** Service detail — long stale, instant re-open. */
 export function useServiceDetail(id: number, language = 'es', enabled = true) {
   return useQuery({
     queryKey: [...SERVICES_QUERY_KEYS.detail(id), language],
     queryFn: () => servicesApi.getServiceDetail(id, language),
     enabled: enabled && id > 0,
-    staleTime: 60 * 60_000,
+    staleTime: CATALOG_STALE_TIME,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -12,6 +12,7 @@ import uvicorn
 # Note: functions_framework removed in v1.1.8 - Cloud Run uses uvicorn directly
 from fastapi import FastAPI, Request, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
@@ -464,6 +465,14 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_headers)
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Compress JSON / text responses ≥ 1 KiB. The fiscal-services catalog
+# endpoints (ministries, categories, search) routinely return 30-80 KiB of
+# UTF-8 JSON; gzipping shrinks that 5-7x on the wire which is the single
+# biggest leverage point for users on patchy 3G in Equatorial Guinea
+# (cf. user feedback on slow Services tab loading on cellular).
+# Threshold 1024 avoids the CPU overhead on tiny health-check responses.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # CORS middleware - Aligned with Cloud Run deployments
 # Note: Firebase Hosting staging channels use pattern: https://PROJECT--CHANNEL-ID.web.app
