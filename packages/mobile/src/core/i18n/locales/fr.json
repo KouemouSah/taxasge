@@ -268,6 +268,28 @@
     "title": "Mes demandes",
     "new": "Nouvelle demande",
     "detail": "Détail de la demande",
+    "bundle": {
+      "total": "Total",
+      "paid": "Payé",
+      "remaining": "Restant",
+      "paidObligations_one": "{{count}} obligation payée",
+      "paidObligations_other": "{{count}} obligations payées",
+      "pendingObligations_one": "{{count}} obligation en attente",
+      "pendingObligations_other": "{{count}} obligations en attente",
+      "paymentStatus": {
+        "completed": "Payé",
+        "validated": "Validé",
+        "submitted": "Soumis",
+        "pending_agent_review": "Examen en attente",
+        "auto_processing": "Traitement",
+        "locked_by_agent": "En examen",
+        "approved": "Approuvé",
+        "rejected": "Rejeté",
+        "failed": "Échec",
+        "cancelled": "Annulé",
+        "refunded": "Remboursé"
+      }
+    },
     "status": {
       "draft": "Brouillon",
       "submitted": "Soumise",

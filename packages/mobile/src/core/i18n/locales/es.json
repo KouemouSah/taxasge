@@ -268,6 +268,28 @@
     "title": "Mis Solicitudes",
     "new": "Nueva Solicitud",
     "detail": "Detalle de solicitud",
+    "bundle": {
+      "total": "Total",
+      "paid": "Pagado",
+      "remaining": "Restante",
+      "paidObligations_one": "{{count}} obligación pagada",
+      "paidObligations_other": "{{count}} obligaciones pagadas",
+      "pendingObligations_one": "{{count}} obligación pendiente",
+      "pendingObligations_other": "{{count}} obligaciones pendientes",
+      "paymentStatus": {
+        "completed": "Pagado",
+        "validated": "Validado",
+        "submitted": "Enviado",
+        "pending_agent_review": "Pendiente revisión",
+        "auto_processing": "Procesando",
+        "locked_by_agent": "En revisión",
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
+        "failed": "Falló",
+        "cancelled": "Cancelado",
+        "refunded": "Reembolsado"
+      }
+    },
     "status": {
       "draft": "Borrador",
       "submitted": "Enviada",

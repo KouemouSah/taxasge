@@ -82,6 +82,45 @@ export interface AppointmentInfo {
   location: string;
 }
 
+// ---------------------------------------------------------------------------
+// Bundle (commercial license) detail
+// Matches the `bundle_details` payload built by
+// service_requests/api/routes.py:1785 when workflow_code === 'BUNDLE_PAYMENT'.
+// ---------------------------------------------------------------------------
+
+export interface BundlePaymentSplit {
+  /** Backend code: AYUNTAMIENTO, CAMARA_COMERCIO, MIN_HACIENDA, etc. */
+  entity_code: string | null;
+  entity_name: string | null;
+  amount: number;
+  /** payment_workflow_status enum value (e.g. 'completed', 'submitted', 'pending_agent_review'). */
+  status: string | null;
+  payment_reference: string | null;
+  receipt_number: string | null;
+}
+
+export interface BundleObligationDetail {
+  service_name: string;
+  amount: number;
+  /** license_obligation status (e.g. 'pending', 'paid', 'overdue'). */
+  status: string;
+  fee_type: string;
+}
+
+export interface BundleDetails {
+  company_name: string | null;
+  registration_number: string | null;
+  /** commercial_licenses.status — 'open', 'partial', 'complete', 'overdue'. */
+  license_status: string | null;
+  certificate_url: string | null;
+  certificate_number: string | null;
+  company_id: string | null;
+  splits: BundlePaymentSplit[];
+  obligations: BundleObligationDetail[];
+  /** Sum of split amounts — used as the "Total" KPI. */
+  total_amount: number;
+}
+
 export interface DetailViewResponse {
   request: ServiceRequestListItem & {
     form_data?: Record<string, unknown>;
@@ -104,6 +143,8 @@ export interface DetailViewResponse {
   documents: DocumentInfo[];
   workflow_name_es: string;
   solicitud_type_display?: string;
+  /** Present only when `request.workflow_code === 'BUNDLE_PAYMENT'`. */
+  bundle_details?: BundleDetails | null;
 }
 
 // ---------------------------------------------------------------------------

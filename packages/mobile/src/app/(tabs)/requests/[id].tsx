@@ -43,6 +43,7 @@ import { getAccessToken } from '@core/auth/auth-storage';
 import { API_ENDPOINTS } from '@core/api/endpoints';
 import { useRequestDetailView } from '@modules/service-requests';
 import { RequestStatusBadge } from '@modules/service-requests/components/request-status-badge';
+import { BundleDetailSection } from '@modules/service-requests/components/bundle-detail-section';
 import type { DataSection } from '@modules/service-requests';
 import { RetryPaymentSheet } from '@modules/payments';
 
@@ -210,7 +211,9 @@ export default function RequestDetailScreen() {
     request, stepper_phases, current_phase_index, photo_url,
     tariff, appointment, documents, workflow_name_es,
     solicitud_type_display, payment_status, payment_reference, receipt_number,
+    bundle_details,
   } = data;
+  const isBundle = request.workflow_code === 'BUNDLE_PAYMENT' && !!bundle_details;
 
   // Retry CTA visible when a payment attempt failed/was cancelled, or when the
   // SR is sitting in `pending_payment` (typical after the first wizard pass
@@ -379,8 +382,20 @@ export default function RequestDetailScreen() {
           </View>
         )}
 
+        {/* ═══ BUNDLE DETAIL (parity with web /service-requests/[id]) ═══
+            Three-card KPI row + per-entity split cards + paid/pending
+            obligation lists. Replaces the generic "summary" block for
+            BUNDLE_PAYMENT requests where the breakdown is the actual
+            content. See debug/tesoro/s.png. */}
+        {isBundle && bundle_details ? (
+          <>
+            <Divider />
+            <BundleDetailSection details={bundle_details} />
+          </>
+        ) : null}
+
         {/* ═══ ESSENTIAL SUMMARY (max 5-6 fields) ═══ */}
-        {essentialFields.length > 0 && (
+        {!isBundle && essentialFields.length > 0 && (
           <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
             <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
               {t('detail.summary')}
