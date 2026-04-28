@@ -68,7 +68,36 @@ export const companiesApi = {
 
   update: (id: string, data: CompanyUpdate) => put<Company>(`/${id}`, data),
 
+  /**
+   * @deprecated The citizen surface no longer offers a direct delete CTA. The
+   * backend route still exists but is now gated behind `company.hard_delete`
+   * permission AND requires the company to have been archived first
+   * (migration 314). Use {@link archive} from the citizen surface and
+   * {@link hardDelete} from admin tooling.
+   */
   delete: (id: string) => del<{ message: string }>(`/${id}`),
+
+  /**
+   * Soft-delete (archive) a company — citizen surface, owner-only.
+   *
+   * Backend may return 409 Conflict with body
+   * `{ detail: { message, blockers: { active_licenses, pending_payments,
+   *   open_requests, active_inspections } } }` if the company still has
+   * active dependencies. Callers should surface the per-bucket counts to
+   * the user instead of treating it as a generic error.
+   */
+  archive: (id: string) =>
+    post<{ message: string; archived_at: string | null }>(`/${id}/archive`),
+
+  /** Restore an archived company. Admin only — requires `company.unarchive`. */
+  unarchive: (id: string) => post<{ message: string }>(`/${id}/unarchive`),
+
+  /**
+   * Permanently delete an archived company. Admin only — requires
+   * `company.hard_delete`. Backend enforces `archived_at IS NOT NULL` AND
+   * re-checks blockers; the previous "owner can hard-delete" path is gone.
+   */
+  hardDelete: (id: string) => del<{ message: string }>(`/${id}`),
 }
 
 // ========== Members API ==========

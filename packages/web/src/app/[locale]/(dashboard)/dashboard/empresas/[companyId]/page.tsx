@@ -18,7 +18,7 @@ import { useLocale } from 'next-intl'
 import { exportToExcel } from '@/core/utils/export'
 import Link from 'next/link'
 import {
-  ArrowLeft, Building2, MapPin, Calendar, DollarSign, Shield,
+  ArrowLeft, Archive, Building2, MapPin, Calendar, DollarSign, Shield,
   CheckCircle2, Clock, AlertTriangle, XCircle, Download,
   CreditCard, Eye, ArrowUpDown, RefreshCw, FileWarning,
   Lock, Receipt, ChevronLeft, ChevronRight, FolderOpen, Award,
@@ -35,6 +35,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { bundleWorkflowApi } from '@/modules/bundle-workflow/services/bundle-workflow-api'
+import { useCompanyMembership } from '@/modules/companies/hooks/useCompanyArchive'
+import { ArchiveCompanyDialog } from '@/modules/companies/components/ArchiveCompanyDialog'
+import { getAuthData } from '@/core/auth/storage'
 // Types inferred from bundleWorkflowApi return values
 
 // ── Formatters ──
@@ -114,6 +117,13 @@ export default function CompanyDetailPage() {
     queryFn: () => bundleWorkflowApi.getMyCompanyPayments(companyId, payPage),
     staleTime: 60_000,
   })
+
+  // Archive (soft-delete) — citizen surface, owner-only.
+  // The hook reads members + derives canArchive (= isOwner). Backend permission
+  // checks remain authoritative; UI gating just hides the CTA.
+  const currentUserId = getAuthData()?.user?.id ?? null
+  const { canArchive } = useCompanyMembership(companyId, currentUserId)
+  const [archiveOpen, setArchiveOpen] = useState(false)
 
   // Obligation filters + sort
   const [oblFilter, setOblFilter] = useState('all')
@@ -226,8 +236,29 @@ export default function CompanyDetailPage() {
               <DollarSign className="h-3.5 w-3.5" /> {t('payTaxes')}
             </Button>
           </Link>
+          {canArchive && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1 text-muted-foreground hover:text-orange-700 hover:border-orange-300"
+              onClick={() => setArchiveOpen(true)}
+              aria-label="Archivar empresa"
+            >
+              <Archive className="h-3.5 w-3.5" /> Archivar
+            </Button>
+          )}
         </div>
       </div>
+
+      <ArchiveCompanyDialog
+        companyId={companyId}
+        companyName={c.legalName}
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        blockersTabHref={`/${locale}/dashboard/empresas/${companyId}#obligations`}
+        onSuccess={() => router.push(`/${locale}/dashboard/empresas`)}
+      />
+
 
       {/* Alert banners */}
       {hasMiseEnDemeure && (
