@@ -96,6 +96,14 @@ export interface Company extends CompanyBase {
   member_count?: number
   city_name?: string | null
   zone_code?: string | null
+
+  // Soft-delete metadata (migration 314 / Phase 4 of SOFT_DELETE_COMPANIES_PLAN).
+  // Populated by GET /admin/all when archived='archived' or 'all'.
+  archived_at?: string | null
+  archive_reason?: string | null
+  archived_by?: string | null
+  archived_by_email?: string | null
+  archived_by_name?: string | null
 }
 
 export interface PaginatedCompaniesResponse {

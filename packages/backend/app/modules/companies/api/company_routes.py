@@ -51,13 +51,24 @@ async def admin_list_all_companies(
     regimen_fiscal: Optional[str] = Query(None),
     zone_id: Optional[str] = Query(None),
     city_id: Optional[str] = Query(None),
+    archived: str = Query(
+        "active",
+        regex="^(active|archived|all)$",
+        description="Archive scope. 'active' (default) excludes soft-deleted; "
+                    "'archived' returns only soft-deleted; 'all' returns both.",
+    ),
     sort_by: str = Query("created_at", regex="^(created_at|legal_name|is_active|is_verified|member_count|license_count)$"),
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("company.view_all")),
 ):
-    """List all companies with filters — admin view."""
+    """List all companies with filters — admin view.
+
+    Includes the archive scope toggle (Phase 4 of SOFT_DELETE_COMPANIES_PLAN).
+    Default 'active' preserves the legacy list behaviour; the archived view
+    on /admin/companies/archived passes archived='archived'.
+    """
     offset = (page - 1) * page_size
 
     items = await company_repository.list_all(
@@ -65,10 +76,12 @@ async def admin_list_all_companies(
         search=search, is_active=is_active, is_verified=is_verified,
         regimen_fiscal=regimen_fiscal, zone_id=zone_id, city_id=city_id,
         sort_by=sort_by, sort_order=sort_order,
+        archived=archived,
     )
     total = await company_repository.count_all(
         db, search=search, is_active=is_active, is_verified=is_verified,
         regimen_fiscal=regimen_fiscal, zone_id=zone_id, city_id=city_id,
+        archived=archived,
     )
 
     return CompanyAdminListResponse(

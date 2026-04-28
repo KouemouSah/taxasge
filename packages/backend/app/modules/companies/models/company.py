@@ -211,9 +211,24 @@ class UpdateMemberRoleRequest(BaseModel):
 # =============================================================================
 
 class CompanyAdminResponse(CompanyResponse):
-    """Extended response for admin views — includes license count."""
+    """Extended response for admin views — includes license count + archive metadata."""
     license_count: int = 0
     total_obligations_amount: Optional[Decimal] = None
+    # Archive metadata (migration 314 + Phase 4 of SOFT_DELETE_COMPANIES_PLAN).
+    # Populated by company_repository.list_all when the row is archived.
+    archived_at: Optional[datetime] = None
+    archive_reason: Optional[str] = None
+    archived_by: Optional[str] = None
+    archived_by_email: Optional[str] = None
+    archived_by_name: Optional[str] = None
+
+    @field_validator('archived_by', mode='before')
+    @classmethod
+    def coerce_archived_by_to_str(cls, v):
+        """Convert UUID objects to strings (consistent with id/owner_user_id)."""
+        if v is not None and not isinstance(v, str):
+            return str(v)
+        return v
 
 
 class CompanyAdminListResponse(BaseModel):

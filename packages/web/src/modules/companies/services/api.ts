@@ -127,6 +127,11 @@ export interface CompanyAdminListParams {
   regimenFiscal?: string
   zoneId?: string
   cityId?: string
+  /**
+   * Archive scope. Defaults to "active" (legacy behaviour). Use "archived" on
+   * the dedicated /admin/companies/archived view, "all" for cross-state audits.
+   */
+  archived?: 'active' | 'archived' | 'all'
   sortBy?: string
   sortOrder?: string
 }
@@ -142,6 +147,7 @@ export const companiesAdminApi = {
     if (params?.regimenFiscal) sp.set('regimen_fiscal', params.regimenFiscal)
     if (params?.zoneId) sp.set('zone_id', params.zoneId)
     if (params?.cityId) sp.set('city_id', params.cityId)
+    if (params?.archived) sp.set('archived', params.archived)
     if (params?.sortBy) sp.set('sort_by', params.sortBy)
     if (params?.sortOrder) sp.set('sort_order', params.sortOrder)
     const q = sp.toString()

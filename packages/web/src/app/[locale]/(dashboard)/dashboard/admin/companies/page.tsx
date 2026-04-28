@@ -19,7 +19,7 @@ import {
   ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle, TrendingUp,
   ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, Download, Brain,
   Briefcase, MapPin, FileText, List, Columns3, X, SlidersHorizontal, Star, Save,
-  MoreHorizontal, ExternalLink, FolderSearch, Plus,
+  MoreHorizontal, ExternalLink, FolderSearch, Plus, Archive,
 } from "lucide-react"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -612,6 +612,14 @@ export default function AdminCompaniesPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push(`/${locale}/dashboard/admin/companies/archived`)}
+          >
+            <Archive className="h-4 w-4 mr-1" />
+            Archivadas
+          </Button>
           <Button
             size="sm"
             onClick={() => router.push(`/${locale}/dashboard/admin/companies/new`)}

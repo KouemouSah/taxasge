@@ -371,6 +371,7 @@ class CompanyRepository:
         city_ids: Optional[List[str]] = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
+        archived: str = "active",  # 'active' | 'archived' | 'all'
     ) -> List[Dict[str, Any]]:
         """List all companies with filters — admin view.
 
@@ -435,18 +436,30 @@ class CompanyRepository:
             params.append(city_ids)
             idx += 1
 
+        # Archive filter — admin views default to 'active' (matches the
+        # historical behaviour). 'archived' restricts to soft-deleted rows;
+        # 'all' shows everything (used by the audit log surface).
+        if archived == "active":
+            conditions.append("c.archived_at IS NULL")
+        elif archived == "archived":
+            conditions.append("c.archived_at IS NOT NULL")
+        # 'all' -> no filter
+
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
         query = f"""
             SELECT c.*,
                    ct.name as city_name,
                    cz.zone_code,
+                   au.email as archived_by_email,
+                   au.first_name || ' ' || au.last_name as archived_by_name,
                    COALESCE(mem.cnt, 0) as member_count,
                    COALESCE(lic.cnt, 0) as license_count,
                    COALESCE(lic.total_amt, 0) as total_obligations_amount
             FROM companies c
             LEFT JOIN cities ct ON c.city_id = ct.id
             LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN users au ON au.id = c.archived_by
             LEFT JOIN LATERAL (
                 SELECT COUNT(*) as cnt
                 FROM user_company_roles ucr
@@ -475,6 +488,7 @@ class CompanyRepository:
         zone_id: Optional[str] = None,
         city_id: Optional[str] = None,
         city_ids: Optional[List[str]] = None,
+        archived: str = "active",  # 'active' | 'archived' | 'all'
     ) -> int:
         """Count companies matching filters."""
         await self._check_fts_available(conn)
@@ -522,6 +536,13 @@ class CompanyRepository:
             )""")
             params.append(city_ids)
             idx += 1
+
+        # Archive filter — same semantics as list_all.
+        if archived == "active":
+            conditions.append("archived_at IS NULL")
+        elif archived == "archived":
+            conditions.append("archived_at IS NOT NULL")
+        # 'all' -> no filter
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         query = f"SELECT COUNT(*) FROM companies {where}"
