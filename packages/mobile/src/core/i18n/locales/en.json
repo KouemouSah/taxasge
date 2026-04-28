@@ -658,6 +658,28 @@
       "expiring": "Expiring",
       "expired": "Expired"
     },
+    "categories": {
+      "all": "All",
+      "identity": "Identity",
+      "vehicle": "Vehicle",
+      "legal": "Legal",
+      "financial": "Financial",
+      "administrative": "Administrative",
+      "medical": "Medical",
+      "education": "Education",
+      "photo": "Photo",
+      "business": "Business",
+      "employment": "Employment",
+      "other": "Other"
+    },
+    "generationTypes": {
+      "all": "All",
+      "receipts": "Receipts",
+      "certificates": "Certificates",
+      "attestations": "Attestations",
+      "summaries": "Summaries",
+      "confirmations": "Confirmations"
+    },
     "quota": {
       "label": "{{used}} of {{total}} MB"
     },

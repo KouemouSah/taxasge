@@ -658,6 +658,28 @@
       "expiring": "Expiran",
       "expired": "Vencidos"
     },
+    "categories": {
+      "all": "Todos",
+      "identity": "Identidad",
+      "vehicle": "Vehículo",
+      "legal": "Legal",
+      "financial": "Financiero",
+      "administrative": "Administrativo",
+      "medical": "Médico",
+      "education": "Educación",
+      "photo": "Foto",
+      "business": "Empresa",
+      "employment": "Empleo",
+      "other": "Otro"
+    },
+    "generationTypes": {
+      "all": "Todos",
+      "receipts": "Recibos",
+      "certificates": "Certificados",
+      "attestations": "Constancias",
+      "summaries": "Resúmenes",
+      "confirmations": "Confirmaciones"
+    },
     "quota": {
       "label": "{{used}} de {{total}} MB"
     },

@@ -16,7 +16,11 @@ import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@core/theme';
 import { AlertListItem } from '@modules/vault/components/alert-list-item';
 import { DocumentEmptyState } from '@modules/vault/components/document-empty-state';
-import { DocumentFilterChips } from '@modules/vault/components/document-filter-chips';
+import {
+  DocumentFilterChips,
+  type VaultCategoryFilter,
+  type VaultGenerationFilter,
+} from '@modules/vault/components/document-filter-chips';
 import { DocumentListItem } from '@modules/vault/components/document-list-item';
 import { DocumentQuotaBar } from '@modules/vault/components/document-quota-bar';
 import {
@@ -32,37 +36,50 @@ import type {
   AlertResponse,
   GeneratedDocumentResponse,
   UserDocumentListItem,
-  VaultFilterValue,
   VaultTabValue,
 } from '@modules/vault';
 
-const FILTER_TO_PARAMS: Record<
-  VaultFilterValue,
-  {
-    source?: 'personal_upload' | 'wizard_upload' | 'platform_generated';
-    expiry_status?: 'expiring_soon' | 'expired';
-  }
-> = {
-  all: {},
-  personal: { source: 'personal_upload' },
-  wizard: { source: 'wizard_upload' },
-  generated: { source: 'platform_generated' },
-  expiring: { expiry_status: 'expiring_soon' },
-  expired: { expiry_status: 'expired' },
+// Maps the user-facing generation buckets to the backend `generation_type`
+// values exposed by `GET /user-documents/generated`. (Backend enum:
+// receipt, payment_receipt, certificate, attestation, summary,
+// request_summary, confirmation.) The backend `?generation_type=` query
+// accepts a single value, so we always fetch the full set and apply
+// client-side multi-value filtering on the bucket below — keeps the chip
+// "Recibos" inclusive of both `receipt` and `payment_receipt`, and
+// "Resúmenes" inclusive of `summary` + `request_summary`.
+const GENERATION_BUCKETS: Record<VaultGenerationFilter, string[]> = {
+  all: [],
+  receipts: ['receipt', 'payment_receipt'],
+  certificates: ['certificate'],
+  attestations: ['attestation'],
+  summaries: ['summary', 'request_summary'],
+  confirmations: ['confirmation'],
 };
 
 export default function VaultHomeScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const [tab, setTab] = useState<VaultTabValue>('uploads');
-  const [filter, setFilter] = useState<VaultFilterValue>('all');
+  const [categoryFilter, setCategoryFilter] = useState<VaultCategoryFilter>('all');
+  const [generationFilter, setGenerationFilter] = useState<VaultGenerationFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const stats = useVaultStats();
 
-  const params = useMemo(() => FILTER_TO_PARAMS[filter], [filter]);
-  const list = useVaultList(params);
+  const listParams = useMemo(
+    () => (categoryFilter === 'all' ? {} : { category: categoryFilter }),
+    [categoryFilter],
+  );
+  const list = useVaultList(listParams);
+  // Always fetch all generated docs — bucket filtering happens client-side
+  // (see GENERATION_BUCKETS rationale above).
   const generated = useVaultGenerated();
+  const generatedFilteredPages = useMemo(() => {
+    const pages = generated.data?.pages ?? [];
+    if (generationFilter === 'all') return pages;
+    const allowed = new Set(GENERATION_BUCKETS[generationFilter]);
+    return pages.map((p) => p.filter((d) => allowed.has(d.generation_type)));
+  }, [generated.data, generationFilter]);
   const alerts = useVaultAlerts();
   const search = useVaultSearch(searchTerm);
 
@@ -146,7 +163,7 @@ export default function VaultHomeScreen() {
   };
 
   const renderGeneratedBody = () => {
-    const data = (generated.data?.pages ?? []).flat();
+    const data = generatedFilteredPages.flat();
     return (
       <FlatList
         data={data}
@@ -257,9 +274,21 @@ export default function VaultHomeScreen() {
             style={styles.searchBar}
           />
           {searchTerm.trim().length < 2 ? (
-            <DocumentFilterChips value={filter} onChange={setFilter} />
+            <DocumentFilterChips
+              tab="uploads"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+            />
           ) : null}
         </>
+      ) : null}
+
+      {tab === 'generated' ? (
+        <DocumentFilterChips
+          tab="generated"
+          value={generationFilter}
+          onChange={setGenerationFilter}
+        />
       ) : null}
 
       {tab === 'uploads' ? renderUploadsBody() : null}
