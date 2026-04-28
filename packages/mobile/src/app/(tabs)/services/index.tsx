@@ -78,7 +78,12 @@ export default function ServicesScreen() {
   const { colors, spacing } = useAppTheme();
   const lang = (i18n.language || 'es') as string;
 
-  const { data: ministries, isLoading: ministriesLoading } = useMinistries(lang);
+  const {
+    data: ministries,
+    isLoading: ministriesLoading,
+    isError: ministriesError,
+    refetch: refetchMinistries,
+  } = useMinistries(lang);
   const { data: popularServices } = usePopularServices(10);
   const { search, results, isSearching, isLoadingMore, loadMore } = useServiceSearch(300, lang);
 
@@ -426,6 +431,39 @@ export default function ServicesScreen() {
 
             {ministriesLoading ? (
               <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: 24 }} />
+            ) : ministriesError ? (
+              /* Error fallback — replaces the previously infinite spinner that
+                 the user reported in debug/tesoro/m9.jpg. Tappable retry so
+                 the user can recover after a transient 5xx without leaving
+                 the screen. */
+              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                <MaterialCommunityIcons
+                  name="cloud-off-outline"
+                  size={32}
+                  color={colors.outline}
+                />
+                <Text
+                  variant="bodySmall"
+                  style={{ color: colors.onSurfaceVariant, marginTop: 8, textAlign: 'center' }}
+                >
+                  {t('common.error')}
+                </Text>
+                <Pressable
+                  onPress={() => refetchMinistries()}
+                  style={{
+                    marginTop: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    backgroundColor: colors.primaryContainer,
+                  }}
+                  android_ripple={{ color: colors.primary }}
+                >
+                  <Text style={{ color: colors.onPrimaryContainer, fontWeight: '600' }}>
+                    {t('common.retry')}
+                  </Text>
+                </Pressable>
+              </View>
             ) : viewMode === 'list' ? (
               activeMinistries.map((m, i) => renderMinistryItem(m, i))
             ) : (

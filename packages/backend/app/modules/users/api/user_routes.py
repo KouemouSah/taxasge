@@ -3,6 +3,7 @@ User Profile API for TaxasGE Backend
 Self-service user profile management endpoints
 """
 
+import asyncpg
 from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
@@ -261,13 +262,22 @@ async def register_device_token(
     data: DeviceTokenRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
 ):
     """
     Register a device push token (Expo/FCM) for the authenticated user.
     Called on login from mobile apps. One token per user (last device wins).
+
+    PRIOR BUG (fixed): the previous implementation called
+    `db = await get_database()`, but `get_database` is an async generator
+    (yields the connection from `db_manager.get_connection()`). Awaiting it
+    returned the generator object itself, so `db.execute(...)` raised
+    AttributeError on every call and the route 500'd silently. The mobile
+    boot path hits this once per cold start (cf. the Sentry POST 500 trace
+    captured at 2026-04-28T10:00:32 with body_size=198, response_size=87).
+    Using `Depends(get_database)` for proper dependency injection fixes it.
     """
     try:
-        db = await get_database()
         await db.execute(
             """
             UPDATE users
