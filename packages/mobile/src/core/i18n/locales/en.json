@@ -830,6 +830,29 @@
       "empty": "No payments yet",
       "viewReceipt": "View receipt"
     },
+    "archive": {
+      "menuLabel": "Archive my company",
+      "title": "Archive company",
+      "blockedTitle": "Cannot archive",
+      "body": "«{{name}}» will no longer appear in your list of companies and you won't be able to start new procedures for it.",
+      "blockedBody": "«{{name}}» has activities in progress that must be resolved before archiving.",
+      "disclaimer": "This is NOT a deletion. Records (licences, payments, receipts) are retained per fiscal law. An administrator can restore the company.",
+      "blockedHint": "Resolve these activities (pay, cancel or complete) before trying to archive again.",
+      "blockers": {
+        "active_licenses_one": "{{count}} active licence",
+        "active_licenses_other": "{{count}} active licences",
+        "pending_payments_one": "{{count}} payment in progress",
+        "pending_payments_other": "{{count}} payments in progress",
+        "open_requests_one": "{{count}} open request",
+        "open_requests_other": "{{count}} open requests",
+        "active_inspections_one": "{{count}} ongoing inspection",
+        "active_inspections_other": "{{count}} ongoing inspections"
+      },
+      "confirm": "Yes, archive",
+      "submitting": "Archiving…",
+      "seeObligations": "See my obligations",
+      "success": "Company archived"
+    },
     "create": {
       "title": "New company",
       "action": "Create"

@@ -53,6 +53,28 @@ export async function deleteCompany(id: string): Promise<{ message: string }> {
   return apiDelete<{ message: string }>(API_ENDPOINTS.companies.delete(id));
 }
 
+/**
+ * Soft-delete (archive) a company — citizen surface, owner-only.
+ *
+ * Backend may respond 409 with body
+ * `{ detail: { message, blockers: { active_licenses, pending_payments,
+ *   open_requests, active_inspections } } }` when the company has active
+ * dependencies. Callers should surface the per-bucket counts to the user.
+ */
+export async function archiveCompany(
+  id: string,
+): Promise<{ message: string; archived_at: string | null }> {
+  return apiPost<{ message: string; archived_at: string | null }>(
+    API_ENDPOINTS.companies.archive(id),
+    {},
+  );
+}
+
+/** Restore an archived company — admin tooling, requires company.unarchive. */
+export async function unarchiveCompany(id: string): Promise<{ message: string }> {
+  return apiPost<{ message: string }>(API_ENDPOINTS.companies.unarchive(id), {});
+}
+
 // ---------------------------------------------------------------------------
 // Members
 // ---------------------------------------------------------------------------

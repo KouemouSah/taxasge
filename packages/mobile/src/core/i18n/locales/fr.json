@@ -830,6 +830,29 @@
       "empty": "Pas encore de paiements",
       "viewReceipt": "Voir le reçu"
     },
+    "archive": {
+      "menuLabel": "Archiver mon entreprise",
+      "title": "Archiver l'entreprise",
+      "blockedTitle": "Impossible d'archiver",
+      "body": "«{{name}}» n'apparaîtra plus dans ta liste d'entreprises et tu ne pourras plus lancer de nouvelles démarches pour elle.",
+      "blockedBody": "«{{name}}» a des activités en cours qui doivent être résolues avant l'archivage.",
+      "disclaimer": "Ce N'EST PAS une suppression. Les enregistrements (licences, paiements, reçus) sont conservés conformément à la loi fiscale. Un administrateur peut la restaurer.",
+      "blockedHint": "Résous ces activités (paie, annule ou termine) avant de réessayer l'archivage.",
+      "blockers": {
+        "active_licenses_one": "{{count}} licence active",
+        "active_licenses_other": "{{count}} licences actives",
+        "pending_payments_one": "{{count}} paiement en cours",
+        "pending_payments_other": "{{count}} paiements en cours",
+        "open_requests_one": "{{count}} demande ouverte",
+        "open_requests_other": "{{count}} demandes ouvertes",
+        "active_inspections_one": "{{count}} inspection en cours",
+        "active_inspections_other": "{{count}} inspections en cours"
+      },
+      "confirm": "Oui, archiver",
+      "submitting": "Archivage…",
+      "seeObligations": "Voir mes obligations",
+      "success": "Entreprise archivée"
+    },
     "create": {
       "title": "Nouvelle entreprise",
       "action": "Créer"

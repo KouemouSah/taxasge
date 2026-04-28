@@ -144,8 +144,15 @@ export interface CompanyMembershipPermissions {
   isAdmin: boolean;
   /** Allowed by backend permissions (does not mean we expose the UI today). */
   canEdit: boolean;
-  /** Allowed by backend permissions (does not mean we expose the UI today). */
+  /**
+   * @deprecated Use {@link canArchive} (citizen surface). Hard-delete is now
+   * gated server-side by `company.hard_delete` permission AND a prior archive,
+   * so a citizen never legitimately holds it. Kept for back-compat with any
+   * call sites still reading the flag.
+   */
   canDelete: boolean;
+  /** Owner can archive (soft-delete) — citizen surface gate. */
+  canArchive: boolean;
   canManageMembers: boolean;
 }
 
@@ -164,8 +171,69 @@ export function useCompanyMembership(
     isAdmin,
     canEdit: isOwner || isAdmin,
     canDelete: isOwner,
+    canArchive: isOwner,
     canManageMembers: isOwner || isAdmin,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Archive (soft-delete) — citizen surface
+//
+// Backend reference: migration 314 + .claude/plans/SOFT_DELETE_COMPANIES_PLAN.md
+// ---------------------------------------------------------------------------
+
+/** Counts returned in the structured 409 response when archive is blocked. */
+export interface ArchiveBlockers {
+  active_licenses: number;
+  pending_payments: number;
+  open_requests: number;
+  active_inspections: number;
+}
+
+/**
+ * Type-guard for the 409 blocker response. Reads ``status`` + ``data.detail``
+ * from an axios-shaped error without leaning on @core/api/errors so this
+ * file stays free of cross-module deps.
+ */
+export function isArchiveBlockedError(err: unknown): err is {
+  response: { status: 409; data: { detail: { blockers: ArchiveBlockers } } };
+} {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as {
+    response?: {
+      status?: number;
+      data?: { detail?: { blockers?: unknown } };
+    };
+  };
+  if (e.response?.status !== 409) return false;
+  const blockers = e.response?.data?.detail?.blockers;
+  return !!blockers && typeof blockers === 'object';
+}
+
+export function getArchiveBlockers(err: unknown): ArchiveBlockers | null {
+  if (!isArchiveBlockedError(err)) return null;
+  return err.response.data.detail.blockers;
+}
+
+/**
+ * Archive a company. Caller is responsible for surfacing the structured 409
+ * blocker payload via {@link getArchiveBlockers}. Cache invalidation:
+ * ``companies.list`` + ``companies.detail(id)`` + ``bundles`` queries.
+ */
+export function useArchiveCompany(): UseMutationResult<
+  { message: string; archived_at: string | null },
+  Error,
+  string
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (companyId: string) => companiesApi.archiveCompany(companyId),
+    onSuccess: (_data, companyId) => {
+      qc.invalidateQueries({ queryKey: QK.detail(companyId) });
+      qc.invalidateQueries({ queryKey: ['companies'] });
+      qc.invalidateQueries({ queryKey: ['bundles'] });
+    },
+  });
 }
 
 export function useAddMember(companyId: string): UseMutationResult<

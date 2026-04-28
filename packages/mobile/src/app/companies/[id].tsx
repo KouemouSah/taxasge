@@ -25,9 +25,12 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import { MemberListItem } from '@modules/companies/components/member-list-item';
+import { CompanyArchiveDialog } from '@modules/companies/components/company-archive-dialog';
 import {
   useCompanyMembers,
+  useCompanyMembership,
   useDownloadLicensePdf,
 } from '@modules/companies';
 import {
@@ -60,7 +63,9 @@ export default function CompanyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const { user } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [archiveVisible, setArchiveVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const detail = useBundleMyCompanyDetail(id);
@@ -77,13 +82,11 @@ export default function CompanyDetailScreen() {
     [obligations],
   );
 
-  // Edit/delete are NOT exposed on the citizen-facing web /empresas/[id] page
-  // either: the backend DELETE /companies/{id} performs an unprotected
-  // hard-delete (no check on commercial_licenses, service_payments,
-  // service_requests). Editing a company that already has an active license
-  // would also de-sync the OMS classification. Until the backend gains
-  // soft-delete + dependency checks, the citizen surface keeps these actions
-  // off — admins still have them via the dedicated /admin/companies surface.
+  // Soft-delete (archive) — citizen surface, owner-only. Mirrors web
+  // /empresas/[companyId] (commit 184c4069). Edit / hard-delete remain off
+  // the citizen surface (backend gates them via company.hard_delete +
+  // archived prerequisite — admin only).
+  const { canArchive } = useCompanyMembership(id ?? null, user?.id);
 
   const handleDownloadPdf = useCallback(() => {
     if (!id) return;
@@ -126,6 +129,16 @@ export default function CompanyDetailScreen() {
               onPress={handleDownloadPdf}
               leadingIcon="file-download-outline"
               title={t('companies.detail.actions.downloadLicense')}
+            />
+          ) : null}
+          {canArchive ? (
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                setArchiveVisible(true);
+              }}
+              leadingIcon="archive-outline"
+              title={t('companies.archive.menuLabel')}
             />
           ) : null}
         </Menu>
@@ -296,6 +309,25 @@ export default function CompanyDetailScreen() {
           </Card>
         </ScrollView>
       )}
+
+      {id ? (
+        <CompanyArchiveDialog
+          visible={archiveVisible}
+          companyId={id}
+          companyName={company?.legal_name ?? ''}
+          onCancel={() => setArchiveVisible(false)}
+          onSuccess={() => {
+            setSnackbar(t('companies.archive.success'));
+            // Wait briefly so the snackbar shows before navigating back.
+            setTimeout(() => router.back(), 600);
+          }}
+          onSeeObligations={() => {
+            setArchiveVisible(false);
+            // The detail screen already shows the obligations list — closing
+            // the dialog is sufficient. (Web equivalent uses a tab anchor.)
+          }}
+        />
+      ) : null}
 
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
         {snackbar ?? ''}

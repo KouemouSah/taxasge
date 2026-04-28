@@ -236,7 +236,15 @@ export const API_ENDPOINTS = {
     create: '/companies',
     detail: (id: string) => `/companies/${id}` as const,
     update: (id: string) => `/companies/${id}` as const,
+    /** @deprecated Use {@link archive} from the citizen surface. The backend
+     *  DELETE route now requires `company.hard_delete` (admin) AND a prior
+     *  archive — kept for back-office tooling only. */
     delete: (id: string) => `/companies/${id}` as const,
+    /** Soft-delete (archive) — owner only. Backend may return 409 with a
+     *  `blockers` payload when active dependencies prevent the archive. */
+    archive: (id: string) => `/companies/${id}/archive` as const,
+    /** Restore an archived company — admin only (`company.unarchive`). */
+    unarchive: (id: string) => `/companies/${id}/unarchive` as const,
     members: (id: string) => `/companies/${id}/members` as const,
     addMember: (id: string) => `/companies/${id}/members` as const,
     updateMemberRole: (id: string, memberUserId: string) =>

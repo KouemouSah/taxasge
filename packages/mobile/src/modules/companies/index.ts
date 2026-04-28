@@ -16,6 +16,12 @@ export {
   useUpdateMemberRole,
   useRemoveMember,
   useDownloadLicensePdf,
+  useArchiveCompany,
+  isArchiveBlockedError,
+  getArchiveBlockers,
 } from './services/companies-hooks';
-export type { CompanyMembershipPermissions } from './services/companies-hooks';
+export type {
+  CompanyMembershipPermissions,
+  ArchiveBlockers,
+} from './services/companies-hooks';
 export { downloadLicensePdf } from './services/company-pdf';
