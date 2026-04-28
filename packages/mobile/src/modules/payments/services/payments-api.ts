@@ -2,13 +2,16 @@
  * Payments API — thin wrappers around the FastAPI payments routes.
  */
 
-import { apiGet } from '@core/api/client';
+import { apiGet, apiPost } from '@core/api/client';
 import { API_ENDPOINTS } from '@core/api/endpoints';
 import type {
   Payment,
   PaymentListResponse,
   PaymentStatusPolled,
   PaymentsListFilters,
+  RequestPaymentMethodsResponse,
+  RetryPaymentRequest,
+  RetryPaymentResponse,
 } from '../types/payments.types';
 
 /** GET /api/v1/payments — paginated list (filters scoped to current user by backend). */
@@ -37,5 +40,33 @@ export async function getServiceRequestPaymentStatus(
 ): Promise<PaymentStatusPolled> {
   return apiGet<PaymentStatusPolled>(
     API_ENDPOINTS.payments.serviceRequestStatus(serviceRequestId),
+  );
+}
+
+/**
+ * GET /api/v1/service-requests/{id}/payment/methods — list of payment methods
+ * accepted for this SR. Backend builds the list dynamically from
+ * `payment_processor_registry`, so the mobile must not hardcode the catalogue.
+ */
+export async function getRequestPaymentMethods(
+  serviceRequestId: string,
+): Promise<RequestPaymentMethodsResponse> {
+  return apiGet<RequestPaymentMethodsResponse>(
+    API_ENDPOINTS.payments.serviceRequestPaymentMethods(serviceRequestId),
+  );
+}
+
+/**
+ * POST /api/v1/service-requests/{id}/payment/initiate — re-initiate a payment
+ * for an existing SR (the "Retry payment" CTA when a previous attempt
+ * failed/expired). Web parity with `dashboard/service-requests/[id]`.
+ */
+export async function retryRequestPayment(
+  serviceRequestId: string,
+  body: RetryPaymentRequest,
+): Promise<RetryPaymentResponse> {
+  return apiPost<RetryPaymentResponse>(
+    API_ENDPOINTS.payments.serviceRequestInitiatePayment(serviceRequestId),
+    body,
   );
 }

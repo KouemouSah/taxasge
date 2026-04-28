@@ -168,29 +168,38 @@ export default function VaultHomeScreen() {
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <DocumentListItem
-            item={
-              {
-                id: item.id,
-                document_type: item.generation_type,
-                category: 'generated',
-                file_name: item.file_name,
-                display_name: item.title,
-                expiry_date: null,
-                days_until_expiry: null,
-                expiry_status: 'valid',
-                status: 'active',
-                source: 'platform_generated',
-                thumbnail_path: null,
-                mime_type: 'application/pdf',
-                file_size_bytes: 0,
-                created_at: item.created_at,
-              } as unknown as UserDocumentListItem
-            }
-            onPress={() => handleGeneratedPress(item)}
-          />
-        )}
+        renderItem={({ item }) => {
+          // Adapt the GeneratedDocumentResponse shape to the generic
+          // UserDocumentListItem the row renderer expects. `category` must be
+          // one of the upload-category enum values (DocumentListItem only uses
+          // it to pick an icon colour, with a 'default' fallback) — using
+          // 'other' is the cheapest way to satisfy the type without losing
+          // the dedicated icon path. `expiry_status: 'no_expiry'` matches the
+          // semantics for platform-generated PDFs (receipts, certificates).
+          const display: UserDocumentListItem = {
+            id: item.id,
+            document_type: item.generation_type,
+            category: 'other',
+            file_name: item.file_name,
+            display_name: item.title,
+            expiry_date: null,
+            days_until_expiry: null,
+            expiry_status: 'no_expiry',
+            status: 'active',
+            source: 'platform_generated',
+            thumbnail_path: null,
+            mime_type: 'application/pdf',
+            file_size_bytes: 0,
+            created_at: item.created_at,
+            is_verified: true,
+          };
+          return (
+            <DocumentListItem
+              item={display}
+              onPress={() => handleGeneratedPress(item)}
+            />
+          );
+        }}
         ItemSeparatorComponent={() => <Divider />}
         ListEmptyComponent={<DocumentEmptyState variant="generated" />}
         contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}

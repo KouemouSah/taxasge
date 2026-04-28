@@ -9,7 +9,10 @@ export {
   usePaymentsList,
   usePayment,
   usePaymentStatusPolling,
+  useRequestPaymentMethods,
+  useRetryRequestPayment,
 } from './services/payments-hooks';
 export { PaymentListItem } from './components/payment-list-item';
 export { PaymentStatusBadge } from './components/payment-status-badge';
 export { ReceiptDownloadButton } from './components/receipt-download-button';
+export { RetryPaymentSheet } from './components/retry-payment-sheet';

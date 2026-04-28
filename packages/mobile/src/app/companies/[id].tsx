@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
+import { useAuth } from '@core/hooks/use-auth';
 import { CompanyDeleteDialog } from '@modules/companies/components/company-delete-dialog';
 import { MemberListItem } from '@modules/companies/components/member-list-item';
 import {
@@ -62,6 +63,7 @@ export default function CompanyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const { user } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
@@ -80,6 +82,20 @@ export default function CompanyDetailScreen() {
     () => obligations.filter((o) => o.status === 'pending' || o.status === 'overdue'),
     [obligations],
   );
+
+  // Mirror backend permissions:
+  //   PUT  /companies/{id}        -> company_owner | company_admin
+  //   DELETE /companies/{id}      -> company_owner only
+  // Hide the actions in the menu instead of letting the user click and hit a
+  // 403 — same UX as the web /empresas/[id] page.
+  const currentMembership = useMemo(
+    () => (members.data ?? []).find((m) => m.user_id === user?.id),
+    [members.data, user?.id],
+  );
+  const canEditCompany =
+    currentMembership?.role === 'company_owner' ||
+    currentMembership?.role === 'company_admin';
+  const canDeleteCompany = currentMembership?.role === 'company_owner';
 
   const handleDelete = useCallback(() => {
     if (!id) return;
@@ -136,22 +152,26 @@ export default function CompanyDetailScreen() {
               title={t('companies.detail.actions.downloadLicense')}
             />
           ) : null}
-          <Menu.Item
-            onPress={() => {
-              setMenuVisible(false);
-              router.push(`/companies/${id}/edit` as never);
-            }}
-            leadingIcon="pencil-outline"
-            title={t('companies.detail.actions.edit')}
-          />
-          <Menu.Item
-            onPress={() => {
-              setMenuVisible(false);
-              setDeleteVisible(true);
-            }}
-            leadingIcon="trash-can-outline"
-            title={t('companies.detail.actions.delete')}
-          />
+          {canEditCompany ? (
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                router.push(`/companies/${id}/edit` as never);
+              }}
+              leadingIcon="pencil-outline"
+              title={t('companies.detail.actions.edit')}
+            />
+          ) : null}
+          {canDeleteCompany ? (
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                setDeleteVisible(true);
+              }}
+              leadingIcon="trash-can-outline"
+              title={t('companies.detail.actions.delete')}
+            />
+          ) : null}
         </Menu>
       </Appbar.Header>
 

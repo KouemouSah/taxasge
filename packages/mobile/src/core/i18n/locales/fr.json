@@ -609,6 +609,19 @@
     "a11y": {
       "item": "{{title}}, statut {{status}}, {{amount}}"
     },
+    "retry": {
+      "cta": "Réessayer le paiement",
+      "title": "Payer cette demande",
+      "subtitle": "Choisis un moyen de paiement. Nous relançons le paiement pour cette demande.",
+      "phoneLabel": "Numéro Mobile Money",
+      "submit": "Payer",
+      "methodsLoadError": "Impossible de charger les moyens de paiement. Réessaie.",
+      "redirecting": "Ouverture de la page de paiement…",
+      "cashPending": "Apporte le montant en espèces à un guichet du Trésor — tu recevras une notification dès qu'un agent confirmera.",
+      "checkPending": "Dépose ton chèque à un guichet du Trésor — tu recevras une notification dès qu'un agent confirmera.",
+      "agentPending": "Un agent a été notifié. Tu recevras une notification une fois le paiement confirmé.",
+      "unknownResponse": "Le paiement a été lancé mais la réponse est inattendue. Vérifie l'onglet Paiements."
+    },
     "result": {
       "checking": "Vérification du paiement...",
       "processing": "Paiement en cours, ne quittez pas l'application",

@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppState, type AppStateStatus } from 'react-native';
 
@@ -12,6 +12,7 @@ import {
   TERMINAL_PAYMENT_STATUSES,
   type PaymentStatus,
   type PaymentsListFilters,
+  type RetryPaymentRequest,
 } from '../types/payments.types';
 
 export const PAYMENTS_QUERY_KEYS = {
@@ -21,6 +22,8 @@ export const PAYMENTS_QUERY_KEYS = {
   detail: (id: string) => ['payments', 'detail', id] as const,
   serviceRequestStatus: (requestId: string) =>
     ['payments', 'service-request-status', requestId] as const,
+  requestPaymentMethods: (requestId: string) =>
+    ['payments', 'request-methods', requestId] as const,
 } as const;
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -122,5 +125,40 @@ export function usePaymentStatusPolling(
       return intervalMs;
     },
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Fetch the list of payment methods accepted for a given SR. Used by the
+ * retry-payment sheet on `(tabs)/requests/[id]`. Cached for 5 min — methods
+ * rarely change at runtime.
+ */
+export function useRequestPaymentMethods(
+  serviceRequestId: string | null | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: PAYMENTS_QUERY_KEYS.requestPaymentMethods(serviceRequestId ?? ''),
+    queryFn: () =>
+      paymentsApi.getRequestPaymentMethods(serviceRequestId as string),
+    enabled: enabled && !!serviceRequestId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Re-initiate a payment for an existing SR (when a previous attempt failed,
+ * expired or was abandoned). Mirrors the web "Retry payment" CTA on
+ * `dashboard/service-requests/[id]`.
+ */
+export function useRetryRequestPayment() {
+  return useMutation({
+    mutationFn: ({
+      serviceRequestId,
+      body,
+    }: {
+      serviceRequestId: string;
+      body: RetryPaymentRequest;
+    }) => paymentsApi.retryRequestPayment(serviceRequestId, body),
   });
 }

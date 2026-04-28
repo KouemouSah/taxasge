@@ -104,6 +104,8 @@ export function useBundleWizard(options: UseBundleWizardOptions = {}) {
   // Auto-select company when arriving from "Mes Empresas / Pagar obligaciones".
   // Runs once after myCompanies loads — guards against re-runs (would clobber
   // user's manual selection on step 0).
+  // Note: MyCompanyWithStatus.company is already CompanySummary (see types/),
+  // backend /my-companies returns the same field set. No cast needed.
   useEffect(() => {
     if (preselectAppliedRef.current) return;
     if (!preselectCompanyId) return;
@@ -111,7 +113,7 @@ export function useBundleWizard(options: UseBundleWizardOptions = {}) {
     const match = myCompanies.find((mc) => mc.company.id === preselectCompanyId);
     if (!match) return;
     preselectAppliedRef.current = true;
-    setSelectedCompany(match.company as unknown as CompanySummary);
+    setSelectedCompany(match.company);
     setCompanyExists(true);
   }, [preselectCompanyId, myCompanies]);
 

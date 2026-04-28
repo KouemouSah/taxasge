@@ -619,6 +619,19 @@
       "viewRequest": "View request",
       "retry": "Retry",
       "goHome": "Back home"
+    },
+    "retry": {
+      "cta": "Retry payment",
+      "title": "Pay this request",
+      "subtitle": "Choose a payment method. We'll re-initiate the payment for this request.",
+      "phoneLabel": "Mobile Money phone number",
+      "submit": "Pay",
+      "methodsLoadError": "Could not load payment methods. Please try again.",
+      "redirecting": "Opening payment page…",
+      "cashPending": "Bring the cash to a treasury counter — you'll receive a notification once an agent confirms.",
+      "checkPending": "Drop off your check at a treasury counter — you'll receive a notification once an agent confirms.",
+      "agentPending": "We've notified an agent. You'll receive a notification once your payment is confirmed.",
+      "unknownResponse": "Payment was initiated but the response was unexpected. Check your payments tab."
     }
   },
   "notifications": {

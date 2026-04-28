@@ -99,3 +99,58 @@ export const TERMINAL_PAYMENT_STATUSES: ReadonlySet<PaymentStatus> = new Set([
   'cancelled',
   'refunded',
 ]);
+
+// ---------------------------------------------------------------------------
+// Retry payment (POST /service-requests/{id}/payment/initiate)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors backend `PaymentMethodInfo` (routes.py:1294). One entry per active
+ * payment processor in the backend registry.
+ */
+export interface RequestPaymentMethodInfo {
+  code: PaymentMethod;
+  label_es: string;
+  label_en: string;
+  label_fr: string;
+  processor_type: string;
+  requires_phone: boolean;
+  requires_redirect: boolean;
+  requires_agent_validation: boolean;
+}
+
+/** Mirrors backend `PaymentMethodsResponse` (routes.py:1311). */
+export interface RequestPaymentMethodsResponse {
+  methods: RequestPaymentMethodInfo[];
+  default_method: PaymentMethod | null;
+}
+
+/**
+ * Body of `POST /service-requests/{id}/payment/initiate`. Mirrors backend
+ * `PaymentInitiateRequest`. `phone_number` is required for `mobile_money`,
+ * `return_url` is for BANGE redirect callbacks.
+ */
+export interface RetryPaymentRequest {
+  payment_method: PaymentMethod;
+  phone_number?: string;
+  return_url?: string;
+}
+
+/**
+ * Response of `POST /service-requests/{id}/payment/initiate`. Mirrors backend
+ * `PaymentInitiateResponse`. `redirect_url` is set for BANGE methods,
+ * `action_type='agent_validation'` for cash/check (the citizen waits for an
+ * agent to confirm reception).
+ */
+export interface RetryPaymentResponse {
+  success: boolean;
+  payment_id?: string | null;
+  payment_reference?: string | null;
+  payment_status?: PaymentStatus | null;
+  redirect_url?: string | null;
+  action_type?: 'redirect' | 'agent_validation' | string | null;
+  requires_action?: boolean;
+  message_es?: string | null;
+  message_fr?: string | null;
+  message_en?: string | null;
+}

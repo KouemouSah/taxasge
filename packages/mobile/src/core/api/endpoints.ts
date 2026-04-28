@@ -31,6 +31,10 @@ export const API_ENDPOINTS = {
     register: '/auth/register',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    /** @deprecated Use `users.profile` instead. Both paths return UserResponse,
+     *  but `users.profile` is the canonical citizen path (matching the web
+     *  pattern). Legacy `/auth/profile` (auth_routes.py:829) is kept on the
+     *  backend for back-compat — do not introduce new consumers. */
     profile: '/auth/profile',
     sessions: '/auth/sessions',
     requestVerificationCode: '/auth/request-verification-code',
@@ -79,6 +83,16 @@ export const API_ENDPOINTS = {
     workflows: '/service-requests/workflows',
     /** Detail of a workflow definition (config, steps, documents, tariff). */
     workflowDetail: (code: string) => `/service-requests/workflows/${code}` as const,
+    /**
+     * Paginated citizen notifications across all SRs (audit trail of agent
+     * decisions, payments, doc requests, etc.). Backend returns
+     * `{ items, total, total_unread, page, page_size }`. The mobile inbox
+     * (MMKV ring buffer) only holds push receptions; this endpoint is the
+     * authoritative server-side view (ensures notifications pushed while the
+     * device was offline are still visible). Web parity:
+     * `web/.../dashboard/notifications/page.tsx`.
+     */
+    notifications: '/service-requests/notifications',
   },
 
   // -------------------------------------------------------------------------
@@ -173,7 +187,12 @@ export const API_ENDPOINTS = {
   //            (router prefix /service-bundles, included with /api/v1)
   // -------------------------------------------------------------------------
   serviceBundles: {
-    list: '/service-bundles',
+    /**
+     * Trailing slash matters — backend exposes `GET "/"` so a request to
+     * `/service-bundles` without slash triggers a 307 redirect (and possibly
+     * loses the Authorization header on some middleware stacks).
+     */
+    list: '/service-bundles/',
     detail: (id: string) => `/service-bundles/${id}` as const,
     pricing: (id: string) => `/service-bundles/${id}/pricing` as const,
     matrix: (id: string) => `/service-bundles/${id}/matrix` as const,
@@ -309,6 +328,26 @@ export const API_ENDPOINTS = {
      */
     serviceRequestStatus: (requestId: string) =>
       `/service-requests/${requestId}/payment/status` as const,
+    /**
+     * List the payment methods that can be used to settle a given SR.
+     * Backend dynamically builds the list from `payment_processor_registry`
+     * (BANGE Mobile Money, card, bank transfer, cash, check). Mobile must read
+     * this rather than hardcode "BANGE only" — extending the catalogue server
+     * side then becomes a zero-mobile-change rollout.
+     *
+     * Backend: routes.py:1258 (PaymentMethodsResponse).
+     */
+    serviceRequestPaymentMethods: (requestId: string) =>
+      `/service-requests/${requestId}/payment/methods` as const,
+    /**
+     * Re-initiate a payment for a SR (used by the "Try again" CTA when a
+     * previous payment failed/expired without going through the wizard).
+     * Web parity: same path under `/dashboard/service-requests/[id]`.
+     *
+     * Backend: routes.py:1317 (PaymentInitiateRequest -> PaymentInitiateResponse).
+     */
+    serviceRequestInitiatePayment: (requestId: string) =>
+      `/service-requests/${requestId}/payment/initiate` as const,
   },
 
   // -------------------------------------------------------------------------
@@ -384,15 +423,20 @@ export const API_ENDPOINTS = {
   },
 
   // -------------------------------------------------------------------------
-  // Translations & i18n (server-driven strings)
-  //   Backend: app/modules/translations/api/* (multiple routers under /api/v1)
+  // Translations & i18n
+  //   Mobile UI strings (3 locales) are bundled in src/core/i18n/locales/*.json
+  //   and loaded statically at boot — see core/i18n/index.ts. This is by design:
+  //   instant startup, works offline, no version drift between APK and server.
+  //
+  //   Only DYNAMIC backend-managed translations (workflow keys whose values
+  //   live in the database and may evolve without an APK release) are fetched
+  //   at runtime. If we ever want OTA updates for plain UI strings, add a
+  //   dedicated namespace here (e.g. GET /translations/frontend/export/mobile)
+  //   and a hook that merges with the bundled JSON — do NOT resurrect a
+  //   `frontend(lang)` shortcut that does not exist on the backend.
   // -------------------------------------------------------------------------
   translations: {
-    /** Frontend strings keyed by lang ("es" | "fr" | "en"). */
-    frontend: (lang: string) => `/translations/frontend/${lang}` as const,
-    /** All enum value translations (cached). */
-    enums: '/enums',
-    /** System workflow strings export (used by the wizard). */
+    /** Workflow strings keyed by `wf.<workflow_code>.*` (used by the wizard). */
     systemWorkflow: '/translations/system/export/workflow',
   },
 
@@ -407,16 +451,10 @@ export const API_ENDPOINTS = {
     search: '/homepage/search',
   },
 
-  // -------------------------------------------------------------------------
-  // Communications (transactional emails / SMS — invoked by other flows)
-  //   Backend: app/modules/communications/api/communication_routes.py
-  //            (router prefix /communications, included with /api/v1)
-  //   NOTE: most are server-internal. Citizen apps typically don't call these directly.
-  //   Listed for completeness; only use if explicitly required.
-  // -------------------------------------------------------------------------
-  communications: {
-    emailTemplates: '/communications/templates',
-  },
+  // Communications endpoints are intentionally not exposed here — they are
+  // server-internal (transactional emails/SMS sent on behalf of other flows).
+  // Citizen apps never call them directly. Re-add only when a specific UI
+  // need arises and the consumer is implemented in the same change.
 } as const;
 
 /**

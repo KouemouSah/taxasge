@@ -609,6 +609,19 @@
     "a11y": {
       "item": "{{title}}, estado {{status}}, {{amount}}"
     },
+    "retry": {
+      "cta": "Reintentar pago",
+      "title": "Pagar esta solicitud",
+      "subtitle": "Elige un método de pago. Reiniciaremos el pago de esta solicitud.",
+      "phoneLabel": "Número de Mobile Money",
+      "submit": "Pagar",
+      "methodsLoadError": "No se pudieron cargar los métodos de pago. Inténtalo de nuevo.",
+      "redirecting": "Abriendo la página de pago…",
+      "cashPending": "Lleva el efectivo a una ventanilla de Tesorería — recibirás una notificación cuando un agente lo confirme.",
+      "checkPending": "Entrega tu cheque en una ventanilla de Tesorería — recibirás una notificación cuando un agente lo confirme.",
+      "agentPending": "Hemos notificado a un agente. Recibirás una notificación cuando se confirme el pago.",
+      "unknownResponse": "El pago se inició pero la respuesta fue inesperada. Revisa tu pestaña de Pagos."
+    },
     "result": {
       "checking": "Verificando el pago...",
       "processing": "Pago en curso, no salgas de la app",

@@ -44,6 +44,7 @@ import { API_ENDPOINTS } from '@core/api/endpoints';
 import { useRequestDetailView } from '@modules/service-requests';
 import { RequestStatusBadge } from '@modules/service-requests/components/request-status-badge';
 import type { DataSection } from '@modules/service-requests';
+import { RetryPaymentSheet } from '@modules/payments';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -116,11 +117,12 @@ export default function RequestDetailScreen() {
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
 
-  const { data, isLoading, isError } = useRequestDetailView(id ?? '');
+  const { data, isLoading, isError, refetch } = useRequestDetailView(id ?? '');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [lastDownloadedUri, setLastDownloadedUri] = useState<{ uri: string; mime: string } | null>(null);
+  const [retryVisible, setRetryVisible] = useState(false);
 
   /** Get MIME type from file extension */
   const getMimeType = (fileName: string): string => {
@@ -209,6 +211,15 @@ export default function RequestDetailScreen() {
     tariff, appointment, documents, workflow_name_es,
     solicitud_type_display, payment_status, payment_reference, receipt_number,
   } = data;
+
+  // Retry CTA visible when a payment attempt failed/was cancelled, or when the
+  // SR is sitting in `pending_payment` (typical after the first wizard pass
+  // when the citizen abandoned the BANGE redirect or chose cash and the agent
+  // hasn't validated yet — they may want to switch method).
+  const canRetryPayment =
+    payment_status === 'failed' ||
+    payment_status === 'cancelled' ||
+    (payment_status == null && request.status === 'pending_payment');
 
   const progress = stepper_phases.length > 0
     ? (current_phase_index + 1) / stepper_phases.length
@@ -312,6 +323,18 @@ export default function RequestDetailScreen() {
                   </View>
                 )}
               </View>
+
+              {canRetryPayment && (
+                <Button
+                  mode="contained-tonal"
+                  icon="refresh"
+                  onPress={() => setRetryVisible(true)}
+                  style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                  compact
+                >
+                  {t('payments.retry.cta')}
+                </Button>
+              )}
             </View>
           </>
         )}
@@ -450,6 +473,31 @@ export default function RequestDetailScreen() {
       >
         {snackbar ?? ''}
       </Snackbar>
+
+      {id ? (
+        <RetryPaymentSheet
+          visible={retryVisible}
+          onDismiss={() => setRetryVisible(false)}
+          serviceRequestId={id}
+          onResult={(outcome) => {
+            if (outcome.kind === 'redirect') {
+              setSnackbar(t('payments.retry.redirecting'));
+              // Refresh detail view shortly after — backend will have updated
+              // payment_status to 'processing'.
+              setTimeout(() => { void refetch(); }, 2500);
+            } else if (outcome.kind === 'agent_validation') {
+              const messageKey =
+                outcome.messageKey === 'cash' ? 'payments.retry.cashPending'
+                : outcome.messageKey === 'check' ? 'payments.retry.checkPending'
+                : 'payments.retry.agentPending';
+              setSnackbar(t(messageKey));
+              void refetch();
+            } else {
+              setSnackbar(outcome.message);
+            }
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

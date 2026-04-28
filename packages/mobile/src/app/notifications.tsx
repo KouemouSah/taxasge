@@ -6,7 +6,7 @@
  * or via deep link `facil://notifications`.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { Appbar, Divider, Menu } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import {
 } from '@core/notifications';
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
 import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
+import { useServerNotificationsSync } from '@modules/notifications/hooks/use-server-notifications-sync';
 import { NotificationItem } from '@modules/notifications/components/notification-item';
 import { NotificationEmptyState } from '@modules/notifications/components/notification-empty-state';
 import { NotificationPermissionsBanner } from '@modules/notifications/components/notification-permissions-banner';
@@ -30,7 +31,20 @@ export default function NotificationsScreen() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, remove, refresh } =
     useNotifications();
   const { permission, promptPermission } = useDeviceTokenRegistration();
+  const { isSyncing, sync } = useServerNotificationsSync();
   const [menuVisible, setMenuVisible] = React.useState(false);
+
+  // Pull the server audit trail at mount + after explicit refresh. Idempotent
+  // (dedupes by notif id in MMKV). Runs in the background; failures are silent
+  // — local MMKV remains usable.
+  useEffect(() => {
+    void sync().then(() => refresh());
+  }, [sync, refresh]);
+
+  const handleRefresh = useCallback(async () => {
+    await sync();
+    refresh();
+  }, [sync, refresh]);
 
   const handleItemPress = useCallback(
     (notif: StoredNotification) => {
@@ -105,8 +119,8 @@ export default function NotificationsScreen() {
         ItemSeparatorComponent={() => <Divider />}
         ListEmptyComponent={<NotificationEmptyState />}
         contentContainerStyle={notifications.length === 0 ? styles.emptyContent : undefined}
-        onRefresh={refresh}
-        refreshing={false}
+        onRefresh={handleRefresh}
+        refreshing={isSyncing}
         // P8.3 — perf knobs (NotificationItem may grow with multi-line, no getItemLayout).
         initialNumToRender={15}
         maxToRenderPerBatch={20}
