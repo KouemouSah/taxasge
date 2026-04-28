@@ -11,9 +11,11 @@ export {
   useUpdateCompany,
   useDeleteCompany,
   useCompanyMembers,
+  useCompanyMembership,
   useAddMember,
   useUpdateMemberRole,
   useRemoveMember,
   useDownloadLicensePdf,
 } from './services/companies-hooks';
+export type { CompanyMembershipPermissions } from './services/companies-hooks';
 export { downloadLicensePdf } from './services/company-pdf';

@@ -25,12 +25,9 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
-import { useAuth } from '@core/hooks/use-auth';
-import { CompanyDeleteDialog } from '@modules/companies/components/company-delete-dialog';
 import { MemberListItem } from '@modules/companies/components/member-list-item';
 import {
   useCompanyMembers,
-  useDeleteCompany,
   useDownloadLicensePdf,
 } from '@modules/companies';
 import {
@@ -63,15 +60,12 @@ export default function CompanyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const { user } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
-  const [deleteVisible, setDeleteVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const detail = useBundleMyCompanyDetail(id);
   const payments = useBundleMyCompanyPayments(id, 1, 10);
   const members = useCompanyMembers(id ?? null);
-  const remove = useDeleteCompany();
   const downloadPdf = useDownloadLicensePdf();
 
   const company = detail.data?.company ?? null;
@@ -83,31 +77,13 @@ export default function CompanyDetailScreen() {
     [obligations],
   );
 
-  // Mirror backend permissions:
-  //   PUT  /companies/{id}        -> company_owner | company_admin
-  //   DELETE /companies/{id}      -> company_owner only
-  // Hide the actions in the menu instead of letting the user click and hit a
-  // 403 — same UX as the web /empresas/[id] page.
-  const currentMembership = useMemo(
-    () => (members.data ?? []).find((m) => m.user_id === user?.id),
-    [members.data, user?.id],
-  );
-  const canEditCompany =
-    currentMembership?.role === 'company_owner' ||
-    currentMembership?.role === 'company_admin';
-  const canDeleteCompany = currentMembership?.role === 'company_owner';
-
-  const handleDelete = useCallback(() => {
-    if (!id) return;
-    remove.mutate(id, {
-      onSuccess: () => {
-        setDeleteVisible(false);
-        setSnackbar(t('companies.delete.success'));
-        router.back();
-      },
-      onError: () => setSnackbar(t('companies.errors.deleteFailed')),
-    });
-  }, [id, remove, t]);
+  // Edit/delete are NOT exposed on the citizen-facing web /empresas/[id] page
+  // either: the backend DELETE /companies/{id} performs an unprotected
+  // hard-delete (no check on commercial_licenses, service_payments,
+  // service_requests). Editing a company that already has an active license
+  // would also de-sync the OMS classification. Until the backend gains
+  // soft-delete + dependency checks, the citizen surface keeps these actions
+  // off — admins still have them via the dedicated /admin/companies surface.
 
   const handleDownloadPdf = useCallback(() => {
     if (!id) return;
@@ -150,26 +126,6 @@ export default function CompanyDetailScreen() {
               onPress={handleDownloadPdf}
               leadingIcon="file-download-outline"
               title={t('companies.detail.actions.downloadLicense')}
-            />
-          ) : null}
-          {canEditCompany ? (
-            <Menu.Item
-              onPress={() => {
-                setMenuVisible(false);
-                router.push(`/companies/${id}/edit` as never);
-              }}
-              leadingIcon="pencil-outline"
-              title={t('companies.detail.actions.edit')}
-            />
-          ) : null}
-          {canDeleteCompany ? (
-            <Menu.Item
-              onPress={() => {
-                setMenuVisible(false);
-                setDeleteVisible(true);
-              }}
-              leadingIcon="trash-can-outline"
-              title={t('companies.detail.actions.delete')}
             />
           ) : null}
         </Menu>
@@ -340,14 +296,6 @@ export default function CompanyDetailScreen() {
           </Card>
         </ScrollView>
       )}
-
-      <CompanyDeleteDialog
-        visible={deleteVisible}
-        companyName={company?.legal_name ?? ''}
-        loading={remove.isPending}
-        onCancel={() => setDeleteVisible(false)}
-        onConfirm={handleDelete}
-      />
 
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
         {snackbar ?? ''}

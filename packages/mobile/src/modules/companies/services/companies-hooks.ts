@@ -123,6 +123,51 @@ export function useCompanyMembers(companyId: string | null): UseQueryResult<Comp
   });
 }
 
+/**
+ * Resolve the current user's role inside a given company + role-derived
+ * permissions. Mirrors the backend authorisation contract:
+ *   PUT  /companies/{id}        -> company_owner | company_admin
+ *   DELETE /companies/{id}      -> company_owner only
+ *   POST /{id}/members          -> company_owner | company_admin
+ *
+ * NOTE: the citizen surfaces (web /empresas/[id], mobile /companies/[id]) do
+ * NOT currently expose Edit/Delete CTAs because the backend DELETE performs
+ * an unprotected hard-delete (no check on commercial_licenses, payments,
+ * service_requests). This hook is shipped now so that the day the backend
+ * gains soft-delete + dependency checks, future UI can subscribe without
+ * re-deriving the rules.
+ */
+export interface CompanyMembershipPermissions {
+  /** Membership row of the current user, or null if they're not a member. */
+  membership: CompanyMember | null;
+  isOwner: boolean;
+  isAdmin: boolean;
+  /** Allowed by backend permissions (does not mean we expose the UI today). */
+  canEdit: boolean;
+  /** Allowed by backend permissions (does not mean we expose the UI today). */
+  canDelete: boolean;
+  canManageMembers: boolean;
+}
+
+export function useCompanyMembership(
+  companyId: string | null,
+  currentUserId: string | null | undefined,
+): CompanyMembershipPermissions {
+  const members = useCompanyMembers(companyId);
+  const membership =
+    (members.data ?? []).find((m) => m.user_id === currentUserId) ?? null;
+  const isOwner = membership?.role === 'company_owner';
+  const isAdmin = membership?.role === 'company_admin';
+  return {
+    membership,
+    isOwner,
+    isAdmin,
+    canEdit: isOwner || isAdmin,
+    canDelete: isOwner,
+    canManageMembers: isOwner || isAdmin,
+  };
+}
+
 export function useAddMember(companyId: string): UseMutationResult<
   CompanyMember,
   Error,
