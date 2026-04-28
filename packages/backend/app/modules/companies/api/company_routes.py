@@ -479,13 +479,30 @@ async def create_company(
 async def list_companies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    include_archived: bool = Query(
+        False,
+        description="Include archived (soft-deleted) companies. Reserved for "
+                    "admin/audit views — citizen UI defaults to false.",
+    ),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """List user's companies"""
+    """List user's companies (citizen surface — archived hidden by default)."""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     offset = (page - 1) * page_size
-    companies, total = await company_repository.list_by_user(db, user_id, page_size, offset)
+
+    # Only admins are allowed to opt into archived rows. Strip the flag
+    # silently for everyone else (no 403 — keeps the route forgiving).
+    effective_include_archived = include_archived
+    if include_archived:
+        perm_service = create_permission_service(db)
+        if not await perm_service.has_permission(user_id, "company.view_all"):
+            effective_include_archived = False
+
+    companies, total = await company_repository.list_by_user(
+        db, user_id, page_size, offset,
+        include_archived=effective_include_archived,
+    )
     return CompanyListResponse(
         companies=[CompanyResponse(**c) for c in companies],
         total=total,
@@ -500,10 +517,14 @@ async def get_company(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """Get company by ID"""
+    """Get company by ID.
+
+    Citizens can read their own companies as long as ``archived_at IS NULL``.
+    Admins with ``company.view_all`` see archived rows too.
+    """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    # Admin with company.view can access any company
+    # Admin with company.view_all can access any company (incl. archived)
     perm_service = create_permission_service(db)
     has_view_all = await perm_service.has_permission(user_id, "company.view_all")
 
@@ -515,6 +536,10 @@ async def get_company(
 
     company = await company_repository.get_by_id(db, company_id)
     if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+    # Hide archived rows from citizens — same UX as the listing endpoint.
+    if not has_view_all and company.get("archived_at") is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
     return CompanyResponse(**company)
@@ -578,35 +603,218 @@ async def update_company(
     return CompanyResponse(**updated)
 
 
-@router.delete("/{company_id}", status_code=status.HTTP_200_OK)
-async def delete_company(
+@router.post("/{company_id}/archive", status_code=status.HTTP_200_OK)
+async def archive_company(
     company_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """
-    Delete company
+    """Soft-delete (archive) a company — citizen-initiated.
 
-    Requires either:
-    - company_owner role in the company, OR
-    - company.delete permission (admin override)
+    Reserved to ``company_owner`` (the role check is done here, NOT via the
+    permission system, because every owner must be able to archive their own
+    company without being granted a global permission).
+
+    Returns:
+      - 200  ``{"message": "...", "archived_at": "..."}``
+      - 403  caller is not the company_owner
+      - 404  company not found
+      - 409  active dependencies prevent the archive — payload includes a
+             ``blockers`` dict with non-zero counts (active_licenses,
+             pending_payments, open_requests, active_inspections)
+
+    Idempotent: re-archiving an already-archived company refreshes the
+    timestamp without error.
+
+    See migration ``314_companies_soft_delete_archive.sql`` and
+    ``.claude/plans/SOFT_DELETE_COMPANIES_PLAN.md``.
     """
+    import json
+
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    perm_service = create_permission_service(db)
-    has_admin_perm = await perm_service.has_permission(user_id, "company.delete")
+    # Existence check (also confirms the UUID is well-formed)
+    company = await company_repository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
 
-    if not has_admin_perm:
-        role = await company_repository.check_membership(db, company_id, user_id)
-        if role != "company_owner":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role or company.delete permission")
+    # Owner-only — admins use the unarchive/hard-delete admin endpoints
+    role = await company_repository.check_membership(db, company_id, user_id)
+    if role != "company_owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the company owner can archive this company",
+        )
 
-    deleted = await company_repository.delete(db, company_id)
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    # 409 guard — refuse archive while business records are alive
+    blockers = await company_repository.check_archive_blockers(db, company_id)
+    if sum(blockers.values()) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Cannot archive: company has active dependencies",
+                "blockers": blockers,
+            },
+        )
 
-    logger.info(f"User {user_id} deleted company {company_id}")
-    return {"message": "Company deleted successfully"}
+    async with db.transaction():
+        ok = await company_repository.archive(
+            db, company_id, archived_by_user_id=user_id, reason="archived_by_owner",
+        )
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Company not found",
+            )
+        await db.execute(
+            """
+            INSERT INTO audit_logs (
+                user_id, entity_type, entity_id, action, new_values
+            ) VALUES ($1, 'company', $2, 'archive', $3::jsonb)
+            """,
+            UUID(str(user_id)),
+            company_id,
+            json.dumps({
+                "reason": "archived_by_owner",
+                "blockers_at_check": blockers,
+            }),
+        )
+
+    logger.info(f"User {user_id} archived company {company_id}")
+
+    refreshed = await company_repository.get_by_id(db, company_id)
+    archived_at = refreshed.get("archived_at") if refreshed else None
+    return {
+        "message": "Company archived",
+        "archived_at": archived_at.isoformat() if archived_at else None,
+    }
+
+
+@router.post("/{company_id}/unarchive", status_code=status.HTTP_200_OK)
+async def unarchive_company(
+    company_id: str,
+    current_user: Dict[str, Any] = Depends(permission_required("company.unarchive")),
+    db=Depends(get_database),
+):
+    """Restore an archived company — admin only.
+
+    Requires the ``company.unarchive`` permission (granted to admins +
+    supervisor_onrc per migration 314). Companies that are already active are
+    a 400 — no silent no-op.
+    """
+    import json
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    company = await company_repository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
+    if company.get("archived_at") is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company is not archived",
+        )
+
+    async with db.transaction():
+        ok = await company_repository.unarchive(db, company_id)
+        if not ok:
+            # Race: another admin unarchived between our SELECT and UPDATE.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Company state changed during unarchive — retry",
+            )
+        await db.execute(
+            """
+            INSERT INTO audit_logs (
+                user_id, entity_type, entity_id, action, new_values
+            ) VALUES ($1, 'company', $2, 'unarchive', $3::jsonb)
+            """,
+            UUID(str(user_id)),
+            company_id,
+            json.dumps({"restored_by_admin": True}),
+        )
+
+    logger.info(f"Admin {user_id} unarchived company {company_id}")
+    return {"message": "Company restored"}
+
+
+@router.delete("/{company_id}", status_code=status.HTTP_200_OK)
+async def delete_company(
+    company_id: str,
+    current_user: Dict[str, Any] = Depends(permission_required("company.hard_delete")),
+    db=Depends(get_database),
+):
+    """Hard-delete a company — admin only, post-archive only.
+
+    Replaces the previous citizen-facing flow. The endpoint now requires:
+      1. The ``company.hard_delete`` permission (admin/super_admin per
+         migration 314 — citizens never receive it).
+      2. The company to have been archived first
+         (``archived_at IS NOT NULL``). This protects against accidental
+         hard-deletes and ensures every removal goes through the soft-delete
+         grace period.
+      3. Zero active dependencies — same blocker check as
+         ``POST /{id}/archive``. An archived company can grow new
+         dependencies (e.g. retroactive license adjustments) and we do not
+         want to lose them.
+    """
+    import json
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    company = await company_repository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
+
+    if company.get("archived_at") is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company must be archived before hard-delete",
+        )
+
+    blockers = await company_repository.check_archive_blockers(db, company_id)
+    if sum(blockers.values()) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Cannot hard-delete: company has active dependencies",
+                "blockers": blockers,
+            },
+        )
+
+    async with db.transaction():
+        deleted = await company_repository.delete(db, company_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Company not found",
+            )
+        await db.execute(
+            """
+            INSERT INTO audit_logs (
+                user_id, entity_type, entity_id, action, new_values
+            ) VALUES ($1, 'company', $2, 'hard_delete', $3::jsonb)
+            """,
+            UUID(str(user_id)),
+            company_id,
+            json.dumps({
+                "previous_archived_at": company.get("archived_at").isoformat()
+                    if company.get("archived_at") else None,
+                "blockers_at_check": blockers,
+            }),
+        )
+
+    logger.info(f"Admin {user_id} hard-deleted company {company_id}")
+    return {"message": "Company deleted"}
 
 
 # =============================================================================

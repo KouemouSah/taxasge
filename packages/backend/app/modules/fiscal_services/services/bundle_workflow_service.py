@@ -79,6 +79,7 @@ class BundleWorkflowService:
             LEFT JOIN license_obligations lo
                 ON lo.license_id = cl.id
             WHERE c.is_active = true
+              AND c.archived_at IS NULL
             GROUP BY c.id, cz.zone_code, ct.name,
                      cl.id, cl.status, cl.fiscal_year
             ORDER BY pending_obligations DESC NULLS LAST,
@@ -134,7 +135,9 @@ class BundleWorkflowService:
         if not is_member:
             raise ValueError("COMPANY_NOT_OWNED")
 
-        # Company + license
+        # Company + license — archived companies are hidden from the citizen
+        # surface (the AND archived_at IS NULL clause turns them into
+        # COMPANY_NOT_FOUND, same response as a deleted row).
         row = await conn.fetchrow("""
             SELECT c.id, c.legal_name, c.nif, c.registration_number,
                    c.regimen_fiscal, c.commerce_type, c.objeto_social,
@@ -152,6 +155,7 @@ class BundleWorkflowService:
             LEFT JOIN commercial_licenses cl
                 ON cl.company_id = c.id AND cl.fiscal_year = $2
             WHERE c.id = $1
+              AND c.archived_at IS NULL
         """, company_id, fiscal_year)
 
         if not row:
@@ -276,12 +280,20 @@ class BundleWorkflowService:
 
         Verifies ownership. Returns service_payments with receipt info.
         """
-        # Verify ownership
-        is_member = await conn.fetchval(
-            "SELECT 1 FROM user_company_roles WHERE user_id = $1 AND company_id = $2",
+        # Verify ownership AND that the company is not archived (citizen
+        # surface — archived companies appear as COMPANY_NOT_OWNED to the
+        # caller, matching the listing/detail behaviour).
+        is_visible = await conn.fetchval(
+            """
+            SELECT 1 FROM user_company_roles ucr
+            JOIN companies c ON c.id = ucr.company_id
+            WHERE ucr.user_id = $1
+              AND ucr.company_id = $2
+              AND c.archived_at IS NULL
+            """,
             user_id, company_id,
         )
-        if not is_member:
+        if not is_visible:
             raise ValueError("COMPANY_NOT_OWNED")
 
         offset = (page - 1) * page_size
@@ -361,6 +373,7 @@ class BundleWorkflowService:
                 LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
                 LEFT JOIN cities ct ON c.city_id = ct.id
                 WHERE c.is_active = true AND c.regimen_fiscal = 'bundle'
+                  AND c.archived_at IS NULL
                   AND (c.registration_number ILIKE $1 OR c.nif ILIKE $1
                        OR c.tax_id ILIKE $1)
                 ORDER BY c.legal_name LIMIT $2
@@ -380,6 +393,7 @@ class BundleWorkflowService:
                 LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
                 LEFT JOIN cities ct ON c.city_id = ct.id
                 WHERE c.is_active = true AND c.regimen_fiscal = 'bundle'
+                  AND c.archived_at IS NULL
                   AND (c.search_vector @@ websearch_to_tsquery('spanish', $1)
                        OR c.legal_name ILIKE $4)
                 ORDER BY c.legal_name LIMIT $2

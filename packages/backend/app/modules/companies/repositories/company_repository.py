@@ -115,17 +115,30 @@ class CompanyRepository:
         result = await conn.fetchrow(query, nif)
         return dict(result) if result else None
 
-    async def list_by_user(self, conn: asyncpg.Connection, user_id: str, limit: int = 50, offset: int = 0) -> tuple[List[Dict[str, Any]], int]:
-        """List companies where user is member."""
-        count_query = """
+    async def list_by_user(
+        self,
+        conn: asyncpg.Connection,
+        user_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        include_archived: bool = False,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """List companies where user is member.
+
+        By default archived companies are filtered out (citizen surface). Pass
+        ``include_archived=True`` for admin/audit views that need to see them.
+        """
+        archived_filter = "" if include_archived else " AND c.archived_at IS NULL"
+
+        count_query = f"""
             SELECT COUNT(DISTINCT c.id)
             FROM companies c
             JOIN user_company_roles ucr ON c.id = ucr.company_id
-            WHERE ucr.user_id = $1
+            WHERE ucr.user_id = $1{archived_filter}
         """
         total = await conn.fetchval(count_query, self._uid(user_id))
 
-        data_query = """
+        data_query = f"""
             SELECT c.*,
                    ct.name as city_name,
                    cz.zone_code,
@@ -135,7 +148,7 @@ class CompanyRepository:
             LEFT JOIN cities ct ON c.city_id = ct.id
             LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
             LEFT JOIN user_company_roles ucr2 ON c.id = ucr2.company_id
-            WHERE ucr.user_id = $1
+            WHERE ucr.user_id = $1{archived_filter}
             GROUP BY c.id, ct.name, cz.zone_code
             ORDER BY c.created_at DESC
             LIMIT $2 OFFSET $3
@@ -177,12 +190,130 @@ class CompanyRepository:
         return await self.get_by_id(conn, company_id)
 
     async def delete(self, conn: asyncpg.Connection, company_id: str) -> bool:
-        """Delete company and members (atomic transaction)."""
+        """Hard-delete company and memberships (atomic).
+
+        DANGEROUS — should only be invoked by an admin holding
+        ``company.hard_delete``, AND only after :meth:`archive` has been
+        applied + :meth:`check_archive_blockers` returns no blockers. The
+        public route enforces both pre-conditions; this method itself does
+        NOT re-check (kept low-level so back-office tooling can call it after
+        its own validation).
+        """
         cid = self._uid(company_id)
         async with conn.transaction():
             await conn.execute("DELETE FROM user_company_roles WHERE company_id = $1", cid)
             result = await conn.execute("DELETE FROM companies WHERE id = $1", cid)
             return result == "DELETE 1"
+
+    # =========================================================================
+    # Soft-delete (archive / unarchive)
+    #
+    # See migration 314_companies_soft_delete_archive.sql and
+    # .claude/plans/SOFT_DELETE_COMPANIES_PLAN.md.
+    # =========================================================================
+
+    async def check_archive_blockers(
+        self, conn: asyncpg.Connection, company_id: str
+    ) -> Dict[str, int]:
+        """Count active dependencies that prevent archiving / hard-deleting.
+
+        Returns a dict with the same keys whether or not blockers exist; the
+        caller decides on emptiness by ``sum(values) == 0``.
+
+        Active definition (per the plan):
+          - active_licenses    : commercial_licenses where status NOT IN
+                                 ('cancelled', 'expired', 'revoked')
+          - pending_payments   : service_payments where workflow_status NOT IN
+                                 ('completed', 'cancelled', 'refunded')
+          - open_requests      : service_requests where status NOT IN
+                                 ('completed', 'cancelled', 'rejected')
+          - active_inspections : field_inspections where status IN
+                                 ('pending', 'in_progress')
+        """
+        cid = self._uid(company_id)
+        rows = await conn.fetchrow(
+            """
+            SELECT
+              (SELECT COUNT(*) FROM commercial_licenses
+                 WHERE company_id = $1
+                   AND status::text NOT IN ('cancelled', 'expired', 'revoked'))::int
+                 AS active_licenses,
+              (SELECT COUNT(*) FROM service_payments
+                 WHERE company_id = $1
+                   AND workflow_status::text NOT IN
+                       ('completed', 'cancelled', 'refunded'))::int
+                 AS pending_payments,
+              (SELECT COUNT(*) FROM service_requests
+                 WHERE company_id = $1
+                   AND status::text NOT IN
+                       ('completed', 'cancelled', 'rejected'))::int
+                 AS open_requests,
+              (SELECT COUNT(*) FROM field_inspections
+                 WHERE company_id = $1
+                   AND status::text IN ('pending', 'in_progress'))::int
+                 AS active_inspections
+            """,
+            cid,
+        )
+        return {
+            "active_licenses": rows["active_licenses"] or 0,
+            "pending_payments": rows["pending_payments"] or 0,
+            "open_requests": rows["open_requests"] or 0,
+            "active_inspections": rows["active_inspections"] or 0,
+        }
+
+    async def archive(
+        self,
+        conn: asyncpg.Connection,
+        company_id: str,
+        archived_by_user_id: str,
+        reason: str = "archived_by_owner",
+    ) -> bool:
+        """Soft-delete: mark the company as archived.
+
+        Sets ``is_active=false`` (legacy flag — keeps the existing index
+        ``idx_companies_active_verified`` honest) AND
+        ``archived_at = NOW(), archive_reason, archived_by``. Idempotent: a
+        re-archive simply refreshes the timestamp (no error).
+
+        Caller is responsible for verifying ownership and calling
+        :meth:`check_archive_blockers` first. This method does NOT validate
+        — it just executes.
+        """
+        cid = self._uid(company_id)
+        result = await conn.execute(
+            """
+            UPDATE companies
+               SET archived_at    = NOW(),
+                   archive_reason = $2,
+                   archived_by    = $3,
+                   is_active      = FALSE,
+                   updated_at     = NOW()
+             WHERE id = $1
+            """,
+            cid,
+            reason,
+            self._uid(archived_by_user_id),
+        )
+        return result == "UPDATE 1"
+
+    async def unarchive(self, conn: asyncpg.Connection, company_id: str) -> bool:
+        """Restore an archived company. Admin-only at the route layer."""
+        cid = self._uid(company_id)
+        result = await conn.execute(
+            """
+            UPDATE companies
+               SET archived_at    = NULL,
+                   archive_reason = NULL,
+                   archived_by    = NULL,
+                   is_active      = TRUE,
+                   updated_at     = NOW()
+             WHERE id = $1
+               AND archived_at IS NOT NULL
+            """,
+            cid,
+        )
+        return result == "UPDATE 1"
 
     async def add_member(self, conn: asyncpg.Connection, company_id: str, user_id: str, role: CompanyMemberRole) -> Dict[str, Any]:
         """Add member to company."""
