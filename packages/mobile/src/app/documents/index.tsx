@@ -9,7 +9,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Appbar, Divider, FAB, SegmentedButtons, Searchbar } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -57,8 +57,12 @@ const GENERATION_BUCKETS: Record<VaultGenerationFilter, string[]> = {
 };
 
 export default function VaultHomeScreen() {
+  // Bottom safe-area inset — without it the FAB sits behind the Android nav
+  // bar on most devices (see debug/tesoro/m1.jpg for the same bug on
+  // /companies). Reused on the upload-tab FAB below.
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<VaultTabValue>('uploads');
   const [categoryFilter, setCategoryFilter] = useState<VaultCategoryFilter>('all');
   const [generationFilter, setGenerationFilter] = useState<VaultGenerationFilter>('all');
@@ -307,7 +311,10 @@ export default function VaultHomeScreen() {
       {tab === 'uploads' ? (
         <FAB
           icon="plus"
-          style={[styles.fab, { backgroundColor: colors.primary }]}
+          style={[
+            styles.fab,
+            { backgroundColor: colors.primary, bottom: 16 + insets.bottom },
+          ]}
           color="white"
           onPress={() => router.push('/documents/upload' as never)}
           accessibilityLabel={t('vault.upload.title')}
@@ -321,10 +328,13 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   tabsRow: { paddingHorizontal: 16, paddingVertical: 8 },
   searchBar: { marginHorizontal: 16, marginTop: 4, marginBottom: 4 },
-  emptyContent: { flexGrow: 1, justifyContent: 'center' },
+  // Empty state and single-item bodies — keep the content close to the chips
+  // bar (top-aligned) instead of vertically centering. Centering looks bad
+  // when there is only one document or none (see debug/tesoro/m4.jpg, m6.jpg).
+  emptyContent: { flexGrow: 1, paddingTop: 48 },
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
+    // bottom is computed at render time from useSafeAreaInsets().
   },
 });

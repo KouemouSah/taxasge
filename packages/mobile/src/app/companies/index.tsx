@@ -6,7 +6,7 @@
 import React, { useCallback } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Appbar, Divider, FAB } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +22,10 @@ import {
 export default function CompaniesIndexScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  // Bottom inset accounts for the Android system nav bar — without it the FAB
+  // sits 24dp above the screen edge but BEHIND the gesture/3-button bar on
+  // most devices (see debug/tesoro/m1.jpg).
+  const insets = useSafeAreaInsets();
   const list = useBundleMyCompanies();
 
   const data = list.data?.companies ?? [];
@@ -86,7 +90,10 @@ export default function CompaniesIndexScreen() {
 
       <FAB
         icon="plus"
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[
+          styles.fab,
+          { backgroundColor: colors.primary, bottom: 16 + insets.bottom },
+        ]}
         color="white"
         onPress={handleCreate}
         accessibilityLabel={t('companies.create.title')}
@@ -102,6 +109,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
+    // bottom is computed at render time from useSafeAreaInsets() — see usage.
   },
 });

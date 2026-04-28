@@ -26,7 +26,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
-import { MemberListItem } from '@modules/companies/components/member-list-item';
 import { CompanyArchiveDialog } from '@modules/companies/components/company-archive-dialog';
 import {
   useCompanyMembers,
@@ -86,7 +85,7 @@ export default function CompanyDetailScreen() {
   // /empresas/[companyId] (commit 184c4069). Edit / hard-delete remain off
   // the citizen surface (backend gates them via company.hard_delete +
   // archived prerequisite — admin only).
-  const { canArchive } = useCompanyMembership(id ?? null, user?.id);
+  const { canArchive, canManageMembers } = useCompanyMembership(id ?? null, user?.id);
 
   const handleDownloadPdf = useCallback(() => {
     if (!id) return;
@@ -105,7 +104,10 @@ export default function CompanyDetailScreen() {
     router.push(`/bundle-wizard?company_id=${encodeURIComponent(id)}` as never);
   }, [id]);
 
-  const previewMembers = (members.data ?? []).slice(0, 3);
+  // members data is still consumed by useCompanyMembership above for the
+  // role gate — even though we no longer render a member-preview card.
+  // Reading it here keeps the query warm so canManageMembers stays accurate.
+  void members.data;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.root, { backgroundColor: colors.background }]}>
@@ -124,11 +126,17 @@ export default function CompanyDetailScreen() {
             />
           }
         >
-          {license ? (
+          {/* Download license PDF moved out of the kebab to a primary CTA
+              inside the Licence Card — see debug/tesoro/m2.jpg user feedback
+              ("button hidden in the three-dots menu"). */}
+          {canManageMembers ? (
             <Menu.Item
-              onPress={handleDownloadPdf}
-              leadingIcon="file-download-outline"
-              title={t('companies.detail.actions.downloadLicense')}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push(`/companies/${id}/members` as never);
+              }}
+              leadingIcon="account-multiple-outline"
+              title={t('companies.detail.actions.manageMembers')}
             />
           ) : null}
           {canArchive ? (
@@ -190,6 +198,19 @@ export default function CompanyDetailScreen() {
                     label={t('companies.obligations.status.paid')}
                     value={`${license.amount_paid.toLocaleString()} / ${license.total_amount.toLocaleString()} XAF`}
                   />
+                  {/* Primary CTA promoted out of the kebab so the user sees
+                      it without two extra taps (m2.jpg feedback). */}
+                  <Button
+                    mode="contained-tonal"
+                    icon="file-download-outline"
+                    onPress={handleDownloadPdf}
+                    loading={downloadPdf.isPending}
+                    disabled={downloadPdf.isPending}
+                    style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                    accessibilityLabel={t('companies.detail.actions.downloadLicense')}
+                  >
+                    {t('companies.detail.actions.downloadLicense')}
+                  </Button>
                 </>
               ) : (
                 <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
@@ -279,34 +300,12 @@ export default function CompanyDetailScreen() {
             </Card.Content>
           </Card>
 
-          {/* Members preview */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={t('companies.detail.sections.members')}
-              right={() => (
-                <Button compact onPress={() => router.push(`/companies/${id}/members` as never)}>
-                  {t('companies.detail.actions.manageMembers')}
-                </Button>
-              )}
-            />
-            <Card.Content style={{ paddingHorizontal: 0 }}>
-              {previewMembers.length === 0 ? (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: colors.onSurfaceVariant, paddingHorizontal: 16 }}
-                >
-                  {t('companies.detail.noMembers')}
-                </Text>
-              ) : (
-                previewMembers.map((member, i) => (
-                  <View key={member.user_id}>
-                    <MemberListItem member={member} />
-                    {i < previewMembers.length - 1 ? <Divider /> : null}
-                  </View>
-                ))
-              )}
-            </Card.Content>
-          </Card>
+          {/* Members preview removed — the web /empresas/[id] page does NOT
+              expose member management on the citizen surface, only an
+              admin-only /admin/companies/[id]/members route. We kept the
+              `useCompanyMembers` hook above (it powers `useCompanyMembership`
+              for the archive role gate); we just no longer render the section.
+              See debug/tesoro/m2.jpg notes from the user. */}
         </ScrollView>
       )}
 

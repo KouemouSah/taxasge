@@ -96,6 +96,12 @@ export function DocumentFilterChips(props: DocumentFilterChipsProps) {
     >
       {options.map((opt) => {
         const selected = props.value === opt;
+        // Note: `compact` was previously set on Paper's <Chip>, but combined
+        // with `mode="outlined"` + `showSelectedCheck={false}` it raced with
+        // the horizontal ScrollView's first measurement and rendered empty
+        // pill shapes until the user tapped one (see debug/tesoro/m3.jpg).
+        // We drop `compact` and shrink the container padding ourselves —
+        // identical visual density, no first-render glitch.
         return (
           <View key={opt} style={styles.chip}>
             <Chip
@@ -104,16 +110,17 @@ export function DocumentFilterChips(props: DocumentFilterChipsProps) {
                 (props.onChange as (v: typeof opt) => void)(opt)
               }
               mode={selected ? 'flat' : 'outlined'}
-              compact
               showSelectedCheck={false}
-              style={
+              style={[
+                styles.chipInner,
                 selected
                   ? { backgroundColor: colors.primaryContainer }
-                  : { backgroundColor: colors.surface, borderColor: colors.outline }
-              }
+                  : { backgroundColor: colors.surface, borderColor: colors.outline },
+              ]}
               textStyle={{
                 color: selected ? colors.onPrimaryContainer : colors.onSurface,
                 fontWeight: selected ? '600' : '500',
+                fontSize: 13,
               }}
             >
               {t(`${i18nNs}.${opt}`)}
@@ -133,5 +140,10 @@ const styles = StyleSheet.create({
   },
   chip: {
     marginRight: 8,
+  },
+  // Shrinks the standard Chip height to match the prior `compact` look
+  // without using the prop that caused the empty-pill first-render bug.
+  chipInner: {
+    height: 32,
   },
 });
