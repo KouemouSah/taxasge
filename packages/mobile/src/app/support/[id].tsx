@@ -166,7 +166,8 @@ function SupportTicketDetailContent() {
       ) : (
         <KeyboardAvoidingView
           style={styles.flex1}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >
           <Surface
             style={[
@@ -199,6 +200,8 @@ function SupportTicketDetailContent() {
             style={styles.flex1}
             contentContainerStyle={[styles.thread, { paddingVertical: spacing.sm }]}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
           >
             <Text
               variant="bodyMedium"
@@ -252,7 +255,11 @@ function SupportTicketDetailContent() {
                 placeholder={t('support.detail.replyPlaceholder')}
                 mode="outlined"
                 multiline
-                style={{ flex: 1 }}
+                // Bounded height — without this an unbounded `multiline`
+                // input grows past the screen and pushes the send-button
+                // column off-screen on Android (root cause of the m10
+                // overflow). Internal scroll kicks in past 120dp.
+                style={{ flex: 1, maxHeight: 120 }}
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
                 blurOnSubmit={false}
@@ -309,6 +316,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderTopWidth: 1,
+    width: '100%',
   },
   closedBar: {
     flexDirection: 'row',
