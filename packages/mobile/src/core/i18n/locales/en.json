@@ -758,6 +758,43 @@
       "body": "Register your companies to manage their licences and obligations.",
       "cta": "Create a company"
     },
+    "card": {
+      "registrationNumber": "Reg. No.",
+      "deadline": "Due",
+      "noLicense": "No active licence",
+      "pendingObligations_one": "{{count}} pending obligation",
+      "pendingObligations_other": "{{count}} pending obligations",
+      "noPending": "Up to date",
+      "pay": "Pay"
+    },
+    "license": {
+      "status": {
+        "draft": "Draft",
+        "pending_payment": "Payment pending",
+        "active": "Active",
+        "expired": "Expired",
+        "revoked": "Revoked",
+        "cancelled": "Cancelled"
+      }
+    },
+    "obligations": {
+      "title": "Obligations",
+      "amount": "Amount",
+      "dueDate": "Due",
+      "status": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "cancelled": "Cancelled"
+      },
+      "payAll": "Pay obligations",
+      "empty": "No obligations for this year"
+    },
+    "payments": {
+      "title": "Payment history",
+      "empty": "No payments yet",
+      "viewReceipt": "View receipt"
+    },
     "create": {
       "title": "New company",
       "action": "Create"

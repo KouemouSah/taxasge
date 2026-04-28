@@ -10,7 +10,6 @@ import { Linking } from 'react-native';
 import * as bundleApi from './bundle-api';
 import * as wizardApi from '@modules/wizard/services/wizard-api';
 import type {
-  BundleStep,
   CompanySummary,
   MyCompanyWithStatus,
   CompanySearchResult,
@@ -28,9 +27,16 @@ import type {
  */
 const BUNDLE_COMPANY_DOCUMENT_CODE = 'certificado_padron';
 
-export function useBundleWizard() {
+interface UseBundleWizardOptions {
+  /** Optional company UUID to auto-select on mount (deep-link from "Mes Empresas"). */
+  preselectCompanyId?: string | null;
+}
+
+export function useBundleWizard(options: UseBundleWizardOptions = {}) {
+  const { preselectCompanyId } = options;
   const [currentStep, setCurrentStep] = useState(0);
   const totalSteps = 6;
+  const preselectAppliedRef = useRef(false);
 
   // Step 0: Company
   const [myCompanies, setMyCompanies] = useState<MyCompanyWithStatus[]>([]);
@@ -94,6 +100,20 @@ export function useBundleWizard() {
   }, []);
 
   useEffect(() => { loadMyCompanies(); }, [loadMyCompanies]);
+
+  // Auto-select company when arriving from "Mes Empresas / Pagar obligaciones".
+  // Runs once after myCompanies loads — guards against re-runs (would clobber
+  // user's manual selection on step 0).
+  useEffect(() => {
+    if (preselectAppliedRef.current) return;
+    if (!preselectCompanyId) return;
+    if (myCompanies.length === 0) return;
+    const match = myCompanies.find((mc) => mc.company.id === preselectCompanyId);
+    if (!match) return;
+    preselectAppliedRef.current = true;
+    setSelectedCompany(match.company as unknown as CompanySummary);
+    setCompanyExists(true);
+  }, [preselectCompanyId, myCompanies]);
 
   const searchCompany = useCallback((q: string) => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);

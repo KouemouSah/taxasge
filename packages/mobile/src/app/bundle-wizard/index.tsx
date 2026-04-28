@@ -8,7 +8,7 @@
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Text, Button, ActivityIndicator, ProgressBar, Snackbar, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -29,7 +29,10 @@ export default function BundleWizardScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const lang = (i18n.language || 'es') as string;
-  const wizard = useBundleWizard();
+  // Deep-link: "/bundle-wizard?company_id=…" lands the user with their company
+  // pre-selected (used by the "Pagar Obligaciones" CTA in /companies/[id]).
+  const { company_id } = useLocalSearchParams<{ company_id?: string }>();
+  const wizard = useBundleWizard({ preselectCompanyId: company_id ?? null });
 
   const stepLabel = BUNDLE_STEP_LABELS[wizard.currentStep as BundleStep]?.[lang] ||
     BUNDLE_STEP_LABELS[wizard.currentStep as BundleStep]?.es || '';

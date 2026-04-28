@@ -5,28 +5,44 @@
 
 import React, { useCallback } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, Divider, FAB } from 'react-native-paper';
+import { Appbar, Divider, FAB } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@core/theme';
 import { SkeletonListItem } from '@components/ui/skeleton';
-import { CompanyCard } from '@modules/companies/components/company-card';
 import { CompanyEmptyState } from '@modules/companies/components/company-empty-state';
-import { useCompaniesList } from '@modules/companies';
-import type { CompanyResponse } from '@modules/companies';
+import {
+  BundleCompanyCard,
+  useBundleMyCompanies,
+  type MyCompanyStatusItem,
+} from '@modules/bundles';
 
 export default function CompaniesIndexScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const list = useCompaniesList();
+  const list = useBundleMyCompanies();
 
-  const data = (list.data?.pages ?? []).flatMap((p) => p.companies);
-  const refreshing = list.isRefetching && !list.isFetchingNextPage;
+  const data = list.data?.companies ?? [];
+  const refreshing = list.isRefetching;
 
-  const handleItemPress = useCallback((company: CompanyResponse) => {
-    router.push(`/companies/${company.id}` as never);
+  const handleItemPress = useCallback((item: MyCompanyStatusItem) => {
+    router.push(`/companies/${item.company.id}` as never);
+  }, []);
+
+  // Pre-select the company in the bundle wizard so the user lands directly
+  // on the obligations screen (consumed by useBundleWizard via
+  // useLocalSearchParams.company_id).
+  const handlePay = useCallback((item: MyCompanyStatusItem) => {
+    router.push(
+      `/bundle-wizard?company_id=${encodeURIComponent(item.company.id)}` as never,
+    );
+  }, []);
+
+  // FAB → padron upload flow (bundle-wizard step 0/1).
+  const handleCreate = useCallback(() => {
+    router.push('/bundle-wizard' as never);
   }, []);
 
   return (
@@ -46,19 +62,13 @@ export default function CompaniesIndexScreen() {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <CompanyCard company={item} onPress={handleItemPress} />}
+          keyExtractor={(item) => item.company.id}
+          renderItem={({ item }) => (
+            <BundleCompanyCard item={item} onPress={handleItemPress} onPay={handlePay} />
+          )}
           ItemSeparatorComponent={() => <Divider />}
-          ListEmptyComponent={
-            <CompanyEmptyState onCreate={() => router.push('/companies/new' as never)} />
-          }
+          ListEmptyComponent={<CompanyEmptyState onCreate={handleCreate} />}
           contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}
-          onEndReached={() => {
-            if (list.hasNextPage && !list.isFetchingNextPage) {
-              list.fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.4}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -67,7 +77,6 @@ export default function CompaniesIndexScreen() {
               tintColor={colors.primary}
             />
           }
-          // P8.3 — perf knobs (CompanyCard variable height ⇒ no getItemLayout).
           initialNumToRender={10}
           maxToRenderPerBatch={15}
           windowSize={10}
@@ -79,7 +88,7 @@ export default function CompaniesIndexScreen() {
         icon="plus"
         style={[styles.fab, { backgroundColor: colors.primary }]}
         color="white"
-        onPress={() => router.push('/companies/new' as never)}
+        onPress={handleCreate}
         accessibilityLabel={t('companies.create.title')}
       />
     </SafeAreaView>

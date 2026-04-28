@@ -758,6 +758,43 @@
       "body": "Enregistrez vos entreprises pour gérer leurs licences et obligations.",
       "cta": "Créer une entreprise"
     },
+    "card": {
+      "registrationNumber": "N° Registre",
+      "deadline": "Échéance",
+      "noLicense": "Aucune licence active",
+      "pendingObligations_one": "{{count}} obligation en attente",
+      "pendingObligations_other": "{{count}} obligations en attente",
+      "noPending": "À jour",
+      "pay": "Payer"
+    },
+    "license": {
+      "status": {
+        "draft": "Brouillon",
+        "pending_payment": "Paiement en attente",
+        "active": "Active",
+        "expired": "Expirée",
+        "revoked": "Révoquée",
+        "cancelled": "Annulée"
+      }
+    },
+    "obligations": {
+      "title": "Obligations",
+      "amount": "Montant",
+      "dueDate": "Échéance",
+      "status": {
+        "pending": "En attente",
+        "paid": "Payée",
+        "overdue": "En retard",
+        "cancelled": "Annulée"
+      },
+      "payAll": "Payer les obligations",
+      "empty": "Aucune obligation pour cette année"
+    },
+    "payments": {
+      "title": "Historique de paiements",
+      "empty": "Pas encore de paiements",
+      "viewReceipt": "Voir le reçu"
+    },
     "create": {
       "title": "Nouvelle entreprise",
       "action": "Créer"

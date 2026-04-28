@@ -758,6 +758,43 @@
       "body": "Registra tus empresas para gestionar sus licencias y obligaciones.",
       "cta": "Crear empresa"
     },
+    "card": {
+      "registrationNumber": "Nº Registro",
+      "deadline": "Vence",
+      "noLicense": "Sin licencia activa",
+      "pendingObligations_one": "{{count}} obligación pendiente",
+      "pendingObligations_other": "{{count}} obligaciones pendientes",
+      "noPending": "Al día",
+      "pay": "Pagar"
+    },
+    "license": {
+      "status": {
+        "draft": "Borrador",
+        "pending_payment": "Pago pendiente",
+        "active": "Activa",
+        "expired": "Vencida",
+        "revoked": "Revocada",
+        "cancelled": "Cancelada"
+      }
+    },
+    "obligations": {
+      "title": "Obligaciones",
+      "amount": "Importe",
+      "dueDate": "Vence",
+      "status": {
+        "pending": "Pendiente",
+        "paid": "Pagado",
+        "overdue": "Vencido",
+        "cancelled": "Cancelado"
+      },
+      "payAll": "Pagar obligaciones",
+      "empty": "No hay obligaciones para este año"
+    },
+    "payments": {
+      "title": "Historial de pagos",
+      "empty": "Aún no hay pagos",
+      "viewReceipt": "Ver recibo"
+    },
     "create": {
       "title": "Nueva empresa",
       "action": "Crear"
