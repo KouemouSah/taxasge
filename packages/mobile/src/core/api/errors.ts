@@ -22,7 +22,7 @@ export interface ApiError {
   /** Raw detail string from FastAPI response, if available. */
   detail?: string;
   /** Pydantic validation errors mapped to field + message pairs. */
-  validationErrors?: Array<{ field: string; message: string }>;
+  validationErrors?: { field: string; message: string }[];
   /** Original error code from backend, if provided. */
   code?: string;
   /** Whether this is a network/connectivity error (no server response). */
@@ -36,7 +36,7 @@ export interface ApiError {
  * @see https://fastapi.tiangolo.com/tutorial/handling-errors/
  */
 interface FastAPIValidationItem {
-  loc: Array<string | number>;
+  loc: (string | number)[];
   msg: string;
   type: string;
 }

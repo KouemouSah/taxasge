@@ -1,10 +1,10 @@
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
-import { Text, Button, Divider, Chip, ActivityIndicator, SegmentedButtons, Checkbox } from 'react-native-paper';
+import { Text, Button, Divider, ActivityIndicator, SegmentedButtons, Checkbox } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@core/theme';
 import { CompanyCard } from './company-card';
 import type { useBundleWizard } from '../services/bundle-hooks';
-import type { ObligationItem, ProcessingMode } from '../types';
+import type { ProcessingMode } from '../types';
 
 type Wizard = ReturnType<typeof useBundleWizard>;
 

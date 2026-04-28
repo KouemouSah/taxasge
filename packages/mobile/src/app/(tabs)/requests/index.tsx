@@ -10,12 +10,11 @@
  */
 
 import { useState, useRef, useCallback, useMemo } from 'react';
-import { StyleSheet, View, FlatList } from 'react-native';
+import { StyleSheet, View, FlatList , ScrollView } from 'react-native';
 import { Text, Searchbar, Chip, FAB, ActivityIndicator, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
 
 import { useAppTheme } from '@core/theme';
 import { AuthGuard } from '@core/auth/auth-guard';

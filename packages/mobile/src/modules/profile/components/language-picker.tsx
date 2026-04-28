@@ -21,7 +21,7 @@ interface LanguagePickerProps {
   onLanguageChanged: (lang: SupportedLanguage) => void;
 }
 
-const LANGUAGES: Array<{ code: SupportedLanguage; label: string; flag: string }> = [
+const LANGUAGES: { code: SupportedLanguage; label: string; flag: string }[] = [
   { code: 'es', label: 'Español', flag: '🇬🇶' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'en', label: 'English', flag: '🇬🇧' },

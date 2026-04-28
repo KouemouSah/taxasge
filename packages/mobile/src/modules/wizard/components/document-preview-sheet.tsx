@@ -49,8 +49,8 @@ function getConfidenceLabel(confidence: number): string {
 function flattenExtraction(
   extraction: Record<string, unknown>,
   prefix = '',
-): Array<{ key: string; displayKey: string; value: string }> {
-  const entries: Array<{ key: string; displayKey: string; value: string }> = [];
+): { key: string; displayKey: string; value: string }[] {
+  const entries: { key: string; displayKey: string; value: string }[] = [];
 
   for (const [key, val] of Object.entries(extraction)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
@@ -145,7 +145,7 @@ export function DocumentPreviewSheet({
 
   const riskWarnings = useMemo(() => {
     if (!preview?.risk_analysis) return [];
-    const warnings: Array<{ label: string; level: string }> = [];
+    const warnings: { label: string; level: string }[] = [];
     for (const [key, val] of Object.entries(preview.risk_analysis)) {
       if (val && typeof val === 'object' && 'level' in val) {
         const entry = val as { level: string; message?: string };

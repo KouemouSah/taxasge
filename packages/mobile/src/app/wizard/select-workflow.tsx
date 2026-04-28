@@ -57,23 +57,12 @@ function getCategoryDesc(category: string, lang: string): string {
   return lang === 'fr' ? config.descFr : lang === 'en' ? config.descEn : config.descEs;
 }
 
-function getCategoryIcon(category: string): string {
-  return CATEGORY_CONFIG[category]?.icon ?? 'folder-outline';
-}
-
 /** Translate workflow name using i18n key, fallback to backend name */
 function getWorkflowName(wf: WorkflowInfo, t: (key: string) => string): string {
   const key = `workflows.${wf.code}`;
   const translated = t(key);
   // If key not found (returns the key itself), use backend name
   return translated === key ? wf.service_name_es : translated;
-}
-
-/** Translate solicitud type — backend sends UPPERCASE, i18n keys are lowercase */
-function getSolicitudLabel(type: string, t: (key: string) => string): string {
-  const key = `wizard.selection.${type.toLowerCase()}`;
-  const translated = t(key);
-  return translated === key ? type.replace(/_/g, ' ') : translated;
 }
 
 // ---------------------------------------------------------------------------

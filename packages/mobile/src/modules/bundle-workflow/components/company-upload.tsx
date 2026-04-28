@@ -10,7 +10,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAppTheme } from '@core/theme';
-import { CompanyCard } from './company-card';
 import type { useBundleWizard } from '../services/bundle-hooks';
 
 type Wizard = ReturnType<typeof useBundleWizard>;

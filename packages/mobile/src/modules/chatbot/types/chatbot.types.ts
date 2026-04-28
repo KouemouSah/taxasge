@@ -23,7 +23,7 @@ export interface ChatRequest {
   conversation_id?: string;
   language: 'es' | 'fr' | 'en';
   context?: Record<string, unknown>;
-  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  history?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 export interface FeedbackRequest {
@@ -36,7 +36,7 @@ export interface ChatResponse {
   response: string;
   conversation_id: string;
   suggestions: string[];
-  related_services: Array<{ id: number; name: string; service_code?: string }>;
+  related_services: { id: number; name: string; service_code?: string }[];
   follow_up_actions: string[];
   confidence: number;
   response_time: number;

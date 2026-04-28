@@ -36,7 +36,7 @@ export default function VerifyOtpScreen() {
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const inputRefs = useRef<Array<RNTextInput | null>>([]);
+  const inputRefs = useRef<(RNTextInput | null)[]>([]);
 
   const handleChange = (value: string, index: number) => {
     if (value.length > 1) {

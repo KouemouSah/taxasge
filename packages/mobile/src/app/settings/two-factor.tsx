@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
 import {
   Text,
   Button,

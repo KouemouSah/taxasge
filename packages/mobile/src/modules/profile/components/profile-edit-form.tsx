@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, HelperText, useTheme } from 'react-native-paper';
+import { TextInput, Button, HelperText } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,7 +23,6 @@ interface ProfileEditFormProps {
 }
 
 export function ProfileEditForm({ user, onSave, onCancel, isSaving }: ProfileEditFormProps) {
-  const theme = useTheme();
   const { t } = useTranslation();
 
   const {

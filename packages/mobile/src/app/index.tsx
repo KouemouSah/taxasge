@@ -8,7 +8,6 @@
 
 import { View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { Text } from 'react-native-paper';
 import { Redirect } from 'expo-router';
 
 import { useAuth } from '@core/hooks/use-auth';

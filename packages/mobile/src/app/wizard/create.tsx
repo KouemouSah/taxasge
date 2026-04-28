@@ -38,7 +38,7 @@ export default function WizardCreateScreen() {
   const { workflow_code } = useLocalSearchParams<{ workflow_code: string; service_id?: string }>();
   const { isAuthenticated } = useAuth();
 
-  const { createSession, isLoading: isSessionLoading, error: sessionError } = useWizardSession();
+  const { createSession, error: sessionError } = useWizardSession();
   const { tw } = useWorkflowTranslations();
   const [isCreating, setIsCreating] = useState(false);
 

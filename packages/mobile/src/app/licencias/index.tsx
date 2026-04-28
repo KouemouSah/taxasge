@@ -12,7 +12,7 @@ import { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, FlatList, Pressable, Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SkeletonListItem } from '@components/ui/skeleton';
-import { Text, Button, ActivityIndicator, Divider, Chip, Snackbar, IconButton } from 'react-native-paper';
+import { Text, Button, Divider, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -379,7 +379,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
       if (await isAvailableAsync()) {
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });
       }
-    } catch (_) {
+    } catch {
       await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data, t) });
     }
   };
@@ -391,7 +391,7 @@ function Step3({ data, colors, t, lang }: { data: any; colors: any; t: any; lang
       if (await isAvailableAsync()) {
         await shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ficha Tarifaria' });
       }
-    } catch (_) {
+    } catch {
       await Share.share({ title: 'Ficha Tarifaria', message: buildTextNote(data, t) });
     }
   };

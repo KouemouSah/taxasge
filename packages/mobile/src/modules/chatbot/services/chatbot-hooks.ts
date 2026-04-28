@@ -8,19 +8,19 @@
  * - Suggestions: extracted from response.suggestions
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MMKV } from 'react-native-mmkv';
 
 import { sendChatMessage } from './chatbot-api';
 import type { ChatMessage, ChatResponse } from '../types/chatbot.types';
 
-// Persistence via MMKV (sync, fast)
-let storage: any = null;
+// Persistence via MMKV (sync, fast).
+let storage: MMKV | null = null;
 try {
-  const { MMKV } = require('react-native-mmkv');
   storage = new MMKV({ id: 'chatbot-persistence' });
 } catch {
-  // MMKV not available — persistence disabled
+  // MMKV unavailable (e.g. JSI not ready in tests) — persistence disabled
 }
 
 let messageCounter = 0;

@@ -1,6 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { Text, Button, TextInput, RadioButton, ActivityIndicator } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, TextInput, RadioButton, ActivityIndicator } from 'react-native-paper';
 import { useAppTheme } from '@core/theme';
 import { CompanyCard } from './company-card';
 import type { useBundleWizard } from '../services/bundle-hooks';

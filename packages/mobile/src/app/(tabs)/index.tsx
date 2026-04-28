@@ -13,7 +13,6 @@ import { StyleSheet, View, ScrollView, RefreshControl, Pressable, Dimensions } f
 import { Image } from 'expo-image';
 import {
   Text,
-  Surface,
   Button,
   ActivityIndicator,
   SegmentedButtons,
@@ -172,7 +171,7 @@ const HERO_WIDTH = Dimensions.get('window').width - 32; // paddingHorizontal 16 
 // Language selector
 // ---------------------------------------------------------------------------
 
-const LANGUAGES: Array<{ code: SupportedLanguage; label: string; flag: string }> = [
+const LANGUAGES: { code: SupportedLanguage; label: string; flag: string }[] = [
   { code: 'es', label: 'ES', flag: '🇬🇶' },
   { code: 'fr', label: 'FR', flag: '🇫🇷' },
   { code: 'en', label: 'EN', flag: '🇬🇧' },

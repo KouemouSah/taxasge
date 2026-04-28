@@ -16,10 +16,10 @@ import { useAppTheme } from '@core/theme';
 import type { MinistryItem } from '../types/services.types';
 
 /** Map keywords in ministry name_es to icons. */
-const MINISTRY_KEYWORD_ICONS: Array<{
+const MINISTRY_KEYWORD_ICONS: {
   keyword: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-}> = [
+}[] = [
   { keyword: 'TRANSPORTE', icon: 'car' },
   { keyword: 'SEGURIDAD', icon: 'shield-account' },
   { keyword: 'HACIENDA', icon: 'cash-register' },

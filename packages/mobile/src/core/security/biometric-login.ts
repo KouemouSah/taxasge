@@ -19,7 +19,6 @@ import * as LocalAuthentication from 'expo-local-authentication';
 
 const CRED_EMAIL_KEY = 'biometric_login_email';
 const CRED_PASS_KEY = 'biometric_login_pass';
-const BIOMETRIC_LOGIN_ENABLED_KEY = 'biometric_login_enabled';
 
 export interface BiometricCredentials {
   email: string;

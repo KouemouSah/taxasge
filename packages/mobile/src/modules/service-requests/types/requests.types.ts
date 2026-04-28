@@ -69,7 +69,7 @@ export interface DocumentInfo {
 
 export interface TariffBreakdown {
   base_amount: number;
-  supplements: Array<{ label?: string; amount: number }>;
+  supplements: { label?: string; amount: number }[];
   supplements_total: number;
   penalties_amount?: number;
   total_amount: number;

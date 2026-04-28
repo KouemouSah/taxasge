@@ -448,6 +448,6 @@ export interface ApiSuccessResponse {
 
 /** API error response shape (matches extractApiError output) */
 export interface ApiErrorResponse {
-  detail: string | Array<{ loc: Array<string | number>; msg: string; type: string }>;
+  detail: string | { loc: (string | number)[]; msg: string; type: string }[];
   code?: string;
 }

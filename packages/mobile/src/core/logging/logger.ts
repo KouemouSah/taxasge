@@ -31,7 +31,7 @@ export const logger = {
   /** Verbose / debug messages. Dev-only. */
   debug(tag: string, message: string, extra?: Extra): void {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
+       
       console.debug(`${tagPrefix(tag)} ${message}`, extra ?? '');
     }
     // No prod breadcrumb — too noisy.
@@ -40,7 +40,7 @@ export const logger = {
   /** Informational message. Dev-console + production breadcrumb. */
   info(tag: string, message: string, extra?: Extra): void {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
+       
       console.log(`${tagPrefix(tag)} ${message}`, extra ?? '');
       return;
     }
@@ -50,7 +50,7 @@ export const logger = {
   /** Warning — non-fatal anomaly. Dev-console + production breadcrumb. */
   warn(tag: string, message: string, extra?: Extra): void {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
+       
       console.warn(`${tagPrefix(tag)} ${message}`, extra ?? '');
       return;
     }
@@ -65,7 +65,7 @@ export const logger = {
    */
   error(tag: string, cause: unknown, message?: string, extra?: Extra): void {
     if (__DEV__) {
-      // eslint-disable-next-line no-console
+       
       console.error(`${tagPrefix(tag)} ${message ?? ''}`, cause, extra ?? '');
       return;
     }

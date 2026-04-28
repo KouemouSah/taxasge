@@ -140,7 +140,7 @@ export default function SignUpScreen() {
       setErrorMessage(null);
       setIsRegistering(true);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const { confirm_password, ...registerData } = data;
         await signUp(registerData);
         // Navigate to dashboard after successful registration

@@ -192,7 +192,7 @@ export function useWizardSession(initialSessionId?: string): UseWizardSessionRet
     try {
       const refreshed = await wizardApi.getSession(getSessionId());
       updateSession(refreshed);
-    } catch (e) {
+    } catch {
       // Silent refresh failure
     }
   }, [getSessionId, updateSession]);

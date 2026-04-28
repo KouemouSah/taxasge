@@ -171,7 +171,7 @@ export interface FormDataSaveRequest {
 
 export interface TariffBreakdown {
   base_amount: number;
-  supplements: Array<{ code?: string; label_es?: string; amount: number }>;
+  supplements: { code?: string; label_es?: string; amount: number }[];
   total_amount: number;
   currency: string;
 }

@@ -44,7 +44,7 @@ const CONTROLS_HEIGHT_DEFAULT = 100;
 
 interface Slide {
   id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   animation?: any;
   icon?: string;
   titleKey: string;

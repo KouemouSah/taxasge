@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert , Switch } from 'react-native';
 import {
   Text,
   Button,
@@ -19,7 +19,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Switch } from 'react-native';
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
 import { AuthGuard } from '@core/auth/auth-guard';

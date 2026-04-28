@@ -50,6 +50,20 @@ import type {
 } from '@core/config/types';
 
 // ---------------------------------------------------------------------------
+// Lazy API client import
+// ---------------------------------------------------------------------------
+
+/**
+ * We lazily import apiClient to avoid circular dependencies.
+ * auth-storage is imported by the API interceptor, which is imported by apiClient.
+ * By using a dynamic getter, we break the circular chain.
+ *
+ * Note: apiClient is the default export from @core/api/client.
+ */
+// Static import — avoids dynamic import() overhead during bootstrap
+import apiClient from '@core/api/client';
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -85,20 +99,6 @@ interface AuthContextValue extends AuthState {
 // ---------------------------------------------------------------------------
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
-
-// ---------------------------------------------------------------------------
-// Lazy API client import
-// ---------------------------------------------------------------------------
-
-/**
- * We lazily import apiClient to avoid circular dependencies.
- * auth-storage is imported by the API interceptor, which is imported by apiClient.
- * By using a dynamic getter, we break the circular chain.
- *
- * Note: apiClient is the default export from @core/api/client.
- */
-// Static import — avoids dynamic import() overhead during bootstrap
-import apiClient from '@core/api/client';
 function getApiClient() {
   return apiClient;
 }
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (!cancelled) {
             setState({ user: profile, isAuthenticated: true, isLoading: false });
           }
-        } catch (profileError) {
+        } catch {
           clearTimeout(timeoutId);
 
           // If aborted (timeout), go to guest mode

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, Pressable } from 'react-native';
 import { Text, Portal, Modal, IconButton } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';

@@ -123,7 +123,6 @@ export default function WizardSessionScreen() {
   const [paymentResult, setPaymentResult] = useState<InitiatePaymentResult | null>(null);
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   const initialFormDataLoadedRef = useRef(false);
-  const isSavingRef = useRef(false);
 
   // Restore form data from session ONLY on initial load
   // CRITICAL: Do NOT overwrite formValues after a save — causes race condition

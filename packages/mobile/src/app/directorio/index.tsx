@@ -8,7 +8,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, FlatList, Pressable } from 'react-native';
-import { Text, Searchbar, ActivityIndicator, Divider, IconButton, SegmentedButtons } from 'react-native-paper';
+import { Text, Searchbar, Divider, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';

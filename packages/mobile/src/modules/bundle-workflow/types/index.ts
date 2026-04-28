@@ -116,11 +116,11 @@ export interface ClassifyPreviewResponse {
   zone?: { id: string; code: string; name: string; tier: string };
   detected_tier?: string;
   detected_city?: string;
-  tier_zones: Array<{ id: string; code: string; tier: string; rank: number; name: string; description?: string }>;
-  available_zones: Array<{ id: string; code: string; tier: string; rank: number; name: string; description?: string }>;
+  tier_zones: { id: string; code: string; tier: string; rank: number; name: string; description?: string }[];
+  available_zones: { id: string; code: string; tier: string; rank: number; name: string; description?: string }[];
   classification?: { regimen_fiscal?: string; commerce_type?: string; confidence?: number };
-  available_categories: Array<{ commerce_type: string; bundle_name: string }>;
-  available_commerce_types: Array<{ commerce_type: string; bundle_name: string }>;
+  available_categories: { commerce_type: string; bundle_name: string }[];
+  available_commerce_types: { commerce_type: string; bundle_name: string }[];
   needs_manual_zone: boolean;
   needs_manual_category: boolean;
 }

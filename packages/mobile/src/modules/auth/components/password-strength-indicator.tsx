@@ -49,7 +49,7 @@ export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicato
         ? t('auth.passwordStrengthMedium')
         : t('auth.passwordStrengthStrong');
 
-  const criteriaItems: Array<{ key: keyof PasswordStrengthResult['criteria']; label: string }> = [
+  const criteriaItems: { key: keyof PasswordStrengthResult['criteria']; label: string }[] = [
     { key: 'minLength', label: t('auth.passwordRequirements.minLength') },
     { key: 'hasUppercase', label: t('auth.passwordRequirements.uppercase') },
     { key: 'hasLowercase', label: t('auth.passwordRequirements.lowercase') },

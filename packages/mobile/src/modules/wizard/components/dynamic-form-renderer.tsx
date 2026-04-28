@@ -8,7 +8,6 @@ import {
   HelperText,
   Divider,
   Menu,
-  Button,
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 
@@ -121,7 +120,7 @@ function FormFieldComponent({
   onValueChange: (key: string, value: unknown) => void;
   error?: string;
 }) {
-  const { colors, borderRadius, spacing } = useAppTheme();
+  const { colors, borderRadius } = useAppTheme();
   const { t } = useTranslation();
 
   const stringValue = value != null ? String(value) : '';

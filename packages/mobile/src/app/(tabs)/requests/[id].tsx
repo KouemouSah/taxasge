@@ -18,7 +18,6 @@ import {
   Image,
   Pressable,
   Modal,
-  Alert,
 } from 'react-native';
 import {
   Text,
@@ -30,7 +29,7 @@ import {
   Snackbar,
 } from 'react-native-paper';
 import { documentDirectory, downloadAsync } from 'expo-file-system/legacy';
-import { isAvailableAsync, shareAsync } from 'expo-sharing';
+import { shareAsync } from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -68,7 +67,7 @@ function getDocIcon(name: string): string {
  */
 function extractEssentialFields(
   sections: DataSection[],
-): Array<{ label: string; value: string }> {
+): { label: string; value: string }[] {
   const essentialKeys = [
     'nombre', 'apellido', 'nom', 'name',
     'numero', 'dip', 'dni', 'nif', 'pasaporte',
@@ -77,7 +76,7 @@ function extractEssentialFields(
     'sexo', 'genero',
   ];
 
-  const result: Array<{ label: string; value: string }> = [];
+  const result: { label: string; value: string }[] = [];
 
   for (const section of sections) {
     for (const field of section.fields) {

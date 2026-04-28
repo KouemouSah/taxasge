@@ -19,7 +19,6 @@ import {
   FlatList,
   Pressable,
   type ListRenderItemInfo,
-  Alert,
 } from 'react-native';
 import { Text, Button, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';

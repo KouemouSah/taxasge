@@ -158,7 +158,7 @@ export function CompanyForm({
 }
 
 interface FormFieldProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   control: any;
   name: keyof CompanyFormValues;
   labelKey: string;

@@ -37,7 +37,7 @@ import { SkeletonListItem } from '@components/ui/skeleton';
 // Ministry icon mapping (by keyword in name)
 // ---------------------------------------------------------------------------
 
-const MINISTRY_ICONS: Array<{ keyword: string; icon: string }> = [
+const MINISTRY_ICONS: { keyword: string; icon: string }[] = [
   { keyword: 'TRANSPORTE', icon: 'car' },
   { keyword: 'SEGURIDAD', icon: 'shield-account' },
   { keyword: 'HACIENDA', icon: 'cash-register' },

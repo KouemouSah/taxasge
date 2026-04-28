@@ -13,7 +13,6 @@ import {
   Text,
   Surface,
   Button,
-  ActivityIndicator,
   Chip,
   Snackbar,
   Divider,
@@ -28,15 +27,15 @@ import { API_ENDPOINTS } from '@core/api/endpoints';
 import { useSessions } from '@modules/auth/services/auth-hooks';
 import type { SessionInfo } from '@core/config/types';
 
+// Use locale-aware formatRelativeTime from core utils
+import { formatRelativeTime } from '@core/utils/format';
+
 function getDeviceIcon(device: string): string {
   const d = device.toLowerCase();
   if (d.includes('mobile') || d.includes('phone')) return 'cellphone';
   if (d.includes('tablet')) return 'tablet';
   return 'monitor';
 }
-
-// Use locale-aware formatRelativeTime from core utils
-import { formatRelativeTime } from '@core/utils/format';
 
 function SessionCard({
   session,

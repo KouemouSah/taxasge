@@ -15,7 +15,7 @@
  *   </AppLockProvider>
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppState, type AppStateStatus, StyleSheet, View, Image, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import * as LocalAuthentication from 'expo-local-authentication';
