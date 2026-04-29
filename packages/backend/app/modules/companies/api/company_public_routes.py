@@ -64,7 +64,7 @@ async def search_public_directory(
     ciudad: Optional[str] = Query(None, description="Filter by city name"),
     sort_by: str = Query("legal_name", description="Sort column"),
     sort_order: str = Query("asc", description="Sort direction"),
-    page: int = Query(1, ge=1, le=1000),
+    page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     db: asyncpg.Connection = Depends(get_database),
 ):
