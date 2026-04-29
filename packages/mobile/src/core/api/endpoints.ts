@@ -243,8 +243,6 @@ export const API_ENDPOINTS = {
     /** Soft-delete (archive) — owner only. Backend may return 409 with a
      *  `blockers` payload when active dependencies prevent the archive. */
     archive: (id: string) => `/companies/${id}/archive` as const,
-    /** Restore an archived company — admin only (`company.unarchive`). */
-    unarchive: (id: string) => `/companies/${id}/unarchive` as const,
     members: (id: string) => `/companies/${id}/members` as const,
     addMember: (id: string) => `/companies/${id}/members` as const,
     updateMemberRole: (id: string, memberUserId: string) =>

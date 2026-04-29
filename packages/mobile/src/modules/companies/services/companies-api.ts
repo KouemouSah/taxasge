@@ -70,11 +70,6 @@ export async function archiveCompany(
   );
 }
 
-/** Restore an archived company — admin tooling, requires company.unarchive. */
-export async function unarchiveCompany(id: string): Promise<{ message: string }> {
-  return apiPost<{ message: string }>(API_ENDPOINTS.companies.unarchive(id), {});
-}
-
 // ---------------------------------------------------------------------------
 // Members
 // ---------------------------------------------------------------------------
