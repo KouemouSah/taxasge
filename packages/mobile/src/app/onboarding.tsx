@@ -683,9 +683,11 @@ const s = StyleSheet.create({
   titleUniform: { fontSize: 72, fontWeight: '900', letterSpacing: 2, lineHeight: 80 },
   subtitle: { fontSize: 18, fontWeight: '700', opacity: 0.55, marginBottom: 12, letterSpacing: 0.5 },
   // Bottom margin separates the description ("Lancez votre première demande.")
-  // from the absolute-positioned "Explorer sans compte" CTA below. Without it
-  // the paragraph and the button visually merge — see debug/tesoro/onboard.jpg.
-  desc: { fontSize: 18, lineHeight: 28, color: '#555', marginBottom: 28 },
+  // from the absolute-positioned "Explorer sans compte" CTA below. The 28dp
+  // margin shipped in 8a0beabf still left the dashed CTA visually glued on
+  // small Android phones with FR i18n (see debug/tesoro/onboard.jpg). 36dp
+  // gives audible breathing room across all 3 locales.
+  desc: { fontSize: 18, lineHeight: 28, color: '#555', marginBottom: 36 },
 
   // Controls
   controls: {
@@ -706,8 +708,10 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
   },
 
-  // Last slide buttons
-  lastSlideButtons: { gap: 10, paddingBottom: 8 },
+  // Last slide buttons — explicit paddingTop pushes the dashed "Explorer
+  // sans compte" CTA away from the description text above (B1 fix
+  // 2026-04-29). gap also bumped 10→12 for inter-row breathing room.
+  lastSlideButtons: { gap: 12, paddingTop: 12, paddingBottom: 8 },
   authBtnRow: { flexDirection: 'row', gap: 10 },
   authBtn: { flex: 1, borderRadius: 28 },
   exploreBtn: {
