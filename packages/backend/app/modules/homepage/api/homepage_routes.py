@@ -1113,7 +1113,7 @@ async def get_calculator_config(
                 fs.calculation_config
             FROM fiscal_services fs
             LEFT JOIN entity_translations et_name
-                ON et_name.entity_type = 'fiscal_service'
+                ON et_name.entity_type = 'service'
                 AND et_name.entity_code = fs.service_code
                 AND et_name.field_name = 'name'
                 AND et_name.language_code = $1
