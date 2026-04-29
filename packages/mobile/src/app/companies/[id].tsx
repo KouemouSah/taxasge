@@ -22,7 +22,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 import { useAuth } from '@core/hooks/use-auth';
@@ -34,9 +33,7 @@ import {
 } from '@modules/companies';
 import {
   useBundleMyCompanyDetail,
-  useBundleMyCompanyPayments,
   type LicenseObligation,
-  type MyCompanyPayment,
 } from '@modules/bundles';
 
 function statusColor(status: string | null, colors: ReturnType<typeof useAppTheme>['colors']) {
@@ -68,7 +65,6 @@ export default function CompanyDetailScreen() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const detail = useBundleMyCompanyDetail(id);
-  const payments = useBundleMyCompanyPayments(id, 1, 10);
   const members = useCompanyMembers(id ?? null);
   const downloadPdf = useDownloadLicensePdf();
 
@@ -128,7 +124,19 @@ export default function CompanyDetailScreen() {
         >
           {/* Download license PDF moved out of the kebab to a primary CTA
               inside the Licence Card — see debug/tesoro/m2.jpg user feedback
-              ("button hidden in the three-dots menu"). */}
+              ("button hidden in the three-dots menu"). Conversely, the
+              payment history (previously rendered inline on this screen) is
+              demoted into the kebab so the detail surface reads clean
+              (license summary + obligations + info), m14.jpg fix
+              2026-04-29. */}
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              router.push(`/companies/${id}/payments` as never);
+            }}
+            leadingIcon="receipt-text-outline"
+            title={t('companies.detail.actions.viewPayments')}
+          />
           {canManageMembers ? (
             <Menu.Item
               onPress={() => {
@@ -164,7 +172,11 @@ export default function CompanyDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          {/* License status card */}
+          {/* License status card — m14.jpg redesign 2026-04-29:
+              status row + 3 colored summary chips (deadline / total / paid)
+              for visual differentiation, then registration number, then a
+              centered Download licence CTA. Replaces the 4 monochrome
+              <Field> rows that read like a legal form. */}
           <Card style={styles.card}>
             <Card.Title title={t('companies.detail.sections.license')} />
             <Card.Content>
@@ -180,33 +192,27 @@ export default function CompanyDetailScreen() {
                       })}
                     </Text>
                   </View>
+
+                  <LicenseSummaryChips
+                    deadline={license.deadline}
+                    totalAmount={license.total_amount}
+                    amountPaid={license.amount_paid}
+                  />
+
                   <Field
                     label={t('companies.card.registrationNumber')}
                     value={company.registration_number ?? '—'}
                   />
-                  <Field
-                    label={t('companies.card.deadline')}
-                    value={
-                      license.deadline ? new Date(license.deadline).toLocaleDateString() : '—'
-                    }
-                  />
-                  <Field
-                    label={t('detail.total')}
-                    value={`${license.total_amount.toLocaleString()} XAF`}
-                  />
-                  <Field
-                    label={t('companies.obligations.status.paid')}
-                    value={`${license.amount_paid.toLocaleString()} / ${license.total_amount.toLocaleString()} XAF`}
-                  />
-                  {/* Primary CTA promoted out of the kebab so the user sees
-                      it without two extra taps (m2.jpg feedback). */}
+
+                  {/* Primary CTA — promoted out of the kebab and now
+                      horizontally centered as requested in m14.jpg. */}
                   <Button
                     mode="contained-tonal"
                     icon="file-download-outline"
                     onPress={handleDownloadPdf}
                     loading={downloadPdf.isPending}
                     disabled={downloadPdf.isPending}
-                    style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                    style={{ marginTop: 16, alignSelf: 'center' }}
                     accessibilityLabel={t('companies.detail.actions.downloadLicense')}
                   >
                     {t('companies.detail.actions.downloadLicense')}
@@ -252,29 +258,10 @@ export default function CompanyDetailScreen() {
             </Card.Content>
           </Card>
 
-          {/* Payment history */}
-          <Card style={styles.card}>
-            <Card.Title title={t('companies.payments.title')} />
-            <Card.Content style={{ paddingHorizontal: 0 }}>
-              {payments.isLoading ? (
-                <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />
-              ) : (payments.data?.payments?.length ?? 0) === 0 ? (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: colors.onSurfaceVariant, paddingHorizontal: 16 }}
-                >
-                  {t('companies.payments.empty')}
-                </Text>
-              ) : (
-                payments.data!.payments.map((p, i) => (
-                  <View key={p.id}>
-                    <PaymentRow payment={p} />
-                    {i < payments.data!.payments.length - 1 ? <Divider /> : null}
-                  </View>
-                ))
-              )}
-            </Card.Content>
-          </Card>
+          {/* Payment history Card removed from the inline detail surface.
+              Promoted to its own route /companies/[id]/payments via the
+              kebab menu (m14.jpg fix 2026-04-29) so the detail screen reads
+              clean and the history has its own scroll position. */}
 
           {/* Company info */}
           <Card style={styles.card}>
@@ -372,26 +359,73 @@ function ObligationRow({ obligation }: { obligation: LicenseObligation }) {
   );
 }
 
-function PaymentRow({ payment }: { payment: MyCompanyPayment }) {
+/**
+ * 3 colored summary chips replacing the monochrome <Field> rows for
+ * deadline / total / paid (m14.jpg fix). Colors:
+ *   • deadline → primary    (informational, neutral)
+ *   • total    → tertiary   (positive — what the user owes total)
+ *   • paid     → secondary  (progress — what the user has already paid)
+ * The "paid" chip displays "amount_paid / total_amount" so the user sees
+ * progress at a glance.
+ */
+function LicenseSummaryChips({
+  deadline,
+  totalAmount,
+  amountPaid,
+}: {
+  deadline: string | null;
+  totalAmount: number;
+  amountPaid: number;
+}) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
+
+  const fmtAmount = (n: number) => n.toLocaleString();
+  const fmtDate = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString() : '—';
+
   return (
-    <View style={styles.row}>
-      <MaterialCommunityIcons name="receipt" size={20} color={colors.primary} />
-      <View style={styles.rowBody}>
-        <Text
-          variant="bodyMedium"
-          numberOfLines={1}
-          style={{ color: colors.onSurface, fontWeight: '500' }}
-        >
-          {payment.receipt_number ?? payment.reference}
-        </Text>
-        <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }} numberOfLines={1}>
-          {payment.created_at ? new Date(payment.created_at).toLocaleDateString() : ''}
-          {payment.entity_code ? ` · ${payment.entity_code}` : ''}
-        </Text>
-      </View>
-      <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '600' }}>
-        {payment.amount.toLocaleString()} {payment.currency}
+    <View style={styles.chipsRow}>
+      <SummaryChip
+        label={t('companies.detail.summary.deadline')}
+        value={fmtDate(deadline)}
+        background={colors.primaryContainer}
+        foreground={colors.onPrimaryContainer}
+      />
+      <SummaryChip
+        label={t('companies.detail.summary.total')}
+        value={`${fmtAmount(totalAmount)} XAF`}
+        background={colors.tertiaryContainer}
+        foreground={colors.onTertiaryContainer}
+      />
+      <SummaryChip
+        label={t('companies.detail.summary.paid')}
+        value={`${fmtAmount(amountPaid)} / ${fmtAmount(totalAmount)}`}
+        background={colors.secondaryContainer}
+        foreground={colors.onSecondaryContainer}
+      />
+    </View>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+  background,
+  foreground,
+}: {
+  label: string;
+  value: string;
+  background: string;
+  foreground: string;
+}) {
+  return (
+    <View style={[styles.chip, { backgroundColor: background }]}>
+      <Text style={[styles.chipLabel, { color: foreground }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.chipValue, { color: foreground }]} numberOfLines={1}>
+        {value}
       </Text>
     </View>
   );
@@ -430,4 +464,29 @@ const styles = StyleSheet.create({
   rowDot: { width: 8, height: 8, borderRadius: 4 },
   rowBody: { flex: 1 },
   rowRight: { alignItems: 'flex-end' },
+
+  // License summary chips — m14.jpg redesign 2026-04-29.
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.85,
+    marginBottom: 2,
+  },
+  chipValue: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

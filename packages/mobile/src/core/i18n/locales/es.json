@@ -887,6 +887,11 @@
       "loading": "Cargando…",
       "loadError": "No se pudo cargar la empresa",
       "noMembers": "Aún no hay miembros",
+      "summary": {
+        "deadline": "Vencimiento",
+        "total": "Total",
+        "paid": "Pagado"
+      },
       "sections": {
         "info": "Información",
         "license": "Licencia bundle",
@@ -897,7 +902,8 @@
         "edit": "Editar",
         "delete": "Eliminar",
         "manageMembers": "Gestionar",
-        "downloadLicense": "Descargar licencia (PDF)"
+        "downloadLicense": "Descargar licencia (PDF)",
+        "viewPayments": "Historial de pagos"
       }
     },
     "form": {

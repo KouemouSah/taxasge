@@ -887,6 +887,11 @@
       "loading": "Loading…",
       "loadError": "Could not load the company",
       "noMembers": "No members yet",
+      "summary": {
+        "deadline": "Deadline",
+        "total": "Total",
+        "paid": "Paid"
+      },
       "sections": {
         "info": "Information",
         "license": "Bundle licence",
@@ -897,7 +902,8 @@
         "edit": "Edit",
         "delete": "Delete",
         "manageMembers": "Manage",
-        "downloadLicense": "Download licence (PDF)"
+        "downloadLicense": "Download licence (PDF)",
+        "viewPayments": "Payment history"
       }
     },
     "form": {

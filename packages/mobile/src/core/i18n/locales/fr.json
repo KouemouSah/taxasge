@@ -887,6 +887,11 @@
       "loading": "Chargement…",
       "loadError": "Impossible de charger l'entreprise",
       "noMembers": "Aucun membre pour l'instant",
+      "summary": {
+        "deadline": "Échéance",
+        "total": "Total",
+        "paid": "Payé"
+      },
       "sections": {
         "info": "Informations",
         "license": "Licence bundle",
@@ -897,7 +902,8 @@
         "edit": "Modifier",
         "delete": "Supprimer",
         "manageMembers": "Gérer",
-        "downloadLicense": "Télécharger la licence (PDF)"
+        "downloadLicense": "Télécharger la licence (PDF)",
+        "viewPayments": "Historique des paiements"
       }
     },
     "form": {
