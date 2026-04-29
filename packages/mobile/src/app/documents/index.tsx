@@ -121,6 +121,23 @@ export default function VaultHomeScreen() {
   );
 
   // ----- Render bodies per tab ---------------------------------------------
+  // Unified content container style — guarantees:
+  //   • FlatList fills parent (flex: 1) instead of shrinking to single-item
+  //     height on Android when `data.length === 1` (root cause of m4.jpg's
+  //     "single doc centered" visual bug).
+  //   • Items render top-aligned (default justifyContent: flex-start) thanks
+  //     to flexGrow: 1 — same behaviour for empty, 1-item, or full lists.
+  //   • paddingBottom keeps the last item visible above the FAB + system
+  //     gesture nav bar.
+  const listContentStyle = useMemo(
+    () => ({
+      flexGrow: 1,
+      paddingTop: 8,
+      paddingBottom: 96 + insets.bottom,
+    }),
+    [insets.bottom],
+  );
+
   const renderUploadsBody = () => {
     const showSearch = searchTerm.trim().length >= 2;
     const data = showSearch
@@ -130,6 +147,7 @@ export default function VaultHomeScreen() {
 
     return (
       <FlatList
+        style={styles.flex1}
         data={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -142,7 +160,7 @@ export default function VaultHomeScreen() {
             onUpload={() => router.push('/documents/upload' as never)}
           />
         }
-        contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={listContentStyle}
         onEndReached={() => {
           if (!showSearch && list.hasNextPage && !list.isFetchingNextPage) {
             list.fetchNextPage();
@@ -170,6 +188,7 @@ export default function VaultHomeScreen() {
     const data = generatedFilteredPages.flat();
     return (
       <FlatList
+        style={styles.flex1}
         data={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
@@ -206,7 +225,7 @@ export default function VaultHomeScreen() {
         }}
         ItemSeparatorComponent={() => <Divider />}
         ListEmptyComponent={<DocumentEmptyState variant="generated" />}
-        contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={listContentStyle}
         refreshControl={
           <RefreshControl
             refreshing={generated.isRefetching}
@@ -227,6 +246,7 @@ export default function VaultHomeScreen() {
     const data = alerts.data ?? [];
     return (
       <FlatList
+        style={styles.flex1}
         data={data}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -238,7 +258,7 @@ export default function VaultHomeScreen() {
         )}
         ItemSeparatorComponent={() => <Divider />}
         ListEmptyComponent={<DocumentEmptyState variant="alerts" />}
-        contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={listContentStyle}
         refreshControl={
           <RefreshControl
             refreshing={alerts.isRefetching}
@@ -326,12 +346,11 @@ export default function VaultHomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  // Top-aligned content for every list state (full / 1-item / empty) — see
+  // listContentStyle in the component for the rationale.
+  flex1: { flex: 1 },
   tabsRow: { paddingHorizontal: 16, paddingVertical: 8 },
   searchBar: { marginHorizontal: 16, marginTop: 4, marginBottom: 4 },
-  // Empty state and single-item bodies — keep the content close to the chips
-  // bar (top-aligned) instead of vertically centering. Centering looks bad
-  // when there is only one document or none (see debug/tesoro/m4.jpg, m6.jpg).
-  emptyContent: { flexGrow: 1, paddingTop: 48 },
   fab: {
     position: 'absolute',
     right: 16,

@@ -47,9 +47,14 @@ export function DocumentEmptyState({
 }
 
 const styles = StyleSheet.create({
+  // Top-aligned (paddingTop only) so the empty state sits right under the
+  // filter chips instead of vertical-centering in the FlatList area. The
+  // "centered" look (paddingVertical: 64) was visually disconnected from the
+  // chips bar above (see debug/tesoro/m6.jpg).
   container: {
     alignItems: 'center',
-    paddingVertical: 64,
+    paddingTop: 48,
+    paddingBottom: 24,
     paddingHorizontal: 24,
   },
   title: {
