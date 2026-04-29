@@ -264,7 +264,6 @@ function RootNavigator() {
         <Stack.Screen name="companies/[id]/payments" />
         <Stack.Screen name="bundle-wizard" />
         <Stack.Screen name="calculator/index" />
-        <Stack.Screen name="calculator/history" />
         <Stack.Screen name="licencias" />
         <Stack.Screen name="directorio" />
       </Stack>

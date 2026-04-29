@@ -1,20 +1,15 @@
 /**
- * Calculator Screen — Placeholder
+ * Calculator Screen — full port of the web `calculateur` page.
  *
- * Tax/fee calculator allowing users to estimate costs before
- * starting a service request.
- *
- * Shows:
- * - Service selector
- * - Calculate button
- * - Result breakdown
- *
- * TODO: Wire up to POST /fiscal-services/{id}/calculate
+ * 4 tabs: IRPF, VAT, Corporate, Fiscal Services.
+ * All calculations run client-side. Service overrides come from
+ * `GET /api/v1/homepage/calculator/config` with graceful fallback to
+ * `DEFAULT_CALCULABLE_SERVICES` when the endpoint is unavailable.
  */
 
-import { useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
-import { Text, Button, Surface, TextInput } from 'react-native-paper';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Button, SegmentedButtons, Surface, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -22,18 +17,43 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@core/theme';
 
+import {
+  CorporateTab,
+  IrpfTab,
+  ServicesTab,
+  VatTab,
+  useMergedCalculableServices,
+  type CalculatorLanguage,
+  type CalculatorTab,
+  type VatMode,
+} from '@modules/calculator';
+
+function resolveLanguage(i18nLanguage: string | undefined): CalculatorLanguage {
+  const lang = (i18nLanguage ?? 'es').slice(0, 2).toLowerCase();
+  if (lang === 'fr' || lang === 'en') return lang;
+  return 'es';
+}
+
 export default function CalculatorScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
 
-  const [isCalculating, setIsCalculating] = useState(false);
+  const language = resolveLanguage(i18n.language);
+  const services = useMergedCalculableServices(language);
 
-  const handleCalculate = () => {
-    // TODO: Call calculation API
-    setIsCalculating(true);
-    setTimeout(() => setIsCalculating(false), 1500);
+  const [activeTab, setActiveTab] = useState<CalculatorTab>('irpf');
+  const [irpfAmount, setIrpfAmount] = useState('');
+  const [vatAmount, setVatAmount] = useState('');
+  const [vatMode, setVatMode] = useState<VatMode>('add');
+  const [corporateProfit, setCorporateProfit] = useState('');
+
+  const handleResetIrpf = () => setIrpfAmount('');
+  const handleResetVat = () => {
+    setVatAmount('');
+    setVatMode('add');
   };
+  const handleResetCorporate = () => setCorporateProfit('');
 
   return (
     <SafeAreaView
@@ -45,112 +65,120 @@ export default function CalculatorScreen() {
         style={[
           styles.header,
           {
-            padding: spacing.md,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.sm,
             backgroundColor: colors.surface,
             borderBottomColor: colors.outlineVariant,
           },
         ]}
       >
-        <Button
-          mode="text"
-          icon="arrow-left"
-          onPress={() => router.back()}
-          compact
-        >
+        <Button mode="text" icon="arrow-left" onPress={() => router.back()} compact>
           {t('common.back')}
         </Button>
         <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '600' }}>
           {t('calculator.title')}
         </Text>
-        <Button
-          mode="text"
-          onPress={() => router.push('/calculator/history')}
-          compact
-        >
-          {t('calculator.history')}
-        </Button>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { padding: spacing.md }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Service selector placeholder */}
-        <Surface
-          style={[
-            styles.section,
-            {
-              padding: spacing.lg,
-              borderRadius: borderRadius.lg,
-              backgroundColor: colors.surface,
-              marginBottom: spacing.md,
-            },
-          ]}
-          elevation={1}
-        >
-          <Text
-            variant="titleSmall"
-            style={{ color: colors.onSurface, fontWeight: '600', marginBottom: spacing.md }}
-          >
-            {t('calculator.selectService')}
+        {/* Page intro */}
+        <View>
+          <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+            {t('calculator.description')}
           </Text>
+        </View>
 
-          <TextInput
-            label={t('calculator.selectService')}
-            value=""
-            mode="outlined"
-            editable={false}
-            right={<TextInput.Icon icon="chevron-down" />}
-            left={<TextInput.Icon icon="magnify" />}
-            onPress={() => {
-              // TODO: Open service picker
-            }}
-            style={{ marginBottom: spacing.lg }}
-          />
-
-          <Button
-            mode="contained"
-            onPress={handleCalculate}
-            loading={isCalculating}
-            disabled={isCalculating}
-            contentStyle={styles.buttonContent}
-            style={{ borderRadius: borderRadius.sm }}
-            icon="calculator"
-          >
-            {t('calculator.calculate')}
-          </Button>
-        </Surface>
-
-        {/* Result placeholder */}
-        <Surface
-          style={[
-            styles.resultCard,
+        {/* Tabs */}
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as CalculatorTab)}
+          density="medium"
+          buttons={[
             {
-              padding: spacing.xl,
-              borderRadius: borderRadius.lg,
-              backgroundColor: colors.surface,
+              value: 'irpf',
+              label: 'IRPF',
+              icon: 'calculator',
+            },
+            {
+              value: 'vat',
+              label: t('calculator.vat'),
+              icon: 'receipt',
+            },
+            {
+              value: 'corporate',
+              label: 'IS',
+              icon: 'office-building',
+            },
+            {
+              value: 'services',
+              label: t('calculator.services'),
+              icon: 'file-document-outline',
             },
           ]}
+        />
+
+        {/* Tab content */}
+        {activeTab === 'irpf' ? (
+          <IrpfTab
+            amount={irpfAmount}
+            onAmountChange={setIrpfAmount}
+            onReset={handleResetIrpf}
+            locale={language}
+          />
+        ) : null}
+        {activeTab === 'vat' ? (
+          <VatTab
+            amount={vatAmount}
+            onAmountChange={setVatAmount}
+            mode={vatMode}
+            onModeChange={setVatMode}
+            onReset={handleResetVat}
+            locale={language}
+          />
+        ) : null}
+        {activeTab === 'corporate' ? (
+          <CorporateTab
+            profit={corporateProfit}
+            onProfitChange={setCorporateProfit}
+            onReset={handleResetCorporate}
+            locale={language}
+          />
+        ) : null}
+        {activeTab === 'services' ? (
+          <ServicesTab services={services} locale={language} />
+        ) : null}
+
+        {/* Disclaimer */}
+        <Surface
           elevation={0}
+          style={[
+            styles.disclaimer,
+            {
+              backgroundColor: `${colors.warning}1A`,
+              borderColor: `${colors.warning}66`,
+              borderRadius: borderRadius.md,
+              padding: spacing.md,
+            },
+          ]}
         >
           <MaterialCommunityIcons
-            name="calculator-variant-outline"
-            size={64}
-            color={colors.outlineVariant}
+            name="alert-circle-outline"
+            size={20}
+            color={colors.warning}
+            style={{ marginRight: spacing.sm }}
           />
           <Text
-            variant="titleMedium"
-            style={[
-              styles.resultTitle,
-              { color: colors.onSurfaceVariant, marginTop: spacing.md },
-            ]}
+            variant="bodySmall"
+            style={{ color: colors.warning, flex: 1 }}
           >
-            {t('calculator.result')}
-          </Text>
-          <Text
-            variant="bodyMedium"
-            style={{ color: colors.outline, marginTop: spacing.xs, textAlign: 'center' }}
-          >
-            {t('calculator.selectService')}
+            {t('calculator.disclaimer')}
           </Text>
         </Surface>
       </ScrollView>
@@ -166,19 +194,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerSpacer: {
+    width: 64,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  section: {},
-  buttonContent: {
-    paddingVertical: 6,
-  },
-  resultCard: {
-    alignItems: 'center',
-  },
-  resultTitle: {
-    fontWeight: '600',
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
   },
 });
