@@ -5,6 +5,7 @@
  * Completely separate from the generic wizard — aligned with web bundle-workflow module.
  */
 
+import { useEffect, useRef } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Text, Button, ActivityIndicator, ProgressBar, Snackbar, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,10 +30,28 @@ export default function BundleWizardScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const lang = (i18n.language || 'es') as string;
-  // Deep-link: "/bundle-wizard?company_id=…" lands the user with their company
-  // pre-selected (used by the "Pagar Obligaciones" CTA in /companies/[id]).
-  const { company_id } = useLocalSearchParams<{ company_id?: string }>();
+  // Deep-link parameters:
+  //   • `company_id`  → "/bundle-wizard?company_id=…" lands the user with
+  //                     their company pre-selected (used by the "Pagar
+  //                     Obligaciones" CTA in /companies/[id]).
+  //   • `mode=new`    → skip Step 0 (CompanyIdentification) and jump
+  //                     directly to DOCUMENT_UPLOAD via
+  //                     wizard.requestNewCompany(). Mirrors web
+  //                     /dashboard/bundle-payment/[sessionId]?mode=new
+  //                     (B5a parity 2026-04-29).
+  const { company_id, mode } = useLocalSearchParams<{ company_id?: string; mode?: string }>();
   const wizard = useBundleWizard({ preselectCompanyId: company_id ?? null });
+
+  // Apply `mode=new` exactly once on mount — same one-shot guard pattern
+  // as web (autoSelectDone.current ref).
+  const newModeAppliedRef = useRef(false);
+  useEffect(() => {
+    if (newModeAppliedRef.current) return;
+    if (mode === 'new') {
+      newModeAppliedRef.current = true;
+      wizard.requestNewCompany();
+    }
+  }, [mode, wizard]);
 
   const stepLabel = BUNDLE_STEP_LABELS[wizard.currentStep as BundleStep]?.[lang] ||
     BUNDLE_STEP_LABELS[wizard.currentStep as BundleStep]?.es || '';
@@ -79,6 +98,7 @@ export default function BundleWizardScreen() {
                     {/* Editable company fields — full form review (aligned with web) */}
                     <TextInput label={lang === 'fr' ? 'Dénomination sociale *' : 'Nombre comercial *'} value={wizard.editedFields.legalName || ''} onChangeText={(v) => wizard.setEditedField('legalName', v || null)} mode="outlined" dense error={!wizard.editedFields.legalName} />
                     <TextInput label={lang === 'fr' ? 'N° Registre (PE-XXXX) *' : 'N° Registro (PE-XXXX) *'} value={wizard.editedFields.registrationNumber || ''} onChangeText={(v) => wizard.setEditedField('registrationNumber', v || null)} mode="outlined" dense placeholder={t('bundleWizard.registrationNumberPlaceholder')} error={!wizard.editedFields.registrationNumber} />
+                    <TextInput label="NIF" value={wizard.editedFields.nif || ''} onChangeText={(v) => wizard.setEditedField('nif', v || null)} mode="outlined" dense autoCapitalize="characters" />
                     <TextInput label={lang === 'fr' ? 'Localité *' : 'Localidad *'} value={wizard.editedFields.localidad || ''} onChangeText={(v) => wizard.setEditedField('localidad', v || null)} mode="outlined" dense error={!wizard.editedFields.localidad} />
                     <TextInput label={lang === 'fr' ? 'Province' : 'Provincia'} value={wizard.editedFields.provincia || ''} onChangeText={(v) => wizard.setEditedField('provincia', v || null)} mode="outlined" dense />
                     <TextInput label={lang === 'fr' ? 'Forme juridique' : 'Forma jurídica'} value={wizard.editedFields.formaJuridica || ''} onChangeText={(v) => wizard.setEditedField('formaJuridica', v || null)} mode="outlined" dense />

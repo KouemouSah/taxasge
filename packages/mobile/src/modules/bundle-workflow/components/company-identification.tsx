@@ -23,6 +23,11 @@ export function CompanyIdentificationStep({ wizard, lang }: { wizard: Wizard; la
     pending: { es: 'obligaciones pendientes', fr: 'obligations en attente', en: 'pending obligations' },
     noResults: { es: 'No se encontraron empresas', fr: 'Aucune entreprise trouvée', en: 'No companies found' },
     registerNew: { es: 'Registrar nueva empresa', fr: 'Enregistrer nouvelle entreprise', en: 'Register new company' },
+    registerNewDesc: {
+      es: 'Suba el certificado del Padrón Empresarial para registrar automáticamente su empresa.',
+      fr: "Chargez le certificat du Registre des Entreprises pour enregistrer automatiquement votre entreprise.",
+      en: 'Upload the Business Registry certificate to automatically register your company.',
+    },
     pay: { es: 'Pagar', fr: 'Payer', en: 'Pay' },
   } as Record<string, Record<string, string>>;
   const t = (key: string) => labels[key]?.[lang] ?? labels[key]?.es ?? key;
@@ -89,6 +94,27 @@ export function CompanyIdentificationStep({ wizard, lang }: { wizard: Wizard; la
               )}
             />
           )}
+
+          {/* "Register new" CTA always visible below "Mes entreprises"
+              (parité web CompanyIdentificationStep L150-161, m13.jpg fix
+              2026-04-29). Web shows it both when the user has companies
+              and when they don't — we mirror that. */}
+          {!wizard.isLoadingCompanies && (
+            <View style={s.registerNewBlock}>
+              <Divider />
+              <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                <Button mode="outlined" onPress={wizard.requestNewCompany} icon="plus">
+                  {t('registerNew')}
+                </Button>
+                <Text
+                  variant="labelSmall"
+                  style={{ color: colors.outline, textAlign: 'center', marginTop: 6 }}
+                >
+                  {t('registerNewDesc')}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -136,4 +162,5 @@ export function CompanyIdentificationStep({ wizard, lang }: { wizard: Wizard; la
 
 const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
+  registerNewBlock: { marginTop: 12, paddingBottom: 12 },
 });

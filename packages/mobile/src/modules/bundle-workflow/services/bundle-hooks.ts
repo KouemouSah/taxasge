@@ -60,8 +60,12 @@ export function useBundleWizard(options: UseBundleWizardOptions = {}) {
   const [classificationPreview, setClassificationPreview] = useState<ClassifyPreviewResponse | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [selectedCommerceType, setSelectedCommerceType] = useState<string | null>(null);
+  // 8 editable fields — aligned with web `EditableCompanyFields`
+  // (`packages/web/src/modules/bundle-workflow/hooks/useBundleWizard.ts:37-46`).
+  // NIF must be editable so the citizen can correct OCR misreads — without it
+  // an unverifiable certificate would block company creation in mobile only.
   const [editedFields, setEditedFieldsState] = useState<Record<string, string | null>>({
-    legalName: null, registrationNumber: null, localidad: null,
+    legalName: null, registrationNumber: null, nif: null, localidad: null,
     provincia: null, sector: null, objetoSocial: null, formaJuridica: null,
   });
   const setEditedField = useCallback((key: string, value: string | null) => {
@@ -222,6 +226,7 @@ export function useBundleWizard(options: UseBundleWizardOptions = {}) {
       setEditedFieldsState((prev) => ({
         legalName: prev.legalName || empresa.denominacion_social || empresa.legal_name || null,
         registrationNumber: prev.registrationNumber || empresa.numero_registro || empresa.registration_number || null,
+        nif: prev.nif || empresa.nif || null,
         localidad: prev.localidad || ubicacion.localidad || null,
         provincia: prev.provincia || ubicacion.provincia || null,
         sector: prev.sector || actividad.sector || null,
@@ -259,6 +264,7 @@ export function useBundleWizard(options: UseBundleWizardOptions = {}) {
         const actividadObj = (extraction.actividad || extraction) as Record<string, unknown>;
         if (ef.legalName) empresaObj.denominacion_social = ef.legalName;
         if (ef.registrationNumber) empresaObj.numero_registro = ef.registrationNumber;
+        if (ef.nif) empresaObj.nif = ef.nif;
         if (ef.formaJuridica) empresaObj.forma_juridica = ef.formaJuridica;
         if (ef.localidad) ubicacionObj.localidad = ef.localidad;
         if (ef.provincia) ubicacionObj.provincia = ef.provincia;

@@ -44,9 +44,13 @@ export default function CompaniesIndexScreen() {
     );
   }, []);
 
-  // FAB → padron upload flow (bundle-wizard step 0/1).
+  // FAB → padron upload flow (bundle-wizard skip-to-upload via `mode=new`).
+  // Mirrors web /dashboard/empresas → /dashboard/bundle-payment?mode=new
+  // which calls wizard.requestNewCompany() to land directly on the
+  // DOCUMENT_UPLOAD step instead of the company-identification picker
+  // (B5a parity, m13.jpg).
   const handleCreate = useCallback(() => {
-    router.push('/bundle-wizard' as never);
+    router.push('/bundle-wizard?mode=new' as never);
   }, []);
 
   return (
