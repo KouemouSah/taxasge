@@ -13,7 +13,7 @@ import {
   IconButton,
   Text,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -37,6 +37,10 @@ function SupportListContent() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
+  // Bottom safe-area inset — without it the FAB sits behind the Android nav
+  // gesture bar on most devices (see debug/tesoro/m12.jpg). Same pattern as
+  // documents/index.tsx:65,316.
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('all');
 
   const status: TicketStatus | undefined = filter === 'all' ? undefined : filter;
@@ -200,7 +204,11 @@ function SupportListContent() {
         onPress={() => router.push('/support/new' as never)}
         style={[
           styles.fab,
-          { backgroundColor: colors.primary, borderRadius: borderRadius.xl },
+          {
+            backgroundColor: colors.primary,
+            borderRadius: borderRadius.xl,
+            bottom: 16 + insets.bottom,
+          },
         ]}
         color={colors.onPrimary}
       />
@@ -222,7 +230,8 @@ const styles = StyleSheet.create({
   listEmpty: { flex: 1 },
   footer: { paddingVertical: 16, alignItems: 'center' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fab: { position: 'absolute', bottom: 16, right: 16 },
+  // bottom is computed at render time from useSafeAreaInsets() — see B3 fix.
+  fab: { position: 'absolute', right: 16 },
 });
 
 export default function SupportListScreen() {

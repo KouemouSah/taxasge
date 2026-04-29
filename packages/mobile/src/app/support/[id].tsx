@@ -27,7 +27,7 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -57,6 +57,9 @@ function SupportTicketDetailContent() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { colors, spacing, borderRadius } = useAppTheme();
+  // Bottom safe-area inset — reply bar and closed bar must sit above the
+  // Android gesture nav bar (see debug/tesoro/m11.jpg).
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   const ticketQuery = useTicket(ticketId);
@@ -234,7 +237,11 @@ function SupportTicketDetailContent() {
             <View
               style={[
                 styles.closedBar,
-                { borderTopColor: colors.outlineVariant, backgroundColor: colors.surfaceVariant },
+                {
+                  borderTopColor: colors.outlineVariant,
+                  backgroundColor: colors.surfaceVariant,
+                  paddingBottom: 12 + insets.bottom,
+                },
               ]}
             >
               <MaterialCommunityIcons name="lock-outline" size={18} color={colors.outline} />
@@ -246,7 +253,12 @@ function SupportTicketDetailContent() {
             <View
               style={[
                 styles.replyBar,
-                { borderTopColor: colors.outlineVariant, backgroundColor: colors.surface, padding: spacing.sm },
+                {
+                  borderTopColor: colors.outlineVariant,
+                  backgroundColor: colors.surface,
+                  padding: spacing.sm,
+                  paddingBottom: spacing.sm + insets.bottom,
+                },
               ]}
             >
               <TextInput
@@ -323,7 +335,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: 1,
-    padding: 12,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    // paddingBottom computed at render with insets.bottom — see B3 fix.
   },
 });
 
