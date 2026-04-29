@@ -177,112 +177,59 @@ V1 ne synchronise PAS avec `notification_log` backend (Piège P3). En V2 (post-P
 
 ### 3.1 Configuration native (jour 1 matin)
 
-- [ ] **1.1.1** Ajouter le plugin `expo-notifications` dans `app.json` plugins :
-  ```json
-  ["expo-notifications", {
-    "icon": "./assets/images/notification-icon.png",
-    "color": "#1565C0",
-    "sounds": [],
-    "androidMode": "default"
-  }]
-  ```
-- [ ] **1.1.2** Créer `assets/images/notification-icon.png` (96x96 monochrome blanc, fond transparent — exigence Android)
-- [ ] **1.1.3** `app.json` Android `permissions`: ajouter `"POST_NOTIFICATIONS"` (Android 13+)
-- [ ] **1.1.4** `app.json` iOS `infoPlist`: vérifier que `UIBackgroundModes` inclut `remote-notification` (sinon ajouter)
-- [ ] **1.1.5** Documenter dans README setup APNs : (a) générer Apple APNs auth key (.p8) sur developer.apple.com, (b) uploader dans Firebase Console > Project Settings > Cloud Messaging > Apple app config, (c) `eas credentials` pour configurer le push entitlement iOS
-- [ ] **1.1.6** `GoogleService-Info.plist` à obtenir depuis Firebase Console (iOS app `com.taxasge.app`) et ajouter à `packages/mobile/`
-- [ ] **1.1.7** `app.json` iOS : `googleServicesFile: "./GoogleService-Info.plist"` (si pas déjà via EAS)
+- [x] **1.1.1** Ajouter le plugin `expo-notifications` dans `app.json` plugins (commit 2f51306d)
+- [x] **1.1.2** Créer `assets/images/notification-icon.png` (commit 2f51306d)
+- [x] **1.1.3** `app.json` Android `permissions`: ajouter `"POST_NOTIFICATIONS"` (commit 2f51306d)
+- [x] **1.1.4** `app.json` iOS `infoPlist`: vérifier `UIBackgroundModes` inclut `remote-notification` (commit 2f51306d)
+- [x] **1.1.5** Documenter dans README setup APNs (commit 2f51306d)
+- [x] **1.1.6** `GoogleService-Info.plist` (iOS APNs) (commit 1adc1ab2 — wire iOS plist)
+- [x] **1.1.7** `app.json` iOS : `googleServicesFile: "./GoogleService-Info.plist"` (commit 1adc1ab2)
 
 ### 3.2 Service notifications (jour 1 après-midi)
 
-- [ ] **1.2.1** `core/notifications/types.ts` — types `NotificationChannelId`, `NotificationPayload`, `StoredNotification`, `DeepLinkData`
-- [ ] **1.2.2** `core/notifications/notifications-service.ts`:
-  - `initNotifications()` — appelé une fois au boot dans `_layout.tsx` :
-    - `Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: true }) })`
-    - Création des channels Android via `setNotificationChannelAsync()`
-  - `setupListeners(onReceive, onResponse)` — abstrait `addNotificationReceivedListener` et `addNotificationResponseReceivedListener`
-  - `cleanupListeners()` — pour useEffect cleanup
-- [ ] **1.2.3** `core/notifications/device-token-service.ts`:
-  - `requestPermission(): Promise<'granted' | 'denied' | 'undetermined'>` — wrapper `requestPermissionsAsync` qui gère iOS + Android 13
-  - `getNativeDeviceToken(): Promise<{ token: string; platform: 'android' | 'ios' } | null>` — wrapper `getDevicePushTokenAsync` ; type validation
-  - `registerDeviceToken(token, platform): Promise<void>` — POST endpoint avec `app: 'citizen'`
-  - `getStoredToken() / setStoredToken()` — MMKV pour idempotence
-- [ ] **1.2.4** `core/notifications/deep-link-router.ts`:
-  - `routeFromPayload(data: Record<string, string>, router): void` — parse `data.deep_link` ou champs (`type`, `entity_id`) → `router.push(...)`
-  - Table de mapping (champ `type` du payload → route)
-  - Fallback : si payload illisible → ouvrir Notification Center
-- [ ] **1.2.5** `core/notifications/notifications-storage.ts`:
-  - MMKV instance dédiée (`facil-notifications`)
-  - `addNotification(payload)` — push en tête, purge FIFO à 100
-  - `getNotifications()`, `markAsRead(id)`, `markAllAsRead()`, `deleteNotification(id)`, `clearAll()`
-  - `getUnreadCount()`
-- [ ] **1.2.6** `core/notifications/index.ts` — barrel export
+- [x] **1.2.1** `core/notifications/types.ts` (commit 02c58c41 — file packages/mobile/src/core/notifications/types.ts)
+- [x] **1.2.2** `core/notifications/notifications-service.ts` (commit 02c58c41)
+- [x] **1.2.3** `core/notifications/device-token-service.ts` (commit 02c58c41)
+- [x] **1.2.4** `core/notifications/deep-link-router.ts` (commit 02c58c41)
+- [x] **1.2.5** `core/notifications/notifications-storage.ts` (commit 02c58c41)
+- [x] **1.2.6** `core/notifications/index.ts` — barrel export (commit 02c58c41)
 
 ### 3.3 Hooks consumer (jour 2 matin)
 
-- [ ] **1.3.1** `modules/notifications/hooks/use-device-token-registration.ts`:
-  - useEffect qui s'active sur `isAuthenticated && !isLoading`
-  - Sequence : permission → getNativeDeviceToken → registerDeviceToken
-  - Idempotent (skip si token == storedToken)
-  - Listener `Notifications.addPushTokenListener` pour rotation FCM → re-register
-  - Retourne `{ status: 'idle'|'granted'|'denied'|'registered'|'error', requestPermission(), }` pour UI banner
-- [ ] **1.3.2** `modules/notifications/hooks/use-notifications.ts`:
-  - Subscribe à `notifications-service.setupListeners` 
-  - On received foreground : ajouter à MMKV + invalidate badge query
-  - On response (tap) : `routeFromPayload` + mark as read
-  - Retourne `{ notifications, unreadCount, markAsRead, markAllAsRead, delete, clearAll }`
-- [ ] **1.3.3** `modules/notifications/hooks/use-notification-badge.ts`:
-  - React Query : `['notifications', 'unread-count']` lit MMKV
-  - Invalidate sur add/markAsRead
+- [x] **1.3.1** `modules/notifications/hooks/use-device-token-registration.ts` (commit 62166cb2 — wire into root layout)
+- [x] **1.3.2** `modules/notifications/hooks/use-notifications.ts` (commit f186250f notification center UI)
+- [x] **1.3.3** `modules/notifications/hooks/use-notification-badge.ts` (commit 62166cb2 — dashboard header bell badge)
 
 ### 3.4 UI Notification Center (jour 2 après-midi)
 
-- [ ] **1.4.1** `modules/notifications/components/notification-item.tsx` :
-  - Flat list item (design natif Android, mémoire #15) — 64dp, dot coloré selon channel, divider
-  - Title bold + body 2 lignes ellipsées + relative time
-  - Tap → markAsRead + navigate via deepLink
-  - Long press / swipe → delete (bottom sheet ou snackbar undo)
-- [ ] **1.4.2** `modules/notifications/components/notification-empty-state.tsx` — illustration vide + CTA "Activer les notifications" si denied
-- [ ] **1.4.3** `modules/notifications/components/notification-permissions-banner.tsx` — banner card haut d'écran si permission denied avec CTA `Linking.openSettings()`
-- [ ] **1.4.4** `app/(tabs)/notifications.tsx` — écran complet :
-  - Header avec actions "Tout marquer lu" + "Tout supprimer"
-  - FlatList avec separator, RefreshControl (pull-to-refresh refetch storage)
-  - Filtre channel optionnel (Tous / Paiements / RDV / Support)
-  - Empty state si vide ; banner permission si denied
-- [ ] **1.4.5** Ajouter onglet "Notifications" dans `(tabs)/_layout.tsx` avec badge unread count
-- [ ] **1.4.6** i18n : 3 langues, clés `notifications.*` dans `core/i18n/translations/{es,fr,en}.json`
+- [x] **1.4.1** `modules/notifications/components/notification-item.tsx` (commit f186250f)
+- [x] **1.4.2** `modules/notifications/components/notification-empty-state.tsx` (commit f186250f)
+- [x] **1.4.3** `modules/notifications/components/notification-permissions-banner.tsx` (commit f186250f)
+- [x] **1.4.4** `app/(tabs)/notifications.tsx` — écran complet (commit f186250f, file packages/mobile/src/app/notifications.tsx)
+- [x] **1.4.5** Ajouter onglet "Notifications" dans `(tabs)/_layout.tsx` avec badge unread count (commit 62166cb2)
+- [x] **1.4.6** i18n : 3 langues, clés `notifications.*` (commit f186250f)
 
 ### 3.5 Intégration root + deep links (jour 3 matin)
 
-- [ ] **1.5.1** `app/_layout.tsx` MODIFIED :
-  - Importer `initNotifications()` au boot (avant `SplashScreen.hideAsync`)
-  - Wrapper `<NotificationsProvider>` qui orchestre `useDeviceTokenRegistration` + `useNotifications` (déclenchés UNIQUEMENT après auth bootstrap)
-  - Handle initial deep link (cold start) : `Notifications.getLastNotificationResponseAsync()` au mount
-- [ ] **1.5.2** Configurer `expo-router` deep link parsing : Linking config dans `app/_layout.tsx` (prefixes `[Linking.createURL('/'), 'facil://']`)
-- [ ] **1.5.3** Tester chaque deep link manuellement via `npx uri-scheme open facil://payments/abc/result --android` (et iOS sim)
-- [ ] **1.5.4** Edge case cold start : si app killée et tap sur push → `useEffect` racine doit lire `getLastNotificationResponseAsync` et router APRÈS auth bootstrap (sinon redirect vers `/index` perd la cible)
+- [x] **1.5.1** `app/_layout.tsx` MODIFIED — wire NotificationsProvider (commit 62166cb2)
+- [x] **1.5.2** Configurer `expo-router` deep link parsing (commit 62166cb2)
+- [ ] **1.5.3** Tester chaque deep link manuellement via `npx uri-scheme open` ⚠️ unverified — needs re-check
+- [x] **1.5.4** Edge case cold start handling — `useEffect` racine lit `getLastNotificationResponseAsync` (commit 62166cb2)
 
 ### 3.6 Tests + smoke (jour 3 après-midi)
 
-- [ ] **1.6.1** `tsc --noEmit` clean
-- [ ] **1.6.2** ESLint clean (sous seuil 100 warnings)
-- [ ] **1.6.3** Smoke test enregistrement token sur **device physique Android** (FCM nécessite Google Play Services — pas d'émulateur sans ça) :
-  - Login → permission accordée → POST device-token retourne 200
-  - Vérifier en BD staging : `SELECT device_push_token, device_push_platform, device_push_app FROM users WHERE email = '<test>'` → 3 colonnes peuplées avec `'citizen'`
-- [ ] **1.6.4** Smoke test push réel : déclencher event backend (paiement test ou outil admin si disponible) → notif reçue device → tap → deep link OK
-- [ ] **1.6.5** Smoke test deep link cold start : tuer l'app → push → tap → app ouvre directement sur la route cible
-- [ ] **1.6.6** Smoke test refus permission : Android 13 → simuler refus → vérifier banner s'affiche dans Notification Center
-- [ ] **1.6.7** iOS smoke test deferred si APNs cert pas encore dans Firebase Console → marquer comme dette explicite dans critique
+- [x] **1.6.1** `tsc --noEmit` clean (commit f186250f passed CI)
+- [x] **1.6.2** ESLint clean (sous seuil 100 warnings) (commit f186250f passed CI)
+- [ ] **1.6.3** Smoke test enregistrement token sur device physique Android ⚠️ unverified — needs re-check
+- [ ] **1.6.4** Smoke test push réel — admin tool ⚠️ unverified — needs re-check
+- [ ] **1.6.5** Smoke test deep link cold start ⚠️ unverified — needs re-check
+- [ ] **1.6.6** Smoke test refus permission Android 13 ⚠️ unverified — needs re-check
+- [x] **1.6.7** iOS smoke test deferred — dette explicite documentée (commit 460ce184 defer iOS to P10)
 
 ### 3.7 Auto-critique + commits (jour 3 fin)
 
-- [ ] **1.7.1** Rédiger `.claude/plans/MOBILE_USER_PHASE_1_CRITIQUE.md` (DoD, risques, dette iOS si applicable)
-- [ ] **1.7.2** Commits sémantiques locaux (mémoire #32 — auto sans demander) :
-  1. `chore(mobile): configure expo-notifications plugin + Android channels`
-  2. `feat(mobile): notifications service core (token, channels, listeners, storage)`
-  3. `feat(mobile): notification center UI + tabs integration`
-  4. `feat(mobile): deep link routing + token registration on auth`
-  5. `docs(mobile): Phase 1 plan & auto-critique`
+- [x] **1.7.1** Rédiger `MOBILE_USER_PHASE_1_CRITIQUE.md` (commit c2f32ca1)
+- [x] **1.7.2** Commits sémantiques locaux (commits 2f51306d, 02c58c41, f186250f, 62166cb2, 1adc1ab2, c2f32ca1)
 
 ---
 
@@ -337,3 +284,12 @@ Phase 2 (`Document Vault` + Auto-fill Wizard) sera détaillée dans `.claude/pla
 ## 8. CHANGELOG
 
 - **2026-04-27 v1.0** : création post-audit backend (Explore agent) + audit mobile direct.
+
+---
+## Validation rétroactive
+- **Date** : 2026-04-29
+- **Méthode** : audit code + git log
+- **Coches livrées rétroactivement** : 23
+- **Items unverified** : 5 (tests device manuels — token register, push réel, deep link cold start, refus permission)
+- **Items deferred Phase 10** : 0 (iOS APNs déjà documenté comme dette explicite via commit 460ce184)
+- **Notes** : Tous les fichiers source confirmés présents (`packages/mobile/src/core/notifications/*`, `packages/mobile/src/app/notifications.tsx`). Commits sémantiques 2f51306d/02c58c41/f186250f/62166cb2/1adc1ab2/c2f32ca1 couvrent l'ensemble du scope. Les smoke tests device manuels (3.6) ne sont pas archivés — code livré, tests réels non journalisés.

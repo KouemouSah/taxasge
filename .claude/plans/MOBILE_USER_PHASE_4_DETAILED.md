@@ -127,36 +127,33 @@ L'écran initial du wizard (sélection du workflow) gagne un `<ReadinessBanner>`
 
 ### 3.1 Composants vault réutilisables
 
-- [ ] **4.1.1** Créer `modules/vault/components/vault-picker-sheet.tsx`
-- [ ] **4.1.2** Créer `modules/vault/components/readiness-banner.tsx`
-- [ ] **4.1.3** Exporter les 2 depuis `modules/vault/index.ts`
-- [ ] **4.1.4** Ajouter clés i18n `vault.picker.*` et `vault.readiness.*` dans 3 langues
+- [x] **4.1.1** Créer `modules/vault/components/vault-picker-sheet.tsx` (commit c731d748 — file packages/mobile/src/modules/vault/components/vault-picker-sheet.tsx)
+- [x] **4.1.2** Créer `modules/vault/components/readiness-banner.tsx` (commit c731d748 — file packages/mobile/src/modules/vault/components/readiness-banner.tsx)
+- [x] **4.1.3** Exporter les 2 depuis `modules/vault/index.ts` (commit c731d748)
+- [x] **4.1.4** Ajouter clés i18n `vault.picker.*` et `vault.readiness.*` dans 3 langues (commit c731d748)
 
 ### 3.2 Intégration wizard step-upload
 
-- [ ] **4.2.1** Modifier `modules/wizard/components/step-upload.tsx` pour ajouter le bouton "Depuis le coffre"
-- [ ] **4.2.2** Ajouter mutation hook qui call `wizardApi.useVaultDocument` + invalide queries
-- [ ] **4.2.3** Tracker localement `documentsFromVault` (useState hook-level)
-- [ ] **4.2.4** Toast i18n succès / erreur
+- [x] **4.2.1** Modifier `modules/wizard/components/step-upload.tsx` (commit 716ca2eb — wizard step-upload "From the vault" auto-fill)
+- [x] **4.2.2** Ajouter mutation hook (commit 716ca2eb)
+- [x] **4.2.3** Tracker localement `documentsFromVault` (commit 716ca2eb)
+- [x] **4.2.4** Toast i18n succès / erreur (commit 716ca2eb)
 
 ### 3.3 Intégration wizard step-selection (banner)
 
-- [ ] **4.3.1** Modifier `modules/wizard/components/step-selection.tsx` pour intégrer `<ReadinessBanner>` après sélection workflow
-- [ ] **4.3.2** OU intégrer dans l'écran wrapper si plus simple (à déterminer en lisant le code)
+- [x] **4.3.1** Modifier `modules/wizard/components/step-selection.tsx` pour intégrer `<ReadinessBanner>` (commit d28fa7a0 — wire vault auto-fill into wizard parent screens)
+- [x] **4.3.2** Intégration finalisée dans wrapper (commit d28fa7a0)
 
 ### 3.4 Validation post-P4 (checklist mémoire #35)
 
-- [ ] **4.4.1** `tsc --noEmit` 0 erreur
-- [ ] **4.4.2** ESLint sous 100 warnings
-- [ ] **4.4.3** Grep paths hardcodés hors endpoints.ts → vide ou commentaires
-- [ ] **4.4.4** Smoke tests staging :
-  - GET /user-documents/readiness/PASAPORTE_EXPEDICION → 403 (auth)
-  - POST /wizard-sessions/fake/documents/use-vault → 403 (auth)
-  - GET /user-documents/for-workflow/PASAPORTE_EXPEDICION → 403 (auth)
-- [ ] **4.4.5** Vérifier imports/exports `@modules/vault` cohérents (les 2 nouveaux composants exportés)
-- [ ] **4.4.6** Aucune régression wizard P0+P1+P2+P3
-- [ ] **4.4.7** Auto-critique `.claude/plans/MOBILE_USER_PHASE_4_CRITIQUE.md`
-- [ ] **4.4.8** Commits sémantiques locaux groupés
+- [x] **4.4.1** `tsc --noEmit` 0 erreur (commits c731d748, 716ca2eb, d28fa7a0)
+- [x] **4.4.2** ESLint sous 100 warnings (commit a4a65e61)
+- [x] **4.4.3** Grep paths hardcodés hors endpoints.ts → vide (commit 75cb01fb)
+- [ ] **4.4.4** Smoke tests staging (3 curl) ⚠️ unverified — needs re-check
+- [x] **4.4.5** Vérifier imports/exports `@modules/vault` cohérents (commit c731d748 barrel)
+- [x] **4.4.6** Aucune régression wizard P0+P1+P2+P3 (commit 75cb01fb critique)
+- [x] **4.4.7** Auto-critique `MOBILE_USER_PHASE_4_CRITIQUE.md` (commit 75cb01fb)
+- [x] **4.4.8** Commits sémantiques locaux groupés (c731d748, 716ca2eb, d28fa7a0, 75cb01fb)
 
 ---
 
@@ -199,3 +196,12 @@ P5 = Payments end-to-end avec BANGE deep links (4-5 jours).
 ## 7. CHANGELOG
 
 - **2026-04-27 v1.0** : création post-audit backend + mobile. Scope réduit vs plan initial (P4 = pure intégration vault↔wizard, le reste OCR/Gemini est déjà fait par le backend).
+
+---
+## Validation rétroactive
+- **Date** : 2026-04-29
+- **Méthode** : audit code + git log
+- **Coches livrées rétroactivement** : 13
+- **Items unverified** : 1 (smoke tests staging — 3 curl)
+- **Items deferred Phase 10** : 0
+- **Notes** : Vault picker sheet + readiness banner livrés (`packages/mobile/src/modules/vault/components/{vault-picker-sheet,readiness-banner}.tsx`). Step-upload modifié (716ca2eb). Step-selection wrapper wired (d28fa7a0). Auto-critique 75cb01fb.

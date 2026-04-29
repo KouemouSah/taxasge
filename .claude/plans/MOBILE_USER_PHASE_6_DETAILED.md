@@ -254,66 +254,62 @@ users: {
 
 ### 6.1 Backend additions (~1j)
 
-- [ ] **6.1.1** Migration : `ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB NOT NULL DEFAULT '{}'::jsonb;` + `deleted_at TIMESTAMPTZ NULL;`
-- [ ] **6.1.2** Pydantic `NotificationPreferences` (push_enabled, email_enabled, sms_enabled, ticket_updates_email, payment_updates_push) avec `Optional[bool]` partout — semantics PUT = upsert partial
-- [ ] **6.1.3** Routes `GET /users/notifications/preferences` + `PUT /users/notifications/preferences` dans `notification_preferences_routes.py`
-- [ ] **6.1.4** Pydantic `AccountDeleteRequest` (password: SecretStr, confirmation: Literal["DELETE"])
-- [ ] **6.1.5** Route `DELETE /users/profile` : verify password (bcrypt), soft-delete user, revoke tokens, log audit, return 204
-- [ ] **6.1.6** Tests pytest (3-4 tests : delete with bad password = 401, delete with bad confirmation = 422, delete success = 204, prefs put/get round-trip)
-- [ ] **6.1.7** Push backend → vérifier CI staging
+- [x] **6.1.1** Migration `notification_preferences JSONB` + `deleted_at` (commit d37b33ab — RGPD account delete soft-delete)
+- [x] **6.1.2** Pydantic `NotificationPreferences` (commit d37b33ab)
+- [x] **6.1.3** Routes `GET/PUT /users/notifications/preferences` (commit d37b33ab)
+- [x] **6.1.4** Pydantic `AccountDeleteRequest` (commit d37b33ab)
+- [x] **6.1.5** Route `DELETE /users/profile` soft-delete + tokens revoke (commit d37b33ab)
+- [x] **6.1.6** Tests pytest (commit d37b33ab)
+- [x] **6.1.7** Push backend → CI staging (commit d37b33ab)
 
 ### 6.2 Module mobile support (~1j)
 
-- [ ] **6.2.1** Créer `modules/support/types/support.types.ts` (alignés Pydantic — relire backend `support.py` Pydantic)
-- [ ] **6.2.2** Créer `modules/support/services/support-api.ts` (8 fonctions : list+filter, detail, create, close, messages list, post message, categories list)
-- [ ] **6.2.3** Créer `modules/support/services/support-hooks.ts` (`useMyTickets` infinite, `useTicket`, `useTicketMessages`, `useSupportCategories`, mutations create/post/close avec invalidation)
-- [ ] **6.2.4** Composants : `TicketListItem` (memo), `TicketStatusBadge`, `TicketPriorityBadge`, `MessageBubble` (left/right + relative time)
-- [ ] **6.2.5** Barrel export `modules/support/index.ts`
-- [ ] **6.2.6** Endpoints `core/api/endpoints.ts` section `support`
-- [ ] **6.2.7** i18n 3 langues (`support.list.*`, `support.new.*`, `support.detail.*`, `support.status.*`, `support.priority.*`)
+- [x] **6.2.1** `modules/support/types/support.types.ts` (commit d0673199 — file packages/mobile/src/modules/support/types/)
+- [x] **6.2.2** `modules/support/services/support-api.ts` (commit d0673199)
+- [x] **6.2.3** `modules/support/services/support-hooks.ts` (commit d0673199)
+- [x] **6.2.4** Composants `TicketListItem`, `TicketStatusBadge`, `TicketPriorityBadge`, `MessageBubble` (commit d0673199 — files packages/mobile/src/modules/support/components/)
+- [x] **6.2.5** Barrel export `modules/support/index.ts` (commit d0673199)
+- [x] **6.2.6** Endpoints `core/api/endpoints.ts` section `support` (commit d0673199)
+- [x] **6.2.7** i18n 3 langues (commit d0673199)
 
 ### 6.3 Connexion écrans support existants (~0.5j)
 
-- [ ] **6.3.1** Réécrire `app/support/index.tsx` : FlatList + chip filter + FAB + empty state + getItemLayout
-- [ ] **6.3.2** Réécrire `app/support/new.tsx` : Picker catégories + Zod validation + submit
-- [ ] **6.3.3** Réécrire `app/support/[id].tsx` : header + messages thread + reply input + close button + UUID guard
+- [x] **6.3.1** Réécrire `app/support/index.tsx` (commit bca64a2e — wire support screens to the new module)
+- [x] **6.3.2** Réécrire `app/support/new.tsx` (commit bca64a2e)
+- [x] **6.3.3** Réécrire `app/support/[id].tsx` (commit bca64a2e)
 
 ### 6.4 Settings — Notifications preferences (~0.5j)
 
-- [ ] **6.4.1** Endpoints + types client (alignés Pydantic backend 6.1)
-- [ ] **6.4.2** `app/settings/notifications.tsx` : Card par catégorie (Push / Email / SMS) avec switches granulaires + Save bouton optimistic
-- [ ] **6.4.3** Lien depuis profile screen
-- [ ] **6.4.4** i18n 3 langues
+- [x] **6.4.1** Endpoints + types client (commit b984b542 — settings notifications, biometric, account delete)
+- [x] **6.4.2** `app/settings/notifications.tsx` (commit b984b542 — file packages/mobile/src/app/settings/notifications.tsx)
+- [x] **6.4.3** Lien depuis profile screen (commit b984b542)
+- [x] **6.4.4** i18n 3 langues (commit b984b542)
 
 ### 6.5 Settings — Biometric toggle (~0.25j)
 
-- [ ] **6.5.1** `app/settings/biometric.tsx` : check hardware, toggle + flow enable/disable
-- [ ] **6.5.2** Lien depuis profile screen
-- [ ] **6.5.3** i18n 3 langues
-- [ ] **6.5.4** Note dans le commit : bug latent S1 (audit holistique) NOT fixed dans P6 — sera traité en Sprint A hardening
+- [x] **6.5.1** `app/settings/biometric.tsx` (commit b984b542 — file packages/mobile/src/app/settings/biometric.tsx)
+- [x] **6.5.2** Lien depuis profile screen (commit b984b542)
+- [x] **6.5.3** i18n 3 langues (commit b984b542)
+- [x] **6.5.4** Note S1 latent — fixed by P9.4 (commit 36b1c9b0 P9.4 biometric S1)
 
 ### 6.6 Settings — Account delete (~0.5j)
 
-- [ ] **6.6.1** Endpoints + types client (aligné 6.1)
-- [ ] **6.6.2** `app/settings/account/delete.tsx` : warning UI + password + tape DELETE + double confirmation Alert
-- [ ] **6.6.3** Sur succès → `signOut()` + `router.replace('/onboarding')`
-- [ ] **6.6.4** Lien depuis profile screen — section danger zone
-- [ ] **6.6.5** i18n 3 langues
+- [x] **6.6.1** Endpoints + types client (commit b984b542)
+- [x] **6.6.2** `app/settings/account/delete.tsx` (commit b984b542 — file packages/mobile/src/app/settings/account/delete.tsx)
+- [x] **6.6.3** Sur succès → `signOut()` + `router.replace('/onboarding')` (commit b984b542)
+- [x] **6.6.4** Lien depuis profile screen — section danger zone (commit b984b542)
+- [x] **6.6.5** i18n 3 langues (commit b984b542)
 
 ### 6.7 Validation post-P6 (mémoire #35) (~0.5j)
 
-- [ ] **6.7.1** `tsc --noEmit` 0 erreur
-- [ ] **6.7.2** ESLint sous 100 warnings
-- [ ] **6.7.3** Grep paths hardcodés hors endpoints.ts → vide
-- [ ] **6.7.4** Smoke tests staging :
-  - `GET /support/tickets/my` → 403 (auth gate OK)
-  - `GET /support/categories` → 200 (public ?) ou 403
-  - `DELETE /users/profile` → 422 (sans body) ou 401
-  - `GET /users/notifications/preferences` → 403
-- [ ] **6.7.5** Imports/exports cohérents barrel `@modules/support`
-- [ ] **6.7.6** Aucune régression auth/profile/payment/wizard
-- [ ] **6.7.7** Auto-critique `MOBILE_USER_PHASE_6_CRITIQUE.md`
-- [ ] **6.7.8** Commits sémantiques locaux groupés
+- [x] **6.7.1** `tsc --noEmit` 0 erreur (commits d0673199, bca64a2e, b984b542)
+- [x] **6.7.2** ESLint sous 100 warnings (commit a4a65e61)
+- [x] **6.7.3** Grep paths hardcodés hors endpoints.ts → vide (commit 5dcf4620 critique)
+- [ ] **6.7.4** Smoke tests staging (4 curl) ⚠️ unverified — needs re-check
+- [x] **6.7.5** Imports/exports cohérents barrel `@modules/support` (commit d0673199)
+- [x] **6.7.6** Aucune régression auth/profile/payment/wizard (commit 5dcf4620 critique)
+- [x] **6.7.7** Auto-critique `MOBILE_USER_PHASE_6_CRITIQUE.md` (commit 5dcf4620)
+- [x] **6.7.8** Commits sémantiques locaux groupés (d37b33ab, d0673199, bca64a2e, b984b542, 5dcf4620)
 
 ---
 
@@ -379,3 +375,12 @@ P7 = Batch Requests (business). Pas de dépendance bloquante avec P6.
 ## 9. CHANGELOG
 
 - **2026-04-27 v1.0** : créé post-audit Explore. Scope V1 ajusté : appointments user-list reporté (gap backend), RGPD data export reporté (P9). Inclut additions backend minimales (notif prefs JSONB + account delete soft-delete) qui sont indispensables pour les écrans mobile correspondants.
+
+---
+## Validation rétroactive
+- **Date** : 2026-04-29
+- **Méthode** : audit code + git log
+- **Coches livrées rétroactivement** : 32
+- **Items unverified** : 1 (smoke tests staging — 4 curl)
+- **Items deferred Phase 10** : 0
+- **Notes** : Backend RGPD + notif prefs (d37b33ab). Module support complet (`packages/mobile/src/modules/support/`). Écrans support reliés (bca64a2e). Settings notifications+biometric+account/delete (b984b542 — files `packages/mobile/src/app/settings/{notifications,biometric,account/delete}.tsx`). S1 biometric latent fixé en P9.4 (36b1c9b0).

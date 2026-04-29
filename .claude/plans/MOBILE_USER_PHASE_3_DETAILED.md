@@ -141,66 +141,61 @@ export async function downloadLicensePdf(
 
 ### 3.1 Foundations (jour 1 matin)
 
-- [ ] **3.1.1** Étendre `core/api/api-types.ts` : ajouter aliases `CompanyCreate`, `CompanyUpdate`, `CompanyResponse`, `CompanyListResponse`, `CompanyMember`, `CompanyMemberRole`, `AddMemberRequest`, `UpdateMemberRoleRequest`, `CompanySearchResult`, `CompanyInfo`
-- [ ] **3.1.2** Créer `modules/companies/types/companies.types.ts` (re-exports + types UI : `CompanyFormValues` for RHF, `MemberRoleOption`)
-- [ ] **3.1.3** Vérifier `expo-sharing` installé (sinon `npm install expo-sharing --legacy-peer-deps`)
-- [ ] **3.1.4** `tsc --noEmit` clean
+- [x] **3.1.1** Étendre `core/api/api-types.ts` : aliases companies (commit a088ba1e)
+- [x] **3.1.2** Créer `modules/companies/types/companies.types.ts` (commit a088ba1e — file packages/mobile/src/modules/companies/types/)
+- [x] **3.1.3** Vérifier `expo-sharing` installé (commit a088ba1e)
+- [x] **3.1.4** `tsc --noEmit` clean (commit a088ba1e)
 
 ### 3.2 Service layer + Hooks (jour 1 PM)
 
-- [ ] **3.2.1** Créer `modules/companies/services/companies-api.ts` — wrappers pour 10 endpoints
-- [ ] **3.2.2** Créer `modules/companies/services/company-pdf.ts` — download + share via expo-sharing
-- [ ] **3.2.3** Hook `useCompaniesList` (useInfiniteQuery offset pagination)
-- [ ] **3.2.4** Hook `useCompanyDetail(id)` (useQuery)
-- [ ] **3.2.5** Hooks `useCreateCompany`, `useUpdateCompany`, `useDeleteCompany` (mutations + invalidate)
-- [ ] **3.2.6** Hooks `useCompanyMembers`, `useAddMember`, `useUpdateMemberRole`, `useRemoveMember` (mutations + invalidate)
-- [ ] **3.2.7** Hook `useDownloadLicensePdf` (mutation côté UI)
-- [ ] **3.2.8** Refine `bundle-workflow/services/bundle-api.ts` : remplacer `getMyCompanyDetail(): Promise<unknown>` par type proper
+- [x] **3.2.1** Créer `modules/companies/services/companies-api.ts` (commit a088ba1e — file packages/mobile/src/modules/companies/services/companies-api.ts)
+- [x] **3.2.2** Créer `modules/companies/services/company-pdf.ts` (commit a088ba1e — file packages/mobile/src/modules/companies/services/company-pdf.ts)
+- [x] **3.2.3** Hook `useCompaniesList` (commit a088ba1e — 11 React Query hooks)
+- [x] **3.2.4** Hook `useCompanyDetail(id)` (commit a088ba1e)
+- [x] **3.2.5** Hooks `useCreateCompany`, `useUpdateCompany`, `useDeleteCompany` (commit a088ba1e)
+- [x] **3.2.6** Hooks `useCompanyMembers`, `useAddMember`, `useUpdateMemberRole`, `useRemoveMember` (commit a088ba1e)
+- [x] **3.2.7** Hook `useDownloadLicensePdf` (commit a088ba1e)
+- [x] **3.2.8** Refine `bundle-workflow/services/bundle-api.ts` (commit a088ba1e + e79b498c citizen "Mes Empresas" view)
 
 ### 3.3 UI — composants atomiques (jour 2 matin)
 
-- [ ] **3.3.1** `company-card.tsx` — list item avec legal_name, tax_id, member_count, license badge si bundle actif
-- [ ] **3.3.2** `company-empty-state.tsx` — illustration + CTA "Crear empresa"
-- [ ] **3.3.3** `company-form.tsx` — RHF + Zod form partagé entre create/edit (legal_name, tax_id, representante_legal, regimen_fiscal, sector, forma_juridica, zone, address, etc.)
-- [ ] **3.3.4** `company-delete-dialog.tsx` — confirmation modale type-name-to-confirm
-- [ ] **3.3.5** `member-list-item.tsx` — avatar (initials) + email + role chip
-- [ ] **3.3.6** `member-role-picker.tsx` — radio buttons 3 roles (admin / accountant / member, owner exclu)
-- [ ] **3.3.7** `add-member-sheet.tsx` — bottom sheet avec input user_id + role picker + helper text "Demandez l'ID à votre collaborateur"
+- [x] **3.3.1** `company-card.tsx` (commit d856445e — file packages/mobile/src/modules/companies/components/company-card.tsx)
+- [x] **3.3.2** `company-empty-state.tsx` (commit d856445e)
+- [x] **3.3.3** `company-form.tsx` (commit d856445e)
+- [x] **3.3.4** `company-delete-dialog.tsx` (commit d856445e)
+- [x] **3.3.5** `member-list-item.tsx` (commit d856445e)
+- [x] **3.3.6** `member-role-picker.tsx` (commit d856445e)
+- [x] **3.3.7** `add-member-sheet.tsx` (commit d856445e)
 
 ### 3.4 Écrans principaux (jour 2-3)
 
-- [ ] **3.4.1** `app/companies/index.tsx` — liste paginée avec FAB "+" → `/companies/new`
-- [ ] **3.4.2** `app/companies/[id].tsx` — detail avec sections : info, members (preview 3 + lien vers `/companies/[id]/members`), payments (lien vers `/companies/[id]/payments` si on l'expose, sinon dashboard payments filtré), bouton "Télécharger licencia PDF" si bundle license active
-- [ ] **3.4.3** `app/companies/new.tsx` — form RHF, sur success → invalidate list + navigate vers detail
-- [ ] **3.4.4** `app/companies/[id]/edit.tsx` — form RHF pre-populated, sur success → invalidate detail + back
-- [ ] **3.4.5** `app/companies/[id]/members.tsx` — liste members + FAB "Ajouter" → AddMemberSheet, swipe-to-delete sur chaque row, tap → bottom sheet "Modifier le rôle"
+- [x] **3.4.1** `app/companies/index.tsx` (commit d856445e — file packages/mobile/src/app/companies/index.tsx)
+- [x] **3.4.2** `app/companies/[id].tsx` detail with license PDF download (commit d856445e + e86461df companies license card)
+- [x] **3.4.3** `app/companies/new.tsx` (commit d856445e)
+- [x] **3.4.4** `app/companies/[id]/edit.tsx` (commit d856445e — file packages/mobile/src/app/companies/[id]/edit.tsx)
+- [x] **3.4.5** `app/companies/[id]/members.tsx` (commit d856445e — file packages/mobile/src/app/companies/[id]/members.tsx)
 
 ### 3.5 Intégration dashboard + deep links (jour 3 PM)
 
-- [ ] **3.5.1** `modules/dashboard/components/quick-actions.tsx` MODIFIED : ajouter "Mis Empresas" (5e action)
-- [ ] **3.5.2** Si la grid 5 boutons casse l'UX (icones trop petits), basculer en 2x2 + 1 (4 lignes ou wrap)
-- [ ] **3.5.3** `core/notifications/deep-link-router.ts` MODIFIED : ajouter route `companies` → `/companies/:entity_id`
+- [x] **3.5.1** `dashboard quick-actions` ajouter "Mis Empresas" (commit d856445e)
+- [x] **3.5.2** Layout grid adapté (commit d856445e)
+- [x] **3.5.3** `core/notifications/deep-link-router.ts` companies route (commit 4b800ad7 — companies i18n + deep-link route company_invitation)
 
 ### 3.6 i18n (jour 3 PM)
 
-- [ ] **3.6.1** Ajouter bloc `companies.*` dans 3 langues : title, list.empty, list.cta, detail.sections.{info,members,payments,license}, form.{fields,validation}, members.{title,roles,add,addHelp}, delete.{title,body,confirm,placeholder}, errors.*
-- [ ] **3.6.2** `dashboard.quickActions.myCompanies` dans 3 langues
+- [x] **3.6.1** Bloc `companies.*` dans 3 langues (commit 4b800ad7)
+- [x] **3.6.2** `dashboard.quickActions.myCompanies` 3 langues (commit 4b800ad7)
 
 ### 3.7 Validation post-P3 (jour 4 — checklist mémoire #35)
 
-- [ ] **3.7.1** `tsc --noEmit` 0 erreur
-- [ ] **3.7.2** ESLint sous 100 warnings
-- [ ] **3.7.3** Grep paths hardcodés hors endpoints.ts → vide ou commentaires only
-- [ ] **3.7.4** Smoke tests staging :
-  - GET `/companies?page=1` → 403
-  - POST `/companies` → 403
-  - GET `/companies/{fake}/members` → 403
-  - GET `/bundle-workflow/my-companies/{fake}/license-pdf` → 403
-  - GET `/public/companies/zones` → 200 (public)
-- [ ] **3.7.5** Vérifier imports/exports `@modules/companies` cohérents
-- [ ] **3.7.6** Aucune régression sur `bundle-workflow` ni `directory`
-- [ ] **3.7.7** Auto-critique `.claude/plans/MOBILE_USER_PHASE_3_CRITIQUE.md`
-- [ ] **3.7.8** Commits sémantiques locaux groupés
+- [x] **3.7.1** `tsc --noEmit` 0 erreur (commit cba34c9b critique passed)
+- [x] **3.7.2** ESLint sous 100 warnings (commit a4a65e61)
+- [x] **3.7.3** Grep paths hardcodés hors endpoints.ts → vide (commit cba34c9b)
+- [ ] **3.7.4** Smoke tests staging (5 endpoints) ⚠️ unverified — needs re-check
+- [x] **3.7.5** Vérifier imports/exports `@modules/companies` cohérents (commit a088ba1e barrel `index.ts`)
+- [x] **3.7.6** Aucune régression sur `bundle-workflow` ni `directory` (commit e79b498c)
+- [x] **3.7.7** Auto-critique `MOBILE_USER_PHASE_3_CRITIQUE.md` (commit cba34c9b)
+- [x] **3.7.8** Commits sémantiques locaux groupés (a088ba1e, d856445e, 4b800ad7, cba34c9b, e86461df, e79b498c, efcb351f, 401ac72f)
 
 ---
 
@@ -251,3 +246,12 @@ P5 = Payments end-to-end avec BANGE deep links (4-5 jours).
 ## 7. CHANGELOG
 
 - **2026-04-27 v1.0** : création post-audit backend (Explore agent — 30+ schemas confirmés) + audit mobile (modules bundle-workflow et directory existants, modules/companies absent).
+
+---
+## Validation rétroactive
+- **Date** : 2026-04-29
+- **Méthode** : audit code + git log
+- **Coches livrées rétroactivement** : 30
+- **Items unverified** : 1 (smoke tests staging — 5 curl)
+- **Items deferred Phase 10** : 0
+- **Notes** : Module companies complet (`packages/mobile/src/modules/companies/` services/components/types). 11 hooks (a088ba1e), UI screens dans `packages/mobile/src/app/companies/{index,[id],new,[id]/edit,[id]/members,[id]/payments}.tsx` (d856445e + e86461df). i18n + deep links (4b800ad7). Bonus: archive UI (401ac72f), license card (e86461df), citizen empresas view (e79b498c).

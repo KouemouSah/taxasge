@@ -238,69 +238,51 @@ payments: {
 
 ### 3.1 Backend prerequisites (~0.5j)
 
-- [ ] **5.1.1** Modifier `WizardInitiatePaymentRequest` (Pydantic) : ajouter `return_url: Optional[str]`
-- [ ] **5.1.2** Modifier `bange_processor.py:110` : `return_url = context.return_url or f"{FRONTEND_URL}/..."`
-- [ ] **5.1.3** Validator anti-open-redirect : whitelist scheme `facil://*` + même origine que `FRONTEND_URL`
-- [ ] **5.1.4** Test backend : `pytest packages/backend/tests/test_payments.py::test_bange_return_url_override`
-- [ ] **5.1.5** Push backend → vérifier GitHub Actions deploy staging
+- [x] **5.1.1** Modifier `WizardInitiatePaymentRequest` (Pydantic) : ajouter `return_url: Optional[str]` (commit c1052e6d — BANGE deep link return)
+- [x] **5.1.2** Modifier `bange_processor.py:110` (commit c1052e6d)
+- [x] **5.1.3** Validator anti-open-redirect (commit c1052e6d)
+- [ ] **5.1.4** Test backend pytest BANGE return URL override ⚠️ unverified — needs re-check
+- [x] **5.1.5** Push backend → CI staging (commit c1052e6d)
 
 ### 3.2 Module mobile `payments/` (~1j)
 
-- [ ] **5.2.1** Créer `modules/payments/types/payments.types.ts` (alignés Pydantic — vérifier types backend en ouvrant `payment.py`)
-- [ ] **5.2.2** Créer `modules/payments/services/payments-api.ts` (3 fonctions : list, get, statusPolling)
-- [ ] **5.2.3** Créer `modules/payments/services/payments-hooks.ts` (`usePaymentsList` infinite, `usePayment`, `usePaymentStatusPolling` avec `refetchInterval` + `enabled`)
-- [ ] **5.2.4** Créer `modules/payments/components/` : `payment-list-item.tsx`, `payment-status-badge.tsx`, `receipt-download-button.tsx`
-- [ ] **5.2.5** Créer `modules/payments/index.ts` (barrel export)
-- [ ] **5.2.6** Ajouter routes dans `core/api/endpoints.ts` section `payments`
-- [ ] **5.2.7** i18n 3 langues : `payments.list.*`, `payments.detail.*`, `payments.status.*`, `payments.receipt.*`
+- [x] **5.2.1** Créer `modules/payments/types/payments.types.ts` (commit fe202109 — file packages/mobile/src/modules/payments/types/)
+- [x] **5.2.2** Créer `modules/payments/services/payments-api.ts` (commit fe202109)
+- [x] **5.2.3** Créer `modules/payments/services/payments-hooks.ts` (commit fe202109)
+- [x] **5.2.4** Créer `modules/payments/components/` (commit fe202109 — payment-list-item, payment-status-badge, receipt-download-button)
+- [x] **5.2.5** Créer `modules/payments/index.ts` barrel (commit fe202109)
+- [x] **5.2.6** Ajouter routes dans `core/api/endpoints.ts` section `payments` (commit fe202109)
+- [x] **5.2.7** i18n 3 langues `payments.*` (commit fe202109)
 
 ### 3.3 Écrans tabs (~1.5j)
 
-- [ ] **5.3.1** Créer `app/(tabs)/payments/_layout.tsx` (Stack natif)
-- [ ] **5.3.2** Créer `app/(tabs)/payments/index.tsx` :
-  - `usePaymentsList` infinite paginé
-  - Filtre statut (chip group : all/pending/completed/failed)
-  - FlatList avec `<PaymentListItem>` + `<PaymentStatusBadge>`
-  - Pull-to-refresh, empty state, loading skeleton léger
-- [ ] **5.3.3** Créer `app/(tabs)/payments/[id].tsx` :
-  - `usePayment(id)` détail
-  - Card breakdown montant + statut + méthode + dates
-  - Bouton "Voir la demande" si `service_request_id`
-  - `<ReceiptDownloadButton>` si `receipt_url`/`receipt_number`
-- [ ] **5.3.4** Ajouter onglet "Paiements" dans `app/(tabs)/_layout.tsx` (icon `cash-multiple`, badge nombre paiements pending si pertinent)
+- [x] **5.3.1** Créer `app/(tabs)/payments/_layout.tsx` (commit b783eb2d — file packages/mobile/src/app/(tabs)/payments/_layout.tsx)
+- [x] **5.3.2** Créer `app/(tabs)/payments/index.tsx` (commit b783eb2d — file packages/mobile/src/app/(tabs)/payments/index.tsx)
+- [x] **5.3.3** Créer `app/(tabs)/payments/[id].tsx` (commit b783eb2d — file packages/mobile/src/app/(tabs)/payments/[id].tsx)
+- [x] **5.3.4** Ajouter onglet "Paiements" dans `app/(tabs)/_layout.tsx` (commit b783eb2d — payments tabs screens + profile entry)
 
 ### 3.4 Wizard payment-result (polling) (~0.5j)
 
-- [ ] **5.4.1** Réécrire `app/wizard/payment-result.tsx` :
-  - Lire params `session_id`, `service_request_id`, `status` hint
-  - `usePaymentStatusPolling` avec `intervalMs: 3000`, `enabled: !!service_request_id`
-  - 5 états UI : loading, polling, completed, failed, timeout
-- [ ] **5.4.2** Au moment de `initiatePayment()` côté wizard `[session-id].tsx` :
-  - Construire `return_url = facil://wizard/payment-result?session_id=...&service_request_id=...`
-  - Passer dans body `initiate-payment`
-  - Si réponse a `redirect_url` (BANGE) → `expo-web-browser.openBrowserAsync(redirect_url)`
-  - Si pas de redirect (cash/check) → router.push direct vers `payment-result`
+- [x] **5.4.1** Réécrire `app/wizard/payment-result.tsx` (commit c1052e6d — wizard payment-result polling)
+- [x] **5.4.2** Construire `return_url` deep link dans initiatePayment (commit c1052e6d)
 
 ### 3.5 Reçus dans vault — UI lien (~0.5j)
 
-- [ ] **5.5.1** Vérifier que `useVaultGenerated()` filtre bien `generation_type='payment_receipt'` (déjà supporté P2)
-- [ ] **5.5.2** Ajouter onglet "Reçus" dans l'écran vault existant `app/documents/index.tsx` (si pas déjà fait)
-- [ ] **5.5.3** Sur tap reçu vault → ouvrir détail vault standard (URL signée via `useDownloadUrl`)
-- [ ] **5.5.4** `<ReceiptDownloadButton>` (composant payments) appelle aussi `useDownloadUrl()` pour ouvrir directement
+- [x] **5.5.1** `useVaultGenerated()` filtre `generation_type='payment_receipt'` (commit 6890c1c6 — vault filter chips tab-aware generation buckets)
+- [x] **5.5.2** Onglet "Reçus" dans vault (commit 6890c1c6)
+- [x] **5.5.3** Tap reçu vault → ouvrir détail (commit 6890c1c6)
+- [x] **5.5.4** `<ReceiptDownloadButton>` appelle `useDownloadUrl()` (commit fe202109)
 
 ### 3.6 Validation post-P5 (checklist mémoire #35) (~0.5j)
 
-- [ ] **5.6.1** `tsc --noEmit` 0 erreur
-- [ ] **5.6.2** ESLint sous 100 warnings
-- [ ] **5.6.3** Grep paths hardcodés hors endpoints.ts → vide
-- [ ] **5.6.4** Smoke tests staging (avec curl + token user) :
-  - `GET /payments` → 200 (liste vide ou avec data)
-  - `GET /payments/{fake-uuid}` → 404 (id inexistant) ou 403 (auth manquante = au moins le path existe)
-  - `GET /service-requests/{fake-uuid}/payment/status` → 403/404
-- [ ] **5.6.5** Vérifier imports/exports `@modules/payments` cohérents (barrel export)
-- [ ] **5.6.6** Aucune régression wizard P0+P1+P2+P3+P4+P4.5 (test wizard pasaporte cash flow ou bundle)
-- [ ] **5.6.7** Auto-critique `.claude/plans/MOBILE_USER_PHASE_5_CRITIQUE.md`
-- [ ] **5.6.8** Commits sémantiques locaux groupés (5.1 backend, 5.2 module, 5.3 écrans, 5.4 wizard, 5.5 vault, 5.6 critique)
+- [x] **5.6.1** `tsc --noEmit` 0 erreur (commit a6e292d9 — P5.7 audit follow-ups types align)
+- [x] **5.6.2** ESLint sous 100 warnings (commit a4a65e61)
+- [x] **5.6.3** Grep paths hardcodés hors endpoints.ts → vide (commit 4938bdfc critique)
+- [ ] **5.6.4** Smoke tests staging (3 curl) ⚠️ unverified — needs re-check
+- [x] **5.6.5** Vérifier imports/exports `@modules/payments` cohérents (commit fe202109 barrel)
+- [x] **5.6.6** Aucune régression wizard P0..P4.5 (commit 4938bdfc critique)
+- [x] **5.6.7** Auto-critique `MOBILE_USER_PHASE_5_CRITIQUE.md` (commit 4938bdfc)
+- [x] **5.6.8** Commits sémantiques locaux groupés (c1052e6d, fe202109, b783eb2d, a6e292d9, 4938bdfc, 6890c1c6)
 
 ---
 
@@ -377,3 +359,12 @@ P6 = Support tickets + Appointments management + Settings (4-5 jours).
 ## 9. CHANGELOG
 
 - **2026-04-27 v1.0** : création post-audit Explore. Backend 95% prêt (1 fix mineur return_url). Mobile : module payments à créer + 2 écrans tabs + payment-result polling. Reçus PDF auto-vault déjà fonctionnel côté backend, juste UI à câbler côté mobile.
+
+---
+## Validation rétroactive
+- **Date** : 2026-04-29
+- **Méthode** : audit code + git log
+- **Coches livrées rétroactivement** : 23
+- **Items unverified** : 2 (backend pytest BANGE return URL, smoke tests staging curl)
+- **Items deferred Phase 10** : 0
+- **Notes** : Module payments complet (`packages/mobile/src/modules/payments/` types/services/components). Écrans tabs (`packages/mobile/src/app/(tabs)/payments/{_layout,index,[id]}.tsx`). Wizard polling (c1052e6d). Auto-critique 4938bdfc. P5.7 audit follow-ups inclus types align/a11y/dark mode/battery/perf.
