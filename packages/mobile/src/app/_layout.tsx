@@ -39,6 +39,7 @@ import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-dev
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
 import { initSentry } from '@core/observability/sentry';
 import { reportDeviceIntegrity } from '@core/security/device-integrity';
+import { setupQueryListeners } from '@core/api/query-listeners';
 import '@core/i18n';
 
 // Suppress known React 19 + New Architecture internal warnings
@@ -69,7 +70,13 @@ const queryClient = new QueryClient({
       staleTime: 2 * 60 * 1000, // 2 min
       gcTime: PERSISTED_MAX_AGE,
       retry: 2,
-      refetchOnWindowFocus: false,
+      // RN doesn't fire `window.focus` — `setupQueryListeners()` below
+      // wires `AppState` to `focusManager`. With that, this flag tells RQ
+      // to refetch stale queries on app foreground.
+      refetchOnWindowFocus: true,
+      // Same for network: `NetInfo` → `onlineManager`. Resume queries
+      // when the device reconnects.
+      refetchOnReconnect: true,
     },
   },
 });
@@ -191,6 +198,13 @@ function DeferredEffects() {
   // Channels + foreground handler — idempotent.
   useEffect(() => {
     void initNotifications();
+  }, []);
+  // Wire AppState → focusManager and NetInfo → onlineManager so RN tells
+  // React Query when the app comes back from background or regains network.
+  // Also invalidates listing queries after a long sleep to avoid showing
+  // stale data on /servicios and /empresas (B6 — m9.jpg fix).
+  useEffect(() => {
+    return setupQueryListeners(queryClient);
   }, []);
   // Register device token with the backend after auth bootstrap.
   // No-ops while unauthenticated; idempotent on repeat calls.
