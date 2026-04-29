@@ -2,12 +2,12 @@
  * Company Directory — Public search
  *
  * Search companies by name/NIF/activity.
- * List and Kanban view modes.
- * Uses GET /public/companies/search.
+ * List and Kanban view modes. Infinite scroll via useInfiniteQuery
+ * + FlatList onEndReached.
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { StyleSheet, View, FlatList, Pressable } from 'react-native';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { StyleSheet, View, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { Text, Searchbar, Divider, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ import { useAppTheme } from '@core/theme';
 import { AppMenuButton } from '@components/ui/app-menu';
 import { SkeletonListItem } from '@components/ui/skeleton';
 import { useDirectorySearch } from '@modules/directory';
-import type { DirectoryCompany, DirectorySearchResponse } from '@modules/directory';
+import type { DirectoryCompany } from '@modules/directory';
 
 type ViewMode = 'list' | 'grid';
 
@@ -104,14 +104,20 @@ export default function DirectorioScreen() {
   const [searchParams, setSearchParams] = useState<Record<string, string>>({ page_size: '20' });
   const debounceRef = useRef<NodeJS.Timeout>(null);
 
-  const { data, isLoading } = useDirectorySearch(searchParams, true) as { data: DirectorySearchResponse | undefined; isLoading: boolean };
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useDirectorySearch(searchParams, true);
 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setSearchParams((prev) => {
-        const next: Record<string, string> = { ...prev, page: '1' };
+        const next: Record<string, string> = { ...prev };
         if (text.trim()) next.q = text.trim();
         else delete next.q;
         return next;
@@ -119,7 +125,18 @@ export default function DirectorioScreen() {
     }, 350);
   }, []);
 
-  const companies = data?.items ?? [];
+  const companies = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data?.pages],
+  );
+
+  const total = data?.pages[0]?.total ?? 0;
+
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: '#F5F5F5' }]}>
@@ -156,7 +173,7 @@ export default function DirectorioScreen() {
       {data && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
           <Text variant="labelSmall" style={{ color: colors.outline }}>
-            {data.total} {t('directory.results')}
+            {companies.length} / {total} {t('directory.results')}
           </Text>
         </View>
       )}
@@ -184,6 +201,15 @@ export default function DirectorioScreen() {
           } : {})}
           ItemSeparatorComponent={viewMode === 'list' ? () => <Divider style={{ marginLeft: 60 }} /> : undefined}
           contentContainerStyle={{ paddingTop: viewMode === 'grid' ? 4 : 0, paddingBottom: 24 }}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={s.footer}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={{ padding: 32, alignItems: 'center' }}>
               <MaterialCommunityIcons name="office-building-outline" size={48} color={colors.outline} />
@@ -209,4 +235,6 @@ const s = StyleSheet.create({
   // Grid/Kanban mode
   card: { flex: 1, borderRadius: 12, padding: 14, elevation: 1 },
   cardIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  // Footer loader
+  footer: { paddingVertical: 16, alignItems: 'center' },
 });
