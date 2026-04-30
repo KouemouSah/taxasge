@@ -121,17 +121,17 @@ export default function VaultHomeScreen() {
   );
 
   // ----- Render bodies per tab ---------------------------------------------
-  // Unified content container style — guarantees:
-  //   • FlatList fills parent (flex: 1) instead of shrinking to single-item
-  //     height on Android when `data.length === 1` (root cause of m4.jpg's
-  //     "single doc centered" visual bug).
-  //   • Items render top-aligned (default justifyContent: flex-start) thanks
-  //     to flexGrow: 1 — same behaviour for empty, 1-item, or full lists.
-  //   • paddingBottom keeps the last item visible above the FAB + system
-  //     gesture nav bar.
+  // Content container style — items stack from the top right under the
+  // filter chips. We deliberately do NOT set flexGrow:1 here: combined with
+  // FlatList's RefreshControl on Android, it pushed the rows to the bottom
+  // of a stretched container instead of top-aligning them (see post-fix
+  // captures 2-5.jpg from 2026-04-30). Top-alignment is now produced by the
+  // natural column flexbox inside the contentContainer, while the FlatList
+  // itself keeps `flex:1` so it always fills the available vertical space.
+  // The empty state renders with its own paddingTop, so it still sits right
+  // under the chips when the list is empty.
   const listContentStyle = useMemo(
     () => ({
-      flexGrow: 1,
       paddingTop: 8,
       paddingBottom: 96 + insets.bottom,
     }),

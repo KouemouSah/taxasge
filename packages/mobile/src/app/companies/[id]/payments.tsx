@@ -53,7 +53,6 @@ export default function CompanyPaymentsScreen() {
           renderItem={({ item }) => <PaymentRow payment={item} />}
           ItemSeparatorComponent={() => <Divider />}
           contentContainerStyle={{
-            flexGrow: 1,
             paddingTop: 8,
             paddingBottom: 24 + insets.bottom,
           }}

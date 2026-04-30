@@ -19,7 +19,7 @@ import {
   Snackbar,
   Text,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -60,6 +60,7 @@ export default function CompanyDetailScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [archiveVisible, setArchiveVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
@@ -171,7 +172,7 @@ export default function CompanyDetailScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}>
           {/* License status card — m14.jpg redesign 2026-04-29:
               status row + 3 colored summary chips (deadline / total / paid)
               for visual differentiation, then registration number, then a
