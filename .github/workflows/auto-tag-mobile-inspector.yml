@@ -1,0 +1,170 @@
+# ============================================================================
+# Auto-Tag Mobile / Inspector on push to develop
+# ============================================================================
+# Whenever a push to `develop` touches packages/mobile/** or
+# packages/inspector/**, this workflow auto-creates and pushes a semver
+# patch-bumped tag for the affected app(s):
+#
+#   - mobile changes  → tag `vX.Y.(Z+1)`         → fires mobile-eas-build.yml
+#   - inspector chgs  → tag `inspector-vX.Y.(Z+1)` → fires inspector-build.yml
+#
+# Both downstream workflows pick `production` when triggered by a tag (see
+# their `Resolve build profile` steps), so this is effectively a "every
+# merged change ships a production build" pipeline.
+#
+# Loop-safety:
+#   - The workflow itself never modifies source files (no version bump in
+#     package.json / app.json) → no follow-up commit → no infinite loop.
+#   - Tags are *lightweight*, derived from existing tags via `git describe`.
+#     If no prior tag exists for the namespace, we start at v1.0.0 /
+#     inspector-v1.0.0.
+#   - A commit message that contains `[skip-release]` skips the tagging.
+#   - paths-filter at the workflow level ensures unrelated pushes (backend,
+#     web, docs, .claude/) do not fire this workflow at all.
+#
+# Required permission:
+#   contents: write — to push the tag back to origin.
+# ============================================================================
+
+name: Auto-tag Mobile/Inspector
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'packages/mobile/**'
+      - 'packages/inspector/**'
+
+concurrency:
+  group: auto-tag-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  detect-and-tag:
+    name: Detect changed app(s) and push tag(s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so `git describe --tags --match` can find the
+          # most recent tag in each namespace.
+          fetch-depth: 0
+          # Use a token that can push back. GITHUB_TOKEN works for tag pushes
+          # by default; if branch protection blocks it later, swap to a PAT.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if commit message contains [skip-release]
+        id: skip
+        run: |
+          MSG=$(git log -1 --pretty=%B)
+          if echo "$MSG" | grep -qE '\[skip-release\]'; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Found [skip-release] marker — exiting."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect changed packages
+        if: steps.skip.outputs.skip != 'true'
+        id: changes
+        run: |
+          # Compare the pushed range. `github.event.before` is the SHA before
+          # the push (zero-SHA for new branches → fall back to HEAD~1).
+          BEFORE='${{ github.event.before }}'
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          fi
+
+          CHANGED=$(git diff --name-only "$BEFORE" HEAD || true)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          MOBILE=false
+          INSPECTOR=false
+          if echo "$CHANGED" | grep -q '^packages/mobile/'; then MOBILE=true; fi
+          if echo "$CHANGED" | grep -q '^packages/inspector/'; then INSPECTOR=true; fi
+
+          echo "mobile=$MOBILE" >> $GITHUB_OUTPUT
+          echo "inspector=$INSPECTOR" >> $GITHUB_OUTPUT
+          echo "Mobile changed: $MOBILE | Inspector changed: $INSPECTOR"
+
+      - name: Configure git identity
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      # ──────────────────────────────────────────────────────────────────────
+      # Mobile tag: v*.*.* (no prefix on namespace)
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Compute next mobile tag
+        if: steps.changes.outputs.mobile == 'true'
+        id: mobile_tag
+        run: |
+          # Match v1.2.3 but NOT inspector-v1.2.3 — leading anchor in the
+          # match pattern. `git tag --list` returns sorted; we take the
+          # highest by sort -V.
+          LATEST=$(git tag --list 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          if [ -z "$LATEST" ]; then
+            NEXT="v1.0.0"
+            echo "No previous mobile tag found — starting at $NEXT"
+          else
+            # Bump patch
+            VERSION=${LATEST#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            PATCH=$((PATCH + 1))
+            NEXT="v${MAJOR}.${MINOR}.${PATCH}"
+            echo "Latest mobile tag: $LATEST → next: $NEXT"
+          fi
+          echo "tag=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Push mobile tag
+        if: steps.changes.outputs.mobile == 'true'
+        run: |
+          TAG='${{ steps.mobile_tag.outputs.tag }}'
+          git tag -a "$TAG" -m "Auto-release $TAG (mobile changes on develop@${GITHUB_SHA::8})"
+          git push origin "$TAG"
+          echo "Pushed mobile tag $TAG → mobile-eas-build.yml will fire."
+
+      # ──────────────────────────────────────────────────────────────────────
+      # Inspector tag: inspector-v*.*.*
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Compute next inspector tag
+        if: steps.changes.outputs.inspector == 'true'
+        id: inspector_tag
+        run: |
+          LATEST=$(git tag --list 'inspector-v*.*.*' | grep -E '^inspector-v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          if [ -z "$LATEST" ]; then
+            NEXT="inspector-v1.0.0"
+            echo "No previous inspector tag found — starting at $NEXT"
+          else
+            VERSION=${LATEST#inspector-v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            PATCH=$((PATCH + 1))
+            NEXT="inspector-v${MAJOR}.${MINOR}.${PATCH}"
+            echo "Latest inspector tag: $LATEST → next: $NEXT"
+          fi
+          echo "tag=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Push inspector tag
+        if: steps.changes.outputs.inspector == 'true'
+        run: |
+          TAG='${{ steps.inspector_tag.outputs.tag }}'
+          git tag -a "$TAG" -m "Auto-release $TAG (inspector changes on develop@${GITHUB_SHA::8})"
+          git push origin "$TAG"
+          echo "Pushed inspector tag $TAG → inspector-build.yml will fire."
+
+      - name: Summary
+        if: always() && steps.skip.outputs.skip != 'true'
+        run: |
+          echo "## Auto-tag summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| App | Changed | Tag pushed |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|---------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Mobile | ${{ steps.changes.outputs.mobile }} | ${{ steps.mobile_tag.outputs.tag || '—' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Inspector | ${{ steps.changes.outputs.inspector }} | ${{ steps.inspector_tag.outputs.tag || '—' }} |" >> $GITHUB_STEP_SUMMARY

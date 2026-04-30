@@ -1,390 +1,109 @@
 # ============================================================================
-# Facil Inspector — CI/CD Pipeline (Android)
+# Facil Inspector — EAS Cloud Build (Android)
 # ============================================================================
+# Triggers EAS Cloud builds on https://expo.dev. The runner only orchestrates;
+# all native compilation happens on Expo's infrastructure.
 #
-# Pipeline stages:
-#   1. Quality Gate: TypeScript + ESLint (parallel, fast fail)
-#   2. Build: Gradle assembleRelease with ABI split + R8
-#   3. Verify: APK integrity check (size, checksum)
-#   4. Release: GitHub Release with APK + changelog (tag only)
+# Why EAS instead of native Gradle on the runner:
+#   - The previous Gradle path on ubuntu-latest kept hitting CMake 3.22 vs
+#     3.31 conflicts under RN 0.81 New Architecture (run #24773564905,
+#     2026-04-22). Patching the runner image is brittle. EAS Cloud has the
+#     correct toolchain pinned and we get reproducible builds for free.
+#   - Mirrors the mobile-eas-build.yml flow so both Expo apps share the
+#     same release path (only the eas.json profile + the tag namespace
+#     differ).
+#
+# Required Secret:
+#   EXPO_TOKEN — Expo personal access token with build permissions
+#                (shared with mobile-eas-build.yml, scope = the
+#                @emacsah/facil organisation).
 #
 # Triggers:
-#   - Push to develop/main with inspector changes → build + artifacts
-#   - Tag v*.*.* → build + GitHub Release
-#   - Manual dispatch → build + artifacts
+#   - Manual dispatch (default profile: preview, Android only)
+#   - Tag push inspector-v*.*.* → production profile
 #
-# Required Secrets:
-#   INSPECTOR_KEYSTORE_BASE64, INSPECTOR_KEYSTORE_PASSWORD,
-#   INSPECTOR_KEY_ALIAS, INSPECTOR_KEY_PASSWORD
-#
-# Environment:
-#   develop → staging API
-#   main/tags → production API
+# How to ship a production Inspector build:
+#   git tag inspector-v1.0.X && git push origin inspector-v1.0.X
+#     → fires this workflow with profile=production
+#     → Android .aab queued on EAS Cloud
+#     → progress at https://expo.dev/accounts/emacsah/projects/<inspector-slug>/builds
 # ============================================================================
 
-name: Inspector Build
+name: Inspector EAS Build (Cloud)
 
 on:
-  push:
-    branches: [develop, main]
-    paths:
-      - 'packages/inspector/**'
-      - '.github/workflows/inspector-build.yml'
-    tags:
-      - 'inspector-v*'
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'staging'
+      profile:
+        description: 'EAS build profile'
         type: choice
-        options:
-          - staging
-          - production
+        options: [development, preview, production]
+        default: preview
+  push:
+    tags:
+      - 'inspector-v*.*.*'
 
 concurrency:
-  group: inspector-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: inspector-eas-${{ github.ref }}
+  cancel-in-progress: false # never cancel a paid build mid-flight
 
 env:
   NODE_VERSION: '20'
-  JAVA_VERSION: '17'
+  WORKING_DIR: packages/inspector
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # Stage 1: Quality Gate (TypeScript + Lint — parallel)
-  # ──────────────────────────────────────────────────────────────────────────
-  quality:
-    name: Quality Gate
+  eas-build:
+    name: EAS Build (Inspector)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30 # orchestration only — actual build runs on Expo Cloud
+
+    # Job-level env so EXPO_TOKEN is available to every step (TypeScript
+    # check, eas build, future eas submit) without redeclaring it on each
+    # `run:` block. Mirrors mobile-eas-build.yml after the 1267b964 hoist.
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: packages/inspector/package-lock.json
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
 
       - name: Install dependencies
-        run: cd packages/inspector && npm ci
+        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: TypeScript check
-        run: cd packages/inspector && npx tsc --noEmit
+        run: cd ${{ env.WORKING_DIR }} && npx tsc --noEmit
 
-      - name: ESLint
-        run: cd packages/inspector && npx eslint src --ext .ts,.tsx --max-warnings=50 || true
-
-      - name: Security audit
-        run: cd packages/inspector && npm audit --omit=dev --audit-level=critical || true
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Stage 2: Build Release APK
-  # ──────────────────────────────────────────────────────────────────────────
-  build:
-    name: Build APK
-    runs-on: ubuntu-latest
-    needs: quality
-    timeout-minutes: 45
-    outputs:
-      apk-arm64-size: ${{ steps.verify.outputs.arm64_size }}
-      version-name: ${{ steps.version.outputs.version_name }}
-      version-code: ${{ steps.version.outputs.version_code }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: packages/inspector/package-lock.json
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: ${{ env.JAVA_VERSION }}
-
-      # Gradle cache (saves ~3-5 min on subsequent builds)
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            packages/inspector/android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('packages/inspector/android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-
-      - name: Setup Android SDK (CMake + NDK for New Architecture)
+      - name: Resolve build profile
+        id: params
         run: |
-          # Remove old CMake that causes "Cannot specify link libraries" error
-          rm -rf ${ANDROID_HOME}/cmake/3.22.1 2>/dev/null || true
-          # Install CMake 3.31+ required for RN 0.81 New Architecture C++ codegen
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
-            "cmake;3.31.6" \
-            "ndk;27.1.12297006" 2>/dev/null || true
-          # Verify installation
-          ls ${ANDROID_HOME}/cmake/*/bin/cmake 2>/dev/null | head -3
-          echo "CMake + NDK ready"
-
-      - name: Install dependencies
-        run: cd packages/inspector && npm ci
-
-      # Environment-specific .env
-      - name: Configure environment
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ inputs.environment }}" == "production" ]]; then
-            API_URL="https://taxasge-backend-392159428433.us-central1.run.app"
-            echo "Environment: PRODUCTION"
-          else
-            API_URL="https://taxasge-backend-staging-392159428433.us-central1.run.app"
-            echo "Environment: STAGING"
-          fi
-
-          cat > packages/inspector/.env.production << EOF
-          EXPO_PUBLIC_API_URL=${API_URL}
-          EXPO_PUBLIC_API_TIMEOUT=30000
-          EXPO_PUBLIC_FEATURE_BIOMETRIC=true
-          EXPO_PUBLIC_FEATURE_PUSH=true
-          EXPO_PUBLIC_FEATURE_OFFLINE=false
-          EOF
-
-      # Extract version from app.json
-      - name: Extract version
-        id: version
-        run: |
-          VERSION=$(node -e "console.log(require('./packages/inspector/app.json').expo.version)")
-          echo "version_name=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "version_code=$(date +%s)" >> "$GITHUB_OUTPUT"
-          echo "Version: ${VERSION}"
-
-      - name: Decode keystore
-        env:
-          INSPECTOR_KEYSTORE_BASE64: ${{ secrets.INSPECTOR_KEYSTORE_BASE64 }}
-        if: ${{ env.INSPECTOR_KEYSTORE_BASE64 != '' }}
-        run: |
-          echo "$INSPECTOR_KEYSTORE_BASE64" | base64 -d > packages/inspector/android/app/inspector-release.keystore
-
-      - name: Build Release APK
-        env:
-          INSPECTOR_KEYSTORE_PASSWORD: ${{ secrets.INSPECTOR_KEYSTORE_PASSWORD }}
-          INSPECTOR_KEY_ALIAS: ${{ secrets.INSPECTOR_KEY_ALIAS }}
-          INSPECTOR_KEY_PASSWORD: ${{ secrets.INSPECTOR_KEY_PASSWORD }}
-        run: |
-          cd packages/inspector/android
-          chmod +x gradlew
-
-          GRADLE_PROPS=""
-          if [ -f "app/inspector-release.keystore" ]; then
-            GRADLE_PROPS="-PINSPECTOR_STORE_FILE=inspector-release.keystore"
-            GRADLE_PROPS="$GRADLE_PROPS -PINSPECTOR_STORE_PASSWORD=$INSPECTOR_KEYSTORE_PASSWORD"
-            GRADLE_PROPS="$GRADLE_PROPS -PINSPECTOR_KEY_ALIAS=$INSPECTOR_KEY_ALIAS"
-            GRADLE_PROPS="$GRADLE_PROPS -PINSPECTOR_KEY_PASSWORD=$INSPECTOR_KEY_PASSWORD"
-          fi
-
-          ./gradlew assembleRelease \
-            --no-daemon \
-            --build-cache \
-            --parallel \
-            --max-workers=2 \
-            -x lint \
-            -x test \
-            $GRADLE_PROPS
-
-      # ── Verify APK integrity (6 checks) ──
-      - name: Verify APKs
-        id: verify
-        run: |
-          cd packages/inspector/android/app/build/outputs/apk/release
-          AAPT2="${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools | sort -V | tail -1)/aapt2"
-          ERRORS=0
-
-          # Pick the arm64 APK for deep inspection (or universal fallback)
-          TARGET_APK=$(ls app-arm64-v8a-release.apk 2>/dev/null || ls app-universal-release.apk 2>/dev/null || ls *.apk | head -1)
-          echo "Inspecting: ${TARGET_APK}"
-
-          # Check 1: APK files exist
-          APK_COUNT=$(ls *.apk 2>/dev/null | wc -l)
-          if [ "$APK_COUNT" -eq 0 ]; then
-            echo "FAIL: No APK files generated"
-            exit 1
-          fi
-          echo "CHECK 1 OK: ${APK_COUNT} APK(s) generated"
-
-          # Check 2: Package name is correct
-          PKG=$($AAPT2 dump packagename "$TARGET_APK" 2>/dev/null || echo "UNKNOWN")
-          if [ "$PKG" != "com.facil.inspeccion" ]; then
-            echo "FAIL: Package name is '${PKG}', expected 'com.facil.inspeccion'"
-            ERRORS=$((ERRORS+1))
-          else
-            echo "CHECK 2 OK: Package = ${PKG}"
-          fi
-
-          # Check 3: Required permissions present
-          PERMS=$($AAPT2 dump permissions "$TARGET_APK" 2>/dev/null || true)
-          for perm in INTERNET CAMERA ACCESS_FINE_LOCATION; do
-            if echo "$PERMS" | grep -q "$perm"; then
-              echo "CHECK 3 OK: Permission ${perm} present"
-            else
-              echo "WARN: Permission ${perm} not found in manifest"
-            fi
-          done
-
-          # Check 4: JS bundle exists inside APK (Hermes bytecode)
-          JS_BUNDLE=$(unzip -l "$TARGET_APK" 2>/dev/null | grep -c "index.android.bundle\|assets/index" || echo "0")
-          if [ "$JS_BUNDLE" -eq 0 ]; then
-            echo "FAIL: No JS bundle found in APK — app will crash on launch"
-            ERRORS=$((ERRORS+1))
-          else
-            echo "CHECK 4 OK: JS bundle present in APK"
-          fi
-
-          # Check 5: APK is signed
-          SIGNED=$(unzip -l "$TARGET_APK" 2>/dev/null | grep -c "META-INF/.*\.\(RSA\|SF\|MF\)" || echo "0")
-          if [ "$SIGNED" -lt 2 ]; then
-            echo "FAIL: APK does not appear to be signed"
-            ERRORS=$((ERRORS+1))
-          else
-            echo "CHECK 5 OK: APK is signed"
-          fi
-
-          # Check 6: APK size regression guard (arm64 should be < 60MB)
-          ARM64_BYTES=$(stat -c%s "$TARGET_APK" 2>/dev/null || echo "0")
-          ARM64_MB=$((ARM64_BYTES / 1024 / 1024))
-          ARM64_SIZE=$(du -h "$TARGET_APK" | cut -f1)
-          if [ "$ARM64_MB" -gt 60 ]; then
-            echo "FAIL: APK too large (${ARM64_SIZE}) — expected < 60MB. Check ABI split and R8."
-            ERRORS=$((ERRORS+1))
-          else
-            echo "CHECK 6 OK: APK size = ${ARM64_SIZE} (< 60MB limit)"
-          fi
-
-          echo "arm64_size=${ARM64_SIZE}" >> "$GITHUB_OUTPUT"
-
-          # Summary
-          echo ""
-          echo "All APKs:"
-          for apk in *.apk; do
-            SIZE=$(du -h "$apk" | cut -f1)
-            SHA=$(sha256sum "$apk" | cut -d' ' -f1)
-            echo "  ${apk} — ${SIZE} — sha256:${SHA:0:16}..."
-          done
-
-          if [ "$ERRORS" -gt 0 ]; then
-            echo ""
-            echo "PIPELINE FAILED: ${ERRORS} verification(s) failed"
-            exit 1
-          fi
-          echo ""
-          echo "ALL CHECKS PASSED"
-
-      - name: Upload APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: facil-inspector-${{ steps.version.outputs.version_name }}-${{ github.sha }}
-          path: packages/inspector/android/app/build/outputs/apk/release/*.apk
-          retention-days: 30
-          if-no-files-found: error
-
-      # Checksums file for integrity verification
-      - name: Generate checksums
-        run: |
-          cd packages/inspector/android/app/build/outputs/apk/release
-          sha256sum *.apk > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-
-      - name: Upload checksums
-        uses: actions/upload-artifact@v4
-        with:
-          name: checksums-${{ github.sha }}
-          path: packages/inspector/android/app/build/outputs/apk/release/SHA256SUMS.txt
-
-      - name: Build Summary
-        run: |
-          echo "## Facil Inspector Build" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Version | \`${{ steps.version.outputs.version_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${GITHUB_SHA::8}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| arm64 APK | ${{ steps.verify.outputs.arm64_size }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### APK Sizes" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          for apk in packages/inspector/android/app/build/outputs/apk/release/*.apk; do
-            echo "$(basename $apk) — $(du -h $apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Stage 3: GitHub Release (staging on develop, production on tag)
-  # ──────────────────────────────────────────────────────────────────────────
-  release:
-    name: GitHub Release
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download APKs
-        uses: actions/download-artifact@v4
-        with:
-          name: facil-inspector-${{ needs.build.outputs.version-name }}-${{ github.sha }}
-          path: apks/
-
-      - name: Download checksums
-        uses: actions/download-artifact@v4
-        with:
-          name: checksums-${{ github.sha }}
-          path: apks/
-
-      - name: Determine release type
-        id: release_type
-        run: |
+          # Tag push inspector-v*.*.* → production. Manual dispatch → user input.
           if [[ "${{ github.ref }}" == refs/tags/inspector-v* ]]; then
-            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "name=Facil Inspector ${{ needs.build.outputs.version-name }}" >> "$GITHUB_OUTPUT"
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
-            echo "env=production" >> "$GITHUB_OUTPUT"
+            echo "profile=production" >> $GITHUB_OUTPUT
           else
-            TAG="inspector-staging-$(date +%Y%m%d-%H%M)-${GITHUB_SHA::8}"
-            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-            echo "name=Facil Inspector ${{ needs.build.outputs.version-name }} (staging)" >> "$GITHUB_OUTPUT"
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
-            echo "env=staging" >> "$GITHUB_OUTPUT"
+            echo "profile=${{ github.event.inputs.profile || 'preview' }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_type.outputs.tag }}
-          name: ${{ steps.release_type.outputs.name }}
-          body: |
-            ## Facil Inspector ${{ needs.build.outputs.version-name }}
-            **Environment:** ${{ steps.release_type.outputs.env }}
-            **Branch:** `${{ github.ref_name }}` | **Commit:** `${{ github.sha }}`
-
-            ### APK Downloads
-            | Architecture | Recommandation |
-            |-------------|----------------|
-            | **arm64-v8a** (~${{ needs.build.outputs.apk-arm64-size }}) | Devices modernes (recommandé) |
-            | **armeabi-v7a** | Anciens devices |
-            | **universal** | Tous (plus volumineux) |
-
-            ### Install
-            ```bash
-            adb install app-arm64-v8a-release.apk
-            ```
-
-            ### Checksums
-            Voir `SHA256SUMS.txt` pour vérification d'intégrité.
-          files: apks/*
-          draft: false
-          prerelease: ${{ steps.release_type.outputs.prerelease }}
+      - name: Trigger EAS build (Android, ${{ steps.params.outputs.profile }})
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          eas build \
+            --profile ${{ steps.params.outputs.profile }} \
+            --platform android \
+            --non-interactive \
+            --no-wait
+        # --no-wait returns immediately after the build is queued. Track
+        # progress on https://expo.dev/accounts/emacsah/projects/<slug>/builds.
