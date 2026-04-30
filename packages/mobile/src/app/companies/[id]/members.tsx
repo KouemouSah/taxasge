@@ -9,7 +9,7 @@ import {
   Snackbar,
   Text,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +34,7 @@ export default function CompanyMembersScreen() {
   const companyId = id ?? '';
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const detail = useCompanyDetail(companyId || null);
   const members = useCompanyMembers(companyId || null);
   const add = useAddMember(companyId);
@@ -155,6 +156,7 @@ export default function CompanyMembersScreen() {
             </View>
           )}
           ItemSeparatorComponent={() => <Divider />}
+          contentContainerStyle={{ paddingBottom: 96 + insets.bottom }}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text variant="titleSmall" style={{ color: colors.onSurfaceVariant }}>
@@ -167,7 +169,7 @@ export default function CompanyMembersScreen() {
 
       <FAB
         icon="account-plus"
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: 16 + insets.bottom }]}
         color="white"
         onPress={() => setAddVisible(true)}
         accessibilityLabel={t('companies.members.add.title')}
@@ -190,5 +192,5 @@ export default function CompanyMembersScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  fab: { position: 'absolute', right: 16, bottom: 24 },
+  fab: { position: 'absolute', right: 16 },
 });

@@ -22,7 +22,7 @@ import {
   Text,
 } from 'react-native-paper';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -56,6 +56,7 @@ export default function DocumentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
@@ -150,7 +151,7 @@ export default function DocumentDetailScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}>
           {/* Preview */}
           <View style={styles.previewWrap}>
             {isImage && thumbnail.data?.url ? (

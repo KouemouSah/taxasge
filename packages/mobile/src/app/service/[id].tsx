@@ -22,7 +22,7 @@ import {
   Alert,
 } from 'react-native';
 import { Text, Button, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -37,6 +37,7 @@ export default function ServiceDetailScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { colors, spacing } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const lang = (i18n.language || 'es') as string;
 
   const serviceId = Number(id);
@@ -80,7 +81,7 @@ export default function ServiceDetailScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 + insets.bottom }} showsVerticalScrollIndicator={false}>
 
         {/* ═══ INFO STRIP (green accent) ═══ */}
         <View style={[styles.infoStrip, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>

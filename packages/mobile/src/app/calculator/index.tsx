@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, SegmentedButtons, Surface, Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -38,6 +38,7 @@ export default function CalculatorScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { colors, spacing, borderRadius } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   const language = resolveLanguage(i18n.language);
   const services = useMergedCalculableServices(language);
@@ -84,7 +85,7 @@ export default function CalculatorScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
+          { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl + insets.bottom },
         ]}
         keyboardShouldPersistTaps="handled"
       >
