@@ -125,13 +125,21 @@ android {
             }
         }
     }
-    // ABI split — one APK per architecture (~40% smaller per APK)
+    // ABI split — one APK per architecture (~40% smaller per APK).
+    // Gradle 8.7+ rejects APK splits + AAB in the same build; we therefore
+    // disable splits when the task is a bundle (AAB). AAB has built-in
+    // per-architecture splitting at install time anyway, so APK splits
+    // are redundant when shipping to Play Store. Splits stay active for
+    // `assembleRelease` (preview APK builds for internal distribution).
+    def isBundleBuild = gradle.startParameter.taskNames.any { name ->
+        name.toLowerCase().contains("bundle")
+    }
     splits {
         abi {
-            enable true
+            enable !isBundleBuild
             reset()
             include "armeabi-v7a", "arm64-v8a"
-            universalApk true // Also generate a universal APK as fallback
+            universalApk !isBundleBuild
         }
     }
 

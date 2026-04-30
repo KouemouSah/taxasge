@@ -38,7 +38,11 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# NOTE on /android and /ios:
+# We commit the native folders (non-CNG mode) so EAS Build can find
+# gradlew + xcodeproj. EAS treats .easignore as ADDITIVE to .gitignore
+# (not a replacement), so a /android rule here would still strip the
+# native folders during upload — even with .easignore present. Leave
+# them un-ignored. If `expo prebuild --clean` regenerates them locally,
+# either commit the regen or `git checkout android ios` to revert.
 facil-release.keystore
