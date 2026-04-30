@@ -1,6 +1,6 @@
 # Observability Stack — Facil
 
-**Last updated**: 2026-04-30 (v1.1)
+**Last updated**: 2026-04-30 (v1.2)
 **Owner**: Engineering
 **Audience**: Engineers wiring observability on a new environment, debugging an existing one, or onboarding to the project.
 
@@ -566,6 +566,119 @@ sharp(SRC).resize({ width: max, height: max, fit: 'contain',
 **Gotcha**: regen overwrites the original. Keep a pre-pad copy if the
 original non-square image is needed elsewhere (rare).
 
+### 7.9 `<SentryErrorBoundary>` outside `<ErrorBoundary>` swallows React errors
+Found in mobile `app/_layout.tsx` audit (`MOBILE_USER_PHASE_9_AUDIT_ADVERSARIAL.md` B1).
+Symptom: zero Sentry events for React render errors despite the SDK
+being initialised correctly. Diagnosed by inspecting the error
+boundary tree:
+
+```
+<SentryErrorBoundary>          ← outer (Sentry's built-in)
+  <ErrorBoundary>              ← inner (our i18n fallback UI)
+    <RootNavigator />
+  </ErrorBoundary>
+</SentryErrorBoundary>
+```
+
+The inner `<ErrorBoundary>` catches every render error via
+`getDerivedStateFromError` and renders its fallback. The error never
+propagates upward, so the outer `<SentryErrorBoundary>` sees nothing.
+
+**Fix**: drop the redundant outer wrapper and have the inner boundary
+report directly:
+
+```tsx
+// components/ui/error-boundary.tsx
+componentDidCatch(error: Error, info: React.ErrorInfo) {
+  captureException(error, { tag: 'react', extra: { componentStack: info.componentStack } });
+}
+```
+
+**General rule**: when nesting two error boundaries, only the
+innermost one captures the error. Either (a) collapse to one boundary
+that calls the observability SDK, or (b) re-throw from the inner
+boundary's `componentDidCatch` so the outer one sees it (rare —
+usually you want the fallback UI, not propagation).
+
+This is a class of bug that recurs on every observability tool
+integration with React (LogRocket React, Bugsnag, Datadog RUM, etc.).
+Audit your error boundary tree the same way after each integration.
+
+### 7.10 Local Android build — Gradle JVM out-of-memory (`exit code 3221225794`)
+Symptom on developer Windows / macOS laptops with < 16 GB free RAM:
+
+```
+> Task :app:compileDebugKotlin FAILED
+* What went wrong:
+Out of memory: Java heap space
+…
+Process completed with exit code 3221225794
+```
+
+`3221225794` = `0xC0000142` (Windows NT_STATUS_DLL_INIT_FAILED — actually
+generated when JVM aborts with an OOM under memory pressure on a constrained
+host). On macOS / Linux the same condition reports a plain Java OOM stack.
+
+The default Expo template builds 4 Android architectures
+(`armeabi-v7a, arm64-v8a, x86, x86_64`) in parallel, each with full
+React Native New Architecture codegen — peaks at ~6 GB RAM per arch.
+
+**Fix (`packages/{mobile,inspector}/android/gradle.properties`)** — already
+applied, document for replication on a new package:
+```properties
+# Single architecture for dev (USB debug device is always arm64 in 2026)
+reactNativeArchitectures=arm64-v8a
+# Disable parallel module builds — saves peak memory by ~40%
+org.gradle.parallel=false
+# Larger heap for the Gradle daemon
+org.gradle.jvmargs=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError
+# Cache + skip configuration for unchanged modules
+org.gradle.caching=true
+org.gradle.configureondemand=true
+```
+
+EAS Cloud builds are unaffected — Expo's builders have plenty of RAM.
+
+**Recovery on a stuck build**: kill all Gradle daemons (`./gradlew --stop`),
+free RAM (close Slack / Chrome tabs), retry. If still failing, drop to
+debug-only build (`./gradlew :app:assembleDebug` skips release
+optimisations, much lighter).
+
+### 7.11 `AxiosError: Network Error` after Doze / app resume
+Sentry top issue on mobile (`MOBILE_BUGFIX_PHASE_D_SENTRY_REPORT.md` §2).
+Symptom: app appears to "hang" with a spinner after the user backgrounds
+it for a few minutes, then opens it again. Several minutes later, an
+AxiosError is reported.
+
+Root cause: Android Doze kills idle TCP sockets. React Query's queries
+in flight when the app was backgrounded stay in `pending` state until
+the per-request timeout (30 s) — meanwhile the user already sees
+stale data and a frozen UI.
+
+**Fix (`packages/mobile/src/core/api/query-listeners.ts`)** — wires
+React Native lifecycle into React Query:
+```ts
+import NetInfo from '@react-native-community/netinfo';
+import { AppState } from 'react-native';
+import { focusManager, onlineManager } from '@tanstack/react-query';
+
+export function setupQueryListeners() {
+  // App resumes → invalidate stale queries
+  AppState.addEventListener('change', (state) => {
+    focusManager.setFocused(state === 'active');
+  });
+  // Network reconnect → resume paused queries
+  NetInfo.addEventListener((s) => onlineManager.setOnline(!!s.isConnected));
+}
+```
+
+Call once from `<DeferredEffects>` in `_layout.tsx`. Combined with
+`refetchOnWindowFocus: true` in the QueryClient, queries are
+auto-refetched on cold-resume > 5 min instead of timing out.
+
+If you see this pattern recur on a new RN app, this is the first
+suspect.
+
 ---
 
 ## 8. Future enhancements
@@ -619,6 +732,17 @@ EXPO_TOKEN="$(...)" eas build:view BUILD_ID
 
 ## 10. Changelog
 
+- **2026-04-30 v1.2** — additive update mining the prior MOBILE_USER /
+  MOBILE_BUGFIX / MOBILE_INSPECTOR session bilans for recurring
+  infrastructure traps:
+  - §7.9: SentryErrorBoundary nesting swallows React errors
+    (from `MOBILE_USER_PHASE_9_AUDIT_ADVERSARIAL.md` B1).
+  - §7.10: Local Android build Gradle JVM OOM
+    (from `MOBILE_INSPECTOR_CORRECTIONS_P1_P3.md` Plan A).
+  - §7.11: AxiosError Network Error after Doze / app resume
+    (from `MOBILE_BUGFIX_PHASE_D_SENTRY_REPORT.md` Issue #1).
+  - Quickstart `OBSERVABILITY_QUICKSTART.md` step 8 troubleshooting
+    table extended to cross-link the new traps.
 - **2026-04-30 v1.1** — same-day additive update from the LogRocket
   rollout session:
   - §3: documented `ext.minSdkVersion = 25` in mobile + inspector
