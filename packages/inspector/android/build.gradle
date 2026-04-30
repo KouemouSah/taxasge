@@ -23,5 +23,12 @@ allprojects {
   }
 }
 
+ext {
+  // LogRocket RN @1.62 requires Android API 25 (7.1). Expo default is 24.
+  // Android 7.0 install base < 0.5% globally; bumping is preferable to
+  // tools:overrideLibrary (which masks runtime crashes).
+  minSdkVersion = 25
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
