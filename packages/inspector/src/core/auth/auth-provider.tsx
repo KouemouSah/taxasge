@@ -19,6 +19,7 @@ import {
   setTokens,
   setUserProfile,
 } from '@core/auth/auth-storage';
+import { identifyLogRocket } from '@core/observability/logrocket';
 import {
   clearBiometricCredentials,
   saveBiometricToken,
@@ -108,6 +109,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ministryId: user.ministry_id ?? null,
     };
   }, [user?.entity_code, user?.entity_location_id, user?.location_city, user?.location_region, user?.is_main_office, user?.ministry_id]);
+
+  // LogRocket — attach (non-PII) user context to the active session.
+  // id + role + locale only; never email / phone / NIF.
+  useEffect(() => {
+    if (user) {
+      identifyLogRocket({
+        id: String(user.id),
+        role: user.role,
+        locale: user.preferred_language,
+      });
+    } else if (!isLoading) {
+      identifyLogRocket(null);
+    }
+  }, [user, isLoading]);
 
   // Bootstrap: check stored tokens on mount
   useEffect(() => {

@@ -38,6 +38,7 @@ import {
 import { useDeviceTokenRegistration } from '@modules/notifications/hooks/use-device-token-registration';
 import { useNotifications } from '@modules/notifications/hooks/use-notifications';
 import { initSentry } from '@core/observability/sentry';
+import { initLogRocket } from '@core/observability/logrocket';
 import { reportDeviceIntegrity } from '@core/security/device-integrity';
 import { setupQueryListeners } from '@core/api/query-listeners';
 import '@core/i18n';
@@ -192,6 +193,12 @@ function DeferredEffects() {
   // Sentry init — idempotent, no-op when DSN absent or in __DEV__.
   useEffect(() => {
     initSentry();
+  }, []);
+  // LogRocket session replay — idempotent, no-op when APP_ID absent or in __DEV__.
+  // Order matters: must run after initSentry so the Sentry-bridge inside
+  // LogRocket can pin the session URL onto the existing Sentry scope.
+  useEffect(() => {
+    initLogRocket();
   }, []);
   // Device integrity check — non-blocking telemetry only. Logs a Sentry
   // breadcrumb + warning when the device fingerprint looks suspicious

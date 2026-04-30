@@ -24,7 +24,9 @@
         "simulator": true
       },
       "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+        "EAS_SKIP_AUTO_FINGERPRINT": "1",
+        "EXPO_PUBLIC_LOGROCKET_APP_ID": "$LOGROCKET_APP_ID",
+        "EXPO_PUBLIC_BUILD_VERSION": "$EAS_BUILD_GIT_COMMIT_HASH"
       }
     },
     "production": {
@@ -33,6 +35,10 @@
       },
       "ios": {
         "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_LOGROCKET_APP_ID": "$LOGROCKET_APP_ID",
+        "EXPO_PUBLIC_BUILD_VERSION": "$EAS_BUILD_GIT_COMMIT_HASH"
       }
     }
   },

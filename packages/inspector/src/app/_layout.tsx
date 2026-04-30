@@ -19,6 +19,7 @@ import { secureStorage } from '@core/storage/mmkv';
 import { ErrorBoundary } from '@components/ui/error-boundary';
 import { NetworkBanner } from '@components/ui/network-banner';
 import { useScreenProtection } from '@core/security/use-screen-protection';
+import { initLogRocket } from '@core/observability/logrocket';
 import '@core/i18n';
 
 SplashScreen.preventAutoHideAsync();
@@ -56,6 +57,12 @@ function SplashGate({ children }: { children: React.ReactNode }) {
       SplashScreen.hideAsync();
     }
   }, [isLoading, storageReady]);
+
+  // LogRocket session replay — idempotent, no-op when APP_ID absent or in __DEV__.
+  // Deferred until after the splash so SDK init doesn't compete with cold-start.
+  useEffect(() => {
+    if (storageReady) initLogRocket();
+  }, [storageReady]);
 
   return <>{children}</>;
 }
