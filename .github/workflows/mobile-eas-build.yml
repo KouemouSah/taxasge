@@ -13,8 +13,14 @@
 #                Generate at https://expo.dev/settings/access-tokens
 #
 # Triggers:
-#   - Manual dispatch (default profile: development, both platforms)
+#   - Manual dispatch (default profile: preview, both platforms)
 #   - Tag push v*.*.* → production profile, both platforms
+#
+# How to ship a production build:
+#   git tag v1.0.X && git push origin v1.0.X
+#     → fires this workflow with profile=production, platform=all
+#     → both Android (.aab) and iOS (.ipa) queued on EAS Cloud
+#     → progress at https://expo.dev/accounts/emacsah/projects/facil/builds
 # ============================================================================
 
 name: Mobile EAS Build (Cloud)
@@ -49,6 +55,14 @@ jobs:
     name: EAS Build (${{ github.event.inputs.platform || 'all' }})
     runs-on: ubuntu-latest
     timeout-minutes: 30 # orchestration only — actual build runs on Expo Cloud
+
+    # Job-level env so EXPO_TOKEN is available to every step (TypeScript check,
+    # eas build, future eas submit). The expo-github-action setup step also
+    # reads its `with: token:` input, but having the env var defined at the
+    # job scope means we never have to remember to redeclare it on each new
+    # `run:` step that calls eas-cli.
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     permissions:
       contents: read
@@ -87,15 +101,13 @@ jobs:
           fi
 
       - name: Trigger EAS build (${{ steps.params.outputs.platform }} on ${{ steps.params.outputs.profile }})
-        env:
-          # The expo/expo-github-action@v8 step above authenticates EAS CLI
-          # for its own action context but does NOT propagate EXPO_TOKEN to
-          # subsequent `run:` steps — they spawn a fresh shell. Without this
-          # explicit env block, `eas build` errors out with:
-          #   "An Expo user account is required to proceed. Either log in
-          #    with `eas login` or set the EXPO_TOKEN environment variable"
-          # (run #25157629153 / 2026-04-30 failure).
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        # EXPO_TOKEN is inherited from the job-scoped env block (see top of
+        # the job). The expo/expo-github-action@v8 step authenticates the
+        # CLI for its own action context but does NOT propagate the token
+        # to subsequent `run:` steps — they spawn a fresh shell, which is
+        # what caused run #25157629153 (2026-04-30) to fail with:
+        #   "An Expo user account is required to proceed. Either log in
+        #    with `eas login` or set the EXPO_TOKEN environment variable"
         run: |
           cd ${{ env.WORKING_DIR }}
           eas build \
