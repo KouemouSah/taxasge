@@ -16,10 +16,25 @@
 #   - Manual dispatch (default profile: preview, both platforms)
 #   - Tag push v*.*.* → production profile, both platforms
 #
-# How to ship a production build:
+# Platform default: ANDROID
+# ----------------------------------------------------------------------------
+# iOS builds are pre-wired in packages/mobile/eas.json but they are *gated
+# off by default*. They require an Apple Developer Account and the
+# corresponding ASC API key uploaded to EAS via `eas credentials`. Until
+# then, attempting an iOS build will fail at the credentials step.
+#
+# To enable iOS once the account is provisioned:
+#   1. Apple Developer Program membership active (taxasge org).
+#   2. `eas credentials --platform ios` from packages/mobile and upload
+#      the App Store Connect API key (.p8). EAS stores creds online.
+#   3. Set repo variable MOBILE_BUILD_PLATFORM=all (or ios) in
+#      Settings → Variables → Actions. The workflow reads this var on
+#      tag push and forwards it to `eas build --platform`.
+#
+# How to ship a production build today (Android only):
 #   git tag v1.0.X && git push origin v1.0.X
-#     → fires this workflow with profile=production, platform=all
-#     → both Android (.aab) and iOS (.ipa) queued on EAS Cloud
+#     → fires this workflow with profile=production, platform=android
+#     → Android .aab queued on EAS Cloud
 #     → progress at https://expo.dev/accounts/emacsah/projects/facil/builds
 # ============================================================================
 
@@ -34,10 +49,10 @@ on:
         options: [development, preview, production]
         default: preview
       platform:
-        description: 'Platform(s) to build'
+        description: 'Platform(s) to build (iOS requires Apple Developer Account)'
         type: choice
-        options: [all, android, ios]
-        default: all
+        options: [android, ios, all]
+        default: android
   push:
     tags:
       - 'v*.*.*'
@@ -90,14 +105,21 @@ jobs:
 
       - name: Resolve build parameters
         id: params
+        env:
+          # Repo-level variable (Settings → Variables → Actions). Defaults
+          # to `android` when unset — iOS stays gated off until the Apple
+          # Developer Account is wired up in EAS credentials. Flip to `all`
+          # once the account is ready.
+          MOBILE_BUILD_PLATFORM: ${{ vars.MOBILE_BUILD_PLATFORM }}
         run: |
           # Tag push → production. Manual dispatch → user inputs.
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "profile=production" >> $GITHUB_OUTPUT
-            echo "platform=all" >> $GITHUB_OUTPUT
+            PLATFORM="${MOBILE_BUILD_PLATFORM:-android}"
+            echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           else
             echo "profile=${{ github.event.inputs.profile || 'preview' }}" >> $GITHUB_OUTPUT
-            echo "platform=${{ github.event.inputs.platform || 'all' }}" >> $GITHUB_OUTPUT
+            echo "platform=${{ github.event.inputs.platform || 'android' }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Trigger EAS build (${{ steps.params.outputs.platform }} on ${{ steps.params.outputs.profile }})

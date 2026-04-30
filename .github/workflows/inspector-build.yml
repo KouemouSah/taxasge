@@ -19,14 +19,31 @@
 #                @emacsah/facil organisation).
 #
 # Triggers:
-#   - Manual dispatch (default profile: preview, Android only)
-#   - Tag push inspector-v*.*.* → production profile
+#   - Manual dispatch (default profile: preview, default platform: android)
+#   - Tag push inspector-v*.*.* → production profile, platform per repo var
 #
-# How to ship a production Inspector build:
+# Platform default: ANDROID
+# ----------------------------------------------------------------------------
+# iOS builds are pre-wired in inspector/eas.json (preview = simulator,
+# production = autoIncrement) but they are *gated off by default*. They
+# require an Apple Developer Account and the corresponding ASC API key
+# uploaded to EAS via `eas credentials`. Until then, attempting an iOS build
+# will fail at the credentials step.
+#
+# To enable iOS once the account is provisioned:
+#   1. Apple Developer Program membership active (taxasge org).
+#   2. `eas credentials --platform ios` and upload the App Store Connect
+#      API key (.p8) — choose `production` profile, EAS stores creds online.
+#   3. Fill `ascAppId` + `appleTeamId` in inspector/eas.json `submit.production.ios`.
+#   4. Set repo variable `INSPECTOR_BUILD_PLATFORM=all` (or `ios`) in
+#      Settings → Variables → Actions. The workflow reads this var on tag
+#      push and forwards it to `eas build --platform`.
+#
+# How to ship a production Inspector build today (Android only):
 #   git tag inspector-v1.0.X && git push origin inspector-v1.0.X
-#     → fires this workflow with profile=production
+#     → fires this workflow with profile=production, platform=android
 #     → Android .aab queued on EAS Cloud
-#     → progress at https://expo.dev/accounts/emacsah/projects/<inspector-slug>/builds
+#     → progress at https://expo.dev/accounts/emacsah/projects/facil-inspeccion/builds
 # ============================================================================
 
 name: Inspector EAS Build (Cloud)
@@ -39,6 +56,11 @@ on:
         type: choice
         options: [development, preview, production]
         default: preview
+      platform:
+        description: 'Platform(s) to build (iOS requires Apple Developer Account)'
+        type: choice
+        options: [android, ios, all]
+        default: android
   push:
     tags:
       - 'inspector-v*.*.*'
@@ -87,23 +109,33 @@ jobs:
       - name: TypeScript check
         run: cd ${{ env.WORKING_DIR }} && npx tsc --noEmit
 
-      - name: Resolve build profile
+      - name: Resolve build profile and platform
         id: params
+        env:
+          # Repo-level variable (Settings → Variables → Actions). Defaults
+          # to `android` when unset — iOS stays gated off until the Apple
+          # Developer Account is wired up in EAS credentials.
+          INSPECTOR_BUILD_PLATFORM: ${{ vars.INSPECTOR_BUILD_PLATFORM }}
         run: |
           # Tag push inspector-v*.*.* → production. Manual dispatch → user input.
           if [[ "${{ github.ref }}" == refs/tags/inspector-v* ]]; then
             echo "profile=production" >> $GITHUB_OUTPUT
+            # On tag push: use the repo var so we can flip iOS on without
+            # editing the workflow once the Apple account is ready.
+            PLATFORM="${INSPECTOR_BUILD_PLATFORM:-android}"
+            echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           else
             echo "profile=${{ github.event.inputs.profile || 'preview' }}" >> $GITHUB_OUTPUT
+            echo "platform=${{ github.event.inputs.platform || 'android' }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Trigger EAS build (Android, ${{ steps.params.outputs.profile }})
+      - name: Trigger EAS build (${{ steps.params.outputs.platform }}, ${{ steps.params.outputs.profile }})
         run: |
           cd ${{ env.WORKING_DIR }}
           eas build \
             --profile ${{ steps.params.outputs.profile }} \
-            --platform android \
+            --platform ${{ steps.params.outputs.platform }} \
             --non-interactive \
             --no-wait
         # --no-wait returns immediately after the build is queued. Track
-        # progress on https://expo.dev/accounts/emacsah/projects/<slug>/builds.
+        # progress on https://expo.dev/accounts/emacsah/projects/facil-inspeccion/builds.
