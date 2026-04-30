@@ -28,6 +28,14 @@ WORKDIR /app
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+# LogRocket — empty value disables init at runtime (safe default for forks)
+ARG NEXT_PUBLIC_LOGROCKET_APP_ID=
+ENV NEXT_PUBLIC_LOGROCKET_APP_ID=${NEXT_PUBLIC_LOGROCKET_APP_ID}
+
+# Build version stamp surfaced to LogRocket as `release`
+ARG NEXT_PUBLIC_BUILD_VERSION=dev
+ENV NEXT_PUBLIC_BUILD_VERSION=${NEXT_PUBLIC_BUILD_VERSION}
+
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
