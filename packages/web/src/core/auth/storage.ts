@@ -15,6 +15,7 @@
 
 import type { AuthData, MenuConfig, DashboardConfig } from '@/types/auth';
 import { APP_CONSTANTS } from '@/core/config/constants';
+import { identifyLogRocket } from '@/core/observability/logrocket';
 import { setAuthCookies, clearAuthCookies } from './cookies';
 import { broadcastAuthEvent } from './broadcast';
 import Cookies from 'js-cookie';
@@ -127,6 +128,15 @@ export function setAuthData(authData: AuthData): void {
     setAuthCookies(authData.access_token, authData.user.role);
   }
 
+  // LogRocket: attach non-PII user context (id + role + locale only)
+  if (authData.user?.id) {
+    identifyLogRocket({
+      id: String(authData.user.id),
+      role: authData.user.role,
+      locale: authData.user.preferred_language,
+    });
+  }
+
   // Broadcast login event to other tabs
   broadcastAuthEvent('login');
 }
@@ -146,6 +156,9 @@ export function clearAuthData(): void {
 
   // Clear middleware cookies
   clearAuthCookies();
+
+  // LogRocket: rotate to a fresh anonymous session
+  identifyLogRocket(null);
 
   // Broadcast logout event to other tabs
   broadcastAuthEvent('logout');

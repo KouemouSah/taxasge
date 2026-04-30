@@ -12,6 +12,7 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { LogRocketProvider } from '@/components/observability/LogRocketProvider'
 
 /**
  * Create a new QueryClient with default configuration
@@ -65,7 +66,9 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <LogRocketProvider>
+        {children}
+      </LogRocketProvider>
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
       )}
