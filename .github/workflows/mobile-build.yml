@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload APK artifacts
         if: matrix.format == 'apk'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: facil-apk-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: |
@@ -251,7 +251,7 @@ jobs:
 
       - name: Upload AAB artifact
         if: matrix.format == 'aab'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: facil-aab-${{ steps.slug.outputs.ref_safe }}-${{ github.sha }}
           path: ${{ env.WORKING_DIR }}/android/${{ matrix.output_path }}/*.aab
