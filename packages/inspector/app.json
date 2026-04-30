@@ -63,6 +63,16 @@
           "color": "#1565C0",
           "defaultChannel": "default"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://storage.googleapis.com/logrocket-maven/"
+            ]
+          }
+        }
       ]
     ],
     "experiments": {

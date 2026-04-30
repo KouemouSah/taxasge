@@ -77,7 +77,10 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraMavenRepos": [
+              "https://storage.googleapis.com/logrocket-maven/"
+            ]
           }
         }
       ],

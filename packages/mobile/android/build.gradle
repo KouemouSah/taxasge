@@ -18,6 +18,8 @@ allprojects {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
+    // LogRocket React Native — native Android module artifacts
+    maven { url 'https://storage.googleapis.com/logrocket-maven/' }
   }
 }
 
