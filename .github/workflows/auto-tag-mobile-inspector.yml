@@ -54,9 +54,15 @@ jobs:
           # Need full history so `git describe --tags --match` can find the
           # most recent tag in each namespace.
           fetch-depth: 0
-          # Use a token that can push back. GITHUB_TOKEN works for tag pushes
-          # by default; if branch protection blocks it later, swap to a PAT.
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # MUST be a PAT, not GITHUB_TOKEN. GitHub deliberately blocks the
+          # default GITHUB_TOKEN from triggering downstream workflows when
+          # it pushes a tag — so a tag pushed with GITHUB_TOKEN would NOT
+          # fire mobile-eas-build / inspector-build (verified empirically
+          # on tag inspector-v1.0.0 / 2026-04-30: tag pushed, no downstream
+          # run). Using GH_PAT (already in repo secrets) restores the
+          # cascade. See:
+          # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
+          token: ${{ secrets.GH_PAT }}
 
       - name: Skip if commit message contains [skip-release]
         id: skip
