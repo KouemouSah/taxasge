@@ -22,6 +22,7 @@
 
 import LogRocket from 'logrocket';
 import setupLogRocketReact from 'logrocket-react';
+import * as Sentry from '@sentry/nextjs';
 
 const APP_ID = process.env.NEXT_PUBLIC_LOGROCKET_APP_ID ?? '';
 const IS_DEV = process.env.NODE_ENV === 'development';
@@ -92,21 +93,21 @@ export function initLogRocket(): void {
 
 /**
  * Bridge LogRocket session URL to Sentry — pushes the replay URL onto every
- * Sentry event so an exception in Sentry links straight to its replay.
+ * Sentry event so an Issue in Sentry links straight to its replay.
  *
- * Currently a no-op: web Sentry is NOT wired (Sentry only runs on the RN
- * mobile + inspector packages today). The day @sentry/nextjs is added to
- * packages/web, replace the body with:
+ * Activated 2026-04-30 once @sentry/nextjs was wired (sentry.client/server/
+ * edge.config.ts + withSentryConfig in next.config.mjs).
  *
- *   import * as Sentry from '@sentry/nextjs';
- *   LogRocket.getSessionURL((sessionURL) => {
- *     Sentry.getCurrentScope().setExtra('logrocketURL', sessionURL);
- *   });
- *
- * Keep this as a separate function so initLogRocket stays focused.
+ * Behaviour: getSessionURL fires once when LogRocket has a stable session
+ * URL (after the first network flush, ~2-5 s). The URL is then attached
+ * to the current Sentry scope's extras — every subsequent event captured
+ * by Sentry on this tab inherits the link via `extra.logrocketURL`.
  */
 export function bridgeLogRocketToSentry(): void {
-  // intentional no-op until web Sentry is wired
+  if (!isLogRocketActive()) return;
+  LogRocket.getSessionURL((sessionURL) => {
+    Sentry.getCurrentScope().setExtra('logrocketURL', sessionURL);
+  });
 }
 
 /**

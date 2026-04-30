@@ -1,4 +1,5 @@
 import createNextIntlPlugin from 'next-intl/plugin';
+import { withSentryConfig } from '@sentry/nextjs';
 
 // Use i18n.ts at project root for Docker build compatibility
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
@@ -176,5 +177,27 @@ const nextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+// Sentry wrapper — uploads sourcemaps + tunnels SDK requests to bypass
+// adblockers. The wrapper no-ops when SENTRY_AUTH_TOKEN / org / project
+// are missing (e.g. local dev, contributor without secrets).
+//
+// Org/project values match the live Sentry projects under taxasge.sentry.io
+// (see Documentations/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md §3).
+const sentryWrapped = withSentryConfig(withNextIntl(nextConfig), {
+  org: 'taxasge',
+  project: 'javascript-nextjs',
+  silent: !process.env.CI,
+  // Only upload sourcemaps when the auth token is present (CI build).
+  // Without this guard, local `next build` would error.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Hide sourcemap files from the public bundle once uploaded.
+  hideSourceMaps: true,
+  // Disable Sentry's CLI logger spam in CI logs.
+  disableLogger: true,
+  // Tunnel SDK requests through /monitoring to bypass adblockers (saves
+  // ~5-15% of would-be-dropped events on browsers with uBlock Origin).
+  tunnelRoute: '/monitoring',
+});
+
+export default sentryWrapped;
 // deploy trigger 1771369122
