@@ -162,6 +162,8 @@ jobs:
             --set-env-vars="FIREBASE_STORAGE_BUCKET=${{ env.PROJECT_ID }}.firebasestorage.app" \
             --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
             --set-env-vars="GEMINI_CHAT_MODEL=${{ secrets.GEMINI_CHAT_MODEL }}" \
+            --set-env-vars="SENTRY_DSN=${{ secrets.SENTRY_DSN_BACKEND }}" \
+            --set-env-vars="GIT_COMMIT_SHA=${{ github.sha }}" \
             --set-env-vars="GEMINI_PRO_MODEL=${{ secrets.GEMINI_CHAT_MODEL }}" \
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-005" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \

@@ -404,6 +404,61 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Error during shutdown: {e}")
 
+# =============================================================================
+# Sentry — error tracking + performance traces (must init BEFORE app = FastAPI)
+# =============================================================================
+# Gating mirrors the mobile/web wrappers:
+#   - Skipped when SENTRY_DSN is empty (forks / local dev without secrets)
+#   - Skipped in DEBUG mode (NODE_ENV=development equivalent)
+# Once init'd, every uncaught exception in any route is auto-captured
+# with full stack trace + breadcrumbs (the 60s of activity before the crash).
+# Performance: 5% transaction sampling — calibrated for the Free Developer
+# plan (5K errors + 10K transactions / month / project).
+if settings.SENTRY_DSN and not settings.debug:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+    from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+    from sentry_sdk.integrations.redis import RedisIntegration
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            StarletteIntegration(transaction_style="endpoint"),
+            AsyncPGIntegration(),
+            RedisIntegration(),
+        ],
+        environment="staging" if "staging" in (settings.api_version or "") or "staging" in os.environ.get("K_SERVICE", "") else "production",
+        release=os.environ.get("GIT_COMMIT_SHA") or settings.api_version,
+        traces_sample_rate=0.05,
+        profiles_sample_rate=0.0,  # Profiling not needed yet; off to save quota
+        send_default_pii=False,    # Never send IP / cookies / headers by default
+        # Strip authorization headers + auth bodies before any event leaves
+        # the server — defense in depth on top of FastAPI's own scrubbing.
+        before_send=lambda event, _hint: _scrub_sentry_event(event),
+        # Tag every event so cross-project searches in the Sentry UI work
+        # (filter by service:taxasge-backend across multiple projects).
+        _experiments={"continuous_profiling_auto_start": False},
+    )
+    sentry_sdk.set_tag("service", "taxasge-backend")
+    logger.info(f"✅ Sentry initialised — env={sentry_sdk.Hub.current.client.options['environment']}")
+
+
+def _scrub_sentry_event(event):
+    """Remove Authorization / Cookie headers from Sentry request context."""
+    request = event.get("request", {})
+    headers = request.get("headers", {})
+    for key in list(headers.keys()):
+        if key.lower() in ("authorization", "cookie", "x-api-key"):
+            headers[key] = "[REDACTED]"
+    # Drop request bodies on auth-issuing routes
+    url = request.get("url", "") or ""
+    if any(seg in url for seg in ("/auth/login", "/auth/register", "/auth/2fa", "/auth/refresh")):
+        request.pop("data", None)
+    return event
+
+
 # FastAPI application
 app = FastAPI(
     title="TaxasGE API",
