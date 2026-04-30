@@ -64,13 +64,18 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
+            // Note: this header is overridden per-request by src/middleware.ts.
+            // Keep this fallback in sync with the middleware so a crashed
+            // middleware (or static asset path bypassing it) still gets a
+            // workable CSP — LogRocket allowlist included.
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.lr-in.com https://cdn.logr-in.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.supabase.co",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.run.app https://*.supabase.co https://storage.googleapis.com https://firebasestorage.googleapis.com",
+              "connect-src 'self' https://*.run.app https://*.supabase.co https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.lr-in.com https://*.logr-in.com https://*.lr-ingest.io https://*.logrocket.io https://*.logrocket.com",
+              "worker-src 'self' blob:",
               "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com",
               "object-src 'none'",
               "base-uri 'self'",

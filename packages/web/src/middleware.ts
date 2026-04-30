@@ -249,17 +249,34 @@ export async function middleware(request: NextRequest) {
     'https://taxasge-backend-prod.run.app',  // Legacy prod
   ].join(' ');
 
+  // LogRocket allowlist — required so the SDK can load its recording
+  // script and upload sessions. Without these the browser blocks
+  //   https://cdn.lr-in.com/logger-1.min.js
+  // with "Refused to load … violates Content Security Policy" and the
+  // dashboard stays on "Waiting for data" forever.
+  // Reference: https://docs.logrocket.com/reference/content-security-policy
+  const logrocketScript = 'https://cdn.lr-in.com https://cdn.logr-in.com';
+  const logrocketConnect =
+    'https://*.lr-in.com https://*.logr-in.com https://*.lr-ingest.io ' +
+    'https://*.logrocket.io https://*.logrocket.com';
+
+  const scriptBase =
+    process.env.NODE_ENV === 'development'
+      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline'";
+
   response.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      process.env.NODE_ENV === 'development'
-        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-        : "script-src 'self' 'unsafe-inline'",
+      `${scriptBase} ${logrocketScript}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      `connect-src 'self' ${apiOrigins}`,
+      `connect-src 'self' ${apiOrigins} ${logrocketConnect}`,
+      // LogRocket spawns a Web Worker created from a Blob URL; without
+      // this the worker fails silently on Chrome.
+      "worker-src 'self' blob:",
       "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
       "frame-ancestors 'none'",
       "object-src 'none'",
