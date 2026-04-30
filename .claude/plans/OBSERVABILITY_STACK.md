@@ -1,6 +1,6 @@
 # Observability Stack — Facil
 
-**Last updated**: 2026-04-30
+**Last updated**: 2026-04-30 (v1.1)
 **Owner**: Engineering
 **Audience**: Engineers wiring observability on a new environment, debugging an existing one, or onboarding to the project.
 
@@ -136,8 +136,8 @@ End-user device
 - `packages/mobile/src/core/observability/logrocket.ts` — LogRocket RN wrapper.
 - `packages/mobile/src/app/_layout.tsx` — `initSentry()` and `initLogRocket()` inside `<DeferredEffects>`.
 - `packages/mobile/src/core/auth/auth-provider.tsx` — `setSentryUser` + `identifyLogRocket` co-located.
-- `packages/mobile/app.json` — `expo-build-properties` plugin with `extraMavenRepos` (informational in non-CNG mode; see §6).
-- `packages/mobile/android/build.gradle` — Maven repo entry (canonical in non-CNG mode — committed natives).
+- `packages/mobile/app.json` — `expo-build-properties` plugin with `minSdkVersion: 25` + `extraMavenRepos` (informational in non-CNG mode; see §6).
+- `packages/mobile/android/build.gradle` — `ext.minSdkVersion = 25` + Maven repo entry (canonical in non-CNG mode — committed natives).
 - `packages/mobile/eas.json` — `EXPO_PUBLIC_LOGROCKET_APP_ID` in `preview` + `production` env blocks.
 - `packages/mobile/.easignore` — overrides `.gitignore` so `/android` ships to EAS (without it: `ENOENT gradlew` at FIX_GRADLEW phase).
 
@@ -145,6 +145,7 @@ End-user device
 - Same files as mobile but in `packages/inspector/`.
 - No Sentry RN yet — `bridgeLogRocketToSentry()` is a no-op stub.
 - No `.easignore` — `packages/inspector/.gitignore` does not contain `/android`, so the default behavior is correct.
+- `android/build.gradle` includes `ext { minSdkVersion = 25 }` (added — LogRocket RN requirement, see §7.6).
 
 ### CI/CD
 - `.github/workflows/mobile-eas-build.yml` — orchestrates `eas build` via `EXPO_TOKEN` secret.
@@ -466,6 +467,105 @@ The `expo/expo-github-action@v8` step authenticates the EAS CLI inside its own a
 ### 7.5 Cloud Run `--set-env-vars` doesn't help `NEXT_PUBLIC_*`
 Next.js bakes `NEXT_PUBLIC_*` into the client bundle at `next build` time. Setting them on Cloud Run after the image is built is a no-op for the browser bundle. Always inject as Docker `--build-arg`.
 
+### 7.6 LogRocket RN requires Android `minSdkVersion ≥ 25`
+`@logrocket/react-native@1.62` declares `minSdkVersion 25` (Android 7.1
+Nougat MR1) in its AAR manifest. Expo SDK 54 defaults to 24, so the
+manifest merger fails:
+
+```
+uses-sdk:minSdkVersion 24 cannot be smaller than version 25
+declared in library [com.logrocket:logrocket:1.62.0]
+```
+
+**Fix (commit `8582591a`)** — bump to 25 in three places (operative,
+documented, future-CNG-ready):
+
+1. `packages/{mobile,inspector}/android/build.gradle`:
+   ```groovy
+   ext {
+     minSdkVersion = 25
+   }
+   ```
+   Operative source of truth in non-CNG mode (see §6).
+
+2. `packages/{mobile,inspector}/app.json` `expo-build-properties`:
+   ```json
+   { "android": { "minSdkVersion": 25, ... } }
+   ```
+   Informational today; canonical the day we migrate to CNG.
+
+3. (Alternative — **NOT chosen**) `tools:overrideLibrary="com.logrocket.core"`
+   in `AndroidManifest.xml`. Force-merges but masks runtime crashes if
+   LogRocket invokes a 7.1+ API on a 7.0 device.
+
+**Trade-off**: closes Android 7.0 (API 24) install base. Global share
+~0.4% in 2026; near-zero in our target market (Equatorial Guinea, mostly
+Android 8+). Correct cost/benefit for the gain in session replay
+debuggability.
+
+**When this trap re-fires**: any new RN native module with a higher
+`minSdkVersion` than the project. Always read the module's AAR manifest
+before installing — `npm view <pkg>` + linked GitHub release notes.
+
+### 7.7 GitHub Actions PAT (`GH_PAT`) silent expiry
+Classic GitHub PATs default to 30 / 60 / 90-day expiry. The `GH_PAT`
+secret used by `auto-tag-mobile-inspector.yml` (to push tags WITH a
+non-`GITHUB_TOKEN` so downstream tag-trigger workflows fire — see
+that workflow's line 65 comment) is **not auto-rotated**. When it
+expires:
+
+```
+fatal: could not read Username for 'https://github.com':
+       terminal prompts disabled
+The process '/usr/bin/git' failed with exit code 128
+```
+
+This happens at `actions/checkout` because `secrets.GH_PAT` resolves
+to an empty string when the underlying token is dead, and git falls
+back to interactive auth which is disabled in CI.
+
+**Diagnosis**:
+- Check the secret's `updatedAt`: `gh secret list --repo OWNER/REPO`.
+- If older than the original PAT TTL, almost certainly expired.
+
+**Fix (manual, ~3 min)**:
+1. Generate a fine-grained PAT at https://github.com/settings/tokens?type=beta
+   - Permissions: `repository: contents=read+write, metadata=read+write`
+   - Expiration: 1 year (max for fine-grained)
+2. Mirror to repo + GCP SM (one-shot):
+   ```bash
+   NEW="github_pat_..."
+   gh secret set GH_PAT --repo KouemouSah/taxasge --body "$NEW"
+   echo -n "$NEW" | gcloud secrets versions add github-pat \
+     --project=taxasge-dev --data-file=-   # or `secrets create` first time
+   ```
+3. Re-run the failed workflow: `gh run rerun <RUN_ID>`.
+
+**Future-proofing**: schedule a recurring agent / cron 60 days before
+expiry to alert on rotation. Tracked in §8.
+
+### 7.8 EAS Cloud `RUN_EXPO_DOCTOR` is stricter than local
+Local `eas build` from a developer machine treats `expo-doctor`
+warnings as advisory. The EAS Cloud builder's `RUN_EXPO_DOCTOR` phase
+can fail the build on schema errors. The most common offender is
+non-square icon images:
+
+```
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields: image should be square, but the file
+at './assets/images/icon_facil.png' has dimensions 280x308.
+```
+
+**Fix (commit `412868ca`)** — pad to a square transparent canvas:
+```js
+const sharp = require('sharp');
+sharp(SRC).resize({ width: max, height: max, fit: 'contain',
+  background: { r:0, g:0, b:0, alpha: 0 } }).png().toBuffer();
+```
+
+**Gotcha**: regen overwrites the original. Keep a pre-pad copy if the
+original non-square image is needed elsewhere (rare).
+
 ---
 
 ## 8. Future enhancements
@@ -477,6 +577,7 @@ Next.js bakes `NEXT_PUBLIC_*` into the client bundle at `next build` time. Setti
 | LogRocket source-map upload via `@sentry/cli` reused | Engineering | Phase 10 polish |
 | Migrate remaining GitHub repo secrets (`GEMINI_*`, `FIREBASE_*`) into GCP SM with `--set-secrets` binding | Engineering | Q1 next year |
 | Auto-rotation cron for `expo-token` and `sentry-auth-token` (90/180-day cadence) via a scheduled GitHub Actions workflow | Engineering | Q1 next year |
+| Pre-expiry alert agent for `GH_PAT` (fires 60 days before secret `updatedAt + TTL`) — see §7.7 | Engineering | Q1 next year |
 | Switch mobile + inspector to CNG mode for cleaner native plugin management | Engineering | When prebuild slowdown is acceptable |
 | OpenTelemetry traces backend → Cloud Trace + per-request `logrocketURL` correlation | Engineering | When >100 concurrent agents |
 | Audit log dashboard reading `audit_logs` table + Cloud Logging via Looker Studio | Operations | Q2 |
@@ -518,4 +619,15 @@ EXPO_TOKEN="$(...)" eas build:view BUILD_ID
 
 ## 10. Changelog
 
+- **2026-04-30 v1.1** — same-day additive update from the LogRocket
+  rollout session:
+  - §3: documented `ext.minSdkVersion = 25` in mobile + inspector
+    `android/build.gradle` and `app.json` plugin block.
+  - §7.6: new trap — LogRocket RN `minSdkVersion 25` manifest merger
+    failure (commit `8582591a`).
+  - §7.7: new trap — `GH_PAT` silent expiry (rotated after auto-tag
+    run `25162098399` failed; rerun `25162496256` ✓).
+  - §7.8: new trap — stricter `RUN_EXPO_DOCTOR` on EAS Cloud vs local
+    (icon non-square; commit `412868ca`).
+  - §8: pre-expiry alert agent for `GH_PAT` added to roadmap.
 - **2026-04-30 v1.0** — initial document. Captures: LogRocket web + RN integrations, mobile EAS build fixes (`.easignore`, square icon), Secret Manager migration of `expo-token`/`sentry-auth-token`/`logrocket-app-id`, multi-environment guide (GCP/AWS/Azure/VPS).
