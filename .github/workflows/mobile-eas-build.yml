@@ -87,6 +87,15 @@ jobs:
           fi
 
       - name: Trigger EAS build (${{ steps.params.outputs.platform }} on ${{ steps.params.outputs.profile }})
+        env:
+          # The expo/expo-github-action@v8 step above authenticates EAS CLI
+          # for its own action context but does NOT propagate EXPO_TOKEN to
+          # subsequent `run:` steps — they spawn a fresh shell. Without this
+          # explicit env block, `eas build` errors out with:
+          #   "An Expo user account is required to proceed. Either log in
+          #    with `eas login` or set the EXPO_TOKEN environment variable"
+          # (run #25157629153 / 2026-04-30 failure).
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           cd ${{ env.WORKING_DIR }}
           eas build \
