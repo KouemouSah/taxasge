@@ -1,0 +1,66 @@
+# =============================================================================
+# EAS Build upload exclusions — packages/mobile
+# =============================================================================
+# When this file is present, `eas build` uses it INSTEAD of .gitignore to
+# decide which files ship to the EAS builder. Without it, .gitignore is
+# applied — and the `/android` rule in .gitignore strips the committed
+# native folder, which causes:
+#
+#   ENOENT: no such file or directory, open
+#     '/home/expo/workingdir/build/packages/mobile/android/gradlew'
+#
+# The build then fails in the FIX_GRADLEW phase before any compile step.
+#
+# We DO commit android/* (gradlew, build.gradle, app/, etc.) because this is
+# a "non-CNG" Expo project — `expo prebuild` is NOT re-run on every build,
+# so the committed native folder is the source of truth. .gitignore keeps
+# them out of git diffs noise on dev machines that regenerate them; this
+# file overrides that for EAS upload.
+#
+# This file mirrors .gitignore minus the /android and /ios entries.
+# Keep them in sync when adding new ignore patterns.
+# =============================================================================
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native (release artifacts only — keep source folders)
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+facil-release.keystore
+
+# DO NOT add `/ios` or `/android` here — EAS needs the committed native
+# folders. The .gitignore copy keeps them ignored on dev machines (where
+# the team may run `expo prebuild` to regenerate); this exclusion file
+# lets EAS see the canonical committed copies.
