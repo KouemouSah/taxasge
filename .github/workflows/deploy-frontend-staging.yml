@@ -93,6 +93,12 @@ jobs:
                 - 'NEXT_PUBLIC_LOGROCKET_APP_ID=$_NEXT_PUBLIC_LOGROCKET_APP_ID'
                 - '--build-arg'
                 - 'NEXT_PUBLIC_BUILD_VERSION=$_NEXT_PUBLIC_BUILD_VERSION'
+                - '--build-arg'
+                - 'NEXT_PUBLIC_SENTRY_DSN=$_NEXT_PUBLIC_SENTRY_DSN'
+                - '--build-arg'
+                - 'NEXT_PUBLIC_ENVIRONMENT=$_NEXT_PUBLIC_ENVIRONMENT'
+                - '--build-arg'
+                - 'SENTRY_AUTH_TOKEN=$_SENTRY_AUTH_TOKEN'
                 - '-t'
                 - '$_IMAGE_TAG'
                 - '.'
@@ -103,7 +109,7 @@ jobs:
 
           BUILD_ID=$(gcloud builds submit \
             --config=/tmp/cloudbuild.yaml \
-            --substitutions="_IMAGE_TAG=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }},_NEXT_PUBLIC_API_URL=${{ env.BACKEND_URL }},_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }},_NEXT_PUBLIC_BUILD_VERSION=${{ github.sha }}" \
+            --substitutions="_IMAGE_TAG=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }},_NEXT_PUBLIC_API_URL=${{ env.BACKEND_URL }},_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }},_NEXT_PUBLIC_BUILD_VERSION=${{ github.sha }},_NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }},_NEXT_PUBLIC_ENVIRONMENT=staging,_SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" \
             --async \
             --format="value(id)")
 

@@ -32,9 +32,25 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ARG NEXT_PUBLIC_LOGROCKET_APP_ID=
 ENV NEXT_PUBLIC_LOGROCKET_APP_ID=${NEXT_PUBLIC_LOGROCKET_APP_ID}
 
-# Build version stamp surfaced to LogRocket as `release`
+# Build version stamp surfaced to LogRocket + Sentry as `release`
 ARG NEXT_PUBLIC_BUILD_VERSION=dev
 ENV NEXT_PUBLIC_BUILD_VERSION=${NEXT_PUBLIC_BUILD_VERSION}
+
+# Sentry — empty DSN disables init at runtime (safe default for forks).
+# The DSN itself is public (visible in client bundle network requests),
+# kept centralised for parity with LogRocket app id.
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+
+# Sentry environment label (staging | production) — surfaced via
+# Sentry.environment to filter events in the UI. Default 'production'.
+ARG NEXT_PUBLIC_ENVIRONMENT=production
+ENV NEXT_PUBLIC_ENVIRONMENT=${NEXT_PUBLIC_ENVIRONMENT}
+
+# Sentry CLI auth token — used by withSentryConfig at build time to
+# upload sourcemaps. Build-time only (not baked into the image runtime).
+ARG SENTRY_AUTH_TOKEN=
+ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
