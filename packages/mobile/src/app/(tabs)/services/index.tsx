@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
 import { formatCurrency } from '@core/utils/format';
@@ -31,7 +32,7 @@ import {
 } from '@modules/fiscal-services';
 import type { MinistryItem, FiscalServiceItem } from '@modules/fiscal-services';
 import { EmptyState } from '@components/ui/empty-state';
-import { SkeletonListItem } from '@components/ui/skeleton';
+import { SkeletonListItem, FullScreenSkeleton } from '@components/ui/skeleton';
 
 // ---------------------------------------------------------------------------
 // Ministry icon mapping (by keyword in name)
@@ -77,6 +78,10 @@ export default function ServicesScreen() {
   const { t, i18n } = useTranslation();
   const { colors, spacing } = useAppTheme();
   const lang = (i18n.language || 'es') as string;
+  // Cold-start gate — see core/api/query-persister.ts. While the persisted
+  // catalog is rehydrating from MMKV, we don't want to flash the empty
+  // search state or trigger a redundant network refetch.
+  const isRestoring = useIsRestoring();
 
   const {
     data: ministries,
@@ -349,6 +354,14 @@ export default function ServicesScreen() {
   // Main render
   // ---------------------------------------------------------------------------
 
+  if (isRestoring) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <FullScreenSkeleton rows={8} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header + Search */}
@@ -430,7 +443,11 @@ export default function ServicesScreen() {
             </View>
 
             {ministriesLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: 24 }} />
+              <View>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonListItem key={`min-sk-${i}`} />
+                ))}
+              </View>
             ) : ministriesError ? (
               /* Error fallback — replaces the previously infinite spinner that
                  the user reported in debug/tesoro/m9.jpg. Tappable retry so

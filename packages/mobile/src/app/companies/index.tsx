@@ -4,14 +4,15 @@
  */
 
 import React, { useCallback } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Appbar, Divider, FAB } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
-import { SkeletonListItem } from '@components/ui/skeleton';
+import { FullScreenSkeleton } from '@components/ui/skeleton';
 import { CompanyEmptyState } from '@modules/companies/components/company-empty-state';
 import {
   BundleCompanyCard,
@@ -26,6 +27,7 @@ export default function CompaniesIndexScreen() {
   // sits 24dp above the screen edge but BEHIND the gesture/3-button bar on
   // most devices (see debug/tesoro/m1.jpg).
   const insets = useSafeAreaInsets();
+  const isRestoring = useIsRestoring();
   const list = useBundleMyCompanies();
 
   const data = list.data?.companies ?? [];
@@ -61,12 +63,8 @@ export default function CompaniesIndexScreen() {
         <Appbar.Content title={t('companies.title')} />
       </Appbar.Header>
 
-      {list.isLoading ? (
-        <View>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <SkeletonListItem key={`sk-${i}`} />
-          ))}
-        </View>
+      {isRestoring || list.isLoading ? (
+        <FullScreenSkeleton rows={8} />
       ) : (
         <FlatList
           data={data}

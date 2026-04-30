@@ -7,3 +7,4 @@
 export { SkeletonText } from './skeleton-text';
 export { SkeletonListItem } from './skeleton-list-item';
 export { SkeletonCard } from './skeleton-card';
+export { FullScreenSkeleton } from './full-screen-skeleton';

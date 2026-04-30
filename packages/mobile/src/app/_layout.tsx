@@ -15,8 +15,8 @@ import { LogBox } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { createMmkvPersister } from '@core/api/query-persister';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -83,31 +83,35 @@ const queryClient = new QueryClient({
 
 /**
  * Whitelist of query-key prefixes that survive an app restart. Anything that
- * is rate-limited, role-scoped or sensitive (auth tokens, sessions, payment
- * status polling, support thread messages) is excluded so that:
- *   1. cold start renders the cached catalog instantly while the network
- *      refetches in background;
- *   2. logging out on one device doesn't leak someone else's data on the next
- *      app launch (the persister storage key is shared, but only stable
- *      reference data is ever written there).
+ * is rate-limited or sensitive (auth tokens, sessions, payment status
+ * polling, support thread messages) stays excluded so that:
+ *   1. cold start renders cached data instantly while the network refetches
+ *      in background;
+ *   2. user-scoped entries (dashboard, service-requests) only survive while
+ *      the same user is logged in — `auth-provider.signOut()` calls
+ *      `queryClient.clear()` which empties both in-memory and persisted
+ *      buckets, so the next user never reads the previous user's data.
  */
 const PERSISTED_QUERY_PREFIXES: readonly string[] = [
-  // Slow catalog data — services, ministries, fiscal-services, bundles config
+  // Public catalog data — services, ministries, fiscal-services, bundles config
   'fiscal-services',
   'workflows',
   'directory',
   'bundles',
   // Public-shape reference lists (target_role-filtered server-side)
   'support-categories',
+  // User-scoped — paired with `queryClient.clear()` on signOut. Persisting
+  // these eliminates the visible "long load" on cold start when the user
+  // has been logged in for a while: dashboard stats and recent requests
+  // hydrate from MMKV instantly, then refetch silently in background.
+  'dashboard',
+  'service-requests',
 ];
 
-const persister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: 'facil:rq-cache:v1',
-  // 1MB cap to stay polite with AsyncStorage SQLite quota on Android.
-  serialize: (data) => JSON.stringify(data),
-  deserialize: (str) => JSON.parse(str),
-});
+// MMKV-backed sync persister. Hydrates the cache <50ms vs ~500-2000ms with
+// AsyncStorage on Android low-end — see core/api/query-persister.ts for
+// design notes and core/storage/mmkv.ts for the underlying instance.
+const persister = createMmkvPersister();
 
 const dehydrateOptions = {
   shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string } }) => {

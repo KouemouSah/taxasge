@@ -13,10 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
 import { AppMenuButton } from '@components/ui/app-menu';
-import { SkeletonListItem } from '@components/ui/skeleton';
+import { SkeletonListItem, FullScreenSkeleton } from '@components/ui/skeleton';
 import { useDirectorySearch } from '@modules/directory';
 import type { DirectoryCompany } from '@modules/directory';
 
@@ -98,6 +99,7 @@ export default function DirectorioScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { t } = useTranslation();
+  const isRestoring = useIsRestoring();
 
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -137,6 +139,14 @@ export default function DirectorioScreen() {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (isRestoring) {
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: '#F5F5F5' }]}>
+        <FullScreenSkeleton rows={8} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: '#F5F5F5' }]}>

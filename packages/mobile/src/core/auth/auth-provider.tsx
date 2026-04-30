@@ -26,6 +26,7 @@ import React, {
   useState,
 } from 'react';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { API_ENDPOINTS } from '@core/api/endpoints';
 import { appConfig } from '@core/config/app';
@@ -112,6 +113,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -391,9 +393,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       await clearAllAuthData();
       await clearBiometricCredentials();
+      // Clear the React Query cache (in-memory + persisted MMKV bucket).
+      // Without this, the next user's cold start would briefly read the
+      // previous user's whitelisted entries from MMKV (dashboard,
+      // service-requests). `queryClient.clear()` removes everything from the
+      // in-memory cache; the next persistClient cycle on the empty store
+      // overwrites the persisted bucket with an empty PersistedClient.
+      queryClient.clear();
       setState({ user: null, isAuthenticated: false, isLoading: false });
     }
-  }, []);
+  }, [queryClient]);
 
   // -------------------------------------------------------------------
   // Refresh User Profile

@@ -12,8 +12,10 @@ import { Appbar, Divider, FAB, SegmentedButtons, Searchbar } from 'react-native-
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
+import { FullScreenSkeleton } from '@components/ui/skeleton';
 import { AlertListItem } from '@modules/vault/components/alert-list-item';
 import { DocumentEmptyState } from '@modules/vault/components/document-empty-state';
 import {
@@ -63,6 +65,7 @@ export default function VaultHomeScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const isRestoring = useIsRestoring();
   const [tab, setTab] = useState<VaultTabValue>('uploads');
   const [categoryFilter, setCategoryFilter] = useState<VaultCategoryFilter>('all');
   const [generationFilter, setGenerationFilter] = useState<VaultGenerationFilter>('all');
@@ -270,6 +273,19 @@ export default function VaultHomeScreen() {
       />
     );
   };
+
+  if (isRestoring) {
+    return (
+      <SafeAreaView edges={['top']} style={[styles.root, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Appbar.Header style={{ backgroundColor: colors.surface }}>
+          <Appbar.BackAction onPress={() => router.back()} />
+          <Appbar.Content title={t('vault.title')} />
+        </Appbar.Header>
+        <FullScreenSkeleton rows={8} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top']} style={[styles.root, { backgroundColor: colors.background }]}>

@@ -14,7 +14,6 @@ import { Image } from 'expo-image';
 import {
   Text,
   Button,
-  ActivityIndicator,
   SegmentedButtons,
   Divider,
 } from 'react-native-paper';
@@ -22,8 +21,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { useAppTheme } from '@core/theme';
+import { FullScreenSkeleton } from '@components/ui/skeleton';
 import { useAuth } from '@core/hooks/use-auth';
 import { setApiLocale } from '@core/api/client';
 import type { SupportedLanguage } from '@core/config/types';
@@ -596,6 +597,10 @@ function AuthDashboard() {
   const { t } = useTranslation();
   const { colors, spacing } = useAppTheme();
   const { user } = useAuth();
+  // Cold-start gate: while React Query is rehydrating its MMKV-backed cache
+  // we render a skeleton instead of letting `isLoading` flip to true and
+  // trigger redundant fetches (the cache is being delivered any moment now).
+  const isRestoring = useIsRestoring();
 
   const { data, isLoading, refetch, isRefetching } = useDashboard(!!user);
   const [activeTab, setActiveTab] = useState<TabValue>('requests');
@@ -604,12 +609,10 @@ function AuthDashboard() {
 
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
-  if (isLoading) {
+  if (isRestoring || isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <FullScreenSkeleton rows={6} />
       </SafeAreaView>
     );
   }
