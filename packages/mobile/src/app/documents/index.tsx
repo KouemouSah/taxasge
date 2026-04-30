@@ -124,17 +124,24 @@ export default function VaultHomeScreen() {
   );
 
   // ----- Render bodies per tab ---------------------------------------------
-  // Content container style — items stack from the top right under the
-  // filter chips. We deliberately do NOT set flexGrow:1 here: combined with
-  // FlatList's RefreshControl on Android, it pushed the rows to the bottom
-  // of a stretched container instead of top-aligning them (see post-fix
-  // captures 2-5.jpg from 2026-04-30). Top-alignment is now produced by the
-  // natural column flexbox inside the contentContainer, while the FlatList
-  // itself keeps `flex:1` so it always fills the available vertical space.
-  // The empty state renders with its own paddingTop, so it still sits right
-  // under the chips when the list is empty.
+  // contentContainerStyle MUST include `flexGrow: 1` so the inner content
+  // container fills the FlatList area; combined with the default
+  // `justifyContent: 'flex-start'` of flexbox, items always top-align right
+  // under the filter chips, and the empty space appears below the last
+  // item (where the FAB also lives) instead of above the first one.
+  //
+  // Bug history (post-fix captures 2-5.jpg from 2026-04-30):
+  //   - WITHOUT flexGrow:1 + WITH `removeClippedSubviews:true` + small
+  //     windowSize on Android, RN's FlatList rendered items at the BOTTOM
+  //     of the visible area with the first item half-clipped at the top.
+  //     Symptom: a large empty "block" between the filter chips and the
+  //     first visible row, items appearing under that block when scrolling.
+  //   - The previous attempt removed flexGrow:1 alone, assuming
+  //     RefreshControl + flexGrow conflicted. That actually masked the
+  //     real cause (windowsize/clipping) and left the bottom-alignment.
   const listContentStyle = useMemo(
     () => ({
+      flexGrow: 1,
       paddingTop: 8,
       paddingBottom: 96 + insets.bottom,
     }),
@@ -178,11 +185,15 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
-        // P8.3 — perf knobs.
+        // P8.3 — perf knobs. removeClippedSubviews omitted intentionally:
+        // Android RN has a known bug that unmounts items that should be
+        // visible on lists shorter than ~2× the viewport, causing the
+        // bottom-alignment glitch (see listContentStyle comment above).
+        // The lists in this screen are typically <100 items, so the perf
+        // gain of removeClippedSubviews is negligible vs the bug risk.
         initialNumToRender={15}
         maxToRenderPerBatch={20}
-        windowSize={10}
-        removeClippedSubviews
+        windowSize={21}
       />
     );
   };
@@ -239,8 +250,7 @@ export default function VaultHomeScreen() {
         }
         initialNumToRender={15}
         maxToRenderPerBatch={20}
-        windowSize={10}
-        removeClippedSubviews
+        windowSize={21}
       />
     );
   };
