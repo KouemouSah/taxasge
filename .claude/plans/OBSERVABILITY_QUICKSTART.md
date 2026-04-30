@@ -330,7 +330,10 @@ try {
 }
 ```
 
-📚 **Read more**: [`OBSERVABILITY_STACK.md §3`](./OBSERVABILITY_STACK.md#3-repository-wiring-file-level-reference) — the exact wrapper file for each package.
+📚 **Read more**:
+- [`§3`](./OBSERVABILITY_STACK.md#3-repository-wiring-file-level-reference) — the exact wrapper file for each package.
+- [`§1.2`](./OBSERVABILITY_STACK.md#12-mental-model--sentry-vs-logrocket) — when to reach for Sentry vs LogRocket (different problems, both needed).
+- [`§11`](./OBSERVABILITY_STACK.md#11-daily-usage-flows--when-and-how-to-reach-for-which-tool) — three on-call scenarios walked end-to-end (user-reported bug, prod spike, funnel drop-off).
 
 ---
 

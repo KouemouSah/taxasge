@@ -1,6 +1,6 @@
 # Observability Stack — Facil
 
-**Last updated**: 2026-04-30 (v1.2)
+**Last updated**: 2026-04-30 (v1.3)
 **Owner**: Engineering
 **Audience**: Engineers wiring observability on a new environment, debugging an existing one, or onboarding to the project.
 
@@ -9,6 +9,8 @@ This document is the single source of truth for: which observability tools are w
 ---
 
 ## 1. Tools in production today
+
+### 1.1 What's wired
 
 | Tool | Scope | What it captures | SDK/integration | Free tier |
 |---|---|---|---|---|
@@ -23,6 +25,49 @@ This document is the single source of truth for: which observability tools are w
 - Sentry inspector RN — inspector has no Sentry yet. Stub bridge in `packages/inspector/src/core/observability/logrocket.ts` is no-op.
 - LogRocket source-map upload — stack traces in LogRocket are minified.
 - APM / distributed tracing — out of scope at current scale.
+
+### 1.2 Mental model — Sentry vs LogRocket
+
+These two tools look similar at first ("they both catch errors") but solve
+different problems. Pick the right one for the question you're asking.
+
+| | **Sentry** | **LogRocket** |
+|---|---|---|
+| Capture cadence | At error time only | **Continuously**, like a CCTV |
+| What's stored | Stack trace + breadcrumbs of the 60s before the crash | **Full session video** — clicks, scrolls, network, console, redux/zustand state |
+| Pricing model | Per error event | Per **session** (one user visit = one session) |
+| Trigger | `captureException(err)` or auto-uncaught error | SDK init at page load → captures until tab close |
+| Free tier | 5K errors / month | 1K sessions / month |
+| Best for | "Why did this crash?" — root-cause from a stack trace | "What did the user do before X?" — reproduce a parcours from a replay |
+| Primary UI | Issues / Errors list | Sessions list with replay video |
+
+**Why we have both**:
+- Sentry's strength is **alerting + grouping**. When an error spikes, Sentry pings you and dedupes by stack trace fingerprint. Cheap, low-volume.
+- LogRocket's strength is **context**. When a user says "the app crashed when I clicked submit", you replay the exact session and see the bug, not just the symptom.
+- They complement each other: Sentry detects → LogRocket explains. The eventual goal (`bridgeLogRocketToSentry()` body) is to attach a LogRocket session URL to every Sentry event so a Sentry issue deep-links straight to its replay.
+
+**Common pitfall**: thinking "I have Sentry, I don't need LogRocket". You can't reproduce a user-reported bug from a Sentry stack trace alone if the bug is a UX issue (frozen UI, wrong navigation, confusing form) — there's no exception to capture. LogRocket is the only tool here that captures **non-error sessions**.
+
+### 1.3 What you'll see in each dashboard
+
+**Sentry** (`taxasge.sentry.io`, mobile only today)
+
+| Section | Use case |
+|---|---|
+| Issues | Errors grouped by stack-trace fingerprint, sorted by frequency |
+| Releases | Errors per app version — tells you if a release introduced a regression |
+| Performance | Transaction sampling 5% — slow API calls, slow renders |
+| Alerts | Slack/email notification rules (e.g. "ping me when error rate > 1%") |
+
+**LogRocket** (`app.logrocket.com/0eqns2/facil`)
+
+| Section | Use case |
+|---|---|
+| **Session Replay** | Per-user visit replays. Filter by user_id / role / event. Click → replay video + timeline of console + network. |
+| Issues | JS errors auto-detected, similar to Sentry but with a session attached |
+| Dashboards | Custom event aggregations (counts, funnels, conversion rates) |
+| Surveys / Feedback | NPS surveys + in-app feedback widgets (not used today) |
+| Settings → Integrations | Slack / Jira / Linear hooks (free tier limited) |
 
 ---
 
@@ -679,6 +724,51 @@ auto-refetched on cold-resume > 5 min instead of timing out.
 If you see this pattern recur on a new RN app, this is the first
 suspect.
 
+### 7.12 `inspector-build.yml` is EAS Cloud despite the filename
+Looking at the four mobile-related workflows, the naming convention
+suggests two flavours per app:
+
+```
+mobile-build.yml         → ??
+mobile-eas-build.yml     → EAS Cloud (the name says it)
+inspector-build.yml      → ??
+inspector-ci.yml         → CI checks only (name correct)
+```
+
+Reading the headers:
+
+| File | Actual contents | Trigger build host |
+|---|---|---|
+| `mobile-build.yml` | `name: Mobile CI/CD` — runs `./gradlew assembleRelease` on the GitHub runner | **Native GitHub runner** |
+| `mobile-eas-build.yml` | `name: Mobile EAS Build (Cloud)` — `eas build --profile preview` | EAS Cloud |
+| `inspector-build.yml` | `name: Inspector EAS Build (Cloud)` — `eas build --profile production` | **EAS Cloud (despite filename!)** |
+| `inspector-ci.yml` | type-check + lint, no APK | n/a |
+
+The trap: a naive engineer assumes by symmetry that `inspector-build.yml`
+is to inspector what `mobile-build.yml` is to mobile (i.e. native
+runner). It's not — inspector was migrated to EAS-only because of CMake
+3.22 vs 3.31 conflicts under RN 0.81 New Architecture (`run #24773564905`,
+2026-04-22; documented in the file's own header).
+
+**Consequence at quota exhaustion**: when EAS Free tier (30 Android
+builds/month) is depleted, mobile can fall back to `mobile-build.yml`
+on the GitHub runner (provided the `ANDROID_KEYSTORE_*` secrets are
+still valid). Inspector has **no native fallback** — you must wait for
+EAS quota to reset, or upgrade the EAS plan. This came up on
+2026-04-30 after burning ~6 EAS builds chasing the
+`gradlew`/`minSdk`/AAB-splits chain.
+
+**Recommended rename** (Q1 future enhancement, not done yet to avoid
+breaking the auto-tag → tag-push trigger contract):
+  - `inspector-build.yml` → `inspector-eas-build.yml` (matches mobile)
+  - Keep the filename `mobile-build.yml` for the native runner build
+    OR rename to `mobile-native-build.yml` if you want crystal-clear
+    naming. Less urgent since it's already documented in the file
+    header.
+
+Until renamed, this section is the canonical reference: **the only
+native-runner Android build in this repo is `mobile-build.yml`**.
+
 ---
 
 ## 8. Future enhancements
@@ -691,6 +781,7 @@ suspect.
 | Migrate remaining GitHub repo secrets (`GEMINI_*`, `FIREBASE_*`) into GCP SM with `--set-secrets` binding | Engineering | Q1 next year |
 | Auto-rotation cron for `expo-token` and `sentry-auth-token` (90/180-day cadence) via a scheduled GitHub Actions workflow | Engineering | Q1 next year |
 | Pre-expiry alert agent for `GH_PAT` (fires 60 days before secret `updatedAt + TTL`) — see §7.7 | Engineering | Q1 next year |
+| Rename `inspector-build.yml` → `inspector-eas-build.yml` for symmetry with mobile (see §7.12) — coordinate with auto-tag workflow rewrite | Engineering | Q1 next year |
 | Switch mobile + inspector to CNG mode for cleaner native plugin management | Engineering | When prebuild slowdown is acceptable |
 | OpenTelemetry traces backend → Cloud Trace + per-request `logrocketURL` correlation | Engineering | When >100 concurrent agents |
 | Audit log dashboard reading `audit_logs` table + Cloud Logging via Looker Studio | Operations | Q2 |
@@ -730,8 +821,110 @@ EXPO_TOKEN="$(...)" eas build:view BUILD_ID
 
 ---
 
+## 11. Daily usage flows — when and how to reach for which tool
+
+Three concrete scenarios that recur in real on-call work. Each maps
+to a different tool + dashboard so you reach for the right thing under
+pressure.
+
+### 11.1 — A user reports a bug
+> "L'app a planté quand j'ai cliqué sur soumettre"
+
+Workflow:
+
+1. Open the LogRocket dashboard → **Session Replay**.
+2. Filter by `user_id` (which is what we send via `LogRocket.identify()` —
+   not email, by design, since email is PII). If you only have an email,
+   look up the user_id in the backend admin UI first.
+3. Click the most recent session in the result list.
+4. The replay video shows the exact parcours: clicks, scrolls, the form
+   they filled, and the moment of the crash.
+5. The right-side panel mirrors a DevTools view, time-aligned with the
+   video — console errors, network requests, Redux/Zustand state changes.
+6. Click the failed request in the network panel → see request body
+   + response → diagnose the cause without ever reproducing the bug.
+
+Why not Sentry first: Sentry fires only if the bug throws an actual
+exception. UX bugs (frozen UI, wrong navigation, confusing form) leave
+no Sentry trace. LogRocket captures all of those.
+
+### 11.2 — A production error spike
+> Sentry alert pings: "TypeError: Cannot read property 'name' of undefined"
+> — 12 occurrences in 5 minutes
+
+Workflow:
+
+1. Sentry **Issues** → click the alert → see stack trace + frequency
+   over time + which release introduced it.
+2. Open one of the affected sessions in LogRocket (when the bridge
+   `bridgeLogRocketToSentry()` is wired, the link is in
+   `event.extra.logrocketURL`).
+3. LogRocket replay shows the sequence: user navigated to `/services`,
+   clicked search, typed "passport", clicked one result. Network panel
+   reveals `GET /api/services/12345` returned `null` instead of the
+   expected object.
+4. You now know: backend regression, not a frontend bug.
+5. Roll back the backend release OR write a defensive frontend null-check.
+
+Why not LogRocket alone: LogRocket sees the symptoms but doesn't ping
+you proactively. Sentry's alerting layer catches the spike, LogRocket's
+replay layer explains it.
+
+### 11.3 — Optimising a funnel drop-off
+> "Why do 80% of users abandon at step 3 of the wizard?"
+
+Workflow:
+
+1. Find a custom event already wired through `trackLogRocket()` —
+   e.g. `wizard_step_completed` with `{ step: number }`. If it doesn't
+   exist, add the call site, deploy, wait a week for data.
+2. LogRocket **Dashboards** → create a funnel:
+   `wizard_step_completed` (step:1) → step:2 → step:3 → `wizard_submitted`
+3. Funnel shows: 100% → 95% → 85% → **15%**. Massive drop at step 3.
+4. Filter sessions: those that hit step:3 but never `wizard_submitted`.
+   Sort by recency, sample 10.
+5. Watch the replays. You observe a pattern: 6 of the 10 users stare at
+   the "NIF" field for > 30 s, then abandon. The label is too technical.
+6. Ship a clearer label + tooltip. Re-measure the funnel a week later.
+
+Why not Sentry: nothing crashed. There's no exception. This is a UX
+diagnosis pure and simple — Sentry has no data on it.
+
+### 11.4 — When Sentry is the better tool
+
+Despite §11.1-3 emphasising LogRocket, Sentry wins outright when:
+
+- You need **alerting** ("ping me on a 500 spike").
+- You need **release-attributed grouping** ("this release broke X").
+- You need **performance traces** (Sentry tracesSampleRate 5% gives you
+  per-transaction p50/p95 latency — LogRocket dashboards focus on event
+  counts, not distributions).
+- You need **stack traces with sourcemaps** (after sourcemap upload is
+  wired — currently a §8 TODO).
+
+The eventual goal is the bridge: Sentry alerts you fast, then a single
+click on the embedded `logrocketURL` opens the replay. That removes the
+"context switch" cost of debugging across two tools.
+
+---
+
 ## 10. Changelog
 
+- **2026-04-30 v1.3** — same-day additive update from a Q&A round
+  with the user about LogRocket vs Sentry semantics:
+  - §1.2: new "Mental model — Sentry vs LogRocket" subsection — side
+    by side comparison, why we have both, common pitfall, eventual
+    bridge goal.
+  - §1.3: new "What you'll see in each dashboard" — section-by-section
+    map of both UIs.
+  - §7.12: new trap — `inspector-build.yml` is EAS Cloud despite the
+    filename suggesting symmetry with native `mobile-build.yml`.
+    Important when EAS quota is exhausted (no inspector fallback).
+  - §11: new "Daily usage flows" section — three concrete on-call
+    scenarios (user-reported bug, prod error spike, funnel drop-off)
+    walked end-to-end with which dashboard to open and what to click.
+  - §8: roadmap entry to rename `inspector-build.yml` →
+    `inspector-eas-build.yml` for symmetry.
 - **2026-04-30 v1.2** — additive update mining the prior MOBILE_USER /
   MOBILE_BUGFIX / MOBILE_INSPECTOR session bilans for recurring
   infrastructure traps:
