@@ -457,6 +457,172 @@ Severity emoji helps Slack channel readers triage at a glance.
 
 ---
 
-## 6. Changelog
+## 6. Tools deliberately NOT adopted
 
+The Sentry + LogRocket + Cloud Logging + GitHub Actions stack is the result of an explicit shortlist. This section documents the **8 alternatives we evaluated and rejected** — what they do, why we passed today, what would change our mind, and how much they would cost when we hit the trigger condition.
+
+The intent is not to rank tools against each other in the abstract. It is to give a future engineer (or a future you) the receipts when someone says "should we add Datadog?" — so you can answer in 60 seconds with the relevant rationale instead of re-running the evaluation.
+
+### Decision matrix at a glance
+
+| # | Tool | Category | Lowest paid plan starts at | Status | When to reconsider |
+|---|---|---|---|---|---|
+| 1 | **Datadog APM** | Full APM (traces+metrics+logs) | $31/host/month + $0.10/M spans | ❌ Rejected | When > 200 concurrent agents AND multi-service backend (workers, queues, > 3 microservices) |
+| 2 | **New Relic** | Full APM | Free 100 GB/month then $0.30/GB | ❌ Rejected | If GCP egress to Datadog/Sentry breaks the budget; New Relic free tier is generous |
+| 3 | **Grafana Cloud (full SaaS)** | Metrics + logs + traces | Free 10K series / 50 GB then $8/user/month + usage | 🟡 PoC scheduled (separate `GRAFANA_BUSINESS_POC_PLAN.md`) | After PoC outcome — see that plan |
+| 4 | **Honeycomb** | High-cardinality observability | Free 20M events/month, then $130/month | ❌ Rejected | When debugging needs cross-cut by `(user_id, ministry, workflow_code, agent_site)` simultaneously — i.e. when Sentry's tag filtering hits its ceiling |
+| 5 | **Dynatrace** | Enterprise full-stack APM | $0.08/h for 8 GB host + $25/M log lines | ❌ Rejected | Never for Free-tier scale; reconsider only on government enterprise contract + on-prem requirement |
+| 6 | **AWS CloudWatch RUM** | Real User Monitoring (frontend) | $1 per 100K events + retention | ❌ Rejected | If we migrate web frontend off GCP to AWS Amplify (replaces LogRocket for web crash/perf, NOT replays) |
+| 7 | **Bugsnag** | Error tracking | Free 7.5K events/month, then $59/month | ❌ Rejected | If Sentry org is compromised AND we need a fast multi-vendor crash-tracking failover |
+| 8 | **PostHog** | Product analytics + replay + feature flags | Free 1M events + 5K replays then usage | 🟡 Watch-list | When we add A/B testing to the wizard, OR when LogRocket replay quota becomes the bottleneck |
+
+### 6.1 Datadog APM
+
+**What it does**: full APM (distributed traces, infrastructure metrics, log aggregation, RUM, synthetic monitoring) on a single pane of glass. Industry-standard for "everything is a graph" ops culture.
+
+**Why not now**:
+- **Pricing model** punishes our shape: $31/host/month, and Cloud Run scaling means we instantiate 10+ short-lived containers per minute under load. Datadog charges per *host-hour*, not per request — even if 9 of those instances live 90 seconds, they still count as 9 separate "hosts" for the day's billing. Estimated cost at our staging traffic: $300-500/month minimum.
+- **Sentry already covers** the 80% case (error grouping + perf sample + alerting). Datadog's distributed tracing adds value only when we have > 3 backend services calling each other in a chain — today it's monolithic FastAPI + 1 Postgres + 1 Redis.
+- **Ops culture mismatch**: Datadog shines for teams of 10+ SREs running 50+ services. We have 1 backend lead and 1 monolith.
+
+**When to flip**:
+- Backend splits into > 3 microservices (declarations service, payments service, agents service, …) AND we hit > 200 concurrent agents in production.
+- Or, an enterprise customer demands an on-prem APM with 3-year retention.
+
+**Coût projeté à bascule** : $500-1500/month (5-10 hosts × $31 + $200/month spans + RUM).
+
+**Alternative en place** : Sentry Performance (`traces_sample_rate=0.05`) + Cloud Logging — covers 80% of Datadog's APM value at $0/month inside Free tier.
+
+### 6.2 New Relic
+
+**What it does**: full APM very similar to Datadog, but pricing is per-GB-ingested rather than per-host. Free tier is famously generous (100 GB/month, 1 full user free).
+
+**Why not now**:
+- **Same overlap** with Sentry as Datadog — we'd pay for capability we don't use.
+- **GB-based pricing trap**: 100 GB free sounds large until you turn on `traces_sample_rate=1.0` and ship full Postgres query traces — we'd burn 100 GB in days and start paying $0.30/GB unpredictably.
+- **Single-user free** doesn't scale across the team — a second engineer needing access costs $99/user/month immediately.
+
+**When to flip**:
+- If GCP egress charges to Sentry/Datadog become non-trivial AND we are willing to live with the New Relic UI (less polished than Datadog or Sentry).
+- Or, for a quick "let me try APM for free" experiment — install the Python agent on staging for 1 week, see what it surfaces, decide.
+
+**Coût projeté à bascule** : $0-100/month staying inside free; $300-500/month for a 3-engineer team on standard tier.
+
+**Alternative en place** : Sentry Performance + Cloud Logging.
+
+### 6.3 Grafana Cloud (full SaaS)
+
+**What it does**: hosted Grafana + Prometheus (metrics) + Loki (logs) + Tempo (traces) + Pyroscope (profiling) on Grafana Labs' infra. Zero ops, all panels/alerts code-as-config via Terraform.
+
+**Why not yet (vs. rejected outright)**:
+- Grafana excels at **time-series + custom panels with rich PromQL/LogQL**. Our use case for time-series at this stage is limited (Sentry handles per-route latency; Looker Studio handles business KPIs).
+- The free tier is real (10K active series, 50 GB logs, 14-day retention), but it requires us to instrument metrics export from FastAPI (`prometheus_client`), which is non-zero work.
+- The bigger question is **"does Grafana's flexibility justify the second tool"** for *business* questions Looker Studio can answer with SQL alone. That's the explicit subject of the `GRAFANA_BUSINESS_POC_PLAN.md` PoC.
+
+**When to flip**:
+- After the 1-week PoC: if Grafana wins on heatmaps / time-series fine-grain / alerting flexibility, we keep it for ops-level dashboards while Looker Studio handles management dashboards.
+- If we exceed Sentry Performance free quota (10K txn/month) AND need cheap long-tail latency analytics.
+
+**Coût projeté à bascule** : $0/month inside free tier (10K series, 50 GB logs, 14d retention) ; $50-150/month if we exceed and stay on Pro plan.
+
+**Alternative en place** : Sentry Performance + Cloud Monitoring (basic) + Looker Studio (planned, see `LOOKER_STUDIO_BUSINESS_DASHBOARDS_PLAN.md`).
+
+### 6.4 Honeycomb
+
+**What it does**: distributed tracing optimised for **high-cardinality** queries — "show me the slowest requests grouped by user_id × ministry × workflow_code simultaneously". Sentry tags get expensive past ~10 unique values per tag; Honeycomb's design eats 10K+ unique values per dimension without slowing down.
+
+**Why not now**:
+- Our current debugging questions are **low-cardinality** ("what's broken in `/payments/*`?"). Sentry's tag filtering is sufficient.
+- Honeycomb pricing: Free tier is generous (20M events/month) but the next tier jumps to $130/month — no middle ground.
+- The team needs to learn BubbleUp / heatmap UX, which is a non-trivial cognitive cost. Pays back only when high-cardinality analysis becomes routine.
+
+**When to flip**:
+- When investigations like "show me sessions where (user is in MIN_INTERIOR) × (workflow=Pasaporte_minor) × (ocr_engine=tesseract_fallback) × (latency > p99)" become weekly. This is a 100+ concurrent agents reality, not a 10 agents reality.
+- Or, when AI/Gemini call observability needs cross-dimensional analysis (model × prompt-version × user_lang × cache_hit).
+
+**Coût projeté à bascule** : $0/month inside free tier (20M events) ; $130/month for the Pro plan (50M events + 60d retention).
+
+**Alternative en place** : Sentry tags + Cloud Logging structured queries.
+
+### 6.5 Dynatrace
+
+**What it does**: AI-driven full-stack APM with auto-instrumentation (Java/Node/Python agent injects bytecode), log analytics, RUM, infrastructure. Aimed at Fortune-500 ops teams.
+
+**Why not now**:
+- **Pricing**: $0.08/h per 8 GB host = $58/month per host MINIMUM, plus log volume, plus RUM volume. Three-figure floor before any usage.
+- **Setup cost** is enterprise-grade — agent installation, OneAgent, SaaS tenant provisioning. 1-2 days of work to get a "hello world" graph.
+- **Fit mismatch**: Dynatrace targets organisations where the *cost of an outage* is millions/hour. For Facil today, the cost of a 1-hour outage is "annoyed citizens + escalation to support". Sentry alerting is sufficient.
+
+**When to flip**:
+- Government enterprise contract: when we sell Facil-as-a-product to another country's tax authority and that customer requires Dynatrace as part of their security/audit baseline.
+- Until then: never.
+
+**Coût projeté à bascule** : $5-20K/month minimum at enterprise scale.
+
+**Alternative en place** : Sentry + Cloud Logging suffice for the next 12-24 months.
+
+### 6.6 AWS CloudWatch RUM
+
+**What it does**: AWS-native browser SDK that captures page load metrics, JS errors, custom events. Plays nicely with CloudFront/CloudWatch Logs/Metrics if the app is on AWS.
+
+**Why not now**:
+- We're on **GCP** (Cloud Run, Firebase Hosting). Adding CloudWatch RUM means cross-cloud egress + IAM federation + double-billing for capability LogRocket already provides on the web.
+- LogRocket gives us **session replays** (videos), CloudWatch RUM does **not** — CloudWatch is metrics + structured events only.
+- Pricing ($1 per 100K events) is competitive only if you're already paying CloudWatch's ingest costs for everything else.
+
+**When to flip**:
+- If we migrate web frontend off Firebase Hosting to AWS Amplify (unlikely; Amplify SSR is weaker than Cloud Run for our use case).
+- Or, if we open a US/EU instance for the same product on AWS for data-sovereignty reasons.
+
+**Coût projeté à bascule** : ~$50-200/month at our scale on AWS.
+
+**Alternative en place** : LogRocket web (replays) + Sentry web (errors, when wired).
+
+### 6.7 Bugsnag
+
+**What it does**: error tracking very similar to Sentry — stack traces, releases, user impact. Was a Sentry competitor in 2018; SmartBear acquisition in 2021 slowed innovation.
+
+**Why not now**:
+- **Direct overlap with Sentry** — same primitives, no unique advantage.
+- Sentry's pricing is more competitive at our tier (5K free vs Bugsnag 7.5K free, but Sentry's paid plan starts at $26/month vs Bugsnag $59/month).
+- Bugsnag's mobile SDK (`@bugsnag/react-native`) was the pre-Sentry standard — not anymore. Sentry RN is now better.
+
+**When to flip**:
+- If Sentry's billing model breaks our budget AND New Relic / Honeycomb don't fit.
+- Or, as a fast multi-vendor failover if Sentry org is compromised and we need crash tracking back online in < 1 hour. (Realistic mitigation: keep Bugsnag SDK uninitialised in code, flip a flag to activate.)
+
+**Coût projeté à bascule** : $0/month inside free (7.5K events) ; $59/month next tier ($89/month for 100K events).
+
+**Alternative en place** : Sentry (3 projects = 15K events free quota).
+
+### 6.8 PostHog
+
+**What it does**: product analytics (event tracking like Mixpanel) + session replay (like LogRocket) + feature flags + experiments. All-in-one open-source play.
+
+**Why on watch-list (not rejected)**:
+- **Generous free tier**: 1M events/month + 5K replays/month + unlimited feature flags. Materially more than LogRocket's 1K replays.
+- **Replay quality** is good but not on par with LogRocket for performance-heavy SaaS dashboards (LogRocket compresses better, has more dev-tooling depth).
+- **Self-hostable** (open-source) — useful if data residency becomes a Guinea Equatorial regulatory requirement.
+- **Adds A/B testing** primitives we currently lack — if we want to A/B test the wizard or onboarding, PostHog is the cheapest path.
+
+**When to flip**:
+- When LogRocket free quota (1K sessions/month) becomes the bottleneck — PostHog gives 5× more replay quota for free.
+- When product team explicitly asks for A/B testing and feature flags (we do not have a feature-flag system today; this would be a Net-new capability).
+- When data-residency rules require self-hosted analytics.
+
+**Coût projeté à bascule** : $0/month inside free (1M events + 5K replays) ; $0.00045/event after — typically $50-200/month for a product with millions of users monthly.
+
+**Alternative en place** : LogRocket (replay) + Sentry (errors). No A/B testing primitive today.
+
+### 6.9 Decision principle to remember
+
+The unifying rule across the 8 rejections is: **don't pay for capability the existing stack covers at 80%**. Sentry+LogRocket+Cloud Logging cover error tracking, perf sample, replay, structured logs. Anything that overlaps without adding a *different kind of insight* is rejected.
+
+The two tools on the watch-list (Grafana, PostHog) earn that status because they bring something genuinely different (rich time-series queries / A/B + product analytics) — but only if a specific trigger condition fires. We track those triggers in `OBSERVABILITY_STACK.md §8 Future enhancements`.
+
+---
+
+## 7. Changelog
+
+- **2026-05-01 v1.1** — added §6 "Tools deliberately NOT adopted" — 8 evaluated alternatives (Datadog APM, New Relic, Grafana Cloud, Honeycomb, Dynatrace, CloudWatch RUM, Bugsnag, PostHog) with rationale, trigger-to-flip, projected cost, and alternative-in-place. Promoted Changelog from §6 to §7.
 - **2026-04-30 v1.0** — initial document. Captures: 8 dashboards (6 existing + 2 new Document Lifecycle id=4509330 + AI & Chatbot id=4509331), Sentry web wiring (4 configs + Dockerfile + workflow + bridge activation), backend wiring rationale + plan + 6 alert rules. Q&A persisted from the rollout conversation. Tutorial method (UI + API) for creating new dashboards, with reusable Python template.
