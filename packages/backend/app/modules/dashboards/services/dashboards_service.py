@@ -27,6 +27,11 @@ from app.modules.dashboards.models import (
     LookerSchemaField,
     LookerSchemaSemantics,
 )
+from app.modules.dashboards.services.rls import (
+    DashboardAccessContext,
+    DashboardAccessDenied,
+    build_access_filter,
+)
 
 
 class DashboardNotFoundError(Exception):
@@ -164,18 +169,24 @@ class DashboardsService:
         self,
         dashboard_id: str,
         *,
+        access: DashboardAccessContext,
         fields: Optional[list[str]] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> DashboardDataResponse:
         cfg = self._cfg(dashboard_id)
         # B.1: every dashboard handled here is the recaudacion shape.
-        # B.2 will branch on dashboard_id to dispatch to per-dashboard SQL builders.
+        # B.3 will branch on dashboard_id to dispatch to per-dashboard SQL builders.
         if dashboard_id != "recaudacion":
             raise DashboardNotFoundError(
                 f"Dashboard '{dashboard_id}' is registered but its data builder "
                 "is not implemented yet (B.1 ships recaudacion only)."
             )
+
+        # B.2a hard guard: if the user has no access, raise 403 BEFORE building
+        # any SQL — no chance of a leak via accidental empty-filter fall-through.
+        if not access.has_access:
+            raise DashboardAccessDenied(access)
 
         # Decide which columns we actually return. If `fields` is None or
         # empty, we return all schema columns. If `fields` is set, we filter
@@ -203,6 +214,19 @@ class DashboardsService:
             params.append(end_date)
             wheres.append(f"{cfg['date_column']} <= ${len(params)}")
             filters_applied.append(f"end_date={end_date.isoformat()}")
+
+        # B.2a — RLS filter: regular agents see only their entity_codes;
+        # ministry supervisors see all entities under their ministry_ids;
+        # staff (admin) bypass entirely.
+        access_clause, access_params = build_access_filter(
+            access, next_param_index=len(params) + 1
+        )
+        if access_clause is not None:
+            wheres.append(access_clause)
+            params.extend(access_params)
+            filters_applied.append(f"rls={access.describe()}")
+        else:
+            filters_applied.append("rls=staff:bypass")
 
         if wheres:
             sql += " WHERE " + " AND ".join(wheres)

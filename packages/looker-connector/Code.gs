@@ -194,6 +194,16 @@ function getData(request) {
   if (resp.getResponseCode() === 401) {
     cc().newUserError().setText('Authentication expired. Click Reconnect.').throwException();
   }
+  if (resp.getResponseCode() === 403) {
+    // B.2a: backend says the user has no agent profile / ministry assignment.
+    // Surface a clear message — typical UX for a citizen who tried to view
+    // a staff dashboard, or an agent whose profile was deactivated.
+    cc().newUserError().setText(
+      'Access denied: your account has no active ministry assignment. ' +
+      'Dashboards are reserved to staff (admin) and ministry agents. ' +
+      'Contact an administrator to provision your access.'
+    ).throwException();
+  }
   if (resp.getResponseCode() !== 200) {
     cc().newUserError().setText('Backend error ' + resp.getResponseCode() + '. Try again or contact ops.').throwException();
   }
