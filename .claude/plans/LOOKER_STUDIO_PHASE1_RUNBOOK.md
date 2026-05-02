@@ -46,41 +46,73 @@ Why port 6543: Looker Studio holds a steady pool of connections during dashboard
 
 ---
 
-## 2. Create the Looker Studio data source (5 min)
+## 2. Create the Looker Studio data source (1 min via Linking API)
 
-### 2.1 Sign in
-1. Open https://lookerstudio.google.com (sign in with `libressai@gmail.com` — same Google account that owns `taxasge-dev`).
-2. Click **Create** (top-left) → **Data Source**.
+The official Linking API lets us pre-fill the entire connector form via URL parameters (everything except the password — Google forbids credentials in URLs). One click → type pwd → done.
 
-### 2.2 Pick the connector
-1. Search for **"PostgreSQL"** in the connector marketplace.
-2. Pick the official **PostgreSQL** connector (not "BigQuery PostgreSQL" or community connectors).
-3. Click **Authorize** if prompted (one-time per Google account).
+### 2.1 Generate the pre-filled URL
 
-### 2.3 Configure the connection
+```bash
+# Pre-fetch the connection URL once via shell (avoids the gcloud subprocess
+# pipe hang observed when calling gcloud.cmd from Python on Cygwin bash).
+export LOOKER_READONLY_DB_URL="$(gcloud secrets versions access latest \
+    --secret=looker-readonly-db-url --project=taxasge-dev)"
 
-Fill in the form:
+# Generate the pre-filled Looker Studio create-datasource URL
+python packages/backend/database/tools/looker_studio_url_generator.py datasource
+```
 
-| Field | Value |
-|---|---|
-| Host or IP | `db.bpdzfkymgydjxxwlctam.supabase.co` |
-| Port | `6543` |
-| Database | `postgres` |
-| Username | `looker_readonly` |
-| Password | (paste from `gcloud secrets versions access ...`) |
-| Enable SSL | **Yes** (mandatory) |
+If `LOOKER_READONLY_DB_URL` is unset the script falls back to spawning gcloud directly. The env var path is faster and avoids the known Cygwin pipe issue. Either way, the script prints a URL like:
 
-**Trap**: Looker Studio's "Custom query" mode requires a default schema selection. Pick `public`.
+```
+https://lookerstudio.google.com/datasources/create?
+  connectorId=2-c-postgres&
+  ds.host=db.bpdzfkymgydjxxwlctam.supabase.co&
+  ds.port=6543&
+  ds.database=postgres&
+  ds.username=looker_readonly&
+  ds.enableSsl=true&
+  ds.refreshFields=true
+```
 
-### 2.4 Pick the first table to introspect
+### 2.2 Open the URL in your browser
 
-After "Authenticate" succeeds, Looker shows a list of accessible tables. **You should see exactly 20 entries** (the GRANT count from migration 315). If you see 0, the password is wrong or the GRANTs didn't apply.
+Sign in with the **same Google account that owns `taxasge-dev`** (`libressai@gmail.com`). The PostgreSQL connector form opens with every field pre-filled except password.
+
+### 2.3 Type the password and authenticate
+
+Paste the password from:
+
+```bash
+gcloud secrets versions access latest --secret=looker-readonly-pwd --project=taxasge-dev
+```
+
+Click **AUTHENTICATE**. Looker Studio connects, introspects the schema, and shows the 20 tables/views your role can SELECT on.
+
+### 2.4 Trap: connectorId mismatch
+
+If you get `Unknown connector` or `Connector not found`, the built-in PostgreSQL connector ID has changed. Recovery:
+
+1. Open https://lookerstudio.google.com → **Create** → **Data source** → search **PostgreSQL** → click the official one.
+2. Look at your browser URL bar. The `connectorId=...` query param is the current value.
+3. Override:
+   ```bash
+   export LOOKER_PG_CONNECTOR_ID="<value from URL>"
+   python packages/backend/database/tools/looker_studio_url_generator.py datasource
+   ```
+4. Use the regenerated URL.
+
+This script-based discovery is the canonical way to keep the generator current — Google occasionally shuffles the built-in connector IDs.
+
+### 2.5 Pick the first table to introspect
+
+After authentication, Looker Studio shows the list of accessible tables. **You should see exactly 20 entries** (matches the GRANT count from migration 315). If you see 0, the password is wrong; re-pull and retry. If you see > 20, someone else has GRANTed extra tables to `looker_readonly` — re-run the integrity audit (`post_migration_integrity_audit.py`) before continuing.
 
 For Phase 2 (dashboard 1 = Recaudación), select **`mv_treasury_daily_kpis`**.
 
-Click **Connect** (top-right).
+Click **CONNECT** (top-right).
 
-### 2.5 Adjust field types
+### 2.6 Adjust field types
 
 Looker Studio auto-detects field types. **Override these** if needed:
 
@@ -94,7 +126,7 @@ Looker Studio auto-detects field types. **Override these** if needed:
 
 Click **+ Add a Field** if you need calculated fields (e.g. completion rate = `completed_count / payment_count * 100`).
 
-### 2.6 Name the data source
+### 2.7 Name the data source
 
 Top-left: rename to `Facil — mv_treasury_daily_kpis`. Saves to your Looker Studio "Data Sources" list.
 
@@ -226,4 +258,5 @@ If we exceed Supabase egress, we'll see it on the Supabase project usage dashboa
 
 ## 9. Changelog
 
+- **2026-05-02 v1.1** — added §2 reworking via Linking API. The datasource creation form is now pre-filled by URL (`packages/backend/database/tools/looker_studio_url_generator.py datasource`). Cuts §2 from 5 min to ~1 min — operator types only the password. New §2.4 documents the recovery path if Google ships a new connectorId.
 - **2026-05-02 v1.0** — initial runbook. Phase 1 backend done (role + grants + secrets); UI step (datasource + first dashboard) is the operator's manual task. ~15-20 min.
