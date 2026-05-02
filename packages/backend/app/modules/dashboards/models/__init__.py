@@ -7,6 +7,8 @@ from app.modules.dashboards.models.dashboards import (
     DashboardDataRow,
     DashboardDataResponse,
     DashboardPingResponse,
+    DashboardReportEntry,
+    DashboardReportsConfigResponse,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "DashboardDataRow",
     "DashboardDataResponse",
     "DashboardPingResponse",
+    "DashboardReportEntry",
+    "DashboardReportsConfigResponse",
 ]

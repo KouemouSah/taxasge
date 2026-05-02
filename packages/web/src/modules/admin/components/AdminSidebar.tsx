@@ -61,6 +61,7 @@ import {
   SlidersHorizontal,
   Cpu,
   Brain,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData, getAuthData } from '@/core/auth/storage'
@@ -384,6 +385,11 @@ export default function AdminSidebar() {
               title: t('nav.monitoring'),
               href: `/${locale}/dashboard/admin/monitoring`,
               icon: Activity,
+            },
+            {
+              title: t('nav.businessDashboards'),
+              href: `/${locale}/dashboard/admin/dashboards`,
+              icon: BarChart3,
             },
             {
               title: t('nav.aiAgents'),

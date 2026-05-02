@@ -24,6 +24,8 @@ from app.modules.dashboards.models.dashboards import (
     DashboardDataResponse,
     DashboardDataRow,
     DashboardPingResponse,
+    DashboardReportEntry,
+    DashboardReportsConfigResponse,
     DashboardSchemaResponse,
     LookerSchemaField,
     LookerSchemaSemantics,
@@ -221,3 +223,49 @@ def test_empty_fields_returns_all_columns():
         if not allowed:
             allowed = list(cfg.columns)
         assert set(allowed) == set(cfg.columns)
+
+
+# ---------------------------------------------------------------------------
+# Reports config (Phase 5 — admin embed)
+# ---------------------------------------------------------------------------
+
+
+def test_report_entry_strict_shape():
+    entry = DashboardReportEntry(
+        dashboard_id="recaudacion",
+        label="Recaudación",
+        description="Treasury",
+        looker_report_id="abc-123",
+        looker_page_id="page1",
+        rls_mode="entity",
+    )
+    assert entry.dashboard_id == "recaudacion"
+    assert entry.looker_report_id == "abc-123"
+    # extra='forbid' rejects unknown keys
+    with pytest.raises(Exception):
+        DashboardReportEntry(
+            dashboard_id="x", label="x", description="x",
+            looker_report_id=None, looker_page_id=None, rls_mode="entity",
+            surprise=True,
+        )
+
+
+def test_report_entry_allows_null_report_id():
+    """A dashboard whose Looker report has not been built yet has
+    looker_report_id=None — the frontend renders an "Awaiting setup"
+    placeholder for those instead of a broken iframe."""
+    entry = DashboardReportEntry(
+        dashboard_id="services",
+        label="Catalog",
+        description="…",
+        looker_report_id=None,
+        looker_page_id=None,
+        rls_mode="public",
+    )
+    assert entry.looker_report_id is None
+
+
+def test_reports_config_response_serialises():
+    resp = DashboardReportsConfigResponse(reports=[])
+    js = resp.model_dump_json()
+    assert '"reports":' in js

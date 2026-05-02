@@ -2544,7 +2544,8 @@
       "monitoring": "Centre d'Operations",
       "aiAgents": "Agents IA",
       "paymentInfrastructure": "Infrastructure de Paiements",
-      "paymentGateways": "Passerelles de Paiement"
+      "paymentGateways": "Passerelles de Paiement",
+      "businessDashboards": "Tableaux de bord"
     },
     "companyClassification": {
       "title": "Classification des Entreprises",
@@ -4584,6 +4585,27 @@
         "createWebhook": "Creer Webhook",
         "updateWebhook": "Mettre a jour Webhook",
         "invalidJson": "Format JSON invalide"
+      }
+    },
+    "dashboards": {
+      "title": "Tableaux de bord métier",
+      "subtitle": "Vues intégrées depuis Looker Studio (Recette, Agents, Catalogue).",
+      "backToList": "Retour à la liste",
+      "awaitingSetup": "En attente de configuration",
+      "awaitingSetupHelp": "Le rapport Looker Studio pour '{id}' n'a pas encore été créé. Suis LOOKER_STUDIO_PHASE1_RUNBOOK §3 pour le configurer, puis ajoute report_id en variable d'environnement.",
+      "forbiddenTitle": "Accès refusé",
+      "forbiddenHelp": "Ton compte n'a pas la permission 'dashboards.view_business'. Contacte un administrateur.",
+      "errorTitle": "Erreur de chargement",
+      "errorGeneric": "Impossible de charger la liste des tableaux de bord. Réessaye.",
+      "emptyTitle": "Aucun tableau de bord disponible",
+      "emptyHelp": "Aucun tableau de bord n'est enregistré pour le moment.",
+      "notFoundTitle": "Tableau de bord introuvable",
+      "notFoundHelp": "Le tableau de bord '{id}' n'existe pas dans le registre.",
+      "rls": {
+        "entity": "Par entité",
+        "agent_via_join": "Par agent",
+        "admin_only": "Admin uniquement",
+        "public": "Public"
       }
     }
   },

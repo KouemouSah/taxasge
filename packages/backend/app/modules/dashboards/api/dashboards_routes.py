@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from loguru import logger
 
 import json
+import os
 import time
 
 from app.core.cache import check_rate_limit, get_cache
@@ -38,8 +39,11 @@ except Exception:
 from app.modules.dashboards.models import (
     DashboardDataResponse,
     DashboardPingResponse,
+    DashboardReportEntry,
+    DashboardReportsConfigResponse,
     DashboardSchemaResponse,
 )
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.dashboards.services import (
     DashboardAccessDenied,
     DashboardNotFoundError,
@@ -142,6 +146,67 @@ async def _record_audit(
 # `password` field is filled with the JWT). B.2 will switch the connector
 # to OAUTH2, the backend dependency stays the same.
 # ---------------------------------------------------------------------------
+
+
+# Static metadata for the 3 dashboards we ship in B.3. Looker report IDs
+# come from env vars so the same code points at staging vs prod reports
+# without redeploying.
+_REPORTS_METADATA = {
+    "recaudacion": {
+        "label": "Recaudación Fiscal",
+        "description": "Treasury KPIs — daily revenue by entity, ministry, payment method, workflow.",
+        "rls_mode": "entity",
+    },
+    "agentes": {
+        "label": "Performance Agentes",
+        "description": "Daily workload per agent — approved, rejected, p50 duration, SLA breaches.",
+        "rls_mode": "agent_via_join",
+    },
+    "services": {
+        "label": "Catálogo de Servicios",
+        "description": "Reference catalog of fiscal services — multilingual, traffic counters.",
+        "rls_mode": "public",
+    },
+}
+
+
+@router.get(
+    "/reports-config",
+    response_model=DashboardReportsConfigResponse,
+    summary="List of embeddable Looker reports the caller is authorised to see",
+)
+async def get_reports_config(
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.view_business")),
+):
+    """Power the Next.js /admin/dashboards landing page.
+
+    The route gates on the `dashboards.view_business` permission seeded
+    by migration 316. Anyone without it gets 403 from the dependency
+    BEFORE we touch the registry.
+
+    For each known dashboard, the response includes the Looker report
+    ID + page ID read from env vars (LOOKER_REPORTS_<id>_REPORT_ID).
+    Empty strings are returned for dashboards whose operator has not
+    yet built a Looker report — the frontend renders an "Awaiting setup"
+    placeholder for those instead of a broken iframe.
+    """
+    entries: list[DashboardReportEntry] = []
+    for dashboard_id, meta in _REPORTS_METADATA.items():
+        env_prefix = f"LOOKER_REPORTS_{dashboard_id.upper()}"
+        report_id = os.environ.get(f"{env_prefix}_REPORT_ID", "") or None
+        page_id = os.environ.get(f"{env_prefix}_PAGE_ID", "") or None
+        entries.append(
+            DashboardReportEntry(
+                dashboard_id=dashboard_id,
+                label=meta["label"],
+                description=meta["description"],
+                looker_report_id=report_id,
+                looker_page_id=page_id,
+                rls_mode=meta["rls_mode"],
+            )
+        )
+    return DashboardReportsConfigResponse(reports=entries)
 
 
 @router.get(

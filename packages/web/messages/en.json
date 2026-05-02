@@ -1712,7 +1712,8 @@
       "paymentGateways": "Payment Gateways",
       "workflowsConfig": "Flujos de Trabajo",
       "entities": "Entities",
-      "entityLocations": "Entity Locations"
+      "entityLocations": "Entity Locations",
+      "businessDashboards": "Business Dashboards"
     },
     "companyClassification": {
       "title": "Company Classification",
@@ -4584,6 +4585,27 @@
           "deleteError": "Error deleting city"
         },
         "loading": "Cargando..."
+      }
+    },
+    "dashboards": {
+      "title": "Business Dashboards",
+      "subtitle": "Embedded views from Looker Studio (Treasury, Agents, Service Catalog).",
+      "backToList": "Back to list",
+      "awaitingSetup": "Awaiting operator setup",
+      "awaitingSetupHelp": "The Looker Studio report for '{id}' has not been built yet. Follow LOOKER_STUDIO_PHASE1_RUNBOOK §3, then add the report_id as an env var.",
+      "forbiddenTitle": "Access denied",
+      "forbiddenHelp": "Your account does not have the 'dashboards.view_business' permission. Contact an admin.",
+      "errorTitle": "Failed to load configuration",
+      "errorGeneric": "Could not load the dashboards list. Try again.",
+      "emptyTitle": "No dashboards available",
+      "emptyHelp": "No dashboards have been registered yet. Check the Looker Studio plan.",
+      "notFoundTitle": "Dashboard not found",
+      "notFoundHelp": "Dashboard '{id}' does not exist in the registry.",
+      "rls": {
+        "entity": "Per entity",
+        "agent_via_join": "Per agent",
+        "admin_only": "Admin only",
+        "public": "Public"
       }
     }
   },

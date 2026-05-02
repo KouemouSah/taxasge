@@ -113,3 +113,36 @@ class DashboardPingResponse(BaseModel):
     )
 
     model_config = ConfigDict(extra="forbid")
+
+
+class DashboardReportEntry(BaseModel):
+    """Embed metadata for one Looker Studio report exposed at /admin/dashboards.
+
+    `looker_report_id` and `looker_page_id` come from the Looker Studio UI URL
+    after the operator builds a report (see LOOKER_STUDIO_PHASE1_RUNBOOK §3).
+    They live as env vars LOOKER_REPORTS_<id>_REPORT_ID / _PAGE_ID so different
+    environments (staging / prod) can point at different reports without code
+    changes.
+    """
+
+    dashboard_id: str = Field(..., description="Stable id matching the registry key")
+    label: str = Field(..., description="Human-readable name shown on the listing page")
+    description: str = Field(..., description="One-line subtitle shown above the embed")
+    looker_report_id: Optional[str] = Field(
+        default=None,
+        description="Empty string if the operator has not yet built a Looker report for this dashboard.",
+    )
+    looker_page_id: Optional[str] = Field(default=None)
+    rls_mode: str = Field(..., description="entity / agent_via_join / admin_only / public")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DashboardReportsConfigResponse(BaseModel):
+    """Response of GET /api/v1/dashboards/reports-config — lists the embeddable
+    Looker reports the caller is authorised to see.
+    """
+
+    reports: list[DashboardReportEntry]
+
+    model_config = ConfigDict(extra="forbid")
