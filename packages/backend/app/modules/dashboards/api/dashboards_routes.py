@@ -16,12 +16,25 @@ when the JWT subject is not admin / treasury_supervisor.
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from loguru import logger
 
-from app.core.cache import get_cache
+import json
+import time
+
+from app.core.cache import check_rate_limit, get_cache
 from app.database.connection import get_db_pool
 from app.modules.auth.dependencies import get_current_user
+
+# Sentry — soft import so the module loads even when sentry-sdk is not
+# installed (e.g. test environments). All set_tag/set_user calls become
+# no-ops.
+try:
+    import sentry_sdk
+    _SENTRY_AVAILABLE = True
+except Exception:
+    sentry_sdk = None  # type: ignore[assignment]
+    _SENTRY_AVAILABLE = False
 from app.modules.dashboards.models import (
     DashboardDataResponse,
     DashboardPingResponse,
@@ -42,6 +55,83 @@ router = APIRouter()
 # under aggressive Looker refresh. Cache key includes user_id so two
 # distinct ministry agents do NOT share entries.
 _DATA_CACHE_TTL_SECONDS = 60
+
+# Rate limit: 60 read requests per minute per user across all dashboard
+# endpoints. With the 5-min connector-side cache + 60s server-side cache,
+# real traffic should never approach this — but we cap so a misbehaving
+# script can't drown the backend. 429 surfaced to the connector with a
+# Retry-After header.
+_RATE_LIMIT_REQUESTS = 60
+_RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def _set_sentry_context(user, dashboard_id: Optional[str], access_label: Optional[str]):
+    """Tag every Sentry event raised inside a dashboard request with
+    enough context to debug RLS / dashboard issues without grepping logs.
+    No-op when sentry-sdk is not installed.
+    """
+    if not _SENTRY_AVAILABLE:
+        return
+    try:
+        sentry_sdk.set_user({
+            "id": str(getattr(user, "id", "unknown")),
+            "role": getattr(user, "role", None) or "unknown",
+        })
+        if dashboard_id:
+            sentry_sdk.set_tag("dashboard_id", dashboard_id)
+        if access_label:
+            sentry_sdk.set_tag("dashboard_access", access_label)
+    except Exception:
+        # Sentry init can be partial in CI / forks — never let a tag call
+        # crash the request.
+        pass
+
+
+async def _record_audit(
+    pool,
+    *,
+    user_id: str,
+    dashboard_id: str,
+    access_describe: str,
+    row_count: int,
+    filters_applied: list,
+    request: Request,
+    latency_ms: int,
+) -> None:
+    """Insert one row into audit_logs for traceability. Best-effort —
+    a failure here is logged but does NOT break the response.
+    """
+    payload = {
+        "row_count": row_count,
+        "filters_applied": filters_applied,
+        "access": access_describe,
+        "latency_ms": latency_ms,
+    }
+    ip = request.client.host if request and request.client else None
+    ua = request.headers.get("user-agent") if request else None
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO audit_logs (
+                    user_id, entity_type, entity_id, action,
+                    old_values, new_values, ip_address, user_agent,
+                    created_at
+                )
+                VALUES ($1, 'dashboard', $2, 'dashboard.read',
+                        NULL, $3::jsonb, $4, $5, NOW())
+                """,
+                user_id,
+                dashboard_id,
+                json.dumps(payload),     # asyncpg expects str for JSONB (Memory rule #24)
+                ip,
+                ua,
+            )
+    except Exception as exc:
+        logger.warning(
+            "dashboards.audit_log write failed user={} dashboard={} err={}",
+            user_id, dashboard_id, exc,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +156,7 @@ async def ping(user=Depends(get_current_user)):
         user_id=str(getattr(user, "id", "")),
         user_role=getattr(user, "role", None),
     )
+    _set_sentry_context(user, None, ctx.describe())
     # If the user can read 0 ministries AND isn't staff → connector should
     # surface auth failure, not silent zero-row dashboards.
     if not ctx.has_access:
@@ -112,6 +203,7 @@ async def get_schema(
     summary="Looker Studio data rows for the requested dashboard",
 )
 async def get_data(
+    request: Request,
     dashboard_id: str,
     fields: Optional[str] = Query(
         None,
@@ -121,23 +213,39 @@ async def get_data(
     end_date: Optional[date] = Query(None, description="Inclusive upper bound on the date column."),
     user=Depends(get_current_user),
 ):
+    started_at = time.monotonic()
     pool = await get_db_pool()
+    user_id = str(getattr(user, "id", ""))
+
+    # B.3 — rate limit BEFORE any DB call. 60 req/min/user/all-dashboards.
+    is_allowed, _remaining = await check_rate_limit(
+        identifier=user_id,
+        endpoint="/dashboards/data",
+        max_requests=_RATE_LIMIT_REQUESTS,
+        window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: {_RATE_LIMIT_REQUESTS} requests / {_RATE_LIMIT_WINDOW_SECONDS}s.",
+            headers={"Retry-After": str(_RATE_LIMIT_WINDOW_SECONDS)},
+        )
+
     # B.2a — resolve user → access context BEFORE touching the data MV. Two
     # benefits: (1) 403 on forbidden roles before any SQL load, (2) the WHERE
-    # clause built downstream is always anchored to a verified ministry list.
+    # clause built downstream is always anchored to a verified entity list.
     access = await resolve_user_access(
         pool,
-        user_id=str(getattr(user, "id", "")),
+        user_id=user_id,
         user_role=getattr(user, "role", None),
     )
-    if not access.has_access:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "No active agent profile with a ministry assignment. "
-                "Contact an admin to provision your dashboard access."
-            ),
-        )
+    _set_sentry_context(user, dashboard_id, access.describe())
+
+    # Per-dashboard RLS modes (entity / agent_via_join / admin_only / public)
+    # are enforced inside svc.get_data via DashboardsService._enforce_rls_gate.
+    # We do NOT raise an early 403 here because some dashboards (rls_mode=
+    # public) accept any authenticated user — checking has_access too early
+    # would reject citizens from a legitimate public catalog read.
 
     svc = DashboardsService(pool)
     try:
@@ -183,15 +291,27 @@ async def get_data(
                 "dashboards.get_data cache_write_failed key={} err={}",
                 cache_key, cache_exc,
             )
-        # Audit log (Sentry breadcrumb-friendly) — B.3 will replace with a
-        # row in audit_logs table (proper queryable trail).
+        # B.3 — proper audit_logs row (queryable, JSONB metadata) replacing
+        # the prior loguru.info breadcrumb. Best-effort: a write failure
+        # logs a warning but never breaks the response.
+        latency_ms = int((time.monotonic() - started_at) * 1000)
+        await _record_audit(
+            pool,
+            user_id=user_id,
+            dashboard_id=dashboard_id,
+            access_describe=access.describe(),
+            row_count=result.row_count,
+            filters_applied=result.filters_applied,
+            request=request,
+            latency_ms=latency_ms,
+        )
         logger.info(
-            "dashboards.get_data ok dashboard={} user={} access={} rows={} filters={}",
+            "dashboards.get_data ok dashboard={} user={} access={} rows={} latency={}ms",
             dashboard_id,
             getattr(user, "email", "unknown"),
             access.describe(),
             result.row_count,
-            result.filters_applied,
+            latency_ms,
         )
         return result
     except DashboardNotFoundError as exc:

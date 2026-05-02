@@ -32,7 +32,6 @@ from app.modules.dashboards.services.dashboards_service import (
     DashboardNotFoundError,
     DashboardsService,
     _DASHBOARD_REGISTRY,
-    _RECAUDACION_COLUMNS,
     _SCHEMA_RECAUDACION,
 )
 
@@ -110,16 +109,40 @@ def test_schema_field_dataType_strict():
 # ---------------------------------------------------------------------------
 
 
-def test_registry_contains_recaudacion_only_in_b1():
-    """B.1 ships only `recaudacion`. B.2 will add adopcion / agentes / services."""
-    assert set(_DASHBOARD_REGISTRY.keys()) == {"recaudacion"}
+def test_registry_ships_three_dashboards_in_b3():
+    """B.3 ships recaudacion + agentes + services. adopcion deferred to
+    Phase 2 (needs new mv_adoption_daily for DAU/MAU/funnel)."""
+    assert set(_DASHBOARD_REGISTRY.keys()) == {"recaudacion", "agentes", "services"}
 
 
-def test_recaudacion_columns_match_schema():
-    """Schema column names must match the SQL SELECT order — defense against
-    field-name drift between schema and SQL."""
-    column_names = {f.name for f in _SCHEMA_RECAUDACION}
-    assert set(_RECAUDACION_COLUMNS) == column_names
+def test_each_dashboard_has_consistent_columns():
+    """For every registered dashboard, the cached `columns` tuple must match
+    the schema field names. Defense against drift when adding fields."""
+    for dashboard_id, cfg in _DASHBOARD_REGISTRY.items():
+        schema_names = tuple(f.name for f in cfg.schema)
+        assert cfg.columns == schema_names, (
+            f"{dashboard_id}: columns drift — schema={schema_names}, "
+            f"cached={cfg.columns}"
+        )
+
+
+def test_each_dashboard_has_known_rls_mode():
+    """rls_mode must be one of the modes the service knows how to enforce."""
+    valid_modes = {"entity", "agent_via_join", "admin_only", "public"}
+    for dashboard_id, cfg in _DASHBOARD_REGISTRY.items():
+        assert cfg.rls_mode in valid_modes, (
+            f"{dashboard_id} has unknown rls_mode={cfg.rls_mode}"
+        )
+
+
+def test_agent_via_join_dashboards_declare_join_column():
+    """A dashboard using rls_mode=agent_via_join must specify which column
+    on its table joins to agent_profiles.id (else the subquery breaks)."""
+    for dashboard_id, cfg in _DASHBOARD_REGISTRY.items():
+        if cfg.rls_mode == "agent_via_join":
+            assert cfg.rls_join_column, (
+                f"{dashboard_id}: rls_mode=agent_via_join but rls_join_column unset"
+            )
 
 
 def test_service_rejects_unknown_dashboard():
@@ -133,13 +156,38 @@ def test_service_get_schema_recaudacion():
     resp = svc.get_schema("recaudacion")
     assert resp.dashboard_id == "recaudacion"
     assert len(resp.fields) == len(_SCHEMA_RECAUDACION)
-    # The notes field documents B.1 limitations — ensure it's set
-    assert resp.notes and "B.1 skeleton" in resp.notes
+    # rls_mode visible in notes for client-side debugging
+    assert resp.notes and "rls_mode=" in resp.notes
+
+
+def test_service_get_schema_agentes():
+    """agentes dashboard schema is well-formed."""
+    svc = DashboardsService(db_pool=None)
+    resp = svc.get_schema("agentes")
+    assert resp.dashboard_id == "agentes"
+    field_names = {f.name for f in resp.fields}
+    assert "agent_name" in field_names
+    assert "approved" in field_names
+    assert "p50_duration_seconds" in field_names
+
+
+def test_service_get_schema_services():
+    """services dashboard schema includes the multilingual catalog fields."""
+    svc = DashboardsService(db_pool=None)
+    resp = svc.get_schema("services")
+    assert resp.dashboard_id == "services"
+    field_names = {f.name for f in resp.fields}
+    assert "service_code" in field_names
+    assert "name_es" in field_names
+    assert "ministry_name_es" in field_names
 
 
 def test_list_dashboards():
     svc = DashboardsService(db_pool=None)
-    assert svc.list_dashboards() == ["recaudacion"]
+    listed = svc.list_dashboards()
+    assert "recaudacion" in listed
+    assert "agentes" in listed
+    assert "services" in listed
 
 
 # ---------------------------------------------------------------------------
@@ -147,30 +195,29 @@ def test_list_dashboards():
 # ---------------------------------------------------------------------------
 
 
-def test_fields_parameter_only_allows_schema_columns(monkeypatch):
+def test_fields_parameter_only_allows_schema_columns():
     """If the caller passes a malicious `fields` list, only schema columns
-    survive the filter — preventing SQL injection via the column list."""
-
-    # We don't test the SQL execution here (no pool); we test the column filter.
-    # The service builds the SELECT from `allowed = [c for c in requested if c in _RECAUDACION_COLUMNS]`
-    # which we exercise by importing the module-level allowlist.
-
-    requested = [
-        "total_amount",         # legitimate
-        "DROP TABLE users",     # attempted injection
-        "ministry_name",        # legitimate
-        "1; SELECT * FROM payments",
-    ]
-    allowed = [c for c in requested if c in _RECAUDACION_COLUMNS]
-    assert allowed == ["total_amount", "ministry_name"]
-    assert "DROP TABLE users" not in allowed
-    assert "1; SELECT * FROM payments" not in allowed
+    survive the filter — preventing SQL injection via the column list.
+    Repeated for every dashboard so a future addition can't bypass the
+    allowlist by accident."""
+    for dashboard_id, cfg in _DASHBOARD_REGISTRY.items():
+        first_legit = cfg.columns[0]
+        requested = [
+            first_legit,                       # legitimate
+            "DROP TABLE users",                 # attempted injection
+            "1; SELECT * FROM payments",        # attempted injection
+        ]
+        allowed = [c for c in requested if c in cfg.columns]
+        assert allowed == [first_legit], (
+            f"{dashboard_id}: injection slipped through — got {allowed}"
+        )
 
 
 def test_empty_fields_returns_all_columns():
     """When the connector doesn't pass `fields`, we fall back to the full schema."""
-    requested = []
-    allowed = [c for c in requested if c in _RECAUDACION_COLUMNS]
-    if not allowed:
-        allowed = _RECAUDACION_COLUMNS
-    assert set(allowed) == set(_RECAUDACION_COLUMNS)
+    for dashboard_id, cfg in _DASHBOARD_REGISTRY.items():
+        requested = []
+        allowed = [c for c in requested if c in cfg.columns]
+        if not allowed:
+            allowed = list(cfg.columns)
+        assert set(allowed) == set(cfg.columns)

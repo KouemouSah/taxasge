@@ -35,7 +35,10 @@ var CACHE_TTL_SECONDS = 300;          // 5 min connector-side cache (Q5 default)
 
 var DASHBOARDS = [
   { value: 'recaudacion', label: 'Recaudación Fiscal (Treasury)' },
-  // B.3 will add: adopcion, agentes, services
+  { value: 'agentes',     label: 'Performance Agentes (Daily Workload)' },
+  { value: 'services',    label: 'Catálogo de Servicios (Reference)' },
+  // adopcion deferred — needs new mv_adoption_daily (DAU/MAU/funnel),
+  // see Looker plan Phase 2.
 ];
 
 // ----------------------------------------------------------------------------
@@ -195,13 +198,17 @@ function getData(request) {
     cc().newUserError().setText('Authentication expired. Click Reconnect.').throwException();
   }
   if (resp.getResponseCode() === 403) {
-    // B.2a: backend says the user has no agent profile / ministry assignment.
-    // Surface a clear message — typical UX for a citizen who tried to view
-    // a staff dashboard, or an agent whose profile was deactivated.
+    // B.2a: backend says the user has no agent profile / entity assignment.
     cc().newUserError().setText(
-      'Access denied: your account has no active ministry assignment. ' +
-      'Dashboards are reserved to staff (admin) and ministry agents. ' +
+      'Access denied: your account has no active entity assignment. ' +
+      'Dashboards are reserved to staff (admin) and entity agents. ' +
       'Contact an administrator to provision your access.'
+    ).throwException();
+  }
+  if (resp.getResponseCode() === 429) {
+    // B.3: rate limited (60 req/min/user). Looker should retry on next refresh.
+    cc().newUserError().setText(
+      'Rate limit hit (60 requests / minute). The dashboard will refresh on its own — please wait a moment.'
     ).throwException();
   }
   if (resp.getResponseCode() !== 200) {

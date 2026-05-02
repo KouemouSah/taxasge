@@ -9,8 +9,8 @@
     "companyUrl": "https://www.taxasge.com",
     "addonUrl": "https://www.taxasge.com",
     "supportUrl": "https://www.taxasge.com/support",
-    "description": "Facil Direct connector — exposes business dashboards (Recaudación, Adopción, Performance Agentes, Catalogue Services) with per-ministry row-level filtering. Phase B.1 skeleton: USER_PASS auth, Recaudación dashboard only, no RLS yet.",
-    "sources": ["recaudacion"],
+    "description": "Facil Direct connector — exposes business dashboards (Recaudación, Performance Agentes, Catálogo de Servicios) with per-entity row-level filtering. Phase B.3: USER_PASS auth, 3 dashboards, entity-RLS, audit log, rate-limit 60/min/user.",
+    "sources": ["recaudacion", "agentes", "services"],
     "templates": {}
   },
   "urlFetchWhitelist": [
