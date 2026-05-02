@@ -39,6 +39,16 @@ class Settings(BaseSettings):
     smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
     smtp_username: str = os.getenv("SMTP_USERNAME", "libressai@gmail.com")
 
+    # Sentry DSN — must be declared on THIS Settings class (not just app/config.py
+    # which is a different Settings instance) because main.py reads
+    # `settings.SENTRY_DSN` directly at module import time. With extra="ignore"
+    # pydantic-settings does NOT auto-populate undeclared env vars, so an
+    # undeclared field would raise AttributeError at line 417 → container fails
+    # to start → Cloud Run health check times out → deploy fails after 16 min.
+    # Empty default keeps the Sentry init block gated off when the env var is
+    # absent (forks / local dev / staging without secrets).
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
+
 settings = Settings()
 security = HTTPBearer()
 
@@ -421,6 +431,13 @@ if settings.SENTRY_DSN and not settings.debug:
     from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
 
+    _sentry_environment = (
+        "staging"
+        if "staging" in (settings.api_version or "")
+        or "staging" in os.environ.get("K_SERVICE", "")
+        else "production"
+    )
+
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         integrations=[
@@ -429,7 +446,7 @@ if settings.SENTRY_DSN and not settings.debug:
             AsyncPGIntegration(),
             RedisIntegration(),
         ],
-        environment="staging" if "staging" in (settings.api_version or "") or "staging" in os.environ.get("K_SERVICE", "") else "production",
+        environment=_sentry_environment,
         release=os.environ.get("GIT_COMMIT_SHA") or settings.api_version,
         traces_sample_rate=0.05,
         profiles_sample_rate=0.0,  # Profiling not needed yet; off to save quota
@@ -437,12 +454,12 @@ if settings.SENTRY_DSN and not settings.debug:
         # Strip authorization headers + auth bodies before any event leaves
         # the server — defense in depth on top of FastAPI's own scrubbing.
         before_send=lambda event, _hint: _scrub_sentry_event(event),
-        # Tag every event so cross-project searches in the Sentry UI work
-        # (filter by service:taxasge-backend across multiple projects).
-        _experiments={"continuous_profiling_auto_start": False},
     )
     sentry_sdk.set_tag("service", "taxasge-backend")
-    logger.info(f"✅ Sentry initialised — env={sentry_sdk.Hub.current.client.options['environment']}")
+    # Use the value we computed above instead of reading it back from the SDK.
+    # `sentry_sdk.Hub.current.client.options['environment']` is deprecated in
+    # sentry-sdk 2.x and would crash here if init silently failed (client=None).
+    logger.info(f"✅ Sentry initialised — env={_sentry_environment}")
 
 
 def _scrub_sentry_event(event):
