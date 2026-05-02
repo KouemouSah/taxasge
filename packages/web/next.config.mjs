@@ -1,8 +1,22 @@
 import createNextIntlPlugin from 'next-intl/plugin';
-import { withSentryConfig } from '@sentry/nextjs';
 
 // Use i18n.ts at project root for Docker build compatibility
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
+
+// Sentry's withSentryConfig is loaded dynamically below so a failed import
+// (e.g. workspace hoisting of @sentry/nextjs that loses sight of next/constants
+// — observed on CI run #25246274191, 2026-05-02) doesn't break the build.
+// Runtime Sentry stays wired via sentry.client/server/edge.config.ts which
+// load the SDK from packages/web/node_modules/@sentry/nextjs directly.
+let withSentryConfig = null;
+try {
+  ({ withSentryConfig } = await import('@sentry/nextjs'));
+} catch (err) {
+  console.warn(
+    '[next.config] @sentry/nextjs build wrapper unavailable - skipping sourcemap upload.',
+    err && err.message,
+  );
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -179,25 +193,28 @@ const nextConfig = {
 
 // Sentry wrapper — uploads sourcemaps + tunnels SDK requests to bypass
 // adblockers. The wrapper no-ops when SENTRY_AUTH_TOKEN / org / project
-// are missing (e.g. local dev, contributor without secrets).
+// are missing (e.g. local dev, contributor without secrets) AND when
+// the @sentry/nextjs build module itself failed to load (see top of file).
 //
 // Org/project values match the live Sentry projects under taxasge.sentry.io
-// (see Documentations/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md §3).
-const sentryWrapped = withSentryConfig(withNextIntl(nextConfig), {
-  org: 'taxasge',
-  project: 'javascript-nextjs',
-  silent: !process.env.CI,
-  // Only upload sourcemaps when the auth token is present (CI build).
-  // Without this guard, local `next build` would error.
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Hide sourcemap files from the public bundle once uploaded.
-  hideSourceMaps: true,
-  // Disable Sentry's CLI logger spam in CI logs.
-  disableLogger: true,
-  // Tunnel SDK requests through /monitoring to bypass adblockers (saves
-  // ~5-15% of would-be-dropped events on browsers with uBlock Origin).
-  tunnelRoute: '/monitoring',
-});
+// (see .claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md §3).
+const finalConfig = withSentryConfig
+  ? withSentryConfig(withNextIntl(nextConfig), {
+      org: 'taxasge',
+      project: 'javascript-nextjs',
+      silent: !process.env.CI,
+      // Only upload sourcemaps when the auth token is present (CI build).
+      // Without this guard, local `next build` would error.
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      // Hide sourcemap files from the public bundle once uploaded.
+      hideSourceMaps: true,
+      // Disable Sentry's CLI logger spam in CI logs.
+      disableLogger: true,
+      // Tunnel SDK requests through /monitoring to bypass adblockers (saves
+      // ~5-15% of would-be-dropped events on browsers with uBlock Origin).
+      tunnelRoute: '/monitoring',
+    })
+  : withNextIntl(nextConfig);
 
-export default sentryWrapped;
+export default finalConfig;
 // deploy trigger 1771369122
