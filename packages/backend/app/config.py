@@ -99,7 +99,11 @@ class Settings(BaseSettings):
     
     PROJECT_NAME: str = "TaxasGE API"
     PROJECT_DESCRIPTION: str = "API de gestion fiscale pour la Guinée Équatoriale"
-    VERSION: str = "1.0.0"
+    # Bumped from 1.0.0 to match the runtime value previously held by main.py's
+    # local Settings class (api_version="1.1.8") — the duplicate Settings class
+    # was removed 2026-05-02. Preserve this string when bumping; multiple
+    # health endpoints expose it.
+    VERSION: str = "1.1.8"
     
     # Environment
     ENVIRONMENT: str = Field(default="development", env="ENVIRONMENT")
@@ -555,6 +559,16 @@ class Settings(BaseSettings):
     # COMPUTED PROPERTIES
     # ========================================================================
     
+    # ------------------------------------------------------------------------
+    # Backward-compat alias — main.py's removed local Settings class exposed
+    # `api_version`. Other modules use module-local "version" strings so this
+    # alias is only needed for main.py. Keep until main.py is migrated to read
+    # `settings.VERSION` directly (low-risk refactor, low priority).
+    # ------------------------------------------------------------------------
+    @property
+    def api_version(self) -> str:
+        return self.VERSION
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode"""

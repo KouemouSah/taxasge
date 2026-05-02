@@ -21,35 +21,18 @@ from pydantic import ValidationError
 from loguru import logger
 import asyncpg
 import redis.asyncio as redis
-from pydantic_settings import BaseSettings
 import json
 
-# Configuration
-class Settings(BaseSettings):
-    model_config = {"env_file": ".env", "extra": "ignore"}
-
-    environment: str = os.getenv("ENVIRONMENT", "development")
-    debug: bool = os.getenv("ENVIRONMENT", "development") != "production"
-    database_url: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/taxasge")
-    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-    secret_key: str = os.getenv("SECRET_KEY", "taxasge-secret-key-change-in-production")
-    api_version: str = "1.1.8"  # v1.1.8: Remove functions_framework wrapper to fix 422/func error
-
-    # SMTP Configuration using secured secrets
-    smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
-    smtp_username: str = os.getenv("SMTP_USERNAME", "libressai@gmail.com")
-
-    # Sentry DSN — must be declared on THIS Settings class (not just app/config.py
-    # which is a different Settings instance) because main.py reads
-    # `settings.SENTRY_DSN` directly at module import time. With extra="ignore"
-    # pydantic-settings does NOT auto-populate undeclared env vars, so an
-    # undeclared field would raise AttributeError at line 417 → container fails
-    # to start → Cloud Run health check times out → deploy fails after 16 min.
-    # Empty default keeps the Sentry init block gated off when the env var is
-    # absent (forks / local dev / staging without secrets).
-    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
-
-settings = Settings()
+# Single source of truth for backend settings — see app/config.py.
+# main.py used to define a duplicate local Settings(BaseSettings) class with
+# 8 fields that diverged from the canonical one (notably missing SENTRY_DSN,
+# which crashed the container at import time after the Sentry init block was
+# added). Removed 2026-05-02. All `settings.XXX` references in this file
+# now read from the canonical class — UPPERCASE attribute names per its
+# convention. The `api_version` property on the canonical class is preserved
+# as a backward-compat alias for the lowercase reads in this file.
+from app.config import get_settings
+settings = get_settings()
 security = HTTPBearer()
 
 # Global connections
@@ -348,10 +331,10 @@ async def lifespan(app: FastAPI):
             logger.warning(f"⚠️ Cache initialization failed (continuing without cache): {cache_error}")
 
         # Initialize legacy Redis connection (for backwards compatibility)
-        if settings.redis_url and settings.redis_url != "redis://localhost:6379":
+        if settings.REDIS_URL and settings.REDIS_URL != "redis://localhost:6379":
             try:
                 redis_client = redis.from_url(
-                    settings.redis_url,
+                    settings.REDIS_URL,
                     decode_responses=True,
                     socket_connect_timeout=5,
                     socket_timeout=5
@@ -367,7 +350,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
         # For development, continue without external dependencies
-        if settings.environment == "development":
+        if settings.ENVIRONMENT == "development":
             logger.warning("🔄 Continuing in development mode without external dependencies")
         else:
             raise
@@ -424,7 +407,7 @@ async def lifespan(app: FastAPI):
 # with full stack trace + breadcrumbs (the 60s of activity before the crash).
 # Performance: 5% transaction sampling — calibrated for the Free Developer
 # plan (5K errors + 10K transactions / month / project).
-if settings.SENTRY_DSN and not settings.debug:
+if settings.SENTRY_DSN and not settings.DEBUG:
     import sentry_sdk
     from sentry_sdk.integrations.fastapi import FastApiIntegration
     from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -481,15 +464,15 @@ app = FastAPI(
     title="TaxasGE API",
     description="Production-ready fiscal services platform for Guinea",
     version=settings.api_version,
-    docs_url="/docs" if settings.debug else None,
-    redoc_url="/redoc" if settings.debug else None,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan
 )
 
 # Security middleware - Based on Cloud Run + Firebase Hosting configuration
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else [
+    allowed_hosts=["*"] if settings.DEBUG else [
         "taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run backend staging
         "taxasge-backend-staging-392159428433.us-central1.run.app",  # Cloud Run backend alt
         "taxasge.emacsah.com",          # Custom domain frontend
@@ -527,7 +510,7 @@ class SecurityHeadersMiddleware:
                     # Duplicate CSP headers can cause the browser to apply
                     # the intersection (most restrictive), breaking the frontend.
                 ]
-                if not settings.debug:
+                if not settings.DEBUG:
                     extra_headers.append(
                         (b"strict-transport-security", b"max-age=31536000; includeSubDomains")
                     )
@@ -565,7 +548,7 @@ app.add_middleware(
     CORSMiddleware,
     # In debug/staging: allow both localhost AND production origins
     # In production: production origins only
-    allow_origins=(_DEV_ORIGINS + _PROD_ORIGINS) if settings.debug else _PROD_ORIGINS,
+    allow_origins=(_DEV_ORIGINS + _PROD_ORIGINS) if settings.DEBUG else _PROD_ORIGINS,
     allow_origin_regex=r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -583,7 +566,7 @@ except ImportError:
 def get_cors_headers(request: Request) -> dict:
     """Get CORS headers based on request origin."""
     origin = request.headers.get("origin", "")
-    allowed_origins = (_DEV_ORIGINS + _PROD_ORIGINS) if settings.debug else _PROD_ORIGINS
+    allowed_origins = (_DEV_ORIGINS + _PROD_ORIGINS) if settings.DEBUG else _PROD_ORIGINS
     # Check if origin is allowed or matches staging pattern
     import re
     if origin in allowed_origins or re.match(r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)", origin):
@@ -791,7 +774,7 @@ async def health_check():
     health_status = {
         "status": "healthy",
         "service": "taxasge-backend",
-        "environment": settings.environment,
+        "environment": settings.ENVIRONMENT,
         "version": settings.api_version,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "python_version": sys.version,
@@ -887,13 +870,13 @@ async def root():
     """API root information"""
     return {
         "message": "🚀 TaxasGE API",
-        "environment": settings.environment,
+        "environment": settings.ENVIRONMENT,
         "version": settings.api_version,
         "status": "operational",
         "description": "Production-ready fiscal services platform",
         "endpoints": {
             "health": "/health",
-            "docs": "/docs" if settings.debug else "restricted",
+            "docs": "/docs" if settings.DEBUG else "restricted",
             "api": "/api/v1/"
         },
         "features": {
@@ -910,7 +893,7 @@ async def root():
 # Debug endpoints — hidden in production, require auth header in staging
 def _check_debug_access(request: Request):
     """Guard: 404 in production, 401 without auth in staging."""
-    if settings.environment == "production":
+    if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=404, detail="Not found")
     if not request.headers.get("authorization"):
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -925,7 +908,7 @@ async def debug_routers(request: Request):
         "routers_count": len(routers_loaded),
         "auth_loaded": "auth" in routers_loaded,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "environment": settings.environment
+        "environment": settings.ENVIRONMENT
     }
 
 
@@ -1268,7 +1251,7 @@ async def api_v1_info():
     return {
         "message": "TaxasGE API v1",
         "version": settings.api_version,
-        "environment": settings.environment,
+        "environment": settings.ENVIRONMENT,
         "available_endpoints": {
             "auth": "/api/v1/auth/ - Authentication and authorization",
             "fiscal_services": "/api/v1/fiscal-services/ - 850+ fiscal services catalog",
@@ -1285,7 +1268,7 @@ async def api_v1_info():
             "notifications": "/api/v1/notifications/ - Multi-channel notifications",
             "accountant": "/api/v1/accountant/ - Accountant deadline tracking across client companies"
         },
-        "documentation": "/docs" if settings.debug else "Contact admin for API documentation",
+        "documentation": "/docs" if settings.DEBUG else "Contact admin for API documentation",
         "support": {
             "languages": ["es", "fr", "en"],
             "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -1848,7 +1831,7 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.debug,
-        access_log=settings.debug,
-        log_level="info" if settings.debug else "warning"
+        reload=settings.DEBUG,
+        access_log=settings.DEBUG,
+        log_level="info" if settings.DEBUG else "warning"
     )
