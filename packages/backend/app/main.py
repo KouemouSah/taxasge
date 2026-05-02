@@ -1409,6 +1409,18 @@ except Exception as e:
     logger.error(f"❌ Homepage router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load dashboards router (Module - Looker Studio Community Connector backend)
+# Phase B.1 skeleton — exposes mv_treasury_daily_kpis as 'recaudacion' dashboard.
+# Plan: .claude/plans/LOOKER_STUDIO_COMMUNITY_CONNECTOR_PLAN.md
+try:
+    from app.modules.dashboards import dashboards_router
+    app.include_router(dashboards_router, prefix="/api/v1/dashboards", tags=["dashboards"])
+    routers_loaded.append("dashboards")
+    logger.info("✅ Dashboards router loaded (B.1 — Looker Studio connector backend)")
+except Exception as e:
+    logger.error(f"❌ Dashboards router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load permissions routers (Module 04 - RBAC Permissions System)
 try:
     from app.modules.permissions import permission_router, role_router, user_permission_router

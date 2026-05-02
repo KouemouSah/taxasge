@@ -1,0 +1,5 @@
+{
+  "_README": "Copy this file to .clasp.json and fill in scriptId once per local checkout. .clasp.json is gitignored to avoid leaking the project ID.",
+  "scriptId": "REPLACE_WITH_APPS_SCRIPT_PROJECT_ID",
+  "rootDir": "."
+}

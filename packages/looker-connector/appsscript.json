@@ -1,0 +1,20 @@
+{
+  "timeZone": "Africa/Malabo",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "dataStudio": {
+    "name": "Facil Direct (B.1)",
+    "logoUrl": "https://www.taxasge.com/logo.png",
+    "company": "Facil — TaxasGE",
+    "companyUrl": "https://www.taxasge.com",
+    "addonUrl": "https://www.taxasge.com",
+    "supportUrl": "https://www.taxasge.com/support",
+    "description": "Facil Direct connector — exposes business dashboards (Recaudación, Adopción, Performance Agentes, Catalogue Services) with per-ministry row-level filtering. Phase B.1 skeleton: USER_PASS auth, Recaudación dashboard only, no RLS yet.",
+    "sources": ["recaudacion"],
+    "templates": {}
+  },
+  "urlFetchWhitelist": [
+    "https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app/",
+    "https://api.taxasge.com/"
+  ]
+}
