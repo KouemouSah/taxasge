@@ -175,6 +175,18 @@ export default function AdminSidebar() {
       href: `/${locale}/dashboard/admin`,
       icon: LayoutDashboard,
     },
+    // Top-level NavSingleItem: visible to every admin scope (no
+    // SECTION_ROLE_MAP filter applies to single items — see render
+    // branch at the bottom of this file). The actual permission gate
+    // is server-side: GET /api/v1/dashboards/reports-config requires
+    // `dashboards.view_business` (migration 316). A scoped admin
+    // without that perm sees the link, clicks, and the listing
+    // component renders the 403 alert returned by the API.
+    {
+      title: t('nav.businessDashboards'),
+      href: `/${locale}/dashboard/admin/dashboards`,
+      icon: BarChart3,
+    },
     {
       id: 'access',
       title: t('nav.accessManagement'),
@@ -385,11 +397,6 @@ export default function AdminSidebar() {
               title: t('nav.monitoring'),
               href: `/${locale}/dashboard/admin/monitoring`,
               icon: Activity,
-            },
-            {
-              title: t('nav.businessDashboards'),
-              href: `/${locale}/dashboard/admin/dashboards`,
-              icon: BarChart3,
             },
             {
               title: t('nav.aiAgents'),
