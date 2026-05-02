@@ -18,42 +18,69 @@
 BEGIN;
 
 -- ---------------------------------------------------------------------------
--- 1. Insert the permission
+-- 1. Insert the permission.
+-- Real schema (verified against information_schema 2026-05-02):
+--   columns: id (uuid), name (varchar), resource (varchar NOT NULL),
+--   action (varchar NOT NULL), description (text), is_critical (bool),
+--   module_name (varchar), created_at, updated_at.
+-- Pattern observed on existing rows (e.g. admin.view_dashboard):
+--   name='<resource>.<action>', resource='<resource>', action='<action>',
+--   module_name='<resource>'. We follow this convention exactly.
 -- ---------------------------------------------------------------------------
-INSERT INTO permissions (name, description, category, created_at)
+INSERT INTO permissions (name, resource, action, description, module_name, is_critical, created_at)
 VALUES (
     'dashboards.view_business',
+    'dashboards',
+    'view_business',
     'View business dashboards (Recaudación, Agent Performance, Service Catalog) embedded from Looker Studio',
     'dashboards',
+    FALSE,
     NOW()
 )
 ON CONFLICT (name) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- 2. Grant to admin role + every supervisor-flagged custom role.
+-- 2. Grant to admin/super_admin + every agent_* role that exists in this DB.
 -- We intentionally do NOT grant to citizen/business/accountant — they have
--- no business reading aggregate KPIs of other ministries.
--- The grant uses the canonical role codes from `roles.code`. This list
--- mirrors the pattern in migration 310 (oms_agent_escalation_permissions).
+-- no business reading aggregate KPIs.
+-- The list below was generated from `SELECT code FROM roles WHERE code LIKE
+-- 'agent_%' OR code IN ('admin','super_admin')` on 2026-05-02. Codes that
+-- do not exist (e.g. 'supervisor', 'agent_aduana', 'agent_dgi',
+-- 'agent_min_*' minus the ones below) have been removed to avoid silent
+-- no-op INSERTs. Per-entity row-level filtering still happens at runtime
+-- via agent_profiles.entity_id (B.2a RLS in dashboards_service.py).
 -- ---------------------------------------------------------------------------
-INSERT INTO role_permissions (role_id, permission_id, granted_at)
-SELECT r.id, p.id, NOW()
+-- Real role_permissions schema (verified 2026-05-02):
+--   role_id (uuid PK), permission_id (uuid PK), granted (bool default true),
+--   created_at (timestamp default now()), created_by (uuid nullable),
+--   scope (jsonb nullable). No granted_at column.
+INSERT INTO role_permissions (role_id, permission_id, granted)
+SELECT r.id, p.id, TRUE
 FROM roles r
 CROSS JOIN permissions p
 WHERE p.name = 'dashboards.view_business'
   AND r.code IN (
       'admin',
-      'supervisor',                  -- treasury / ops supervisor (custom role)
+      'super_admin',
+      'agent_ayuntamiento',
+      'agent_camara',
       'agent_cnedoge_pasaporte',
+      'agent_cnedoge_residencia',
       'agent_dgt',
       'agent_extranjeria',
-      'agent_aduana',
-      'agent_dgi',
-      'agent_min_finanzas',
-      'agent_min_interior',
-      'agent_min_admin',
-      'agent_ayuntamiento',
-      'agent_camara_comercio'
+      'agent_itv',
+      'agent_min_agricultura',
+      'agent_min_comercio',
+      'agent_min_electricidad',
+      'agent_min_hacienda',
+      'agent_min_informacion',
+      'agent_min_turismo',
+      'agent_minfp',
+      'agent_ofive',
+      'agent_oms_polyvalent',
+      'agent_onrc',
+      'agent_policia',
+      'agent_tesoro'
   )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
