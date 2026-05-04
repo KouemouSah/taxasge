@@ -31,7 +31,7 @@
   },
   {
     "id": 255916928,
-    "name": "Inspector Build",
+    "name": "Inspector EAS Build (Cloud)",
     "state": "active",
     "path": ".github/workflows/inspector-build.yml"
   },
@@ -58,5 +58,17 @@
     "name": "Dependabot Updates",
     "state": "active",
     "path": "dynamic/dependabot/dependabot-updates"
+  },
+  {
+    "id": 267129858,
+    "name": "Mobile EAS Build (Cloud)",
+    "state": "active",
+    "path": ".github/workflows/mobile-eas-build.yml"
+  },
+  {
+    "id": 268859428,
+    "name": "Auto-tag Mobile/Inspector",
+    "state": "active",
+    "path": ".github/workflows/auto-tag-mobile-inspector.yml"
   }
 ]
