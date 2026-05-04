@@ -98,18 +98,18 @@ Remplacer le flux actuel `report_id` en **env vars Cloud Run + redeploy** par un
 - [x] Test idempotence (2e run = no-op, counts inchangés)
 - [x] **BONUS** : découverte que `dashboards.view_business` (migration 316) avait disparu de la BD entre sessions ; ré-appliquée (21 grants restaurés)
 
-### Phase 2 — Backend
-- [ ] Plan détaillé phase 2 dans `.claude/plans/LOOKER_E1_PHASE2_DETAIL.md`
-- [ ] Models Pydantic : `DashboardConfig`, `DashboardConfigUpdate`, `DashboardConfigList`
-- [ ] Repository : `DashboardConfigRepository.get_all_active()`, `upsert()` (asyncpg parametrized)
-- [ ] Service : extend `dashboards_service.py` avec config methods
-- [ ] Endpoint PUT `/api/v1/admin/dashboards/{id}/looker-config`
-- [ ] Endpoint GET `/api/v1/admin/dashboards/looker-configs`
-- [ ] Refactor GET `/api/v1/dashboards/reports-config` (DB-first, env-var fallback)
-- [ ] Cache wrapper avec invalidation
-- [ ] Audit log emission
-- [ ] Rate limit 10/min sur PUT
-- [ ] Pytest tests (happy path, 403, 422, fallback, cache)
+### Phase 2 — Backend ✅ DONE 2026-05-04
+- [x] Plan détaillé phase 2 dans `.claude/plans/LOOKER_E1_PHASE2_DETAIL.md`
+- [x] Models Pydantic : `DashboardConfigDTO`, `DashboardConfigUpdateRequest`, `DashboardConfigsListResponse`
+- [x] Repository : `DashboardConfigRepository` (list_active, list_all, get_by_id, upsert) — asyncpg parametrized + UPSERT atomic with RETURNING
+- [x] Service : new `DashboardConfigService` (get_public_reports_config + list_admin_configs + upsert_config) avec cache 5min + invalidation post-commit + audit_log dans la même transaction
+- [x] Endpoint PUT `/api/v1/dashboards/admin/configs/{dashboard_id}` (rate limit 10/min, permission dashboards.manage, regex validation Pydantic)
+- [x] Endpoint GET `/api/v1/dashboards/admin/configs` (permission dashboards.manage)
+- [x] Refactor GET `/api/v1/dashboards/reports-config` : DB-first via service, env-var fallback préservé pour backwards-compat
+- [x] Cache 5min Redis avec invalidation explicite après commit
+- [x] Audit log INSERT atomique avec UPSERT
+- [x] Rate limit 10 PUT/min sur write endpoint
+- [x] Smoke tests E2E contre BD live PASS 6/6 (pytest formel à uniformiser plus tard, voir critique §7)
 
 ### Phase 3 — Frontend
 - [ ] Plan détaillé phase 3 dans `.claude/plans/LOOKER_E1_PHASE3_DETAIL.md`

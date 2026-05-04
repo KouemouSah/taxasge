@@ -1,4 +1,4 @@
-"""Dashboards models — Looker Studio community connector schema."""
+"""Dashboards models — Looker Studio community connector schema + admin config."""
 
 from app.modules.dashboards.models.dashboards import (
     LookerSchemaField,
@@ -10,6 +10,12 @@ from app.modules.dashboards.models.dashboards import (
     DashboardReportEntry,
     DashboardReportsConfigResponse,
 )
+from app.modules.dashboards.models.dashboard_config import (
+    DashboardConfigDTO,
+    DashboardConfigSource,
+    DashboardConfigUpdateRequest,
+    DashboardConfigsListResponse,
+)
 
 __all__ = [
     "LookerSchemaField",
@@ -20,4 +26,8 @@ __all__ = [
     "DashboardPingResponse",
     "DashboardReportEntry",
     "DashboardReportsConfigResponse",
+    "DashboardConfigDTO",
+    "DashboardConfigSource",
+    "DashboardConfigUpdateRequest",
+    "DashboardConfigsListResponse",
 ]

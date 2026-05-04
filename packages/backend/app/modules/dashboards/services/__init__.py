@@ -4,6 +4,9 @@ from app.modules.dashboards.services.dashboards_service import (
     DashboardsService,
     DashboardNotFoundError,
 )
+from app.modules.dashboards.services.dashboard_config_service import (
+    DashboardConfigService,
+)
 from app.modules.dashboards.services.rls import (
     DashboardAccessContext,
     DashboardAccessDenied,
@@ -15,6 +18,7 @@ from app.modules.dashboards.services.rls import (
 __all__ = [
     "DashboardsService",
     "DashboardNotFoundError",
+    "DashboardConfigService",
     "DashboardAccessContext",
     "DashboardAccessDenied",
     "STAFF_ROLES",

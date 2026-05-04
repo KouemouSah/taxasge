@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from loguru import logger
 
 import json
-import os
 import time
 
 from app.core.cache import check_rate_limit, get_cache
@@ -37,6 +36,9 @@ except Exception:
     sentry_sdk = None  # type: ignore[assignment]
     _SENTRY_AVAILABLE = False
 from app.modules.dashboards.models import (
+    DashboardConfigDTO,
+    DashboardConfigUpdateRequest,
+    DashboardConfigsListResponse,
     DashboardDataResponse,
     DashboardPingResponse,
     DashboardReportEntry,
@@ -46,6 +48,7 @@ from app.modules.dashboards.models import (
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.dashboards.services import (
     DashboardAccessDenied,
+    DashboardConfigService,
     DashboardNotFoundError,
     DashboardsService,
     resolve_user_access,
@@ -183,30 +186,92 @@ async def get_reports_config(
 
     The route gates on the `dashboards.view_business` permission seeded
     by migration 316. Anyone without it gets 403 from the dependency
-    BEFORE we touch the registry.
+    BEFORE we touch the BD.
 
-    For each known dashboard, the response includes the Looker report
-    ID + page ID read from env vars (LOOKER_REPORTS_<id>_REPORT_ID).
-    Empty strings are returned for dashboards whose operator has not
-    yet built a Looker report — the frontend renders an "Awaiting setup"
-    placeholder for those instead of a broken iframe.
+    E1 phase 2 refactor: the report_id / page_id mapping is now read from
+    the `dashboard_registrations` table (migration 317) — admins edit it
+    via /admin/dashboards/config, no redeploy required. Backwards-compat
+    fallback to LOOKER_REPORTS_<id>_REPORT_ID env vars when the BD row is
+    missing (e.g. fresh deploy where admins haven't populated the table
+    yet). Empty strings are still returned for dashboards with no source.
+
+    Hot path: cached server-side 5 min via DashboardConfigService.
     """
-    entries: list[DashboardReportEntry] = []
-    for dashboard_id, meta in _REPORTS_METADATA.items():
-        env_prefix = f"LOOKER_REPORTS_{dashboard_id.upper()}"
-        report_id = os.environ.get(f"{env_prefix}_REPORT_ID", "") or None
-        page_id = os.environ.get(f"{env_prefix}_PAGE_ID", "") or None
-        entries.append(
-            DashboardReportEntry(
-                dashboard_id=dashboard_id,
-                label=meta["label"],
-                description=meta["description"],
-                looker_report_id=report_id,
-                looker_page_id=page_id,
-                rls_mode=meta["rls_mode"],
-            )
-        )
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool, _REPORTS_METADATA)
+    entries = await svc.get_public_reports_config()
     return DashboardReportsConfigResponse(reports=entries)
+
+
+@router.get(
+    "/admin/configs",
+    response_model=DashboardConfigsListResponse,
+    summary="Admin-only list of dashboard configs (BD row + provenance)",
+)
+async def list_admin_dashboard_configs(
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Power the admin /admin/dashboards/config page (E1 phase 3).
+
+    Returns one entry per dashboard in the registry with its current
+    Looker IDs and a `source` label:
+      - "db"           → row in dashboard_registrations
+      - "env_fallback" → no row, env var is set (legacy mode)
+      - "unset"        → no row, no env var (UI shows "configurer")
+    """
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool, _REPORTS_METADATA)
+    configs = await svc.list_admin_configs()
+    return DashboardConfigsListResponse(configs=configs)
+
+
+@router.put(
+    "/admin/configs/{dashboard_id}",
+    response_model=DashboardConfigDTO,
+    summary="Admin-only upsert of one dashboard's Looker config",
+)
+async def upsert_admin_dashboard_config(
+    request: Request,
+    dashboard_id: str,
+    update: DashboardConfigUpdateRequest,
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """UPSERT a single dashboard's Looker IDs and immediately invalidate
+    the public /reports-config cache so the change takes effect right
+    away (no redeploy).
+
+    OWASP / 1M+ guards:
+    - permission_required('dashboards.manage')      → admin/super_admin only
+    - rate limit 10 PUT/min/user                     → vs 60 read/min
+    - Pydantic regex on report_id / page_id          → 422 on invalid input
+    - dashboard_id validated against registry        → 404 on unknown
+    - audit_logs row emitted in the same transaction as the UPSERT
+    """
+    user_id = str(getattr(user, "id", ""))
+
+    is_allowed, _remaining = await check_rate_limit(
+        identifier=user_id,
+        endpoint="/dashboards/admin/configs",
+        max_requests=10,
+        window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded: 10 PUT requests / 60s.",
+            headers={"Retry-After": "60"},
+        )
+
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool, _REPORTS_METADATA)
+    try:
+        return await svc.upsert_config(
+            dashboard_id, update, user_id=user_id, request=request,
+        )
+    except DashboardNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
 
 @router.get(
