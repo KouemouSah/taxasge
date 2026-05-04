@@ -4591,8 +4591,9 @@
       "title": "Tableaux de bord métier",
       "subtitle": "Vues intégrées depuis Looker Studio (Recette, Agents, Catalogue).",
       "backToList": "Retour à la liste",
+      "configureLink": "Configurer",
       "awaitingSetup": "En attente de configuration",
-      "awaitingSetupHelp": "Le rapport Looker Studio pour '{id}' n'a pas encore été créé. Suis LOOKER_STUDIO_PHASE1_RUNBOOK §3 pour le configurer, puis ajoute report_id en variable d'environnement.",
+      "awaitingSetupHelp": "Le rapport Looker Studio pour '{id}' n'est pas encore enregistré. Clique sur 'Configurer' pour ajouter le report_id sans redéploiement.",
       "forbiddenTitle": "Accès refusé",
       "forbiddenHelp": "Ton compte n'a pas la permission 'dashboards.view_business'. Contacte un administrateur.",
       "errorTitle": "Erreur de chargement",
@@ -4606,6 +4607,42 @@
         "agent_via_join": "Par agent",
         "admin_only": "Admin uniquement",
         "public": "Public"
+      },
+      "config": {
+        "title": "Configuration des tableaux de bord",
+        "subtitle": "Édite les IDs Looker Studio pour chaque tableau de bord. Effet immédiat (pas de redéploiement).",
+        "backToList": "Retour aux tableaux de bord",
+        "forbiddenTitle": "Accès refusé",
+        "forbiddenHelp": "Ton compte n'a pas la permission 'dashboards.manage'. Seuls les administrateurs peuvent éditer la configuration.",
+        "errorTitle": "Erreur de chargement",
+        "errorGeneric": "Impossible de charger la configuration. Réessaye.",
+        "emptyTitle": "Aucun tableau de bord dans le registre",
+        "emptyHelp": "Le backend n'expose aucun tableau de bord. Vérifie le registry du module dashboards.",
+        "form": {
+          "reportIdLabel": "Looker Report ID",
+          "reportIdPlaceholder": "ex: abc123-def456-ghi789",
+          "reportIdHelp": "ID extrait de l'URL /reporting/<id>/page/...",
+          "reportIdInvalid": "Format invalide (8-64 caractères alphanumériques, tirets et soulignés).",
+          "pageIdLabel": "Looker Page ID",
+          "pageIdPlaceholder": "ex: p_12345 (optionnel)",
+          "pageIdHelp": "Vide = première page du rapport (défaut Looker).",
+          "pageIdInvalid": "Format invalide (1-32 caractères alphanumériques et soulignés).",
+          "isActiveLabel": "Visible pour les administrateurs",
+          "isActiveHelp": "Si désactivé, le tableau de bord est masqué de la page d'embeds sans supprimer la configuration.",
+          "save": "Enregistrer",
+          "saving": "Enregistrement...",
+          "savedJustNow": "Enregistré",
+          "saveSuccess": "Configuration enregistrée — effet immédiat",
+          "saveError": "Erreur d'enregistrement. Vérifie les IDs et réessaye.",
+          "rateLimitError": "Trop de requêtes. Attends une minute avant de réessayer."
+        },
+        "source": {
+          "db": "BD",
+          "env_fallback": "Variable d'environnement (legacy)",
+          "unset": "Non configuré"
+        },
+        "updatedAt": "Mis à jour le {date}",
+        "neverUpdated": "Jamais configuré en BD"
       }
     }
   },

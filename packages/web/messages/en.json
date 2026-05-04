@@ -4591,8 +4591,9 @@
       "title": "Business Dashboards",
       "subtitle": "Embedded views from Looker Studio (Treasury, Agents, Service Catalog).",
       "backToList": "Back to list",
+      "configureLink": "Configure",
       "awaitingSetup": "Awaiting operator setup",
-      "awaitingSetupHelp": "The Looker Studio report for '{id}' has not been built yet. Follow LOOKER_STUDIO_PHASE1_RUNBOOK §3, then add the report_id as an env var.",
+      "awaitingSetupHelp": "The Looker Studio report for '{id}' is not registered yet. Click 'Configure' to add the report_id without redeploying.",
       "forbiddenTitle": "Access denied",
       "forbiddenHelp": "Your account does not have the 'dashboards.view_business' permission. Contact an admin.",
       "errorTitle": "Failed to load configuration",
@@ -4606,6 +4607,42 @@
         "agent_via_join": "Per agent",
         "admin_only": "Admin only",
         "public": "Public"
+      },
+      "config": {
+        "title": "Dashboards configuration",
+        "subtitle": "Edit the Looker Studio IDs for each dashboard. Changes take effect immediately (no redeploy).",
+        "backToList": "Back to dashboards",
+        "forbiddenTitle": "Access denied",
+        "forbiddenHelp": "Your account does not have the 'dashboards.manage' permission. Only administrators can edit dashboard configuration.",
+        "errorTitle": "Failed to load configuration",
+        "errorGeneric": "Could not load the configuration. Try again.",
+        "emptyTitle": "No dashboards in the registry",
+        "emptyHelp": "The backend exposes no dashboards. Check the dashboards module registry.",
+        "form": {
+          "reportIdLabel": "Looker Report ID",
+          "reportIdPlaceholder": "e.g. abc123-def456-ghi789",
+          "reportIdHelp": "ID extracted from the /reporting/<id>/page/... URL.",
+          "reportIdInvalid": "Invalid format (8-64 alphanumeric chars, dashes and underscores).",
+          "pageIdLabel": "Looker Page ID",
+          "pageIdPlaceholder": "e.g. p_12345 (optional)",
+          "pageIdHelp": "Empty = first page of the report (Looker default).",
+          "pageIdInvalid": "Invalid format (1-32 alphanumeric chars and underscores).",
+          "isActiveLabel": "Visible to administrators",
+          "isActiveHelp": "If disabled, the dashboard is hidden from the embeds page without deleting its configuration.",
+          "save": "Save",
+          "saving": "Saving...",
+          "savedJustNow": "Saved",
+          "saveSuccess": "Configuration saved — takes effect immediately",
+          "saveError": "Failed to save. Verify the IDs and try again.",
+          "rateLimitError": "Too many requests. Wait a minute before retrying."
+        },
+        "source": {
+          "db": "DB",
+          "env_fallback": "Env variable (legacy)",
+          "unset": "Not configured"
+        },
+        "updatedAt": "Updated on {date}",
+        "neverUpdated": "Never configured in DB"
       }
     }
   },

@@ -4591,8 +4591,9 @@
       "title": "Dashboards de Negocio",
       "subtitle": "Vistas integradas desde Looker Studio (Recaudación, Agentes, Catálogo).",
       "backToList": "Volver a la lista",
+      "configureLink": "Configurar",
       "awaitingSetup": "Esperando configuración del operador",
-      "awaitingSetupHelp": "El reporte de Looker Studio para '{id}' aún no se ha creado. Sigue LOOKER_STUDIO_PHASE1_RUNBOOK §3 para configurarlo, luego añade el report_id como variable de entorno.",
+      "awaitingSetupHelp": "El reporte de Looker Studio para '{id}' aún no se ha registrado. Haz clic en 'Configurar' para añadir el report_id sin necesidad de redespliegue.",
       "forbiddenTitle": "Acceso denegado",
       "forbiddenHelp": "Tu cuenta no tiene el permiso 'dashboards.view_business'. Contacta a un administrador.",
       "errorTitle": "Error al cargar la configuración",
@@ -4606,6 +4607,42 @@
         "agent_via_join": "Por agente",
         "admin_only": "Solo admin",
         "public": "Público"
+      },
+      "config": {
+        "title": "Configuración de los dashboards",
+        "subtitle": "Edita los IDs de Looker Studio para cada dashboard. Los cambios surten efecto inmediato (sin redespliegue).",
+        "backToList": "Volver a los dashboards",
+        "forbiddenTitle": "Acceso denegado",
+        "forbiddenHelp": "Tu cuenta no tiene el permiso 'dashboards.manage'. Solo los administradores pueden editar la configuración de los dashboards.",
+        "errorTitle": "Error al cargar la configuración",
+        "errorGeneric": "No se pudo cargar la configuración. Inténtalo de nuevo.",
+        "emptyTitle": "Sin dashboards en el registro",
+        "emptyHelp": "El backend no expone ningún dashboard. Verifica el registry del módulo dashboards.",
+        "form": {
+          "reportIdLabel": "Looker Report ID",
+          "reportIdPlaceholder": "ej: abc123-def456-ghi789",
+          "reportIdHelp": "ID extraído de la URL /reporting/<id>/page/...",
+          "reportIdInvalid": "Formato inválido (8-64 caracteres alfanuméricos, guiones y guiones bajos).",
+          "pageIdLabel": "Looker Page ID",
+          "pageIdPlaceholder": "ej: p_12345 (opcional)",
+          "pageIdHelp": "Vacío = primera página del reporte (Looker default).",
+          "pageIdInvalid": "Formato inválido (1-32 caracteres alfanuméricos y guiones bajos).",
+          "isActiveLabel": "Visible para administradores",
+          "isActiveHelp": "Si está desactivado, el dashboard se oculta de la página de embeds sin borrar la configuración.",
+          "save": "Guardar",
+          "saving": "Guardando...",
+          "savedJustNow": "Guardado",
+          "saveSuccess": "Configuración guardada — efecto inmediato",
+          "saveError": "Error al guardar. Verifica los IDs e inténtalo de nuevo.",
+          "rateLimitError": "Demasiadas peticiones. Espera un minuto antes de reintentar."
+        },
+        "source": {
+          "db": "BD",
+          "env_fallback": "Variable de entorno (legado)",
+          "unset": "Sin configurar"
+        },
+        "updatedAt": "Actualizado el {date}",
+        "neverUpdated": "Nunca configurado en BD"
       }
     }
   },

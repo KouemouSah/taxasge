@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle, BarChart3, Construction, Lock } from 'lucide-react'
+import { AlertCircle, BarChart3, Construction, Lock, Settings } from 'lucide-react'
 import { useReportsConfig } from '../hooks/useReportsConfig'
 import type { DashboardRlsMode } from '../types'
 
@@ -70,48 +70,64 @@ export function DashboardsListing() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {reports.map((report) => {
-        const ready = !!report.looker_report_id
-        const card = (
-          <Card className={ready ? 'transition hover:shadow-md cursor-pointer' : 'opacity-70'}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  {ready ? (
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Construction className="h-5 w-5 text-amber-500" />
-                  )}
-                  {report.label}
-                </span>
-                <Badge variant={RLS_BADGE_VARIANT[report.rls_mode]}>
-                  {t(`rls.${report.rls_mode}`)}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {report.description}
-              </p>
-              {!ready && (
-                <p className="mt-3 text-xs text-amber-600">
-                  {t('awaitingSetup')}
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Link
+          href={`/${locale}/dashboard/admin/dashboards/config`}
+          className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-accent transition"
+        >
+          <Settings className="h-4 w-4" />
+          {t('configureLink')}
+        </Link>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {reports.map((report) => {
+          const ready = !!report.looker_report_id
+          const card = (
+            <Card className={ready ? 'transition hover:shadow-md cursor-pointer' : 'opacity-70'}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    {ready ? (
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Construction className="h-5 w-5 text-amber-500" />
+                    )}
+                    {report.label}
+                  </span>
+                  <Badge variant={RLS_BADGE_VARIANT[report.rls_mode]}>
+                    {t(`rls.${report.rls_mode}`)}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {report.description}
                 </p>
-              )}
-            </CardContent>
-          </Card>
-        )
-        if (!ready) return <div key={report.dashboard_id}>{card}</div>
-        return (
-          <Link
-            key={report.dashboard_id}
-            href={`/${locale}/dashboard/admin/dashboards/${report.dashboard_id}`}
-          >
-            {card}
-          </Link>
-        )
-      })}
+                {!ready && (
+                  <Link
+                    href={`/${locale}/dashboard/admin/dashboards/config`}
+                    className="mt-3 inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 underline"
+                  >
+                    <Settings className="h-3 w-3" />
+                    {t('awaitingSetup')}
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )
+          if (!ready) return <div key={report.dashboard_id}>{card}</div>
+          return (
+            <Link
+              key={report.dashboard_id}
+              href={`/${locale}/dashboard/admin/dashboards/${report.dashboard_id}`}
+            >
+              {card}
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }

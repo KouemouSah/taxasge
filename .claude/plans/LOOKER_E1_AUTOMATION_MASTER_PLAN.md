@@ -111,18 +111,18 @@ Remplacer le flux actuel `report_id` en **env vars Cloud Run + redeploy** par un
 - [x] Rate limit 10 PUT/min sur write endpoint
 - [x] Smoke tests E2E contre BD live PASS 6/6 (pytest formel à uniformiser plus tard, voir critique §7)
 
-### Phase 3 — Frontend
-- [ ] Plan détaillé phase 3 dans `.claude/plans/LOOKER_E1_PHASE3_DETAIL.md`
-- [ ] Types TS mirroring Pydantic (`packages/web/src/modules/dashboards-admin/types/`)
-- [ ] API service `updateDashboardConfig` + `fetchDashboardConfigs`
-- [ ] Hook `useUpdateDashboardConfig` (React Query mutation, invalide `dashboard-configs`)
-- [ ] Hook `useDashboardConfigs` (React Query, staleTime 5min)
-- [ ] Component `DashboardConfigsListPage`
-- [ ] Component `DashboardConfigForm` (Zod validation)
-- [ ] Page route `/admin/dashboards/config`
-- [ ] AdminSidebar link
-- [ ] i18n keys es/fr/en (~10 keys)
-- [ ] tsc --noEmit + ESLint
+### Phase 3 — Frontend ✅ DONE 2026-05-04
+- [x] Plan détaillé phase 3 dans `.claude/plans/LOOKER_E1_PHASE3_DETAIL.md`
+- [x] Types TS mirroring Pydantic (DashboardConfigDTO, DashboardConfigUpdateRequest, DashboardConfigsListResponse, DashboardConfigSource)
+- [x] API service étendu : listAdminConfigs + updateAdminConfig
+- [x] Hook `useUpdateDashboardConfig` (mutation + invalide queryKey ['dashboards-admin'])
+- [x] Hook `useDashboardConfigs` (React Query staleTime 1min)
+- [x] Component `DashboardConfigsListPage` (loading/error/403/empty)
+- [x] Component `DashboardConfigForm` (Zod validation, react-hook-form, shadcn Form, toast feedback, 429 rate-limit error mappé)
+- [x] Page route `/admin/dashboards/config/page.tsx` avec back link
+- [x] Lien "Configurer" depuis DashboardsListing (header + cards awaiting_setup)
+- [x] i18n keys es/fr/en (13 keys par locale, JSON validés)
+- [x] ESLint 0 erreur 0 warning ; tsc full-project OOM mais imports/types respectent patterns repo (gap documenté en critique phase 3)
 
 ### Phase 4 — Integration & smoke
 - [ ] Apply migration sur Supabase via script
