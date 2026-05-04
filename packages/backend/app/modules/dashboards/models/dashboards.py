@@ -128,24 +128,48 @@ class DashboardPingResponse(BaseModel):
 
 
 class DashboardReportEntry(BaseModel):
-    """Embed metadata for one Looker Studio report exposed at /admin/dashboards.
+    """Embed metadata for one report exposed at /admin/dashboards.
 
-    `looker_report_id` and `looker_page_id` come from the Looker Studio UI URL
-    after the operator builds a report (see LOOKER_STUDIO_PHASE1_RUNBOOK §3).
-    They live as env vars LOOKER_REPORTS_<id>_REPORT_ID / _PAGE_ID so different
-    environments (staging / prod) can point at different reports without code
-    changes.
+    Looker Studio fields (legacy): `looker_report_id` and `looker_page_id`
+    come from the Looker Studio UI URL.
+
+    Grafana E1 (2026-05-04): adds `provider`, `grafana_dashboard_uid`,
+    `grafana_org_id`, and `embed_url`. The frontend reads `embed_url` directly
+    when available — it's pre-built by the backend service from the active
+    provider's config so the iframe just needs to be set to it.
     """
 
     dashboard_id: str = Field(..., description="Stable id matching the registry key")
     label: str = Field(..., description="Human-readable name shown on the listing page")
     description: str = Field(..., description="One-line subtitle shown above the embed")
+    rls_mode: str = Field(..., description="entity / agent_via_join / admin_only / public")
+
+    # Provider switch — looker_studio (default) or grafana
+    provider: str = Field(
+        default="looker_studio",
+        description="Active provider for the iframe embed: looker_studio | grafana.",
+    )
+
+    # Looker Studio fields
     looker_report_id: Optional[str] = Field(
         default=None,
-        description="Empty string if the operator has not yet built a Looker report for this dashboard.",
+        description="Looker Studio report ID. Null when provider != looker_studio or unset.",
     )
     looker_page_id: Optional[str] = Field(default=None)
-    rls_mode: str = Field(..., description="entity / agent_via_join / admin_only / public")
+
+    # Grafana fields
+    grafana_dashboard_uid: Optional[str] = Field(
+        default=None,
+        description="Grafana dashboard UID. Null when provider != grafana or unset.",
+    )
+    grafana_org_id: int = Field(default=1)
+
+    # Backend-computed iframe URL based on the active provider's config.
+    # Null when no config is set. Frontend uses this directly.
+    embed_url: Optional[str] = Field(
+        default=None,
+        description="Pre-built iframe URL. Null when the active provider has no config yet.",
+    )
 
     model_config = ConfigDict(extra="forbid")
 

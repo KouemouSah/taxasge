@@ -1,0 +1,119 @@
+{
+  "uid": "facil-oms",
+  "title": "Facil — OMS Modules (Obligations, Inspections, Licenses)",
+  "tags": ["facil", "oms", "obligations", "inspections"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-90d", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 0,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Obligations — synthèse", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 2, "type": "stat", "title": "Total obligations",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(obligations_count), 0) AS total FROM vw_obligation_stats_by_ministry" }]
+    },
+    { "id": 3, "type": "stat", "title": "Payées",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(paid_count), 0) AS paid FROM vw_obligation_stats_by_ministry" }]
+    },
+    { "id": 4, "type": "stat", "title": "En attente",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "yellow" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(pending_count), 0) AS pending FROM vw_obligation_stats_by_ministry" }]
+    },
+    { "id": 5, "type": "stat", "title": "En retard",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(overdue_count), 0) AS overdue FROM vw_obligation_stats_by_ministry" }]
+    },
+    { "id": 6, "type": "stat", "title": "Total montant",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(total_amount), 0) AS total_amt FROM vw_obligation_stats_by_ministry" }]
+    },
+    { "id": 7, "type": "stat", "title": "Recovery rate",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (COALESCE(SUM(paid_amount), 0) * 100.0 / NULLIF(SUM(total_amount), 0))::numeric(10,2) AS rate FROM vw_obligation_stats_by_ministry" }]
+    },
+
+    { "id": 10, "type": "row", "title": "Obligations par fee_type & zone", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 11, "type": "barchart", "title": "Obligations par fee_type",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT fee_type AS \"Type\", SUM(obligations_count) AS \"Obligations\", SUM(paid_count) AS \"Payées\", SUM(overdue_count) AS \"En retard\" FROM vw_obligation_stats_by_ministry GROUP BY fee_type ORDER BY \"Obligations\" DESC" }]
+    },
+    { "id": 12, "type": "barchart", "title": "Montant par fee_type (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT fee_type AS \"Type\", SUM(total_amount) AS \"Total\", SUM(paid_amount) AS \"Payé\", SUM(overdue_amount) AS \"Retard\" FROM vw_obligation_stats_by_ministry GROUP BY fee_type ORDER BY \"Total\" DESC" }]
+    },
+
+    { "id": 20, "type": "row", "title": "Bundle workflow (treasury filtré)", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 21, "type": "timeseries", "title": "Recaudación bundle quotidienne (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 15, "w": 16, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [{ "refId": "A", "format": "time_series",
+        "rawSql": "SELECT report_date AS time, SUM(total_amount) AS \"Bundle\" FROM vw_treasury_daily_kpis WHERE workflow_code = 'BUNDLE_PAYMENT' AND report_date BETWEEN $__timeFrom() AND $__timeTo() GROUP BY report_date ORDER BY report_date" }]
+    },
+    { "id": 22, "type": "table", "title": "Top entités bundle",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 15, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] }
+        ]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT entity_code AS \"Entité\", SUM(total_amount) AS \"Total\", SUM(payment_count) AS \"#\" FROM vw_treasury_daily_kpis WHERE workflow_code = 'BUNDLE_PAYMENT' AND report_date BETWEEN $__timeFrom() AND $__timeTo() GROUP BY entity_code ORDER BY \"Total\" DESC LIMIT 10" }]
+    },
+
+    { "id": 30, "type": "row", "title": "Inspections terrain", "collapsed": true, "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 31, "type": "table", "title": "Inspections par zone (semaine)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 10 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Conformité %" }, "properties": [{ "id": "unit", "value": "percent" }] },
+          { "matcher": { "id": "byName", "options": "Recouvrement (XAF)" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] }
+        ]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT zone_code AS \"Zone\", zone_name AS \"Nom\", week_start AS \"Semaine\", inspections AS \"Inspections\", conforme AS \"Conformes\", non_conforme AS \"Non-conformes\", conformity_rate AS \"Conformité %\", collections AS \"Collectes\", collected_amount AS \"Recouvrement (XAF)\", agents_active AS \"Agents\" FROM vw_inspection_zone_analytics WHERE week_start BETWEEN $__timeFrom() AND $__timeTo() ORDER BY week_start DESC, zone_code" }]
+    }
+  ]
+}

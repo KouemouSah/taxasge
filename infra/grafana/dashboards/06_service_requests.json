@@ -1,0 +1,151 @@
+{
+  "uid": "facil-service-requests",
+  "title": "Facil — Service Requests & Bundle Services",
+  "tags": ["facil", "service_requests", "bundle"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 0,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "workflow",
+        "label": "Workflow",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT workflow_code FROM v_active_service_request_assignments WHERE workflow_code IS NOT NULL ORDER BY workflow_code",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      },
+      {
+        "name": "entity",
+        "label": "Entité",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT entity_code FROM v_active_service_request_assignments WHERE entity_code IS NOT NULL ORDER BY entity_code",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Demandes actives — synthèse", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 2, "type": "stat", "title": "SR actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COUNT(*) AS active FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow)) AND ('$entity' = 'All' OR entity_code IN ($entity))" }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "En retard (overdue)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COUNT(*) FILTER (WHERE is_overdue) AS overdue FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow))" }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Âge moyen (h)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "h", "decimals": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT AVG(hours_since_assigned)::numeric(10,2) AS avg_age FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow))" }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Total montant en cours (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(total_amount), 0) AS amt FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow))" }]
+    },
+    {
+      "id": 6, "type": "piechart", "title": "Par statut SR",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 8 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT service_request_status::text AS status, COUNT(*) AS count FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow)) GROUP BY service_request_status ORDER BY count DESC" }]
+    },
+
+    { "id": 10, "type": "row", "title": "Volume par workflow", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 11, "type": "barchart", "title": "Demandes actives par workflow",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT workflow_code AS \"Workflow\", COUNT(*) AS \"Actives\", COUNT(*) FILTER (WHERE is_overdue) AS \"En retard\" FROM v_active_service_request_assignments WHERE ('$entity' = 'All' OR entity_code IN ($entity)) GROUP BY workflow_code ORDER BY \"Actives\" DESC" }]
+    },
+    {
+      "id": 12, "type": "barchart", "title": "Recaudación historique par workflow (90j)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT workflow_code AS \"Workflow\", SUM(total_amount) AS \"Total\", SUM(payment_count) AS \"Paiements\" FROM vw_treasury_daily_kpis WHERE report_date >= CURRENT_DATE - INTERVAL '90 days' GROUP BY workflow_code ORDER BY \"Total\" DESC LIMIT 15" }]
+    },
+
+    { "id": 20, "type": "row", "title": "Bundle workflow zoom", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 21, "type": "stat", "title": "Bundle SR actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 15, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COUNT(*) AS bundle_active FROM v_active_service_request_assignments WHERE workflow_code = 'BUNDLE_PAYMENT'" }]
+    },
+    {
+      "id": 22, "type": "stat", "title": "Bundle SR overdue",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 6, "y": 15, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COUNT(*) FILTER (WHERE is_overdue) AS bundle_overdue FROM v_active_service_request_assignments WHERE workflow_code = 'BUNDLE_PAYMENT'" }]
+    },
+    {
+      "id": 23, "type": "timeseries", "title": "Bundle recaudación quotidienne (90j)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [{ "refId": "A", "format": "time_series",
+        "rawSql": "SELECT report_date AS time, SUM(total_amount) AS \"Bundle\" FROM vw_treasury_daily_kpis WHERE workflow_code = 'BUNDLE_PAYMENT' AND report_date >= CURRENT_DATE - INTERVAL '90 days' GROUP BY report_date ORDER BY report_date" }]
+    },
+
+    { "id": 30, "type": "row", "title": "Détail demandes actives", "collapsed": true, "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 31, "type": "table", "title": "Top demandes par âge",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Âge (h)" }, "properties": [{ "id": "unit", "value": "h" }] },
+          { "matcher": { "id": "byName", "options": "Deadline (h)" }, "properties": [{ "id": "unit", "value": "h" }] },
+          { "matcher": { "id": "byName", "options": "Montant" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
+          { "matcher": { "id": "byName", "options": "Overdue" }, "properties": [{ "id": "custom.cellOptions", "value": { "type": "color-background" } }] }
+        ]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT service_request_reference AS \"Ref\", workflow_code AS \"Workflow\", entity_code AS \"Entité\", agent_name AS \"Agent\", service_request_status::text AS \"Statut\", payment_status AS \"Paiement\", total_amount AS \"Montant\", hours_since_assigned::numeric(10,1) AS \"Âge (h)\", hours_until_deadline::numeric(10,1) AS \"Deadline (h)\", is_overdue AS \"Overdue\" FROM v_active_service_request_assignments WHERE ('$workflow' = 'All' OR workflow_code IN ($workflow)) AND ('$entity' = 'All' OR entity_code IN ($entity)) ORDER BY hours_since_assigned DESC LIMIT 50" }]
+    }
+  ]
+}

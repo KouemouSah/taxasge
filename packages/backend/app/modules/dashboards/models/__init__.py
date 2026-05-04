@@ -15,6 +15,7 @@ from app.modules.dashboards.models.dashboard_config import (
     DashboardConfigSource,
     DashboardConfigUpdateRequest,
     DashboardConfigsListResponse,
+    DashboardProvider,
 )
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "DashboardConfigSource",
     "DashboardConfigUpdateRequest",
     "DashboardConfigsListResponse",
+    "DashboardProvider",
 ]

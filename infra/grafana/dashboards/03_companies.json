@@ -1,0 +1,92 @@
+{
+  "uid": "facil-companies",
+  "title": "Facil — Empresas",
+  "tags": ["facil", "companies"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-90d", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 0,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "KPIs globaux", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 2, "type": "stat", "title": "Total entreprises",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_companies FROM vw_company_global_stats" }]
+    },
+    { "id": 3, "type": "stat", "title": "Actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_companies FROM vw_company_global_stats" }]
+    },
+    { "id": 4, "type": "stat", "title": "Vérifiées",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT verified_companies FROM vw_company_global_stats" }]
+    },
+    { "id": 5, "type": "stat", "title": "Licences actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_licenses FROM vw_company_global_stats" }]
+    },
+    { "id": 6, "type": "stat", "title": "Total dette (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF", "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_debt FROM vw_company_global_stats" }]
+    },
+    { "id": 7, "type": "stat", "title": "Recovery rate",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 30 }, { "color": "green", "value": 70 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT recovery_rate_pct FROM vw_company_global_stats" }]
+    },
+
+    { "id": 10, "type": "row", "title": "Distribution par zone", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 11, "type": "barchart", "title": "Entreprises par zone",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 9 },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT zone_code AS \"Zone\", total_companies AS \"Entreprises\", active_licenses AS \"Licences\" FROM vw_company_stats_by_zone ORDER BY zone_code" }]
+    },
+    { "id": 12, "type": "barchart", "title": "Recovery rate par zone (%)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 9 },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT zone_code AS \"Zone\", recovery_rate_pct AS \"Recovery %\" FROM vw_company_stats_by_zone ORDER BY zone_code" }]
+    },
+
+    { "id": 20, "type": "row", "title": "Détail par zone", "collapsed": false, "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 21, "type": "table", "title": "Tableau zones",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 10 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Dette" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
+          { "matcher": { "id": "byName", "options": "Payé" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
+          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
+          { "matcher": { "id": "byName", "options": "Recovery %" }, "properties": [{ "id": "unit", "value": "percent" }] }
+        ]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT zone_code AS \"Zone\", zone_name AS \"Nom\", total_companies AS \"Entreprises\", active_licenses AS \"Licences\", total_obligations_amount AS \"Total\", total_paid_amount AS \"Payé\", total_debt AS \"Dette\", recovery_rate_pct AS \"Recovery %\" FROM vw_company_stats_by_zone ORDER BY total_debt DESC" }]
+    }
+  ]
+}

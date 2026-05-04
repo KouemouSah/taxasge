@@ -1,0 +1,39 @@
+# Grafana datasource — Supabase Postgres via looker_readonly role
+#
+# Mirrors migration 315 grants. Reads exclusively from the `vw_*` wrapper
+# views maintained by the boot sync (looker_wrappers_sync.py). Same data
+# Looker Studio reads — guarantees KPI parity for the comparative eval.
+#
+# DO NOT commit the password here. Inject via env var or Grafana secret
+# at provisioning time.
+#
+# Reference: .claude/plans/GRAFANA_E1_MASTER_PLAN.md §5
+
+apiVersion: 1
+
+datasources:
+  - name: Facil-Postgres
+    uid: facil-postgres                          # stable UID — referenced by every dashboard JSON
+    type: postgres
+    access: proxy                                # Grafana queries on behalf of users (no direct browser→DB)
+    url: db.bpdzfkymgydjxxwlctam.supabase.co:6543
+    database: postgres
+    user: looker_readonly
+    isDefault: true
+    editable: false                              # provisioned datasource = read-only in UI
+
+    jsonData:
+      sslmode: require                           # match looker_readonly login policy
+      postgresVersion: 1500                      # Supabase = Postgres 15
+      timescaledb: false
+      maxOpenConns: 5                            # match conn_limit on the role (migration 315)
+      maxIdleConns: 2
+      connMaxLifetime: 14400                     # 4h
+      database: postgres
+
+    secureJsonData:
+      # Password injected from the GF_LOOKER_READONLY_PASSWORD env var.
+      # On Grafana Cloud: set once via UI after first deploy.
+      # On self-host: pass GF_LOOKER_READONLY_PASSWORD in docker-compose / k8s secret.
+      # Grafana env-var substitution: ${VAR_NAME:-default} (here no default).
+      password: ${LOOKER_READONLY_PASSWORD}

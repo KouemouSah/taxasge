@@ -1,0 +1,125 @@
+{
+  "uid": "facil-overview",
+  "title": "Facil — Overview",
+  "tags": ["facil", "overview"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 0,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "KPIs globaux Empresas",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "panels": []
+    },
+    {
+      "id": 2, "type": "stat", "title": "Total entreprises",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "textMode": "auto", "graphMode": "none", "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT total_companies AS \"Total\" FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT active_companies FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Vérifiées",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT verified_companies FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Licences actives",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT active_licenses FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Taux recouvrement",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 }] } } },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT recovery_rate_pct FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 7, "type": "stat", "title": "Dette totale (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [
+        { "refId": "A", "format": "table", "rawSql": "SELECT total_debt FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 10, "type": "row", "title": "Recaudación mensuelle",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": []
+    },
+    {
+      "id": 11, "type": "barchart", "title": "Recaudación par jour (30j)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 16, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "targets": [
+        { "refId": "A", "format": "time_series",
+          "rawSql": "SELECT report_date AS time, SUM(total_amount) AS \"Total\" FROM vw_treasury_daily_kpis WHERE report_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY report_date ORDER BY report_date" }
+      ]
+    },
+    {
+      "id": 12, "type": "piechart", "title": "Régime fiscal",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
+      "options": { "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }, "pieType": "donut", "displayLabels": ["name", "percent"] },
+      "targets": [
+        { "refId": "A", "format": "table",
+          "rawSql": "SELECT 'bundle' AS regime, bundle_count FROM vw_company_global_stats UNION SELECT 'declarativo', declarativo_count FROM vw_company_global_stats UNION SELECT 'exento', exento_count FROM vw_company_global_stats UNION SELECT 'pendiente', pendiente_count FROM vw_company_global_stats" }
+      ]
+    },
+    {
+      "id": 20, "type": "row", "title": "Liens rapides",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": []
+    },
+    {
+      "id": 21, "type": "text", "title": "Navigation",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 6 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Tableaux de bord détaillés\n\n- 💰 **[Recaudación fiscal](/d/facil-treasury/treasury)** — KPIs trésorerie, par entité, par méthode\n- 👥 **[Performance Agentes](/d/facil-agents/agents)** — Volume, SLA, ranking\n- 🏢 **[Empresas](/d/facil-companies/companies)** — Registre commercial, par zone, débiteurs\n- 📋 **[OMS Modules](/d/facil-oms/oms)** — Obligations, inspections, bundle workflow\n- 💳 **[Payments](/d/facil-payments/payments)** — Dashboard ops, plans, reconciliation\n- 📑 **[Declarations](/d/facil-declarations/declarations)** — Déclarations fiscales\n\n*Source de vérité : Supabase Postgres via le rôle `looker_readonly`. Wrappers VIEWs auto-synchronisés au boot du backend Facil.*"
+      }
+    }
+  ]
+}
