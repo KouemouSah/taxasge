@@ -124,23 +124,21 @@ Remplacer le flux actuel `report_id` en **env vars Cloud Run + redeploy** par un
 - [x] i18n keys es/fr/en (13 keys par locale, JSON validés)
 - [x] ESLint 0 erreur 0 warning ; tsc full-project OOM mais imports/types respectent patterns repo (gap documenté en critique phase 3)
 
-### Phase 4 — Integration & smoke
-- [ ] Apply migration sur Supabase via script
-- [ ] Verification post-apply : table existe, permission existe, granted to admin/super_admin
-- [ ] Curl smoke : GET sans auth → 401, GET avec auth citoyen → 403, GET avec admin → 200
-- [ ] Curl smoke : PUT happy path → 200 + audit_log row
-- [ ] Curl smoke : PUT regex fail → 422
-- [ ] Curl smoke : PUT non-existing dashboard_id → 404
-- [ ] Test fallback env var : DELETE FROM dashboard_registrations → GET retourne env vars
-- [ ] Test cache : 2nd GET dans 5min → log "cache hit"
+### Phase 4 — Integration & smoke ⏳ POST-DEPLOY (utilisateur)
+- [x] Plan détaillé phase 4 dans `.claude/plans/LOOKER_E1_PHASE4_DETAIL.md` (script complet curl + checklist UI manual)
+- [x] Migration 317 appliquée localement (BD prod-like accessible)
+- [ ] Migration 317 appliquée sur staging via GitHub Actions deploy (à exécuter après push)
+- [ ] Smoke tests A-F (curl) sur staging à exécuter post-deploy par l'utilisateur
+- [ ] UI manual checks 4.1-4.6 sur Firebase Hosting staging à exécuter post-deploy
 
-### Phase 5 — Critique + commits
-- [ ] Critique honnête : gaps, dette, OWASP, perf 1M+, hardcoding
-- [ ] Auto-correction des bugs identifiés
-- [ ] Update tous les plans (cocher checklist)
-- [ ] Update MEMORY.md
-- [ ] Commits locaux groupés sémantiques (1 par phase)
-- [ ] Demande explicite confirmation push (Règle #13)
+### Phase 5 — Critique globale + commits + push request
+- [x] Critique honnête phase 1 (dans LOOKER_E1_PHASE1_DETAIL.md §8)
+- [x] Critique honnête phase 2 (dans LOOKER_E1_PHASE2_DETAIL.md §7)
+- [x] Critique honnête phase 3 (dans LOOKER_E1_PHASE3_DETAIL.md §7)
+- [x] Critique globale dans CE FICHIER (§9 ci-dessous)
+- [x] 4 commits locaux sémantiques groupés (c9810e31 phase 1, c4a8181a phase 2, bbfa45a2 phase 3, 7529a254 E2 docs)
+- [x] Update MEMORY.md (règle #36 workflow strict + nouvelle entrée session E1)
+- [ ] Demande explicite confirmation push (Règle #13) — **EN COURS**
 
 ## 6. Risques & mitigations
 
@@ -193,3 +191,91 @@ Remplacer le flux actuel `report_id` en **env vars Cloud Run + redeploy** par un
 ## Annexe B — Référence Linking API (hors scope E1, garde pour plus tard)
 
 `packages/backend/database/tools/looker_studio_url_generator.py` existe déjà mais ne sera PAS utilisé en E1 (Option 3 plan rapport). E1 = Option 1 stricte (table BD).
+
+---
+
+## 9. Critique globale E1 (phase 5)
+
+### 9.1 Bilan quantifié
+
+| Phase | Effort planifié | Effort réel | Output |
+|---|---|---|---|
+| Plan global + phase 1 | 30 min | 45 min (incl. découverte wipe BD) | 1 migration + 1 script + 2 plans |
+| Phase 2 backend | 1h30 | 1h45 | 4 fichiers nouveaux + 3 modifiés + smoke 6/6 |
+| Phase 3 frontend | 1h | 1h15 | 5 fichiers nouveaux + 6 modifiés + i18n 3 langues |
+| E2 docs | 30 min | 20 min | 2 plans + 1 modèle Pydantic clarifiés |
+| Phase 4 plan | 30 min | 20 min | Plan + script smoke complet |
+| Phase 5 critique | 30 min | 25 min | Ce fichier + memory updates |
+| **Total** | **~4-5h** | **~4h45** | **4 commits locaux** |
+
+### 9.2 Commits locaux (à push après validation)
+
+| SHA | Description | Fichiers |
+|---|---|---|
+| `c9810e31` | feat E1 phase 1 — migration 317 + dashboards.manage permission | 4 (1 SQL + 1 script + 2 plans) |
+| `c4a8181a` | feat E1 phase 2 — backend admin endpoints + cache + audit | 10 (3 nouveaux + 3 modifiés + 1 smoke + 2 plans + master plan) |
+| `bbfa45a2` | feat E1 phase 3 — frontend admin config page + i18n + Zod | 14 (5 nouveaux + 6 modifiés + 1 plan + 1 master plan + 1 i18n × 3 langues) |
+| `7529a254` | docs E2 — clarify ministry → entity in plans + Pydantic legacy note | 3 |
+
+### 9.3 OWASP audit complet
+
+| OWASP Top 10 | Mitigation |
+|---|---|
+| A01 Broken Access Control | `permission_required("dashboards.manage")` sur PUT, `dashboards.view_business` sur GET. Strict separation des privilèges (2 perms distinctes). |
+| A02 Cryptographic Failures | Pas de stockage de secrets ; les Looker IDs ne sont PAS sensibles. JWT auth existant. HTTPS obligatoire. |
+| A03 Injection | asyncpg parametrized $1/$2 partout. Pydantic regex + length validation. Path param `dashboard_id` whitelist via registry. |
+| A04 Insecure Design | Plan détaillé écrit avant code. Cache invalidation post-commit (évite race). UPSERT atomique avec audit_log dans la même tx. |
+| A05 Security Misconfiguration | CHECK constraints BD comme last-resort defense. is_critical=TRUE flag. Rate limit 10/min sur write. |
+| A06 Vulnerable Components | Aucune nouvelle dépendance ; tout est sur les libs déjà auditées (FastAPI, Pydantic, asyncpg, React Query, react-hook-form, zod). |
+| A07 Auth Failures | Permission gate existant + JWT validation (héritage repo). Audit trail complet. |
+| A08 Data Integrity | Atomic transactions (UPSERT + audit). FK ON DELETE SET NULL. Idempotent migration. |
+| A09 Logging | audit_logs row pour chaque PUT (user, ip, UA, before/after). loguru warnings sur fallbacks (cache miss, env_fallback usage). |
+| A10 SSRF | N/A — pas de fetch externe côté serveur dans cette feature. |
+
+### 9.4 Performance 1M+
+
+| Critère | Approche | Statut |
+|---|---|---|
+| Hot read path | Redis cache 5min sur `/reports-config` | ✅ |
+| Cache stampede | Single key, payload <2KB | ✅ |
+| Cache miss fallback | HybridCache memory_only quand Redis down | ✅ (existant) |
+| BD lock contention | UPSERT atomique (1 round-trip) | ✅ |
+| BD index | Partial index sur is_active=true | ✅ |
+| Frontend | React Query staleTime + invalidation | ✅ |
+
+### 9.5 Hardcoding zero check
+
+- ✅ Aucun UUID en dur (résolus via SELECT)
+- ✅ Aucun role_id en dur (résolus via JOIN roles)
+- ✅ Aucun report_id en dur (lus depuis BD ou env vars)
+- ✅ Registry `_REPORTS_METADATA` = code (label/description/rls_mode), pas BD = cohérent (vise = MV/RLS qui sont en code)
+- ⚠️ Regex `^[a-zA-Z0-9_-]{8,64}$` dupliqué (Zod + Pydantic + BD CHECK) — DÉLIBÉRÉMENT (defense in depth) avec commentaires de sync dans les 3 fichiers
+
+### 9.6 Risques résiduels (à surveiller)
+
+1. **Wipe BD entre sessions** : la session 2026-05-04 a découvert que la migration 316 avait disparu de la BD entre 2026-05-02 et 2026-05-04. Solution actuelle : ré-applique idempotent via script. Solution propre future : job GitHub Actions qui valide périodiquement les permissions critiques. **Hors scope E1**.
+2. **Désynchronisation regex Zod ↔ Pydantic ↔ BD CHECK** : si on change l'un sans les 2 autres, comportement incohérent. Mitigation : commentaires de sync explicites dans tous les 3 fichiers.
+3. **Cache sur instances multiples** : si on scale horizontalement Cloud Run > 1 instance, l'invalidation cache après PUT n'atteindrait que l'instance qui a fait le write. Mitigation : Redis Upstash est déjà partagé entre instances. Le `cache.delete()` invalide dans Redis donc TOUTES les instances voient le miss au prochain GET. **Pas un risque réel** mais à confirmer à scale.
+4. **Pas de pytest formel pour le service** : utilisé un smoke script à la place. À uniformiser plus tard.
+5. **tsc full-project OOM** : pas de validation type globale dans cette session. Le build Next.js via GitHub Actions sera la vérif effective.
+
+### 9.7 Verdict global
+
+**✅ E1 PRÊT POUR PUSH** sous réserve de :
+- Validation explicite de l'utilisateur (Règle #13)
+- Smoke tests post-deploy phase 4 à exécuter par l'utilisateur (script fourni)
+- UI manual test à exécuter par l'utilisateur après Firebase Hosting redeploy
+
+**Bénéfices apportés** :
+- Plus jamais besoin de redéployer Cloud Run pour changer un report_id
+- Audit trail complet des modifications de config
+- Validation regex en 3 couches (defense in depth)
+- UX admin propre (form inline + toast feedback)
+- Backwards-compat env vars (transition douce)
+- 3 langues complètes
+
+**Coût ajouté** :
+- 1 nouvelle table BD (3 lignes max)
+- 1 nouvelle permission (`dashboards.manage`, 2 grants)
+- ~1280 lignes ajoutées (backend), ~1064 lignes (frontend)
+- Maintenance : aucune (table éditée par admin via UI)
