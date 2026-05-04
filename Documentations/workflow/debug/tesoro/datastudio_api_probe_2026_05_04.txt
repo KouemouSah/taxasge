@@ -1,0 +1,73 @@
+=== Step 1: Auth ===
+Got bearer token, length=256, prefix=ya29.a0AQvPyIO9Lcvo77YOBh...
+
+=== Step 2: Search discovery service for datastudio API ===
+Datastudio APIs found in public discovery: 0
+
+=> Datastudio API is NOT in the public Discovery Service — it has no public API contract.
+API: None (vNone)
+Description: None
+Base URL: None
+
+=== Step 3: ALL methods exposed ===
+Total methods: 0
+
+=== Step 4: Schemas relevant to content creation ===
+Total schemas defined: 0
+(no schema matches keywords)
+
+=== Step 5: List assets accessible to the user ===
+GET /v1/assets:search -> HTTP 403
+Body: {
+  "error": {
+    "code": 403,
+    "message": "Your application is authenticating by using local Application Default Credentials. The datastudio.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds .",
+    "status": "PERMISSION_DENIED",
+    "details": [
+    
+
+=== Step 6: Try CREATE a report (POST /v1/assets) ===
+POST /v1/assets -> HTTP 405
+Body: )]}'
+{"errorStatus":{"code":9}}
+
+=== Step 7: Try via reports endpoint (POST /v1/reports) ===
+POST /v1/reports -> HTTP 405
+Body: )]}'
+{"errorStatus":{"code":9}}
+
+=== Step 8: Discovery for related APIs (drive.googleapis.com Data Studio mime?) ===
+GET drive.files (Data Studio mime) -> HTTP 403
+Body: {
+  "error": {
+    "code": 403,
+    "message": "Request had insufficient authentication scopes.",
+    "errors": [
+      {
+        "message": "Insufficient Permission",
+        "domain": "global",
+        "reason": "insufficientPermissions"
+      }
+    ],
+    "status": "PERMISSION_DENIED",
+    "detai
+
+=== Step 9: Try Drive copy of a Data Studio report (templating?) ===
+(Skipped — would need a source report ID to copy)
+
+=== Step 10: Try every plausible report-creation URL ===
+Trying 10 URL variants...
+  POST   /v1/reports                         HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/reports:create                  HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/reports/create                  HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/assets:create                   HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/assets:batchCreate              HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1beta/reports                     HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v2/reports                         HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/dashboards                      HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/reports:clone                   HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+  POST   /v1/reports/copy                    HTTP 405 - MethodNotAllowed (URL exists but verb wrong)
+
+=== CONCLUSION ===
+Methods that look like content creation: 0
+  (none — confirmed: API does NOT expose programmatic report creation)

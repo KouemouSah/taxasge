@@ -914,6 +914,70 @@ Si tu veux **un rapport séparé pour le dashboard 2** (recommandé pour iframe 
 - **Ajout d'un nouveau dashboard plus tard** : (a) le dev backend ajoute la MV + grant à `looker_readonly` dans une migration ; (b) au prochain deploy, le wrapper `vw_xxx` apparaît auto (cf. §6.7) ; (c) tu crées le rapport Looker avec REQUÊTE PERSONNALISÉE `SELECT * FROM vw_xxx` ; (d) coller le report_id dans `/admin/dashboards/config` (ligne ajoutée au registry backend si nouveau dashboard_id).
 - **Rotation password `looker_readonly`** : changer côté Supabase + ALTER ROLE → Looker re-demandera credentials sur les 3 datasources la prochaine fois → re-saisir une fois.
 
+### 6.11 Test empirique 2026-05-04 — l'API Data Studio n'expose PAS la création de rapport
+
+L'utilisateur a activé `datastudio.googleapis.com` dans le projet `taxasge-dev` et demandé si on pouvait créer les dashboards programmatiquement (comme avec Sentry). Test empirique conduit :
+
+#### Méthode
+
+Script `packages/backend/scripts/probe_datastudio_api.py` exécuté avec un bearer token utilisateur (compte `kouemou.sah@gmail.com`, scopes par défaut gcloud auth). Output complet sauvegardé : `Documentations/workflow/debug/tesoro/datastudio_api_probe_2026_05_04.txt`.
+
+Le script effectue :
+1. Récupération du token via `google.auth.default()` (Application Default Credentials)
+2. Recherche dans le Discovery Service public (`discovery/v1/apis?name=datastudio`)
+3. Tentative de discovery doc (`/$discovery/rest?version=v1`)
+4. `GET /v1/assets:search` (lecture, méthode officiellement documentée)
+5. **10 tentatives `POST` distinctes** sur les chemins plausibles de création :
+   `/v1/reports`, `/v1/reports:create`, `/v1/reports/create`, `/v1/assets:create`, `/v1/assets:batchCreate`, `/v1beta/reports`, `/v2/reports`, `/v1/dashboards`, `/v1/reports:clone`, `/v1/reports/copy`
+6. Tentative `GET drive.files` avec MIME type Looker Studio
+7. Synthèse
+
+#### Résultats clés
+
+| Test | Réponse | Interprétation |
+|---|---|---|
+| Datastudio dans Discovery Service public | **0 entries** | Anormal — Google ne publie aucun contrat d'API. La plupart des autres APIs Google y figurent. |
+| `GET /v1/assets:search` | HTTP 403 (quota project required) | Endpoint existe (lecture), mais nécessite identité utilisateur explicite |
+| **`POST /v1/reports`** | **HTTP 405 Method Not Allowed** | **Backend reconnaît le chemin mais refuse POST** |
+| `POST /v1/reports:create` | HTTP 405 | idem |
+| `POST /v1/reports/create` | HTTP 405 | idem |
+| `POST /v1/assets:create` | HTTP 405 | idem |
+| `POST /v1/assets:batchCreate` | HTTP 405 | idem |
+| `POST /v1beta/reports` | HTTP 405 | idem (alpha n'expose rien non plus) |
+| `POST /v2/reports` | HTTP 405 | idem (v2 n'expose rien non plus) |
+| `POST /v1/dashboards` | HTTP 405 | idem |
+| `POST /v1/reports:clone` | HTTP 405 | idem (pas de clone API) |
+| `POST /v1/reports/copy` | HTTP 405 | idem |
+| `GET drive.files (mimeType=application/vnd.google-apps.studio)` | HTTP 403 (scope manquant) | Drive API permettrait `copy()` d'un report mais pas une création from scratch |
+
+#### Verdict
+
+**`Methods that look like content creation: 0`** — confirmé par 10 tentatives empiriques.
+
+La doc officielle https://developers.google.com/looker-studio/integrate/api/reference liste exhaustivement 7 méthodes :
+- `assets.search` (lecture)
+- `assets.checkPermissions` / `getPermissions` / `updatePermissions` (gestion ACL)
+- `assets.moveToTrash` / `restoreFromTrash` (lifecycle)
+- `assets.delete` (suppression)
+
+**Aucune méthode pour créer un rapport, ajouter un widget, configurer une datasource ou modifier le contenu d'un dashboard.** Confirmé empiriquement par le HTTP 405 systématique sur 10 chemins distincts incluant les variantes `/v1`, `/v1beta`, `/v2`, format `:create`, format `/create`, format `:clone`.
+
+#### Conséquences pour le projet
+
+- **Pas de rustine permissions** qui débloque la situation. Les 405 sont au niveau du gateway API, pas un mur de droits derrière.
+- **Pas de Drive API workaround** sans scope `drive.file` + un template pré-créé manuellement à cloner.
+- **Pas d'Apps Script automation magique** non plus — Apps Script peut interagir avec un rapport ouvert, pas en créer un nouveau headless.
+
+#### Reproductibilité
+
+Pour rejouer le test à tout moment :
+```bash
+"C:\Program Files\Odoo 17\python\python.exe" packages/backend/scripts/probe_datastudio_api.py
+```
+(token via `google.auth.default()` — re-exécuter `gcloud auth application-default login` si expiré).
+
+Si Google publie un jour une API de création (annoncée ou pas), la même commande détectera l'apparition d'endpoints fonctionnels (200 au lieu de 405).
+
 ### 6.6 Quand passer au connector custom (Path B)
 
 Déclencheurs concrets :
@@ -934,3 +998,4 @@ Tant qu'aucun de ces signaux n'est présent, **rester sur Path A**. C'est plus s
 - **2026-05-02 v1.3** — migrations 315+316 appliquées en BD (corrections : 316 utilisait `category` (n'existe pas) → `module_name` ; `granted_at` (n'existe pas) → `granted` ; codes rôles inventés (`supervisor`, `agent_aduana`, `agent_dgi`, `agent_min_*`) supprimés au profit des 21 codes réels en BD). Pwd `looker_readonly` set via ALTER ROLE. §6.0 mis à jour avec credentials concrets et état BD vérifié. Non-régression confirmée (counts: +1 perm, +21 grants, 0 suppression).
 - **2026-05-04 v1.4** — E1 automation : pages `/admin/dashboards/config` (modifier report_id sans redeploy), table `dashboard_registrations` (mig 317), permission `dashboards.manage`. Découvertes critiques : (a) `cleanup_obsolete_permissions` au boot wipait toute perm BD non-mirrored in-code → fix `cleanup_obsolete=False` par défaut ; (b) Looker JDBC filtre les MATERIALIZED VIEWS (`relkind='m'`) → §6.7 ajouté avec auto-sync boot des wrappers `vw_*` (zéro migration manuelle pour les futures MVs).
 - **2026-05-04 v1.5** — §6.7 enrichi avec note sur le cap UI Looker (~9 entrées dans le picker malgré 20 VIEWs livrées par le driver — vérifié par psql en tant que `looker_readonly`). §6.8 ajouté (datasource model Looker + 3 onglets « Ajouter des données » + comment réutiliser sans re-saisir credentials). §6.9 ajouté (REQUÊTE PERSONNALISÉE — SQL exact pour les 3 dashboards via wrappers `vw_*`). §6.10 ajouté (tutoriel pas-à-pas complet pour créer les 3 rapports Looker, widgets détaillés, sharing, intégration `/admin/dashboards/config`, maintenance).
+- **2026-05-04 v1.6** — §6.11 ajouté : test empirique `probe_datastudio_api.py` confirme que la Data Studio API (que l'utilisateur a activée dans `taxasge-dev`) n'expose PAS de création programmatique de rapports. 10 tentatives POST distinctes retournent toutes HTTP 405. Discovery doc absent du Discovery Service public. Output sauvegardé dans `Documentations/workflow/debug/tesoro/datastudio_api_probe_2026_05_04.txt`. Verdict : la création reste manuelle via l'UI Looker (§6.10) ; pas de chemin API même avec credentials/permissions/quotas corrects.
