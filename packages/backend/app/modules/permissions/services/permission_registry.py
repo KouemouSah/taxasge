@@ -390,26 +390,54 @@ def is_permission_registered(permission_name: str) -> bool:
 async def initialize_permissions(
     db_connection,
     sync_role_permissions: bool = True,
-    cleanup_obsolete: bool = True
+    cleanup_obsolete: bool = False,
+    report_obsolete: bool = True,
 ):
     """
-    Initialize permissions at application startup
+    Initialize permissions at application startup.
 
     This function:
     1. Loads all module permissions from the registry
-    2. Syncs them to the database (permissions table)
+    2. Syncs them to the database (permissions table) — UPSERT only, never DELETE
     3. Syncs role-permission mappings to the database (role_permissions table)
-    4. Cleans up obsolete permissions not defined in backend (optional)
+    4. Optionally REPORTS obsolete permissions in BD that aren't in the code registry
+    5. Optionally DELETES obsolete permissions (DESTRUCTIVE — opt-in only)
+
+    ⚠️ DEFAULT BEHAVIOR (2026-05-04 change) — cleanup_obsolete=False
+    --------------------------------------------------------------
+    Until 2026-05-04, cleanup_obsolete defaulted to True. This meant any
+    permission inserted by a SQL migration but not mirrored in a
+    *_permissions.py registry file was DELETED at every app boot.
+    Concretely, migrations 316 (dashboards.view_business) and 317
+    (dashboards.manage) survived 0 boots because the code registry didn't
+    list them.
+
+    The new default is False: boot is non-destructive. New permissions
+    introduced by migration are PRESERVED even if no developer has yet
+    added the corresponding *_permissions.py entry. Developers can still
+    add the entry later (best practice: every BD permission should have
+    a code mirror so the role_permissions can be reconciled).
+
+    To actually clean up obsolete permissions, run the explicit CLI:
+        python -m app.scripts.cleanup_obsolete_permissions [--dry-run] [--apply]
 
     Args:
-        db_connection: Database connection
-        sync_role_permissions: Whether to sync role-permission mappings (default: True)
-        cleanup_obsolete: Whether to remove obsolete permissions from DB (default: True)
+        db_connection: Database connection.
+        sync_role_permissions: Whether to UPSERT role-permission mappings
+            (default: True). Always non-destructive — only adds rows, never
+            removes.
+        cleanup_obsolete: If True, DELETE permissions in BD that are not in
+            the code registry (default: **False** — opt-in only). Use only
+            from the dedicated CLI; never from boot.
+        report_obsolete: If True (default), log a warning listing any
+            permissions in BD that are not in the code registry, so the
+            team has visibility on the drift without anything being
+            destroyed. Cheap, safe, informative.
 
     Returns:
-        Dict with sync statistics
+        Dict with sync statistics.
     """
-    logger.info("Initializing permissions...")
+    logger.info("Initializing permissions (non-destructive boot — see initialize_permissions docstring)")
 
     stats = PermissionRegistry.get_stats()
     logger.info(
@@ -422,7 +450,7 @@ async def initialize_permissions(
             f"for {stats['role_count']} roles"
         )
 
-    # Step 1: Sync permissions to database
+    # Step 1: UPSERT permissions (never DELETE)
     sync_result = await PermissionRegistry.sync_to_database(db_connection)
 
     logger.info(
@@ -431,7 +459,7 @@ async def initialize_permissions(
         f"{sync_result['total_count']} total"
     )
 
-    # Step 2: Sync role-permission mappings
+    # Step 2: UPSERT role-permission mappings (additive only)
     if sync_role_permissions and stats.get('role_count', 0) > 0:
         try:
             role_sync_result = await PermissionRegistry.sync_role_permissions_to_database(
@@ -446,8 +474,9 @@ async def initialize_permissions(
             logger.warning(f"Failed to sync role permissions (non-blocking): {e}")
             sync_result['role_permissions'] = {"error": str(e)}
 
-    # Step 3: Cleanup obsolete permissions
+    # Step 3: Either report (safe) or actually delete (destructive, opt-in)
     if cleanup_obsolete:
+        # ⚠️ DESTRUCTIVE — only reachable via explicit CLI flag.
         try:
             cleanup_result = await cleanup_obsolete_permissions(db_connection)
             sync_result['cleanup'] = cleanup_result
@@ -459,6 +488,27 @@ async def initialize_permissions(
         except Exception as e:
             logger.warning(f"Failed to cleanup obsolete permissions (non-blocking): {e}")
             sync_result['cleanup'] = {"error": str(e)}
+    elif report_obsolete:
+        # Informative-only: list drift but do not destroy.
+        try:
+            backend_perms = set(PermissionRegistry.get_all_permission_names())
+            db_rows = await db_connection.fetch("SELECT name FROM permissions")
+            db_perms = {r['name'] for r in db_rows}
+            obsolete_in_db = sorted(db_perms - backend_perms)
+            sync_result['drift_report'] = {
+                'in_db_not_in_code': obsolete_in_db,
+                'count': len(obsolete_in_db),
+            }
+            if obsolete_in_db:
+                logger.warning(
+                    f"⚠️  {len(obsolete_in_db)} permission(s) in BD not in code registry "
+                    f"(preserved by default — add to *_permissions.py to mirror, or run "
+                    f"`scripts/cleanup_obsolete_permissions.py --apply` to remove). "
+                    f"Sample: {obsolete_in_db[:5]}"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to compute drift report (non-blocking): {e}")
+            sync_result['drift_report'] = {"error": str(e)}
 
     return sync_result
 

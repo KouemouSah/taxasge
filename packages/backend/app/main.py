@@ -59,12 +59,27 @@ async def lifespan(app: FastAPI):
             #   3. All *_permissions.py files are loaded and registered
             from app.modules.permissions import initialize_permissions
 
-            # Sync permissions, role_permissions, and cleanup obsolete
+            # Sync permissions and role_permissions — NON-DESTRUCTIVE.
+            #
+            # cleanup_obsolete=False (changed 2026-05-04 from True): the
+            # boot now UPSERTs but never DELETEs. New permissions added by
+            # SQL migrations (e.g. dashboards.view_business / .manage from
+            # mig 316/317) automatically SURVIVE the next boot even if no
+            # *_permissions.py mirror exists yet. The drift is reported as
+            # a warning in the logs (report_obsolete=True default) so the
+            # team has visibility without anything being wiped.
+            #
+            # To actually delete obsolete permissions, run the explicit
+            # CLI: scripts/cleanup_obsolete_permissions.py --apply
+            #
+            # Why: prior behaviour caused mig 316 / 317 grants to be wiped
+            # at every boot because their permissions weren't mirrored in
+            # the code registry — see project_looker_e1_2026_05_04.md.
             async with db_manager.get_connection() as conn:
                 sync_result = await initialize_permissions(
                     conn,
                     sync_role_permissions=True,
-                    cleanup_obsolete=True  # Remove obsolete permissions from DB
+                    cleanup_obsolete=False,
                 )
                 logger.info(
                     f"✅ Permissions initialized: {sync_result['created_count']} new, "
