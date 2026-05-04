@@ -95,7 +95,7 @@ Looker Studio stores the connection internally once configured; no env var injec
 CREATE MATERIALIZED VIEW mv_recaudacion_daily AS
 SELECT
   date_trunc('day', p.created_at) AS day,
-  m.code AS ministry_code,
+  e.code AS entity_code,
   p.method,
   fs.workflow_code,
   count(*) AS payment_count,
@@ -104,15 +104,17 @@ FROM payments p
 JOIN service_payments sp ON sp.payment_id = p.id
 JOIN service_requests sr ON sr.id = sp.service_request_id
 JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-JOIN ministries m ON m.id = fs.ministry_id
+JOIN entities e ON e.id = fs.entity_id
 WHERE p.status = 'completed'
   AND p.created_at > now() - interval '90 days'
 GROUP BY 1, 2, 3, 4;
 
-CREATE INDEX ON mv_recaudacion_daily (day, ministry_code);
+CREATE INDEX ON mv_recaudacion_daily (day, entity_code);
 ```
 
-**Refresh pattern**: `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_recaudacion_daily` requires a unique index. Add `UNIQUE INDEX (day, ministry_code, method, workflow_code)` to allow concurrent refresh without locking readers.
+> **Note (2026-05-04)** : la BD utilise `entities` (pas `ministries`) comme table de référence pour le routage workflow→organisme. Les MIN_* (Ministerio de Hacienda, etc.) sont des entités au même titre que AYUNT_*, CAMARA, ITV, DGT, OFIVE, etc. Le RLS Looker filtre via `entity_code` (résolu par `agent_profiles.entity_id → entities.code`). Voir `app/modules/dashboards/services/rls.py`.
+
+**Refresh pattern**: `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_recaudacion_daily` requires a unique index. Add `UNIQUE INDEX (day, entity_code, method, workflow_code)` to allow concurrent refresh without locking readers.
 
 **Cron registration**: `app/core/scheduler.py:refresh_dashboard_mvs` runs every 15 min on weekdays, every 1h on weekends. Uses `cron-secret` HMAC header. **Memory rule #23**: every cron MUST be registered in `scheduler.py` or it never runs.
 
@@ -142,13 +144,13 @@ Each dashboard targets a specific stakeholder, answers 3-5 specific questions, a
 | 1 | Scorecard | Total recaudado (mes) | `SUM(amount)` filtered to current month, completed status |
 | 2 | Scorecard with sparkline | Hoy vs ayer | `SUM(amount)` group by `date_trunc('day', created_at)`, last 2 days |
 | 3 | Time-series (line) | Recaudación diaria (90d) | `SUM(amount)` × `day` from `mv_recaudacion_daily` |
-| 4 | Bar (stacked) | Recaudación por ministerio (mes) | `SUM(amount)` × `ministry_code` × `method` |
+| 4 | Bar (stacked) | Recaudación por entidad (mes) | `SUM(amount)` × `entity_code` × `method` |
 | 5 | Pie | Repartition par método de pago | `SUM(amount)` × `method`, current month |
 | 6 | Bar (horizontal, top-10) | Top 10 services en recaudación | `SUM(amount)` × `workflow_code`, current month |
-| 7 | Pivot table | Recaudación par ministerio × méthode | rows: ministry, cols: method, value: SUM(amount) |
+| 7 | Pivot table | Recaudación par entidad × méthode | rows: entity_code, cols: method, value: SUM(amount) |
 | 8 | Scorecard | Pourcentage du target mensuel atteint | `SUM(amount) / monthly_target * 100` — target stored in a 1-row config table or as a hardcoded parameter |
 
-**Filter bar**: date range, ministry selector, payment method selector. All 3 are bound to every chart by default.
+**Filter bar**: date range, entity selector (covers MIN_*, AYUNT_*, CAMARA, ITV, DGT, OFIVE…), payment method selector. All 3 are bound to every chart by default.
 
 **KPI thresholds for color coding**:
 - Daily revenue: green > 90% of 30-day moving avg, red < 70%, amber otherwise.
@@ -336,29 +338,35 @@ Triggered when each becomes a priority. Each estimated 1 day if MVs already exis
 | **Ministry stakeholders** | Only their ministry's slice of dashboards 1, 3, 4 | Filtered copy of the dashboard, shared via Google account |
 | **Exec** | Read-only summary dashboard 9 + scheduled weekly PDF digest | Email subscription, no login required |
 
-### 6.2 Per-ministry filtering pattern
+### 6.2 Per-entity filtering pattern
 
-Looker Studio supports `@DS_USER_EMAIL` as a built-in parameter. We map email → ministry via a join table:
+Looker Studio supports `@DS_USER_EMAIL` as a built-in parameter. We map email → entity via the agent profile (canonical source — see `app/modules/dashboards/services/rls.py`):
 
 ```sql
-CREATE VIEW v_user_ministry_map AS
-SELECT u.email, m.code AS ministry_code
+-- Optional convenience view if you want a flat email→entity_code map for
+-- Looker Path A. The Path B community connector resolves this server-side
+-- via agent_profiles → entities directly, no view needed.
+CREATE VIEW v_user_entity_map AS
+SELECT DISTINCT u.email, e.code AS entity_code
 FROM users u
-JOIN user_ministry_assignments uma ON uma.user_id = u.id
-JOIN ministries m ON m.id = uma.ministry_id;
+JOIN agent_profiles ap ON ap.user_id = u.id
+JOIN entities e ON e.id = ap.entity_id
+WHERE ap.deactivated_at IS NULL;
 ```
 
-In the Looker dashboard query:
+In the Looker dashboard query (Path A, when relying on `@DS_USER_EMAIL`):
 
 ```sql
 SELECT * FROM mv_recaudacion_daily
-WHERE ministry_code = (
-  SELECT ministry_code FROM v_user_ministry_map
+WHERE entity_code IN (
+  SELECT entity_code FROM v_user_entity_map
   WHERE email = PARAM_USER_EMAIL
 )
 ```
 
-A user from `MIN_INTERIOR` only sees their ministry data; a user from `MIN_FINANZAS` sees only theirs. Cross-ministry comparison is reserved to `treasury_supervisor` and `admin` roles, who get the unfiltered dashboard.
+A user from `MIN_INTERIOR` (entity `MIN_INTERIOR`) only sees that entity's rows; a user from `AYUNT_MALABO` only sees Malabo town hall rows. Cross-entity comparison is reserved to `admin` / `super_admin` roles, who get the unfiltered dashboard.
+
+> **Note RLS canonique** : le filtrage côté Path B (community connector) est piloté par `app/modules/dashboards/services/rls.py:resolve_user_access()` — il résout `entity_codes` directement depuis `agent_profiles.entity_id`, sans passer par une vue intermédiaire. Voir aussi `LOOKER_STUDIO_COMMUNITY_CONNECTOR_PLAN.md` §4.
 
 ### 6.3 Embed in `/admin`
 

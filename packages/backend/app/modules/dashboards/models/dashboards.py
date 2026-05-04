@@ -102,14 +102,26 @@ class DashboardDataResponse(BaseModel):
 
 
 class DashboardPingResponse(BaseModel):
-    """Response of GET /api/v1/dashboards/_ping — confirms connector auth works."""
+    """Response of GET /api/v1/dashboards/_ping — confirms connector auth works.
+
+    NOTE on `ministry_id`: this field is **legacy / audit-only**. The RLS engine
+    (services/rls.py) does NOT use ministry_id; it filters via `entity_codes`
+    resolved from `agent_profiles.entity_id → entities.code`. The field is
+    kept here for backwards compatibility with an early connector skeleton
+    and for human-readable hint in the audit log; do NOT introduce new
+    ministry-based logic. See `LOOKER_STUDIO_STATE_REPORT_2026_05_02.md` §2.2.
+    """
 
     user_email: str
     user_id: str
     role: Optional[str] = None
     ministry_id: Optional[int] = Field(
         default=None,
-        description="Set in B.2 once RLS is wired; None means 'no per-ministry filter applied'.",
+        description=(
+            "Legacy hint — may be the first ministry id of a multi-entity user "
+            "or None. NOT used for RLS filtering (which is entity-based). "
+            "Kept for backwards compat with the early connector design."
+        ),
     )
 
     model_config = ConfigDict(extra="forbid")

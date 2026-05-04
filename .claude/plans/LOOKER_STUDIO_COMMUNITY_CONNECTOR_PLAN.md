@@ -1,6 +1,8 @@
-# Looker Studio — Community Connector for per-ministry RLS
+# Looker Studio — Community Connector for per-entity RLS
 
-**Last updated**: 2026-05-02 (v1.0)
+> **Note (2026-05-04)** : ce document parle parfois de "ministry" pour des raisons historiques. Le code et la BD utilisent `entity` (table `entities`) — le routage workflow→organisme est piloté par `entities.workflow_codes`. Les MIN_* (Ministerio de Hacienda, etc.) sont des entités au même titre que AYUNT_*, CAMARA, ITV, DGT, etc. Le RLS canonique est dans `app/modules/dashboards/services/rls.py` : il résout `entity_codes` via `agent_profiles.entity_id → entities.code`. Les références ci-dessous à `ministry_id` sont **legacy** ; le code déjà mergé utilise `entity_code` (cf. mémoire règle #6 et `LOOKER_STUDIO_STATE_REPORT_2026_05_02.md` §2.2).
+
+**Last updated**: 2026-05-02 (v1.0), 2026-05-04 (annotation per-entity)
 **Owner**: Engineering
 **Audience**: backend lead, data team, anyone reviewing this design before commit.
 **Status**: **PLAN — pending architecture decisions** (see §6). No code written yet.
@@ -178,8 +180,8 @@ async def get_dashboard_data(
 
 | User role | What they see |
 |---|---|
-| `admin`, `treasury_supervisor` | All ministries (no filter) |
-| `agent_*` (DGT, AYUNT, MIN_*) | Only their `agent_profiles.ministry_id` |
+| `admin`, `super_admin` | All entities (no filter — bypass RLS) |
+| `agent_*` (DGT, AYUNT_*, MIN_*, CAMARA, ITV, OFIVE, TESORO, …) | Only their `agent_profiles.entity_id → entities.code` |
 | `business`, `accountant`, `citizen` | Forbidden (403) |
 | Connector-only access (e.g. via API key) | Whatever the user behind the key has |
 
