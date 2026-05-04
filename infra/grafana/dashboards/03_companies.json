@@ -4,16 +4,25 @@
   "tags": ["facil", "companies"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "5m",
   "time": { "from": "now-90d", "to": "now" },
   "fiscalYearStartMonth": 0,
   "editable": false,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "links": [
-    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": true, "keepTime": true, "icon": "external link" }
   ],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      { "name": "zone", "label": "Zone tarifaire", "type": "query", "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT zone_code FROM mv_company_stats_by_zone WHERE zone_code IS NOT NULL ORDER BY zone_code",
+        "multi": true, "includeAll": true, "current": { "text": "All", "value": "$__all" }, "refresh": 1 },
+      { "name": "city", "label": "Ville", "type": "query", "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT (c->>'city_name') AS __text, (c->>'city_name') AS __value FROM mv_company_analytics, jsonb_array_elements(by_city) AS c WHERE c->>'city_name' IS NOT NULL ORDER BY 1",
+        "multi": true, "includeAll": true, "current": { "text": "All", "value": "$__all" }, "refresh": 1 }
+    ]
+  },
   "annotations": { "list": [] },
   "panels": [
     { "id": 1, "type": "row", "title": "KPIs globaux", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
@@ -21,72 +30,114 @@
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_companies FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_companies FROM mv_company_global_stats" }]
     },
     { "id": 3, "type": "stat", "title": "Actives",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_companies FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_companies FROM mv_company_global_stats" }]
     },
     { "id": 4, "type": "stat", "title": "Vérifiées",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT verified_companies FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT verified_companies FROM mv_company_global_stats" }]
     },
     { "id": 5, "type": "stat", "title": "Licences actives",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_licenses FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT active_licenses FROM mv_company_global_stats" }]
     },
-    { "id": 6, "type": "stat", "title": "Total dette (XAF)",
+    { "id": 6, "type": "stat", "title": "Dette totale (XAF)",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF", "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "fieldConfig": { "defaults": { "unit": "currency:XAF", "color": { "mode": "fixed", "fixedColor": "red" } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_debt FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT total_debt FROM mv_company_global_stats" }]
     },
     { "id": 7, "type": "stat", "title": "Recovery rate",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
       "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 30 }, { "color": "green", "value": 70 }] } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
-      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT recovery_rate_pct FROM vw_company_global_stats" }]
+      "targets": [{ "refId": "A", "format": "table", "rawSql": "SELECT recovery_rate_pct FROM mv_company_global_stats" }]
     },
 
-    { "id": 10, "type": "row", "title": "Distribution par zone", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 10, "type": "row", "title": "Zone tarifaire (filtrable)", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
     { "id": 11, "type": "barchart", "title": "Entreprises par zone",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 0, "y": 6, "w": 12, "h": 9 },
       "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT zone_code AS \"Zone\", total_companies AS \"Entreprises\", active_licenses AS \"Licences\" FROM vw_company_stats_by_zone ORDER BY zone_code" }]
+        "rawSql": "SELECT zone_code AS \"Zone\", total_companies AS \"Entreprises\", active_licenses AS \"Licences\" FROM mv_company_stats_by_zone WHERE zone_code IN (${zone:sqlstring}) ORDER BY zone_code" }]
     },
     { "id": 12, "type": "barchart", "title": "Recovery rate par zone (%)",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 12, "y": 6, "w": 12, "h": 9 },
       "fieldConfig": { "defaults": { "unit": "percent" } },
       "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT zone_code AS \"Zone\", recovery_rate_pct AS \"Recovery %\" FROM vw_company_stats_by_zone ORDER BY zone_code" }]
+        "rawSql": "SELECT zone_code AS \"Zone\", recovery_rate_pct AS \"Recovery %\" FROM mv_company_stats_by_zone WHERE zone_code IN (${zone:sqlstring}) ORDER BY zone_code" }]
     },
 
-    { "id": 20, "type": "row", "title": "Détail par zone", "collapsed": false, "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "panels": [] },
-    { "id": 21, "type": "table", "title": "Tableau zones",
+    { "id": 20, "type": "row", "title": "Drill par ville (zone × ville)", "collapsed": false, "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 21, "type": "table", "title": "Détail par ville (entreprises × dette × recovery)",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 11 },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Dette" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
-          { "matcher": { "id": "byName", "options": "Payé" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
-          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
+          { "matcher": { "id": "byName", "options": "Dette (XAF)" }, "properties": [{ "id": "unit", "value": "currency:XAF" }, { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }] },
+          { "matcher": { "id": "byName", "options": "Total (XAF)" }, "properties": [{ "id": "unit", "value": "currency:XAF" }] },
+          { "matcher": { "id": "byName", "options": "Payé (XAF)" }, "properties": [{ "id": "unit", "value": "currency:XAF" }] },
+          { "matcher": { "id": "byName", "options": "Recovery %" }, "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 5 }, { "color": "green", "value": 30 }] } }] }
+        ]
+      },
+      "options": { "showHeader": true, "footer": { "enablePagination": true, "countRows": true } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (c->>'city_name') AS \"Ville\", (c->>'provincia') AS \"Provincia\", (c->>'zone_code') AS \"Zone\", (c->>'companies')::int AS \"Entreprises\", (c->>'licenses')::int AS \"Licences\", (c->>'total_amount')::numeric AS \"Total (XAF)\", (c->>'paid_amount')::numeric AS \"Payé (XAF)\", (c->>'debt')::numeric AS \"Dette (XAF)\", (c->>'recovery_pct')::numeric AS \"Recovery %\" FROM mv_company_analytics, jsonb_array_elements(by_city) AS c WHERE (c->>'city_name') IN (${city:sqlstring}) AND (c->>'zone_code') IN (${zone:sqlstring}) ORDER BY (c->>'debt')::numeric DESC" }]
+    },
+
+    { "id": 30, "type": "row", "title": "Top 20 débiteurs", "collapsed": false, "gridPos": { "x": 0, "y": 27, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 31, "type": "table", "title": "Top 20 débiteurs",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Dette (XAF)" }, "properties": [{ "id": "unit", "value": "currency:XAF" }, { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }] },
           { "matcher": { "id": "byName", "options": "Recovery %" }, "properties": [{ "id": "unit", "value": "percent" }] }
         ]
       },
       "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT zone_code AS \"Zone\", zone_name AS \"Nom\", total_companies AS \"Entreprises\", active_licenses AS \"Licences\", total_obligations_amount AS \"Total\", total_paid_amount AS \"Payé\", total_debt AS \"Dette\", recovery_rate_pct AS \"Recovery %\" FROM vw_company_stats_by_zone ORDER BY total_debt DESC" }]
+        "rawSql": "SELECT (d->>'legal_name') AS \"Raison sociale\", (d->>'registration_number') AS \"Reg #\", (d->>'zone_code') AS \"Zone\", (d->>'regimen_fiscal') AS \"Régime\", (d->>'debt')::numeric AS \"Dette (XAF)\", (d->>'total_amount')::numeric AS \"Total (XAF)\", (d->>'recovery_pct')::numeric AS \"Recovery %\" FROM mv_company_analytics, jsonb_array_elements(top_debtors) AS d WHERE (d->>'zone_code') IN (${zone:sqlstring}) ORDER BY (d->>'debt')::numeric DESC LIMIT 20" }]
+    },
+
+    { "id": 40, "type": "row", "title": "Régime fiscal & forme juridique", "collapsed": true, "gridPos": { "x": 0, "y": 38, "w": 24, "h": 1 }, "panels": [] },
+    { "id": 41, "type": "piechart", "title": "Régime fiscal",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 39, "w": 8, "h": 8 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT 'bundle' AS regime, bundle_count AS n FROM mv_company_global_stats UNION SELECT 'declarativo', declarativo_count FROM mv_company_global_stats UNION SELECT 'exento', exento_count FROM mv_company_global_stats UNION SELECT 'pendiente', pendiente_count FROM mv_company_global_stats" }]
+    },
+    { "id": 42, "type": "barchart", "title": "Dette par fee_type",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 39, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currency:XAF" } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (f->>'fee_type') AS \"Type\", (f->>'total_amount')::numeric AS \"Total\", (f->>'companies')::int AS \"Entreprises\" FROM mv_company_analytics, jsonb_array_elements(debt_by_fee_type) AS f ORDER BY \"Total\" DESC" }]
+    },
+    { "id": 43, "type": "table", "title": "Forme juridique",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 39, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [{ "matcher": { "id": "byName", "options": "Total (XAF)" }, "properties": [{ "id": "unit", "value": "currency:XAF" }] }]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (j->>'forma_juridica') AS \"Forme\", (j->>'count')::int AS \"#\", (j->>'with_license')::int AS \"Avec licence\", (j->>'total_amount')::numeric AS \"Total (XAF)\" FROM mv_company_analytics, jsonb_array_elements(by_forma_juridica) AS j ORDER BY \"#\" DESC" }]
     }
   ]
 }

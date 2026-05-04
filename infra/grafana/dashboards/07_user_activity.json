@@ -1,0 +1,179 @@
+{
+  "uid": "facil-user-activity",
+  "title": "Facil — Activité utilisateurs (audit)",
+  "tags": ["facil", "audit", "security", "users"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-30d", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": true, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "channel",
+        "label": "Canal",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT channel FROM v_user_activity_audit ORDER BY channel",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      },
+      {
+        "name": "user_role",
+        "label": "Rôle",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT user_role FROM v_user_activity_audit WHERE user_role IS NOT NULL ORDER BY user_role",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      },
+      {
+        "name": "category",
+        "label": "Catégorie",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT action_category FROM v_user_activity_audit ORDER BY action_category",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Synthèse activité", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 2, "type": "stat", "title": "Total actions",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) AND COALESCE(user_role, 'none') IN (${user_role:sqlstring}) AND action_category IN (${category:sqlstring})" }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Connexions",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_user_activity_audit WHERE action='LOGIN_SUCCESS' AND created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring})" }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Utilisateurs actifs (uniques)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COUNT(DISTINCT user_id) FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) AND COALESCE(user_role, 'none') IN (${user_role:sqlstring})" }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Suppressions",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 10 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_user_activity_audit WHERE action_category='delete' AND created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Modifs RBAC (perm/role)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_user_activity_audit WHERE action_category='rbac' AND created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+    },
+    {
+      "id": 7, "type": "stat", "title": "% Mobile",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (count(*) FILTER (WHERE channel='mobile') * 100.0 / NULLIF(count(*), 0))::numeric(10,2) AS pct FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+    },
+
+    { "id": 10, "type": "row", "title": "Distribution par catégorie / canal", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 11, "type": "piechart", "title": "Actions par catégorie",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 8, "h": 8 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"], "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT action_category AS category, count(*) AS n FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) GROUP BY action_category ORDER BY n DESC" }]
+    },
+    {
+      "id": 12, "type": "piechart", "title": "Actions par canal",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 8, "y": 6, "w": 8, "h": 8 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"], "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT channel, count(*) AS n FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY channel ORDER BY n DESC" }]
+    },
+    {
+      "id": 13, "type": "barchart", "title": "Actions par rôle",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
+      "options": { "orientation": "horizontal" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(user_role, '(anonyme)') AS role, count(*) AS n FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) GROUP BY user_role ORDER BY n DESC LIMIT 10" }]
+    },
+
+    { "id": 20, "type": "row", "title": "Top utilisateurs / Actions", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 21, "type": "table", "title": "Top 20 utilisateurs (volume)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 9 },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(user_email, '(anonyme)') AS \"Email\", COALESCE(user_name, '-') AS \"Nom\", user_role AS \"Rôle\", count(*) AS \"Actions\", count(DISTINCT action) AS \"Actions distinctes\", min(created_at) AS \"Première\", max(created_at) AS \"Dernière\" FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) AND COALESCE(user_role, 'none') IN (${user_role:sqlstring}) GROUP BY user_email, user_name, user_role ORDER BY \"Actions\" DESC LIMIT 20" }]
+    },
+    {
+      "id": 22, "type": "table", "title": "Top 20 actions",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 9 },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT action AS \"Action\", action_category AS \"Catégorie\", count(*) AS \"Volume\", count(DISTINCT user_id) AS \"Utilisateurs uniques\" FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) AND COALESCE(user_role, 'none') IN (${user_role:sqlstring}) AND action_category IN (${category:sqlstring}) GROUP BY action, action_category ORDER BY \"Volume\" DESC LIMIT 20" }]
+    },
+
+    { "id": 30, "type": "row", "title": "Évolution temporelle", "collapsed": false, "gridPos": { "x": 0, "y": 24, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 31, "type": "timeseries", "title": "Activité par canal (jour)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [{ "refId": "A", "format": "time_series",
+        "rawSql": "SELECT date_trunc('day', created_at) AS time, channel, count(*) AS n FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1, 2 ORDER BY 1" }]
+    },
+    {
+      "id": 32, "type": "timeseries", "title": "Connexions / Échecs / Logout par jour",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 8 },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [{ "refId": "A", "format": "time_series",
+        "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) FILTER (WHERE action='LOGIN_SUCCESS') AS \"Login OK\", count(*) FILTER (WHERE action ILIKE 'LOGIN%FAIL%' OR action ILIKE 'LOGIN%ERROR%') AS \"Login échec\", count(*) FILTER (WHERE action='LOGOUT') AS \"Logout\" FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1 ORDER BY 1" }]
+    },
+
+    { "id": 40, "type": "row", "title": "Détail (audit log brut)", "collapsed": true, "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 41, "type": "table", "title": "Dernières 100 activités",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 12 },
+      "options": { "showHeader": true, "footer": { "enablePagination": true } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT created_at AS \"Date\", COALESCE(user_email, '(anonyme)') AS \"User\", user_role AS \"Rôle\", channel AS \"Canal\", action AS \"Action\", action_category AS \"Catégorie\", entity_type AS \"Entité\", ip_address AS \"IP\" FROM v_user_activity_audit WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND channel IN (${channel:sqlstring}) AND COALESCE(user_role, 'none') IN (${user_role:sqlstring}) AND action_category IN (${category:sqlstring}) ORDER BY created_at DESC LIMIT 100" }]
+    }
+  ]
+}

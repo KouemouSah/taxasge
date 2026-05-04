@@ -1,17 +1,33 @@
 {
   "uid": "facil-payments",
   "title": "Facil — Payments Operations",
-  "tags": ["facil", "payments"],
+  "tags": [
+    "facil",
+    "payments"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 1,
   "refresh": "5m",
-  "time": { "from": "now-90d", "to": "now" },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
   "fiscalYearStartMonth": 0,
   "editable": false,
   "graphTooltip": 0,
   "links": [
-    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+    {
+      "type": "dashboards",
+      "tags": [
+        "facil"
+      ],
+      "title": "Facil dashboards",
+      "asDropdown": true,
+      "includeVars": false,
+      "keepTime": true,
+      "icon": "external link"
+    }
   ],
   "templating": {
     "list": [
@@ -19,93 +35,368 @@
         "name": "status",
         "label": "Statut",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "facil-postgres" },
-        "query": "SELECT DISTINCT payment_status::text FROM vw_payments_dashboard WHERE payment_status IS NOT NULL ORDER BY 1",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT payment_status FROM v_treasury_payments_by_site WHERE payment_status IS NOT NULL ORDER BY 1",
         "multi": true,
         "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "entity",
+        "label": "Entité",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT entity_code FROM v_treasury_payments_by_site WHERE entity_code IS NOT NULL ORDER BY entity_code",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "site",
+        "label": "Site",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT city AS __text, city AS __value FROM v_entity_locations_browse WHERE entity_code IN (${entity:sqlstring}) AND city IS NOT NULL ORDER BY city",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 1
       }
     ]
   },
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "panels": [
-    { "id": 1, "type": "row", "title": "Synthèse paiements", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 2, "type": "stat", "title": "Total volume",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT COUNT(*) AS total FROM vw_payments_dashboard WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+      "id": 1,
+      "type": "row",
+      "title": "Synthèse paiements",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
     },
     {
-      "id": 3, "type": "stat", "title": "Total montant (XAF)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT COALESCE(SUM(amount), 0) AS total FROM vw_payments_dashboard WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND ('$status' = 'All' OR payment_status::text IN ($status))" }]
+      "id": 2,
+      "type": "stat",
+      "title": "Total volume",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS total FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring})"
+        }
+      ]
     },
     {
-      "id": 4, "type": "piechart", "title": "Par statut",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
-      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT payment_status::text AS status, COUNT(*) AS count FROM vw_payments_dashboard WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY payment_status ORDER BY count DESC" }]
+      "id": 3,
+      "type": "stat",
+      "title": "Total montant (XAF)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(total_amount), 0) AS total FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND payment_status IN (${status:sqlstring}) AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring})"
+        }
+      ]
     },
     {
-      "id": 5, "type": "barchart", "title": "Par méthode",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT payment_method, SUM(amount) AS amount FROM vw_payments_dashboard WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND ('$status' = 'All' OR payment_status::text IN ($status)) GROUP BY payment_method ORDER BY amount DESC" }]
+      "id": 4,
+      "type": "piechart",
+      "title": "Par statut",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "name",
+          "percent"
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT payment_status AS status, COUNT(*) AS count FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring}) GROUP BY payment_status ORDER BY count DESC"
+        }
+      ]
     },
-
-    { "id": 10, "type": "row", "title": "Plans de paiement", "collapsed": false, "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 11, "type": "stat", "title": "Plans actifs",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 10, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT COUNT(*) AS active FROM vw_payment_plans_monitoring WHERE plan_status::text NOT IN ('completed','cancelled')" }]
+      "id": 5,
+      "type": "barchart",
+      "title": "Par méthode",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT payment_method, SUM(total_amount) AS amount FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND payment_status IN (${status:sqlstring}) AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring}) GROUP BY payment_method ORDER BY amount DESC"
+        }
+      ]
     },
     {
-      "id": 12, "type": "stat", "title": "Solde restant total (XAF)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 6, "y": 10, "w": 6, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT COALESCE(SUM(remaining_balance), 0) AS bal FROM vw_payment_plans_monitoring" }]
+      "id": 10,
+      "type": "row",
+      "title": "Plans de paiement",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
     },
     {
-      "id": 13, "type": "barchart", "title": "Plans par statut",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 4 },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT plan_status AS \"Statut\", COUNT(*) AS \"Count\" FROM vw_payment_plans_monitoring GROUP BY plan_status ORDER BY \"Count\" DESC" }]
+      "id": 11,
+      "type": "stat",
+      "title": "Plans actifs",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS active FROM vw_payment_plans_monitoring WHERE plan_status::text NOT IN ('completed','cancelled')"
+        }
+      ]
     },
-
-    { "id": 20, "type": "row", "title": "Reconciliation bancaire", "collapsed": true, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 21, "type": "table", "title": "Reconciliation par banque",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 8 },
+      "id": 12,
+      "type": "stat",
+      "title": "Solde restant total (XAF)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 10,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(remaining_balance), 0) AS bal FROM vw_payment_plans_monitoring"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "barchart",
+      "title": "Plans par statut",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT plan_status AS \"Statut\", COUNT(*) AS \"Count\" FROM vw_payment_plans_monitoring GROUP BY plan_status ORDER BY \"Count\" DESC"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Reconciliation bancaire",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Reconciliation par banque",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 8
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Taux" }, "properties": [{ "id": "unit", "value": "percent" }] },
-          { "matcher": { "id": "byName", "options": "Total (XAF)" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] },
-          { "matcher": { "id": "byName", "options": "Reconciliés (XAF)" }, "properties": [{ "id": "unit", "value": "currencyXOF" }] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Taux"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total (XAF)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currency:XAF"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reconciliés (XAF)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currency:XAF"
+              }
+            ]
+          }
         ]
       },
-      "targets": [{ "refId": "A", "format": "table",
-        "rawSql": "SELECT report_date AS \"Date\", bank_code AS \"Banque\", total_transactions AS \"Total\", reconciled_count AS \"Reconciliés\", unreconciled_count AS \"Non-rec\", failed_count AS \"Échec\", total_amount AS \"Total (XAF)\", reconciled_amount AS \"Reconciliés (XAF)\", reconciliation_rate AS \"Taux\" FROM vw_reconciliation_stats WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() ORDER BY report_date DESC, bank_code" }]
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT report_date AS \"Date\", bank_code AS \"Banque\", total_transactions AS \"Total\", reconciled_count AS \"Reconciliés\", unreconciled_count AS \"Non-rec\", failed_count AS \"Échec\", total_amount AS \"Total (XAF)\", reconciled_amount AS \"Reconciliés (XAF)\", reconciliation_rate AS \"Taux\" FROM vw_reconciliation_stats WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() ORDER BY report_date DESC, bank_code"
+        }
+      ]
     }
   ]
 }

@@ -1,156 +1,784 @@
 {
   "uid": "facil-treasury",
   "title": "Facil — Recaudación Fiscal",
-  "tags": ["facil", "treasury", "recaudacion"],
+  "tags": [
+    "facil",
+    "treasury",
+    "recaudacion"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 3,
   "refresh": "5m",
-  "time": { "from": "now-90d", "to": "now" },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
   "fiscalYearStartMonth": 0,
   "editable": false,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "links": [
-    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+    {
+      "type": "dashboards",
+      "tags": [
+        "facil"
+      ],
+      "title": "Facil dashboards",
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
   ],
   "templating": {
     "list": [
       {
+        "name": "ministry",
+        "label": "Ministère",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT ministry_name AS __text, ministry_id::text AS __value FROM mv_treasury_daily_kpis WHERE ministry_name IS NOT NULL ORDER BY ministry_name",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
         "name": "entity",
         "label": "Entité",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "facil-postgres" },
-        "query": "SELECT DISTINCT entity_code FROM vw_treasury_daily_kpis WHERE entity_code IS NOT NULL ORDER BY entity_code",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT entity_code FROM mv_treasury_daily_kpis WHERE entity_code IS NOT NULL AND ministry_id::text IN (${ministry:sqlstring}) ORDER BY entity_code",
         "multi": true,
         "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "workflow",
+        "label": "Workflow",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT workflow_code FROM mv_treasury_daily_kpis WHERE workflow_code IS NOT NULL AND entity_code IN (${entity:sqlstring}) ORDER BY workflow_code",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 1
       },
       {
         "name": "method",
         "label": "Méthode",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "facil-postgres" },
-        "query": "SELECT DISTINCT payment_method FROM vw_treasury_daily_kpis WHERE payment_method IS NOT NULL ORDER BY payment_method",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT payment_method FROM mv_treasury_daily_kpis WHERE payment_method IS NOT NULL ORDER BY payment_method",
         "multi": true,
         "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "site",
+        "label": "Site",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT COALESCE(effective_city, '(unassigned)') AS __text, COALESCE(effective_city, 'unassigned') AS __value FROM v_treasury_payments_by_site WHERE 1=1 ORDER BY 1",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 1
       }
     ]
   },
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "panels": [
-    { "id": 1, "type": "row", "title": "Synthèse", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
-
     {
-      "id": 2, "type": "stat", "title": "Total recaudado (période)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "value" },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } } },
+      "id": 1,
+      "type": "row",
+      "title": "Synthèse — KPIs trésorerie",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total recaudé (période)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area"
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(total_amount), 0) AS total FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$entity' = 'All' OR entity_code IN ($entity)) AND ('$method' = 'All' OR payment_method IN ($method))" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(total_amount), 0) AS total FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring}))"
+        }
       ]
     },
     {
-      "id": 3, "type": "stat", "title": "Paiements (count)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 6, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "id": 3,
+      "type": "stat",
+      "title": "Paiements complétés",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(payment_count), 0) AS count FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(completed_count), 0) FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring}))"
+        }
       ]
     },
     {
-      "id": 4, "type": "stat", "title": "Complétés",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 10, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "id": 4,
+      "type": "stat",
+      "title": "Rejetés",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(completed_count), 0) AS done FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(rejected_count), 0) FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring}))"
+        }
       ]
     },
     {
-      "id": 5, "type": "stat", "title": "Rejetés",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 14, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
+      "id": 5,
+      "type": "stat",
+      "title": "SLA breach",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none",
+        "colorMode": "background"
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(rejected_count), 0) AS rej FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(sla_breached_count), 0) FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring}))"
+        }
       ]
     },
     {
-      "id": 6, "type": "stat", "title": "SLA breach",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
-      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "id": 6,
+      "type": "stat",
+      "title": "Durée moy. (min)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "decimals": 1
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area"
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(sla_breached_count), 0) AS sla FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
-    },
-
-    { "id": 10, "type": "row", "title": "Évolution temporelle", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
-    {
-      "id": 11, "type": "timeseries", "title": "Recaudación quotidienne",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 6, "w": 16, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
-      "targets": [
-        { "refId": "A", "format": "time_series",
-          "rawSql": "SELECT report_date AS time, SUM(total_amount) AS \"Total\" FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$entity' = 'All' OR entity_code IN ($entity)) AND ('$method' = 'All' OR payment_method IN ($method)) GROUP BY report_date ORDER BY report_date" }
-      ]
-    },
-    {
-      "id": 12, "type": "piechart", "title": "Répartition par méthode",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
-      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT payment_method, SUM(total_amount) AS amount FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$entity' = 'All' OR entity_code IN ($entity)) GROUP BY payment_method ORDER BY amount DESC" }
-      ]
-    },
-
-    { "id": 20, "type": "row", "title": "Par entité & service", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 }, "panels": [] },
-    {
-      "id": 21, "type": "barchart", "title": "Total par entité (top 15)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT entity_name, SUM(total_amount) AS amount FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$method' = 'All' OR payment_method IN ($method)) GROUP BY entity_name ORDER BY amount DESC LIMIT 15" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT AVG(avg_processing_minutes)::numeric(10,2) FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring}))"
+        }
       ]
     },
     {
-      "id": 22, "type": "barchart", "title": "Top 10 services (workflow_code)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "id": 10,
+      "type": "row",
+      "title": "Tendances",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Recaudación quotidienne",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF",
+          "custom": {
+            "lineInterpolation": "smooth",
+            "fillOpacity": 30
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT workflow_code, SUM(total_amount) AS amount FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$entity' = 'All' OR entity_code IN ($entity)) GROUP BY workflow_code ORDER BY amount DESC LIMIT 10" }
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT report_date AS time, SUM(total_amount) AS \"Total\" FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring})) GROUP BY report_date ORDER BY report_date"
+        }
       ]
     },
-
-    { "id": 30, "type": "row", "title": "Pivot détail", "collapsed": true, "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 31, "type": "table", "title": "Pivot entité × méthode",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 10 },
-      "fieldConfig": { "defaults": { "unit": "currencyXOF" } },
+      "id": 12,
+      "type": "piechart",
+      "title": "Répartition par méthode",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT entity_name AS \"Entité\", payment_method AS \"Méthode\", SUM(total_amount) AS \"Total\", SUM(payment_count) AS \"Paiements\", AVG(avg_processing_minutes)::numeric(10,2) AS \"Tps moy. (min)\" FROM vw_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() GROUP BY entity_name, payment_method ORDER BY \"Total\" DESC" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT payment_method, SUM(total_amount) AS amount FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring})) GROUP BY payment_method ORDER BY amount DESC"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Cross-axes (entité × workflow × méthode)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "barchart",
+      "title": "Top entités (montant)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 8,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "options": {
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT entity_name AS \"Entité\", SUM(total_amount) AS \"Total\" FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) GROUP BY entity_name ORDER BY \"Total\" DESC LIMIT 15"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "barchart",
+      "title": "Top workflows",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 15,
+        "w": 8,
+        "h": 9
+      },
+      "options": {
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT workflow_code AS \"Workflow\", SUM(payment_count) AS \"#\", SUM(total_amount) AS \"Total\" FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND entity_code IN (${entity:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring})) GROUP BY workflow_code ORDER BY \"#\" DESC LIMIT 15"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "table",
+      "title": "Pivot ministère × méthode",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currency:XAF"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT ministry_name AS \"Ministère\", payment_method AS \"Méthode\", SUM(total_amount) AS \"Total\", SUM(payment_count) AS \"#\" FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND entity_code IN (${entity:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) AND payment_method IN (${method:sqlstring}) AND entity_code IN (SELECT entity_code FROM v_entity_locations_browse WHERE city IN (${site:sqlstring})) GROUP BY ministry_name, payment_method ORDER BY \"Total\" DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "SLA & Performance par entité",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "SLA par entité",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SLA breach %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 15
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Durée moy (min)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT entity_name AS \"Entité\", SUM(payment_count) AS \"Paiements\", SUM(sla_breached_count) AS \"SLA breach\", SUM(sla_warning_count) AS \"SLA warn\", (SUM(sla_breached_count) * 100.0 / NULLIF(SUM(payment_count), 0))::numeric(10,2) AS \"SLA breach %\", AVG(avg_processing_minutes)::numeric(10,1) AS \"Durée moy (min)\" FROM mv_treasury_daily_kpis WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ministry_id::text IN (${ministry:sqlstring}) AND workflow_code IN (${workflow:sqlstring}) GROUP BY entity_name ORDER BY \"Paiements\" DESC"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Performance par site effectif (résolution multi-source)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 101,
+      "type": "barchart",
+      "title": "Recaudación par site effectif",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(effective_city, '(unassigned)') AS \"Site\", SUM(total_amount) AS \"Total\", COUNT(*) AS \"#\" FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring}) AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) AND COALESCE(workflow_code, '?') IN (${workflow:sqlstring}) GROUP BY effective_city ORDER BY \"Total\" DESC"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "type": "barchart",
+      "title": "Site × méthode (XAF)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 51,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:XAF"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(effective_city, '(unassigned)') AS \"Site\", payment_method AS \"Méthode\", SUM(total_amount) AS \"Total\" FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring}) AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) GROUP BY effective_city, payment_method ORDER BY \"Total\" DESC"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "type": "piechart",
+      "title": "Source résolution location",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 60,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT location_source, count(*) AS n FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) GROUP BY location_source ORDER BY n DESC"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "type": "table",
+      "title": "Détail paiements (avec site résolu)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 60,
+        "w": 16,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currency:XAF"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "enablePagination": true
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT created_at AS \"Date\", entity_code AS \"Entité\", COALESCE(effective_city, '(unassigned)') AS \"Site\", workflow_code AS \"Workflow\", payment_method AS \"Méthode\", payment_status AS \"Statut\", total_amount AS \"Total\", location_source AS \"Source loc.\", channel AS \"Canal\" FROM v_treasury_payments_by_site WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND COALESCE(effective_city, 'unassigned') IN (${site:sqlstring}) AND COALESCE(entity_code, '?') IN (${entity:sqlstring}) ORDER BY created_at DESC LIMIT 100"
+        }
       ]
     }
   ]

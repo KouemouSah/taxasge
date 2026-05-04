@@ -1,136 +1,748 @@
 {
   "uid": "facil-agents",
   "title": "Facil — Performance Agentes",
-  "tags": ["facil", "agents"],
+  "tags": [
+    "facil",
+    "agents",
+    "operations"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "5m",
-  "time": { "from": "now-90d", "to": "now" },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
   "fiscalYearStartMonth": 0,
   "editable": false,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "links": [
-    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link" }
+    {
+      "type": "dashboards",
+      "tags": [
+        "facil"
+      ],
+      "title": "Facil dashboards",
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
   ],
   "templating": {
     "list": [
       {
-        "name": "agent",
-        "label": "Agent",
+        "name": "is_oms",
+        "label": "Type",
+        "type": "custom",
+        "query": "All : *,OMS uniquement : true,non-OMS uniquement : false",
+        "current": {
+          "text": "All",
+          "value": "*"
+        },
+        "options": [
+          {
+            "text": "All",
+            "value": "*",
+            "selected": true
+          },
+          {
+            "text": "OMS uniquement",
+            "value": "true"
+          },
+          {
+            "text": "non-OMS uniquement",
+            "value": "false"
+          }
+        ]
+      },
+      {
+        "name": "entity",
+        "label": "Entité",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "facil-postgres" },
-        "query": "SELECT DISTINCT agent_name FROM vw_agent_daily_workload WHERE agent_name IS NOT NULL ORDER BY agent_name",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT entity_code AS __text, entity_code AS __value FROM v_agent_workload_enriched WHERE entity_code IS NOT NULL AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') GROUP BY entity_code ORDER BY entity_code",
         "multi": true,
         "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "location",
+        "label": "Site",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT city AS __text, city AS __value FROM v_entity_locations_browse WHERE entity_code IN (${entity:sqlstring}) ORDER BY city",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "agent_type",
+        "label": "Type agent",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "facil-postgres"
+        },
+        "query": "SELECT DISTINCT agent_type AS __text, agent_type AS __value FROM v_agent_workload_enriched WHERE agent_type IS NOT NULL ORDER BY agent_type",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 1
       }
     ]
   },
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "panels": [
-    { "id": 1, "type": "row", "title": "Synthèse", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 2, "type": "stat", "title": "Décisions totales",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(total_actions), 0) AS total FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
+      "id": 1,
+      "type": "row",
+      "title": "Synthèse — KPIs métier",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
     },
     {
-      "id": 3, "type": "stat", "title": "Approuvés",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 6, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(approved), 0) AS approved FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
-    },
-    {
-      "id": 4, "type": "stat", "title": "Rejetés",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 10, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none" },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(rejected), 0) AS rejected FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
-    },
-    {
-      "id": 5, "type": "stat", "title": "Taux d'approbation",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 14, "y": 1, "w": 4, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 80 }] } } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT (COALESCE(SUM(approved), 0) * 100.0 / NULLIF(SUM(total_actions), 0))::numeric(10,2) AS rate FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
-    },
-    {
-      "id": 6, "type": "stat", "title": "Durée moyenne (s)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
-      "fieldConfig": { "defaults": { "unit": "s" } },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT AVG(avg_duration_seconds)::numeric(10,2) AS avg_dur FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo()" }
-      ]
-    },
-
-    { "id": 10, "type": "row", "title": "Ranking & distribution", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
-    {
-      "id": 11, "type": "barchart", "title": "Top 10 agents (volume)",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 9 },
-      "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT agent_name, SUM(total_actions) AS \"Décisions\" FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$agent' = 'All' OR agent_name IN ($agent)) GROUP BY agent_name ORDER BY \"Décisions\" DESC LIMIT 10" }
-      ]
-    },
-    {
-      "id": 12, "type": "table", "title": "Tableau complet des agents",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 9 },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "Durée moy (s)" }, "properties": [{ "id": "unit", "value": "s" }] },
-          { "matcher": { "id": "byName", "options": "P50 (s)" }, "properties": [{ "id": "unit", "value": "s" }] }
-        ]
+      "id": 2,
+      "type": "stat",
+      "title": "Décisions totales",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area",
+        "colorMode": "value"
       },
       "targets": [
-        { "refId": "A", "format": "table",
-          "rawSql": "SELECT agent_name AS \"Agent\", SUM(total_actions) AS \"Total\", SUM(approved) AS \"Approuvés\", SUM(rejected) AS \"Rejetés\", AVG(avg_duration_seconds)::numeric(10,2) AS \"Durée moy (s)\", AVG(p50_duration_seconds)::numeric(10,2) AS \"P50 (s)\" FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$agent' = 'All' OR agent_name IN ($agent)) GROUP BY agent_name ORDER BY \"Total\" DESC" }
-      ]
-    },
-
-    { "id": 20, "type": "row", "title": "Évolution temporelle", "collapsed": false, "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "panels": [] },
-    {
-      "id": 21, "type": "timeseries", "title": "Approuvés / Rejetés par jour",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 0, "y": 16, "w": 16, "h": 8 },
-      "targets": [
-        { "refId": "A", "format": "time_series",
-          "rawSql": "SELECT report_date AS time, SUM(approved) AS \"Approuvés\", SUM(rejected) AS \"Rejetés\" FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$agent' = 'All' OR agent_name IN ($agent)) GROUP BY report_date ORDER BY report_date" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(total_actions), 0) AS total FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
       ]
     },
     {
-      "id": 22, "type": "timeseries", "title": "Durée P50 (s) par jour",
-      "datasource": { "type": "postgres", "uid": "facil-postgres" },
-      "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s" } },
+      "id": 3,
+      "type": "stat",
+      "title": "Taux d'approbation",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area",
+        "colorMode": "background"
+      },
       "targets": [
-        { "refId": "A", "format": "time_series",
-          "rawSql": "SELECT report_date AS time, AVG(p50_duration_seconds)::numeric(10,2) AS \"P50\" FROM vw_agent_daily_workload WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('$agent' = 'All' OR agent_name IN ($agent)) GROUP BY report_date ORDER BY report_date" }
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT (COALESCE(SUM(approved), 0) * 100.0 / NULLIF(SUM(total_actions), 0))::numeric(10,2) AS rate FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Approuvés",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(approved), 0) AS approved FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Rejetés",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(rejected), 0) AS rejected FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Durée moyenne (s)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT AVG(avg_duration_seconds)::numeric(10,2) AS avg_dur FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Agents actifs",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(DISTINCT agent_profile_id) AS n FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring})"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "OMS vs non-OMS — comparaison directe",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "barchart",
+      "title": "Volume décisions par segment",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN is_oms THEN 'OMS' ELSE 'non-OMS' END AS \"Segment\", SUM(total_actions) AS \"Décisions\", SUM(approved) AS \"Approuvés\", SUM(rejected) AS \"Rejetés\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() GROUP BY is_oms"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "barchart",
+      "title": "Durée moyenne (s) par segment",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN is_oms THEN 'OMS' ELSE 'non-OMS' END AS \"Segment\", AVG(avg_duration_seconds)::numeric(10,1) AS \"Moyenne\", AVG(p50_duration_seconds)::numeric(10,1) AS \"P50\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() GROUP BY is_oms"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "piechart",
+      "title": "Répartition décisions par entité",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT entity_code AS entity, SUM(total_actions) AS count FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') GROUP BY entity_code ORDER BY count DESC"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Ranking & sites",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Top agents (volume + qualité + vitesse)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 16,
+        "h": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Approbation %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 60
+                    },
+                    {
+                      "color": "green",
+                      "value": 80
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Durée moy (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50 (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OMS"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "color": "blue",
+                        "text": "OMS"
+                      },
+                      "false": {
+                        "color": "gray",
+                        "text": "non-OMS"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "enablePagination": true
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT agent_name AS \"Agent\", entity_code AS \"Entité\", COALESCE(location_city, '-') AS \"Site\", is_oms AS \"OMS\", agent_type AS \"Type\", SUM(total_actions) AS \"Décisions\", SUM(approved) AS \"Appr.\", SUM(rejected) AS \"Rej.\", (SUM(approved) * 100.0 / NULLIF(SUM(total_actions), 0))::numeric(10,1) AS \"Approbation %\", AVG(avg_duration_seconds)::numeric(10,1) AS \"Durée moy (s)\", AVG(p50_duration_seconds)::numeric(10,1) AS \"P50 (s)\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) AND COALESCE(agent_type, 'none') IN (${agent_type:sqlstring}) GROUP BY agent_name, entity_code, location_city, is_oms, agent_type ORDER BY \"Décisions\" DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "barchart",
+      "title": "Volume par site (top 10)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 11
+      },
+      "options": {
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(location_city, '(non assigné)') AS \"Site\", SUM(total_actions) AS \"Décisions\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) GROUP BY location_city ORDER BY \"Décisions\" DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "Évolution temporelle",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Volume quotidien — OMS vs non-OMS",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT report_date AS time, SUM(total_actions) FILTER (WHERE is_oms) AS \"OMS\", SUM(total_actions) FILTER (WHERE NOT is_oms) AS \"non-OMS\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) GROUP BY report_date ORDER BY report_date"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Durée P50 quotidienne (s)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT report_date AS time, AVG(p50_duration_seconds) FILTER (WHERE is_oms)::numeric(10,1) AS \"OMS P50\", AVG(p50_duration_seconds) FILTER (WHERE NOT is_oms)::numeric(10,1) AS \"non-OMS P50\" FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) GROUP BY report_date ORDER BY report_date"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Heatmap activité (agent × jour)",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 41,
+      "type": "heatmap",
+      "title": "Heatmap décisions agent × jour",
+      "datasource": {
+        "type": "postgres",
+        "uid": "facil-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "calculate": false,
+        "yAxis": {
+          "axisPlacement": "left"
+        },
+        "color": {
+          "scheme": "Spectral"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT report_date AS time, agent_name AS y, total_actions AS value FROM v_agent_workload_enriched WHERE report_date BETWEEN $__timeFrom() AND $__timeTo() AND ('${is_oms}' = '*' OR is_oms::text = '${is_oms}') AND entity_code IN (${entity:sqlstring}) AND COALESCE(location_city, 'unassigned') IN (${location:sqlstring}) ORDER BY agent_name, report_date"
+        }
       ]
     }
   ]

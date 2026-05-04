@@ -1,0 +1,151 @@
+{
+  "uid": "facil-channel",
+  "title": "Facil — Canal Mobile vs Web vs Inspector",
+  "tags": ["facil", "channel", "mobile", "web", "product"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-90d", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [
+    { "type": "dashboards", "tags": ["facil"], "title": "Facil dashboards", "asDropdown": true, "includeVars": true, "keepTime": true, "icon": "external link" }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "workflow",
+        "label": "Workflow",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT workflow_code FROM v_service_requests_channel WHERE workflow_code IS NOT NULL ORDER BY workflow_code",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      },
+      {
+        "name": "entity",
+        "label": "Entité",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "facil-postgres" },
+        "query": "SELECT DISTINCT entity_code FROM v_service_requests_channel WHERE entity_code IS NOT NULL ORDER BY entity_code",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Demandes — répartition par canal", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 2, "type": "stat", "title": "Total demandes",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_service_requests_channel WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring})" }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Mobile",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_service_requests_channel WHERE channel='mobile' AND created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring})" }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Web",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_service_requests_channel WHERE channel='web' AND created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring})" }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Inspector",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT count(*) FROM v_service_requests_channel WHERE channel='inspector' AND created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring})" }]
+    },
+
+    { "id": 10, "type": "row", "title": "Workflows × Canal", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 11, "type": "barchart", "title": "Demandes par workflow × canal (stacked)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 6, "w": 16, "h": 9 },
+      "options": { "stacking": "normal", "orientation": "horizontal" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT workflow_code AS workflow, count(*) FILTER (WHERE channel='mobile') AS \"Mobile\", count(*) FILTER (WHERE channel='web') AS \"Web\", count(*) FILTER (WHERE channel='inspector') AS \"Inspector\", count(*) FILTER (WHERE channel='unknown') AS \"Unknown\" FROM v_service_requests_channel WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND entity_code IN (${entity:sqlstring}) GROUP BY workflow_code ORDER BY count(*) DESC LIMIT 20" }]
+    },
+    {
+      "id": 12, "type": "piechart", "title": "Répartition globale par canal",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 9 },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"], "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT channel, count(*) AS n FROM v_service_requests_channel WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring}) GROUP BY channel ORDER BY n DESC" }]
+    },
+
+    { "id": 20, "type": "row", "title": "Paiements par canal", "collapsed": false, "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 21, "type": "barchart", "title": "Paiements par canal × méthode",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currency:XAF" } },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT channel AS \"Canal\", payment_method AS \"Méthode\", SUM(total_amount) AS \"Total\", count(*) AS \"Nombre\" FROM v_service_payments_enriched WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY channel, payment_method ORDER BY \"Total\" DESC NULLS LAST" }]
+    },
+    {
+      "id": 22, "type": "stat", "title": "Total recaudé (XAF)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 16, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "currency:XAF" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(total_amount), 0) FROM v_service_payments_enriched WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+    },
+    {
+      "id": 23, "type": "stat", "title": "% paiements mobile",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 18, "y": 16, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT (count(*) FILTER (WHERE channel='mobile') * 100.0 / NULLIF(count(*), 0))::numeric(10,2) FROM v_service_payments_enriched WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()" }]
+    },
+    {
+      "id": 24, "type": "table", "title": "Détail paiements (canal × statut)",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 4 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "unit", "value": "currency:XAF" }] }
+        ]
+      },
+      "targets": [{ "refId": "A", "format": "table",
+        "rawSql": "SELECT channel AS \"Canal\", payment_status AS \"Statut\", count(*) AS \"Nombre\", SUM(total_amount) AS \"Total\" FROM v_service_payments_enriched WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() GROUP BY channel, payment_status ORDER BY \"Total\" DESC NULLS LAST" }]
+    },
+
+    { "id": 30, "type": "row", "title": "Évolution adoption mobile", "collapsed": false, "gridPos": { "x": 0, "y": 24, "w": 24, "h": 1 }, "panels": [] },
+    {
+      "id": 31, "type": "timeseries", "title": "Demandes quotidiennes par canal",
+      "datasource": { "type": "postgres", "uid": "facil-postgres" },
+      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 9 },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom" } },
+      "fieldConfig": { "defaults": { "custom": { "stacking": { "mode": "normal", "group": "A" } } } },
+      "targets": [{ "refId": "A", "format": "time_series",
+        "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) FILTER (WHERE channel='mobile') AS \"Mobile\", count(*) FILTER (WHERE channel='web') AS \"Web\", count(*) FILTER (WHERE channel='inspector') AS \"Inspector\", count(*) FILTER (WHERE channel='unknown') AS \"Unknown\" FROM v_service_requests_channel WHERE created_at BETWEEN $__timeFrom() AND $__timeTo() AND workflow_code IN (${workflow:sqlstring}) AND entity_code IN (${entity:sqlstring}) GROUP BY 1 ORDER BY 1" }]
+    }
+  ]
+}

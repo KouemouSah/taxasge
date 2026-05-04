@@ -52,9 +52,15 @@ DASHBOARDS_DIR = ROOT.parent.parent / "infra" / "grafana" / "dashboards"
 DATASOURCE_UID = "facil-postgres"
 DATASOURCE_NAME = "Facil-Postgres"
 
-POSTGRES_HOST = "db.bpdzfkymgydjxxwlctam.supabase.co:6543"
+# Supabase Connection Pooler (transaction mode, IPv4) — required because the
+# direct host db.<project>.supabase.co resolves only in IPv6 and AWS-hosted
+# Grafana Cloud cannot reach IPv6 outbound. Discovered 2026-05-04 via DNS
+# resolution test (find region eu-west-3 for project bpdzfkymgydjxxwlctam).
+# The pooler also requires the username suffix .<project_ref> for non-postgres
+# roles (per Supabase docs).
+POSTGRES_HOST = "aws-0-eu-west-3.pooler.supabase.com:6543"
 POSTGRES_DB = "postgres"
-POSTGRES_USER = "looker_readonly"
+POSTGRES_USER = "looker_readonly.bpdzfkymgydjxxwlctam"
 
 
 def _api(method: str, path: str, body: Any = None) -> tuple[int, Any]:
