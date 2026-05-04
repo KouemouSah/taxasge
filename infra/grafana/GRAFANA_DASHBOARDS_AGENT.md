@@ -211,28 +211,56 @@ L'agent ne procède à Phase 2 que si :
 L'objectif est de **lister toutes les tables/vues/MVs accessibles au rôle BI**
 sans inventer.
 
-### 2.1 ⚠️ Piège #2 — `information_schema.columns` filtré
+### 2.1 ⚠️ Piège #2 — Schema discovery par moteur
 
-**Symptôme** : `SELECT … FROM information_schema.columns WHERE table_name='X'`
-retourne 0 rows même quand la table existe.
+**Symptôme (Postgres / Supabase)** :
+`SELECT … FROM information_schema.columns WHERE table_name='X'` retourne
+0 rows même quand la table existe.
 
 **Cause** : sur Supabase pooler (et certains autres setups managed),
 `information_schema` est privilege-filtered et ne montre rien pour certains
 contextes.
 
-**Solution** : utiliser `pg_attribute` + `pg_class` + `pg_namespace` directement :
+**Solution par moteur** (référence : §14 Annexe D — DB Adapter) :
 
 ```sql
+-- Postgres : utiliser pg_attribute (contournement du filter information_schema)
 SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS data_type
 FROM pg_attribute a
 JOIN pg_class c ON c.oid = a.attrelid
 JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = '<table>'
-  AND a.attnum > 0
-  AND NOT a.attisdropped
+WHERE n.nspname = 'public' AND c.relname = '<table>'
+  AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY a.attnum;
+
+-- MySQL / MariaDB : information_schema.COLUMNS (non filtré)
+SELECT COLUMN_NAME, COLUMN_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '<table>'
+ORDER BY ORDINAL_POSITION;
+
+-- BigQuery : INFORMATION_SCHEMA dataset-scoped
+SELECT column_name, data_type
+FROM `<project>.<dataset>`.INFORMATION_SCHEMA.COLUMNS
+WHERE table_name = '<table>'
+ORDER BY ordinal_position;
+
+-- Snowflake : information_schema avec UPPER (case-sensitive en Snowflake)
+SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = UPPER('<table>')
+ORDER BY ORDINAL_POSITION;
+
+-- SQL Server : sys.columns (préféré à information_schema pour types exacts)
+SELECT c.name, t.name AS data_type
+FROM sys.columns c
+JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('<schema>.<table>')
+ORDER BY c.column_id;
 ```
+
+**L'agent doit choisir la bonne requête en fonction du moteur détecté en
+Phase 0.5** (cf. Faiblesse 1).
 
 ### 2.2 Inventaire des relations grantées au rôle BI
 
@@ -380,18 +408,33 @@ WHERE (j->>'zone_code') IN (${zone:sqlstring})
 ORDER BY (j->>'debt')::numeric DESC;
 ```
 
-### 4.2 ⚠️ Piège #4 — `workflow_codes ? '<TAG>'` operator
+### 4.2 ⚠️ Piège #4 — Classifier métier sur array/JSON par moteur
 
-Pour détecter une classification métier basée sur un array JSONB
+Pour détecter une classification métier basée sur un array/JSON
 (ex: `entities.workflow_codes` contient ou pas `'BUNDLE_PAYMENT'`),
-utiliser l'opérateur Postgres `?` :
+utiliser l'opérateur **du moteur détecté** :
 
 ```sql
-(e.workflow_codes ? 'BUNDLE_PAYMENT')   AS is_oms
+-- Postgres (JSONB ? operator)
+(e.workflow_codes ? 'BUNDLE_PAYMENT') AS is_oms
+
+-- MySQL 8+ (JSON_CONTAINS)
+JSON_CONTAINS(e.workflow_codes, '"BUNDLE_PAYMENT"') AS is_oms
+
+-- BigQuery (UNNEST + EXISTS)
+EXISTS(SELECT 1 FROM UNNEST(e.workflow_codes) v WHERE v = 'BUNDLE_PAYMENT') AS is_oms
+
+-- Snowflake (ARRAY_CONTAINS)
+ARRAY_CONTAINS('BUNDLE_PAYMENT'::variant, e.workflow_codes) AS is_oms
+
+-- SQL Server (OPENJSON sur colonne NVARCHAR(MAX) JSON)
+(SELECT COUNT(*) FROM OPENJSON(e.workflow_codes) WHERE value = 'BUNDLE_PAYMENT') > 0 AS is_oms
 ```
 
-**Ne pas** utiliser `e.workflow_codes::text LIKE '%BUNDLE_PAYMENT%'` (fragile).
-**Ne pas** utiliser `IN (...)` enum hardcodé (drift admin/code).
+**Ne pas** utiliser de cast `LIKE '%TAG%'` sur le texte JSON (fragile,
+sensible aux espaces / encoding).
+**Ne pas** hardcoder une liste enum côté code (drift admin/code).
+**Toujours** consulter §14 Annexe D pour la primitive `json_array_contains` du moteur.
 
 ### 4.3 Naming convention obligatoire
 
@@ -676,16 +719,32 @@ Verified: each dashboard renders real data via API + UI walkthrough.
 - **Patterns réutilisables** (multi-source resolution, JSONB drill, chained variables)
 - **Refs aux fichiers** Facil pour exemples concrets
 
-### Faiblesse 1 — DB engine non-Postgres
-**Risque** : `pg_attribute`, JSONB ops, `currency:XAF`, etc. ne s'appliquent
-pas pour MySQL / BigQuery / Snowflake / SQL Server.
-**Garde-fou actif (Phase 0.5 — détection moteur)** :
-> L'agent **doit poser cette question avant Phase 1** :
-> « Quel SGBD est derrière la datasource ? (postgres / mysql / bigquery / snowflake / autre) »
-> Si **non-postgres** → l'agent **PARK le flux** et refuse poliment :
-> « Cet agent v1 est validé sur Postgres uniquement. Pour <SGBD>, je ne peux
-> pas garantir les patterns. Veux-tu : (a) forker l'agent en adaptant les
-> sections marquées `[POSTGRES-ONLY]`, (b) utiliser une autre approche ? »
+### Faiblesse 1 — DB engine multi-source (postgres / mysql / bigquery / snowflake / sqlserver)
+**Risque** : les requêtes SQL spécifiques (schema discovery, JSON ops, `format_type`,
+syntaxe regex, GRANT/REVOKE, ROLLBACK) diffèrent par moteur. Sans adaptation,
+l'agent génère du SQL non exécutable hors Postgres.
+**Garde-fou actif (Phase 0.5 — détection moteur + chargement adapter)** :
+> L'agent **doit, avant Phase 1**, exécuter ces 2 étapes :
+>
+> **Étape A — Détection automatique** : si l'utilisateur a fourni `DATABASE_URL`
+> ou un host, l'agent détecte le moteur via :
+> - `postgresql://` ou port 5432/6543 → `postgres`
+> - `mysql://` ou `mysql+pymysql` ou port 3306 → `mysql`
+> - host `*.bigquery.googleapis.com` ou projet GCP `bq://` → `bigquery`
+> - host `*.snowflakecomputing.com` → `snowflake`
+> - port 1433 ou `mssql://` → `sqlserver`
+> - sinon → demander explicitement.
+>
+> **Étape B — Chargement de l'adapter** : ouvrir l'**Annexe D — DB Adapter
+> Multi-Engine** (§14) et **lire les colonnes correspondant au moteur détecté**.
+> Toutes les requêtes générées (Phases 2, 4, 5) **doivent** utiliser les
+> primitives de cette colonne, pas celles Postgres par défaut.
+>
+> **Cas non couvert** : si le moteur n'est pas dans l'adapter (Oracle, DB2,
+> CockroachDB, ClickHouse, etc.), l'agent **demande à l'utilisateur** de
+> confirmer le mapping de 5 primitives clés (column_query, json_array_contains,
+> json_field_extract, regex_op, grant_select_syntax) **avant Phase 2**, et
+> **propose d'étendre §14** à la fin du flux pour les futurs projets.
 
 ### Faiblesse 2 — Grafana Enterprise / self-hosted vs Cloud Free
 **Risque** : provisioning YAML, anonymous embed, OAUTH proxy diffèrent.
@@ -889,6 +948,115 @@ END AS age_bucket
 
 ---
 
-**Version** : 1.0 (2026-05-04)
+**Version** : 1.1 (2026-05-04) — multi-engine adapter
 **Auteur** : Distillé de la session Facil Grafana E1 (10 dashboards en production)
 **Maintenance** : à mettre à jour à chaque nouveau piège rencontré sur futur projet
+
+---
+
+## 14. Annexe D — DB Adapter Multi-Engine
+
+> **But** : permettre à l'agent de générer du SQL exécutable sur **n'importe
+> quel moteur** supporté par Grafana, en remplaçant les primitives Postgres
+> par les équivalents du moteur détecté en Phase 0.5.
+>
+> **Convention** : chaque ligne du tableau définit une **primitive abstraite**
+> (ex: `json_array_contains`). L'agent **ne génère jamais** la primitive
+> Postgres directement — il **résout** la primitive abstraite en lisant la
+> colonne du moteur cible.
+>
+> **Sections engine-agnostic** (pas dans l'adapter — utiliser tel quel partout) :
+> - Templating Grafana `${var:sqlstring}` (formatter Grafana, pas SQL)
+> - `unit: "currency:XAF"` / `currency:USD` / etc. (format Grafana)
+> - `noValue: "0"` sur stat panels (config panel Grafana)
+> - `COALESCE(s1, s2, s3)` (standard SQL — disponible partout)
+> - `CASE WHEN … END` (standard SQL)
+> - Aging buckets via `CASE` sur durée (standard SQL — adapter juste la fonction `now() - col`)
+
+### 14.1 Adapter table — primitives par moteur
+
+| Primitive | Postgres | MySQL 8+ | BigQuery | Snowflake | SQL Server |
+|---|---|---|---|---|---|
+| **datasource type Grafana** | `postgres` | `mysql` | `grafana-bigquery-datasource` | `grafana-snowflake-datasource` | `mssql` |
+| **column_query** (cf §4.1) | `pg_attribute + pg_class + pg_namespace` | `INFORMATION_SCHEMA.COLUMNS` | `<dataset>.INFORMATION_SCHEMA.COLUMNS` | `INFORMATION_SCHEMA.COLUMNS` (UPPER) | `sys.columns + sys.types` |
+| **schema_default** | `public` | `DATABASE()` | `<project>.<dataset>` | current_schema | `dbo` |
+| **list_relations** | `SELECT relname, relkind FROM pg_class JOIN pg_namespace …` | `SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES` | `SELECT table_name, table_type FROM <dataset>.INFORMATION_SCHEMA.TABLES` | `SHOW TABLES IN SCHEMA …` | `SELECT name, type FROM sys.objects WHERE type IN ('U','V')` |
+| **has_select_privilege** | `has_table_privilege(role, oid, 'SELECT')` | `INFORMATION_SCHEMA.TABLE_PRIVILEGES` | IAM check (pas de fct SQL native) | `SHOW GRANTS TO ROLE <role>` | `HAS_PERMS_BY_NAME('<table>','OBJECT','SELECT')` |
+| **json_array_contains** | `col ? 'TAG'` | `JSON_CONTAINS(col, '"TAG"')` | `EXISTS(SELECT 1 FROM UNNEST(col) v WHERE v='TAG')` | `ARRAY_CONTAINS('TAG'::variant, col)` | `EXISTS(SELECT 1 FROM OPENJSON(col) WHERE value='TAG')` |
+| **json_field_extract** (text) | `col->>'field'` | `JSON_UNQUOTE(JSON_EXTRACT(col,'$.field'))` ou `col->>'$.field'` | `JSON_VALUE(col,'$.field')` | `col:field::string` | `JSON_VALUE(col,'$.field')` |
+| **json_field_extract** (numeric) | `(col->>'field')::numeric` | `CAST(col->>'$.field' AS DECIMAL)` | `CAST(JSON_VALUE(col,'$.field') AS NUMERIC)` | `col:field::number` | `CAST(JSON_VALUE(col,'$.field') AS DECIMAL)` |
+| **json_array_unnest** (drill) | `, jsonb_array_elements(col) AS j` | `, JSON_TABLE(col,'$[*]' COLUMNS(...)) AS j` | `, UNNEST(col) AS j` | `, LATERAL FLATTEN(input => col) AS j` | `, OPENJSON(col) AS j` |
+| **regex_match** | `col ~ 'pat'` | `col REGEXP 'pat'` | `REGEXP_CONTAINS(col,'pat')` | `REGEXP_LIKE(col,'pat')` | `col LIKE 'pat'` (limited) ou CLR |
+| **case-insensitive LIKE** | `ILIKE 'pat'` | `LIKE 'pat'` (default CI sur utf8_general_ci) | `LOWER(col) LIKE LOWER('pat')` | `ILIKE 'pat'` | `LIKE 'pat' COLLATE Latin1_General_CI_AS` |
+| **string_agg** | `string_agg(col,',')` | `GROUP_CONCAT(col SEPARATOR ',')` | `STRING_AGG(col,',')` | `LISTAGG(col,',')` | `STRING_AGG(col,',')` (2017+) |
+| **now()** | `NOW()` ou `CURRENT_TIMESTAMP` | `NOW()` | `CURRENT_TIMESTAMP()` | `CURRENT_TIMESTAMP()` | `SYSUTCDATETIME()` |
+| **interval subtraction** | `now() - interval '24 hours'` | `DATE_SUB(NOW(), INTERVAL 24 HOUR)` | `TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 24 HOUR)` | `DATEADD(HOUR,-24,CURRENT_TIMESTAMP())` | `DATEADD(HOUR,-24,SYSUTCDATETIME())` |
+| **hours_since (epoch diff)** | `EXTRACT(EPOCH FROM (now()-col))/3600` | `TIMESTAMPDIFF(HOUR, col, NOW())` | `TIMESTAMP_DIFF(CURRENT_TIMESTAMP(),col,HOUR)` | `DATEDIFF(HOUR, col, CURRENT_TIMESTAMP())` | `DATEDIFF(HOUR, col, SYSUTCDATETIME())` |
+| **CREATE OR REPLACE VIEW** | `CREATE OR REPLACE VIEW v AS …` | `CREATE OR REPLACE VIEW v AS …` (8.0.13+) | `CREATE OR REPLACE VIEW v AS …` | `CREATE OR REPLACE VIEW v AS …` | `IF OBJECT_ID(...) IS NOT NULL DROP; CREATE VIEW …` |
+| **GRANT SELECT** | `GRANT SELECT ON v TO <role>` | `GRANT SELECT ON db.v TO '<user>'@'%'` | (IAM) `bq add-iam-policy-binding` | `GRANT SELECT ON VIEW v TO ROLE <role>` | `GRANT SELECT ON v TO <user>` |
+| **ROLLBACK pattern** | `BEGIN; DROP VIEW IF EXISTS v; COMMIT;` | `DROP VIEW IF EXISTS v;` (DDL auto-commit) | `DROP VIEW IF EXISTS <project>.<dataset>.v;` | `DROP VIEW IF EXISTS v;` | `IF OBJECT_ID('v') IS NOT NULL DROP VIEW v;` |
+| **schema discovery script ref** | `probe_mvs_for_grafana.py` (Facil) | adapter à écrire | adapter à écrire | adapter à écrire | adapter à écrire |
+
+### 14.2 Pattern Postgres → patterns équivalents (snippets)
+
+**Pattern A — Aggregation enrichie (engine-agnostic, vrai standard SQL)** :
+inchangé partout — `LEFT JOIN` + `COALESCE` sont standard.
+
+**Pattern B — Multi-source resolution** :
+inchangé partout — `COALESCE` standard.
+
+**Pattern C — JSONB drill-down (engine-specific — voir §14.1)** :
+
+```sql
+-- Postgres
+SELECT (j->>'city') AS city, (j->>'amount')::numeric AS amount
+FROM mv_x, jsonb_array_elements(by_city) AS j
+WHERE (j->>'zone') IN (${zone:sqlstring});
+
+-- MySQL 8+
+SELECT j.city, j.amount
+FROM mv_x, JSON_TABLE(by_city, '$[*]'
+    COLUMNS(city VARCHAR(100) PATH '$.city', amount DECIMAL PATH '$.amount', zone VARCHAR(50) PATH '$.zone')
+) j
+WHERE j.zone IN (${zone:sqlstring});
+
+-- BigQuery
+SELECT JSON_VALUE(j,'$.city') AS city, CAST(JSON_VALUE(j,'$.amount') AS NUMERIC) AS amount
+FROM mv_x, UNNEST(JSON_QUERY_ARRAY(by_city,'$')) AS j
+WHERE JSON_VALUE(j,'$.zone') IN (${zone:sqlstring});
+
+-- Snowflake
+SELECT j.value:city::string AS city, j.value:amount::number AS amount
+FROM mv_x, LATERAL FLATTEN(input => by_city) j
+WHERE j.value:zone::string IN (${zone:sqlstring});
+
+-- SQL Server
+SELECT j.city, j.amount
+FROM mv_x CROSS APPLY OPENJSON(by_city)
+    WITH (city NVARCHAR(100) '$.city', amount DECIMAL '$.amount', zone NVARCHAR(50) '$.zone') j
+WHERE j.zone IN (${zone:sqlstring});
+```
+
+### 14.3 Caveats par moteur (à mentionner à l'utilisateur en Phase 3)
+
+| Moteur | Caveat principal | Mitigation |
+|---|---|---|
+| **Postgres** | `information_schema` filtré sur Supabase pooler | Utiliser `pg_attribute` (cf §4.1) |
+| **MySQL** | Pas de MV native avant 8.x ; pas d'`ARRAY` natif | Utiliser tables résumé + cron, JSON arrays dans colonne |
+| **BigQuery** | Pas de GRANT SQL — IAM only ; `${var:sqlstring}` doit utiliser quoting BQ | Configurer rôle BI via `bq add-iam-policy-binding` ; tester `${var:sqlstring}` rendering en Phase 1 |
+| **Snowflake** | Identifiers UPPERCASE par défaut ; warehouse coût query | Toujours `WHERE TABLE_NAME = UPPER(...)` ; configurer warehouse `XSMALL` pour BI |
+| **SQL Server** | Pas de `CREATE OR REPLACE VIEW` natif (avant 2022) ; OPENJSON requis 2016+ | Wrapper en transaction `IF OBJECT_ID … DROP THEN CREATE` ; check version `@@VERSION` en Phase 1 |
+| **Oracle / DB2 / autres** | Non couvert v1.1 | Cf. Faiblesse 1 — l'agent demande mapping interactif |
+
+### 14.4 Procédure d'extension de l'adapter (futur projet)
+
+Si l'agent rencontre un moteur non listé en §14.1 :
+
+1. **Ne pas inventer** — demander à l'utilisateur les 5 primitives clés
+   (column_query, json_array_contains, json_field_extract, regex_match, grant_syntax).
+2. **Tester chacune** via la datasource Grafana (`POST /api/ds/query`) avant
+   de générer la moindre vue.
+3. **À la fin du flux**, proposer un PR sur `infra/grafana/GRAFANA_DASHBOARDS_AGENT.md`
+   ajoutant la colonne du nouveau moteur dans §14.1 + le caveat dans §14.3.
+4. Mentionner dans le bilan session : « Adapter étendu au moteur X — primitives
+   validées : col1=…, col2=…, etc. ».

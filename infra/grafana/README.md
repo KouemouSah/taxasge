@@ -188,6 +188,12 @@ Le backend Facil construit cette URL via `DashboardConfigService._build_grafana_
 
 L'agent gère **automatiquement** les 10 pièges connus (IPv6, template variables, currency format, wrappers, etc.) — voir §11 du document.
 
+**Multi-engine (v1.1)** : l'agent détecte le moteur BD en Phase 0.5 et adapte
+les requêtes via §14 Annexe D. Moteurs supportés out-of-the-box :
+**Postgres**, **MySQL 8+**, **BigQuery**, **Snowflake**, **SQL Server**.
+Pour un moteur non couvert (Oracle, DB2, ClickHouse, etc.), l'agent demande
+les 5 primitives clés à l'utilisateur et propose d'étendre l'adapter.
+
 **Reproductible cross-projets** : copier 2 fichiers (`GRAFANA_DASHBOARDS_AGENT.md` + `.claude/commands/grafana-dashboards.md`) dans le repo cible et lancer la slash-command.
 
 ## Migrations associées (BD Facil)

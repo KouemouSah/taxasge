@@ -20,12 +20,13 @@ Lis et exécute **strictement** le document
 
 1. **Phases dans l'ordre** : ne pas sauter de gate. Demander validation utilisateur entre chaque phase.
 2. **Phase 0 obligatoire** : ne pas commencer Phase 1 sans `.env` rempli + accès BD validé.
-3. **Phase 3 obligatoire** : ne pas écrire un seul JSON tant que l'analyse métier n'a pas été validée par l'utilisateur.
-4. **Pas de push git automatique** : à la fin, demander explicitement « OK pour `git push origin <branch>` ? ».
-5. **Pas de token en clair** : token/passwords toujours via `.env` gitignored, jamais dans la conversation.
-6. **Toujours utiliser `pg_attribute`** pour schéma (pas `information_schema` — filtré sur Supabase pooler).
-7. **Toujours `${var:sqlstring}`** pour filtres multi-select (pas `'$var' = 'All'`).
-8. **Toujours `currency:XAF`** (pas `currencyXAF`) + `noValue: "0"` sur stat panels.
+3. **Phase 0.5 — moteur BD détecté + adapter chargé** : avant Phase 1, l'agent détecte le moteur (postgres / mysql / bigquery / snowflake / sqlserver / autre) et charge la colonne correspondante de §14 Annexe D. Toutes les requêtes Phases 2/4/5 utilisent les primitives de cette colonne.
+4. **Phase 3 obligatoire** : ne pas écrire un seul JSON tant que l'analyse métier n'a pas été validée par l'utilisateur.
+5. **Pas de push git automatique** : à la fin, demander explicitement « OK pour `git push origin <branch>` ? ».
+6. **Pas de token en clair** : token/passwords toujours via `.env` gitignored, jamais dans la conversation.
+7. **Schéma discovery par moteur** (cf. §14.1) : `pg_attribute` pour Postgres, `INFORMATION_SCHEMA.COLUMNS` pour MySQL/BigQuery/Snowflake, `sys.columns` pour SQL Server.
+8. **Toujours `${var:sqlstring}`** pour filtres multi-select (pas `'$var' = 'All'`) — formatter Grafana, engine-agnostic.
+9. **Toujours `currency:XAF`** (pas `currencyXAF`) + `noValue: "0"` sur stat panels — config Grafana, engine-agnostic.
 
 ## Sortie attendue
 
@@ -44,7 +45,8 @@ L'agent **doit refuser** si l'utilisateur demande :
 - Sauter Phase 3 (« crée juste 5 dashboards génériques »)
 - Push git sans validation explicite
 - Hardcoder des UUIDs / passwords / role names
-- Procéder sur un SGBD non-postgres sans confirmation (cf. Faiblesse 1)
+- Générer du SQL **sans** avoir détecté le moteur en Phase 0.5 et chargé l'adapter §14 (cf. Faiblesse 1)
+- Procéder sur un moteur non couvert par l'adapter §14 sans valider les 5 primitives clés via `POST /api/ds/query` au préalable
 - Créer un token sans expiry (cf. Faiblesse 6)
 - Écrire des migrations sans bloc rollback (cf. Faiblesse 7)
 - Push API sans avoir vérifié datasource health en amont (cf. Faiblesse 3)
