@@ -563,6 +563,64 @@ Cocher dans cet ordre :
 
 ---
 
+### 6.7 ⚠️ JDBC visibility — Materialized Views invisibles + auto-sync
+
+**Symptôme observé 2026-05-04** : un admin connecte Looker Studio en JDBC à `db.bpdzfkymgydjxxwlctam.supabase.co:6543`, ouvre l'onglet **TABLEAUX**, et ne voit que **2 relations** :
+- `v_active_assignments`
+- `v_active_service_request_assignments`
+
+Pourtant `looker_readonly` a SELECT sur ~18 relations agrégées (vérifié par `has_table_privilege` + listing `pg_class`).
+
+**Cause racine** : le driver JDBC PostgreSQL utilisé par Looker Studio appelle `DatabaseMetaData.getTables(types={"TABLE","VIEW"})` pour peupler son picker. PostgreSQL classifie les Materialized Views avec `pg_class.relkind='m'`, **qui n'est pas dans `{TABLE, VIEW}`** — le driver les filtre en silence. Seules les relations avec `relkind='r'` (table) ou `relkind='v'` (vue régulière) apparaissent. Tes 2 vues visibles sont les seules `relkind='v'` ; les 16+ MVs ont `relkind='m'` et restent invisibles, **même** avec les grants explicites en place.
+
+**Ce n'est PAS un bug Facil** — comportement universel de tout client JDBC qui n'override pas le filtre par défaut (DBeaver, JetBrains DataGrip, certains BI tools). Documenté côté Postgres : https://www.postgresql.org/docs/current/catalog-pg-class.html#CATALOG-PG-CLASS-RELKIND.
+
+#### Solution retenue (auto, durable, sans migration manuelle)
+
+Hook au boot de l'app FastAPI : `sync_looker_view_wrappers()` dans
+`packages/backend/app/modules/dashboards/services/looker_wrappers_sync.py`.
+Appelé depuis `main.py` après `initialize_permissions`.
+
+**Algorithme** :
+1. Vérifier que le rôle `looker_readonly` existe ; sinon, log warning et exit.
+2. Lister toutes les MVs (`relkind='m'`) du schéma `public` où `looker_readonly` a déjà SELECT (le grant = whitelist explicite "expose à Looker").
+3. Pour chaque MV `<nom>` :
+   - Calculer le nom du wrapper : `mv_<x>` → `vw_<x>`, `v_<x>` → `vw_<x>`, `<x>` → `vw_<x>`.
+   - `CREATE OR REPLACE VIEW vw_<x> AS SELECT * FROM <nom>` (idempotent).
+   - `GRANT SELECT ON vw_<x> TO looker_readonly`.
+   - `COMMENT ON VIEW` documente l'origine auto-générée.
+4. Détecter les wrappers orphelins (vw_* dont la MV source n'est plus grantée) → log info, **sans suppression** (politique non-destructive cohérente avec `cleanup_obsolete=False` sur les permissions).
+
+**Pourquoi ça marche pour Looker** :
+- Chaque wrapper est `relkind='v'` → visible dans le picker JDBC.
+- Le planner Postgres inline `SELECT * FROM mv_<x>` → zéro storage, zéro latence ajoutée.
+- Le backend continue de query `mv_<x>` directement (aucun changement code).
+
+**Pourquoi c'est auto** :
+- À chaque deploy GitHub Actions → Cloud Run reboot → boot exécute `sync_looker_view_wrappers()` → wrappers à jour.
+- Quand un dev backend ajoute une nouvelle MV via migration et écrit `GRANT SELECT ON mv_xxx TO looker_readonly` à la fin de sa migration, **le prochain deploy crée le wrapper automatiquement**. Aucune migration séparée requise pour le wrapper. Aucune action manuelle de l'admin/utilisateur.
+
+**Convention pour les futurs dev backend** :
+- Ne PAS créer de wrapper `vw_xxx` à la main dans une migration. Le sync au boot s'en occupe.
+- Dans la migration qui crée la nouvelle MV : ajouter UNE seule ligne `GRANT SELECT ON public.<nom_mv> TO looker_readonly;` à la fin. C'est tout.
+- Si une MV ne doit PAS être exposée à Looker (ex : contient PII), ne pas la granter — elle restera invisible. C'est le mode opt-in via grant.
+
+**État vérifié 2026-05-04 (test E2E contre BD live)** :
+- 18 wrappers créés auto au 1er run
+- Idempotent : 2e run = 0 changement (CREATE OR REPLACE no-op)
+- Looker JDBC verra désormais **20 VIEWs** au lieu de 2 (les 2 anciennes + 18 nouvelles)
+- Transparence vérifiée : `SELECT count(*) FROM vw_treasury_daily_kpis` == `SELECT count(*) FROM mv_treasury_daily_kpis` (5 rows)
+- Pas de migration 318 requise — le boot suffit
+
+**Action utilisateur** : après le prochain deploy backend (push 2026-05-04 + GitHub Actions), reconnecte le datasource JDBC dans Looker Studio. Tu verras 18 nouvelles vues `vw_*` cliquables dans l'onglet TABLEAUX.
+
+**Alternatives écartées** (pour mémoire) :
+- *Custom Query par dashboard* : marche, mais friction SQL pour chaque dashboard, pas auto.
+- *Convertir MVs en VIEWs régulières* : query cost remonte sur l'OLTP à chaque refresh dashboard — inacceptable à 1M+ users.
+- *Migration SQL avec wrappers en dur* : auto à la première fois, mais nécessite une migration à chaque ajout de MV. Pas durable.
+- *PostgreSQL EVENT TRIGGER sur DDL* : élégant mais nécessite SUPERUSER, indisponible sur Supabase managed.
+- *Cron toutes les X min* : ajoute latence (X min entre création MV et apparition wrapper) sans gain par rapport au boot sync.
+
 ### 6.6 Quand passer au connector custom (Path B)
 
 Déclencheurs concrets :
@@ -581,3 +639,4 @@ Tant qu'aucun de ces signaux n'est présent, **rester sur Path A**. C'est plus s
 - **2026-05-02 v1.1** — ajout §2.4 ETL (possible mais pas nécessaire ; dbt-core comme porte d'escalade discipline ; Datastream→BigQuery réservé aux signaux scale).
 - **2026-05-02 v1.2** — ajout §7 Guide UX : pré-requis, choix Path A vs Path B, configuration PostgreSQL pas-à-pas, requêtes SQL pour les 3 dashboards, récupération report_id, pièges UX, checklist mise en service.
 - **2026-05-02 v1.3** — migrations 315+316 appliquées en BD (corrections : 316 utilisait `category` (n'existe pas) → `module_name` ; `granted_at` (n'existe pas) → `granted` ; codes rôles inventés (`supervisor`, `agent_aduana`, `agent_dgi`, `agent_min_*`) supprimés au profit des 21 codes réels en BD). Pwd `looker_readonly` set via ALTER ROLE. §6.0 mis à jour avec credentials concrets et état BD vérifié. Non-régression confirmée (counts: +1 perm, +21 grants, 0 suppression).
+- **2026-05-04 v1.4** — E1 automation : pages `/admin/dashboards/config` (modifier report_id sans redeploy), table `dashboard_registrations` (mig 317), permission `dashboards.manage`. Découvertes critiques : (a) `cleanup_obsolete_permissions` au boot wipait toute perm BD non-mirrored in-code → fix `cleanup_obsolete=False` par défaut ; (b) Looker JDBC filtre les MATERIALIZED VIEWS (`relkind='m'`) → §6.7 ajouté avec auto-sync boot des wrappers `vw_*` (zéro migration manuelle pour les futures MVs).

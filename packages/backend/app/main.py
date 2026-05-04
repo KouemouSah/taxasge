@@ -104,6 +104,31 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
+        # Auto-sync Looker view wrappers above MVs.
+        #
+        # Why: Looker Studio JDBC picker filters out MATERIALIZED VIEWS
+        # (relkind='m'). Without a plain VIEW wrapper above each MV, drag-
+        # drop in Looker shows only relkind='v' / 'r' relations.
+        #
+        # This is called at every boot so a new MV granted to looker_readonly
+        # in a future migration AUTOMATICALLY gets its wrapper here — no
+        # manual migration needed for the wrapper. The dev only writes the
+        # GRANT in the MV migration; the boot does the rest.
+        #
+        # Idempotent (CREATE OR REPLACE VIEW). Non-destructive: orphan
+        # wrappers are logged but never dropped. See looker_wrappers_sync.py.
+        try:
+            from app.modules.dashboards.services import sync_looker_view_wrappers
+            async with db_manager.get_connection() as conn:
+                wrap_result = await sync_looker_view_wrappers(conn)
+            logger.info(
+                f"✅ Looker wrappers synced: {len(wrap_result['synced'])} active, "
+                f"{len(wrap_result['skipped'])} failed, "
+                f"{len(wrap_result['orphans'])} orphans"
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to sync Looker view wrappers (non-blocking): {e}")
+
         # Sync all workflow data from Python classes → DB (single call)
         try:
             from app.modules.service_requests.services.workflow_sync_service import sync_all_workflows

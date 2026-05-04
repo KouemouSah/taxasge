@@ -7,6 +7,9 @@ from app.modules.dashboards.services.dashboards_service import (
 from app.modules.dashboards.services.dashboard_config_service import (
     DashboardConfigService,
 )
+from app.modules.dashboards.services.looker_wrappers_sync import (
+    sync_looker_view_wrappers,
+)
 from app.modules.dashboards.services.rls import (
     DashboardAccessContext,
     DashboardAccessDenied,
@@ -19,6 +22,7 @@ __all__ = [
     "DashboardsService",
     "DashboardNotFoundError",
     "DashboardConfigService",
+    "sync_looker_view_wrappers",
     "DashboardAccessContext",
     "DashboardAccessDenied",
     "STAFF_ROLES",
