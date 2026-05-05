@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="security.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,119 +15,116 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Security Architecture</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="security.title">Security Architecture</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Security Architecture</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="security.title">Security Architecture</h1>
+        <p class="page-description" data-i18n="security.description">
           Multi-layered security covering authentication (JWT + 2FA), authorization (RBAC with 47 roles and 335 permissions),
           data protection, OWASP compliance, and comprehensive audit logging.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#request-flow">Request Security Flow</a></li>
-            <li><a href="#authentication">Authentication</a></li>
-            <li><a href="#rbac">RBAC Authorization</a></li>
-            <li><a href="#owasp">OWASP Compliance</a></li>
-            <li><a href="#data-protection">Data Protection</a></li>
-            <li><a href="#file-security">File Security</a></li>
-            <li><a href="#ai-security">AI Security</a></li>
-            <li><a href="#audit">Audit Logging</a></li>
-            <li><a href="#headers">Security Headers</a></li>
+            <li><a href="#request-flow" data-i18n="security.toc.request_flow">Request Security Flow</a></li>
+            <li><a href="#authentication" data-i18n="security.toc.authentication">Authentication</a></li>
+            <li><a href="#rbac" data-i18n="security.toc.rbac">RBAC Authorization</a></li>
+            <li><a href="#owasp" data-i18n="security.toc.owasp">OWASP Compliance</a></li>
+            <li><a href="#data-protection" data-i18n="security.toc.data_protection">Data Protection</a></li>
+            <li><a href="#file-security" data-i18n="security.toc.file_security">File Security</a></li>
+            <li><a href="#ai-security" data-i18n="security.toc.ai_security">AI Security</a></li>
+            <li><a href="#audit" data-i18n="security.toc.audit">Audit Logging</a></li>
+            <li><a href="#headers" data-i18n="security.toc.headers">Security Headers</a></li>
           </ul>
         </div>
 
-        <!-- Request Flow -->
-        <h2 id="request-flow">Request Security Flow <a href="#request-flow" class="anchor-link">#</a></h2>
+        <h2 id="request-flow"><span data-i18n="security.toc.request_flow">Request Security Flow</span> <a href="#request-flow" class="anchor-link">#</a></h2>
 
         <div class="flow">
-          <span class="flow-step">Incoming Request</span>
+          <span class="flow-step" data-i18n="security.flow.incoming">Incoming Request</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">CORS Check</span>
+          <span class="flow-step" data-i18n="security.flow.cors">CORS Check</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Rate Limiter</span>
+          <span class="flow-step" data-i18n="security.flow.rate">Rate Limiter</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Security Headers</span>
+          <span class="flow-step" data-i18n="security.flow.headers">Security Headers</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">JWT Verification</span>
+          <span class="flow-step" data-i18n="security.flow.jwt">JWT Verification</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">RBAC Permission Check</span>
+          <span class="flow-step" data-i18n="security.flow.rbac">RBAC Permission Check</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">Handler</span>
+          <span class="flow-step success" data-i18n="security.flow.handler">Handler</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Audit Log</span>
+          <span class="flow-step" data-i18n="security.flow.audit">Audit Log</span>
         </div>
 
-        <!-- Authentication -->
-        <h2 id="authentication">Authentication <a href="#authentication" class="anchor-link">#</a></h2>
+        <h2 id="authentication"><span data-i18n="security.toc.authentication">Authentication</span> <a href="#authentication" class="anchor-link">#</a></h2>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Feature</th><th>Implementation</th><th>Details</th></tr></thead>
+            <thead><tr><th data-i18n="security.auth.col_feature">Feature</th><th data-i18n="security.auth.col_impl">Implementation</th><th data-i18n="security.auth.col_details">Details</th></tr></thead>
             <tbody>
-              <tr><td>Password Hashing</td><td>bcrypt</td><td>12 rounds, salt per password</td></tr>
-              <tr><td>Access Token</td><td>JWT (HS256)</td><td>30-minute lifetime</td></tr>
-              <tr><td>Refresh Token</td><td>JWT</td><td>30-day lifetime, revocable</td></tr>
-              <tr><td>2FA</td><td>TOTP (pyotp)</td><td>Time-based OTP, optional per user</td></tr>
-              <tr><td>Login Lockout</td><td>Progressive delay</td><td>Account locks after failed attempts</td></tr>
-              <tr><td>Session Management</td><td>Database-backed</td><td><code>sessions</code> + <code>refresh_tokens</code> tables</td></tr>
-              <tr><td>Email Verification</td><td>Token-based</td><td><code>pending_registrations</code> table, 15-min expiry</td></tr>
+              <tr><td data-i18n="security.auth.row.password">Password Hashing</td><td>bcrypt</td><td data-i18n="security.auth.row.password_details">12 rounds, salt per password</td></tr>
+              <tr><td data-i18n="security.auth.row.access">Access Token</td><td>JWT (HS256)</td><td data-i18n="security.auth.row.access_details">30-minute lifetime</td></tr>
+              <tr><td data-i18n="security.auth.row.refresh">Refresh Token</td><td>JWT</td><td data-i18n="security.auth.row.refresh_details">30-day lifetime, revocable</td></tr>
+              <tr><td>2FA</td><td>TOTP (pyotp)</td><td data-i18n="security.auth.row.2fa_details">Time-based OTP, optional per user</td></tr>
+              <tr><td data-i18n="security.auth.row.lockout">Login Lockout</td><td data-i18n="security.auth.row.lockout_impl">Progressive delay</td><td data-i18n="security.auth.row.lockout_details">Account locks after failed attempts</td></tr>
+              <tr><td data-i18n="security.auth.row.session">Session Management</td><td data-i18n="security.auth.row.session_impl">Database-backed</td><td data-i18n-html="security.auth.row.session_details"><code>sessions</code> + <code>refresh_tokens</code> tables</td></tr>
+              <tr><td data-i18n="security.auth.row.email">Email Verification</td><td data-i18n="security.auth.row.email_impl">Token-based</td><td data-i18n-html="security.auth.row.email_details"><code>pending_registrations</code> table, 15-min expiry</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- RBAC -->
-        <h2 id="rbac">RBAC Authorization <a href="#rbac" class="anchor-link">#</a></h2>
+        <h2 id="rbac"><span data-i18n="security.toc.rbac">RBAC Authorization</span> <a href="#rbac" class="anchor-link">#</a></h2>
 
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-value">47</div><div class="stat-label">Roles</div></div>
-          <div class="stat-card green"><div class="stat-value">335</div><div class="stat-label">Permissions</div></div>
-          <div class="stat-card"><div class="stat-value">2,800+</div><div class="stat-label">Audit Entries</div></div>
+          <div class="stat-card"><div class="stat-value">47</div><div class="stat-label" data-i18n="security.stats.roles">Roles</div></div>
+          <div class="stat-card green"><div class="stat-value">335</div><div class="stat-label" data-i18n="security.stats.permissions">Permissions</div></div>
+          <div class="stat-card"><div class="stat-value">2,800+</div><div class="stat-label" data-i18n="security.stats.audit">Audit Entries</div></div>
         </div>
 
-        <h3>Permission Model</h3>
+        <h3 data-i18n="security.rbac.model_title">Permission Model</h3>
         <div class="diagram">
-          <div class="diagram-title">RBAC Architecture</div>
+          <div class="diagram-title" data-i18n="security.rbac.diagram_title">RBAC Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">User</div>
+            <div class="diagram-box primary" data-i18n="security.rbac.user">User</div>
           </div>
-          <div class="diagram-arrow">&#9660; has role</div>
+          <div class="diagram-arrow"><span data-i18n="security.rbac.has_role">&#9660; has role</span></div>
           <div class="diagram-row">
-            <div class="diagram-box green">Role<span class="diagram-box-subtitle">47 roles (entity-specific)</span></div>
+            <div class="diagram-box green"><span data-i18n="security.rbac.role">Role</span><span class="diagram-box-subtitle" data-i18n="security.rbac.role_subtitle">47 roles (entity-specific)</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; grants</div>
+          <div class="diagram-arrow"><span data-i18n="security.rbac.grants">&#9660; grants</span></div>
           <div class="diagram-row">
-            <div class="diagram-box">Role Permissions<span class="diagram-box-subtitle">role_permissions mapping table</span></div>
+            <div class="diagram-box"><span data-i18n="security.rbac.role_perms">Role Permissions</span><span class="diagram-box-subtitle" data-i18n="security.rbac.role_perms_subtitle">role_permissions mapping table</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-style:dashed;">335 Permissions<span class="diagram-box-subtitle">Granular resource.action permissions</span></div>
+            <div class="diagram-box" style="border-style:dashed;"><span data-i18n="security.rbac.permissions_count">335 Permissions</span><span class="diagram-box-subtitle" data-i18n="security.rbac.permissions_subtitle">Granular resource.action permissions</span></div>
           </div>
         </div>
 
-        <p>Additionally, <strong>per-user permission overrides</strong> allow granting or revoking specific permissions
+        <p data-i18n-html="security.rbac.overrides">Additionally, <strong>per-user permission overrides</strong> allow granting or revoking specific permissions
         for individual users without changing their role, stored in the <code>user_permissions</code> table.</p>
 
-        <h3>Permission Naming Convention</h3>
+        <h3 data-i18n="security.rbac.naming_title">Permission Naming Convention</h3>
         <pre><code><span class="cmt"># Format: resource.action</span>
 service_request.create
 service_request.read
@@ -138,87 +135,82 @@ admin.manage_users
 admin.view_audit_logs
 chatbot.deep_reasoning</code></pre>
 
-        <h3>Permission Auto-Sync</h3>
-        <p>
+        <h3 data-i18n="security.rbac.autosync_title">Permission Auto-Sync</h3>
+        <p data-i18n-html="security.rbac.autosync_body">
           On application startup, the permissions system auto-discovers all <code>*_permissions.py</code> files
           across modules, syncs them to the database, assigns them to roles based on predefined mappings,
           and cleans up obsolete permissions.
         </p>
 
-        <h3>Real-Time Invalidation</h3>
-        <p>
+        <h3 data-i18n="security.rbac.realtime_title">Real-Time Invalidation</h3>
+        <p data-i18n-html="security.rbac.realtime_body">
           The <code>rbac_listener</code> subscribes to a PostgreSQL NOTIFY channel. When a role or permission
           changes in the database, the cache is invalidated immediately (not waiting for TTL expiry).
         </p>
 
-        <!-- OWASP -->
-        <h2 id="owasp">OWASP Compliance <a href="#owasp" class="anchor-link">#</a></h2>
+        <h2 id="owasp"><span data-i18n="security.toc.owasp">OWASP Compliance</span> <a href="#owasp" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>OWASP Top 10</th><th>Mitigation</th></tr></thead>
+            <thead><tr><th data-i18n="security.owasp.col_top10">OWASP Top 10</th><th data-i18n="security.owasp.col_mitigation">Mitigation</th></tr></thead>
             <tbody>
-              <tr><td>A01: Broken Access Control</td><td>RBAC with 335 permissions, per-endpoint <code>@permission_required</code></td></tr>
-              <tr><td>A02: Cryptographic Failures</td><td>bcrypt (12 rounds), TLS everywhere, no plaintext secrets</td></tr>
-              <tr><td>A03: Injection</td><td>asyncpg parameterized queries ($1, $2), never string formatting</td></tr>
-              <tr><td>A04: Insecure Design</td><td>3-tier architecture, input validation (Pydantic v2), defense in depth</td></tr>
-              <tr><td>A05: Security Misconfiguration</td><td>Security headers middleware, CORS whitelist, environment-specific configs</td></tr>
-              <tr><td>A06: Vulnerable Components</td><td>GitHub Dependabot, CodeQL analysis</td></tr>
-              <tr><td>A07: Auth Failures</td><td>JWT with short TTL, progressive lockout, 2FA TOTP</td></tr>
-              <tr><td>A08: Data Integrity</td><td>Pydantic validation on all inputs, Zod on frontend, database constraints</td></tr>
-              <tr><td>A09: Logging &amp; Monitoring</td><td>Loguru structured logging, audit_logs table, 2800+ entries</td></tr>
-              <tr><td>A10: SSRF</td><td>URL validation on webhook configurations, no user-controlled URL fetching</td></tr>
+              <tr><td data-i18n="security.owasp.row.a01">A01: Broken Access Control</td><td data-i18n-html="security.owasp.row.a01_mitigation">RBAC with 335 permissions, per-endpoint <code>@permission_required</code></td></tr>
+              <tr><td data-i18n="security.owasp.row.a02">A02: Cryptographic Failures</td><td data-i18n="security.owasp.row.a02_mitigation">bcrypt (12 rounds), TLS everywhere, no plaintext secrets</td></tr>
+              <tr><td data-i18n="security.owasp.row.a03">A03: Injection</td><td data-i18n="security.owasp.row.a03_mitigation">asyncpg parameterized queries ($1, $2), never string formatting</td></tr>
+              <tr><td data-i18n="security.owasp.row.a04">A04: Insecure Design</td><td data-i18n="security.owasp.row.a04_mitigation">3-tier architecture, input validation (Pydantic v2), defense in depth</td></tr>
+              <tr><td data-i18n="security.owasp.row.a05">A05: Security Misconfiguration</td><td data-i18n="security.owasp.row.a05_mitigation">Security headers middleware, CORS whitelist, environment-specific configs</td></tr>
+              <tr><td data-i18n="security.owasp.row.a06">A06: Vulnerable Components</td><td data-i18n="security.owasp.row.a06_mitigation">GitHub Dependabot, CodeQL analysis</td></tr>
+              <tr><td data-i18n="security.owasp.row.a07">A07: Auth Failures</td><td data-i18n="security.owasp.row.a07_mitigation">JWT with short TTL, progressive lockout, 2FA TOTP</td></tr>
+              <tr><td data-i18n="security.owasp.row.a08">A08: Data Integrity</td><td data-i18n="security.owasp.row.a08_mitigation">Pydantic validation on all inputs, Zod on frontend, database constraints</td></tr>
+              <tr><td data-i18n="security.owasp.row.a09">A09: Logging &amp; Monitoring</td><td data-i18n="security.owasp.row.a09_mitigation">Loguru structured logging, audit_logs table, 2800+ entries</td></tr>
+              <tr><td data-i18n="security.owasp.row.a10">A10: SSRF</td><td data-i18n="security.owasp.row.a10_mitigation">URL validation on webhook configurations, no user-controlled URL fetching</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Data Protection -->
-        <h2 id="data-protection">Data Protection <a href="#data-protection" class="anchor-link">#</a></h2>
+        <h2 id="data-protection"><span data-i18n="security.toc.data_protection">Data Protection</span> <a href="#data-protection" class="anchor-link">#</a></h2>
         <ul>
-          <li><strong>SQL injection prevention:</strong> 100% parameterized queries via asyncpg (<code>$1, $2</code> placeholders)</li>
-          <li><strong>XSS prevention:</strong> DOMPurify on frontend, CSP headers, no dangerouslySetInnerHTML</li>
-          <li><strong>CSRF:</strong> SameSite cookies, CORS origin whitelist</li>
-          <li><strong>5xx error sanitization:</strong> Internal error details never exposed to clients (generic translated message returned)</li>
-          <li><strong>Secret management:</strong> Google Cloud Secret Manager for production credentials</li>
+          <li data-i18n-html="security.data.sql"><strong>SQL injection prevention:</strong> 100% parameterized queries via asyncpg (<code>$1, $2</code> placeholders)</li>
+          <li data-i18n-html="security.data.xss"><strong>XSS prevention:</strong> DOMPurify on frontend, CSP headers, no dangerouslySetInnerHTML</li>
+          <li data-i18n-html="security.data.csrf"><strong>CSRF:</strong> SameSite cookies, CORS origin whitelist</li>
+          <li data-i18n-html="security.data.5xx"><strong>5xx error sanitization:</strong> Internal error details never exposed to clients (generic translated message returned)</li>
+          <li data-i18n-html="security.data.secrets"><strong>Secret management:</strong> Google Cloud Secret Manager for production credentials</li>
         </ul>
 
-        <!-- File Security -->
-        <h2 id="file-security">File Security <a href="#file-security" class="anchor-link">#</a></h2>
+        <h2 id="file-security"><span data-i18n="security.toc.file_security">File Security</span> <a href="#file-security" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Control</th><th>Details</th></tr></thead>
+            <thead><tr><th data-i18n="security.file.col_control">Control</th><th data-i18n="security.file.col_details">Details</th></tr></thead>
             <tbody>
-              <tr><td>MIME validation</td><td>Verified against actual file content, not just extension</td></tr>
-              <tr><td>Extension blacklist</td><td>Executable files (.exe, .bat, .sh, etc.) blocked</td></tr>
-              <tr><td>Size limits</td><td>Per-file and per-request limits enforced</td></tr>
-              <tr><td>Storage</td><td>Supabase Storage with signed URLs (time-limited access)</td></tr>
-              <tr><td>Access control</td><td>Files scoped to owner (user_id) or assigned agents</td></tr>
+              <tr><td data-i18n="security.file.row.mime">MIME validation</td><td data-i18n="security.file.row.mime_details">Verified against actual file content, not just extension</td></tr>
+              <tr><td data-i18n="security.file.row.ext">Extension blacklist</td><td data-i18n="security.file.row.ext_details">Executable files (.exe, .bat, .sh, etc.) blocked</td></tr>
+              <tr><td data-i18n="security.file.row.size">Size limits</td><td data-i18n="security.file.row.size_details">Per-file and per-request limits enforced</td></tr>
+              <tr><td data-i18n="security.file.row.storage">Storage</td><td data-i18n="security.file.row.storage_details">Supabase Storage with signed URLs (time-limited access)</td></tr>
+              <tr><td data-i18n="security.file.row.access">Access control</td><td data-i18n="security.file.row.access_details">Files scoped to owner (user_id) or assigned agents</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- AI Security -->
-        <h2 id="ai-security">AI Security <a href="#ai-security" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="ai-security"><span data-i18n="security.toc.ai_security">AI Security</span> <a href="#ai-security" class="anchor-link">#</a></h2>
+        <p data-i18n="security.ai.intro">
           The chatbot implements prompt injection detection with 30+ pattern rules to prevent
           adversarial exploitation of the LLM.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Protection</th><th>Implementation</th></tr></thead>
+            <thead><tr><th data-i18n="security.ai.col_protection">Protection</th><th data-i18n="security.ai.col_impl">Implementation</th></tr></thead>
             <tbody>
-              <tr><td>Prompt injection detection</td><td>30+ regex patterns for common injection techniques</td></tr>
-              <tr><td>Role-based tool access</td><td>Tools filtered by user role before Gemini invocation</td></tr>
-              <tr><td>Data boundary enforcement</td><td>Citizen agent cannot access internal agent data</td></tr>
-              <tr><td>Output sanitization</td><td>LLM output sanitized before rendering in frontend</td></tr>
-              <tr><td>Rate limiting</td><td>30 messages/minute per user</td></tr>
-              <tr><td>Executive consent</td><td>Privileged operations require explicit user confirmation</td></tr>
+              <tr><td data-i18n="security.ai.row.injection">Prompt injection detection</td><td data-i18n="security.ai.row.injection_impl">30+ regex patterns for common injection techniques</td></tr>
+              <tr><td data-i18n="security.ai.row.tools">Role-based tool access</td><td data-i18n="security.ai.row.tools_impl">Tools filtered by user role before Gemini invocation</td></tr>
+              <tr><td data-i18n="security.ai.row.boundary">Data boundary enforcement</td><td data-i18n="security.ai.row.boundary_impl">Citizen agent cannot access internal agent data</td></tr>
+              <tr><td data-i18n="security.ai.row.output">Output sanitization</td><td data-i18n="security.ai.row.output_impl">LLM output sanitized before rendering in frontend</td></tr>
+              <tr><td data-i18n="security.ai.row.rate">Rate limiting</td><td data-i18n="security.ai.row.rate_impl">30 messages/minute per user</td></tr>
+              <tr><td data-i18n="security.ai.row.consent">Executive consent</td><td data-i18n="security.ai.row.consent_impl">Privileged operations require explicit user confirmation</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Audit Logging -->
-        <h2 id="audit">Audit Logging <a href="#audit" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="audit"><span data-i18n="security.toc.audit">Audit Logging</span> <a href="#audit" class="anchor-link">#</a></h2>
+        <p data-i18n-html="security.audit.intro">
           The <code>audit_logs</code> table captures all critical operations across the system via the
           EventBus audit handler. Logs include actor, action, resource, timestamp, and metadata.
         </p>
@@ -227,21 +219,20 @@ id, user_id, action, resource_type, resource_id,
 details (JSONB), ip_address, user_agent,
 created_at</code></pre>
 
-        <h3>Audited Operations</h3>
+        <h3 data-i18n="security.audit.ops_title">Audited Operations</h3>
         <ul>
-          <li>User login/logout, failed authentication attempts</li>
-          <li>Role and permission changes</li>
-          <li>Service request creation, status transitions</li>
-          <li>Payment processing decisions (approve/reject)</li>
-          <li>Agent assignment changes</li>
-          <li>Admin user management operations</li>
-          <li>Document upload/download/deletion</li>
-          <li>System configuration changes</li>
+          <li data-i18n="security.audit.ops.login">User login/logout, failed authentication attempts</li>
+          <li data-i18n="security.audit.ops.roles">Role and permission changes</li>
+          <li data-i18n="security.audit.ops.requests">Service request creation, status transitions</li>
+          <li data-i18n="security.audit.ops.payments">Payment processing decisions (approve/reject)</li>
+          <li data-i18n="security.audit.ops.assignments">Agent assignment changes</li>
+          <li data-i18n="security.audit.ops.admin">Admin user management operations</li>
+          <li data-i18n="security.audit.ops.documents">Document upload/download/deletion</li>
+          <li data-i18n="security.audit.ops.config">System configuration changes</li>
         </ul>
 
-        <!-- Security Headers -->
-        <h2 id="headers">Security Headers <a href="#headers" class="anchor-link">#</a></h2>
-        <p>Applied via pure ASGI middleware (<code>SecurityHeadersMiddleware</code>) to avoid conflicts with CORSMiddleware:</p>
+        <h2 id="headers"><span data-i18n="security.toc.headers">Security Headers</span> <a href="#headers" class="anchor-link">#</a></h2>
+        <p data-i18n-html="security.headers.intro">Applied via pure ASGI middleware (<code>SecurityHeadersMiddleware</code>) to avoid conflicts with CORSMiddleware:</p>
         <pre><code>X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 X-XSS-Protection: 1; mode=block
@@ -250,8 +241,8 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 Strict-Transport-Security: max-age=31536000; includeSubDomains  <span class="cmt">(production only)</span></code></pre>
 
         <div class="callout callout-info">
-          <div class="callout-title">CSP Headers</div>
-          <p>
+          <div class="callout-title" data-i18n="security.callout.csp.title">CSP Headers</div>
+          <p data-i18n-html="security.callout.csp.body">
             Content Security Policy (CSP) headers are set by the Next.js frontend middleware
             (<code>middleware.ts</code>), not by the backend. This prevents duplicate/conflicting
             CSP headers which would cause the browser to apply the intersection (most restrictive).
@@ -261,8 +252,8 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains  <span class="cmt
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="deployment.html">Deployment</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="architecture.html" data-i18n="common.sidebar.link.architecture">Architecture</a><a href="deployment.html" data-i18n="common.sidebar.link.deployment">Deployment</a></div>
       </footer>
     </main>
   </div>

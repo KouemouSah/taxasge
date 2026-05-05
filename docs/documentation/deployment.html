@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="deployment.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,150 +15,145 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Deployment &amp; Operations</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="deployment.title">Deployment &amp; Operations</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Deployment &amp; Operations</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="deployment.title">Deployment &amp; Operations</h1>
+        <p class="page-description" data-i18n="deployment.description">
           Automated CI/CD via GitHub Actions. Backend deploys to Google Cloud Run (container auto-scaling),
           frontend to Firebase Hosting (CDN). Mobile apps built via Expo and distributed through stores.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#ci-cd">CI/CD Pipeline</a></li>
-            <li><a href="#github-actions">GitHub Actions Workflows</a></li>
-            <li><a href="#cloud-run">Google Cloud Run</a></li>
-            <li><a href="#firebase">Firebase Hosting</a></li>
-            <li><a href="#environments">Environment Management</a></li>
-            <li><a href="#migrations-ops">Database Migrations</a></li>
-            <li><a href="#mobile-dist">Mobile Distribution</a></li>
-            <li><a href="#monitoring">Monitoring &amp; Alerting</a></li>
+            <li><a href="#ci-cd" data-i18n="deployment.toc.cicd">CI/CD Pipeline</a></li>
+            <li><a href="#github-actions" data-i18n="deployment.toc.workflows">GitHub Actions Workflows</a></li>
+            <li><a href="#cloud-run" data-i18n="deployment.toc.cloud_run">Google Cloud Run</a></li>
+            <li><a href="#firebase" data-i18n="deployment.toc.firebase">Firebase Hosting</a></li>
+            <li><a href="#environments" data-i18n="deployment.toc.environments">Environment Management</a></li>
+            <li><a href="#migrations-ops" data-i18n="deployment.toc.migrations">Database Migrations</a></li>
+            <li><a href="#mobile-dist" data-i18n="deployment.toc.mobile">Mobile Distribution</a></li>
+            <li><a href="#monitoring" data-i18n="deployment.toc.monitoring">Monitoring &amp; Alerting</a></li>
           </ul>
         </div>
 
         <div class="callout callout-danger">
-          <div class="callout-title">Critical Rule: No Manual Builds</div>
-          <p>
+          <div class="callout-title" data-i18n="deployment.callout.no_manual.title">Critical Rule: No Manual Builds</div>
+          <p data-i18n-html="deployment.callout.no_manual.body">
             <strong>Never build manually with <code>gcloud</code>.</strong> All deployments must go through
             GitHub Actions. Push to the remote branch and let the CI/CD pipeline handle building and deploying.
           </p>
         </div>
 
-        <!-- CI/CD Pipeline -->
-        <h2 id="ci-cd">CI/CD Pipeline <a href="#ci-cd" class="anchor-link">#</a></h2>
+        <h2 id="ci-cd"><span data-i18n="deployment.toc.cicd">CI/CD Pipeline</span> <a href="#ci-cd" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">Deployment Pipeline</div>
+          <div class="diagram-title" data-i18n="deployment.diagram.title">Deployment Pipeline</div>
           <div class="diagram-row">
             <div class="diagram-box primary">git push develop</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">GitHub Actions<span class="diagram-box-subtitle">8 workflow files</span></div>
+            <div class="diagram-box">GitHub Actions<span class="diagram-box-subtitle" data-i18n="deployment.diagram.workflows_count">8 workflow files</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green">CI Tests<span class="diagram-box-subtitle">Lint, type-check, unit tests</span></div>
+            <div class="diagram-box green"><span data-i18n="deployment.diagram.ci_tests">CI Tests</span><span class="diagram-box-subtitle" data-i18n="deployment.diagram.ci_subtitle">Lint, type-check, unit tests</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Build Containers</div>
-            <div class="diagram-box">Build Frontend</div>
+            <div class="diagram-box" data-i18n="deployment.diagram.build_containers">Build Containers</div>
+            <div class="diagram-box" data-i18n="deployment.diagram.build_frontend">Build Frontend</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Cloud Run<span class="diagram-box-subtitle">Backend API</span></div>
-            <div class="diagram-box green filled">Firebase Hosting<span class="diagram-box-subtitle">Frontend CDN</span></div>
+            <div class="diagram-box green filled">Cloud Run<span class="diagram-box-subtitle" data-i18n="deployment.diagram.backend_api">Backend API</span></div>
+            <div class="diagram-box green filled">Firebase Hosting<span class="diagram-box-subtitle" data-i18n="deployment.diagram.frontend_cdn">Frontend CDN</span></div>
           </div>
         </div>
 
-        <!-- GitHub Actions Workflows -->
-        <h2 id="github-actions">GitHub Actions Workflows <a href="#github-actions" class="anchor-link">#</a></h2>
+        <h2 id="github-actions"><span data-i18n="deployment.toc.workflows">GitHub Actions Workflows</span> <a href="#github-actions" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Workflow File</th><th>Trigger</th><th>Purpose</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.workflows.col_file">Workflow File</th><th data-i18n="deployment.workflows.col_trigger">Trigger</th><th data-i18n="deployment.workflows.col_purpose">Purpose</th></tr></thead>
             <tbody>
-              <tr><td><code>ci.yml</code></td><td>Push to main, develop, feature/**</td><td>Run linting, type checking, and unit tests</td></tr>
-              <tr><td><code>deploy-backend-staging.yml</code></td><td>Push to develop (packages/backend/ changes)</td><td>Build Docker container, deploy to Cloud Run staging</td></tr>
-              <tr><td><code>deploy-frontend-staging.yml</code></td><td>Push to develop (packages/web/ changes)</td><td>Build Next.js, deploy to Firebase Hosting staging</td></tr>
-              <tr><td><code>codeql.yml</code></td><td>Scheduled + PR</td><td>CodeQL security analysis</td></tr>
-              <tr><td><code>mobile-build.yml</code></td><td>Push (packages/mobile/ changes)</td><td>Build Expo citizen app</td></tr>
-              <tr><td><code>inspector-build.yml</code></td><td>Push (packages/inspector/ changes)</td><td>Build Expo inspector app</td></tr>
-              <tr><td><code>inspector-ci.yml</code></td><td>Push (packages/inspector/ changes)</td><td>CI tests for inspector app</td></tr>
-              <tr><td><code>update-dashboard.yml</code></td><td>Manual / Scheduled</td><td>Update documentation dashboard</td></tr>
+              <tr><td><code>ci.yml</code></td><td data-i18n="deployment.workflows.ci.trigger">Push to main, develop, feature/**</td><td data-i18n="deployment.workflows.ci.purpose">Run linting, type checking, and unit tests</td></tr>
+              <tr><td><code>deploy-backend-staging.yml</code></td><td data-i18n="deployment.workflows.backend.trigger">Push to develop (packages/backend/ changes)</td><td data-i18n="deployment.workflows.backend.purpose">Build Docker container, deploy to Cloud Run staging</td></tr>
+              <tr><td><code>deploy-frontend-staging.yml</code></td><td data-i18n="deployment.workflows.frontend.trigger">Push to develop (packages/web/ changes)</td><td data-i18n="deployment.workflows.frontend.purpose">Build Next.js, deploy to Firebase Hosting staging</td></tr>
+              <tr><td><code>codeql.yml</code></td><td data-i18n="deployment.workflows.codeql.trigger">Scheduled + PR</td><td data-i18n="deployment.workflows.codeql.purpose">CodeQL security analysis</td></tr>
+              <tr><td><code>mobile-build.yml</code></td><td data-i18n="deployment.workflows.mobile.trigger">Push (packages/mobile/ changes)</td><td data-i18n="deployment.workflows.mobile.purpose">Build Expo citizen app</td></tr>
+              <tr><td><code>inspector-build.yml</code></td><td data-i18n="deployment.workflows.inspector.trigger">Push (packages/inspector/ changes)</td><td data-i18n="deployment.workflows.inspector.purpose">Build Expo inspector app</td></tr>
+              <tr><td><code>inspector-ci.yml</code></td><td data-i18n="deployment.workflows.inspector.trigger">Push (packages/inspector/ changes)</td><td data-i18n="deployment.workflows.inspector_ci.purpose">CI tests for inspector app</td></tr>
+              <tr><td><code>update-dashboard.yml</code></td><td data-i18n="deployment.workflows.dashboard.trigger">Manual / Scheduled</td><td data-i18n="deployment.workflows.dashboard.purpose">Update documentation dashboard</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Cloud Run -->
-        <h2 id="cloud-run">Google Cloud Run <a href="#cloud-run" class="anchor-link">#</a></h2>
+        <h2 id="cloud-run"><span data-i18n="deployment.toc.cloud_run">Google Cloud Run</span> <a href="#cloud-run" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Configuration</th><th>Value</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.cloudrun.col_config">Configuration</th><th data-i18n="deployment.cloudrun.col_value">Value</th></tr></thead>
             <tbody>
-              <tr><td>Service name</td><td><code>taxasge-backend-staging</code></td></tr>
-              <tr><td>Region</td><td>us-central1</td></tr>
-              <tr><td>Runtime</td><td>Python 3.11 (container)</td></tr>
-              <tr><td>Entry point</td><td><code>uvicorn app.main:app</code></td></tr>
-              <tr><td>Min instances</td><td>0 (scales to zero)</td></tr>
-              <tr><td>Max instances</td><td>Auto-scaled</td></tr>
-              <tr><td>Memory</td><td>512MB-1GB per instance</td></tr>
-              <tr><td>Timeout</td><td>300 seconds</td></tr>
-              <tr><td>Concurrency</td><td>80 requests per instance</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.service">Service name</td><td><code>taxasge-backend-staging</code></td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.region">Region</td><td>us-central1</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.runtime">Runtime</td><td data-i18n="deployment.cloudrun.row.runtime_value">Python 3.11 (container)</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.entry">Entry point</td><td><code>uvicorn app.main:app</code></td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.min">Min instances</td><td data-i18n="deployment.cloudrun.row.min_value">0 (scales to zero)</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.max">Max instances</td><td data-i18n="deployment.cloudrun.row.max_value">Auto-scaled</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.memory">Memory</td><td data-i18n="deployment.cloudrun.row.memory_value">512MB-1GB per instance</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.timeout">Timeout</td><td data-i18n="deployment.cloudrun.row.timeout_value">300 seconds</td></tr>
+              <tr><td data-i18n="deployment.cloudrun.row.concurrency">Concurrency</td><td data-i18n="deployment.cloudrun.row.concurrency_value">80 requests per instance</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Firebase Hosting -->
-        <h2 id="firebase">Firebase Hosting <a href="#firebase" class="anchor-link">#</a></h2>
+        <h2 id="firebase"><span data-i18n="deployment.toc.firebase">Firebase Hosting</span> <a href="#firebase" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Property</th><th>Dev</th><th>Production</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.firebase.col_property">Property</th><th data-i18n="deployment.firebase.col_dev">Dev</th><th data-i18n="deployment.firebase.col_prod">Production</th></tr></thead>
             <tbody>
-              <tr><td>Project</td><td>taxasge-dev</td><td>taxasge-pro</td></tr>
-              <tr><td>URL</td><td>taxasge-dev.web.app</td><td>taxasge-pro.web.app</td></tr>
-              <tr><td>Custom domain</td><td>&mdash;</td><td>taxasge.emacsah.com</td></tr>
-              <tr><td>CDN</td><td>Global</td><td>Global</td></tr>
-              <tr><td>SSL</td><td>Automatic</td><td>Automatic</td></tr>
-              <tr><td>Staging channels</td><td>Pattern: <code>taxasge-dev--{channel}.web.app</code></td><td>&mdash;</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.project">Project</td><td>taxasge-dev</td><td>taxasge-pro</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.url">URL</td><td>taxasge-dev.web.app</td><td>taxasge-pro.web.app</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.domain">Custom domain</td><td>&mdash;</td><td>taxasge.emacsah.com</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.cdn">CDN</td><td data-i18n="deployment.firebase.row.global">Global</td><td data-i18n="deployment.firebase.row.global">Global</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.ssl">SSL</td><td data-i18n="deployment.firebase.row.automatic">Automatic</td><td data-i18n="deployment.firebase.row.automatic">Automatic</td></tr>
+              <tr><td data-i18n="deployment.firebase.row.staging">Staging channels</td><td data-i18n-html="deployment.firebase.row.staging_value">Pattern: <code>taxasge-dev--{channel}.web.app</code></td><td>&mdash;</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Environments -->
-        <h2 id="environments">Environment Management <a href="#environments" class="anchor-link">#</a></h2>
+        <h2 id="environments"><span data-i18n="deployment.toc.environments">Environment Management</span> <a href="#environments" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Environment</th><th>Branch</th><th>Backend</th><th>Frontend</th><th>Database</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.envs.col_env">Environment</th><th data-i18n="deployment.envs.col_branch">Branch</th><th data-i18n="deployment.envs.col_backend">Backend</th><th data-i18n="deployment.envs.col_frontend">Frontend</th><th data-i18n="deployment.envs.col_database">Database</th></tr></thead>
             <tbody>
-              <tr><td>Development</td><td>feature/**</td><td>localhost:8000</td><td>localhost:3000</td><td>Local / Supabase dev</td></tr>
-              <tr><td>Staging</td><td>develop</td><td>Cloud Run staging</td><td>Firebase dev</td><td>Supabase staging</td></tr>
-              <tr><td>Production</td><td>main</td><td>Cloud Run prod</td><td>Firebase prod</td><td>Supabase prod</td></tr>
+              <tr><td data-i18n="deployment.envs.row.dev">Development</td><td>feature/**</td><td>localhost:8000</td><td>localhost:3000</td><td data-i18n="deployment.envs.row.dev_db">Local / Supabase dev</td></tr>
+              <tr><td data-i18n="deployment.envs.row.staging">Staging</td><td>develop</td><td data-i18n="deployment.envs.row.staging_backend">Cloud Run staging</td><td data-i18n="deployment.envs.row.staging_frontend">Firebase dev</td><td data-i18n="deployment.envs.row.staging_db">Supabase staging</td></tr>
+              <tr><td data-i18n="deployment.envs.row.prod">Production</td><td>main</td><td data-i18n="deployment.envs.row.prod_backend">Cloud Run prod</td><td data-i18n="deployment.envs.row.prod_frontend">Firebase prod</td><td data-i18n="deployment.envs.row.prod_db">Supabase prod</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Environment Variables</h3>
-        <p>Key environment variables configured in <code>packages/backend/.env</code>:</p>
+        <h3 data-i18n="deployment.envs.vars_title">Environment Variables</h3>
+        <p data-i18n-html="deployment.envs.vars_intro">Key environment variables configured in <code>packages/backend/.env</code>:</p>
         <pre><code>ENVIRONMENT=development|staging|production
 DATABASE_URL=postgresql://...
 REDIS_URL=rediss://...            <span class="cmt"># Upstash TLS</span>
@@ -169,50 +164,47 @@ SMTP_PASSWORD_GMAIL=...          <span class="cmt"># Email credentials</span>
 SUPABASE_URL=...                 <span class="cmt"># Storage and auth</span>
 SUPABASE_SERVICE_ROLE_KEY=...    <span class="cmt"># Admin access</span></code></pre>
 
-        <!-- Database Migrations -->
-        <h2 id="migrations-ops">Database Migrations <a href="#migrations-ops" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="migrations-ops"><span data-i18n="deployment.toc.migrations">Database Migrations</span> <a href="#migrations-ops" class="anchor-link">#</a></h2>
+        <p data-i18n-html="deployment.migrations.intro">
           Migrations are stored in <code>packages/backend/migrations/</code> as SQL and Python files.
           They include schema changes, data seeds, and view definitions.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Category</th><th>Count</th><th>Examples</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.migrations.col_category">Category</th><th data-i18n="deployment.migrations.col_count">Count</th><th data-i18n="deployment.migrations.col_examples">Examples</th></tr></thead>
             <tbody>
-              <tr><td>Schema migrations</td><td>~10 numbered</td><td><code>001_module_03_infrastructure.sql</code>, <code>008_permissions_module.sql</code></td></tr>
-              <tr><td>View definitions</td><td>5</td><td><code>00_apply_all_views.sql</code> through <code>04_permissions_rbac_views.sql</code></td></tr>
-              <tr><td>Seed data</td><td>4</td><td><code>seed_permissions.sql</code>, <code>seed_predefined_roles.sql</code>, <code>seed_custom_roles.sql</code></td></tr>
-              <tr><td>Python runners</td><td>6</td><td><code>execute_seed_permissions.py</code>, <code>sync_assignment_permissions.py</code></td></tr>
-              <tr><td>Hotfixes</td><td>Various</td><td><code>fix_pending_registrations_minimal.sql</code></td></tr>
+              <tr><td data-i18n="deployment.migrations.row.schema">Schema migrations</td><td data-i18n="deployment.migrations.row.schema_count">~10 numbered</td><td><code>001_module_03_infrastructure.sql</code>, <code>008_permissions_module.sql</code></td></tr>
+              <tr><td data-i18n="deployment.migrations.row.views">View definitions</td><td>5</td><td><code>00_apply_all_views.sql</code> through <code>04_permissions_rbac_views.sql</code></td></tr>
+              <tr><td data-i18n="deployment.migrations.row.seeds">Seed data</td><td>4</td><td><code>seed_permissions.sql</code>, <code>seed_predefined_roles.sql</code>, <code>seed_custom_roles.sql</code></td></tr>
+              <tr><td data-i18n="deployment.migrations.row.runners">Python runners</td><td>6</td><td><code>execute_seed_permissions.py</code>, <code>sync_assignment_permissions.py</code></td></tr>
+              <tr><td data-i18n="deployment.migrations.row.hotfixes">Hotfixes</td><td data-i18n="deployment.migrations.row.various">Various</td><td><code>fix_pending_registrations_minimal.sql</code></td></tr>
             </tbody>
           </table>
         </div>
 
         <div class="callout callout-warning">
-          <div class="callout-title">Migration Safety</div>
-          <p>
+          <div class="callout-title" data-i18n="deployment.callout.safety.title">Migration Safety</div>
+          <p data-i18n-html="deployment.callout.safety.body">
             Always verify database state before writing migrations: <code>SELECT code FROM roles</code>,
             <code>SELECT column_name FROM information_schema.columns</code>, etc. Role codes and enum values
             change over time and must be verified against the live database.
           </p>
         </div>
 
-        <!-- Mobile Distribution -->
-        <h2 id="mobile-dist">Mobile Distribution <a href="#mobile-dist" class="anchor-link">#</a></h2>
+        <h2 id="mobile-dist"><span data-i18n="deployment.toc.mobile">Mobile Distribution</span> <a href="#mobile-dist" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>App</th><th>Package ID</th><th>Distribution</th></tr></thead>
+            <thead><tr><th data-i18n="deployment.mobile.col_app">App</th><th data-i18n="deployment.mobile.col_id">Package ID</th><th data-i18n="deployment.mobile.col_dist">Distribution</th></tr></thead>
             <tbody>
-              <tr><td>Facil (Citizen)</td><td><code>com.taxasge.facil</code></td><td>Expo.dev builds, GitHub Releases, Google Play Store</td></tr>
-              <tr><td>Facil Inspector</td><td><code>com.taxasge.inspector</code></td><td>Expo.dev builds, internal distribution</td></tr>
+              <tr><td data-i18n="deployment.mobile.row.citizen">Facil (Citizen)</td><td><code>com.taxasge.facil</code></td><td data-i18n="deployment.mobile.row.citizen_dist">Expo.dev builds, GitHub Releases, Google Play Store</td></tr>
+              <tr><td>Facil Inspector</td><td><code>com.taxasge.inspector</code></td><td data-i18n="deployment.mobile.row.inspector_dist">Expo.dev builds, internal distribution</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Monitoring -->
-        <h2 id="monitoring">Monitoring &amp; Alerting <a href="#monitoring" class="anchor-link">#</a></h2>
+        <h2 id="monitoring"><span data-i18n="deployment.toc.monitoring">Monitoring &amp; Alerting</span> <a href="#monitoring" class="anchor-link">#</a></h2>
 
-        <h3>Health Check Endpoint</h3>
+        <h3 data-i18n="deployment.monitoring.health_title">Health Check Endpoint</h3>
         <pre><code>GET /health
 
 <span class="cmt">Response:</span>
@@ -225,26 +217,23 @@ SUPABASE_SERVICE_ROLE_KEY=...    <span class="cmt"># Admin access</span></code><
   <span class="str">"redis"</span>: <span class="str">"connected"</span>
 }</code></pre>
 
-        <h3>Monitoring Endpoints</h3>
+        <h3 data-i18n="deployment.monitoring.endpoints_title">Monitoring Endpoints</h3>
         <div class="endpoint-group">
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/health</code> <span class="endpoint-desc">Basic health check (public)</span></div>
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/admin/monitoring/health</code> <span class="endpoint-desc">Detailed system health (admin)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/health</code> <span class="endpoint-desc" data-i18n="deployment.monitoring.health_desc">Basic health check (public)</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/admin/monitoring/health</code> <span class="endpoint-desc" data-i18n="deployment.monitoring.admin_desc">Detailed system health (admin)</span></div>
         </div>
 
-        <h3>Logging</h3>
-        <p>
+        <h3 data-i18n="deployment.monitoring.logging_title">Logging</h3>
+        <p data-i18n-html="deployment.monitoring.logging_body">
           Structured logging via <strong>Loguru</strong> with contextual information. Cloud Run captures
           stdout/stderr and forwards to Google Cloud Logging for centralized monitoring.
         </p>
 
-        <!-- SCREENSHOT placeholder -->
-        <!-- SCREENSHOT: GitHub Actions workflow showing successful backend and frontend deployments -->
-
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="security.html">Security</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="architecture.html" data-i18n="common.sidebar.link.architecture">Architecture</a><a href="security.html" data-i18n="common.sidebar.link.security">Security</a></div>
       </footer>
     </main>
   </div>
