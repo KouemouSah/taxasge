@@ -50,6 +50,48 @@ async def lifespan(app: FastAPI):
         await db_manager.connect()
         logger.info("✅ Database connection pool initialized")
 
+        # ----------------------------------------------------------------
+        # OpenTelemetry tracing (AI Observability — Phase A.2 / mig 325)
+        # ----------------------------------------------------------------
+        # Conditional: only configures the OTLP exporter when both
+        # OTEL_EXPORTER_OTLP_ENDPOINT and the package are available. Without
+        # the endpoint env var, ai_telemetry.py runs in BD-only mode (spans
+        # become no-ops).
+        otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        if otel_endpoint:
+            try:
+                from opentelemetry import trace as _otel_trace
+                from opentelemetry.sdk.trace import TracerProvider
+                from opentelemetry.sdk.trace.export import BatchSpanProcessor
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                    OTLPSpanExporter,
+                )
+                from opentelemetry.sdk.resources import Resource
+
+                resource = Resource.create({
+                    "service.name": os.environ.get("OTEL_SERVICE_NAME", "facil-backend"),
+                    "service.version": os.environ.get("GIT_COMMIT_SHA", "unknown")[:12],
+                    "deployment.environment": os.environ.get(
+                        "ENVIRONMENT", os.environ.get("ENV", "dev")
+                    ),
+                })
+                provider = TracerProvider(resource=resource)
+                provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+                _otel_trace.set_tracer_provider(provider)
+                logger.info(
+                    "✅ OTEL tracing enabled — exporting to {}",
+                    otel_endpoint.split("/")[2] if "/" in otel_endpoint else otel_endpoint,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "⚠️ OTEL setup failed (non-blocking, BD metrics still work): {}",
+                    exc,
+                )
+        else:
+            logger.info(
+                "⚠️ OTEL_EXPORTER_OTLP_ENDPOINT unset — AI telemetry runs in BD-only mode"
+            )
+
         # Initialize permissions system (RBAC)
         try:
             # Import permissions module - triggers auto-discovery of all module_permissions
@@ -419,6 +461,12 @@ async def lifespan(app: FastAPI):
         await internal_scheduler.stop()
     except Exception:
         pass
+    # Flush pending AI telemetry persists (Phase A.2 — mig 325)
+    try:
+        from app.core.ai_telemetry import flush_pending_persists
+        await flush_pending_persists(timeout=5.0)
+    except Exception as exc:
+        logger.warning(f"⚠️ ai_telemetry flush failed (non-blocking): {exc}")
     try:
         # Stop RBAC listener
         from app.core.rbac_listener import rbac_listener

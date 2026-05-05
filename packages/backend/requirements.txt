@@ -48,6 +48,12 @@ phonenumbers>=8.13.47
 loguru>=0.7.2
 structlog>=23.2.0
 sentry-sdk[fastapi]>=1.38.0
+
+# OpenTelemetry (AI Observability — Phase A.2 / mig 325)
+# Soft import in app/core/ai_telemetry.py — wrapper still works without these.
+opentelemetry-api>=1.26.0
+opentelemetry-sdk>=1.26.0
+opentelemetry-exporter-otlp-proto-http>=1.26.0
 prometheus-client>=0.19.0
 
 # External Integrations
