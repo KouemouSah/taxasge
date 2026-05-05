@@ -1229,6 +1229,121 @@ window.__I18N__.es =
       "point2": "<strong>validate_step</strong> (capa 2) = decisión de negocio (qué significa el resultado para ESTE flujo)",
       "point3": "<strong>Nunca duplicar reglas entre capas.</strong> Si el esquema tiene <code>certificado_vigente</code>, no recrear en validate_step."
     }
+  },
+
+  "indexpage": {
+    "html_title": "Documentación de la Plataforma Facil",
+    "title": "Documentación de la plataforma Facil",
+    "breadcrumb": "Inicio de la documentación",
+    "description": "Referencia técnica completa de la plataforma de servicios gubernamentales digitales Facil. Construida para la República de Guinea Ecuatorial para procesar servicios fiscales, gestionar trámites civiles y soportar 100+ agentes gubernamentales concurrentes en múltiples ministerios.",
+    "stats": {
+      "fiscal": "Servicios fiscales",
+      "tables": "Tablas de base de datos",
+      "workflows": "Flujos",
+      "roles": "Roles",
+      "backend": "Módulos backend",
+      "frontend": "Módulos frontend",
+      "routers": "Routers API",
+      "ocr": "Esquemas OCR"
+    },
+    "docmap": {
+      "title": "Mapa de la documentación",
+      "architecture": "— Estructura del monorepo, backend 3-tier, módulos frontend, caché, pipeline IA",
+      "api": "— 62 routers, autenticación, formatos solicitud/respuesta, rate limiting",
+      "database": "— 145 tablas en 10 dominios, 50 enums, convenciones de nombres, migraciones",
+      "workflows": "— 36 flujos, pasos del wizard, condition evaluator, cálculo de tasas, enrutamiento por entidad",
+      "modules": "— 30 módulos backend, 41+ módulos frontend, organizados por dominio",
+      "agents": "— Chatbot RAG, 5 agentes por rol, extracción OCR, asignación inteligente",
+      "payments_title": "Sistemas de pago",
+      "payments": "— Integración BANGE, pagos atómicos, flujos agrupados, informes financieros",
+      "security_title": "Arquitectura de seguridad",
+      "security": "— JWT + 2FA, RBAC con 335 permisos, conformidad OWASP, registro de auditoría",
+      "deployment_title": "Despliegue & Operaciones",
+      "deployment": "— Pipeline CI/CD, Cloud Run, Firebase Hosting, monitorización",
+      "i18n": "— Soporte trilingüe (ES/FR/EN), 11.400+ claves, arquitectura de traducción",
+      "grafana": "— 10 paneles producción, ingeniería analítica, capa semántica de datos, KPIs orientados a decisión",
+      "logrocket": "— Reproducción de sesión (web + móvil + inspector), censura PII ante todo, bridge Sentry, flujos de uso diarios"
+    },
+    "overview": {
+      "title": "Resumen de la plataforma",
+      "body1": "<strong>Facil</strong> es una plataforma integral de servicios gubernamentales digitales diseñada para la República de Guinea Ecuatorial. Permite a ciudadanos, empresas y contables gestionar sus obligaciones fiscales, solicitar documentos civiles e interactuar con las agencias gubernamentales totalmente en línea.",
+      "body2": "La plataforma sirve a múltiples entidades gubernamentales incluyendo la Direccion General de Impuestos (DGI), CNEDOGE (servicios de pasaporte), Direccion General de Trafico (DGT), Extranjeria (inmigración), Ayuntamiento (servicios municipales), Camara de Comercio y diversos ministerios."
+    },
+    "stack": {
+      "title": "Pila tecnológica",
+      "col_layer": "Capa", "col_tech": "Tecnología", "col_version": "Versión", "col_purpose": "Función",
+      "row": {
+        "api": "API backend", "api_purpose": "API REST con docs OpenAPI automáticos",
+        "runtime": "Runtime", "runtime_purpose": "Async-first con asyncio/asyncpg",
+        "db": "Base de datos", "db_purpose": "Almacén principal con pgvector",
+        "cache": "Caché", "cache_purpose": "Caché con fallback en memoria",
+        "frontend": "Frontend", "frontend_purpose": "App Router con SSR e i18n",
+        "ui": "Framework UI", "ui_purpose": "Biblioteca de componentes con Tailwind CSS",
+        "mobile": "Móvil", "mobile_purpose": "Apps Android/iOS ciudadano e inspector",
+        "ai": "IA", "ai_purpose": "Chatbot RAG, análisis documental, scoring de riesgo",
+        "cloud": "Cloud", "cloud_purpose": "Despliegue de contenedores serverless",
+        "hosting": "Hosting", "hosting_purpose": "CDN frontend con canales staging",
+        "storage": "Almacenamiento", "storage_purpose": "Almacenamiento de documentos y archivos con URLs firmadas",
+        "cicd": "CI/CD", "cicd_purpose": "8 archivos workflow (CI, deploy, build)"
+      }
+    },
+    "monorepo": { "title": "Estructura del monorepo" },
+    "qs": {
+      "title": "Inicio rápido",
+      "backend_title": "Desarrollo backend",
+      "frontend_title": "Desarrollo frontend",
+      "callout_title": "Importante",
+      "callout_body": "Nunca compiles manualmente con <code>gcloud</code>. Todos los despliegues deben pasar por GitHub Actions. Empuja a la rama <code>develop</code> y el pipeline CI/CD compilará y desplegará automáticamente el backend (Cloud Run) y el frontend (Firebase Hosting)."
+    },
+    "pages": { "title": "Páginas de documentación" },
+    "cards": {
+      "architecture": "Diseño backend 3-tier, estructura modular frontend, capas de caché, pipeline IA, apps móviles y topología de despliegue.",
+      "api": "Los 62 routers API, flujos de autenticación, formatos solicitud/respuesta, manejo de errores, rate limiting y paginación.",
+      "database": "145 tablas en 10 dominios, 50 enums con todos sus valores, convenciones de nombres y relaciones clave.",
+      "workflows": "36 definiciones de flujo, flujo del wizard, condiciones dinámicas, cálculo de tasas, integración OCR y enrutamiento por entidad.",
+      "modules": "30 módulos backend y 41+ módulos frontend organizados por dominio, con endpoints clave, tablas y dependencias.",
+      "agents": "Chatbot RAG con Gemini 2.5 Flash, 5 agentes por rol, procesamiento OCR de documentos y motor de asignación inteligente.",
+      "payments": "Integración BANGE, pipeline de pago atómico, flujos multi-entidad, informes financieros y generación de recibos.",
+      "security": "Autenticación JWT + 2FA, RBAC con 47 roles y 335 permisos, conformidad OWASP, cabeceras CSP y registro de auditoría.",
+      "deployment_title": "Despliegue & Ops",
+      "deployment": "8 workflows GitHub Actions, contenedores Cloud Run, Firebase Hosting, gestión de entornos y monitorización.",
+      "i18n": "Soporte trilingüe (español, francés, inglés), 11.400+ claves de traducción, traducciones de entidades backend y renderizado de plantillas.",
+      "grafana": "10 paneles producción, arquitectura de datos semántica de 4 capas, resolución multi-fuente y KPIs orientados a decisión para tesorería, agentes e inspectores.",
+      "logrocket": "Reproducción de sesión en web + móvil + inspector con censura PII de 4 capas, aplicación de la política de identificación y bridge Sentry para debug forense."
+    },
+    "dec": {
+      "title": "Decisiones de arquitectura clave",
+      "col_decision": "Decisión", "col_choice": "Elección", "col_rationale": "Justificación",
+      "row": {
+        "api": "Framework API", "api_choice": "FastAPI (async)", "api_rationale": "Async nativo, docs OpenAPI automáticos, validación Pydantic v2, alto rendimiento",
+        "driver": "Driver BD", "driver_choice": "asyncpg (sin ORM)", "driver_rationale": "SQL parametrizado en bruto para máximo control, rendimiento y seguridad",
+        "routing": "Enrutamiento frontend", "routing_choice": "Next.js App Router con [locale]", "routing_rationale": "Renderizado del lado del servidor, i18n integrado, route groups para auth/dashboard/public",
+        "state": "Gestión de estado", "state_choice": "React Query + Zustand", "state_rationale": "Separación estado servidor (Query) vs estado cliente (Zustand)",
+        "deploy": "Despliegue", "deploy_choice": "Cloud Run + Firebase Hosting", "deploy_rationale": "Escalado serverless, cero gestión de infraestructura, distribución CDN",
+        "entity": "Enrutamiento por entidad", "entity_choice": "Impulsado por BD (entities.workflow_codes)", "entity_rationale": "Sin cambios de código para asignar flujos a entidades, gestionado vía UI admin",
+        "cache": "Estrategia de caché", "cache_choice": "HybridCache (Redis + fallback en memoria)", "cache_rationale": "Degradación elegante si Redis no está disponible, TTLs específicos por dominio",
+        "ai": "Modelo IA", "ai_choice": "Gemini 2.5 Flash vía Vertex AI", "ai_rationale": "Inferencia rápida, soporte tool-use, rentable para cargas gubernamentales"
+      }
+    },
+    "ent": {
+      "title": "Entidades gubernamentales",
+      "intro": "Facil sirve a múltiples entidades gubernamentales de Guinea Ecuatorial, cada una gestionando servicios fiscales y flujos específicos:",
+      "col_entity": "Entidad", "col_code": "Código", "col_domain": "Dominio",
+      "row": {
+        "dgi": "Declaraciones fiscales, servicios fiscales",
+        "cnedoge": "Servicios de pasaporte",
+        "dgt": "Matriculación de vehículos, permisos de conducir",
+        "extranjeria": "Permisos de residencia, trámites de visado",
+        "ayuntamiento": "Servicios municipales, licencias comerciales",
+        "camara": "Registro de empresas, certificados comerciales",
+        "tesoro": "Tesorería, procesamiento de pagos",
+        "funcion": "Función pública, verificación de empleados",
+        "various": "Diversos ministerios",
+        "min": "Inspecciones y permisos sectoriales"
+      }
+    },
+    "footer": "Plataforma Facil v1.1.8 · República de Guinea Ecuatorial · © 2026 Sah Kouemou",
+    "footer.dashboards": "Paneles"
   }
 }
 ;
