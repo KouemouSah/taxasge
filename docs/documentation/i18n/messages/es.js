@@ -25,6 +25,7 @@ window.__I18N__.es =
         "payments": "Pagos",
         "grafana": "Paneles Grafana",
         "ai_obs": "Observabilidad IA",
+        "security_obs": "Observabilidad Seguridad",
         "logrocket": "Observabilidad LogRocket",
         "security": "Seguridad",
         "deployment": "Despliegue",

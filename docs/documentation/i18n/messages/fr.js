@@ -25,6 +25,7 @@ window.__I18N__.fr =
         "payments": "Paiements",
         "grafana": "Tableaux de bord Grafana",
         "ai_obs": "Observabilité IA",
+        "security_obs": "Observabilité Sécurité",
         "logrocket": "Observabilité LogRocket",
         "security": "Sécurité",
         "deployment": "Déploiement",

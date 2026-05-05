@@ -25,6 +25,7 @@ window.__I18N__.en =
         "payments": "Payments",
         "grafana": "Grafana Dashboards",
         "ai_obs": "AI Observability",
+        "security_obs": "Security Observability",
         "logrocket": "LogRocket Observability",
         "security": "Security",
         "deployment": "Deployment",

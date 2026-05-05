@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-title="secobs.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Security Observability — IP / device / geo monitoring + prompt injection detection">
+  <title>Security Observability - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="ai-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#129303;</span> <span data-i18n="common.sidebar.link.ai_obs">AI Observability</span></a>
+          <a href="security-observability.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="common.sidebar.link.security_obs">Security Observability</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="common.sidebar.link.security_obs">Security Observability</span></nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="secobs.title">Security Observability — IP / device / geo + prompt injection</h1>
+        <p class="page-description" data-i18n-html="secobs.description">
+          Per-request HTTP telemetry (IPs, devices, geolocation, suspicious patterns) + prompt injection detection persisted to BD for SQL queryability + Grafana dashboard with 20 panels + 3 security alert rules. Closes the gap from Phase B.5 where injection detection was log-only. Privacy-safe (RGPD): IPs retained 30 days raw, aggregations preserved indefinitely via materialized view.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#why" data-i18n="secobs.toc.why">1. Why &amp; gap analysis</a></li>
+            <li><a href="#stack" data-i18n="secobs.toc.stack">2. Stack architecture</a></li>
+            <li><a href="#schema" data-i18n="secobs.toc.schema">3. BD schema (mig 328 + 329)</a></li>
+            <li><a href="#middleware" data-i18n="secobs.toc.middleware">4. Capture middleware (sampling)</a></li>
+            <li><a href="#ua" data-i18n="secobs.toc.ua">5. UA parsing &amp; device classification</a></li>
+            <li><a href="#geo" data-i18n="secobs.toc.geo">6. GeoIP enrichment (MaxMind)</a></li>
+            <li><a href="#dashboard" data-i18n="secobs.toc.dashboard">7. Dashboard (20 panels)</a></li>
+            <li><a href="#alerts" data-i18n="secobs.toc.alerts">8. Alerts (3 rules + runbooks)</a></li>
+            <li><a href="#privacy" data-i18n="secobs.toc.privacy">9. Privacy &amp; retention (RGPD)</a></li>
+          </ul>
+        </div>
+
+        <h2 id="why"><span data-i18n="secobs.toc.why">1. Why &amp; gap analysis</span> <a href="#why" class="anchor-link">#</a></h2>
+        <p data-i18n-html="secobs.why.intro">
+          User questions 2026-05-05: <em>"prompt injection detection est-ce un dashboard ou une métriques ?"</em> + <em>"controler les différentes adresses ip qui se connecte et leur requetes avec filtré par type de devices"</em>. Phase B.5 had implemented injection DETECTION but only logged to OTEL spans (Tempo, 14d retention). No SQL queryability, no dashboard, no alerts on trends. Phase C closes both gaps.
+        </p>
+
+        <h2 id="stack"><span data-i18n="secobs.toc.stack">2. Stack architecture</span> <a href="#stack" class="anchor-link">#</a></h2>
+        <pre><code>HTTP request
+  └─ RequestTelemetryMiddleware (pure ASGI, ~200ns excluded paths)
+       ├─ extract: method/path/status/latency/IP/UA/referer/trace_id
+       ├─ enrich: parse_ua() → device_type / browser / OS
+       ├─ enrich: lookup_ip() → country / city / lat/lon
+       ├─ sample: errors 100% / new IP 100% / bot 1% / steady 10%
+       └─ asyncio.create_task(_persist_request) → request_telemetry table
+
+Cron every 6h:
+  └─ DELETE rows > 30d + REFRESH MATERIALIZED VIEW CONCURRENTLY hourly</code></pre>
+
+        <h2 id="schema"><span data-i18n="secobs.toc.schema">3. BD schema</span> <a href="#schema" class="anchor-link">#</a></h2>
+        <h3 data-i18n="secobs.schema.328">Mig 328 — extends ai_call_metrics</h3>
+        <ul>
+          <li><code>injection_risk</code> text (none/low/medium/high)</li>
+          <li><code>injection_score</code> int (0..100+)</li>
+          <li><code>injection_rules</code> text[] (top 5 matched)</li>
+          <li>Partial index <code>idx_aim_high_risk</code> WHERE risk IN (medium, high)</li>
+        </ul>
+        <h3 data-i18n="secobs.schema.329">Mig 329 — request_telemetry table</h3>
+        <p data-i18n-html="secobs.schema.329_desc">
+          31 columns / 9 indexes / 7 CHECK constraints / 1 hourly MV.
+          Key columns: <code>ip_address inet</code>, <code>device_type</code>,
+          <code>browser_name</code>, <code>os_name</code>, <code>geo_country</code>,
+          <code>geo_lat/lon</code>, <code>sampled_pct</code>, <code>is_suspicious</code>,
+          <code>suspicious_reasons text[]</code>.
+        </p>
+        <h3 data-i18n="secobs.schema.330">Mig 330 — register security-monitoring dashboard</h3>
+        <p data-i18n-html="secobs.schema.330_desc">
+          12th dashboard in <code>dashboard_registrations</code>: UID <code>facil-security-monitoring</code>, category=security, rls_mode=admin_only, display_order=95.
+        </p>
+
+        <h2 id="middleware"><span data-i18n="secobs.toc.middleware">4. Capture middleware (sampling)</span> <a href="#middleware" class="anchor-link">#</a></h2>
+        <p data-i18n-html="secobs.middleware.intro">
+          <code>app/core/request_telemetry_middleware.py</code> — pure ASGI (NOT BaseHTTPMiddleware which would consume the request body). Decision tree per request:
+        </p>
+        <ol>
+          <li data-i18n-html="secobs.middleware.s1"><strong>Excluded path</strong> (healthz / static / metrics / docs) → bypass entirely</li>
+          <li data-i18n-html="secobs.middleware.s2"><strong>status &gt;= 400</strong> → sample 100%</li>
+          <li data-i18n-html="secobs.middleware.s3"><strong>New IP / new user</strong> in last 1h (LRU 10K cap) → sample 100%</li>
+          <li data-i18n-html="secobs.middleware.s4"><strong>Bot detected</strong> (UA → is_bot=true) → sample 1%</li>
+          <li data-i18n-html="secobs.middleware.s5"><strong>Steady-state success</strong> → sample 10%</li>
+        </ol>
+        <p data-i18n-html="secobs.middleware.note">
+          <code>sampled_pct</code> stored on each row → aggregations multiply by <code>100 / sampled_pct</code> for accurate counts. Persistence is fire-and-forget via <code>asyncio.create_task</code> — never blocks the response. Tracked WeakSet flushed at shutdown (5s timeout).
+        </p>
+
+        <h2 id="ua"><span data-i18n="secobs.toc.ua">5. UA parsing &amp; device classification</span> <a href="#ua" class="anchor-link">#</a></h2>
+        <p data-i18n-html="secobs.ua.intro">
+          <code>app/core/user_agent_parser.py</code> wraps the <code>user-agents</code> Python lib with <code>@lru_cache(4096)</code>. UA strings are extremely repetitive in real traffic — expected hit rate ~99% → 200ns cached vs 30-50µs uncached. Soft-import: returns all-NULL when lib missing.
+        </p>
+        <p data-i18n-html="secobs.ua.classify">
+          Device type derivation order: <strong>bot &gt; mobile &gt; tablet &gt; desktop &gt; unknown</strong>. Bot detection is the lib's responsibility (uses regex against thousands of known bot UAs).
+        </p>
+
+        <h2 id="geo"><span data-i18n="secobs.toc.geo">6. GeoIP enrichment (MaxMind)</span> <a href="#geo" class="anchor-link">#</a></h2>
+        <p data-i18n-html="secobs.geo.intro">
+          <code>app/core/geoip.py</code> wraps <code>geoip2</code> Python lib over the offline <code>GeoLite2-City.mmdb</code> file. <strong>Fully offline</strong> — IPs never leave the backend. Free of rate-limits (vs ip-api.com online). LRU 4096 cached.
+        </p>
+        <p data-i18n-html="secobs.geo.private">
+          Private/loopback IPs (<code>127.x</code>, <code>10.x</code>, <code>192.168.x</code>, <code>172.16-31.x</code>, <code>169.254.x</code>, IPv6 <code>::1</code>, <code>fe80:</code>, <code>fc00:</code>) are short-circuited to NULL without hitting the reader.
+        </p>
+        <h3 data-i18n="secobs.geo.setup_title">Setup</h3>
+        <ol>
+          <li data-i18n-html="secobs.geo.setup1">Sign up free at <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener">maxmind.com/en/geolite2/signup</a></li>
+          <li data-i18n-html="secobs.geo.setup2">Download <code>GeoLite2-City.mmdb</code> (~80 MB) → upload to <code>/tmp/GeoLite2-City.mmdb</code> on Cloud Run boot OR bundle in container</li>
+          <li data-i18n-html="secobs.geo.setup3">Set <code>MAXMIND_LICENSE_KEY</code> in Secret Manager (rotation 12 mois)</li>
+          <li data-i18n-html="secobs.geo.setup4">Override path with <code>GEOIP_DB_PATH</code> env var if non-default</li>
+        </ol>
+
+        <h2 id="dashboard"><span data-i18n="secobs.toc.dashboard">7. Dashboard</span> <a href="#dashboard" class="anchor-link">#</a></h2>
+        <p data-i18n-html="secobs.dashboard.intro">
+          UID <code>facil-security-monitoring</code>, 20 panels in 5 row sections. Listed at <code>/admin/dashboards</code> under category <em>security</em> (<code>rls_mode=admin_only</code>). Variables: device_type, country, user_role (multi-select with All).
+        </p>
+        <ul>
+          <li data-i18n-html="secobs.dashboard.r1"><strong>📊 Overview</strong>: total requests, unique IPs, error rate %, bot share %, suspicious count (5 stats)</li>
+          <li data-i18n-html="secobs.dashboard.r2"><strong>🌍 Geographic</strong>: top 10 countries bar chart, top 5 countries time series</li>
+          <li data-i18n-html="secobs.dashboard.r3"><strong>📱 Device &amp; browser</strong>: device donut, top browser × OS, device rate stacked area</li>
+          <li data-i18n-html="secobs.dashboard.r4"><strong>🚦 IPs &amp; users</strong>: top 20 IPs (count/errors/last seen), new IPs per hour</li>
+          <li data-i18n-html="secobs.dashboard.r5"><strong>🔥 Errors &amp; security</strong>: top 4xx paths, failed logins by IP, AI injection trend (cross-link with ai-observability)</li>
+        </ul>
+
+        <h2 id="alerts"><span data-i18n="secobs.toc.alerts">8. Alerts &amp; runbooks</span> <a href="#alerts" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Rule</th><th>Threshold</th><th>Severity</th></tr></thead>
+            <tbody>
+              <tr><td>facil-security-ip-spike</td><td>1 IP &gt; 1000 req / 5min</td><td><strong>critical</strong></td></tr>
+              <tr><td>facil-security-failed-login</td><td>1 IP &gt; 10 failed logins / 5min</td><td><strong>critical</strong></td></tr>
+              <tr><td>facil-security-bot-share</td><td>bot_share &gt; 50% sustained 30min</td><td>warning</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="ip-spike" data-i18n="secobs.runbook.ip_spike">Runbook — IP request spike</h3>
+        <p data-i18n-html="secobs.runbook.ip_spike_body">
+          1. Open dashboard, drill <strong>"Top 20 IPs by request count"</strong>. 2. Identify the offending IP. 3. Check geo + device — if cluster of bots from same country, suspect coordinated attack. 4. Block via Cloud Armor / Cloudflare WAF / iptables. 5. Document in <code>audit_logs</code> with action='security.ip_blocked'.
+        </p>
+        <h3 id="failed-login" data-i18n="secobs.runbook.failed_login">Runbook — Failed login burst</h3>
+        <p data-i18n-html="secobs.runbook.failed_login_body">
+          1. <strong>"Failed logins by IP"</strong> panel → identify top IP. 2. Check if the user_email being targeted exists (BD lookup) — if yes, force password reset + 2FA enrollment. 3. Block IP. 4. If sustained → enable CAPTCHA on /login or temporary 2FA-mandatory mode.
+        </p>
+        <h3 id="bot-share" data-i18n="secobs.runbook.bot_share">Runbook — Bot share &gt;50%</h3>
+        <p data-i18n-html="secobs.runbook.bot_share_body">
+          1. <strong>"Top browser × OS"</strong> panel → identify the dominant bot UA. 2. Either legitimate scraper (search engine, archive.org) → whitelist the UA, or vulnerability scanner → block. 3. Verify <code>robots.txt</code> served correctly.
+        </p>
+
+        <h2 id="privacy"><span data-i18n="secobs.toc.privacy">9. Privacy &amp; retention (RGPD)</span> <a href="#privacy" class="anchor-link">#</a></h2>
+        <ul>
+          <li data-i18n-html="secobs.privacy.basis"><strong>Legal basis</strong>: legitimate interest — security monitoring (Art. 6.1.f GDPR)</li>
+          <li data-i18n-html="secobs.privacy.retention"><strong>Retention</strong>: raw rows 30 days max (cron auto-delete). MV aggregations 90 days (no IP, just country/device counts).</li>
+          <li data-i18n-html="secobs.privacy.fk"><strong>FK</strong>: <code>user_id</code> ON DELETE SET NULL — user deletion clears the link</li>
+          <li data-i18n-html="secobs.privacy.geo_offline"><strong>GeoIP fully offline</strong>: IPs never leave our backend (vs ip-api.com cloud)</li>
+          <li data-i18n-html="secobs.privacy.no_pii"><strong>No PII in MV</strong>: aggregations dropped IP/UA/path → safe long-term storage</li>
+          <li data-i18n-html="secobs.privacy.iam"><strong>RLS</strong>: dashboard <code>rls_mode='admin_only'</code> — non-admin users do not see IP data</li>
+        </ul>
+
+      </div>
+
+      <footer class="page-footer">
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>
