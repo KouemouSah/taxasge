@@ -6,7 +6,7 @@
   <meta name="description" content="Facil Platform Technical Documentation - Government Digital Services for Equatorial Guinea">
   <meta name="author" content="Facil Engineering Team">
   <title>Facil Platform Documentation</title>
-  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="icon" type="image/png" href="../assets/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -133,14 +133,26 @@
 
         <h2 id="overview" data-i18n="indexpage.overview.title">Platform Overview</h2>
         <p data-i18n-html="indexpage.overview.body1">
-          <strong>Facil</strong> is a comprehensive digital government services platform designed for the Republic
-          of Equatorial Guinea. It enables citizens, businesses, and accountants to manage fiscal obligations,
-          apply for civil documents, and interact with government agencies entirely online.
+          <strong>Facil</strong> is a full-stack, AI-powered framework for digitizing government administrative
+          procedures and company-related processes. It ships as a complete platform &mdash;
+          <strong>backend API, web dashboard, citizen mobile app, and field inspection app</strong> &mdash; that
+          any government can configure to run its own fiscal services, workflows, document processing,
+          and citizen interactions, end-to-end.
         </p>
-        <p data-i18n="indexpage.overview.body2">
-          The platform serves multiple government entities including the Direccion General de Impuestos (DGI),
-          CNEDOGE (passport services), Direccion General de Trafico (DGT), Extranjeria (immigration),
-          Ayuntamiento (municipal services), Camara de Comercio, and various ministries.
+        <p data-i18n-html="indexpage.overview.body2">
+          The framework is <strong>country-agnostic by design</strong>: workflows, fiscal services, entities,
+          roles, translations, and business rules are all <em>data-driven</em> and configurable through the
+          database and admin UI &mdash; not hardcoded. Deploying Facil to a new country means
+          <em>configuring</em> services, entities, and workflows, not rewriting code. Built-in AI
+          (Gemini 2.5 Flash via Vertex AI + pgvector RAG) powers the chatbot, OCR/IDP document
+          intelligence, automated risk scoring, and agent decision support.
+        </p>
+        <p data-i18n-html="indexpage.overview.body3">
+          <strong>Current deployment &mdash; Republic of Equatorial Guinea</strong>: 873 fiscal services
+          across 20 government entities (DGI, CNEDOGE, DGT, Extranjer&iacute;a, Ayuntamiento, C&aacute;mara
+          de Comercio, Tesoro P&uacute;blico, MINFP, ITV, ONRC, OFIVE, plus 8 ministerial entities),
+          21 ministries directory, 34 sites in 17 cities, 36 business workflows, 47 roles with
+          337 granular permissions, fully trilingual UI (Spanish, French, English).
         </p>
 
         <h3 id="tech-stack" data-i18n="indexpage.stack.title">Technology Stack</h3>
@@ -162,6 +174,11 @@
               <tr><td data-i18n="indexpage.stack.row.hosting">Hosting</td><td>Firebase Hosting</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.hosting_purpose">Frontend CDN with staging channels</td></tr>
               <tr><td data-i18n="indexpage.stack.row.storage">Storage</td><td>Supabase Storage / Firebase</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.storage_purpose">Document and file storage with signed URLs</td></tr>
               <tr><td data-i18n="indexpage.stack.row.cicd">CI/CD</td><td>GitHub Actions</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.cicd_purpose">8 workflow files (CI, deploy, build)</td></tr>
+              <tr><td data-i18n="indexpage.stack.row.errors">Error Tracking</td><td>Sentry</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.errors_purpose">Backend + web + mobile + inspector exceptions, releases, source maps</td></tr>
+              <tr><td data-i18n="indexpage.stack.row.replay">Session Replay</td><td>LogRocket</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.replay_purpose">Web + mobile + inspector replays with PII redaction, Sentry bridge</td></tr>
+              <tr><td data-i18n="indexpage.stack.row.metrics">Metrics &amp; Alerts</td><td>Grafana Cloud</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.metrics_purpose">10 operational dashboards, dual-provider Postgres, on-call alerts</td></tr>
+              <tr><td data-i18n="indexpage.stack.row.bi">Business Dashboards</td><td>Looker Studio</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.bi_purpose">Embedded BI with admin-managed report IDs (no redeploy)</td></tr>
+              <tr><td data-i18n="indexpage.stack.row.audit">Audit &amp; Logs</td><td>Cloud Logging</td><td>&mdash;</td><td data-i18n="indexpage.stack.row.audit_purpose">Structured logs, in-DB audit_logs trail, permission_audit_log</td></tr>
             </tbody>
           </table>
         </div>

@@ -479,6 +479,7 @@ window.__I18N__.es =
       "bundle": "Flujo de pago agrupado",
       "lock": "Orden de bloqueo (concurrencia)",
       "receipts": "Generación de recibos",
+      "security": "Seguridad de recibos y verificación QR",
       "reporting": "Informes financieros",
       "bange": "Integración BANGE"
     },
@@ -583,6 +584,47 @@ window.__I18N__.es =
       "item3": "Importes calculados con desglose",
       "item4": "Referencia y marca temporal del pago",
       "item5": "Código QR para verificación del recibo"
+    },
+    "security": {
+      "title": "Seguridad de recibos y verificación QR",
+      "intro": "Cada recibo, licencia, certificado y PDF de solicitud de servicio generado por Facil está <strong>firmado criptográficamente</strong> y <strong>verificable públicamente vía código QR</strong>. El QR codifica un deep-link a un endpoint público de verificación; el enlace lleva un token <strong>HMAC-SHA256</strong> imposible de falsificar sin el secreto del lado del servidor. Manipular el número de recibo, el importe o la fecha rompe la firma &mdash; el endpoint de verificación rechaza entonces el documento.",
+      "diagram_title": "Arquitectura &mdash; Flujo Firmar y Verificar",
+      "diagram_caption": "Generación (servidor) → QR (PDF) → Verificación pública (cualquier dispositivo)",
+      "box": {
+        "gen": "1. Recibo PDF generado", "gen_sub": "pago validado → PDF renderizado con WeasyPrint",
+        "sign": "2. Firma HMAC-SHA256", "sign_sub": "mensaje: numero_recibo | importe | AAAAMMDD<br>secreto: RECEIPT_VERIFICATION_SECRET<br>salida: digest hex 16 caracteres",
+        "qr": "3. QR codificado", "qr_sub": "URL: https://app/verify/{ref}?t={token}<br>incrustado como PNG base64 en el PDF",
+        "store": "4. Almacenado en bóveda", "store_sub": "URL firmada Firebase Storage + fila de auditoría + entrada en bóveda del usuario",
+        "scan": "5. Cualquiera escanea el QR", "scan_sub": "el navegador abre<br>GET /api/v1/verify/{ref}?t=...<br>(sin autenticación)",
+        "verify": "6. El servidor recalcula el HMAC", "verify_sub": "hmac.compare_digest() — tiempo constante<br>match → 200 + datos del pago<br>mismatch → 404"
+      },
+      "tech_title": "Lo que hace al documento infalsificable",
+      "col_control": "Control de seguridad", "col_impl": "Implementación", "col_why": "Por qué importa",
+      "row": {
+        "algo": "Algoritmo criptográfico",
+        "algo_why": "Digest autenticado estándar. Falsificar un token válido requiere el secreto del servidor — computacionalmente inviable sin él.",
+        "secret": "Secreto de firma",
+        "secret_why": "Secreto permanente cargado desde el entorno / Secret Manager. Nunca SECRET_KEY (que rotaría en cada arranque en frío de Cloud Run e invalidaría QRs antiguos).",
+        "payload": "Mensaje firmado",
+        "payload_why": "Liga el token al recibo exacto, importe exacto y día del pago. Editar cualquier campo del PDF → la firma se rompe → la verificación falla.",
+        "compare": "Comparación",
+        "compare_why": "Comparación a tiempo constante — inmune a ataques de canal lateral temporal que de otro modo podrían filtrar el token byte por byte.",
+        "token": "Formato del token",
+        "token_val": "16 caracteres hex (los primeros 64 bits del HMAC)",
+        "token_why": "Suficientemente compacto para un QR pequeño (ERROR_CORRECT_M sigue siendo escaneable en un teléfono), suficientemente grande para hacer la búsqueda por fuerza bruta inviable (2^64).",
+        "endpoint": "Endpoints públicos",
+        "endpoint_why": "Sin autenticación requerida — cualquiera (tercero, cajero, agente aduanero) puede escanear y verificar en un toque. La privacidad se preserva: la respuesta solo confirma validez + datos mínimos.",
+        "vault": "Almacenamiento y bóveda",
+        "vault_why": "PDF persistido en Firebase Storage con URL firmada y registrado en la bóveda ciudadana. El QR se verifica contra el estado BD en vivo, así un pago revocado / reembolsado puede señalarse al escanear."
+      },
+      "threat_title": "Modelo de amenazas",
+      "threat": {
+        "edit": "<strong>Editar el PDF impreso</strong> (cambiar importe, nombre o fecha en un editor PDF) → el token QR ya no coincide con el nuevo contenido → el endpoint devuelve 404. Detectado al primer escaneo.",
+        "replay": "<strong>Reutilizar un QR para otro recibo</strong> → el endpoint carga el recibo por su número, no por el token; un token robado no puede emparejarse con otro número de recibo.",
+        "brute": "<strong>Fuerza bruta sobre un token</strong> → espacio de búsqueda 2<sup>64</sup>, endpoint público con rate-limit. Estadísticamente inviable.",
+        "timing": "<strong>Canal lateral temporal</strong> → mitigado por <code>hmac.compare_digest()</code>.",
+        "secret": "<strong>Fuga del secreto</strong> → rotar <code>RECEIPT_VERIFICATION_SECRET</code> en Secret Manager — los recibos antiguos deben entonces resignarse si se requiere verificación continua (compromiso aceptable ante incidentes de seguridad)."
+      }
     },
     "reporting": {
       "col_report": "Informe",
@@ -1266,8 +1308,9 @@ window.__I18N__.es =
     },
     "overview": {
       "title": "Resumen de la plataforma",
-      "body1": "<strong>Facil</strong> es una plataforma integral de servicios gubernamentales digitales diseñada para la República de Guinea Ecuatorial. Permite a ciudadanos, empresas y contables gestionar sus obligaciones fiscales, solicitar documentos civiles e interactuar con las agencias gubernamentales totalmente en línea.",
-      "body2": "La plataforma sirve a múltiples entidades gubernamentales incluyendo la Direccion General de Impuestos (DGI), CNEDOGE (servicios de pasaporte), Direccion General de Trafico (DGT), Extranjeria (inmigración), Ayuntamiento (servicios municipales), Camara de Comercio y diversos ministerios."
+      "body1": "<strong>Facil</strong> es un framework full-stack potenciado por IA para digitalizar trámites administrativos gubernamentales y procesos relacionados con empresas. Se entrega como una plataforma completa &mdash; <strong>API backend, panel web, app móvil ciudadana y app de inspección de campo</strong> &mdash; que cualquier gobierno puede configurar para operar sus propios servicios fiscales, flujos de trabajo, procesamiento documental e interacciones ciudadanas, de extremo a extremo.",
+      "body2": "El framework es <strong>independiente de país por diseño</strong>: flujos de trabajo, servicios fiscales, entidades, roles, traducciones y reglas de negocio están todos <em>orientados por datos</em> y configurables a través de la base de datos y el panel admin &mdash; nada está cableado en código. Desplegar Facil en un nuevo país significa <em>configurar</em> servicios, entidades y flujos, no reescribir código. La IA integrada (Gemini 2.5 Flash vía Vertex AI + RAG pgvector) impulsa el chatbot, OCR/IDP inteligente, scoring de riesgo automatizado y soporte a la decisión de los agentes.",
+      "body3": "<strong>Despliegue actual &mdash; República de Guinea Ecuatorial</strong>: 873 servicios fiscales en 20 entidades gubernamentales (DGI, CNEDOGE, DGT, Extranjer&iacute;a, Ayuntamiento, C&aacute;mara de Comercio, Tesoro P&uacute;blico, MINFP, ITV, ONRC, OFIVE, más 8 entidades ministeriales), directorio de 21 ministerios, 34 sedes en 17 ciudades, 36 flujos de trabajo de negocio, 47 roles con 337 permisos granulares, interfaz totalmente trilingüe (español, francés, inglés)."
     },
     "stack": {
       "title": "Pila tecnológica",
@@ -1284,7 +1327,12 @@ window.__I18N__.es =
         "cloud": "Cloud", "cloud_purpose": "Despliegue de contenedores serverless",
         "hosting": "Hosting", "hosting_purpose": "CDN frontend con canales staging",
         "storage": "Almacenamiento", "storage_purpose": "Almacenamiento de documentos y archivos con URLs firmadas",
-        "cicd": "CI/CD", "cicd_purpose": "8 archivos workflow (CI, deploy, build)"
+        "cicd": "CI/CD", "cicd_purpose": "8 archivos workflow (CI, deploy, build)",
+        "errors": "Seguimiento de errores", "errors_purpose": "Excepciones backend + web + móvil + inspector, releases, source maps",
+        "replay": "Reproducción de sesión", "replay_purpose": "Reproducciones web + móvil + inspector con censura PII, bridge Sentry",
+        "metrics": "Métricas y alertas", "metrics_purpose": "10 dashboards operacionales, Postgres dual-provider, alertas de guardia",
+        "bi": "Dashboards de negocio", "bi_purpose": "BI embebida con report IDs gestionados por admin (sin redespliegue)",
+        "audit": "Auditoría y registros", "audit_purpose": "Logs estructurados, traza audit_logs en BD, permission_audit_log"
       }
     },
     "monorepo": { "title": "Estructura del monorepo" },
