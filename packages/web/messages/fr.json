@@ -4605,10 +4605,68 @@
       "notFoundTitle": "Tableau de bord introuvable",
       "notFoundHelp": "Le tableau de bord '{id}' n'existe pas dans le registre.",
       "rls": {
+        "public": "Public",
+        "authenticated": "Authentifié",
         "entity": "Par entité",
         "agent_via_join": "Par agent",
-        "admin_only": "Admin uniquement",
-        "public": "Public"
+        "admin_only": "Admin uniquement"
+      },
+      "category": {
+        "executive": "Direction",
+        "finance": "Finance",
+        "operations": "Opérations",
+        "security": "Sécurité",
+        "business": "Métier",
+        "product": "Produit",
+        "ungrouped": "Autres"
+      },
+      "import": {
+        "title": "Importer depuis Grafana",
+        "description": "Sélectionne les dashboards de ton workspace Grafana à importer dans le registre. Ceux déjà importés ne s'affichent pas.",
+        "errorTitle": "Connexion à Grafana impossible",
+        "errorHelpToken": "Configure GRAFANA_BASE_URL et GRAFANA_SA_TOKEN dans Secret Manager puis redémarre le backend.",
+        "emptyTitle": "Tous les dashboards déjà importés",
+        "emptyDesc": "Les {total} dashboards Grafana sont déjà dans le registre.",
+        "selectAll": "Tout sélectionner",
+        "foundCount": "{found} importables sur {total} trouvés",
+        "selectedCount": "{count} sélectionné(s)",
+        "field": {
+          "slug": "Slug (URL/clé)",
+          "titleEs": "Titre (ES)",
+          "titleFr": "Titre (FR)",
+          "titleEn": "Titre (EN)",
+          "category": "Catégorie",
+          "rlsMode": "Visibilité",
+          "none": "— Sans catégorie —"
+        },
+        "category": {
+          "executive": "Direction",
+          "finance": "Finance",
+          "operations": "Opérations",
+          "security": "Sécurité",
+          "business": "Métier",
+          "product": "Produit"
+        },
+        "rls": {
+          "public": "Public",
+          "authenticated": "Authentifié",
+          "adminOnly": "Admin uniquement"
+        },
+        "result": {
+          "title": "Résultat de l'import",
+          "imported": "{count} importé(s)",
+          "skipped": "{count} ignoré(s)",
+          "errors": "{count} erreur(s)"
+        },
+        "toast": {
+          "successTitle": "Import terminé",
+          "successDesc": "{imported} importés, {skipped} ignorés, {errors} erreurs",
+          "errorTitle": "Erreur lors de l'import",
+          "errorDesc": "L'import n'a pas pu aboutir."
+        },
+        "importBtn": "Importer ({count})",
+        "importing": "Import en cours...",
+        "close": "Fermer"
       },
       "config": {
         "title": "Configuration des tableaux de bord",
@@ -4652,7 +4710,19 @@
           "unset": "Non configuré"
         },
         "updatedAt": "Mis à jour le {date}",
-        "neverUpdated": "Jamais configuré en BD"
+        "neverUpdated": "Jamais configuré en BD",
+        "listSummary": "{total} dashboards dans le registre · {active} actifs",
+        "importGrafanaBtn": "Importer depuis Grafana",
+        "delete": {
+          "action": "Désactiver",
+          "confirmTitle": "Désactiver ce dashboard ?",
+          "confirmBody": "Le dashboard \"{label}\" sera masqué de la liste publique. La ligne et l'historique d'audit sont conservés ; tu peux le réactiver plus tard.",
+          "confirm": "Désactiver",
+          "cancel": "Annuler",
+          "successTitle": "Dashboard désactivé",
+          "errorTitle": "Erreur de désactivation",
+          "errorDesc": "Impossible de désactiver le dashboard."
+        }
       }
     }
   },

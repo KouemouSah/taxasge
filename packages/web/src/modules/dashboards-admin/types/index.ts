@@ -5,41 +5,63 @@
  * Keep in sync with:
  *   packages/backend/app/modules/dashboards/models/dashboards.py
  *   packages/backend/app/modules/dashboards/models/dashboard_config.py
+ *
+ * Mig 323 (2026-05-05): metadata is now BD-driven (i18n triplets, category,
+ * embed_mode, panel_id, display_order, default_time_range, icon_name).
+ * `label` and `description` are backwards-compat aliases (= title_es / description_es).
  */
 
-export type DashboardRlsMode = 'entity' | 'agent_via_join' | 'admin_only' | 'public'
+export type DashboardRlsMode =
+  | 'public'
+  | 'authenticated'
+  | 'entity'
+  | 'agent_via_join'
+  | 'admin_only'
 
-/**
- * Source of the looker_report_id surfaced to the admin UI.
- * - "db"           → row exists in dashboard_registrations (migration 317)
- * - "env_fallback" → no row, but LOOKER_REPORTS_<id>_REPORT_ID env var is set
- * - "unset"        → no row, no env var (UI prompts admin to configure)
- */
+export type DashboardEmbedMode = 'kiosk' | 'solo' | 'panel'
+
+export type DashboardCategory =
+  | 'executive'
+  | 'finance'
+  | 'operations'
+  | 'security'
+  | 'business'
+  | 'product'
+
 export type DashboardConfigSource = 'db' | 'env_fallback' | 'unset'
 
-/**
- * Provider type for the embed iframe.
- * Mirrors backend `DashboardProvider` (mig 319).
- */
 export type DashboardProvider = 'looker_studio' | 'grafana'
 
 export interface DashboardReportEntry {
   dashboard_id: string
+  /** = title_es (backwards-compat). Use title_<locale> for new code. */
   label: string
+  /** = description_es. */
   description: string
   rls_mode: DashboardRlsMode
-  /** Active provider — looker_studio (default) or grafana. */
+
+  // Mig 323 — i18n triplets
+  title_es: string
+  title_fr: string
+  title_en: string
+  description_es: string | null
+  description_fr: string | null
+  description_en: string | null
+
+  // Mig 323 — presentation
+  category: DashboardCategory | null
+  display_order: number
+  icon_name: string | null
+  embed_mode: DashboardEmbedMode
+  panel_id: number | null
+  default_time_range: string
+
   provider: DashboardProvider
-  /** Looker Studio fields. Null when provider != looker_studio or unset. */
   looker_report_id: string | null
   looker_page_id: string | null
-  /** Grafana fields. Null when provider != grafana or unset. */
   grafana_dashboard_uid: string | null
   grafana_org_id: number
-  /**
-   * Backend-computed iframe URL. The frontend should use this directly;
-   * fallback to local URL builders only if this is null (legacy).
-   */
+
   embed_url: string | null
 }
 
@@ -47,48 +69,43 @@ export interface DashboardReportsConfigResponse {
   reports: DashboardReportEntry[]
 }
 
-/**
- * Full admin view of one dashboard config. Includes provenance label
- * + audit fields. Returned by GET /api/v1/dashboards/admin/configs.
- */
 export interface DashboardConfigDTO {
   dashboard_id: string
   label: string
   description: string
+
+  // Mig 323 — i18n
+  title_es: string
+  title_fr: string
+  title_en: string
+  description_es: string | null
+  description_fr: string | null
+  description_en: string | null
+
+  // Mig 323 — presentation
   rls_mode: DashboardRlsMode
+  embed_mode: DashboardEmbedMode
+  panel_id: number | null
+  display_order: number
+  default_time_range: string
+  icon_name: string | null
+  category: DashboardCategory | null
 
-  /** Active provider — looker_studio (default) or grafana. */
   provider: DashboardProvider
-
-  /** Looker Studio fields. Used when provider == 'looker_studio'. */
   looker_report_id: string | null
   looker_page_id: string | null
-
-  /** Grafana fields. Used when provider == 'grafana'. */
   grafana_dashboard_uid: string | null
   grafana_org_id: number
 
   is_active: boolean
   source: DashboardConfigSource
-
-  /** Backend-computed iframe URL for the active provider. */
   embed_url: string | null
 
-  /** UUID of the admin who last updated this row (null when source != "db"). */
   updated_by: string | null
-  /** ISO datetime string. */
   updated_at: string | null
   created_at: string | null
 }
 
-/**
- * PUT body for /api/v1/dashboards/admin/configs/{dashboard_id}.
- * Regex constraints match the BD CHECK constraints (migrations 317 + 319):
- *   - looker_report_id     : ^[a-zA-Z0-9_-]{8,64}$  (required if provider=looker_studio)
- *   - looker_page_id       : ^[a-zA-Z0-9_]{1,32}$   (optional)
- *   - grafana_dashboard_uid: ^[a-zA-Z0-9_-]{4,40}$  (required if provider=grafana)
- *   - grafana_org_id       : 1..999
- */
 export interface DashboardConfigUpdateRequest {
   provider: DashboardProvider
   looker_report_id?: string | null
@@ -98,6 +115,94 @@ export interface DashboardConfigUpdateRequest {
   is_active: boolean
 }
 
+export interface DashboardConfigCreateRequest {
+  dashboard_id: string
+  provider: DashboardProvider
+  looker_report_id?: string | null
+  looker_page_id?: string | null
+  grafana_dashboard_uid?: string | null
+  grafana_org_id?: number
+
+  title_es: string
+  title_fr: string
+  title_en: string
+  description_es?: string | null
+  description_fr?: string | null
+  description_en?: string | null
+
+  rls_mode?: DashboardRlsMode
+  embed_mode?: DashboardEmbedMode
+  panel_id?: number | null
+  display_order?: number
+  default_time_range?: string
+  icon_name?: string | null
+  category?: DashboardCategory | null
+
+  is_active?: boolean
+}
+
+export interface DashboardMetadataPatchRequest {
+  title_es?: string
+  title_fr?: string
+  title_en?: string
+  description_es?: string | null
+  description_fr?: string | null
+  description_en?: string | null
+  rls_mode?: DashboardRlsMode
+  embed_mode?: DashboardEmbedMode
+  panel_id?: number | null
+  display_order?: number
+  default_time_range?: string
+  icon_name?: string | null
+  category?: DashboardCategory | null
+}
+
 export interface DashboardConfigsListResponse {
   configs: DashboardConfigDTO[]
+}
+
+// ---------------------------------------------------------------------------
+// Grafana discover/import (mig 323)
+// ---------------------------------------------------------------------------
+
+export interface GrafanaDiscoverEntry {
+  uid: string
+  title: string
+  slug: string | null
+  folder_title: string | null
+  tags: string[]
+  already_imported: boolean
+}
+
+export interface GrafanaDiscoverResponse {
+  grafana_base_url: string | null
+  sa_token_configured: boolean
+  dashboards: GrafanaDiscoverEntry[]
+  error: string | null
+}
+
+export interface GrafanaImportItem {
+  uid: string
+  dashboard_id: string
+  title_es: string
+  title_fr: string
+  title_en: string
+  description_es?: string | null
+  description_fr?: string | null
+  description_en?: string | null
+  category?: DashboardCategory | null
+  rls_mode?: DashboardRlsMode
+  grafana_org_id?: number
+  display_order?: number
+  icon_name?: string | null
+}
+
+export interface GrafanaImportRequest {
+  items: GrafanaImportItem[]
+}
+
+export interface GrafanaImportResponse {
+  imported: string[]
+  skipped: Array<{ dashboard_id: string; reason: string }>
+  errors: Array<{ dashboard_id: string; error: string }>
 }

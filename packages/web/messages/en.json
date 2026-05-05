@@ -4605,10 +4605,68 @@
       "notFoundTitle": "Dashboard not found",
       "notFoundHelp": "Dashboard '{id}' does not exist in the registry.",
       "rls": {
+        "public": "Public",
+        "authenticated": "Authenticated",
         "entity": "Per entity",
         "agent_via_join": "Per agent",
-        "admin_only": "Admin only",
-        "public": "Public"
+        "admin_only": "Admin only"
+      },
+      "category": {
+        "executive": "Executive",
+        "finance": "Finance",
+        "operations": "Operations",
+        "security": "Security",
+        "business": "Business",
+        "product": "Product",
+        "ungrouped": "Other"
+      },
+      "import": {
+        "title": "Import from Grafana",
+        "description": "Pick the dashboards from your Grafana workspace to import into the registry. Already-imported ones are not shown.",
+        "errorTitle": "Cannot connect to Grafana",
+        "errorHelpToken": "Configure GRAFANA_BASE_URL and GRAFANA_SA_TOKEN in Secret Manager and restart the backend.",
+        "emptyTitle": "All dashboards already imported",
+        "emptyDesc": "All {total} Grafana dashboards are already in the registry.",
+        "selectAll": "Select all",
+        "foundCount": "{found} importable out of {total} found",
+        "selectedCount": "{count} selected",
+        "field": {
+          "slug": "Slug (URL/key)",
+          "titleEs": "Title (ES)",
+          "titleFr": "Title (FR)",
+          "titleEn": "Title (EN)",
+          "category": "Category",
+          "rlsMode": "Visibility",
+          "none": "— No category —"
+        },
+        "category": {
+          "executive": "Executive",
+          "finance": "Finance",
+          "operations": "Operations",
+          "security": "Security",
+          "business": "Business",
+          "product": "Product"
+        },
+        "rls": {
+          "public": "Public",
+          "authenticated": "Authenticated",
+          "adminOnly": "Admin only"
+        },
+        "result": {
+          "title": "Import result",
+          "imported": "{count} imported",
+          "skipped": "{count} skipped",
+          "errors": "{count} error(s)"
+        },
+        "toast": {
+          "successTitle": "Import completed",
+          "successDesc": "{imported} imported, {skipped} skipped, {errors} errors",
+          "errorTitle": "Import failed",
+          "errorDesc": "The import could not complete."
+        },
+        "importBtn": "Import ({count})",
+        "importing": "Importing...",
+        "close": "Close"
       },
       "config": {
         "title": "Dashboards configuration",
@@ -4652,7 +4710,19 @@
           "unset": "Not configured"
         },
         "updatedAt": "Updated on {date}",
-        "neverUpdated": "Never configured in DB"
+        "neverUpdated": "Never configured in DB",
+        "listSummary": "{total} dashboards in the registry · {active} active",
+        "importGrafanaBtn": "Import from Grafana",
+        "delete": {
+          "action": "Disable",
+          "confirmTitle": "Disable this dashboard?",
+          "confirmBody": "Dashboard \"{label}\" will be hidden from the public listing. The row + audit history are preserved; you can re-enable it later.",
+          "confirm": "Disable",
+          "cancel": "Cancel",
+          "successTitle": "Dashboard disabled",
+          "errorTitle": "Failed to disable",
+          "errorDesc": "Could not disable the dashboard."
+        }
       }
     }
   },
