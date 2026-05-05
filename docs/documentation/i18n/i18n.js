@@ -60,38 +60,56 @@
     try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) { /* ignore */ }
   }
 
-  /** Resolve a path relative to this script's directory. */
-  function messagesUrl(lang) {
-    // i18n.js is at docs/documentation/i18n/i18n.js → messages/ sibling
+  /** Resolve the i18n directory relative to this script's location. */
+  function i18nDir() {
     var scripts = document.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
       var src = scripts[i].src || '';
       if (src.indexOf('i18n.js') !== -1 || src.indexOf('i18n/i18n.js') !== -1) {
-        var dir = src.substring(0, src.lastIndexOf('/') + 1);
-        return dir + 'messages/' + lang + '.json';
+        return src.substring(0, src.lastIndexOf('/') + 1);
       }
     }
-    return 'i18n/messages/' + lang + '.json';
+    return 'i18n/';
   }
 
-  /** Fetch translations for a language (with cache). */
+  /**
+   * Load translations via <script> tag injection.
+   *
+   * Why script-tag instead of fetch(): fetch() is blocked by CORS when the
+   * page is opened as file://, which is how users will preview the docs
+   * locally. <script src=...> has no CORS restriction and works on file://
+   * and HTTP equally. The cost is ~1 KB overhead vs raw JSON, but no
+   * runtime broken state.
+   *
+   * Each messages/<lang>.js file does:
+   *   window.__I18N__ = window.__I18N__ || {};
+   *   window.__I18N__.<lang> = { ...the JSON tree... };
+   */
   function loadMessages(lang) {
     if (messagesCache[lang]) return Promise.resolve(messagesCache[lang]);
-    return fetch(messagesUrl(lang), { cache: 'force-cache' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(function (json) {
-        messagesCache[lang] = json;
-        return json;
-      })
-      .catch(function (err) {
-        console.warn('[i18n] failed to load', lang, err);
-        // Fallback to EN if not already trying EN
-        if (lang !== DEFAULT_LANG) return loadMessages(DEFAULT_LANG);
-        return {};
-      });
+    if (window.__I18N__ && window.__I18N__[lang]) {
+      messagesCache[lang] = window.__I18N__[lang];
+      return Promise.resolve(messagesCache[lang]);
+    }
+    return new Promise(function (resolve) {
+      var script = document.createElement('script');
+      script.src = i18nDir() + 'messages/' + lang + '.js';
+      script.async = true;
+      script.onload = function () {
+        var msgs = (window.__I18N__ && window.__I18N__[lang]) || {};
+        messagesCache[lang] = msgs;
+        resolve(msgs);
+      };
+      script.onerror = function () {
+        console.warn('[i18n] failed to load', lang);
+        if (lang !== DEFAULT_LANG) {
+          loadMessages(DEFAULT_LANG).then(resolve);
+        } else {
+          resolve({});
+        }
+      };
+      document.head.appendChild(script);
+    });
   }
 
   /** Apply translations to all [data-i18n*] elements. */

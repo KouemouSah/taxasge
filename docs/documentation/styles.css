@@ -202,7 +202,7 @@ a:hover {
 .lang-switch {
   display: inline-flex;
   gap: 2px;
-  padding: 2px;
+  padding: 1px;
   border-radius: var(--radius-full);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -220,9 +220,13 @@ a:hover {
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+  background: transparent;
   text-decoration: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-full);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .lang-switch-btn:hover {
@@ -233,11 +237,18 @@ a:hover {
 .lang-switch-btn.active {
   background: var(--ge-blue);
   color: #fff;
+  border: 1px solid var(--ge-blue);
 }
 
 .lang-switch-btn.active:hover {
   background: var(--blue-dark);
+  border-color: var(--blue-dark);
   color: #fff;
+}
+
+.lang-switch-btn:focus-visible {
+  outline: 1px solid var(--ge-blue);
+  outline-offset: 1px;
 }
 
 .sidebar-nav {
