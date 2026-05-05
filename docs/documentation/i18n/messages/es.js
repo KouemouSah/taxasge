@@ -1915,7 +1915,8 @@ window.__I18N__.es =
       "dashboard": "6. Panel (12 paneles)",
       "alerts": "7. Alertas (3 reglas + runbooks)",
       "privacy": "8. Privacidad & seguridad",
-      "cohabitation": "9. Convivencia con VertexAIManager"
+      "cohabitation": "9. Convivencia con VertexAIManager",
+      "phaseb": "10. Phase B — APM Backend (instrumentación completa)"
     },
     "why": {
       "intro": "Antes de este trabajo, el backend hacía <strong>~17 puntos de llamada Gemini distintos</strong> con <strong>cero observabilidad</strong>. No podíamos responder a 4 preguntas operacionales críticas:",
@@ -1995,6 +1996,29 @@ window.__I18N__.es =
       "row_tags": "Tags por feature/modelo/user/trace",
       "row_status": "Enum status (6 valores)",
       "pattern": "Patrón de llamada: <code>await traced_generate_sync(...)</code> seguido de <code>VertexAIManager().track_usage(response, \"X\")</code> + <code>track_success()</code>. Ambos coexisten; ninguno bloquea al otro."
+    },
+    "phaseb": {
+      "intro": "La fase A instrumentó solo los 18 puntos de llamada Gemini. La fase B (2026-05-05) extiende la cobertura OTEL a <strong>todo el backend FastAPI</strong> vía auto-instrumentación — cada petición HTTP, cada query <code>asyncpg</code>, cada llamada <code>httpx</code> externa, cada op Redis se convierte en un span. Esto desbloquea la feature <strong>Application Observability</strong> de Grafana Cloud (RED metrics + service map auto-derivados de los spans Tempo).",
+      "what": "Qué se instrumenta",
+      "col_layer": "Capa", "col_pkg": "Paquete OTEL", "col_creates": "Spans creados",
+      "row_fastapi": "Span padre por petición HTTP (método, path, status, duración). Excluye /healthz, /metrics, /static/* para mantener el volumen razonable.",
+      "row_asyncpg": "Span por query (statement, parámetros redactados, duración). Identifica queries lentas y lock contention.",
+      "row_httpx": "Span por llamada saliente a Vertex AI / BANGE / Firebase / Grafana API. URL + status + latencia.",
+      "row_redis": "Span por op de caché (GET, SET, DEL, etc.). Identifica cold cache o hot keys.",
+      "sampling": "Política de sampling: 100% (sin sampling)",
+      "sampling_body": "Decisión usuario 2026-05-05: <strong>sin sampling</strong> — instrumentar todo. Trade-off: visibilidad completa sobre 100+ trazas de agentes concurrentes y debug bundle workflow, a costa de mayor ingesta Tempo (50GB/mes free tier). Si la cuota se satura, bajar a 25% head-sampling sobre HTTP via <code>TraceIdRatioBased</code> en <code>main.py</code>.",
+      "activate": "Activar Application Observability en Grafana",
+      "activate_body": "Después de que el próximo deploy emita los primeros spans instrumentados (~5 min):",
+      "act1": "Abrir <a href=\"https://kouemousah.grafana.net/a/grafana-app-observability-app/landing\" target=\"_blank\" rel=\"noopener\">grafana-app-observability-app/landing</a>",
+      "act2": "Hacer clic en <strong>Activate Application Observability</strong>",
+      "act3": "Seleccionar la fuente de datos Tempo (por defecto: <code>grafanacloud-kouemousah-traces</code>)",
+      "act4": "Esperar 5-10 min para que el pipeline de auto-derivación arranque. El service map aparece bajo Observability &gt; Application.",
+      "expected": "Service map esperado",
+      "benefits": "Beneficios concretos",
+      "b1": "<strong>Debug bundle workflow</strong> — trazar un solo <code>service_request_id</code> a través de web → backend → 5 locks de entidades → BANGE → email → bóveda, end-to-end en un clic",
+      "b2": "<strong>Lock contention BD</strong> — heatmap de queries asyncpg lentas expone deadlocks antes de que los usuarios lo noten",
+      "b3": "<strong>Regresión de despliegue</strong> — p95 latencia por endpoint pre/post deploy; decisión de revert en 30s",
+      "b4": "<strong>Detección de anomalías auto</strong> — el Knowledge Graph Grafana correlaciona pico + deploy + query lenta sin investigación manual"
     }
   },
 

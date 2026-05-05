@@ -82,6 +82,42 @@ async def lifespan(app: FastAPI):
                     "✅ OTEL tracing enabled — exporting to {}",
                     otel_endpoint.split("/")[2] if "/" in otel_endpoint else otel_endpoint,
                 )
+
+                # ----------------------------------------------------
+                # Phase B — Backend APM auto-instrumentation.
+                # User decision 2026-05-05: 100% sampling, instrument
+                # everything (FastAPI HTTP routes + asyncpg queries +
+                # httpx external calls + redis ops). Powers Grafana
+                # Cloud Application Observability service map (RED
+                # metrics auto-derived from spans).
+                # Each library is wrapped soft-importingly: missing
+                # packages don't break the boot.
+                # ----------------------------------------------------
+                try:
+                    from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+                    AsyncPGInstrumentor().instrument()
+                    logger.info("✅ OTEL asyncpg instrumented (DB queries)")
+                except Exception as exc:
+                    logger.warning("⚠️ OTEL asyncpg instrumentation failed: {}", exc)
+
+                try:
+                    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+                    HTTPXClientInstrumentor().instrument()
+                    logger.info("✅ OTEL httpx instrumented (external HTTP calls)")
+                except Exception as exc:
+                    logger.warning("⚠️ OTEL httpx instrumentation failed: {}", exc)
+
+                try:
+                    from opentelemetry.instrumentation.redis import RedisInstrumentor
+                    RedisInstrumentor().instrument()
+                    logger.info("✅ OTEL redis instrumented (cache ops)")
+                except Exception as exc:
+                    logger.warning("⚠️ OTEL redis instrumentation failed: {}", exc)
+
+                # FastAPI auto-instrumentation is hooked AFTER the FastAPI
+                # app instance is created (see _instrument_fastapi_app
+                # call further down once `app` exists).
+
             except Exception as exc:
                 logger.warning(
                     "⚠️ OTEL setup failed (non-blocking, BD metrics still work): {}",
@@ -556,6 +592,24 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan
 )
+
+# Phase B — FastAPI auto-instrumentation (Backend APM).
+# Hooks the FastAPI middleware that creates a parent span for every HTTP
+# request. Combined with asyncpg/httpx/redis instrumentation in lifespan(),
+# powers Grafana Cloud Application Observability service map.
+# Soft-import: missing package doesn't break the app.
+if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        # excluded_urls keeps the trace volume sane on health/metrics endpoints
+        # that fire every second from Cloud Run's load balancer.
+        FastAPIInstrumentor.instrument_app(
+            app,
+            excluded_urls="^(/healthz|/health|/_ah/.*|/metrics|/static/.*)$",
+        )
+        logger.info("✅ OTEL FastAPI instrumented (HTTP request spans)")
+    except Exception as exc:
+        logger.warning(f"⚠️ OTEL FastAPI instrumentation failed: {exc}")
 
 # Security middleware - Based on Cloud Run + Firebase Hosting configuration
 app.add_middleware(

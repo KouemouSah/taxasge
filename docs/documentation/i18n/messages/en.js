@@ -1915,7 +1915,8 @@ window.__I18N__.en =
       "dashboard": "6. Dashboard (12 panels)",
       "alerts": "7. Alerts (3 rules + runbooks)",
       "privacy": "8. Privacy & security",
-      "cohabitation": "9. Coexistence with VertexAIManager"
+      "cohabitation": "9. Coexistence with VertexAIManager",
+      "phaseb": "10. Phase B — Backend APM (full instrumentation)"
     },
     "why": {
       "intro": "Before this work, the backend made <strong>~17 distinct Gemini call sites</strong> with <strong>zero observability</strong>. We could not answer 4 critical operational questions:",
@@ -1995,6 +1996,29 @@ window.__I18N__.en =
       "row_tags": "Per-feature/model/user/trace tags",
       "row_status": "Status enum (6 values)",
       "pattern": "Call site pattern: <code>await traced_generate_sync(...)</code> followed by <code>VertexAIManager().track_usage(response, \"X\")</code> + <code>track_success()</code>. Both calls coexist; neither blocks the other."
+    },
+    "phaseb": {
+      "intro": "Phase A instrumented only the 18 Gemini call sites. Phase B (2026-05-05) extends OTEL coverage to <strong>the entire FastAPI backend</strong> via auto-instrumentation packages — every HTTP request, every <code>asyncpg</code> query, every <code>httpx</code> external call, every Redis op becomes a span. This unlocks Grafana Cloud's <strong>Application Observability</strong> feature (RED metrics + service map auto-derived from Tempo spans).",
+      "what": "What gets instrumented",
+      "col_layer": "Layer", "col_pkg": "OTEL package", "col_creates": "Spans created",
+      "row_fastapi": "Parent span per HTTP request (method, path, status, duration). Excludes /healthz, /metrics, /static/* to keep volume sane.",
+      "row_asyncpg": "Span per query (statement, parameters redacted, duration). Identifies slow queries and lock contention.",
+      "row_httpx": "Span per outgoing call to Vertex AI / BANGE / Firebase / Grafana API. URL + status + latency.",
+      "row_redis": "Span per cache op (GET, SET, DEL, etc.). Identifies cold cache or hot keys.",
+      "sampling": "Sampling policy: 100% (zero sampling)",
+      "sampling_body": "User decision 2026-05-05: <strong>no sampling</strong> — instrument everything. Trade-off: full visibility on 100+ concurrent agent traces and bundle workflow debug, at the cost of higher Tempo ingestion (50GB/month free tier). If quota saturates, drop to 25% head-sampling on HTTP via <code>TraceIdRatioBased</code> sampler in <code>main.py</code>.",
+      "activate": "Activate Application Observability in Grafana",
+      "activate_body": "After the next deploy emits the first instrumented spans (~5 min):",
+      "act1": "Open <a href=\"https://kouemousah.grafana.net/a/grafana-app-observability-app/landing\" target=\"_blank\" rel=\"noopener\">grafana-app-observability-app/landing</a>",
+      "act2": "Click <strong>Activate Application Observability</strong>",
+      "act3": "Select the Tempo data source (default: <code>grafanacloud-kouemousah-traces</code>)",
+      "act4": "Wait 5-10 min for the auto-derivation pipeline to bootstrap. Service map appears under Observability &gt; Application.",
+      "expected": "Expected service map",
+      "benefits": "Concrete benefits",
+      "b1": "<strong>Bundle workflow debug</strong> — trace a single <code>service_request_id</code> across web → backend → 5 entity locks → BANGE → email → vault, end-to-end in one click",
+      "b2": "<strong>BD lock contention</strong> — heatmap of slow asyncpg queries surfaces deadlocks before users notice",
+      "b3": "<strong>Deployment regression</strong> — p95 latency by endpoint pre/post deploy; revert decision in 30s",
+      "b4": "<strong>Auto anomaly detection</strong> — Grafana Knowledge Graph correlates spike + deploy + slow query without manual digging"
     }
   },
 

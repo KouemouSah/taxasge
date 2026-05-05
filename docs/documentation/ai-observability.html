@@ -88,6 +88,7 @@
             <li><a href="#alerts" data-i18n="aio.toc.alerts">7. Alerts (3 rules + runbooks)</a></li>
             <li><a href="#privacy" data-i18n="aio.toc.privacy">8. Privacy &amp; security</a></li>
             <li><a href="#cohabitation" data-i18n="aio.toc.cohabitation">9. Coexistence with VertexAIManager</a></li>
+            <li><a href="#phaseb" data-i18n="aio.toc.phaseb">10. Phase B — Backend APM (full instrumentation)</a></li>
           </ul>
         </div>
 
@@ -274,6 +275,59 @@
         <p data-i18n-html="aio.cohabitation.pattern">
           Call site pattern: <code>await traced_generate_sync(...)</code> followed by <code>VertexAIManager().track_usage(response, "X")</code> + <code>track_success()</code>. Both calls coexist; neither blocks the other.
         </p>
+        <h2 id="phaseb"><span data-i18n="aio.toc.phaseb">10. Phase B — Backend APM (full instrumentation)</span> <a href="#phaseb" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.phaseb.intro">
+          Phase A instrumented only the 18 Gemini call sites. Phase B (2026-05-05) extends the OTEL coverage to <strong>the entire FastAPI backend</strong> via auto-instrumentation packages — every HTTP request, every <code>asyncpg</code> query, every <code>httpx</code> external call, every Redis op becomes a span. This unlocks Grafana Cloud's <strong>Application Observability</strong> feature (RED metrics + service map auto-derived from Tempo spans).
+        </p>
+
+        <h3 data-i18n="aio.phaseb.what">What gets instrumented</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="aio.phaseb.col_layer">Layer</th><th data-i18n="aio.phaseb.col_pkg">OTEL package</th><th data-i18n="aio.phaseb.col_creates">Spans created</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>HTTP server</td><td><code>opentelemetry-instrumentation-fastapi</code></td><td data-i18n="aio.phaseb.row_fastapi">Parent span per HTTP request (method, path, status, duration). Excludes <code>/healthz</code>, <code>/metrics</code>, <code>/static/*</code> to keep volume sane.</td></tr>
+              <tr><td>Postgres</td><td><code>opentelemetry-instrumentation-asyncpg</code></td><td data-i18n="aio.phaseb.row_asyncpg">Span per query (statement, parameters redacted, duration). Identifies slow queries and lock contention.</td></tr>
+              <tr><td>HTTP client</td><td><code>opentelemetry-instrumentation-httpx</code></td><td data-i18n="aio.phaseb.row_httpx">Span per outgoing call to Vertex AI / BANGE / Firebase / Grafana API. URL + status + latency.</td></tr>
+              <tr><td>Redis</td><td><code>opentelemetry-instrumentation-redis</code></td><td data-i18n="aio.phaseb.row_redis">Span per cache op (GET, SET, DEL, etc.). Identifies cold cache or hot keys.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 data-i18n="aio.phaseb.sampling">Sampling policy: 100% (zero sampling)</h3>
+        <p data-i18n-html="aio.phaseb.sampling_body">
+          User decision 2026-05-05: <strong>no sampling</strong> — instrument everything. Trade-off: full visibility on 100+ concurrent agent traces and bundle workflow debug, at the cost of higher Tempo ingestion (50GB/month free tier). If quota saturates, drop to 25% head-sampling on HTTP via <code>TraceIdRatioBased</code> sampler in <code>main.py</code>; keep 100% on AI calls (low volume) and errors (always sample).
+        </p>
+
+        <h3 data-i18n="aio.phaseb.activate">Activate Application Observability in Grafana</h3>
+        <p data-i18n-html="aio.phaseb.activate_body">
+          After the next deploy emits the first instrumented spans (~5 min):
+        </p>
+        <ol>
+          <li data-i18n-html="aio.phaseb.act1">Open <a href="https://kouemousah.grafana.net/a/grafana-app-observability-app/landing" target="_blank" rel="noopener">grafana-app-observability-app/landing</a></li>
+          <li data-i18n-html="aio.phaseb.act2">Click <strong>Activate Application Observability</strong></li>
+          <li data-i18n-html="aio.phaseb.act3">Select the Tempo data source (default: <code>grafanacloud-kouemousah-traces</code>)</li>
+          <li data-i18n-html="aio.phaseb.act4">Wait 5-10 min for the auto-derivation pipeline to bootstrap. Service map appears under Observability &gt; Application.</li>
+        </ol>
+
+        <h3 data-i18n="aio.phaseb.expected">Expected service map</h3>
+        <pre><code>[client]
+  └─ facil-backend (FastAPI)
+       ├─ Postgres (Supabase pooler)
+       ├─ Redis (Upstash)
+       ├─ Vertex AI / Gemini (gen_ai.* spans from Phase A)
+       ├─ Firebase Storage (signed URL generation)
+       ├─ Grafana API (admin/grafana/discover)
+       └─ BANGE webhook (payment validation)</code></pre>
+
+        <h3 data-i18n="aio.phaseb.benefits">Concrete benefits</h3>
+        <ul>
+          <li data-i18n-html="aio.phaseb.b1"><strong>Bundle workflow debug</strong> — trace a single <code>service_request_id</code> across web → backend → 5 entity locks → BANGE → email → vault, end-to-end in one click</li>
+          <li data-i18n-html="aio.phaseb.b2"><strong>BD lock contention</strong> — heatmap of slow asyncpg queries surfaces deadlocks before users notice</li>
+          <li data-i18n-html="aio.phaseb.b3"><strong>Deployment regression</strong> — p95 latency by endpoint pre/post deploy; revert decision in 30s</li>
+          <li data-i18n-html="aio.phaseb.b4"><strong>Auto anomaly detection</strong> — Grafana Knowledge Graph correlates spike + deploy + slow query without manual digging</li>
+        </ul>
       </div>
 
       <footer class="page-footer">
