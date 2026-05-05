@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="i18npage.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,71 +15,69 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Internationalization</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="common.sidebar.link.i18n">Internationalization</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Internationalization Guide</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="i18npage.title">Internationalization Guide</h1>
+        <p class="page-description" data-i18n="i18npage.description">
           Facil is fully trilingual: Spanish (primary), French, and English. The i18n system spans
           the frontend (11,400+ keys per locale), backend (entity translations + error messages),
           mobile apps, and communication templates.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#overview">Language Support Overview</a></li>
-            <li><a href="#frontend-i18n">Frontend i18n (next-intl)</a></li>
-            <li><a href="#backend-i18n">Backend i18n</a></li>
-            <li><a href="#database-translations">Database Translations</a></li>
-            <li><a href="#mobile-i18n">Mobile i18n</a></li>
-            <li><a href="#communications">Communication Templates</a></li>
-            <li><a href="#adding-keys">Adding New Keys</a></li>
+            <li><a href="#overview" data-i18n="i18npage.toc.overview">Language Support Overview</a></li>
+            <li><a href="#frontend-i18n" data-i18n="i18npage.toc.frontend">Frontend i18n (next-intl)</a></li>
+            <li><a href="#backend-i18n" data-i18n="i18npage.toc.backend">Backend i18n</a></li>
+            <li><a href="#database-translations" data-i18n="i18npage.toc.db">Database Translations</a></li>
+            <li><a href="#mobile-i18n" data-i18n="i18npage.toc.mobile">Mobile i18n</a></li>
+            <li><a href="#communications" data-i18n="i18npage.toc.communications">Communication Templates</a></li>
+            <li><a href="#adding-keys" data-i18n="i18npage.toc.adding">Adding New Keys</a></li>
           </ul>
         </div>
 
-        <!-- Overview -->
-        <h2 id="overview">Language Support Overview <a href="#overview" class="anchor-link">#</a></h2>
+        <h2 id="overview"><span data-i18n="i18npage.toc.overview">Language Support Overview</span> <a href="#overview" class="anchor-link">#</a></h2>
 
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Languages</div></div>
-          <div class="stat-card green"><div class="stat-value">11,400+</div><div class="stat-label">Keys per Locale</div></div>
-          <div class="stat-card"><div class="stat-value">40%</div><div class="stat-label">Storage Savings (entity_translations)</div></div>
+          <div class="stat-card"><div class="stat-value">3</div><div class="stat-label" data-i18n="i18npage.stats.languages">Languages</div></div>
+          <div class="stat-card green"><div class="stat-value">11,400+</div><div class="stat-label" data-i18n="i18npage.stats.keys">Keys per Locale</div></div>
+          <div class="stat-card"><div class="stat-value">40%</div><div class="stat-label" data-i18n="i18npage.stats.savings">Storage Savings (entity_translations)</div></div>
         </div>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Language</th><th>Code</th><th>Status</th><th>Notes</th></tr></thead>
+            <thead><tr><th data-i18n="i18npage.langs.col_lang">Language</th><th data-i18n="i18npage.langs.col_code">Code</th><th data-i18n="i18npage.langs.col_status">Status</th><th data-i18n="i18npage.langs.col_notes">Notes</th></tr></thead>
             <tbody>
-              <tr><td>Spanish</td><td><code>es</code></td><td><span class="badge badge-green">Primary</span></td><td>Official language of Equatorial Guinea. All database content stored in Spanish.</td></tr>
-              <tr><td>French</td><td><code>fr</code></td><td><span class="badge badge-green">Complete</span></td><td>Official language of Equatorial Guinea. Full UI + entity translations.</td></tr>
-              <tr><td>English</td><td><code>en</code></td><td><span class="badge badge-green">Complete</span></td><td>International support. Full UI + entity translations.</td></tr>
+              <tr><td data-i18n="i18npage.langs.row.es">Spanish</td><td><code>es</code></td><td><span class="badge badge-green" data-i18n="i18npage.langs.row.es_status">Primary</span></td><td data-i18n="i18npage.langs.row.es_notes">Official language of Equatorial Guinea. All database content stored in Spanish.</td></tr>
+              <tr><td data-i18n="i18npage.langs.row.fr">French</td><td><code>fr</code></td><td><span class="badge badge-green" data-i18n="i18npage.langs.row.complete">Complete</span></td><td data-i18n="i18npage.langs.row.fr_notes">Official language of Equatorial Guinea. Full UI + entity translations.</td></tr>
+              <tr><td data-i18n="i18npage.langs.row.en">English</td><td><code>en</code></td><td><span class="badge badge-green" data-i18n="i18npage.langs.row.complete">Complete</span></td><td data-i18n="i18npage.langs.row.en_notes">International support. Full UI + entity translations.</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Frontend i18n -->
-        <h2 id="frontend-i18n">Frontend i18n (next-intl) <a href="#frontend-i18n" class="anchor-link">#</a></h2>
+        <h2 id="frontend-i18n"><span data-i18n="i18npage.toc.frontend">Frontend i18n (next-intl)</span> <a href="#frontend-i18n" class="anchor-link">#</a></h2>
 
-        <h3>Architecture</h3>
-        <p>
+        <h3 data-i18n="i18npage.fe.arch_title">Architecture</h3>
+        <p data-i18n-html="i18npage.fe.arch_body">
           The frontend uses <code>next-intl</code> with Next.js App Router's <code>[locale]</code> segment.
           All pages are nested under <code>/[locale]/</code> which automatically detects and sets the language.
         </p>
@@ -98,7 +96,7 @@
 │   ├── request.ts             <span class="cmt"># Server-side locale resolution</span>
 │   └── routing.ts             <span class="cmt"># Locale routing config</span></code></pre>
 
-        <h3>Usage in Components</h3>
+        <h3 data-i18n="i18npage.fe.usage_title">Usage in Components</h3>
         <pre><code><span class="kw">import</span> { useTranslations } <span class="kw">from</span> <span class="str">'next-intl'</span>;
 
 <span class="kw">export function</span> <span class="fn">ServiceCard</span>() {
@@ -113,8 +111,8 @@
   );
 }</code></pre>
 
-        <h3>Translation Key Structure</h3>
-        <p>Keys are organized hierarchically by module/page:</p>
+        <h3 data-i18n="i18npage.fe.keys_title">Translation Key Structure</h3>
+        <p data-i18n="i18npage.fe.keys_body">Keys are organized hierarchically by module/page:</p>
         <pre><code>{
   <span class="str">"common"</span>: {
     <span class="str">"save"</span>: <span class="str">"Guardar"</span>,
@@ -135,17 +133,16 @@
   }
 }</code></pre>
 
-        <!-- Backend i18n -->
-        <h2 id="backend-i18n">Backend i18n <a href="#backend-i18n" class="anchor-link">#</a></h2>
+        <h2 id="backend-i18n"><span data-i18n="i18npage.toc.backend">Backend i18n</span> <a href="#backend-i18n" class="anchor-link">#</a></h2>
 
-        <h3>Language Detection Middleware</h3>
-        <p>
+        <h3 data-i18n="i18npage.be.middleware_title">Language Detection Middleware</h3>
+        <p data-i18n-html="i18npage.be.middleware_body">
           The <code>language_middleware</code> detects the user's language from the <code>Accept-Language</code>
           header and stores it in <code>request.state.language</code> for use throughout the request lifecycle.
         </p>
 
-        <h3>Error Message Translation</h3>
-        <p>
+        <h3 data-i18n="i18npage.be.errors_title">Error Message Translation</h3>
+        <p data-i18n-html="i18npage.be.errors_body">
           Error messages are auto-translated based on the detected language. The <code>TranslatedException</code>
           class carries an <code>error_code</code> which maps to trilingual messages. Pattern matching handles
           legacy HTTP exceptions.
@@ -160,39 +157,38 @@
 <span class="fn">get_error_message</span>(ErrorCode.NOT_FOUND, <span class="str">"fr"</span>)
 <span class="cmt"># Returns: "Ressource non trouvee"</span></code></pre>
 
-        <!-- Database Translations -->
-        <h2 id="database-translations">Database Translations <a href="#database-translations" class="anchor-link">#</a></h2>
+        <h2 id="database-translations"><span data-i18n="i18npage.toc.db">Database Translations</span> <a href="#database-translations" class="anchor-link">#</a></h2>
 
-        <h3>Two Translation Tables</h3>
+        <h3 data-i18n="i18npage.db.tables_title">Two Translation Tables</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Table</th><th>Purpose</th><th>Storage Model</th></tr></thead>
+            <thead><tr><th data-i18n="i18npage.db.col_table">Table</th><th data-i18n="i18npage.db.col_purpose">Purpose</th><th data-i18n="i18npage.db.col_storage">Storage Model</th></tr></thead>
             <tbody>
               <tr>
                 <td><code>translations</code></td>
-                <td>Unified translations for ENUMs, UI labels, form fields, system messages</td>
-                <td>Key-value with locale column</td>
+                <td data-i18n="i18npage.db.row.translations_purpose">Unified translations for ENUMs, UI labels, form fields, system messages</td>
+                <td data-i18n="i18npage.db.row.translations_storage">Key-value with locale column</td>
               </tr>
               <tr>
                 <td><code>entity_translations</code></td>
-                <td>Entity-specific translations (ministry names, service names, etc.)</td>
-                <td>Optimized structure (40% storage reduction vs. inline columns)</td>
+                <td data-i18n="i18npage.db.row.entity_purpose">Entity-specific translations (ministry names, service names, etc.)</td>
+                <td data-i18n="i18npage.db.row.entity_storage">Optimized structure (40% storage reduction vs. inline columns)</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Database Content Convention</h3>
+        <h3 data-i18n="i18npage.db.convention_title">Database Content Convention</h3>
         <div class="callout callout-info">
-          <div class="callout-title">Spanish in Database, Translated at Runtime</div>
-          <p>
+          <div class="callout-title" data-i18n="i18npage.db.convention_callout_title">Spanish in Database, Translated at Runtime</div>
+          <p data-i18n-html="i18npage.db.convention_callout_body">
             All database content (ministry names, service names, categories) is stored in Spanish
             (the primary language). French and English translations are stored in the
             <code>entity_translations</code> table and resolved at query time.
           </p>
         </div>
 
-        <h3>Entity Translation Pattern</h3>
+        <h3 data-i18n="i18npage.db.pattern_title">Entity Translation Pattern</h3>
         <pre><code><span class="cmt">-- Entity translation lookup</span>
 <span class="kw">SELECT</span>
   m.name_es,
@@ -204,65 +200,62 @@
   <span class="kw">AND</span> et.field_name = <span class="str">'name'</span>
   <span class="kw">AND</span> et.locale = $<span class="num">1</span>  <span class="cmt">-- 'fr' or 'en'</span></code></pre>
 
-        <h3>Translation Cache</h3>
-        <p>
+        <h3 data-i18n="i18npage.db.cache_title">Translation Cache</h3>
+        <p data-i18n-html="i18npage.db.cache_body">
           Translations are cached for 1 hour via <code>get_translations_cache()</code> to minimize
           database queries. Cache invalidation is triggered when translations are updated via the admin API.
         </p>
 
-        <!-- Mobile i18n -->
-        <h2 id="mobile-i18n">Mobile i18n <a href="#mobile-i18n" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="mobile-i18n"><span data-i18n="i18npage.toc.mobile">Mobile i18n</span> <a href="#mobile-i18n" class="anchor-link">#</a></h2>
+        <p data-i18n="i18npage.mobile.body">
           Both mobile apps (Facil citizen and Facil Inspector) support the same 3 languages.
           Translations are stored as JSON files bundled with the app and loaded at runtime
           based on the user's language preference.
         </p>
 
-        <!-- Communication Templates -->
-        <h2 id="communications">Communication Templates <a href="#communications" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="communications"><span data-i18n="i18npage.toc.communications">Communication Templates</span> <a href="#communications" class="anchor-link">#</a></h2>
+        <p data-i18n-html="i18npage.comm.body">
           Email, SMS, push notification, and in-app notification templates are stored in their respective
           tables (<code>email_templates</code>, <code>sms_templates</code>, <code>push_templates</code>,
           <code>notification_templates</code>) with content for all 3 languages.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Template Type</th><th>Table</th><th>Rendering</th></tr></thead>
+            <thead><tr><th data-i18n="i18npage.comm.col_type">Template Type</th><th data-i18n="i18npage.comm.col_table">Table</th><th data-i18n="i18npage.comm.col_render">Rendering</th></tr></thead>
             <tbody>
-              <tr><td>Email</td><td><code>email_templates</code></td><td>Jinja2 with trilingual subject + body</td></tr>
-              <tr><td>SMS</td><td><code>sms_templates</code></td><td>Plain text, 160 char segments</td></tr>
-              <tr><td>Push Notification</td><td><code>push_templates</code></td><td>Title + body per locale</td></tr>
-              <tr><td>In-App</td><td><code>notification_templates</code></td><td>Structured notification per locale</td></tr>
+              <tr><td data-i18n="i18npage.comm.row.email">Email</td><td><code>email_templates</code></td><td data-i18n="i18npage.comm.row.email_render">Jinja2 with trilingual subject + body</td></tr>
+              <tr><td>SMS</td><td><code>sms_templates</code></td><td data-i18n="i18npage.comm.row.sms_render">Plain text, 160 char segments</td></tr>
+              <tr><td data-i18n="i18npage.comm.row.push">Push Notification</td><td><code>push_templates</code></td><td data-i18n="i18npage.comm.row.push_render">Title + body per locale</td></tr>
+              <tr><td data-i18n="i18npage.comm.row.inapp">In-App</td><td><code>notification_templates</code></td><td data-i18n="i18npage.comm.row.inapp_render">Structured notification per locale</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Adding New Keys -->
-        <h2 id="adding-keys">Adding New Keys <a href="#adding-keys" class="anchor-link">#</a></h2>
-        <p>To add a new translation key:</p>
+        <h2 id="adding-keys"><span data-i18n="i18npage.toc.adding">Adding New Keys</span> <a href="#adding-keys" class="anchor-link">#</a></h2>
+        <p data-i18n="i18npage.add.intro">To add a new translation key:</p>
         <ol>
-          <li>Add the key to <strong>all 3 JSON files</strong> (<code>es.json</code>, <code>fr.json</code>, <code>en.json</code>)</li>
-          <li>Follow the existing hierarchical structure: <code>module.section.key</code></li>
-          <li>Provide real translations (not machine-translated placeholders)</li>
-          <li>Use the key in your component with <code>useTranslations('module')</code></li>
-          <li>For parameterized strings, use ICU message format: <code>"count": "{count} servicios"</code></li>
+          <li data-i18n-html="i18npage.add.step1">Add the key to <strong>all 3 JSON files</strong> (<code>es.json</code>, <code>fr.json</code>, <code>en.json</code>)</li>
+          <li data-i18n-html="i18npage.add.step2">Follow the existing hierarchical structure: <code>module.section.key</code></li>
+          <li data-i18n="i18npage.add.step3">Provide real translations (not machine-translated placeholders)</li>
+          <li data-i18n-html="i18npage.add.step4">Use the key in your component with <code>useTranslations('module')</code></li>
+          <li data-i18n-html="i18npage.add.step5">For parameterized strings, use ICU message format: <code>"count": "{count} servicios"</code></li>
         </ol>
 
-        <h3>Translation API Endpoints</h3>
+        <h3 data-i18n="i18npage.add.endpoints_title">Translation API Endpoints</h3>
         <div class="endpoint-group">
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc">List translations by category/locale</span></div>
-          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc">Create new translation entry</span></div>
-          <div class="endpoint-item"><span class="method method-put">PUT</span> <code class="endpoint-path">/api/v1/translations/{id}</code> <span class="endpoint-desc">Update translation</span></div>
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/entity-translations/{type}/{id}</code> <span class="endpoint-desc">Get entity translations</span></div>
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/frontend-translations/{locale}</code> <span class="endpoint-desc">Bulk fetch for frontend hydration</span></div>
-          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/enums/{enum_name}/values</code> <span class="endpoint-desc">Get enum values with translations</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep1">List translations by category/locale</span></div>
+          <div class="endpoint-item"><span class="method method-post">POST</span> <code class="endpoint-path">/api/v1/translations</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep2">Create new translation entry</span></div>
+          <div class="endpoint-item"><span class="method method-put">PUT</span> <code class="endpoint-path">/api/v1/translations/{id}</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep3">Update translation</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/entity-translations/{type}/{id}</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep4">Get entity translations</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/frontend-translations/{locale}</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep5">Bulk fetch for frontend hydration</span></div>
+          <div class="endpoint-item"><span class="method method-get">GET</span> <code class="endpoint-path">/api/v1/enums/{enum_name}/values</code> <span class="endpoint-desc" data-i18n="i18npage.add.ep6">Get enum values with translations</span></div>
         </div>
 
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="modules.html">Modules</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="architecture.html" data-i18n="common.sidebar.link.architecture">Architecture</a><a href="modules.html" data-i18n="common.sidebar.link.modules">Modules</a></div>
       </footer>
     </main>
   </div>

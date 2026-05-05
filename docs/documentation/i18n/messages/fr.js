@@ -464,6 +464,259 @@ window.__I18N__.fr =
         "body": "Les en-têtes Content Security Policy (CSP) sont définis par le middleware Next.js du frontend (<code>middleware.ts</code>), pas par le backend. Cela évite des en-têtes CSP en double/conflictuels qui forceraient le navigateur à appliquer leur intersection (la plus restrictive)."
       }
     }
+  },
+
+  "payments": {
+    "html_title": "Systèmes de paiement - Documentation Facil",
+    "title": "Systèmes de paiement & finances",
+    "breadcrumb": "Systèmes de paiement",
+    "description": "Traitement des paiements pour tous les services Facil, incluant les paiements de service mono-entité et les paiements groupés multi-entités pour les licences commerciales. Intégré à la banque BANGE pour le mobile money, les cartes et les virements bancaires.",
+    "toc": {
+      "architecture": "Architecture des paiements",
+      "methods": "Méthodes de paiement",
+      "workflow": "Workflow de paiement (17 états)",
+      "atomic": "Pipeline de paiement atomique",
+      "bundle": "Flux de paiement groupé",
+      "lock": "Ordre des verrous (concurrence)",
+      "receipts": "Génération de reçus",
+      "reporting": "Rapports financiers",
+      "bange": "Intégration BANGE"
+    },
+    "diagram": {
+      "title": "Flux de traitement des paiements",
+      "wizard": "Session wizard",
+      "wizard_sub": "Cache d'abord (Redis)",
+      "initiate": "▼ initiate-payment",
+      "atomic": "Transaction atomique",
+      "atomic_sub": "Persistance + paiement dans une seule transaction BD",
+      "bange_proc": "Processeur BANGE",
+      "bange_sub": "mobile_money / card / bank_transfer",
+      "manual_proc": "Processeur manuel",
+      "manual_sub": "espèces / chèque (validation agent)",
+      "redirect": "URL de redirection / confirmation",
+      "webhook": "▼ Callback webhook",
+      "completed": "Paiement complété",
+      "completed_sub": "EventBus : auto-affectation aux agents de l'entité"
+    },
+    "methods": {
+      "col_method": "Méthode",
+      "col_enum": "Valeur enum",
+      "col_processor": "Processeur",
+      "col_flow": "Flux",
+      "row": {
+        "mobile": "Mobile money",
+        "mobile_flow": "Redirection vers BANGE, callback webhook",
+        "card": "Carte de crédit/débit",
+        "card_flow": "Redirection vers la page de paiement BANGE",
+        "transfer": "Virement bancaire",
+        "transfer_flow": "Redirection vers le portail bancaire",
+        "wallet": "Wallet BANGE",
+        "wallet_flow": "Débit direct du wallet",
+        "cash": "Espèces",
+        "manual": "Manuel",
+        "cash_flow": "L'agent valide en personne"
+      }
+    },
+    "workflow": {
+      "summary": "Les 17 états du workflow de paiement",
+      "col_state": "État",
+      "col_desc": "Description",
+      "row": {
+        "submitted": "Paiement créé, en attente de traitement",
+        "auto": "Traitement automatique du système (redirection BANGE)",
+        "pending": "Paiement manuel en attente de revue par un agent",
+        "locked": "L'agent a verrouillé le paiement pour revue",
+        "approved": "L'agent a approuvé le paiement",
+        "rejected": "L'agent a rejeté le paiement",
+        "completed": "Paiement entièrement traité et confirmé",
+        "docs": "Documents supplémentaires demandés",
+        "escalated": "Escaladé au superviseur",
+        "cancelled": "Paiement annulé",
+        "refund_req": "Remboursement initié",
+        "refund_app": "Remboursement approuvé par le superviseur",
+        "refund_done": "Remboursement traité",
+        "hold": "Paiement temporairement suspendu",
+        "expired": "Fenêtre de paiement expirée",
+        "partial": "Montant partiel reçu",
+        "bank": "En attente du callback BANGE"
+      }
+    },
+    "atomic": {
+      "intro": "L'endpoint <code>POST /wizard-sessions/{id}/initiate-payment</code> exécute toutes les opérations dans une seule transaction BD. Si une étape échoue, tout est rollback.",
+      "step1": "1. Lire la session Redis",
+      "step2": "2. Valider les données",
+      "step3": "3. BEGIN TX",
+      "step4": "4. INSERT service_request",
+      "step5": "5. Téléverser les documents vers Firebase",
+      "step6": "6. INSERT service_payment",
+      "step7": "7. Confirmer le rendez-vous",
+      "step8": "8. COMMIT",
+      "callout_title": "Aucun enregistrement orphelin",
+      "callout_body": "Le pipeline atomique garantit qu'une demande de service n'est jamais créée sans son paiement associé, et inversement. L'échec d'un téléversement de document déclenche un rollback complet."
+    },
+    "bundle": {
+      "intro": "Les paiements groupés gèrent les obligations de licences commerciales couvrant plusieurs entités gouvernementales. Une seule licence commerciale peut générer des obligations envers TESORO, AYUNTAMIENTO, CAMARA_COMERCIO et divers ministères MIN_*.",
+      "step1": "Licence commerciale",
+      "step2": "Classification",
+      "step3": "Résolution de zone",
+      "step4": "Génération d'obligations",
+      "step5": "Validation multi-entités",
+      "step6": "Paiement",
+      "step7": "Reçu",
+      "multi_title": "Validation multi-entités",
+      "multi_body": "Chaque entité valide indépendamment sa portion du bundle. L'entité TESORO valide la conformité financière globale, AYUNTAMIENTO valide les exigences municipales et CAMARA_COMERCIO vérifie le statut d'enregistrement commercial."
+    },
+    "lock": {
+      "callout_title": "Prévention des deadlocks",
+      "callout_body": "Pour toute transaction touchant aux licences commerciales ET aux paiements terrain, l'ordre de verrouillage canonique suivant DOIT être respecté. Violer cet ordre cause des deadlocks avec 100+ agents concurrents.",
+      "step1": "<strong><code>commercial_licenses</code></strong> &mdash; <code>SELECT ... FOR UPDATE</code> (le seul verrou explicite &mdash; entité racine)",
+      "step2": "<strong><code>service_requests</code></strong> &mdash; <code>INSERT</code> uniquement (optimiste via index UNIQUE partiel, pas de <code>FOR UPDATE</code>)",
+      "step3": "<strong><code>license_obligations</code></strong> &mdash; <code>UPDATE</code> par lot (verrous acquis automatiquement)",
+      "step4": "<strong><code>service_payments</code></strong> &mdash; <code>INSERT</code> final",
+      "warn_title": "Jamais de FOR UPDATE sur service_requests",
+      "warn_body": "La concurrence sur <code>service_requests</code> est gérée par l'index unique partiel <code>idx_sr_commercial_license_unique</code> + récupération <code>try/except asyncpg.UniqueViolationError</code> (SELECT déterministe par <code>commercial_license_id</code>)."
+    },
+    "receipts": {
+      "intro": "Les reçus PDF sont générés via <code>SummaryPDFService</code> avec le template <code>citizen_summary_pdf.html</code> (490 lignes). Les reçus contiennent :",
+      "item1": "Nom et ville de l'entité dans l'en-tête",
+      "item2": "Détails du service fiscal par obligation",
+      "item3": "Montants calculés avec ventilation",
+      "item4": "Référence et horodatage du paiement",
+      "item5": "QR code de vérification du reçu"
+    },
+    "reporting": {
+      "col_report": "Rapport",
+      "col_scope": "Périmètre",
+      "col_desc": "Description",
+      "scope": { "entity": "Entité", "system": "Système", "agent": "Agent", "bank": "Banque", "ministry": "Ministère" },
+      "row": {
+        "revenue": "Recettes par entité",
+        "revenue_desc": "Recettes totales par entité gouvernementale et par période",
+        "bank": "Réconciliation bancaire",
+        "bank_desc": "Rapprochement entre transactions bancaires et enregistrements de paiement",
+        "audit": "Audit de validation des paiements",
+        "audit_desc": "Piste d'audit de toutes les décisions de validation de paiement",
+        "collection": "Analytique de collecte",
+        "collection_desc": "Performance de collecte par configuration bancaire",
+        "ministry": "Synthèse ministérielle",
+        "ministry_desc": "Synthèse financière par ministère/entité"
+      }
+    },
+    "bange": {
+      "intro": "BANGE est le processeur de paiement principal pour la Guinée équatoriale. L'intégration utilise des callbacks webhook pour confirmer le statut des paiements.",
+      "col_feature": "Fonctionnalité",
+      "col_details": "Détails",
+      "row": {
+        "webhook": "Endpoint webhook",
+        "callback": "Vérification de callback",
+        "callback_val": "Validation de signature HMAC",
+        "currencies": "Devises supportées",
+        "logging": "Logging des transactions",
+        "logging_val": "Table <code>bank_transactions</code>",
+        "config": "Configuration",
+        "config_val": "Table <code>bank_configurations</code> (clés API, URLs webhook)"
+      }
+    }
+  },
+
+  "i18npage": {
+    "html_title": "Internationalisation - Documentation Facil",
+    "title": "Guide d'internationalisation",
+    "description": "Facil est entièrement trilingue : espagnol (langue principale), français et anglais. Le système i18n couvre le frontend (11 400+ clés par locale), le backend (traductions d'entités + messages d'erreur), les apps mobiles et les modèles de communication.",
+    "toc": {
+      "overview": "Aperçu du support des langues",
+      "frontend": "i18n frontend (next-intl)",
+      "backend": "i18n backend",
+      "db": "Traductions BD",
+      "mobile": "i18n mobile",
+      "communications": "Modèles de communication",
+      "adding": "Ajouter de nouvelles clés"
+    },
+    "stats": {
+      "languages": "Langues",
+      "keys": "Clés par locale",
+      "savings": "Économie de stockage (entity_translations)"
+    },
+    "langs": {
+      "col_lang": "Langue",
+      "col_code": "Code",
+      "col_status": "Statut",
+      "col_notes": "Notes",
+      "row": {
+        "es": "Espagnol",
+        "es_status": "Principale",
+        "es_notes": "Langue officielle de la Guinée équatoriale. Tout le contenu BD est stocké en espagnol.",
+        "fr": "Français",
+        "fr_notes": "Langue officielle de la Guinée équatoriale. UI + traductions d'entités complètes.",
+        "en": "Anglais",
+        "en_notes": "Support international. UI + traductions d'entités complètes.",
+        "complete": "Complet"
+      }
+    },
+    "fe": {
+      "arch_title": "Architecture",
+      "arch_body": "Le frontend utilise <code>next-intl</code> avec le segment <code>[locale]</code> de l'App Router Next.js. Toutes les pages sont imbriquées sous <code>/[locale]/</code> qui détecte et applique la langue automatiquement.",
+      "usage_title": "Utilisation dans les composants",
+      "keys_title": "Structure des clés de traduction",
+      "keys_body": "Les clés sont organisées hiérarchiquement par module/page :"
+    },
+    "be": {
+      "middleware_title": "Middleware de détection de langue",
+      "middleware_body": "Le <code>language_middleware</code> détecte la langue de l'utilisateur via l'en-tête <code>Accept-Language</code> et la stocke dans <code>request.state.language</code> pour usage tout au long du cycle de vie de la requête.",
+      "errors_title": "Traduction des messages d'erreur",
+      "errors_body": "Les messages d'erreur sont auto-traduits selon la langue détectée. La classe <code>TranslatedException</code> porte un <code>error_code</code> qui se mappe à des messages trilingues. Le pattern matching gère les exceptions HTTP legacy."
+    },
+    "db": {
+      "tables_title": "Deux tables de traduction",
+      "col_table": "Table",
+      "col_purpose": "Rôle",
+      "col_storage": "Modèle de stockage",
+      "row": {
+        "translations_purpose": "Traductions unifiées pour les ENUMs, libellés UI, champs de formulaires, messages système",
+        "translations_storage": "Clé-valeur avec colonne locale",
+        "entity_purpose": "Traductions spécifiques aux entités (noms de ministères, noms de services, etc.)",
+        "entity_storage": "Structure optimisée (réduction de stockage de 40 % vs colonnes inline)"
+      },
+      "convention_title": "Convention de contenu BD",
+      "convention_callout_title": "Espagnol en BD, traduit à l'exécution",
+      "convention_callout_body": "Tout le contenu BD (noms de ministères, noms de services, catégories) est stocké en espagnol (la langue principale). Les traductions française et anglaise sont stockées dans la table <code>entity_translations</code> et résolues au moment de la requête.",
+      "pattern_title": "Pattern de traduction d'entité",
+      "cache_title": "Cache des traductions",
+      "cache_body": "Les traductions sont cachées pendant 1 heure via <code>get_translations_cache()</code> pour minimiser les requêtes BD. L'invalidation du cache est déclenchée lorsqu'une traduction est mise à jour via l'API admin."
+    },
+    "mobile": {
+      "body": "Les deux applications mobiles (Facil citoyen et Facil Inspector) supportent les 3 mêmes langues. Les traductions sont stockées sous forme de fichiers JSON empaquetés avec l'app et chargés au runtime selon la préférence de l'utilisateur."
+    },
+    "comm": {
+      "body": "Les modèles email, SMS, notifications push et notifications in-app sont stockés dans leurs tables respectives (<code>email_templates</code>, <code>sms_templates</code>, <code>push_templates</code>, <code>notification_templates</code>) avec du contenu pour les 3 langues.",
+      "col_type": "Type de modèle",
+      "col_table": "Table",
+      "col_render": "Rendu",
+      "row": {
+        "email": "Email",
+        "email_render": "Jinja2 avec sujet + corps trilingues",
+        "sms_render": "Texte brut, segments de 160 caractères",
+        "push": "Notification push",
+        "push_render": "Titre + corps par locale",
+        "inapp": "In-app",
+        "inapp_render": "Notification structurée par locale"
+      }
+    },
+    "add": {
+      "intro": "Pour ajouter une nouvelle clé de traduction :",
+      "step1": "Ajoute la clé aux <strong>3 fichiers JSON</strong> (<code>es.json</code>, <code>fr.json</code>, <code>en.json</code>)",
+      "step2": "Suis la structure hiérarchique existante : <code>module.section.key</code>",
+      "step3": "Fournis de vraies traductions (pas de placeholders machine-traduits)",
+      "step4": "Utilise la clé dans ton composant avec <code>useTranslations('module')</code>",
+      "step5": "Pour les chaînes paramétrées, utilise le format ICU : <code>\"count\": \"{count} servicios\"</code>",
+      "endpoints_title": "Endpoints API de traduction",
+      "ep1": "Lister les traductions par catégorie/locale",
+      "ep2": "Créer une nouvelle entrée de traduction",
+      "ep3": "Mettre à jour une traduction",
+      "ep4": "Récupérer les traductions d'entité",
+      "ep5": "Récupération en masse pour hydratation frontend",
+      "ep6": "Récupérer les valeurs d'enum avec leurs traductions"
+    }
   }
 }
 ;

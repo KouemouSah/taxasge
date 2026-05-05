@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="payments.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,92 +15,89 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Payment Systems</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="payments.breadcrumb">Payment Systems</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Payment &amp; Financial Systems</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="payments.title">Payment &amp; Financial Systems</h1>
+        <p class="page-description" data-i18n="payments.description">
           Payment processing for all Facil services, including single-entity service payments
           and multi-entity bundle payments for commercial licenses. Integrated with BANGE bank
           for mobile money, card, and bank transfer processing.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#architecture">Payment Architecture</a></li>
-            <li><a href="#payment-methods">Payment Methods</a></li>
-            <li><a href="#workflow-status">Payment Workflow (17 States)</a></li>
-            <li><a href="#atomic-payment">Atomic Payment Pipeline</a></li>
-            <li><a href="#bundle-flow">Bundle Payment Flow</a></li>
-            <li><a href="#lock-ordering">Lock Ordering (Concurrency)</a></li>
-            <li><a href="#receipts">Receipt Generation</a></li>
-            <li><a href="#financial-reporting">Financial Reporting</a></li>
-            <li><a href="#bange">BANGE Integration</a></li>
+            <li><a href="#architecture" data-i18n="payments.toc.architecture">Payment Architecture</a></li>
+            <li><a href="#payment-methods" data-i18n="payments.toc.methods">Payment Methods</a></li>
+            <li><a href="#workflow-status" data-i18n="payments.toc.workflow">Payment Workflow (17 States)</a></li>
+            <li><a href="#atomic-payment" data-i18n="payments.toc.atomic">Atomic Payment Pipeline</a></li>
+            <li><a href="#bundle-flow" data-i18n="payments.toc.bundle">Bundle Payment Flow</a></li>
+            <li><a href="#lock-ordering" data-i18n="payments.toc.lock">Lock Ordering (Concurrency)</a></li>
+            <li><a href="#receipts" data-i18n="payments.toc.receipts">Receipt Generation</a></li>
+            <li><a href="#financial-reporting" data-i18n="payments.toc.reporting">Financial Reporting</a></li>
+            <li><a href="#bange" data-i18n="payments.toc.bange">BANGE Integration</a></li>
           </ul>
         </div>
 
-        <!-- Architecture -->
-        <h2 id="architecture">Payment Architecture <a href="#architecture" class="anchor-link">#</a></h2>
+        <h2 id="architecture"><span data-i18n="payments.toc.architecture">Payment Architecture</span> <a href="#architecture" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">Payment Processing Flow</div>
+          <div class="diagram-title" data-i18n="payments.diagram.title">Payment Processing Flow</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Wizard Session<span class="diagram-box-subtitle">Cache-first (Redis)</span></div>
+            <div class="diagram-box primary"><span data-i18n="payments.diagram.wizard">Wizard Session</span><span class="diagram-box-subtitle" data-i18n="payments.diagram.wizard_sub">Cache-first (Redis)</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; initiate-payment</div>
+          <div class="diagram-arrow"><span data-i18n="payments.diagram.initiate">▼ initiate-payment</span></div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Atomic Transaction<span class="diagram-box-subtitle">Persist + Payment in single DB transaction</span></div>
-          </div>
-          <div class="diagram-arrow">&#9660;</div>
-          <div class="diagram-row">
-            <div class="diagram-box">BANGE Processor<span class="diagram-box-subtitle">mobile_money / card / bank_transfer</span></div>
-            <div class="diagram-box">Manual Processor<span class="diagram-box-subtitle">cash / check (agent validation)</span></div>
+            <div class="diagram-box green filled"><span data-i18n="payments.diagram.atomic">Atomic Transaction</span><span class="diagram-box-subtitle" data-i18n="payments.diagram.atomic_sub">Persist + Payment in single DB transaction</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-style:dashed;">Redirect URL / Confirmation</div>
+            <div class="diagram-box"><span data-i18n="payments.diagram.bange_proc">BANGE Processor</span><span class="diagram-box-subtitle" data-i18n="payments.diagram.bange_sub">mobile_money / card / bank_transfer</span></div>
+            <div class="diagram-box"><span data-i18n="payments.diagram.manual_proc">Manual Processor</span><span class="diagram-box-subtitle" data-i18n="payments.diagram.manual_sub">cash / check (agent validation)</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; Webhook callback</div>
+          <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Payment Completed<span class="diagram-box-subtitle">EventBus: auto-assign to entity agents</span></div>
+            <div class="diagram-box" style="border-style:dashed;" data-i18n="payments.diagram.redirect">Redirect URL / Confirmation</div>
+          </div>
+          <div class="diagram-arrow"><span data-i18n="payments.diagram.webhook">▼ Webhook callback</span></div>
+          <div class="diagram-row">
+            <div class="diagram-box green filled"><span data-i18n="payments.diagram.completed">Payment Completed</span><span class="diagram-box-subtitle" data-i18n="payments.diagram.completed_sub">EventBus: auto-assign to entity agents</span></div>
           </div>
         </div>
 
-        <!-- Payment Methods -->
-        <h2 id="payment-methods">Payment Methods <a href="#payment-methods" class="anchor-link">#</a></h2>
+        <h2 id="payment-methods"><span data-i18n="payments.toc.methods">Payment Methods</span> <a href="#payment-methods" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Method</th><th>Enum Value</th><th>Processor</th><th>Flow</th></tr></thead>
+            <thead><tr><th data-i18n="payments.methods.col_method">Method</th><th data-i18n="payments.methods.col_enum">Enum Value</th><th data-i18n="payments.methods.col_processor">Processor</th><th data-i18n="payments.methods.col_flow">Flow</th></tr></thead>
             <tbody>
-              <tr><td>Mobile Money</td><td><code>mobile_money</code></td><td>BANGE</td><td>Redirect to BANGE, webhook callback</td></tr>
-              <tr><td>Credit/Debit Card</td><td><code>card</code></td><td>BANGE</td><td>Redirect to BANGE payment page</td></tr>
-              <tr><td>Bank Transfer</td><td><code>bank_transfer</code></td><td>BANGE</td><td>Redirect to bank portal</td></tr>
-              <tr><td>BANGE Wallet</td><td><code>bange_wallet</code></td><td>BANGE</td><td>Direct wallet debit</td></tr>
-              <tr><td>Cash</td><td><code>cash</code></td><td>Manual</td><td>Agent validates in person</td></tr>
+              <tr><td data-i18n="payments.methods.row.mobile">Mobile Money</td><td><code>mobile_money</code></td><td>BANGE</td><td data-i18n="payments.methods.row.mobile_flow">Redirect to BANGE, webhook callback</td></tr>
+              <tr><td data-i18n="payments.methods.row.card">Credit/Debit Card</td><td><code>card</code></td><td>BANGE</td><td data-i18n="payments.methods.row.card_flow">Redirect to BANGE payment page</td></tr>
+              <tr><td data-i18n="payments.methods.row.transfer">Bank Transfer</td><td><code>bank_transfer</code></td><td>BANGE</td><td data-i18n="payments.methods.row.transfer_flow">Redirect to bank portal</td></tr>
+              <tr><td data-i18n="payments.methods.row.wallet">BANGE Wallet</td><td><code>bange_wallet</code></td><td>BANGE</td><td data-i18n="payments.methods.row.wallet_flow">Direct wallet debit</td></tr>
+              <tr><td data-i18n="payments.methods.row.cash">Cash</td><td><code>cash</code></td><td data-i18n="payments.methods.row.manual">Manual</td><td data-i18n="payments.methods.row.cash_flow">Agent validates in person</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Workflow Status -->
-        <h2 id="workflow-status">Payment Workflow (17 States) <a href="#workflow-status" class="anchor-link">#</a></h2>
+        <h2 id="workflow-status"><span data-i18n="payments.toc.workflow">Payment Workflow (17 States)</span> <a href="#workflow-status" class="anchor-link">#</a></h2>
 
         <div class="flow">
           <span class="flow-step active">submitted</span>
@@ -117,115 +114,112 @@
         </div>
 
         <details>
-          <summary>All 17 payment workflow states</summary>
+          <summary data-i18n="payments.workflow.summary">All 17 payment workflow states</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>State</th><th>Description</th></tr></thead>
+                <thead><tr><th data-i18n="payments.workflow.col_state">State</th><th data-i18n="payments.workflow.col_desc">Description</th></tr></thead>
                 <tbody>
-                  <tr><td><code>submitted</code></td><td>Payment created, awaiting processing</td></tr>
-                  <tr><td><code>auto_processing</code></td><td>System auto-processing (BANGE redirect)</td></tr>
-                  <tr><td><code>pending_agent_review</code></td><td>Manual payment awaiting agent review</td></tr>
-                  <tr><td><code>locked_by_agent</code></td><td>Agent has locked the payment for review</td></tr>
-                  <tr><td><code>approved</code></td><td>Agent approved the payment</td></tr>
-                  <tr><td><code>rejected</code></td><td>Agent rejected the payment</td></tr>
-                  <tr><td><code>completed</code></td><td>Payment fully processed and confirmed</td></tr>
-                  <tr><td><code>pending_documents</code></td><td>Additional documents requested</td></tr>
-                  <tr><td><code>escalated</code></td><td>Escalated to supervisor</td></tr>
-                  <tr><td><code>cancelled</code></td><td>Payment cancelled</td></tr>
-                  <tr><td><code>refund_requested</code></td><td>Refund initiated</td></tr>
-                  <tr><td><code>refund_approved</code></td><td>Refund approved by supervisor</td></tr>
-                  <tr><td><code>refund_completed</code></td><td>Refund processed</td></tr>
-                  <tr><td><code>on_hold</code></td><td>Payment temporarily paused</td></tr>
-                  <tr><td><code>expired</code></td><td>Payment window expired</td></tr>
-                  <tr><td><code>partial_payment</code></td><td>Partial amount received</td></tr>
-                  <tr><td><code>awaiting_bank_confirmation</code></td><td>Awaiting BANGE callback</td></tr>
+                  <tr><td><code>submitted</code></td><td data-i18n="payments.workflow.row.submitted">Payment created, awaiting processing</td></tr>
+                  <tr><td><code>auto_processing</code></td><td data-i18n="payments.workflow.row.auto">System auto-processing (BANGE redirect)</td></tr>
+                  <tr><td><code>pending_agent_review</code></td><td data-i18n="payments.workflow.row.pending">Manual payment awaiting agent review</td></tr>
+                  <tr><td><code>locked_by_agent</code></td><td data-i18n="payments.workflow.row.locked">Agent has locked the payment for review</td></tr>
+                  <tr><td><code>approved</code></td><td data-i18n="payments.workflow.row.approved">Agent approved the payment</td></tr>
+                  <tr><td><code>rejected</code></td><td data-i18n="payments.workflow.row.rejected">Agent rejected the payment</td></tr>
+                  <tr><td><code>completed</code></td><td data-i18n="payments.workflow.row.completed">Payment fully processed and confirmed</td></tr>
+                  <tr><td><code>pending_documents</code></td><td data-i18n="payments.workflow.row.docs">Additional documents requested</td></tr>
+                  <tr><td><code>escalated</code></td><td data-i18n="payments.workflow.row.escalated">Escalated to supervisor</td></tr>
+                  <tr><td><code>cancelled</code></td><td data-i18n="payments.workflow.row.cancelled">Payment cancelled</td></tr>
+                  <tr><td><code>refund_requested</code></td><td data-i18n="payments.workflow.row.refund_req">Refund initiated</td></tr>
+                  <tr><td><code>refund_approved</code></td><td data-i18n="payments.workflow.row.refund_app">Refund approved by supervisor</td></tr>
+                  <tr><td><code>refund_completed</code></td><td data-i18n="payments.workflow.row.refund_done">Refund processed</td></tr>
+                  <tr><td><code>on_hold</code></td><td data-i18n="payments.workflow.row.hold">Payment temporarily paused</td></tr>
+                  <tr><td><code>expired</code></td><td data-i18n="payments.workflow.row.expired">Payment window expired</td></tr>
+                  <tr><td><code>partial_payment</code></td><td data-i18n="payments.workflow.row.partial">Partial amount received</td></tr>
+                  <tr><td><code>awaiting_bank_confirmation</code></td><td data-i18n="payments.workflow.row.bank">Awaiting BANGE callback</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </details>
 
-        <!-- Atomic Payment -->
-        <h2 id="atomic-payment">Atomic Payment Pipeline <a href="#atomic-payment" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="atomic-payment"><span data-i18n="payments.toc.atomic">Atomic Payment Pipeline</span> <a href="#atomic-payment" class="anchor-link">#</a></h2>
+        <p data-i18n-html="payments.atomic.intro">
           The <code>POST /wizard-sessions/{id}/initiate-payment</code> endpoint performs all operations
           in a single database transaction. If any step fails, everything rolls back.
         </p>
 
         <div class="flow">
-          <span class="flow-step">1. Read Redis session</span>
+          <span class="flow-step" data-i18n="payments.atomic.step1">1. Read Redis session</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">2. Validate data</span>
+          <span class="flow-step" data-i18n="payments.atomic.step2">2. Validate data</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">3. BEGIN TX</span>
+          <span class="flow-step" data-i18n="payments.atomic.step3">3. BEGIN TX</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">4. INSERT service_request</span>
+          <span class="flow-step" data-i18n="payments.atomic.step4">4. INSERT service_request</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">5. Upload docs to Firebase</span>
+          <span class="flow-step" data-i18n="payments.atomic.step5">5. Upload docs to Firebase</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">6. INSERT service_payment</span>
+          <span class="flow-step" data-i18n="payments.atomic.step6">6. INSERT service_payment</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">7. Confirm appointment</span>
+          <span class="flow-step" data-i18n="payments.atomic.step7">7. Confirm appointment</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">8. COMMIT</span>
+          <span class="flow-step success" data-i18n="payments.atomic.step8">8. COMMIT</span>
         </div>
 
         <div class="callout callout-success">
-          <div class="callout-title">Zero orphaned records</div>
-          <p>
+          <div class="callout-title" data-i18n="payments.atomic.callout_title">Zero orphaned records</div>
+          <p data-i18n="payments.atomic.callout_body">
             The atomic pipeline ensures that a service request is never created without its associated
             payment, and vice versa. Failed document uploads trigger a complete rollback.
           </p>
         </div>
 
-        <!-- Bundle Flow -->
-        <h2 id="bundle-flow">Bundle Payment Flow <a href="#bundle-flow" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="bundle-flow"><span data-i18n="payments.toc.bundle">Bundle Payment Flow</span> <a href="#bundle-flow" class="anchor-link">#</a></h2>
+        <p data-i18n="payments.bundle.intro">
           Bundle payments handle commercial license obligations spanning multiple government entities.
           A single commercial license may generate obligations to TESORO, AYUNTAMIENTO, CAMARA_COMERCIO,
           and various MIN_* ministries.
         </p>
 
         <div class="flow">
-          <span class="flow-step">Commercial License</span>
+          <span class="flow-step" data-i18n="payments.bundle.step1">Commercial License</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Classification</span>
+          <span class="flow-step" data-i18n="payments.bundle.step2">Classification</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Zone Resolution</span>
+          <span class="flow-step" data-i18n="payments.bundle.step3">Zone Resolution</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Obligation Generation</span>
+          <span class="flow-step" data-i18n="payments.bundle.step4">Obligation Generation</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Multi-Entity Validation</span>
+          <span class="flow-step" data-i18n="payments.bundle.step5">Multi-Entity Validation</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Payment</span>
+          <span class="flow-step" data-i18n="payments.bundle.step6">Payment</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">Receipt</span>
+          <span class="flow-step success" data-i18n="payments.bundle.step7">Receipt</span>
         </div>
 
-        <h3>Multi-Entity Validation</h3>
-        <p>
+        <h3 data-i18n="payments.bundle.multi_title">Multi-Entity Validation</h3>
+        <p data-i18n="payments.bundle.multi_body">
           Each entity validates its portion of the bundle independently. The TESORO entity validates
           overall financial compliance, AYUNTAMIENTO validates municipal requirements, and CAMARA_COMERCIO
           verifies commercial registration status.
         </p>
 
-        <!-- Lock Ordering -->
-        <h2 id="lock-ordering">Lock Ordering (Concurrency) <a href="#lock-ordering" class="anchor-link">#</a></h2>
+        <h2 id="lock-ordering"><span data-i18n="payments.toc.lock">Lock Ordering (Concurrency)</span> <a href="#lock-ordering" class="anchor-link">#</a></h2>
 
         <div class="callout callout-danger">
-          <div class="callout-title">Deadlock Prevention</div>
-          <p>
+          <div class="callout-title" data-i18n="payments.lock.callout_title">Deadlock Prevention</div>
+          <p data-i18n="payments.lock.callout_body">
             For any transaction touching commercial licenses AND field payments, the following canonical
             lock order MUST be followed. Violating this order causes deadlocks under 100+ concurrent agents.
           </p>
         </div>
 
         <ol>
-          <li><strong><code>commercial_licenses</code></strong> &mdash; <code>SELECT ... FOR UPDATE</code> (the only explicit lock &mdash; root entity)</li>
-          <li><strong><code>service_requests</code></strong> &mdash; <code>INSERT</code> only (optimistic via partial UNIQUE index, no <code>FOR UPDATE</code>)</li>
-          <li><strong><code>license_obligations</code></strong> &mdash; <code>UPDATE</code> batch (locks acquired automatically)</li>
-          <li><strong><code>service_payments</code></strong> &mdash; <code>INSERT</code> final</li>
+          <li data-i18n-html="payments.lock.step1"><strong><code>commercial_licenses</code></strong> &mdash; <code>SELECT ... FOR UPDATE</code> (the only explicit lock &mdash; root entity)</li>
+          <li data-i18n-html="payments.lock.step2"><strong><code>service_requests</code></strong> &mdash; <code>INSERT</code> only (optimistic via partial UNIQUE index, no <code>FOR UPDATE</code>)</li>
+          <li data-i18n-html="payments.lock.step3"><strong><code>license_obligations</code></strong> &mdash; <code>UPDATE</code> batch (locks acquired automatically)</li>
+          <li data-i18n-html="payments.lock.step4"><strong><code>service_payments</code></strong> &mdash; <code>INSERT</code> final</li>
         </ol>
 
         <pre><code><span class="cmt">-- Always set transaction-scoped timeouts at the start</span>
@@ -233,70 +227,64 @@
 <span class="kw">SET LOCAL</span> statement_timeout = <span class="str">'5s'</span>;</code></pre>
 
         <div class="callout callout-warning">
-          <div class="callout-title">Never FOR UPDATE on service_requests</div>
-          <p>
+          <div class="callout-title" data-i18n="payments.lock.warn_title">Never FOR UPDATE on service_requests</div>
+          <p data-i18n-html="payments.lock.warn_body">
             Concurrency on <code>service_requests</code> is handled by the partial unique index
             <code>idx_sr_commercial_license_unique</code> plus <code>try/except asyncpg.UniqueViolationError</code>
             recovery (deterministic SELECT by <code>commercial_license_id</code>).
           </p>
         </div>
 
-        <!-- Receipts -->
-        <h2 id="receipts">Receipt Generation <a href="#receipts" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="receipts"><span data-i18n="payments.toc.receipts">Receipt Generation</span> <a href="#receipts" class="anchor-link">#</a></h2>
+        <p data-i18n-html="payments.receipts.intro">
           PDF receipts are generated using the <code>SummaryPDFService</code> with the
           <code>citizen_summary_pdf.html</code> template (490 lines). Receipts include:
         </p>
         <ul>
-          <li>Entity name and city in the header</li>
-          <li>Fiscal service details per obligation</li>
-          <li>Calculated amounts with breakdown</li>
-          <li>Payment reference and timestamp</li>
-          <li>QR code for receipt verification</li>
+          <li data-i18n="payments.receipts.item1">Entity name and city in the header</li>
+          <li data-i18n="payments.receipts.item2">Fiscal service details per obligation</li>
+          <li data-i18n="payments.receipts.item3">Calculated amounts with breakdown</li>
+          <li data-i18n="payments.receipts.item4">Payment reference and timestamp</li>
+          <li data-i18n="payments.receipts.item5">QR code for receipt verification</li>
         </ul>
 
-        <!-- Financial Reporting -->
-        <h2 id="financial-reporting">Financial Reporting <a href="#financial-reporting" class="anchor-link">#</a></h2>
+        <h2 id="financial-reporting"><span data-i18n="payments.toc.reporting">Financial Reporting</span> <a href="#financial-reporting" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Report</th><th>Scope</th><th>Description</th></tr></thead>
+            <thead><tr><th data-i18n="payments.reporting.col_report">Report</th><th data-i18n="payments.reporting.col_scope">Scope</th><th data-i18n="payments.reporting.col_desc">Description</th></tr></thead>
             <tbody>
-              <tr><td>Revenue by Entity</td><td>Entity</td><td>Total revenue per government entity per period</td></tr>
-              <tr><td>Bank Reconciliation</td><td>System</td><td>Match bank transactions with payment records</td></tr>
-              <tr><td>Payment Validation Audit</td><td>Agent</td><td>Audit trail of all payment validation decisions</td></tr>
-              <tr><td>Collection Analytics</td><td>Bank</td><td>Collection performance per bank configuration</td></tr>
-              <tr><td>Ministry Summary</td><td>Ministry</td><td>Financial summary per ministry/entity</td></tr>
+              <tr><td data-i18n="payments.reporting.row.revenue">Revenue by Entity</td><td data-i18n="payments.reporting.scope.entity">Entity</td><td data-i18n="payments.reporting.row.revenue_desc">Total revenue per government entity per period</td></tr>
+              <tr><td data-i18n="payments.reporting.row.bank">Bank Reconciliation</td><td data-i18n="payments.reporting.scope.system">System</td><td data-i18n="payments.reporting.row.bank_desc">Match bank transactions with payment records</td></tr>
+              <tr><td data-i18n="payments.reporting.row.audit">Payment Validation Audit</td><td data-i18n="payments.reporting.scope.agent">Agent</td><td data-i18n="payments.reporting.row.audit_desc">Audit trail of all payment validation decisions</td></tr>
+              <tr><td data-i18n="payments.reporting.row.collection">Collection Analytics</td><td data-i18n="payments.reporting.scope.bank">Bank</td><td data-i18n="payments.reporting.row.collection_desc">Collection performance per bank configuration</td></tr>
+              <tr><td data-i18n="payments.reporting.row.ministry">Ministry Summary</td><td data-i18n="payments.reporting.scope.ministry">Ministry</td><td data-i18n="payments.reporting.row.ministry_desc">Financial summary per ministry/entity</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- BANGE Integration -->
-        <h2 id="bange">BANGE Integration <a href="#bange" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="bange"><span data-i18n="payments.toc.bange">BANGE Integration</span> <a href="#bange" class="anchor-link">#</a></h2>
+        <p data-i18n="payments.bange.intro">
           BANGE is the primary payment processor for Equatorial Guinea. Integration uses webhook callbacks
           to confirm payment status.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Feature</th><th>Details</th></tr></thead>
+            <thead><tr><th data-i18n="payments.bange.col_feature">Feature</th><th data-i18n="payments.bange.col_details">Details</th></tr></thead>
             <tbody>
-              <tr><td>Webhook endpoint</td><td><code>POST /api/v1/webhooks/bange</code></td></tr>
-              <tr><td>Callback verification</td><td>HMAC signature validation</td></tr>
-              <tr><td>Supported currencies</td><td>FCFA (XAF)</td></tr>
-              <tr><td>Transaction logging</td><td><code>bank_transactions</code> table</td></tr>
-              <tr><td>Configuration</td><td><code>bank_configurations</code> table (API keys, webhook URLs)</td></tr>
+              <tr><td data-i18n="payments.bange.row.webhook">Webhook endpoint</td><td><code>POST /api/v1/webhooks/bange</code></td></tr>
+              <tr><td data-i18n="payments.bange.row.callback">Callback verification</td><td data-i18n="payments.bange.row.callback_val">HMAC signature validation</td></tr>
+              <tr><td data-i18n="payments.bange.row.currencies">Supported currencies</td><td>FCFA (XAF)</td></tr>
+              <tr><td data-i18n="payments.bange.row.logging">Transaction logging</td><td data-i18n-html="payments.bange.row.logging_val"><code>bank_transactions</code> table</td></tr>
+              <tr><td data-i18n="payments.bange.row.config">Configuration</td><td data-i18n-html="payments.bange.row.config_val"><code>bank_configurations</code> table (API keys, webhook URLs)</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- SCREENSHOT placeholder -->
-        <!-- SCREENSHOT: Payment processing dashboard showing 17-state workflow transitions -->
-
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="workflows.html">Workflows</a><a href="security.html">Security</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="workflows.html" data-i18n="common.sidebar.link.workflows">Workflows</a><a href="security.html" data-i18n="common.sidebar.link.security">Security</a></div>
       </footer>
     </main>
   </div>

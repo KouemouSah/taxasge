@@ -464,6 +464,259 @@ window.__I18N__.en =
         "body": "Content Security Policy (CSP) headers are set by the Next.js frontend middleware (<code>middleware.ts</code>), not by the backend. This prevents duplicate/conflicting CSP headers which would cause the browser to apply the intersection (most restrictive)."
       }
     }
+  },
+
+  "payments": {
+    "html_title": "Payment Systems - Facil Documentation",
+    "title": "Payment & Financial Systems",
+    "breadcrumb": "Payment Systems",
+    "description": "Payment processing for all Facil services, including single-entity service payments and multi-entity bundle payments for commercial licenses. Integrated with BANGE bank for mobile money, card, and bank transfer processing.",
+    "toc": {
+      "architecture": "Payment Architecture",
+      "methods": "Payment Methods",
+      "workflow": "Payment Workflow (17 States)",
+      "atomic": "Atomic Payment Pipeline",
+      "bundle": "Bundle Payment Flow",
+      "lock": "Lock Ordering (Concurrency)",
+      "receipts": "Receipt Generation",
+      "reporting": "Financial Reporting",
+      "bange": "BANGE Integration"
+    },
+    "diagram": {
+      "title": "Payment Processing Flow",
+      "wizard": "Wizard Session",
+      "wizard_sub": "Cache-first (Redis)",
+      "initiate": "▼ initiate-payment",
+      "atomic": "Atomic Transaction",
+      "atomic_sub": "Persist + Payment in single DB transaction",
+      "bange_proc": "BANGE Processor",
+      "bange_sub": "mobile_money / card / bank_transfer",
+      "manual_proc": "Manual Processor",
+      "manual_sub": "cash / check (agent validation)",
+      "redirect": "Redirect URL / Confirmation",
+      "webhook": "▼ Webhook callback",
+      "completed": "Payment Completed",
+      "completed_sub": "EventBus: auto-assign to entity agents"
+    },
+    "methods": {
+      "col_method": "Method",
+      "col_enum": "Enum Value",
+      "col_processor": "Processor",
+      "col_flow": "Flow",
+      "row": {
+        "mobile": "Mobile Money",
+        "mobile_flow": "Redirect to BANGE, webhook callback",
+        "card": "Credit/Debit Card",
+        "card_flow": "Redirect to BANGE payment page",
+        "transfer": "Bank Transfer",
+        "transfer_flow": "Redirect to bank portal",
+        "wallet": "BANGE Wallet",
+        "wallet_flow": "Direct wallet debit",
+        "cash": "Cash",
+        "manual": "Manual",
+        "cash_flow": "Agent validates in person"
+      }
+    },
+    "workflow": {
+      "summary": "All 17 payment workflow states",
+      "col_state": "State",
+      "col_desc": "Description",
+      "row": {
+        "submitted": "Payment created, awaiting processing",
+        "auto": "System auto-processing (BANGE redirect)",
+        "pending": "Manual payment awaiting agent review",
+        "locked": "Agent has locked the payment for review",
+        "approved": "Agent approved the payment",
+        "rejected": "Agent rejected the payment",
+        "completed": "Payment fully processed and confirmed",
+        "docs": "Additional documents requested",
+        "escalated": "Escalated to supervisor",
+        "cancelled": "Payment cancelled",
+        "refund_req": "Refund initiated",
+        "refund_app": "Refund approved by supervisor",
+        "refund_done": "Refund processed",
+        "hold": "Payment temporarily paused",
+        "expired": "Payment window expired",
+        "partial": "Partial amount received",
+        "bank": "Awaiting BANGE callback"
+      }
+    },
+    "atomic": {
+      "intro": "The <code>POST /wizard-sessions/{id}/initiate-payment</code> endpoint performs all operations in a single database transaction. If any step fails, everything rolls back.",
+      "step1": "1. Read Redis session",
+      "step2": "2. Validate data",
+      "step3": "3. BEGIN TX",
+      "step4": "4. INSERT service_request",
+      "step5": "5. Upload docs to Firebase",
+      "step6": "6. INSERT service_payment",
+      "step7": "7. Confirm appointment",
+      "step8": "8. COMMIT",
+      "callout_title": "Zero orphaned records",
+      "callout_body": "The atomic pipeline ensures that a service request is never created without its associated payment, and vice versa. Failed document uploads trigger a complete rollback."
+    },
+    "bundle": {
+      "intro": "Bundle payments handle commercial license obligations spanning multiple government entities. A single commercial license may generate obligations to TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, and various MIN_* ministries.",
+      "step1": "Commercial License",
+      "step2": "Classification",
+      "step3": "Zone Resolution",
+      "step4": "Obligation Generation",
+      "step5": "Multi-Entity Validation",
+      "step6": "Payment",
+      "step7": "Receipt",
+      "multi_title": "Multi-Entity Validation",
+      "multi_body": "Each entity validates its portion of the bundle independently. The TESORO entity validates overall financial compliance, AYUNTAMIENTO validates municipal requirements, and CAMARA_COMERCIO verifies commercial registration status."
+    },
+    "lock": {
+      "callout_title": "Deadlock Prevention",
+      "callout_body": "For any transaction touching commercial licenses AND field payments, the following canonical lock order MUST be followed. Violating this order causes deadlocks under 100+ concurrent agents.",
+      "step1": "<strong><code>commercial_licenses</code></strong> &mdash; <code>SELECT ... FOR UPDATE</code> (the only explicit lock &mdash; root entity)",
+      "step2": "<strong><code>service_requests</code></strong> &mdash; <code>INSERT</code> only (optimistic via partial UNIQUE index, no <code>FOR UPDATE</code>)",
+      "step3": "<strong><code>license_obligations</code></strong> &mdash; <code>UPDATE</code> batch (locks acquired automatically)",
+      "step4": "<strong><code>service_payments</code></strong> &mdash; <code>INSERT</code> final",
+      "warn_title": "Never FOR UPDATE on service_requests",
+      "warn_body": "Concurrency on <code>service_requests</code> is handled by the partial unique index <code>idx_sr_commercial_license_unique</code> plus <code>try/except asyncpg.UniqueViolationError</code> recovery (deterministic SELECT by <code>commercial_license_id</code>)."
+    },
+    "receipts": {
+      "intro": "PDF receipts are generated using the <code>SummaryPDFService</code> with the <code>citizen_summary_pdf.html</code> template (490 lines). Receipts include:",
+      "item1": "Entity name and city in the header",
+      "item2": "Fiscal service details per obligation",
+      "item3": "Calculated amounts with breakdown",
+      "item4": "Payment reference and timestamp",
+      "item5": "QR code for receipt verification"
+    },
+    "reporting": {
+      "col_report": "Report",
+      "col_scope": "Scope",
+      "col_desc": "Description",
+      "scope": { "entity": "Entity", "system": "System", "agent": "Agent", "bank": "Bank", "ministry": "Ministry" },
+      "row": {
+        "revenue": "Revenue by Entity",
+        "revenue_desc": "Total revenue per government entity per period",
+        "bank": "Bank Reconciliation",
+        "bank_desc": "Match bank transactions with payment records",
+        "audit": "Payment Validation Audit",
+        "audit_desc": "Audit trail of all payment validation decisions",
+        "collection": "Collection Analytics",
+        "collection_desc": "Collection performance per bank configuration",
+        "ministry": "Ministry Summary",
+        "ministry_desc": "Financial summary per ministry/entity"
+      }
+    },
+    "bange": {
+      "intro": "BANGE is the primary payment processor for Equatorial Guinea. Integration uses webhook callbacks to confirm payment status.",
+      "col_feature": "Feature",
+      "col_details": "Details",
+      "row": {
+        "webhook": "Webhook endpoint",
+        "callback": "Callback verification",
+        "callback_val": "HMAC signature validation",
+        "currencies": "Supported currencies",
+        "logging": "Transaction logging",
+        "logging_val": "<code>bank_transactions</code> table",
+        "config": "Configuration",
+        "config_val": "<code>bank_configurations</code> table (API keys, webhook URLs)"
+      }
+    }
+  },
+
+  "i18npage": {
+    "html_title": "Internationalization - Facil Documentation",
+    "title": "Internationalization Guide",
+    "description": "Facil is fully trilingual: Spanish (primary), French, and English. The i18n system spans the frontend (11,400+ keys per locale), backend (entity translations + error messages), mobile apps, and communication templates.",
+    "toc": {
+      "overview": "Language Support Overview",
+      "frontend": "Frontend i18n (next-intl)",
+      "backend": "Backend i18n",
+      "db": "Database Translations",
+      "mobile": "Mobile i18n",
+      "communications": "Communication Templates",
+      "adding": "Adding New Keys"
+    },
+    "stats": {
+      "languages": "Languages",
+      "keys": "Keys per Locale",
+      "savings": "Storage Savings (entity_translations)"
+    },
+    "langs": {
+      "col_lang": "Language",
+      "col_code": "Code",
+      "col_status": "Status",
+      "col_notes": "Notes",
+      "row": {
+        "es": "Spanish",
+        "es_status": "Primary",
+        "es_notes": "Official language of Equatorial Guinea. All database content stored in Spanish.",
+        "fr": "French",
+        "fr_notes": "Official language of Equatorial Guinea. Full UI + entity translations.",
+        "en": "English",
+        "en_notes": "International support. Full UI + entity translations.",
+        "complete": "Complete"
+      }
+    },
+    "fe": {
+      "arch_title": "Architecture",
+      "arch_body": "The frontend uses <code>next-intl</code> with Next.js App Router's <code>[locale]</code> segment. All pages are nested under <code>/[locale]/</code> which automatically detects and sets the language.",
+      "usage_title": "Usage in Components",
+      "keys_title": "Translation Key Structure",
+      "keys_body": "Keys are organized hierarchically by module/page:"
+    },
+    "be": {
+      "middleware_title": "Language Detection Middleware",
+      "middleware_body": "The <code>language_middleware</code> detects the user's language from the <code>Accept-Language</code> header and stores it in <code>request.state.language</code> for use throughout the request lifecycle.",
+      "errors_title": "Error Message Translation",
+      "errors_body": "Error messages are auto-translated based on the detected language. The <code>TranslatedException</code> class carries an <code>error_code</code> which maps to trilingual messages. Pattern matching handles legacy HTTP exceptions."
+    },
+    "db": {
+      "tables_title": "Two Translation Tables",
+      "col_table": "Table",
+      "col_purpose": "Purpose",
+      "col_storage": "Storage Model",
+      "row": {
+        "translations_purpose": "Unified translations for ENUMs, UI labels, form fields, system messages",
+        "translations_storage": "Key-value with locale column",
+        "entity_purpose": "Entity-specific translations (ministry names, service names, etc.)",
+        "entity_storage": "Optimized structure (40% storage reduction vs. inline columns)"
+      },
+      "convention_title": "Database Content Convention",
+      "convention_callout_title": "Spanish in Database, Translated at Runtime",
+      "convention_callout_body": "All database content (ministry names, service names, categories) is stored in Spanish (the primary language). French and English translations are stored in the <code>entity_translations</code> table and resolved at query time.",
+      "pattern_title": "Entity Translation Pattern",
+      "cache_title": "Translation Cache",
+      "cache_body": "Translations are cached for 1 hour via <code>get_translations_cache()</code> to minimize database queries. Cache invalidation is triggered when translations are updated via the admin API."
+    },
+    "mobile": {
+      "body": "Both mobile apps (Facil citizen and Facil Inspector) support the same 3 languages. Translations are stored as JSON files bundled with the app and loaded at runtime based on the user's language preference."
+    },
+    "comm": {
+      "body": "Email, SMS, push notification, and in-app notification templates are stored in their respective tables (<code>email_templates</code>, <code>sms_templates</code>, <code>push_templates</code>, <code>notification_templates</code>) with content for all 3 languages.",
+      "col_type": "Template Type",
+      "col_table": "Table",
+      "col_render": "Rendering",
+      "row": {
+        "email": "Email",
+        "email_render": "Jinja2 with trilingual subject + body",
+        "sms_render": "Plain text, 160 char segments",
+        "push": "Push Notification",
+        "push_render": "Title + body per locale",
+        "inapp": "In-App",
+        "inapp_render": "Structured notification per locale"
+      }
+    },
+    "add": {
+      "intro": "To add a new translation key:",
+      "step1": "Add the key to <strong>all 3 JSON files</strong> (<code>es.json</code>, <code>fr.json</code>, <code>en.json</code>)",
+      "step2": "Follow the existing hierarchical structure: <code>module.section.key</code>",
+      "step3": "Provide real translations (not machine-translated placeholders)",
+      "step4": "Use the key in your component with <code>useTranslations('module')</code>",
+      "step5": "For parameterized strings, use ICU message format: <code>\"count\": \"{count} servicios\"</code>",
+      "endpoints_title": "Translation API Endpoints",
+      "ep1": "List translations by category/locale",
+      "ep2": "Create new translation entry",
+      "ep3": "Update translation",
+      "ep4": "Get entity translations",
+      "ep5": "Bulk fetch for frontend hydration",
+      "ep6": "Get enum values with translations"
+    }
   }
 }
 ;
