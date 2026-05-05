@@ -5,7 +5,10 @@ import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, Construction, BarChart3, Activity } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  AlertCircle, Construction, BarChart3, Activity, ExternalLink, Info,
+} from 'lucide-react'
 import type { DashboardReportEntry } from '../types'
 
 const LOOKER_BASE = 'https://lookerstudio.google.com'
@@ -88,6 +91,79 @@ export function DashboardEmbed({ report }: Props) {
   const providerLabel =
     report.provider === 'grafana' ? 'Grafana' : 'Looker Studio'
 
+  // ---------------------------------------------------------------------
+  // Grafana Cloud (Free tier) sends `frame-ancestors 'none'` + `X-Frame-
+  // Options: deny`, which makes iframe embedding impossible regardless of
+  // our frontend CSP allow-list. The setting is locked on Free tier
+  // (PUT /api/admin/settings is silently rejected) and Public Dashboards
+  // would expose sensitive payment/agent data without auth.
+  //
+  // Workaround: render an "Open in Grafana" CTA that opens the dashboard
+  // in a new tab. The admin's existing Grafana session (SSO) handles auth
+  // there. UX is one click vs zero, in exchange for: no broken iframes,
+  // no public exposure, no paid plan upgrade ($8/mo).
+  //
+  // Looker Studio does NOT send frame-ancestors, so its iframe still works
+  // — kept the iframe path for Looker dashboards (services catalog).
+  // ---------------------------------------------------------------------
+  if (report.provider === 'grafana') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">{report.label}</h2>
+            <p className="text-muted-foreground text-sm">{report.description}</p>
+          </div>
+          <Badge variant="outline" className="font-mono text-xs flex items-center gap-1">
+            <ProviderIcon className="h-3 w-3" />
+            {providerLabel}
+          </Badge>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-5 w-5 text-primary" />
+              {t('grafanaOpenTitle', { defaultValue: 'Open this dashboard in Grafana' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>
+                {t('grafanaIframeBlockedTitle', {
+                  defaultValue: 'Embedded view not available',
+                })}
+              </AlertTitle>
+              <AlertDescription>
+                {t('grafanaIframeBlockedHelp', {
+                  defaultValue:
+                    'Grafana Cloud blocks iframe embedding for security (frame-ancestors policy). Click below to open the dashboard in a new tab — your Grafana session will authenticate you automatically.',
+                })}
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex items-center gap-3">
+              <Button asChild size="lg" className="gap-2">
+                <a
+                  href={iframeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {t('grafanaOpenBtn', { defaultValue: 'Open in Grafana' })}
+                </a>
+              </Button>
+              <span className="text-xs text-muted-foreground font-mono">
+                {report.grafana_dashboard_uid}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between">
@@ -106,9 +182,10 @@ export function DashboardEmbed({ report }: Props) {
           title={report.label}
           className="w-full min-h-[calc(100vh-12rem)] border-0"
           allow="fullscreen"
-          // OWASP iframe sandbox — both Looker and Grafana need scripts +
-          // same-origin for the React UI to work; we intentionally do not
-          // allow forms or top-navigation.
+          // OWASP iframe sandbox — Looker Studio needs scripts + same-origin
+          // for the React UI to work; we intentionally do not allow forms
+          // or top-navigation. Grafana dashboards take the early-return
+          // branch above (Grafana Cloud blocks iframes via CSP).
           sandbox="allow-scripts allow-same-origin allow-popups"
         />
       </div>

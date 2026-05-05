@@ -107,6 +107,24 @@ function ReportCard({
   )
 
   if (!ready) return <div>{card}</div>
+
+  // Grafana Cloud Free blocks iframe embedding (frame-ancestors 'none' +
+  // X-Frame-Options: deny). Open the dashboard directly in a new tab
+  // instead of going through an internal page that would also fail.
+  // Looker Studio dashboards (services catalog) keep the internal route
+  // because Looker allows iframe embedding.
+  if (report.provider === 'grafana' && report.embed_url) {
+    return (
+      <a
+        href={report.embed_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={report.embed_url}
+      >
+        {card}
+      </a>
+    )
+  }
   return (
     <Link href={`/${locale}/dashboard/admin/dashboards/${report.dashboard_id}`}>
       {card}
