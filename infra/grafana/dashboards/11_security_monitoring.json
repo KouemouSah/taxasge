@@ -111,11 +111,23 @@
     { "id": 10, "type": "row", "title": "🌍 Geographic activity", "collapsed": false,
       "gridPos": { "x": 0, "y": 6, "w": 24, "h": 1 }, "panels": [] },
     {
-      "id": 11, "type": "barchart", "title": "Top 10 countries (24h)",
+      "id": 11, "type": "bargauge", "title": "Top 10 countries (24h)",
       "datasource": { "type": "postgres", "uid": "facil-postgres" },
       "gridPos": { "x": 0, "y": 7, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short" } },
-      "options": { "orientation": "horizontal", "showValue": "always", "legend": { "displayMode": "hidden" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "continuous-GrYlRd" },
+          "noValue": "No geolocated traffic yet — wait for the next request from a public IP"
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^Requests$/", "values": false }
+      },
       "targets": [{ "refId": "A", "format": "table",
         "rawSql": "SELECT COALESCE(geo_country_name, geo_country, 'Unknown') AS \"Country\", count(*)::int AS \"Requests\" FROM request_telemetry WHERE \"timestamp\" > now() - interval '24 hours' GROUP BY 1 ORDER BY 2 DESC LIMIT 10" }]
     },
