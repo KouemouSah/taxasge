@@ -503,6 +503,12 @@ async def lifespan(app: FastAPI):
         await flush_pending_persists(timeout=5.0)
     except Exception as exc:
         logger.warning(f"⚠️ ai_telemetry flush failed (non-blocking): {exc}")
+    # Phase C.2 — flush request_telemetry persists
+    try:
+        from app.core.request_telemetry_middleware import flush_pending_persists as flush_rt
+        await flush_rt(timeout=5.0)
+    except Exception as exc:
+        logger.warning(f"⚠️ request_telemetry flush failed (non-blocking): {exc}")
     try:
         # Stop RBAC listener
         from app.core.rbac_listener import rbac_listener
@@ -701,6 +707,18 @@ try:
     logger.debug("✅ OTEL user attribute middleware registered")
 except Exception as exc:
     logger.warning(f"⚠️ OTEL user middleware setup failed: {exc}")
+
+# Phase C.2 — request_telemetry middleware.
+# Captures every HTTP request (method/path/status/latency/IP/UA/geo) into
+# the request_telemetry table (mig 329) for the Security Monitoring
+# dashboard. Pure ASGI, fire-and-forget persist, sampled. Bypasses health
+# checks + static + docs paths.
+try:
+    from app.core.request_telemetry_middleware import RequestTelemetryMiddleware
+    app.add_middleware(RequestTelemetryMiddleware)
+    logger.debug("✅ Request telemetry middleware registered")
+except Exception as exc:
+    logger.warning(f"⚠️ Request telemetry middleware setup failed: {exc}")
 
 # Compress JSON / text responses ≥ 1 KiB. The fiscal-services catalog
 # endpoints (ministries, categories, search) routinely return 30-80 KiB of

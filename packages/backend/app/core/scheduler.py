@@ -195,6 +195,13 @@ class InternalScheduler:
                 self._document_intelligence_scan,
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
+            (
+                # Phase C.2 — request_telemetry retention + MV refresh
+                # Runs every 6 hours: drops raw rows > 30d, refreshes hourly MV
+                "request-telemetry-cleanup",
+                self._request_telemetry_cleanup,
+                21600,  # 6 hours
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -1972,6 +1979,39 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             logger.error(f"Document intelligence scan failed: {e}")
+        return None
+
+    async def _request_telemetry_cleanup(self):
+        """Phase C.2 — request_telemetry retention + MV refresh.
+
+        Runs every 6h:
+        1. Delete raw rows older than 30 days (GDPR/storage)
+        2. Refresh mv_request_telemetry_hourly CONCURRENTLY (90-day rollup
+           preserved beyond raw retention)
+        """
+        from app.database.connection import db_manager
+        try:
+            async with db_manager.get_connection() as db:
+                # 1. Drop > 30 days
+                deleted = await db.fetchval(
+                    "WITH d AS (DELETE FROM request_telemetry "
+                    "WHERE \"timestamp\" < now() - interval '30 days' "
+                    "RETURNING 1) SELECT count(*) FROM d"
+                )
+                # 2. Refresh MV (CONCURRENTLY requires unique index — present)
+                await db.execute(
+                    "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_request_telemetry_hourly"
+                )
+                if deleted and deleted > 0:
+                    logger.info(
+                        f"request_telemetry cleanup: deleted {deleted} rows >30d, "
+                        f"refreshed hourly MV"
+                    )
+                return {"deleted_rows": deleted}
+        except Exception as e:
+            if "does not exist" in str(e):
+                return None
+            logger.error(f"request_telemetry cleanup failed: {e}")
         return None
 
 
