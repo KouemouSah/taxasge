@@ -87,12 +87,25 @@ async def lifespan(app: FastAPI):
                         "ENVIRONMENT", os.environ.get("ENV", "dev")
                     ),
                 })
-                provider = TracerProvider(resource=resource)
+                # Phase B.9 — drop noise spans before they hit Tempo:
+                # /healthz, /ready, /metrics, /static/*, OPTIONS preflight.
+                # Optional ratio sampler on the long tail via env var
+                # OTEL_TRACES_RATIO=0.25 (off by default = 100% kept).
+                from app.core.otel_sampler import build_sampler
+                ratio_env = os.environ.get("OTEL_TRACES_RATIO")
+                ratio = float(ratio_env) if ratio_env else None
+                sampler = build_sampler(ratio=ratio)
+                provider = (
+                    TracerProvider(resource=resource, sampler=sampler)
+                    if sampler is not None
+                    else TracerProvider(resource=resource)
+                )
                 provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
                 _otel_trace.set_tracer_provider(provider)
                 logger.info(
-                    "✅ OTEL tracing enabled — exporting to {}",
+                    "✅ OTEL tracing enabled — exporting to {} (sampler={})",
                     otel_endpoint.split("/")[2] if "/" in otel_endpoint else otel_endpoint,
+                    sampler.get_description() if sampler else "default",
                 )
 
                 # ----------------------------------------------------
