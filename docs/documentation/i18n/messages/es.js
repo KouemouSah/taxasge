@@ -1058,6 +1058,177 @@ window.__I18N__.es =
       "intro": "Las migraciones BD se almacenan en <code>packages/backend/migrations/</code> como archivos SQL y scripts Python. Las migraciones se numeran secuencialmente y se aplican mediante un runner personalizado.",
       "verif_title": "Patrón de verificación"
     }
+  },
+
+  "workflows": {
+    "html_title": "Motor de flujos - Documentación Facil",
+    "title": "Referencia del motor de flujos",
+    "description": "El motor de flujos impulsa 36 flujos de solicitud de servicio a través de 8 dominios. Cada flujo define los pasos del wizard, los documentos requeridos, los cálculos de tasas, los esquemas OCR y las reglas de enrutamiento por entidad.",
+    "yes": "Sí",
+    "no": "No",
+    "varies": "variable",
+    "toc": {
+      "wizard": "Flujo del wizard",
+      "state": "Máquina de estados de solicitudes",
+      "catalog": "Los 36 flujos",
+      "condition": "ConditionEvaluator",
+      "fees": "Métodos de cálculo de tasas",
+      "routing": "Enrutamiento por entidad",
+      "ocr": "Integración de esquemas OCR",
+      "appointments": "Gestión de citas",
+      "validation": "Validación a 2 capas"
+    },
+    "wizard": {
+      "intro": "Toda solicitud de servicio sigue un wizard con pasos configurables. El flujo estándar es:",
+      "step": { "selection": "Selección", "upload": "Subida", "form": "Revisión de formulario 1..N", "appointment": "Cita", "payment": "Pago", "confirmation": "Confirmación" },
+      "col_step": "Paso", "col_purpose": "Función", "col_optional": "¿Opcional?",
+      "row": {
+        "selection": { "name": "<strong>Selección</strong>", "purpose": "Elegir el sub-tipo, tipo de persona, motivo. Impulsa la visibilidad dinámica del formulario.", "opt": "No (siempre presente)" },
+        "upload": { "name": "<strong>Subida</strong>", "purpose": "Subir los documentos requeridos (la extracción OCR se ejecuta aquí). Los documentos varían por flujo.", "opt": "No" },
+        "form": { "name": "<strong>Revisión de formulario 1..N</strong>", "purpose": "Revisar los datos extraídos por OCR, rellenar campos manuales, validar reglas de negocio.", "opt": "Cantidad variable (1-3)" },
+        "appt": { "name": "<strong>Cita</strong>", "purpose": "Reservar un slot de cita (holds + reservations). Solo para flujos que requieran visita presencial.", "opt": "Sí" },
+        "pay": { "name": "<strong>Pago</strong>", "purpose": "Calcular la tasa e iniciar el pago (BANGE o manual).", "opt": "No" },
+        "conf": { "name": "<strong>Confirmación</strong>", "purpose": "Mostrar resumen, descarga PDF, email con recibo.", "opt": "No" }
+      },
+      "cache_title": "Wizard cache-first",
+      "cache_body": "El wizard usa un enfoque <strong>cache-first</strong>: los datos de paso se almacenan en Redis durante el flujo del wizard (sin escrituras a BD hasta el pago). El endpoint <code>POST /wizard-sessions/{id}/initiate-payment</code> ejecuta una operación atómica de persistir-y-pagar en una sola transacción de BD."
+    },
+    "state": {
+      "diagram_title": "Ciclo de vida de una solicitud de servicio",
+      "draft": "Borrador", "submit": "▼ Enviar", "submitted": "Enviada", "auto_assign": "▼ Auto-asignación a agentes de la entidad",
+      "processing": "En proceso", "decision": "▼ Decisión del agente", "accepted": "Aceptada", "rejected": "Rechazada",
+      "amended": "Enmendada", "completed": "Completada"
+    },
+    "cat": {
+      "identity": "Identidad & Civil (CNEDOGE) — 1 flujo",
+      "immigration": "Inmigración (Extranjeria) — 2 flujos",
+      "traffic": "Tráfico (DGT) — 3 flujos",
+      "driving": "Conducción (Conducir) — 1 flujo",
+      "contracts": "Contratos (Contrato) — 1 flujo",
+      "civil": "Función pública (Funcion Publica) — 5 flujos",
+      "bundle": "Bundle / Comercial (multi-entidad) — 1 flujo",
+      "generic": "Genérico — 2 flujos",
+      "col_workflow": "Flujo", "col_file": "Archivo", "col_minor": "¿Menor?", "col_motivo": "¿Motivo?",
+      "col_docs": "Docs", "col_forms": "Páginas de formulario", "col_rdv": "Cita", "col_subtypes": "Sub-tipos",
+      "col_entities": "Entidades", "col_description": "Descripción",
+      "row": {
+        "pasaporte_motivo": "Sí (4)",
+        "visado": "Tramites Visado (4 sub-tipos)",
+        "conducir_motivo": "Sí (3: PERDIDA, ROBO, DETERIORO para DUPLICADO)",
+        "contrato_docs": "3 requeridos + 10 opcionales",
+        "promo_sub": "3 sub-tipos",
+        "bundle_desc": "Obligaciones multi-entidad para licencias comerciales",
+        "generic_desc": "Catch-all para servicios no categorizados"
+      }
+    },
+    "cond": {
+      "intro": "El <code>ConditionEvaluator</code> controla dinámicamente la visibilidad de pasos y secciones según los datos del formulario recopilados en pasos anteriores. Las condiciones se definen como objetos JSON en la configuración del flujo.",
+      "callout_title": "Regla crítica: las condiciones son siempre cadenas",
+      "callout_body": "Las condiciones deben usar valores string: <code>{\"is_minor\": \"true\"}</code>, <strong>no</strong> <code>{\"is_minor\": true}</code>. El RadioGroup del frontend almacena cadenas, y el ConditionEvaluator realiza comparación <code>==</code> estricta."
+    },
+    "fees": {
+      "col_method": "Método", "col_enum": "Valor enum", "col_desc": "Descripción", "col_example": "Ejemplo",
+      "row": {
+        "fixed_exp": "Expedición fija",
+        "fixed_exp_desc": "Precio fijo para nuevas solicitudes",
+        "fixed_exp_ex": "Pasaporte: 35 000 FCFA",
+        "fixed_ren": "Renovación fija",
+        "fixed_ren_desc": "Precio fijo para renovaciones",
+        "fixed_ren_ex": "Renovación Conducir: 15 000 FCFA",
+        "percent": "Basado en porcentaje",
+        "percent_desc": "Porcentaje de un importe base",
+        "percent_ex": "IVA: 15 % de la base imponible",
+        "unit": "Basado en unidades",
+        "unit_desc": "Precio por unidad (páginas, ítems)",
+        "unit_ex": "Contrato: precio por página",
+        "tiered": "Tasas por tramos",
+        "tiered_desc": "Tasas que cambian según umbrales",
+        "tiered_ex": "Visa Alternativo: tramos 3/6/12/24 meses",
+        "formula": "Basado en fórmula",
+        "formula_desc": "Evaluación de fórmula personalizada",
+        "formula_ex": "Cálculos fiscales complejos",
+        "fixed_unit": "Fijo + unitario",
+        "fixed_unit_desc": "Tasa base más cargo unitario",
+        "fixed_unit_ex": "Base + cargo por empleado"
+      }
+    },
+    "routing": {
+      "intro": "El enrutamiento por entidad está totalmente <strong>impulsado por la BD</strong>. La columna JSONB <code>entities.workflow_codes</code> determina qué entidad maneja qué flujo. Esto se gestiona vía la UI de admin, sin cambios de código.",
+      "callout_title": "Sin enrutamiento en código",
+      "callout_body": "Nunca crear funciones <code>get_issuing_entities()</code> en código. El campo <code>entity_code</code> en <code>PredefinedWorkflow</code> es puramente declarativo/de auditoría. El enrutamiento real se resuelve desde <code>entities.workflow_codes</code> en runtime."
+    },
+    "ocr": {
+      "intro": "40 archivos de esquemas JSON definen las plantillas de extracción OCR para los tipos de documentos usados en los flujos. Almacenados en <code>packages/backend/app/modules/service_requests/schemas/</code>.",
+      "summary": "Los 40 esquemas OCR",
+      "col_file": "Archivo de esquema",
+      "col_doctype": "Tipo de documento",
+      "doc": {
+        "dip": "Documento de identidad nacional (DIP) - Guinea Ecuatorial",
+        "pasaporte_gq": "Pasaporte - Guinea Ecuatorial",
+        "pasaporte_int": "Pasaporte - Internacional",
+        "nacimiento": "Certificado de nacimiento",
+        "medico": "Certificado médico",
+        "conducta": "Certificado de buena conducta",
+        "conducir": "Permiso de conducir",
+        "defuncion": "Certificado de defunción",
+        "nif": "Número fiscal (NIF)",
+        "padron": "Certificado de empadronamiento",
+        "solvencia": "Certificado de solvencia fiscal",
+        "onrc": "Contrato ONRC",
+        "compraventa": "Contrato de compraventa",
+        "contrato_func": "Contrato de funcionario",
+        "residencia": "Permiso de residencia",
+        "trabajo": "Permiso de trabajo",
+        "circulacion": "Permiso de circulación de vehículo",
+        "visado": "Visado",
+        "sello": "Sello de entrada/salida",
+        "itv": "Inspección de vehículo (ITV)",
+        "reco_veh": "Certificado de reconocimiento de vehículo",
+        "carnet_func": "Carnet de funcionario",
+        "nombramiento": "Nombramiento oficial",
+        "dgi_note": "Nota de ingreso DGI",
+        "res_note": "Nota de ingreso de residencia",
+        "escritura": "Escritura de constitución de empresa",
+        "cuve": "Documento CUVE",
+        "licencia_muni": "Licencia comercial municipal",
+        "reg_comercio": "Registro mercantil",
+        "reg_emp": "Registro empresarial",
+        "reg_vue": "Registro VUE",
+        "conciso": "Certificado mercantil conciso",
+        "actualizacion": "Certificado de actualización empresarial",
+        "atestacion": "Atestación bancaria",
+        "antecedentes": "Antecedentes penales",
+        "gubernativa": "Autorización gubernativa",
+        "parental": "Autorización parental",
+        "cert_nac": "Certificación de nacimiento",
+        "decl_nac": "Declaración de nacimiento",
+        "casier": "Extracto de antecedentes penales internacional"
+      }
+    },
+    "appt": {
+      "intro": "Los flujos con cita usan un sistema de 2 tablas para evitar dobles reservas:",
+      "col_table": "Tabla", "col_purpose": "Función", "col_lifetime": "Vida útil",
+      "row": {
+        "holds": "Reserva temporal durante el flujo del wizard",
+        "holds_ttl": "TTL 15 minutos",
+        "reservations": "Reserva confirmada permanente",
+        "reservations_ttl": "Permanente"
+      },
+      "fns_intro": "Tres funciones SQL gestionan el ciclo de vida de una cita:",
+      "fn1": "<code>hold_appointment_slot()</code> &mdash; Crea una reserva temporal, cuenta holds+confirmadas",
+      "fn2": "<code>confirm_appointment_hold()</code> &mdash; Convierte una reserva en confirmada + INSERT reservation",
+      "fn3": "<code>get_available_slots_v3()</code> &mdash; Devuelve los slots disponibles (cuenta reservations + holds)"
+    },
+    "val": {
+      "diagram_title": "Arquitectura de validación",
+      "layer1": "Capa 1: paso de Subida",
+      "layer1_sub": "SchemaValidationEngine (70+ reglas JSON) + RiskAnalyzer (12 pasos)",
+      "layer2": "Capa 2: paso de Revisión de formulario",
+      "layer2_sub": "Solo overrides de validate_step() (Python real)",
+      "point1": "<strong>Schema</strong> (capa 1) = validez documental (formato, firmas, campos requeridos, validez temporal)",
+      "point2": "<strong>validate_step</strong> (capa 2) = decisión de negocio (qué significa el resultado para ESTE flujo)",
+      "point3": "<strong>Nunca duplicar reglas entre capas.</strong> Si el esquema tiene <code>certificado_vigente</code>, no recrear en validate_step."
+    }
   }
 }
 ;

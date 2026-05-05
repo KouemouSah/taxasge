@@ -1058,6 +1058,177 @@ window.__I18N__.fr =
       "intro": "Les migrations BD sont stockées dans <code>packages/backend/migrations/</code> sous forme de fichiers SQL et de scripts Python. Les migrations sont numérotées séquentiellement et appliquées via un runner personnalisé.",
       "verif_title": "Pattern de vérification"
     }
+  },
+
+  "workflows": {
+    "html_title": "Moteur de workflows - Documentation Facil",
+    "title": "Référence du moteur de workflows",
+    "description": "Le moteur de workflows pilote 36 workflows de demande de service répartis sur 8 domaines. Chaque workflow définit les étapes du wizard, les documents requis, les calculs de frais, les schémas OCR et les règles de routage par entité.",
+    "yes": "Oui",
+    "no": "Non",
+    "varies": "variable",
+    "toc": {
+      "wizard": "Flux du wizard",
+      "state": "Machine à états des demandes",
+      "catalog": "Les 36 workflows",
+      "condition": "ConditionEvaluator",
+      "fees": "Méthodes de calcul des frais",
+      "routing": "Routage par entité",
+      "ocr": "Intégration des schémas OCR",
+      "appointments": "Gestion des rendez-vous",
+      "validation": "Validation à 2 couches"
+    },
+    "wizard": {
+      "intro": "Toute demande de service suit un wizard avec étapes configurables. Le flux standard est :",
+      "step": { "selection": "Sélection", "upload": "Téléversement", "form": "Revue de formulaire 1..N", "appointment": "Rendez-vous", "payment": "Paiement", "confirmation": "Confirmation" },
+      "col_step": "Étape", "col_purpose": "Rôle", "col_optional": "Optionnelle ?",
+      "row": {
+        "selection": { "name": "<strong>Sélection</strong>", "purpose": "Choisir le sous-type, le type de personne, le motif. Pilote la visibilité dynamique du formulaire.", "opt": "Non (toujours présente)" },
+        "upload": { "name": "<strong>Téléversement</strong>", "purpose": "Téléverser les documents requis (l'extraction OCR s'exécute ici). Les documents varient par workflow.", "opt": "Non" },
+        "form": { "name": "<strong>Revue de formulaire 1..N</strong>", "purpose": "Vérifier les données extraites par OCR, remplir les champs manuels, valider les règles métier.", "opt": "Nombre variable (1-3)" },
+        "appt": { "name": "<strong>Rendez-vous</strong>", "purpose": "Réserver un créneau (holds + reservations). Uniquement pour les workflows nécessitant une visite physique.", "opt": "Oui" },
+        "pay": { "name": "<strong>Paiement</strong>", "purpose": "Calculer les frais et initier le paiement (BANGE ou manuel).", "opt": "Non" },
+        "conf": { "name": "<strong>Confirmation</strong>", "purpose": "Affichage de synthèse, téléchargement PDF, email avec reçu.", "opt": "Non" }
+      },
+      "cache_title": "Wizard cache-first",
+      "cache_body": "Le wizard utilise une approche <strong>cache-first</strong> : les données d'étape sont stockées dans Redis pendant le flux du wizard (pas d'écriture en BD avant le paiement). L'endpoint <code>POST /wizard-sessions/{id}/initiate-payment</code> exécute une opération atomique persistance-et-paiement dans une seule transaction BD."
+    },
+    "state": {
+      "diagram_title": "Cycle de vie d'une demande de service",
+      "draft": "Brouillon", "submit": "▼ Soumettre", "submitted": "Soumise", "auto_assign": "▼ Auto-affectation aux agents de l'entité",
+      "processing": "En traitement", "decision": "▼ Décision agent", "accepted": "Acceptée", "rejected": "Rejetée",
+      "amended": "Amendée", "completed": "Terminée"
+    },
+    "cat": {
+      "identity": "Identité & Civil (CNEDOGE) — 1 workflow",
+      "immigration": "Immigration (Extranjeria) — 2 workflows",
+      "traffic": "Trafic (DGT) — 3 workflows",
+      "driving": "Conduite (Conducir) — 1 workflow",
+      "contracts": "Contrats (Contrato) — 1 workflow",
+      "civil": "Fonction publique (Funcion Publica) — 5 workflows",
+      "bundle": "Bundle / Commercial (multi-entité) — 1 workflow",
+      "generic": "Générique — 2 workflows",
+      "col_workflow": "Workflow", "col_file": "Fichier", "col_minor": "Mineur ?", "col_motivo": "Motif ?",
+      "col_docs": "Docs", "col_forms": "Pages de formulaire", "col_rdv": "RDV", "col_subtypes": "Sous-types",
+      "col_entities": "Entités", "col_description": "Description",
+      "row": {
+        "pasaporte_motivo": "Oui (4)",
+        "visado": "Tramites Visado (4 sous-types)",
+        "conducir_motivo": "Oui (3 : PERDIDA, ROBO, DETERIORO pour DUPLICADO)",
+        "contrato_docs": "3 requis + 10 optionnels",
+        "promo_sub": "3 sous-types",
+        "bundle_desc": "Obligations multi-entités pour licences commerciales",
+        "generic_desc": "Catch-all pour services non catégorisés"
+      }
+    },
+    "cond": {
+      "intro": "Le <code>ConditionEvaluator</code> contrôle dynamiquement la visibilité des étapes et sections en fonction des données de formulaire collectées dans les étapes précédentes. Les conditions sont définies sous forme d'objets JSON dans la configuration des workflows.",
+      "callout_title": "Règle critique : les conditions sont toujours des chaînes",
+      "callout_body": "Les conditions doivent utiliser des valeurs string : <code>{\"is_minor\": \"true\"}</code>, <strong>pas</strong> <code>{\"is_minor\": true}</code>. Le RadioGroup frontend stocke des chaînes, et le ConditionEvaluator effectue une comparaison <code>==</code> stricte."
+    },
+    "fees": {
+      "col_method": "Méthode", "col_enum": "Valeur enum", "col_desc": "Description", "col_example": "Exemple",
+      "row": {
+        "fixed_exp": "Expédition fixe",
+        "fixed_exp_desc": "Prix fixe pour les nouvelles demandes",
+        "fixed_exp_ex": "Pasaporte : 35 000 FCFA",
+        "fixed_ren": "Renouvellement fixe",
+        "fixed_ren_desc": "Prix fixe pour les renouvellements",
+        "fixed_ren_ex": "Renouvellement Conducir : 15 000 FCFA",
+        "percent": "Basé sur pourcentage",
+        "percent_desc": "Pourcentage d'un montant de base",
+        "percent_ex": "IVA : 15 % de la base imposable",
+        "unit": "Basé sur unités",
+        "unit_desc": "Prix par unité (pages, items)",
+        "unit_ex": "Contrato : prix par page",
+        "tiered": "Taux par paliers",
+        "tiered_desc": "Taux variant selon des seuils",
+        "tiered_ex": "Visa Alternativo : paliers 3/6/12/24 mois",
+        "formula": "Basé sur formule",
+        "formula_desc": "Évaluation de formule personnalisée",
+        "formula_ex": "Calculs fiscaux complexes",
+        "fixed_unit": "Fixe + unitaire",
+        "fixed_unit_desc": "Frais de base plus charge unitaire",
+        "fixed_unit_ex": "Base + charge par employé"
+      }
+    },
+    "routing": {
+      "intro": "Le routage par entité est entièrement <strong>piloté par la BD</strong>. La colonne JSONB <code>entities.workflow_codes</code> détermine quelle entité gère quel workflow. Cela est géré via l'UI admin, sans changement de code.",
+      "callout_title": "Pas de routage en code",
+      "callout_body": "Ne jamais créer de fonctions <code>get_issuing_entities()</code> en code. Le champ <code>entity_code</code> sur <code>PredefinedWorkflow</code> est purement déclaratif/d'audit. Le routage réel est résolu depuis <code>entities.workflow_codes</code> au runtime."
+    },
+    "ocr": {
+      "intro": "40 fichiers de schémas JSON définissent les templates d'extraction OCR pour les types de documents utilisés dans les workflows. Stockés dans <code>packages/backend/app/modules/service_requests/schemas/</code>.",
+      "summary": "Les 40 schémas OCR",
+      "col_file": "Fichier de schéma",
+      "col_doctype": "Type de document",
+      "doc": {
+        "dip": "Carte d'identité nationale (DIP) - Guinée équatoriale",
+        "pasaporte_gq": "Passeport - Guinée équatoriale",
+        "pasaporte_int": "Passeport - International",
+        "nacimiento": "Acte de naissance",
+        "medico": "Certificat médical",
+        "conducta": "Certificat de bonne conduite",
+        "conducir": "Permis de conduire",
+        "defuncion": "Acte de décès",
+        "nif": "Numéro fiscal (NIF)",
+        "padron": "Certificat de recensement",
+        "solvencia": "Certificat de solvabilité fiscale",
+        "onrc": "Contrat ONRC",
+        "compraventa": "Contrat de vente",
+        "contrato_func": "Contrat de fonctionnaire",
+        "residencia": "Permis de résidence",
+        "trabajo": "Permis de travail",
+        "circulacion": "Permis de circulation véhicule",
+        "visado": "Visa",
+        "sello": "Tampon entrée/sortie",
+        "itv": "Inspection véhicule (ITV)",
+        "reco_veh": "Certificat de reconnaissance véhicule",
+        "carnet_func": "Carnet de fonctionnaire",
+        "nombramiento": "Nomination officielle",
+        "dgi_note": "Note de revenu DGI",
+        "res_note": "Note de revenu résidence",
+        "escritura": "Acte de constitution d'entreprise",
+        "cuve": "Document CUVE",
+        "licencia_muni": "Licence de commerce municipale",
+        "reg_comercio": "Registre du commerce",
+        "reg_emp": "Registre des entreprises",
+        "reg_vue": "Registre VUE",
+        "conciso": "Certificat commercial concis",
+        "actualizacion": "Certificat de mise à jour d'entreprise",
+        "atestacion": "Attestation bancaire",
+        "antecedentes": "Casier judiciaire",
+        "gubernativa": "Autorisation gouvernementale",
+        "parental": "Autorisation parentale",
+        "cert_nac": "Certification de naissance",
+        "decl_nac": "Déclaration de naissance",
+        "casier": "Extrait de casier judiciaire international"
+      }
+    },
+    "appt": {
+      "intro": "Les workflows avec rendez-vous utilisent un système à 2 tables pour empêcher la double-réservation :",
+      "col_table": "Table", "col_purpose": "Rôle", "col_lifetime": "Durée de vie",
+      "row": {
+        "holds": "Réservation temporaire pendant le flux du wizard",
+        "holds_ttl": "TTL 15 minutes",
+        "reservations": "Réservation confirmée permanente",
+        "reservations_ttl": "Permanente"
+      },
+      "fns_intro": "Trois fonctions SQL gèrent le cycle de vie d'un rendez-vous :",
+      "fn1": "<code>hold_appointment_slot()</code> &mdash; Crée une réservation temporaire, compte les holds+confirmées",
+      "fn2": "<code>confirm_appointment_hold()</code> &mdash; Convertit une réservation en confirmée + INSERT reservation",
+      "fn3": "<code>get_available_slots_v3()</code> &mdash; Retourne les créneaux disponibles (compte reservations + holds)"
+    },
+    "val": {
+      "diagram_title": "Architecture de validation",
+      "layer1": "Couche 1 : étape Téléversement",
+      "layer1_sub": "SchemaValidationEngine (70+ règles JSON) + RiskAnalyzer (12 étapes)",
+      "layer2": "Couche 2 : étape Revue de formulaire",
+      "layer2_sub": "Surcharges validate_step() uniquement (Python réel)",
+      "point1": "<strong>Schema</strong> (couche 1) = validité documentaire (format, signatures, champs requis, validité temporelle)",
+      "point2": "<strong>validate_step</strong> (couche 2) = décision métier (ce que le résultat signifie pour CE workflow)",
+      "point3": "<strong>Ne jamais dupliquer les règles entre les couches.</strong> Si le schéma a <code>certificado_vigente</code>, ne pas recréer dans validate_step."
+    }
   }
 }
 ;

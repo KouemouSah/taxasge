@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="workflows.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,126 +15,123 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Workflow Engine</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="common.sidebar.link.workflows">Workflow Engine</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Workflow Engine Reference</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="workflows.title">Workflow Engine Reference</h1>
+        <p class="page-description" data-i18n="workflows.description">
           The workflow engine powers 36 service request workflows across 8 domains.
           Each workflow defines wizard steps, document requirements, fee calculations,
           OCR schemas, and entity routing rules.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#wizard-flow">Wizard Step Flow</a></li>
-            <li><a href="#state-machine">Request State Machine</a></li>
-            <li><a href="#workflows-catalog">All 36 Workflows</a></li>
-            <li><a href="#condition-evaluator">ConditionEvaluator</a></li>
-            <li><a href="#fee-calculation">Fee Calculation Methods</a></li>
-            <li><a href="#entity-routing">Entity Routing</a></li>
-            <li><a href="#ocr-integration">OCR Schema Integration</a></li>
-            <li><a href="#appointments">Appointment Management</a></li>
-            <li><a href="#validation">2-Layer Validation</a></li>
+            <li><a href="#wizard-flow" data-i18n="workflows.toc.wizard">Wizard Step Flow</a></li>
+            <li><a href="#state-machine" data-i18n="workflows.toc.state">Request State Machine</a></li>
+            <li><a href="#workflows-catalog" data-i18n="workflows.toc.catalog">All 36 Workflows</a></li>
+            <li><a href="#condition-evaluator" data-i18n="workflows.toc.condition">ConditionEvaluator</a></li>
+            <li><a href="#fee-calculation" data-i18n="workflows.toc.fees">Fee Calculation Methods</a></li>
+            <li><a href="#entity-routing" data-i18n="workflows.toc.routing">Entity Routing</a></li>
+            <li><a href="#ocr-integration" data-i18n="workflows.toc.ocr">OCR Schema Integration</a></li>
+            <li><a href="#appointments" data-i18n="workflows.toc.appointments">Appointment Management</a></li>
+            <li><a href="#validation" data-i18n="workflows.toc.validation">2-Layer Validation</a></li>
           </ul>
         </div>
 
-        <!-- Wizard Flow -->
-        <h2 id="wizard-flow">Wizard Step Flow <a href="#wizard-flow" class="anchor-link">#</a></h2>
-        <p>Every service request follows a wizard with configurable steps. The standard flow is:</p>
+        <h2 id="wizard-flow"><span data-i18n="workflows.toc.wizard">Wizard Step Flow</span> <a href="#wizard-flow" class="anchor-link">#</a></h2>
+        <p data-i18n="workflows.wizard.intro">Every service request follows a wizard with configurable steps. The standard flow is:</p>
 
         <div class="flow">
-          <span class="flow-step active">Selection</span>
+          <span class="flow-step active" data-i18n="workflows.wizard.step.selection">Selection</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Upload</span>
+          <span class="flow-step" data-i18n="workflows.wizard.step.upload">Upload</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Form Review 1..N</span>
+          <span class="flow-step" data-i18n="workflows.wizard.step.form">Form Review 1..N</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Appointment</span>
+          <span class="flow-step" data-i18n="workflows.wizard.step.appointment">Appointment</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Payment</span>
+          <span class="flow-step" data-i18n="workflows.wizard.step.payment">Payment</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">Confirmation</span>
+          <span class="flow-step success" data-i18n="workflows.wizard.step.confirmation">Confirmation</span>
         </div>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Step</th><th>Purpose</th><th>Optional?</th></tr></thead>
+            <thead><tr><th data-i18n="workflows.wizard.col_step">Step</th><th data-i18n="workflows.wizard.col_purpose">Purpose</th><th data-i18n="workflows.wizard.col_optional">Optional?</th></tr></thead>
             <tbody>
-              <tr><td><strong>Selection</strong></td><td>Choose sub-type, person type, motivo (reason). Drives dynamic form visibility.</td><td>No (always present)</td></tr>
-              <tr><td><strong>Upload</strong></td><td>Upload required documents (OCR extraction runs here). Documents vary by workflow.</td><td>No</td></tr>
-              <tr><td><strong>Form Review 1..N</strong></td><td>Review OCR-extracted data, fill manual fields, validate business rules.</td><td>Count varies (1-3)</td></tr>
-              <tr><td><strong>Appointment</strong></td><td>Book appointment slot (holds + reservations). Only for workflows requiring in-person visit.</td><td>Yes</td></tr>
-              <tr><td><strong>Payment</strong></td><td>Calculate fee and initiate payment (BANGE or manual).</td><td>No</td></tr>
-              <tr><td><strong>Confirmation</strong></td><td>Summary display, PDF download, email with receipt.</td><td>No</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.selection.name"><strong>Selection</strong></td><td data-i18n="workflows.wizard.row.selection.purpose">Choose sub-type, person type, motivo (reason). Drives dynamic form visibility.</td><td data-i18n="workflows.wizard.row.selection.opt">No (always present)</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.upload.name"><strong>Upload</strong></td><td data-i18n="workflows.wizard.row.upload.purpose">Upload required documents (OCR extraction runs here). Documents vary by workflow.</td><td data-i18n="workflows.wizard.row.upload.opt">No</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.form.name"><strong>Form Review 1..N</strong></td><td data-i18n="workflows.wizard.row.form.purpose">Review OCR-extracted data, fill manual fields, validate business rules.</td><td data-i18n="workflows.wizard.row.form.opt">Count varies (1-3)</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.appt.name"><strong>Appointment</strong></td><td data-i18n="workflows.wizard.row.appt.purpose">Book appointment slot (holds + reservations). Only for workflows requiring in-person visit.</td><td data-i18n="workflows.wizard.row.appt.opt">Yes</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.pay.name"><strong>Payment</strong></td><td data-i18n="workflows.wizard.row.pay.purpose">Calculate fee and initiate payment (BANGE or manual).</td><td data-i18n="workflows.wizard.row.pay.opt">No</td></tr>
+              <tr><td data-i18n-html="workflows.wizard.row.conf.name"><strong>Confirmation</strong></td><td data-i18n="workflows.wizard.row.conf.purpose">Summary display, PDF download, email with receipt.</td><td data-i18n="workflows.wizard.row.conf.opt">No</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Cache-First Wizard</h3>
-        <p>
+        <h3 data-i18n="workflows.wizard.cache_title">Cache-First Wizard</h3>
+        <p data-i18n-html="workflows.wizard.cache_body">
           The wizard uses a <strong>cache-first</strong> approach: step data is stored in Redis during the wizard
           flow (no database writes until payment). The <code>POST /wizard-sessions/{id}/initiate-payment</code>
           endpoint performs an atomic persist-and-pay operation in a single database transaction.
         </p>
 
-        <!-- State Machine -->
-        <h2 id="state-machine">Request State Machine <a href="#state-machine" class="anchor-link">#</a></h2>
+        <h2 id="state-machine"><span data-i18n="workflows.toc.state">Request State Machine</span> <a href="#state-machine" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">Service Request Lifecycle</div>
+          <div class="diagram-title" data-i18n="workflows.state.diagram_title">Service Request Lifecycle</div>
           <div class="diagram-row">
-            <div class="diagram-box">Draft</div>
+            <div class="diagram-box" data-i18n="workflows.state.draft">Draft</div>
           </div>
-          <div class="diagram-arrow">&#9660; Submit</div>
+          <div class="diagram-arrow"><span data-i18n="workflows.state.submit">▼ Submit</span></div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Submitted</div>
+            <div class="diagram-box primary" data-i18n="workflows.state.submitted">Submitted</div>
           </div>
-          <div class="diagram-arrow">&#9660; Auto-assign to entity agents</div>
+          <div class="diagram-arrow"><span data-i18n="workflows.state.auto_assign">▼ Auto-assign to entity agents</span></div>
           <div class="diagram-row">
-            <div class="diagram-box green">Processing</div>
+            <div class="diagram-box green" data-i18n="workflows.state.processing">Processing</div>
           </div>
-          <div class="diagram-arrow">&#9660; Agent decision</div>
+          <div class="diagram-arrow"><span data-i18n="workflows.state.decision">▼ Agent decision</span></div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Accepted</div>
-            <div class="diagram-box red filled">Rejected</div>
-            <div class="diagram-box yellow">Amended</div>
+            <div class="diagram-box green filled" data-i18n="workflows.state.accepted">Accepted</div>
+            <div class="diagram-box red filled" data-i18n="workflows.state.rejected">Rejected</div>
+            <div class="diagram-box yellow" data-i18n="workflows.state.amended">Amended</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-style:dashed;">Completed</div>
+            <div class="diagram-box" style="border-style:dashed;" data-i18n="workflows.state.completed">Completed</div>
           </div>
         </div>
 
-        <!-- All 36 Workflows -->
-        <h2 id="workflows-catalog">All 36 Workflows <a href="#workflows-catalog" class="anchor-link">#</a></h2>
+        <h2 id="workflows-catalog"><span data-i18n="workflows.toc.catalog">All 36 Workflows</span> <a href="#workflows-catalog" class="anchor-link">#</a></h2>
 
         <details open>
-          <summary>Identity &amp; Civil (CNEDOGE) &mdash; 1 workflow</summary>
+          <summary data-i18n="workflows.cat.identity">Identity &amp; Civil (CNEDOGE) &mdash; 1 workflow</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Minor?</th><th>Motivo?</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_minor">Minor?</th><th data-i18n="workflows.cat.col_motivo">Motivo?</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Pasaporte</td><td><code>pasaporte_workflow_v2.py</code></td><td>Yes</td><td>Yes (4)</td><td>5-8</td><td>3</td><td>Yes</td></tr>
+                  <tr><td>Pasaporte</td><td><code>pasaporte_workflow_v2.py</code></td><td data-i18n="workflows.yes">Yes</td><td data-i18n="workflows.cat.row.pasaporte_motivo">Yes (4)</td><td>5-8</td><td>3</td><td data-i18n="workflows.yes">Yes</td></tr>
                 </tbody>
               </table>
             </div>
@@ -142,14 +139,14 @@
         </details>
 
         <details>
-          <summary>Immigration (Extranjeria) &mdash; 2 workflows</summary>
+          <summary data-i18n="workflows.cat.immigration">Immigration (Extranjeria) &mdash; 2 workflows</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Sub-types</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_subtypes">Sub-types</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Residencia</td><td><code>extranjeria/residencia_workflow.py</code></td><td>&mdash;</td><td>13-14</td><td>3</td><td>Yes</td></tr>
-                  <tr><td>Tramites Visado (4 sub-types)</td><td><code>extranjeria/tramites_visado_workflow.py</code></td><td>PRORROGA, ALTERNATIVO, PERMANENCIA, SALIDA_VENCIDO</td><td>4</td><td>1</td><td>No</td></tr>
+                  <tr><td>Residencia</td><td><code>extranjeria/residencia_workflow.py</code></td><td>&mdash;</td><td>13-14</td><td>3</td><td data-i18n="workflows.yes">Yes</td></tr>
+                  <tr><td data-i18n="workflows.cat.row.visado">Tramites Visado (4 sub-types)</td><td><code>extranjeria/tramites_visado_workflow.py</code></td><td>PRORROGA, ALTERNATIVO, PERMANENCIA, SALIDA_VENCIDO</td><td>4</td><td>1</td><td data-i18n="workflows.no">No</td></tr>
                 </tbody>
               </table>
             </div>
@@ -157,15 +154,15 @@
         </details>
 
         <details>
-          <summary>Traffic (DGT) &mdash; 3 workflows</summary>
+          <summary data-i18n="workflows.cat.traffic">Traffic (DGT) &mdash; 3 workflows</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Matriculacion</td><td><code>vehiculos/matriculacion_workflow.py</code></td><td>3-5</td><td>2</td><td>No</td></tr>
-                  <tr><td>Inspeccion (ITVE)</td><td><code>vehiculos/inspeccion_workflow.py</code></td><td>3-5</td><td>2</td><td>No</td></tr>
-                  <tr><td>Duplicado Vehiculo</td><td><code>vehiculos/duplicado_workflow.py</code></td><td>3</td><td>1</td><td>No</td></tr>
+                  <tr><td>Matriculacion</td><td><code>vehiculos/matriculacion_workflow.py</code></td><td>3-5</td><td>2</td><td data-i18n="workflows.no">No</td></tr>
+                  <tr><td>Inspeccion (ITVE)</td><td><code>vehiculos/inspeccion_workflow.py</code></td><td>3-5</td><td>2</td><td data-i18n="workflows.no">No</td></tr>
+                  <tr><td>Duplicado Vehiculo</td><td><code>vehiculos/duplicado_workflow.py</code></td><td>3</td><td>1</td><td data-i18n="workflows.no">No</td></tr>
                 </tbody>
               </table>
             </div>
@@ -173,13 +170,13 @@
         </details>
 
         <details>
-          <summary>Driving (Conducir) &mdash; 1 workflow</summary>
+          <summary data-i18n="workflows.cat.driving">Driving (Conducir) &mdash; 1 workflow</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Motivo?</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_motivo">Motivo?</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Conducir</td><td><code>conducir_workflow.py</code></td><td>Yes (3: PERDIDA, ROBO, DETERIORO for DUPLICADO)</td><td>4-6</td><td>3</td><td>Yes</td></tr>
+                  <tr><td>Conducir</td><td><code>conducir_workflow.py</code></td><td data-i18n="workflows.cat.row.conducir_motivo">Yes (3: PERDIDA, ROBO, DETERIORO for DUPLICADO)</td><td>4-6</td><td>3</td><td data-i18n="workflows.yes">Yes</td></tr>
                 </tbody>
               </table>
             </div>
@@ -187,13 +184,13 @@
         </details>
 
         <details>
-          <summary>Contracts (Contrato) &mdash; 1 workflow</summary>
+          <summary data-i18n="workflows.cat.contracts">Contracts (Contrato) &mdash; 1 workflow</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Contrato ONRC</td><td><code>contrato_workflow.py</code></td><td>3 required + 10 optional</td><td>3</td><td>No</td></tr>
+                  <tr><td>Contrato ONRC</td><td><code>contrato_workflow.py</code></td><td data-i18n="workflows.cat.row.contrato_docs">3 required + 10 optional</td><td>3</td><td data-i18n="workflows.no">No</td></tr>
                 </tbody>
               </table>
             </div>
@@ -201,17 +198,17 @@
         </details>
 
         <details>
-          <summary>Civil Service (Funcion Publica) &mdash; 5 workflows</summary>
+          <summary data-i18n="workflows.cat.civil">Civil Service (Funcion Publica) &mdash; 5 workflows</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Sub-types</th><th>Docs</th><th>Form Pages</th><th>RDV</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_subtypes">Sub-types</th><th data-i18n="workflows.cat.col_docs">Docs</th><th data-i18n="workflows.cat.col_forms">Form Pages</th><th data-i18n="workflows.cat.col_rdv">RDV</th></tr></thead>
                 <tbody>
-                  <tr><td>Promocion Admin</td><td><code>funcion_publica/promocion_workflow.py</code></td><td>3 sub-types</td><td>3-6</td><td>1</td><td>No</td></tr>
-                  <tr><td>Carnet Funcionario</td><td><code>funcion_publica/carnet_workflow.py</code></td><td>&mdash;</td><td>2-4</td><td>2</td><td>Yes</td></tr>
-                  <tr><td>Verificacion</td><td><code>funcion_publica/verificacion_workflow.py</code></td><td>&mdash;</td><td>1 (DIP)</td><td>2</td><td>No</td></tr>
-                  <tr><td>Permiso Extraordinario</td><td><code>funcion_publica/permiso_workflow.py</code></td><td>motivo</td><td>varies</td><td>1</td><td>No</td></tr>
-                  <tr><td>Certificado Admin</td><td><code>funcion_publica/certificado_workflow.py</code></td><td>tipo</td><td>varies</td><td>1</td><td>No</td></tr>
+                  <tr><td>Promocion Admin</td><td><code>funcion_publica/promocion_workflow.py</code></td><td data-i18n="workflows.cat.row.promo_sub">3 sub-types</td><td>3-6</td><td>1</td><td data-i18n="workflows.no">No</td></tr>
+                  <tr><td>Carnet Funcionario</td><td><code>funcion_publica/carnet_workflow.py</code></td><td>&mdash;</td><td>2-4</td><td>2</td><td data-i18n="workflows.yes">Yes</td></tr>
+                  <tr><td>Verificacion</td><td><code>funcion_publica/verificacion_workflow.py</code></td><td>&mdash;</td><td>1 (DIP)</td><td>2</td><td data-i18n="workflows.no">No</td></tr>
+                  <tr><td>Permiso Extraordinario</td><td><code>funcion_publica/permiso_workflow.py</code></td><td>motivo</td><td data-i18n="workflows.varies">varies</td><td>1</td><td data-i18n="workflows.no">No</td></tr>
+                  <tr><td>Certificado Admin</td><td><code>funcion_publica/certificado_workflow.py</code></td><td>tipo</td><td data-i18n="workflows.varies">varies</td><td>1</td><td data-i18n="workflows.no">No</td></tr>
                 </tbody>
               </table>
             </div>
@@ -219,13 +216,13 @@
         </details>
 
         <details>
-          <summary>Bundle / Commercial (Multi-Entity) &mdash; 1 workflow</summary>
+          <summary data-i18n="workflows.cat.bundle">Bundle / Commercial (Multi-Entity) &mdash; 1 workflow</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Entities</th><th>Description</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_entities">Entities</th><th data-i18n="workflows.cat.col_description">Description</th></tr></thead>
                 <tbody>
-                  <tr><td>Bundle Payment</td><td><code>bundle_payment_workflow.py</code></td><td>TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, MIN_*</td><td>Multi-entity commercial license obligations</td></tr>
+                  <tr><td>Bundle Payment</td><td><code>bundle_payment_workflow.py</code></td><td>TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, MIN_*</td><td data-i18n="workflows.cat.row.bundle_desc">Multi-entity commercial license obligations</td></tr>
                 </tbody>
               </table>
             </div>
@@ -233,29 +230,28 @@
         </details>
 
         <details>
-          <summary>Generic &mdash; 2 workflows</summary>
+          <summary data-i18n="workflows.cat.generic">Generic &mdash; 2 workflows</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Workflow</th><th>File</th><th>Description</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.cat.col_workflow">Workflow</th><th data-i18n="workflows.cat.col_file">File</th><th data-i18n="workflows.cat.col_description">Description</th></tr></thead>
                 <tbody>
-                  <tr><td>Generic</td><td><code>generic_workflow.py</code></td><td>Catch-all for uncategorized services</td></tr>
+                  <tr><td>Generic</td><td><code>generic_workflow.py</code></td><td data-i18n="workflows.cat.row.generic_desc">Catch-all for uncategorized services</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </details>
 
-        <!-- ConditionEvaluator -->
-        <h2 id="condition-evaluator">ConditionEvaluator <a href="#condition-evaluator" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="condition-evaluator"><span data-i18n="workflows.toc.condition">ConditionEvaluator</span> <a href="#condition-evaluator" class="anchor-link">#</a></h2>
+        <p data-i18n-html="workflows.cond.intro">
           The <code>ConditionEvaluator</code> dynamically controls step and section visibility based on
           form data collected in earlier steps. Conditions are defined as JSON objects in workflow configurations.
         </p>
 
         <div class="callout callout-danger">
-          <div class="callout-title">Critical Rule: Conditions Are Always Strings</div>
-          <p>
+          <div class="callout-title" data-i18n="workflows.cond.callout_title">Critical Rule: Conditions Are Always Strings</div>
+          <p data-i18n-html="workflows.cond.callout_body">
             Conditions must use string values: <code>{"is_minor": "true"}</code>, <strong>not</strong>
             <code>{"is_minor": true}</code>. The frontend RadioGroup stores strings, and the ConditionEvaluator
             performs strict <code>==</code> comparison.
@@ -269,145 +265,140 @@
   <span class="str">"documents"</span>: [<span class="str">"autorizacion_parental"</span>, <span class="str">"certificado_nacimiento"</span>]
 }</code></pre>
 
-        <!-- Fee Calculation -->
-        <h2 id="fee-calculation">Fee Calculation Methods <a href="#fee-calculation" class="anchor-link">#</a></h2>
+        <h2 id="fee-calculation"><span data-i18n="workflows.toc.fees">Fee Calculation Methods</span> <a href="#fee-calculation" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Method</th><th>Enum Value</th><th>Description</th><th>Example</th></tr></thead>
+            <thead><tr><th data-i18n="workflows.fees.col_method">Method</th><th data-i18n="workflows.fees.col_enum">Enum Value</th><th data-i18n="workflows.fees.col_desc">Description</th><th data-i18n="workflows.fees.col_example">Example</th></tr></thead>
             <tbody>
-              <tr><td>Fixed Expedition</td><td><code>fixed_expedition</code></td><td>Fixed price for new applications</td><td>Pasaporte: 35,000 FCFA</td></tr>
-              <tr><td>Fixed Renewal</td><td><code>fixed_renewal</code></td><td>Fixed price for renewals</td><td>Conducir renewal: 15,000 FCFA</td></tr>
-              <tr><td>Percentage-based</td><td><code>percentage_based</code></td><td>Percentage of a base amount</td><td>IVA: 15% of taxable base</td></tr>
-              <tr><td>Unit-based</td><td><code>unit_based</code></td><td>Price per unit (pages, items)</td><td>Contrato: price per page</td></tr>
-              <tr><td>Tiered Rates</td><td><code>tiered_rates</code></td><td>Rates change based on thresholds</td><td>Visa Alternativo: 3/6/12/24 month tiers</td></tr>
-              <tr><td>Formula-based</td><td><code>formula_based</code></td><td>Custom formula evaluation</td><td>Complex tax calculations</td></tr>
-              <tr><td>Fixed + Unit</td><td><code>fixed_plus_unit</code></td><td>Base fee plus per-unit charge</td><td>Base + per-employee charge</td></tr>
+              <tr><td data-i18n="workflows.fees.row.fixed_exp">Fixed Expedition</td><td><code>fixed_expedition</code></td><td data-i18n="workflows.fees.row.fixed_exp_desc">Fixed price for new applications</td><td data-i18n="workflows.fees.row.fixed_exp_ex">Pasaporte: 35,000 FCFA</td></tr>
+              <tr><td data-i18n="workflows.fees.row.fixed_ren">Fixed Renewal</td><td><code>fixed_renewal</code></td><td data-i18n="workflows.fees.row.fixed_ren_desc">Fixed price for renewals</td><td data-i18n="workflows.fees.row.fixed_ren_ex">Conducir renewal: 15,000 FCFA</td></tr>
+              <tr><td data-i18n="workflows.fees.row.percent">Percentage-based</td><td><code>percentage_based</code></td><td data-i18n="workflows.fees.row.percent_desc">Percentage of a base amount</td><td data-i18n="workflows.fees.row.percent_ex">IVA: 15% of taxable base</td></tr>
+              <tr><td data-i18n="workflows.fees.row.unit">Unit-based</td><td><code>unit_based</code></td><td data-i18n="workflows.fees.row.unit_desc">Price per unit (pages, items)</td><td data-i18n="workflows.fees.row.unit_ex">Contrato: price per page</td></tr>
+              <tr><td data-i18n="workflows.fees.row.tiered">Tiered Rates</td><td><code>tiered_rates</code></td><td data-i18n="workflows.fees.row.tiered_desc">Rates change based on thresholds</td><td data-i18n="workflows.fees.row.tiered_ex">Visa Alternativo: 3/6/12/24 month tiers</td></tr>
+              <tr><td data-i18n="workflows.fees.row.formula">Formula-based</td><td><code>formula_based</code></td><td data-i18n="workflows.fees.row.formula_desc">Custom formula evaluation</td><td data-i18n="workflows.fees.row.formula_ex">Complex tax calculations</td></tr>
+              <tr><td data-i18n="workflows.fees.row.fixed_unit">Fixed + Unit</td><td><code>fixed_plus_unit</code></td><td data-i18n="workflows.fees.row.fixed_unit_desc">Base fee plus per-unit charge</td><td data-i18n="workflows.fees.row.fixed_unit_ex">Base + per-employee charge</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Entity Routing -->
-        <h2 id="entity-routing">Entity Routing <a href="#entity-routing" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="entity-routing"><span data-i18n="workflows.toc.routing">Entity Routing</span> <a href="#entity-routing" class="anchor-link">#</a></h2>
+        <p data-i18n-html="workflows.routing.intro">
           Entity routing is entirely <strong>database-driven</strong>. The <code>entities.workflow_codes</code>
           JSONB column determines which entity handles which workflow. This is managed via the admin UI,
           with no code changes required.
         </p>
 
         <div class="callout callout-warning">
-          <div class="callout-title">No Code Routing</div>
-          <p>
+          <div class="callout-title" data-i18n="workflows.routing.callout_title">No Code Routing</div>
+          <p data-i18n-html="workflows.routing.callout_body">
             Never create <code>get_issuing_entities()</code> functions in code. The <code>entity_code</code>
             field on <code>PredefinedWorkflow</code> is declarative/audit only. Actual routing is resolved
             from <code>entities.workflow_codes</code> at runtime.
           </p>
         </div>
 
-        <!-- OCR Integration -->
-        <h2 id="ocr-integration">OCR Schema Integration <a href="#ocr-integration" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="ocr-integration"><span data-i18n="workflows.toc.ocr">OCR Schema Integration</span> <a href="#ocr-integration" class="anchor-link">#</a></h2>
+        <p data-i18n-html="workflows.ocr.intro">
           40 JSON schema files define the OCR extraction templates for document types used across workflows.
           These are stored in <code>packages/backend/app/modules/service_requests/schemas/</code>.
         </p>
 
         <details>
-          <summary>All 40 OCR Schemas</summary>
+          <summary data-i18n="workflows.ocr.summary">All 40 OCR Schemas</summary>
           <div class="details-content">
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Schema File</th><th>Document Type</th></tr></thead>
+                <thead><tr><th data-i18n="workflows.ocr.col_file">Schema File</th><th data-i18n="workflows.ocr.col_doctype">Document Type</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dip_gq.json</code></td><td>National ID (DIP) - Equatorial Guinea</td></tr>
-                  <tr><td><code>pasaporte_gq.json</code></td><td>Passport - Equatorial Guinea</td></tr>
-                  <tr><td><code>pasaporte_international.json</code></td><td>Passport - International</td></tr>
-                  <tr><td><code>certificado_nacimiento_gq.json</code></td><td>Birth certificate</td></tr>
-                  <tr><td><code>certificado_medico_gq.json</code></td><td>Medical certificate</td></tr>
-                  <tr><td><code>certificado_buena_conducta_gq.json</code></td><td>Good conduct certificate</td></tr>
-                  <tr><td><code>certificado_conducir_gq.json</code></td><td>Driving license</td></tr>
-                  <tr><td><code>certificado_defuncion_gq.json</code></td><td>Death certificate</td></tr>
-                  <tr><td><code>certificado_nif_gq.json</code></td><td>Tax ID (NIF)</td></tr>
-                  <tr><td><code>certificado_padron_gq.json</code></td><td>Census certificate</td></tr>
-                  <tr><td><code>solvencia_tributaria_gq.json</code></td><td>Tax solvency certificate</td></tr>
-                  <tr><td><code>contrato_onrc_gq.json</code></td><td>ONRC contract</td></tr>
-                  <tr><td><code>contrato_compraventa_gq.json</code></td><td>Sale contract</td></tr>
-                  <tr><td><code>contrato_funcionario_gq.json</code></td><td>Civil servant contract</td></tr>
-                  <tr><td><code>permiso_residencia_gq.json</code></td><td>Residence permit</td></tr>
-                  <tr><td><code>permiso_trabajo_gq.json</code></td><td>Work permit</td></tr>
-                  <tr><td><code>permiso_circulacion_gq.json</code></td><td>Vehicle circulation permit</td></tr>
-                  <tr><td><code>visado_gq.json</code></td><td>Visa</td></tr>
-                  <tr><td><code>sello_entrada_gq.json</code></td><td>Entry/exit stamp</td></tr>
-                  <tr><td><code>itv_gq.json</code></td><td>Vehicle inspection (ITV)</td></tr>
-                  <tr><td><code>certificado_reconocimiento_vehiculo_gq.json</code></td><td>Vehicle recognition certificate</td></tr>
-                  <tr><td><code>carnet_funcionario_gq.json</code></td><td>Civil servant ID</td></tr>
-                  <tr><td><code>nombramiento_gq.json</code></td><td>Official appointment</td></tr>
-                  <tr><td><code>nota_ingreso_dgi_gq.json</code></td><td>DGI income note</td></tr>
-                  <tr><td><code>nota_ingreso_residencia_gq.json</code></td><td>Residence income note</td></tr>
-                  <tr><td><code>escritura_constitucion_gq.json</code></td><td>Company formation deed</td></tr>
-                  <tr><td><code>cuve_gq.json</code></td><td>CUVE document</td></tr>
-                  <tr><td><code>licencia_comercio_municipal_gq.json</code></td><td>Municipal commerce license</td></tr>
-                  <tr><td><code>certificado_registro_comercio_gq.json</code></td><td>Commerce registry</td></tr>
-                  <tr><td><code>certificado_registro_empresarial_gq.json</code></td><td>Business registry</td></tr>
-                  <tr><td><code>certificado_registro_vue_gq.json</code></td><td>VUE registry</td></tr>
-                  <tr><td><code>certificado_conciso_mercantil_gq.json</code></td><td>Concise commercial certificate</td></tr>
-                  <tr><td><code>certificado_actualizacion_empresarial_gq.json</code></td><td>Business update certificate</td></tr>
-                  <tr><td><code>atestacion_bancaria_gq.json</code></td><td>Bank attestation</td></tr>
-                  <tr><td><code>antecedentes_penales_gq.json</code></td><td>Criminal record</td></tr>
-                  <tr><td><code>autorizacion_gubernativa_gq.json</code></td><td>Government authorization</td></tr>
-                  <tr><td><code>autorizacion_parental_gq.json</code></td><td>Parental authorization</td></tr>
-                  <tr><td><code>certificacion_nacimiento_gq.json</code></td><td>Birth certification</td></tr>
-                  <tr><td><code>declaracion_nacimiento_gq.json</code></td><td>Birth declaration</td></tr>
-                  <tr><td><code>extrait_casier_judiciaire_international.json</code></td><td>International criminal record extract</td></tr>
+                  <tr><td><code>dip_gq.json</code></td><td data-i18n="workflows.ocr.doc.dip">National ID (DIP) - Equatorial Guinea</td></tr>
+                  <tr><td><code>pasaporte_gq.json</code></td><td data-i18n="workflows.ocr.doc.pasaporte_gq">Passport - Equatorial Guinea</td></tr>
+                  <tr><td><code>pasaporte_international.json</code></td><td data-i18n="workflows.ocr.doc.pasaporte_int">Passport - International</td></tr>
+                  <tr><td><code>certificado_nacimiento_gq.json</code></td><td data-i18n="workflows.ocr.doc.nacimiento">Birth certificate</td></tr>
+                  <tr><td><code>certificado_medico_gq.json</code></td><td data-i18n="workflows.ocr.doc.medico">Medical certificate</td></tr>
+                  <tr><td><code>certificado_buena_conducta_gq.json</code></td><td data-i18n="workflows.ocr.doc.conducta">Good conduct certificate</td></tr>
+                  <tr><td><code>certificado_conducir_gq.json</code></td><td data-i18n="workflows.ocr.doc.conducir">Driving license</td></tr>
+                  <tr><td><code>certificado_defuncion_gq.json</code></td><td data-i18n="workflows.ocr.doc.defuncion">Death certificate</td></tr>
+                  <tr><td><code>certificado_nif_gq.json</code></td><td data-i18n="workflows.ocr.doc.nif">Tax ID (NIF)</td></tr>
+                  <tr><td><code>certificado_padron_gq.json</code></td><td data-i18n="workflows.ocr.doc.padron">Census certificate</td></tr>
+                  <tr><td><code>solvencia_tributaria_gq.json</code></td><td data-i18n="workflows.ocr.doc.solvencia">Tax solvency certificate</td></tr>
+                  <tr><td><code>contrato_onrc_gq.json</code></td><td data-i18n="workflows.ocr.doc.onrc">ONRC contract</td></tr>
+                  <tr><td><code>contrato_compraventa_gq.json</code></td><td data-i18n="workflows.ocr.doc.compraventa">Sale contract</td></tr>
+                  <tr><td><code>contrato_funcionario_gq.json</code></td><td data-i18n="workflows.ocr.doc.contrato_func">Civil servant contract</td></tr>
+                  <tr><td><code>permiso_residencia_gq.json</code></td><td data-i18n="workflows.ocr.doc.residencia">Residence permit</td></tr>
+                  <tr><td><code>permiso_trabajo_gq.json</code></td><td data-i18n="workflows.ocr.doc.trabajo">Work permit</td></tr>
+                  <tr><td><code>permiso_circulacion_gq.json</code></td><td data-i18n="workflows.ocr.doc.circulacion">Vehicle circulation permit</td></tr>
+                  <tr><td><code>visado_gq.json</code></td><td data-i18n="workflows.ocr.doc.visado">Visa</td></tr>
+                  <tr><td><code>sello_entrada_gq.json</code></td><td data-i18n="workflows.ocr.doc.sello">Entry/exit stamp</td></tr>
+                  <tr><td><code>itv_gq.json</code></td><td data-i18n="workflows.ocr.doc.itv">Vehicle inspection (ITV)</td></tr>
+                  <tr><td><code>certificado_reconocimiento_vehiculo_gq.json</code></td><td data-i18n="workflows.ocr.doc.reco_veh">Vehicle recognition certificate</td></tr>
+                  <tr><td><code>carnet_funcionario_gq.json</code></td><td data-i18n="workflows.ocr.doc.carnet_func">Civil servant ID</td></tr>
+                  <tr><td><code>nombramiento_gq.json</code></td><td data-i18n="workflows.ocr.doc.nombramiento">Official appointment</td></tr>
+                  <tr><td><code>nota_ingreso_dgi_gq.json</code></td><td data-i18n="workflows.ocr.doc.dgi_note">DGI income note</td></tr>
+                  <tr><td><code>nota_ingreso_residencia_gq.json</code></td><td data-i18n="workflows.ocr.doc.res_note">Residence income note</td></tr>
+                  <tr><td><code>escritura_constitucion_gq.json</code></td><td data-i18n="workflows.ocr.doc.escritura">Company formation deed</td></tr>
+                  <tr><td><code>cuve_gq.json</code></td><td data-i18n="workflows.ocr.doc.cuve">CUVE document</td></tr>
+                  <tr><td><code>licencia_comercio_municipal_gq.json</code></td><td data-i18n="workflows.ocr.doc.licencia_muni">Municipal commerce license</td></tr>
+                  <tr><td><code>certificado_registro_comercio_gq.json</code></td><td data-i18n="workflows.ocr.doc.reg_comercio">Commerce registry</td></tr>
+                  <tr><td><code>certificado_registro_empresarial_gq.json</code></td><td data-i18n="workflows.ocr.doc.reg_emp">Business registry</td></tr>
+                  <tr><td><code>certificado_registro_vue_gq.json</code></td><td data-i18n="workflows.ocr.doc.reg_vue">VUE registry</td></tr>
+                  <tr><td><code>certificado_conciso_mercantil_gq.json</code></td><td data-i18n="workflows.ocr.doc.conciso">Concise commercial certificate</td></tr>
+                  <tr><td><code>certificado_actualizacion_empresarial_gq.json</code></td><td data-i18n="workflows.ocr.doc.actualizacion">Business update certificate</td></tr>
+                  <tr><td><code>atestacion_bancaria_gq.json</code></td><td data-i18n="workflows.ocr.doc.atestacion">Bank attestation</td></tr>
+                  <tr><td><code>antecedentes_penales_gq.json</code></td><td data-i18n="workflows.ocr.doc.antecedentes">Criminal record</td></tr>
+                  <tr><td><code>autorizacion_gubernativa_gq.json</code></td><td data-i18n="workflows.ocr.doc.gubernativa">Government authorization</td></tr>
+                  <tr><td><code>autorizacion_parental_gq.json</code></td><td data-i18n="workflows.ocr.doc.parental">Parental authorization</td></tr>
+                  <tr><td><code>certificacion_nacimiento_gq.json</code></td><td data-i18n="workflows.ocr.doc.cert_nac">Birth certification</td></tr>
+                  <tr><td><code>declaracion_nacimiento_gq.json</code></td><td data-i18n="workflows.ocr.doc.decl_nac">Birth declaration</td></tr>
+                  <tr><td><code>extrait_casier_judiciaire_international.json</code></td><td data-i18n="workflows.ocr.doc.casier">International criminal record extract</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </details>
 
-        <!-- Appointments -->
-        <h2 id="appointments">Appointment Management <a href="#appointments" class="anchor-link">#</a></h2>
-        <p>Appointment-enabled workflows use a 2-table system to prevent double-booking:</p>
+        <h2 id="appointments"><span data-i18n="workflows.toc.appointments">Appointment Management</span> <a href="#appointments" class="anchor-link">#</a></h2>
+        <p data-i18n="workflows.appt.intro">Appointment-enabled workflows use a 2-table system to prevent double-booking:</p>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Table</th><th>Purpose</th><th>Lifetime</th></tr></thead>
+            <thead><tr><th data-i18n="workflows.appt.col_table">Table</th><th data-i18n="workflows.appt.col_purpose">Purpose</th><th data-i18n="workflows.appt.col_lifetime">Lifetime</th></tr></thead>
             <tbody>
-              <tr><td><code>appointment_holds</code></td><td>Temporary hold during wizard flow</td><td>15 minutes TTL</td></tr>
-              <tr><td><code>appointment_reservations</code></td><td>Permanent confirmed reservation</td><td>Permanent</td></tr>
+              <tr><td><code>appointment_holds</code></td><td data-i18n="workflows.appt.row.holds">Temporary hold during wizard flow</td><td data-i18n="workflows.appt.row.holds_ttl">15 minutes TTL</td></tr>
+              <tr><td><code>appointment_reservations</code></td><td data-i18n="workflows.appt.row.reservations">Permanent confirmed reservation</td><td data-i18n="workflows.appt.row.reservations_ttl">Permanent</td></tr>
             </tbody>
           </table>
         </div>
 
-        <p>Three SQL functions manage the appointment lifecycle:</p>
+        <p data-i18n="workflows.appt.fns_intro">Three SQL functions manage the appointment lifecycle:</p>
         <ul>
-          <li><code>hold_appointment_slot()</code> &mdash; Creates temporary hold, counts held+confirmed</li>
-          <li><code>confirm_appointment_hold()</code> &mdash; Converts hold to confirmed + INSERT reservation</li>
-          <li><code>get_available_slots_v3()</code> &mdash; Returns available slots (counts reservations + holds)</li>
+          <li data-i18n-html="workflows.appt.fn1"><code>hold_appointment_slot()</code> &mdash; Creates temporary hold, counts held+confirmed</li>
+          <li data-i18n-html="workflows.appt.fn2"><code>confirm_appointment_hold()</code> &mdash; Converts hold to confirmed + INSERT reservation</li>
+          <li data-i18n-html="workflows.appt.fn3"><code>get_available_slots_v3()</code> &mdash; Returns available slots (counts reservations + holds)</li>
         </ul>
 
-        <!-- Validation -->
-        <h2 id="validation">2-Layer Validation <a href="#validation" class="anchor-link">#</a></h2>
+        <h2 id="validation"><span data-i18n="workflows.toc.validation">2-Layer Validation</span> <a href="#validation" class="anchor-link">#</a></h2>
         <div class="diagram">
-          <div class="diagram-title">Validation Architecture</div>
+          <div class="diagram-title" data-i18n="workflows.val.diagram_title">Validation Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Layer 1: Upload Step<span class="diagram-box-subtitle">SchemaValidationEngine (70+ JSON rules) + RiskAnalyzer (12 steps)</span></div>
+            <div class="diagram-box primary"><span data-i18n="workflows.val.layer1">Layer 1: Upload Step</span><span class="diagram-box-subtitle" data-i18n="workflows.val.layer1_sub">SchemaValidationEngine (70+ JSON rules) + RiskAnalyzer (12 steps)</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Layer 2: Form Review Step<span class="diagram-box-subtitle">validate_step() overrides only (real Python)</span></div>
+            <div class="diagram-box green filled"><span data-i18n="workflows.val.layer2">Layer 2: Form Review Step</span><span class="diagram-box-subtitle" data-i18n="workflows.val.layer2_sub">validate_step() overrides only (real Python)</span></div>
           </div>
         </div>
 
         <ul>
-          <li><strong>Schema</strong> (Layer 1) = Document validity (format, signatures, required fields, temporal validity)</li>
-          <li><strong>validate_step</strong> (Layer 2) = Business decision (what the result means for THIS workflow)</li>
-          <li><strong>Never duplicate rules between layers.</strong> If schema has <code>certificado_vigente</code>, do not recreate in validate_step.</li>
+          <li data-i18n-html="workflows.val.point1"><strong>Schema</strong> (Layer 1) = Document validity (format, signatures, required fields, temporal validity)</li>
+          <li data-i18n-html="workflows.val.point2"><strong>validate_step</strong> (Layer 2) = Business decision (what the result means for THIS workflow)</li>
+          <li data-i18n-html="workflows.val.point3"><strong>Never duplicate rules between layers.</strong> If schema has <code>certificado_vigente</code>, do not recreate in validate_step.</li>
         </ul>
 
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="database.html">Database</a><a href="payments.html">Payments</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="database.html" data-i18n="common.sidebar.link.database">Database</a><a href="payments.html" data-i18n="common.sidebar.link.payments">Payments</a></div>
       </footer>
     </main>
   </div>

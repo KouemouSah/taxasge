@@ -1058,6 +1058,177 @@ window.__I18N__.en =
       "intro": "Database migrations are stored in <code>packages/backend/migrations/</code> as both SQL files and Python scripts. Migrations are numbered sequentially and applied via a custom runner.",
       "verif_title": "Verification Pattern"
     }
+  },
+
+  "workflows": {
+    "html_title": "Workflow Engine - Facil Documentation",
+    "title": "Workflow Engine Reference",
+    "description": "The workflow engine powers 36 service request workflows across 8 domains. Each workflow defines wizard steps, document requirements, fee calculations, OCR schemas, and entity routing rules.",
+    "yes": "Yes",
+    "no": "No",
+    "varies": "varies",
+    "toc": {
+      "wizard": "Wizard Step Flow",
+      "state": "Request State Machine",
+      "catalog": "All 36 Workflows",
+      "condition": "ConditionEvaluator",
+      "fees": "Fee Calculation Methods",
+      "routing": "Entity Routing",
+      "ocr": "OCR Schema Integration",
+      "appointments": "Appointment Management",
+      "validation": "2-Layer Validation"
+    },
+    "wizard": {
+      "intro": "Every service request follows a wizard with configurable steps. The standard flow is:",
+      "step": { "selection": "Selection", "upload": "Upload", "form": "Form Review 1..N", "appointment": "Appointment", "payment": "Payment", "confirmation": "Confirmation" },
+      "col_step": "Step", "col_purpose": "Purpose", "col_optional": "Optional?",
+      "row": {
+        "selection": { "name": "<strong>Selection</strong>", "purpose": "Choose sub-type, person type, motivo (reason). Drives dynamic form visibility.", "opt": "No (always present)" },
+        "upload": { "name": "<strong>Upload</strong>", "purpose": "Upload required documents (OCR extraction runs here). Documents vary by workflow.", "opt": "No" },
+        "form": { "name": "<strong>Form Review 1..N</strong>", "purpose": "Review OCR-extracted data, fill manual fields, validate business rules.", "opt": "Count varies (1-3)" },
+        "appt": { "name": "<strong>Appointment</strong>", "purpose": "Book appointment slot (holds + reservations). Only for workflows requiring in-person visit.", "opt": "Yes" },
+        "pay": { "name": "<strong>Payment</strong>", "purpose": "Calculate fee and initiate payment (BANGE or manual).", "opt": "No" },
+        "conf": { "name": "<strong>Confirmation</strong>", "purpose": "Summary display, PDF download, email with receipt.", "opt": "No" }
+      },
+      "cache_title": "Cache-First Wizard",
+      "cache_body": "The wizard uses a <strong>cache-first</strong> approach: step data is stored in Redis during the wizard flow (no database writes until payment). The <code>POST /wizard-sessions/{id}/initiate-payment</code> endpoint performs an atomic persist-and-pay operation in a single database transaction."
+    },
+    "state": {
+      "diagram_title": "Service Request Lifecycle",
+      "draft": "Draft", "submit": "▼ Submit", "submitted": "Submitted", "auto_assign": "▼ Auto-assign to entity agents",
+      "processing": "Processing", "decision": "▼ Agent decision", "accepted": "Accepted", "rejected": "Rejected",
+      "amended": "Amended", "completed": "Completed"
+    },
+    "cat": {
+      "identity": "Identity & Civil (CNEDOGE) — 1 workflow",
+      "immigration": "Immigration (Extranjeria) — 2 workflows",
+      "traffic": "Traffic (DGT) — 3 workflows",
+      "driving": "Driving (Conducir) — 1 workflow",
+      "contracts": "Contracts (Contrato) — 1 workflow",
+      "civil": "Civil Service (Funcion Publica) — 5 workflows",
+      "bundle": "Bundle / Commercial (Multi-Entity) — 1 workflow",
+      "generic": "Generic — 2 workflows",
+      "col_workflow": "Workflow", "col_file": "File", "col_minor": "Minor?", "col_motivo": "Motivo?",
+      "col_docs": "Docs", "col_forms": "Form Pages", "col_rdv": "RDV", "col_subtypes": "Sub-types",
+      "col_entities": "Entities", "col_description": "Description",
+      "row": {
+        "pasaporte_motivo": "Yes (4)",
+        "visado": "Tramites Visado (4 sub-types)",
+        "conducir_motivo": "Yes (3: PERDIDA, ROBO, DETERIORO for DUPLICADO)",
+        "contrato_docs": "3 required + 10 optional",
+        "promo_sub": "3 sub-types",
+        "bundle_desc": "Multi-entity commercial license obligations",
+        "generic_desc": "Catch-all for uncategorized services"
+      }
+    },
+    "cond": {
+      "intro": "The <code>ConditionEvaluator</code> dynamically controls step and section visibility based on form data collected in earlier steps. Conditions are defined as JSON objects in workflow configurations.",
+      "callout_title": "Critical Rule: Conditions Are Always Strings",
+      "callout_body": "Conditions must use string values: <code>{\"is_minor\": \"true\"}</code>, <strong>not</strong> <code>{\"is_minor\": true}</code>. The frontend RadioGroup stores strings, and the ConditionEvaluator performs strict <code>==</code> comparison."
+    },
+    "fees": {
+      "col_method": "Method", "col_enum": "Enum Value", "col_desc": "Description", "col_example": "Example",
+      "row": {
+        "fixed_exp": "Fixed Expedition",
+        "fixed_exp_desc": "Fixed price for new applications",
+        "fixed_exp_ex": "Pasaporte: 35,000 FCFA",
+        "fixed_ren": "Fixed Renewal",
+        "fixed_ren_desc": "Fixed price for renewals",
+        "fixed_ren_ex": "Conducir renewal: 15,000 FCFA",
+        "percent": "Percentage-based",
+        "percent_desc": "Percentage of a base amount",
+        "percent_ex": "IVA: 15% of taxable base",
+        "unit": "Unit-based",
+        "unit_desc": "Price per unit (pages, items)",
+        "unit_ex": "Contrato: price per page",
+        "tiered": "Tiered Rates",
+        "tiered_desc": "Rates change based on thresholds",
+        "tiered_ex": "Visa Alternativo: 3/6/12/24 month tiers",
+        "formula": "Formula-based",
+        "formula_desc": "Custom formula evaluation",
+        "formula_ex": "Complex tax calculations",
+        "fixed_unit": "Fixed + Unit",
+        "fixed_unit_desc": "Base fee plus per-unit charge",
+        "fixed_unit_ex": "Base + per-employee charge"
+      }
+    },
+    "routing": {
+      "intro": "Entity routing is entirely <strong>database-driven</strong>. The <code>entities.workflow_codes</code> JSONB column determines which entity handles which workflow. This is managed via the admin UI, with no code changes required.",
+      "callout_title": "No Code Routing",
+      "callout_body": "Never create <code>get_issuing_entities()</code> functions in code. The <code>entity_code</code> field on <code>PredefinedWorkflow</code> is declarative/audit only. Actual routing is resolved from <code>entities.workflow_codes</code> at runtime."
+    },
+    "ocr": {
+      "intro": "40 JSON schema files define the OCR extraction templates for document types used across workflows. These are stored in <code>packages/backend/app/modules/service_requests/schemas/</code>.",
+      "summary": "All 40 OCR Schemas",
+      "col_file": "Schema File",
+      "col_doctype": "Document Type",
+      "doc": {
+        "dip": "National ID (DIP) - Equatorial Guinea",
+        "pasaporte_gq": "Passport - Equatorial Guinea",
+        "pasaporte_int": "Passport - International",
+        "nacimiento": "Birth certificate",
+        "medico": "Medical certificate",
+        "conducta": "Good conduct certificate",
+        "conducir": "Driving license",
+        "defuncion": "Death certificate",
+        "nif": "Tax ID (NIF)",
+        "padron": "Census certificate",
+        "solvencia": "Tax solvency certificate",
+        "onrc": "ONRC contract",
+        "compraventa": "Sale contract",
+        "contrato_func": "Civil servant contract",
+        "residencia": "Residence permit",
+        "trabajo": "Work permit",
+        "circulacion": "Vehicle circulation permit",
+        "visado": "Visa",
+        "sello": "Entry/exit stamp",
+        "itv": "Vehicle inspection (ITV)",
+        "reco_veh": "Vehicle recognition certificate",
+        "carnet_func": "Civil servant ID",
+        "nombramiento": "Official appointment",
+        "dgi_note": "DGI income note",
+        "res_note": "Residence income note",
+        "escritura": "Company formation deed",
+        "cuve": "CUVE document",
+        "licencia_muni": "Municipal commerce license",
+        "reg_comercio": "Commerce registry",
+        "reg_emp": "Business registry",
+        "reg_vue": "VUE registry",
+        "conciso": "Concise commercial certificate",
+        "actualizacion": "Business update certificate",
+        "atestacion": "Bank attestation",
+        "antecedentes": "Criminal record",
+        "gubernativa": "Government authorization",
+        "parental": "Parental authorization",
+        "cert_nac": "Birth certification",
+        "decl_nac": "Birth declaration",
+        "casier": "International criminal record extract"
+      }
+    },
+    "appt": {
+      "intro": "Appointment-enabled workflows use a 2-table system to prevent double-booking:",
+      "col_table": "Table", "col_purpose": "Purpose", "col_lifetime": "Lifetime",
+      "row": {
+        "holds": "Temporary hold during wizard flow",
+        "holds_ttl": "15 minutes TTL",
+        "reservations": "Permanent confirmed reservation",
+        "reservations_ttl": "Permanent"
+      },
+      "fns_intro": "Three SQL functions manage the appointment lifecycle:",
+      "fn1": "<code>hold_appointment_slot()</code> &mdash; Creates temporary hold, counts held+confirmed",
+      "fn2": "<code>confirm_appointment_hold()</code> &mdash; Converts hold to confirmed + INSERT reservation",
+      "fn3": "<code>get_available_slots_v3()</code> &mdash; Returns available slots (counts reservations + holds)"
+    },
+    "val": {
+      "diagram_title": "Validation Architecture",
+      "layer1": "Layer 1: Upload Step",
+      "layer1_sub": "SchemaValidationEngine (70+ JSON rules) + RiskAnalyzer (12 steps)",
+      "layer2": "Layer 2: Form Review Step",
+      "layer2_sub": "validate_step() overrides only (real Python)",
+      "point1": "<strong>Schema</strong> (Layer 1) = Document validity (format, signatures, required fields, temporal validity)",
+      "point2": "<strong>validate_step</strong> (Layer 2) = Business decision (what the result means for THIS workflow)",
+      "point3": "<strong>Never duplicate rules between layers.</strong> If schema has <code>certificado_vigente</code>, do not recreate in validate_step."
+    }
   }
 }
 ;
