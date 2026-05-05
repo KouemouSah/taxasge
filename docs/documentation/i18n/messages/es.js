@@ -717,6 +717,195 @@ window.__I18N__.es =
       "ep5": "Recuperación masiva para hidratación frontend",
       "ep6": "Obtener valores de enum con sus traducciones"
     }
+  },
+
+  "agents": {
+    "html_title": "IA & Inteligencia - Documentación Facil",
+    "description": "Facil integra IA en cuatro dominios: un chatbot RAG con 35 herramientas, inteligencia documental OCR con 40 esquemas, asignación inteligente de agentes y enriquecimiento de contenido. Todo impulsado por Google Vertex AI (Gemini 2.5 Flash) y embeddings pgvector.",
+    "toc": {
+      "rag": "Arquitectura del chatbot RAG",
+      "hybrid": "Pipeline de búsqueda híbrida",
+      "tools": "35 herramientas especializadas",
+      "roles": "5 agentes por rol",
+      "reflection": "Bucle de auto-reflexión",
+      "ocr": "Inteligencia documental OCR",
+      "assignment": "Motor de asignación inteligente",
+      "enrichment": "Enriquecimiento de contenido",
+      "security": "Seguridad IA (OWASP)"
+    },
+    "rag": {
+      "diagram_title": "Pipeline RAG",
+      "user_msg": "Mensaje del usuario",
+      "preprocessor": "Preprocesador de consulta",
+      "preprocessor_sub": "query_preprocessor.py: detección de idioma, clasificación de intención, expansión de consulta",
+      "embedding": "Embedding",
+      "hybrid": "Búsqueda híbrida",
+      "hybrid_sub": "70 % coseno pgvector + 30 % búsqueda full-text tsvector",
+      "context": "Ensamblado de contexto",
+      "context_sub": "chatbot_service_rag.py: docs + contexto de usuario + selección de herramientas",
+      "gemini_sub": "gemini_service.py: prompt estructurado + 35 herramientas",
+      "reflection": "Auto-reflexión",
+      "reflection_sub": "Score < 5/10 dispara una regeneración",
+      "response": "Respuesta",
+      "response_sub": "15 formatos de salida + servicios relacionados",
+      "services_title": "Servicios backend",
+      "col_file": "Archivo",
+      "col_resp": "Responsabilidad",
+      "row": {
+        "main": "Orquestador principal: búsqueda, ensamblado de contexto, construcción de prompt, formateo de respuesta",
+        "gemini": "Cliente API de Gemini: inicialización del modelo, ejecución de herramientas, streaming",
+        "embedding": "Embedding de texto vía Vertex AI text-embedding-004 (768 dimensiones)",
+        "preprocessor": "Análisis de consulta: detección de idioma, clasificación de intención, expansión",
+        "tools_pub": "19 definiciones de herramientas públicas para usuarios no autenticados",
+        "tools_auth": "16 herramientas autenticadas (8 auth-required + 8 deep reasoning)",
+        "consent": "Gestión del consentimiento explícito para operaciones privilegiadas"
+      }
+    },
+    "hybrid": {
+      "intro": "La búsqueda combina enfoques semántico (vectorial) y léxico (full-text) con pesos configurables:",
+      "col_component": "Componente",
+      "col_weight": "Peso",
+      "col_tech": "Tecnología",
+      "col_index": "Índice",
+      "row": {
+        "semantic": "Búsqueda semántica",
+        "semantic_tech": "Similitud coseno pgvector (operador <code>&lt;=&gt;</code>)",
+        "semantic_index": "Índice IVFFlat sobre la columna embedding",
+        "fulltext": "Búsqueda full-text",
+        "fulltext_tech": "tsvector/tsquery PostgreSQL (<code>ts_rank</code>)",
+        "fulltext_index": "Índice GIN sobre la columna tsvector"
+      }
+    },
+    "tools": {
+      "public_summary": "19 herramientas públicas (no autenticadas)",
+      "public_intro": "Disponibles para todos los usuarios (incluyendo visitantes anónimos):",
+      "public": {
+        "search": "<strong>search_services</strong> &mdash; Búsqueda en el catálogo de servicios fiscales",
+        "details": "<strong>get_service_details</strong> &mdash; Detalles completos de un servicio",
+        "ministry": "<strong>get_ministry_services</strong> &mdash; Servicios por ministerio",
+        "requirements": "<strong>get_service_requirements</strong> &mdash; Documentos requeridos para un servicio",
+        "procedure": "<strong>get_service_procedure</strong> &mdash; Procedimiento paso a paso",
+        "fee": "<strong>calculate_fee</strong> &mdash; Calculadora de tasas",
+        "offices": "<strong>get_office_locations</strong> &mdash; Sedes de las entidades",
+        "faq": "<strong>get_faq</strong> &mdash; Preguntas frecuentes",
+        "more": "Más 11 herramientas adicionales de recuperación de información"
+      },
+      "auth_summary": "8 herramientas autenticadas",
+      "auth_intro": "Disponibles solo para usuarios conectados (datos personales en alcance):",
+      "auth": {
+        "requests": "<strong>get_my_requests</strong> &mdash; Solicitudes de servicio del usuario",
+        "status": "<strong>get_request_status</strong> &mdash; Estado de una solicitud específica",
+        "payments": "<strong>get_my_payments</strong> &mdash; Historial de pagos del usuario",
+        "declarations": "<strong>get_my_declarations</strong> &mdash; Declaraciones fiscales del usuario",
+        "appointments": "<strong>get_my_appointments</strong> &mdash; Citas del usuario",
+        "documents": "<strong>get_my_documents</strong> &mdash; Documentos subidos por el usuario",
+        "company": "<strong>get_my_company</strong> &mdash; Información de la empresa",
+        "support": "<strong>create_support_ticket</strong> &mdash; Crear ticket de soporte"
+      },
+      "deep_summary": "8 herramientas de razonamiento avanzado (agentes privilegiados)",
+      "deep_intro": "Disponibles para agentes Tesorería, Supervisor y Admin con acceso de alcance entidad:",
+      "deep": {
+        "revenue": "<strong>analyze_revenue</strong> &mdash; Análisis de ingresos por entidad/período",
+        "team": "<strong>get_team_metrics</strong> &mdash; Métricas de rendimiento del equipo",
+        "sla": "<strong>get_sla_compliance</strong> &mdash; Informes de cumplimiento SLA",
+        "workload": "<strong>get_workload_distribution</strong> &mdash; Análisis de carga de los agentes",
+        "escalation": "<strong>get_escalation_history</strong> &mdash; Historial de escaladas",
+        "times": "<strong>analyze_processing_times</strong> &mdash; Estadísticas de tiempo de procesamiento",
+        "perf": "<strong>get_agent_performance</strong> &mdash; Rendimiento individual de un agente",
+        "audit": "<strong>get_audit_trail</strong> &mdash; Consultas sobre el registro de auditoría"
+      }
+    },
+    "roles": {
+      "col_agent": "Agente",
+      "col_users": "Usuarios",
+      "col_tools": "Herramientas",
+      "col_data": "Acceso a datos",
+      "col_capability": "Capacidad clave",
+      "row": {
+        "citizen": { "name": "<strong>Agente ciudadano</strong>", "users": "Visitantes anónimos", "tools": "19 públicas", "data": "Solo catálogo público", "cap": "Información de servicios, cálculo de tasas" },
+        "auth": { "name": "<strong>Agente autenticado</strong>", "users": "Ciudadanos/empresas conectados", "tools": "19 + 8 auth", "data": "Solo datos personales", "cap": "Seguimiento de solicitudes, historial de pagos" },
+        "treasury": { "name": "<strong>Agente tesorería</strong>", "users": "Personal de tesorería", "tools": "19 + 8 + 8 deep", "data": "Financiero con alcance entidad", "cap": "Análisis de ingresos, conciliación" },
+        "supervisor": { "name": "<strong>Agente supervisor</strong>", "users": "Supervisores de equipo", "tools": "19 + 8 + 8 deep", "data": "Métricas con alcance equipo", "cap": "Gestión de carga, monitoreo SLA" },
+        "admin": { "name": "<strong>Agente admin</strong>", "users": "Administradores de sistema", "tools": "Las 35", "data": "Total (con pista de auditoría)", "cap": "Diagnósticos del sistema, acceso completo" }
+      },
+      "callout_title": "Fronteras de confidencialidad",
+      "callout_body": "Cada rol de agente tiene fronteras estrictas de acceso a datos aplicadas a nivel de herramienta. Un agente ciudadano <strong>no puede</strong> acceder a datos internos, ni siquiera si el prompt intenta engañarlo. Los agentes tesorería solo ven datos de su entidad asignada."
+    },
+    "reflection": {
+      "intro": "Tras generar una respuesta, el chatbot evalúa por sí mismo la calidad de su respuesta en una escala de 1 a 10. Si la puntuación es inferior a 5, regenera con un contexto ajustado. Esto garantiza una calidad de respuesta consistentemente alta.",
+      "step1": "Generar respuesta",
+      "step2": "Auto-puntuación (1-10)",
+      "step3": "¿Score ≥ 5?",
+      "return": "Devolver",
+      "low": "Score < 5",
+      "regen": "Regenerar",
+      "retry": "Devolver (máx 1 reintento)",
+      "formats_title": "15 formatos de respuesta",
+      "formats_body": "El chatbot produce respuestas en formatos estructurados apropiados al tipo de consulta, incluyendo tarjetas de servicio, listas de procedimientos, desglose de tasas, actualizaciones de estado, listas de documentos, información de citas y bloques de información general."
+    },
+    "ocr": {
+      "schemas_title": "40 esquemas de documentos",
+      "schemas_body": "Cada tipo de documento tiene un esquema JSON que define los campos de extracción, las coordenadas de bounding box y las reglas de validación. Los esquemas se almacenan en <code>packages/backend/app/modules/service_requests/schemas/</code>.",
+      "pipeline_title": "Pipeline de extracción",
+      "step1": "Subir documento",
+      "step2": "Validación MIME",
+      "step3": "Coincidencia de plantilla",
+      "step4": "Extracción OCR",
+      "step5": "Validación de esquema",
+      "step6": "Datos estructurados",
+      "engines_title": "Motores de validación",
+      "col_engine": "Motor",
+      "col_rules": "Reglas",
+      "col_purpose": "Función",
+      "row": {
+        "schema": "<strong>SchemaValidationEngine</strong>",
+        "schema_rules": "70+ reglas JSON",
+        "schema_purpose": "Validez documental: formato, firmas, campos requeridos, validez temporal",
+        "risk": "<strong>RiskAnalyzer</strong>",
+        "risk_rules": "Pipeline de 12 pasos",
+        "risk_purpose": "Detección de fraude: incoherencias, indicadores de manipulación, comprobaciones cruzadas",
+        "mrz": "<strong>Validador MRZ</strong>",
+        "mrz_rules": "Norma ICAO 9303",
+        "mrz_purpose": "Validación de la zona legible por máquina para pasaportes y DNI",
+        "hash": "<strong>Registro de hash de documentos</strong>",
+        "hash_rules": "Basado en PostgreSQL",
+        "hash_purpose": "Detección de duplicados y huella digital documental",
+        "lev": "<strong>Comparador Levenshtein</strong>",
+        "lev_rules": "Comparación difusa",
+        "lev_purpose": "Comparación de nombres entre documentos con umbral configurable"
+      },
+      "callout_title": "Regla de acceso a datos OCR",
+      "callout_body": "Los campos extraídos por OCR deben usar <code>context.get_extracted_field(doc, path)</code>. Los campos enviados por formulario usan <code>form_data.get()</code>. Nunca mezclar estos dos modos de acceso."
+    },
+    "assignment": {
+      "intro": "El motor de asignación distribuye automáticamente los elementos de trabajo a los agentes según múltiples factores. Utiliza la tabla <code>agent_work_queue</code> con puntuación de prioridad dinámica.",
+      "factors_title": "Factores de asignación",
+      "col_factor": "Factor",
+      "col_weight": "Peso",
+      "col_desc": "Descripción",
+      "weight": { "high": "Alto", "medium": "Medio", "low": "Bajo", "critical": "Crítico" },
+      "row": {
+        "capacity": "Capacidad",
+        "capacity_desc": "Carga actual vs capacidad máxima por agente",
+        "spec": "Especialización",
+        "spec_desc": "Coincidencia de experiencia agente con tipo de flujo",
+        "sla": "Prioridad SLA",
+        "sla_desc": "Tiempo restante hasta el plazo SLA",
+        "amount": "Importe",
+        "amount_desc": "Importe del pago (los importes altos pueden enrutar a agentes senior)",
+        "complex": "Complejidad",
+        "complex_desc": "Puntuación de complejidad del flujo",
+        "avail": "Disponibilidad",
+        "avail_desc": "El agente debe estar disponible (no en permiso, baja, formación, etc.)"
+      },
+      "states_title": "Estados de disponibilidad de los agentes"
+    },
+    "security": {
+      "body": "El chatbot implementa las mitigaciones OWASP LLM Top 10 incluyendo detección de inyección de prompt con 30+ patrones. Ver <a href=\"security.html#ai-security\">Arquitectura de seguridad</a> para los detalles."
+    },
+    "enrichment": {
+      "body": "El módulo de enriquecimiento utiliza Gemini para generar automáticamente descripciones ricas para servicios fiscales. Cada descripción tiene 600 caracteres, estructurada en 3 párrafos, con una puntuación de auto-evaluación y ejemplos few-shot para una calidad consistente."
+    }
   }
 }
 ;

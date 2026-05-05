@@ -717,6 +717,195 @@ window.__I18N__.en =
       "ep5": "Bulk fetch for frontend hydration",
       "ep6": "Get enum values with translations"
     }
+  },
+
+  "agents": {
+    "html_title": "AI & Intelligence - Facil Documentation",
+    "description": "Facil integrates AI across four domains: a RAG chatbot with 35 tools, OCR document intelligence with 40 schemas, smart agent assignment, and content enrichment. All powered by Google Vertex AI (Gemini 2.5 Flash) and pgvector embeddings.",
+    "toc": {
+      "rag": "RAG Chatbot Architecture",
+      "hybrid": "Hybrid Search Pipeline",
+      "tools": "35 Specialized Tools",
+      "roles": "5 Role-Based Agents",
+      "reflection": "Self-Reflection Loop",
+      "ocr": "OCR Document Intelligence",
+      "assignment": "Smart Assignment Engine",
+      "enrichment": "Content Enrichment",
+      "security": "AI Security (OWASP)"
+    },
+    "rag": {
+      "diagram_title": "RAG Pipeline",
+      "user_msg": "User Message",
+      "preprocessor": "Query Preprocessor",
+      "preprocessor_sub": "query_preprocessor.py: language detection, intent classification, query expansion",
+      "embedding": "Embedding",
+      "hybrid": "Hybrid Search",
+      "hybrid_sub": "70% pgvector cosine + 30% tsvector full-text",
+      "context": "Context Assembly",
+      "context_sub": "chatbot_service_rag.py: docs + user context + tool selection",
+      "gemini_sub": "gemini_service.py: structured prompt + 35 tools",
+      "reflection": "Self-Reflection",
+      "reflection_sub": "Score < 5/10 triggers regeneration",
+      "response": "Response",
+      "response_sub": "15 output formats + related services",
+      "services_title": "Backend Services",
+      "col_file": "File",
+      "col_resp": "Responsibility",
+      "row": {
+        "main": "Main orchestrator: search, context assembly, prompt construction, response formatting",
+        "gemini": "Gemini API client: model initialization, tool execution, streaming",
+        "embedding": "Text embedding via Vertex AI text-embedding-004 (768 dimensions)",
+        "preprocessor": "Query analysis: language detection, intent classification, expansion",
+        "tools_pub": "19 public tool definitions for unauthenticated users",
+        "tools_auth": "16 authenticated tools (8 auth-required + 8 deep reasoning)",
+        "consent": "Executive consent management for privileged operations"
+      }
+    },
+    "hybrid": {
+      "intro": "Search combines semantic (vector) and lexical (full-text) approaches with configurable weights:",
+      "col_component": "Component",
+      "col_weight": "Weight",
+      "col_tech": "Technology",
+      "col_index": "Index",
+      "row": {
+        "semantic": "Semantic Search",
+        "semantic_tech": "pgvector cosine similarity (<code>&lt;=&gt;</code> operator)",
+        "semantic_index": "IVFFlat index on embedding column",
+        "fulltext": "Full-Text Search",
+        "fulltext_tech": "PostgreSQL tsvector/tsquery (<code>ts_rank</code>)",
+        "fulltext_index": "GIN index on tsvector column"
+      }
+    },
+    "tools": {
+      "public_summary": "19 Public Tools (unauthenticated)",
+      "public_intro": "Available to all users (including anonymous visitors):",
+      "public": {
+        "search": "<strong>search_services</strong> &mdash; Search fiscal services catalog",
+        "details": "<strong>get_service_details</strong> &mdash; Get detailed service information",
+        "ministry": "<strong>get_ministry_services</strong> &mdash; Services by ministry",
+        "requirements": "<strong>get_service_requirements</strong> &mdash; Document requirements for a service",
+        "procedure": "<strong>get_service_procedure</strong> &mdash; Step-by-step procedure",
+        "fee": "<strong>calculate_fee</strong> &mdash; Fee calculator",
+        "offices": "<strong>get_office_locations</strong> &mdash; Entity office locations",
+        "faq": "<strong>get_faq</strong> &mdash; Frequently asked questions",
+        "more": "Plus 11 additional information retrieval tools"
+      },
+      "auth_summary": "8 Authenticated Tools",
+      "auth_intro": "Available only to logged-in users (personal data scoped):",
+      "auth": {
+        "requests": "<strong>get_my_requests</strong> &mdash; User's service requests",
+        "status": "<strong>get_request_status</strong> &mdash; Status of a specific request",
+        "payments": "<strong>get_my_payments</strong> &mdash; User's payment history",
+        "declarations": "<strong>get_my_declarations</strong> &mdash; User's tax declarations",
+        "appointments": "<strong>get_my_appointments</strong> &mdash; User's appointments",
+        "documents": "<strong>get_my_documents</strong> &mdash; User's uploaded documents",
+        "company": "<strong>get_my_company</strong> &mdash; Company information",
+        "support": "<strong>create_support_ticket</strong> &mdash; Create support ticket"
+      },
+      "deep_summary": "8 Deep Reasoning Tools (privileged agents)",
+      "deep_intro": "Available to Treasury, Supervisor, and Admin agents with entity-scoped access:",
+      "deep": {
+        "revenue": "<strong>analyze_revenue</strong> &mdash; Revenue analysis by entity/period",
+        "team": "<strong>get_team_metrics</strong> &mdash; Team performance metrics",
+        "sla": "<strong>get_sla_compliance</strong> &mdash; SLA compliance reports",
+        "workload": "<strong>get_workload_distribution</strong> &mdash; Agent workload analysis",
+        "escalation": "<strong>get_escalation_history</strong> &mdash; Escalation patterns",
+        "times": "<strong>analyze_processing_times</strong> &mdash; Processing time statistics",
+        "perf": "<strong>get_agent_performance</strong> &mdash; Individual agent performance",
+        "audit": "<strong>get_audit_trail</strong> &mdash; Audit trail queries"
+      }
+    },
+    "roles": {
+      "col_agent": "Agent",
+      "col_users": "Users",
+      "col_tools": "Tools",
+      "col_data": "Data Access",
+      "col_capability": "Key Capability",
+      "row": {
+        "citizen": { "name": "<strong>Citizen Agent</strong>", "users": "Anonymous visitors", "tools": "19 public", "data": "Public catalog only", "cap": "Service information, fee calculation" },
+        "auth": { "name": "<strong>Authenticated Agent</strong>", "users": "Logged-in citizens/businesses", "tools": "19 + 8 auth", "data": "Personal data only", "cap": "Request tracking, payment history" },
+        "treasury": { "name": "<strong>Treasury Agent</strong>", "users": "Treasury staff", "tools": "19 + 8 + 8 deep", "data": "Entity-scoped financial", "cap": "Revenue analysis, reconciliation" },
+        "supervisor": { "name": "<strong>Supervisor Agent</strong>", "users": "Team supervisors", "tools": "19 + 8 + 8 deep", "data": "Team-scoped metrics", "cap": "Workload management, SLA monitoring" },
+        "admin": { "name": "<strong>Admin Agent</strong>", "users": "System administrators", "tools": "All 35", "data": "Full (with audit trail)", "cap": "System diagnostics, full access" }
+      },
+      "callout_title": "Confidentiality Boundaries",
+      "callout_body": "Each agent role has strict data access boundaries enforced at the tool level. A Citizen Agent <strong>cannot</strong> access any internal data, even if the prompt attempts to trick it. Treasury Agents can only see data for their assigned entity."
+    },
+    "reflection": {
+      "intro": "After generating a response, the chatbot evaluates its own answer quality on a 1-10 scale. If the score is below 5, it regenerates with adjusted context. This ensures response quality remains consistently high.",
+      "step1": "Generate Response",
+      "step2": "Self-Score (1-10)",
+      "step3": "Score ≥ 5?",
+      "return": "Return",
+      "low": "Score < 5",
+      "regen": "Regenerate",
+      "retry": "Return (max 1 retry)",
+      "formats_title": "15 Response Formats",
+      "formats_body": "The chatbot outputs responses in structured formats appropriate to the query type, including service cards, procedure lists, fee breakdowns, status updates, document checklists, appointment information, and general information blocks."
+    },
+    "ocr": {
+      "schemas_title": "40 Document Schemas",
+      "schemas_body": "Each document type has a JSON schema defining extraction fields, bounding box coordinates, and validation rules. Schemas are stored in <code>packages/backend/app/modules/service_requests/schemas/</code>.",
+      "pipeline_title": "Extraction Pipeline",
+      "step1": "Upload Document",
+      "step2": "MIME Validation",
+      "step3": "Template Matching",
+      "step4": "OCR Extraction",
+      "step5": "Schema Validation",
+      "step6": "Structured Data",
+      "engines_title": "Validation Engines",
+      "col_engine": "Engine",
+      "col_rules": "Rules",
+      "col_purpose": "Purpose",
+      "row": {
+        "schema": "<strong>SchemaValidationEngine</strong>",
+        "schema_rules": "70+ JSON rules",
+        "schema_purpose": "Document validity: format, signatures, required fields, temporal validity",
+        "risk": "<strong>RiskAnalyzer</strong>",
+        "risk_rules": "12-step pipeline",
+        "risk_purpose": "Fraud detection: inconsistencies, tampering indicators, cross-reference checks",
+        "mrz": "<strong>MRZ Validator</strong>",
+        "mrz_rules": "ICAO 9303 standard",
+        "mrz_purpose": "Machine Readable Zone validation for passports and ID cards",
+        "hash": "<strong>Document Hash Registry</strong>",
+        "hash_rules": "PostgreSQL-based",
+        "hash_purpose": "Duplicate detection and document fingerprinting",
+        "lev": "<strong>Levenshtein Matcher</strong>",
+        "lev_rules": "Fuzzy matching",
+        "lev_purpose": "Name matching across documents with configurable threshold"
+      },
+      "callout_title": "OCR Data Access Rule",
+      "callout_body": "OCR-extracted fields must use <code>context.get_extracted_field(doc, path)</code>. Form-submitted fields use <code>form_data.get()</code>. Never mix these two access patterns."
+    },
+    "assignment": {
+      "intro": "The assignment engine automatically distributes work items to agents based on multiple factors. It uses the <code>agent_work_queue</code> table with dynamic priority scoring.",
+      "factors_title": "Assignment Factors",
+      "col_factor": "Factor",
+      "col_weight": "Weight",
+      "col_desc": "Description",
+      "weight": { "high": "High", "medium": "Medium", "low": "Low", "critical": "Critical" },
+      "row": {
+        "capacity": "Capacity",
+        "capacity_desc": "Current workload vs. max capacity per agent",
+        "spec": "Specialization",
+        "spec_desc": "Agent expertise matching for workflow type",
+        "sla": "SLA Priority",
+        "sla_desc": "Time remaining on SLA deadline",
+        "amount": "Amount",
+        "amount_desc": "Payment amount (higher amounts may route to senior agents)",
+        "complex": "Complexity",
+        "complex_desc": "Workflow complexity score",
+        "avail": "Availability",
+        "avail_desc": "Agent must be available (not on leave, sick, training, etc.)"
+      },
+      "states_title": "Agent Availability States"
+    },
+    "security": {
+      "body": "The chatbot implements OWASP LLM Top 10 mitigations including prompt injection detection with 30+ pattern rules. See <a href=\"security.html#ai-security\">Security Architecture</a> for details."
+    },
+    "enrichment": {
+      "body": "The enrichment module uses Gemini to automatically generate rich descriptions for fiscal services. Each description is 600 characters, structured in 3 paragraphs, with a self-evaluation score and few-shot examples for consistent quality."
+    }
   }
 }
 ;

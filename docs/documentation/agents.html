@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="agents.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,112 +15,110 @@
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">AI &amp; Intelligence</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">AI &amp; Intelligence</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</h1>
+        <p class="page-description" data-i18n="agents.description">
           Facil integrates AI across four domains: a RAG chatbot with 35 tools, OCR document intelligence
           with 40 schemas, smart agent assignment, and content enrichment. All powered by Google Vertex AI
           (Gemini 2.5 Flash) and pgvector embeddings.
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#rag-chatbot">RAG Chatbot Architecture</a></li>
-            <li><a href="#hybrid-search">Hybrid Search Pipeline</a></li>
-            <li><a href="#tools">35 Specialized Tools</a></li>
-            <li><a href="#role-agents">5 Role-Based Agents</a></li>
-            <li><a href="#self-reflection">Self-Reflection Loop</a></li>
-            <li><a href="#ocr">OCR Document Intelligence</a></li>
-            <li><a href="#smart-assignment">Smart Assignment Engine</a></li>
-            <li><a href="#enrichment">Content Enrichment</a></li>
-            <li><a href="#security">AI Security (OWASP)</a></li>
+            <li><a href="#rag-chatbot" data-i18n="agents.toc.rag">RAG Chatbot Architecture</a></li>
+            <li><a href="#hybrid-search" data-i18n="agents.toc.hybrid">Hybrid Search Pipeline</a></li>
+            <li><a href="#tools" data-i18n="agents.toc.tools">35 Specialized Tools</a></li>
+            <li><a href="#role-agents" data-i18n="agents.toc.roles">5 Role-Based Agents</a></li>
+            <li><a href="#self-reflection" data-i18n="agents.toc.reflection">Self-Reflection Loop</a></li>
+            <li><a href="#ocr" data-i18n="agents.toc.ocr">OCR Document Intelligence</a></li>
+            <li><a href="#smart-assignment" data-i18n="agents.toc.assignment">Smart Assignment Engine</a></li>
+            <li><a href="#enrichment" data-i18n="agents.toc.enrichment">Content Enrichment</a></li>
+            <li><a href="#security" data-i18n="agents.toc.security">AI Security (OWASP)</a></li>
           </ul>
         </div>
 
-        <!-- RAG Chatbot -->
-        <h2 id="rag-chatbot">RAG Chatbot Architecture <a href="#rag-chatbot" class="anchor-link">#</a></h2>
+        <h2 id="rag-chatbot"><span data-i18n="agents.toc.rag">RAG Chatbot Architecture</span> <a href="#rag-chatbot" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">RAG Pipeline</div>
+          <div class="diagram-title" data-i18n="agents.rag.diagram_title">RAG Pipeline</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">User Message</div>
+            <div class="diagram-box primary" data-i18n="agents.rag.user_msg">User Message</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Query Preprocessor<span class="diagram-box-subtitle">query_preprocessor.py: language detection, intent classification, query expansion</span></div>
+            <div class="diagram-box"><span data-i18n="agents.rag.preprocessor">Query Preprocessor</span><span class="diagram-box-subtitle" data-i18n="agents.rag.preprocessor_sub">query_preprocessor.py: language detection, intent classification, query expansion</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green">Embedding<span class="diagram-box-subtitle">text-embedding-004 (768 dims)</span></div>
+            <div class="diagram-box green"><span data-i18n="agents.rag.embedding">Embedding</span><span class="diagram-box-subtitle">text-embedding-004 (768 dims)</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Hybrid Search<span class="diagram-box-subtitle">70% pgvector cosine + 30% tsvector full-text</span></div>
+            <div class="diagram-box"><span data-i18n="agents.rag.hybrid">Hybrid Search</span><span class="diagram-box-subtitle" data-i18n="agents.rag.hybrid_sub">70% pgvector cosine + 30% tsvector full-text</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Context Assembly<span class="diagram-box-subtitle">chatbot_service_rag.py: docs + user context + tool selection</span></div>
+            <div class="diagram-box"><span data-i18n="agents.rag.context">Context Assembly</span><span class="diagram-box-subtitle" data-i18n="agents.rag.context_sub">chatbot_service_rag.py: docs + user context + tool selection</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="background:var(--ge-blue);color:#fff;border-color:var(--ge-blue);">Gemini 2.5 Flash<span class="diagram-box-subtitle">gemini_service.py: structured prompt + 35 tools</span></div>
+            <div class="diagram-box" style="background:var(--ge-blue);color:#fff;border-color:var(--ge-blue);">Gemini 2.5 Flash<span class="diagram-box-subtitle" data-i18n="agents.rag.gemini_sub">gemini_service.py: structured prompt + 35 tools</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">Self-Reflection<span class="diagram-box-subtitle">Score &lt; 5/10 triggers regeneration</span></div>
+            <div class="diagram-box yellow"><span data-i18n="agents.rag.reflection">Self-Reflection</span><span class="diagram-box-subtitle" data-i18n="agents.rag.reflection_sub">Score &lt; 5/10 triggers regeneration</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Response<span class="diagram-box-subtitle">15 output formats + related services</span></div>
+            <div class="diagram-box green filled"><span data-i18n="agents.rag.response">Response</span><span class="diagram-box-subtitle" data-i18n="agents.rag.response_sub">15 output formats + related services</span></div>
           </div>
         </div>
 
-        <h3>Backend Services</h3>
+        <h3 data-i18n="agents.rag.services_title">Backend Services</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+            <thead><tr><th data-i18n="agents.rag.col_file">File</th><th data-i18n="agents.rag.col_resp">Responsibility</th></tr></thead>
             <tbody>
-              <tr><td><code>chatbot_service_rag.py</code></td><td>Main orchestrator: search, context assembly, prompt construction, response formatting</td></tr>
-              <tr><td><code>gemini_service.py</code></td><td>Gemini API client: model initialization, tool execution, streaming</td></tr>
-              <tr><td><code>embedding_service.py</code></td><td>Text embedding via Vertex AI text-embedding-004 (768 dimensions)</td></tr>
-              <tr><td><code>query_preprocessor.py</code></td><td>Query analysis: language detection, intent classification, expansion</td></tr>
-              <tr><td><code>chatbot_tools.py</code></td><td>19 public tool definitions for unauthenticated users</td></tr>
-              <tr><td><code>chatbot_tools_authenticated.py</code></td><td>16 authenticated tools (8 auth-required + 8 deep reasoning)</td></tr>
-              <tr><td><code>executive_consent.py</code></td><td>Executive consent management for privileged operations</td></tr>
+              <tr><td><code>chatbot_service_rag.py</code></td><td data-i18n="agents.rag.row.main">Main orchestrator: search, context assembly, prompt construction, response formatting</td></tr>
+              <tr><td><code>gemini_service.py</code></td><td data-i18n="agents.rag.row.gemini">Gemini API client: model initialization, tool execution, streaming</td></tr>
+              <tr><td><code>embedding_service.py</code></td><td data-i18n="agents.rag.row.embedding">Text embedding via Vertex AI text-embedding-004 (768 dimensions)</td></tr>
+              <tr><td><code>query_preprocessor.py</code></td><td data-i18n="agents.rag.row.preprocessor">Query analysis: language detection, intent classification, expansion</td></tr>
+              <tr><td><code>chatbot_tools.py</code></td><td data-i18n="agents.rag.row.tools_pub">19 public tool definitions for unauthenticated users</td></tr>
+              <tr><td><code>chatbot_tools_authenticated.py</code></td><td data-i18n="agents.rag.row.tools_auth">16 authenticated tools (8 auth-required + 8 deep reasoning)</td></tr>
+              <tr><td><code>executive_consent.py</code></td><td data-i18n="agents.rag.row.consent">Executive consent management for privileged operations</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Hybrid Search -->
-        <h2 id="hybrid-search">Hybrid Search Pipeline <a href="#hybrid-search" class="anchor-link">#</a></h2>
-        <p>Search combines semantic (vector) and lexical (full-text) approaches with configurable weights:</p>
+        <h2 id="hybrid-search"><span data-i18n="agents.toc.hybrid">Hybrid Search Pipeline</span> <a href="#hybrid-search" class="anchor-link">#</a></h2>
+        <p data-i18n="agents.hybrid.intro">Search combines semantic (vector) and lexical (full-text) approaches with configurable weights:</p>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Component</th><th>Weight</th><th>Technology</th><th>Index</th></tr></thead>
+            <thead><tr><th data-i18n="agents.hybrid.col_component">Component</th><th data-i18n="agents.hybrid.col_weight">Weight</th><th data-i18n="agents.hybrid.col_tech">Technology</th><th data-i18n="agents.hybrid.col_index">Index</th></tr></thead>
             <tbody>
-              <tr><td>Semantic Search</td><td>70%</td><td>pgvector cosine similarity (<code>&lt;=&gt;</code> operator)</td><td>IVFFlat index on embedding column</td></tr>
-              <tr><td>Full-Text Search</td><td>30%</td><td>PostgreSQL tsvector/tsquery (<code>ts_rank</code>)</td><td>GIN index on tsvector column</td></tr>
+              <tr><td data-i18n="agents.hybrid.row.semantic">Semantic Search</td><td>70%</td><td data-i18n-html="agents.hybrid.row.semantic_tech">pgvector cosine similarity (<code>&lt;=&gt;</code> operator)</td><td data-i18n="agents.hybrid.row.semantic_index">IVFFlat index on embedding column</td></tr>
+              <tr><td data-i18n="agents.hybrid.row.fulltext">Full-Text Search</td><td>30%</td><td data-i18n-html="agents.hybrid.row.fulltext_tech">PostgreSQL tsvector/tsquery (<code>ts_rank</code>)</td><td data-i18n="agents.hybrid.row.fulltext_index">GIN index on tsvector column</td></tr>
             </tbody>
           </table>
         </div>
@@ -134,187 +132,182 @@
 <span class="kw">ORDER BY</span> score <span class="kw">DESC</span>
 <span class="kw">LIMIT</span> <span class="num">10</span></code></pre>
 
-        <!-- Tools -->
-        <h2 id="tools">35 Specialized Tools <a href="#tools" class="anchor-link">#</a></h2>
+        <h2 id="tools"><span data-i18n="agents.toc.tools">35 Specialized Tools</span> <a href="#tools" class="anchor-link">#</a></h2>
 
         <details>
-          <summary>19 Public Tools (unauthenticated)</summary>
+          <summary data-i18n="agents.tools.public_summary">19 Public Tools (unauthenticated)</summary>
           <div class="details-content">
-            <p>Available to all users (including anonymous visitors):</p>
+            <p data-i18n="agents.tools.public_intro">Available to all users (including anonymous visitors):</p>
             <ul>
-              <li><strong>search_services</strong> &mdash; Search fiscal services catalog</li>
-              <li><strong>get_service_details</strong> &mdash; Get detailed service information</li>
-              <li><strong>get_ministry_services</strong> &mdash; Services by ministry</li>
-              <li><strong>get_service_requirements</strong> &mdash; Document requirements for a service</li>
-              <li><strong>get_service_procedure</strong> &mdash; Step-by-step procedure</li>
-              <li><strong>calculate_fee</strong> &mdash; Fee calculator</li>
-              <li><strong>get_office_locations</strong> &mdash; Entity office locations</li>
-              <li><strong>get_faq</strong> &mdash; Frequently asked questions</li>
-              <li>Plus 11 additional information retrieval tools</li>
+              <li data-i18n-html="agents.tools.public.search"><strong>search_services</strong> &mdash; Search fiscal services catalog</li>
+              <li data-i18n-html="agents.tools.public.details"><strong>get_service_details</strong> &mdash; Get detailed service information</li>
+              <li data-i18n-html="agents.tools.public.ministry"><strong>get_ministry_services</strong> &mdash; Services by ministry</li>
+              <li data-i18n-html="agents.tools.public.requirements"><strong>get_service_requirements</strong> &mdash; Document requirements for a service</li>
+              <li data-i18n-html="agents.tools.public.procedure"><strong>get_service_procedure</strong> &mdash; Step-by-step procedure</li>
+              <li data-i18n-html="agents.tools.public.fee"><strong>calculate_fee</strong> &mdash; Fee calculator</li>
+              <li data-i18n-html="agents.tools.public.offices"><strong>get_office_locations</strong> &mdash; Entity office locations</li>
+              <li data-i18n-html="agents.tools.public.faq"><strong>get_faq</strong> &mdash; Frequently asked questions</li>
+              <li data-i18n="agents.tools.public.more">Plus 11 additional information retrieval tools</li>
             </ul>
           </div>
         </details>
 
         <details>
-          <summary>8 Authenticated Tools</summary>
+          <summary data-i18n="agents.tools.auth_summary">8 Authenticated Tools</summary>
           <div class="details-content">
-            <p>Available only to logged-in users (personal data scoped):</p>
+            <p data-i18n="agents.tools.auth_intro">Available only to logged-in users (personal data scoped):</p>
             <ul>
-              <li><strong>get_my_requests</strong> &mdash; User's service requests</li>
-              <li><strong>get_request_status</strong> &mdash; Status of a specific request</li>
-              <li><strong>get_my_payments</strong> &mdash; User's payment history</li>
-              <li><strong>get_my_declarations</strong> &mdash; User's tax declarations</li>
-              <li><strong>get_my_appointments</strong> &mdash; User's appointments</li>
-              <li><strong>get_my_documents</strong> &mdash; User's uploaded documents</li>
-              <li><strong>get_my_company</strong> &mdash; Company information</li>
-              <li><strong>create_support_ticket</strong> &mdash; Create support ticket</li>
+              <li data-i18n-html="agents.tools.auth.requests"><strong>get_my_requests</strong> &mdash; User's service requests</li>
+              <li data-i18n-html="agents.tools.auth.status"><strong>get_request_status</strong> &mdash; Status of a specific request</li>
+              <li data-i18n-html="agents.tools.auth.payments"><strong>get_my_payments</strong> &mdash; User's payment history</li>
+              <li data-i18n-html="agents.tools.auth.declarations"><strong>get_my_declarations</strong> &mdash; User's tax declarations</li>
+              <li data-i18n-html="agents.tools.auth.appointments"><strong>get_my_appointments</strong> &mdash; User's appointments</li>
+              <li data-i18n-html="agents.tools.auth.documents"><strong>get_my_documents</strong> &mdash; User's uploaded documents</li>
+              <li data-i18n-html="agents.tools.auth.company"><strong>get_my_company</strong> &mdash; Company information</li>
+              <li data-i18n-html="agents.tools.auth.support"><strong>create_support_ticket</strong> &mdash; Create support ticket</li>
             </ul>
           </div>
         </details>
 
         <details>
-          <summary>8 Deep Reasoning Tools (privileged agents)</summary>
+          <summary data-i18n="agents.tools.deep_summary">8 Deep Reasoning Tools (privileged agents)</summary>
           <div class="details-content">
-            <p>Available to Treasury, Supervisor, and Admin agents with entity-scoped access:</p>
+            <p data-i18n="agents.tools.deep_intro">Available to Treasury, Supervisor, and Admin agents with entity-scoped access:</p>
             <ul>
-              <li><strong>analyze_revenue</strong> &mdash; Revenue analysis by entity/period</li>
-              <li><strong>get_team_metrics</strong> &mdash; Team performance metrics</li>
-              <li><strong>get_sla_compliance</strong> &mdash; SLA compliance reports</li>
-              <li><strong>get_workload_distribution</strong> &mdash; Agent workload analysis</li>
-              <li><strong>get_escalation_history</strong> &mdash; Escalation patterns</li>
-              <li><strong>analyze_processing_times</strong> &mdash; Processing time statistics</li>
-              <li><strong>get_agent_performance</strong> &mdash; Individual agent performance</li>
-              <li><strong>get_audit_trail</strong> &mdash; Audit trail queries</li>
+              <li data-i18n-html="agents.tools.deep.revenue"><strong>analyze_revenue</strong> &mdash; Revenue analysis by entity/period</li>
+              <li data-i18n-html="agents.tools.deep.team"><strong>get_team_metrics</strong> &mdash; Team performance metrics</li>
+              <li data-i18n-html="agents.tools.deep.sla"><strong>get_sla_compliance</strong> &mdash; SLA compliance reports</li>
+              <li data-i18n-html="agents.tools.deep.workload"><strong>get_workload_distribution</strong> &mdash; Agent workload analysis</li>
+              <li data-i18n-html="agents.tools.deep.escalation"><strong>get_escalation_history</strong> &mdash; Escalation patterns</li>
+              <li data-i18n-html="agents.tools.deep.times"><strong>analyze_processing_times</strong> &mdash; Processing time statistics</li>
+              <li data-i18n-html="agents.tools.deep.perf"><strong>get_agent_performance</strong> &mdash; Individual agent performance</li>
+              <li data-i18n-html="agents.tools.deep.audit"><strong>get_audit_trail</strong> &mdash; Audit trail queries</li>
             </ul>
           </div>
         </details>
 
-        <!-- Role Agents -->
-        <h2 id="role-agents">5 Role-Based Agents <a href="#role-agents" class="anchor-link">#</a></h2>
+        <h2 id="role-agents"><span data-i18n="agents.toc.roles">5 Role-Based Agents</span> <a href="#role-agents" class="anchor-link">#</a></h2>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Agent</th><th>Users</th><th>Tools</th><th>Data Access</th><th>Key Capability</th></tr></thead>
+            <thead><tr><th data-i18n="agents.roles.col_agent">Agent</th><th data-i18n="agents.roles.col_users">Users</th><th data-i18n="agents.roles.col_tools">Tools</th><th data-i18n="agents.roles.col_data">Data Access</th><th data-i18n="agents.roles.col_capability">Key Capability</th></tr></thead>
             <tbody>
-              <tr><td><strong>Citizen Agent</strong></td><td>Anonymous visitors</td><td>19 public</td><td>Public catalog only</td><td>Service information, fee calculation</td></tr>
-              <tr><td><strong>Authenticated Agent</strong></td><td>Logged-in citizens/businesses</td><td>19 + 8 auth</td><td>Personal data only</td><td>Request tracking, payment history</td></tr>
-              <tr><td><strong>Treasury Agent</strong></td><td>Treasury staff</td><td>19 + 8 + 8 deep</td><td>Entity-scoped financial</td><td>Revenue analysis, reconciliation</td></tr>
-              <tr><td><strong>Supervisor Agent</strong></td><td>Team supervisors</td><td>19 + 8 + 8 deep</td><td>Team-scoped metrics</td><td>Workload management, SLA monitoring</td></tr>
-              <tr><td><strong>Admin Agent</strong></td><td>System administrators</td><td>All 35</td><td>Full (with audit trail)</td><td>System diagnostics, full access</td></tr>
+              <tr><td data-i18n-html="agents.roles.row.citizen.name"><strong>Citizen Agent</strong></td><td data-i18n="agents.roles.row.citizen.users">Anonymous visitors</td><td data-i18n="agents.roles.row.citizen.tools">19 public</td><td data-i18n="agents.roles.row.citizen.data">Public catalog only</td><td data-i18n="agents.roles.row.citizen.cap">Service information, fee calculation</td></tr>
+              <tr><td data-i18n-html="agents.roles.row.auth.name"><strong>Authenticated Agent</strong></td><td data-i18n="agents.roles.row.auth.users">Logged-in citizens/businesses</td><td data-i18n="agents.roles.row.auth.tools">19 + 8 auth</td><td data-i18n="agents.roles.row.auth.data">Personal data only</td><td data-i18n="agents.roles.row.auth.cap">Request tracking, payment history</td></tr>
+              <tr><td data-i18n-html="agents.roles.row.treasury.name"><strong>Treasury Agent</strong></td><td data-i18n="agents.roles.row.treasury.users">Treasury staff</td><td data-i18n="agents.roles.row.treasury.tools">19 + 8 + 8 deep</td><td data-i18n="agents.roles.row.treasury.data">Entity-scoped financial</td><td data-i18n="agents.roles.row.treasury.cap">Revenue analysis, reconciliation</td></tr>
+              <tr><td data-i18n-html="agents.roles.row.supervisor.name"><strong>Supervisor Agent</strong></td><td data-i18n="agents.roles.row.supervisor.users">Team supervisors</td><td data-i18n="agents.roles.row.supervisor.tools">19 + 8 + 8 deep</td><td data-i18n="agents.roles.row.supervisor.data">Team-scoped metrics</td><td data-i18n="agents.roles.row.supervisor.cap">Workload management, SLA monitoring</td></tr>
+              <tr><td data-i18n-html="agents.roles.row.admin.name"><strong>Admin Agent</strong></td><td data-i18n="agents.roles.row.admin.users">System administrators</td><td data-i18n="agents.roles.row.admin.tools">All 35</td><td data-i18n="agents.roles.row.admin.data">Full (with audit trail)</td><td data-i18n="agents.roles.row.admin.cap">System diagnostics, full access</td></tr>
             </tbody>
           </table>
         </div>
 
         <div class="callout callout-danger">
-          <div class="callout-title">Confidentiality Boundaries</div>
-          <p>
+          <div class="callout-title" data-i18n="agents.roles.callout_title">Confidentiality Boundaries</div>
+          <p data-i18n-html="agents.roles.callout_body">
             Each agent role has strict data access boundaries enforced at the tool level.
             A Citizen Agent <strong>cannot</strong> access any internal data, even if the prompt
             attempts to trick it. Treasury Agents can only see data for their assigned entity.
           </p>
         </div>
 
-        <!-- Self-Reflection -->
-        <h2 id="self-reflection">Self-Reflection Loop <a href="#self-reflection" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="self-reflection"><span data-i18n="agents.toc.reflection">Self-Reflection Loop</span> <a href="#self-reflection" class="anchor-link">#</a></h2>
+        <p data-i18n="agents.reflection.intro">
           After generating a response, the chatbot evaluates its own answer quality on a 1-10 scale.
           If the score is below 5, it regenerates with adjusted context. This ensures response quality
           remains consistently high.
         </p>
 
         <div class="flow">
-          <span class="flow-step">Generate Response</span>
+          <span class="flow-step" data-i18n="agents.reflection.step1">Generate Response</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Self-Score (1-10)</span>
+          <span class="flow-step" data-i18n="agents.reflection.step2">Self-Score (1-10)</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Score &ge; 5?</span>
+          <span class="flow-step" data-i18n="agents.reflection.step3">Score &ge; 5?</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">Return</span>
+          <span class="flow-step success" data-i18n="agents.reflection.return">Return</span>
         </div>
         <div class="flow">
-          <span class="flow-step">Score &lt; 5</span>
+          <span class="flow-step" data-i18n="agents.reflection.low">Score &lt; 5</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step danger">Regenerate</span>
+          <span class="flow-step danger" data-i18n="agents.reflection.regen">Regenerate</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Return (max 1 retry)</span>
+          <span class="flow-step" data-i18n="agents.reflection.retry">Return (max 1 retry)</span>
         </div>
 
-        <h3>15 Response Formats</h3>
-        <p>
+        <h3 data-i18n="agents.reflection.formats_title">15 Response Formats</h3>
+        <p data-i18n="agents.reflection.formats_body">
           The chatbot outputs responses in structured formats appropriate to the query type,
           including service cards, procedure lists, fee breakdowns, status updates, document checklists,
           appointment information, and general information blocks.
         </p>
 
-        <!-- OCR -->
-        <h2 id="ocr">OCR Document Intelligence <a href="#ocr" class="anchor-link">#</a></h2>
+        <h2 id="ocr"><span data-i18n="agents.toc.ocr">OCR Document Intelligence</span> <a href="#ocr" class="anchor-link">#</a></h2>
 
-        <h3>40 Document Schemas</h3>
-        <p>
+        <h3 data-i18n="agents.ocr.schemas_title">40 Document Schemas</h3>
+        <p data-i18n-html="agents.ocr.schemas_body">
           Each document type has a JSON schema defining extraction fields, bounding box coordinates,
           and validation rules. Schemas are stored in
           <code>packages/backend/app/modules/service_requests/schemas/</code>.
         </p>
 
-        <h3>Extraction Pipeline</h3>
+        <h3 data-i18n="agents.ocr.pipeline_title">Extraction Pipeline</h3>
         <div class="flow">
-          <span class="flow-step">Upload Document</span>
+          <span class="flow-step" data-i18n="agents.ocr.step1">Upload Document</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">MIME Validation</span>
+          <span class="flow-step" data-i18n="agents.ocr.step2">MIME Validation</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Template Matching</span>
+          <span class="flow-step" data-i18n="agents.ocr.step3">Template Matching</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">OCR Extraction</span>
+          <span class="flow-step" data-i18n="agents.ocr.step4">OCR Extraction</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step">Schema Validation</span>
+          <span class="flow-step" data-i18n="agents.ocr.step5">Schema Validation</span>
           <span class="flow-arrow">&#8594;</span>
-          <span class="flow-step success">Structured Data</span>
+          <span class="flow-step success" data-i18n="agents.ocr.step6">Structured Data</span>
         </div>
 
-        <h3>Validation Engines</h3>
+        <h3 data-i18n="agents.ocr.engines_title">Validation Engines</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Engine</th><th>Rules</th><th>Purpose</th></tr></thead>
+            <thead><tr><th data-i18n="agents.ocr.col_engine">Engine</th><th data-i18n="agents.ocr.col_rules">Rules</th><th data-i18n="agents.ocr.col_purpose">Purpose</th></tr></thead>
             <tbody>
-              <tr><td><strong>SchemaValidationEngine</strong></td><td>70+ JSON rules</td><td>Document validity: format, signatures, required fields, temporal validity</td></tr>
-              <tr><td><strong>RiskAnalyzer</strong></td><td>12-step pipeline</td><td>Fraud detection: inconsistencies, tampering indicators, cross-reference checks</td></tr>
-              <tr><td><strong>MRZ Validator</strong></td><td>ICAO 9303 standard</td><td>Machine Readable Zone validation for passports and ID cards</td></tr>
-              <tr><td><strong>Document Hash Registry</strong></td><td>PostgreSQL-based</td><td>Duplicate detection and document fingerprinting</td></tr>
-              <tr><td><strong>Levenshtein Matcher</strong></td><td>Fuzzy matching</td><td>Name matching across documents with configurable threshold</td></tr>
+              <tr><td data-i18n-html="agents.ocr.row.schema"><strong>SchemaValidationEngine</strong></td><td data-i18n="agents.ocr.row.schema_rules">70+ JSON rules</td><td data-i18n="agents.ocr.row.schema_purpose">Document validity: format, signatures, required fields, temporal validity</td></tr>
+              <tr><td data-i18n-html="agents.ocr.row.risk"><strong>RiskAnalyzer</strong></td><td data-i18n="agents.ocr.row.risk_rules">12-step pipeline</td><td data-i18n="agents.ocr.row.risk_purpose">Fraud detection: inconsistencies, tampering indicators, cross-reference checks</td></tr>
+              <tr><td data-i18n-html="agents.ocr.row.mrz"><strong>MRZ Validator</strong></td><td data-i18n="agents.ocr.row.mrz_rules">ICAO 9303 standard</td><td data-i18n="agents.ocr.row.mrz_purpose">Machine Readable Zone validation for passports and ID cards</td></tr>
+              <tr><td data-i18n-html="agents.ocr.row.hash"><strong>Document Hash Registry</strong></td><td data-i18n="agents.ocr.row.hash_rules">PostgreSQL-based</td><td data-i18n="agents.ocr.row.hash_purpose">Duplicate detection and document fingerprinting</td></tr>
+              <tr><td data-i18n-html="agents.ocr.row.lev"><strong>Levenshtein Matcher</strong></td><td data-i18n="agents.ocr.row.lev_rules">Fuzzy matching</td><td data-i18n="agents.ocr.row.lev_purpose">Name matching across documents with configurable threshold</td></tr>
             </tbody>
           </table>
         </div>
 
         <div class="callout callout-info">
-          <div class="callout-title">OCR Data Access Rule</div>
-          <p>
+          <div class="callout-title" data-i18n="agents.ocr.callout_title">OCR Data Access Rule</div>
+          <p data-i18n-html="agents.ocr.callout_body">
             OCR-extracted fields must use <code>context.get_extracted_field(doc, path)</code>.
             Form-submitted fields use <code>form_data.get()</code>. Never mix these two access patterns.
           </p>
         </div>
 
-        <!-- Smart Assignment -->
-        <h2 id="smart-assignment">Smart Assignment Engine <a href="#smart-assignment" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="smart-assignment"><span data-i18n="agents.toc.assignment">Smart Assignment Engine</span> <a href="#smart-assignment" class="anchor-link">#</a></h2>
+        <p data-i18n-html="agents.assignment.intro">
           The assignment engine automatically distributes work items to agents based on multiple factors.
           It uses the <code>agent_work_queue</code> table with dynamic priority scoring.
         </p>
 
-        <h3>Assignment Factors</h3>
+        <h3 data-i18n="agents.assignment.factors_title">Assignment Factors</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Factor</th><th>Weight</th><th>Description</th></tr></thead>
+            <thead><tr><th data-i18n="agents.assignment.col_factor">Factor</th><th data-i18n="agents.assignment.col_weight">Weight</th><th data-i18n="agents.assignment.col_desc">Description</th></tr></thead>
             <tbody>
-              <tr><td>Capacity</td><td>High</td><td>Current workload vs. max capacity per agent</td></tr>
-              <tr><td>Specialization</td><td>Medium</td><td>Agent expertise matching for workflow type</td></tr>
-              <tr><td>SLA Priority</td><td>High</td><td>Time remaining on SLA deadline</td></tr>
-              <tr><td>Amount</td><td>Low</td><td>Payment amount (higher amounts may route to senior agents)</td></tr>
-              <tr><td>Complexity</td><td>Medium</td><td>Workflow complexity score</td></tr>
-              <tr><td>Availability</td><td>Critical</td><td>Agent must be available (not on leave, sick, training, etc.)</td></tr>
+              <tr><td data-i18n="agents.assignment.row.capacity">Capacity</td><td data-i18n="agents.assignment.weight.high">High</td><td data-i18n="agents.assignment.row.capacity_desc">Current workload vs. max capacity per agent</td></tr>
+              <tr><td data-i18n="agents.assignment.row.spec">Specialization</td><td data-i18n="agents.assignment.weight.medium">Medium</td><td data-i18n="agents.assignment.row.spec_desc">Agent expertise matching for workflow type</td></tr>
+              <tr><td data-i18n="agents.assignment.row.sla">SLA Priority</td><td data-i18n="agents.assignment.weight.high">High</td><td data-i18n="agents.assignment.row.sla_desc">Time remaining on SLA deadline</td></tr>
+              <tr><td data-i18n="agents.assignment.row.amount">Amount</td><td data-i18n="agents.assignment.weight.low">Low</td><td data-i18n="agents.assignment.row.amount_desc">Payment amount (higher amounts may route to senior agents)</td></tr>
+              <tr><td data-i18n="agents.assignment.row.complex">Complexity</td><td data-i18n="agents.assignment.weight.medium">Medium</td><td data-i18n="agents.assignment.row.complex_desc">Workflow complexity score</td></tr>
+              <tr><td data-i18n="agents.assignment.row.avail">Availability</td><td data-i18n="agents.assignment.weight.critical">Critical</td><td data-i18n="agents.assignment.row.avail_desc">Agent must be available (not on leave, sick, training, etc.)</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Agent Availability States</h3>
+        <h3 data-i18n="agents.assignment.states_title">Agent Availability States</h3>
         <p>
           <span class="badge badge-green">available</span>
           <span class="badge badge-blue">normal</span>
@@ -327,29 +320,24 @@
           <span class="badge badge-gray">mission</span>
         </p>
 
-        <!-- AI Security -->
-        <h2 id="security">AI Security (OWASP) <a href="#security" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="security"><span data-i18n="agents.toc.security">AI Security (OWASP)</span> <a href="#security" class="anchor-link">#</a></h2>
+        <p data-i18n-html="agents.security.body">
           The chatbot implements OWASP LLM Top 10 mitigations including prompt injection detection
           with 30+ pattern rules. See <a href="security.html#ai-security">Security Architecture</a> for details.
         </p>
 
-        <!-- Enrichment -->
-        <h2 id="enrichment">Content Enrichment <a href="#enrichment" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="enrichment"><span data-i18n="agents.toc.enrichment">Content Enrichment</span> <a href="#enrichment" class="anchor-link">#</a></h2>
+        <p data-i18n="agents.enrichment.body">
           The enrichment module uses Gemini to automatically generate rich descriptions for fiscal services.
           Each description is 600 characters, structured in 3 paragraphs, with a self-evaluation score
           and few-shot examples for consistent quality.
         </p>
 
-        <!-- SCREENSHOT placeholder -->
-        <!-- SCREENSHOT: Chatbot UI showing service search results with related services panel -->
-
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="security.html">Security</a><a href="workflows.html">Workflows</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="security.html" data-i18n="common.sidebar.link.security">Security</a><a href="workflows.html" data-i18n="common.sidebar.link.workflows">Workflows</a></div>
       </footer>
     </main>
   </div>
