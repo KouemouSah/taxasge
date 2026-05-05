@@ -240,7 +240,11 @@ def _track_task(task: asyncio.Task) -> None:
 
 
 async def _persist_metric(pool: asyncpg.Pool, **kw: Any) -> None:
-    """Insert one row into ai_call_metrics. Never raises."""
+    """Insert one row into ai_call_metrics. Never raises.
+
+    Phase C.1: now persists injection_risk / injection_score / injection_rules
+    (mig 328) so the assessment is queryable in SQL for dashboard + alerts.
+    """
     try:
         async with pool.acquire() as conn:
             await conn.execute(
@@ -249,12 +253,14 @@ async def _persist_metric(pool: asyncpg.Pool, **kw: Any) -> None:
                     trace_id, span_id, provider, model_name, operation,
                     feature, user_id, user_role,
                     input_tokens, output_tokens, cost_xaf,
-                    latency_ms, finish_reason, status, error_class, prompt_hash
+                    latency_ms, finish_reason, status, error_class, prompt_hash,
+                    injection_risk, injection_score, injection_rules
                 ) VALUES (
                     $1, $2, $3, $4, $5,
                     $6, $7::uuid, $8,
                     $9, $10, $11,
-                    $12, $13, $14, $15, $16
+                    $12, $13, $14, $15, $16,
+                    $17, $18, $19::text[]
                 )
                 """,
                 kw.get("trace_id"), kw.get("span_id"),
@@ -270,6 +276,9 @@ async def _persist_metric(pool: asyncpg.Pool, **kw: Any) -> None:
                 kw["status"],
                 kw.get("error_class"),
                 kw.get("prompt_hash"),
+                kw.get("injection_risk"),
+                int(kw.get("injection_score") or 0),
+                kw.get("injection_rules"),  # list[str] or None
             )
     except Exception as exc:
         logger.warning(
@@ -498,10 +507,10 @@ async def _traced_call(
 ) -> Any:
     """Shared core for both traced_generate and traced_embed."""
     # Phase B.5 — prompt injection scan (cheap regex, ~50µs).
-    # Tags the span + persists risk in BD. When AI_SECURITY_BLOCK_HIGH_RISK
-    # env is true, raises PromptInjectionBlocked before the API call.
+    # Phase C.1: also persisted to BD via injection_* columns (mig 328).
     injection_risk = "none"
     injection_score = 0
+    injection_rules: Optional[list[str]] = None
     if operation in ("chat", "completion"):
         try:
             from app.core.ai_security import (
@@ -510,11 +519,14 @@ async def _traced_call(
             assessment = detect_prompt_injection(prompt)
             injection_risk = assessment.risk
             injection_score = assessment.score
+            # Top 5 rules for the BD column (text[])
+            if assessment.matched_rules:
+                injection_rules = list(assessment.matched_rules)[:5]
             if assessment.is_suspicious:
                 logger.warning(
                     "ai_security: feature={} risk={} score={} rules={}",
                     feature, assessment.risk, assessment.score,
-                    list(assessment.matched_rules)[:5],
+                    injection_rules,
                 )
             if assessment.should_block:
                 raise PromptInjectionBlocked(assessment)
@@ -615,6 +627,10 @@ async def _traced_call(
                 cost_xaf=cost_xaf, latency_ms=latency_ms,
                 finish_reason=finish_reason, status=status,
                 error_class=error_class, prompt_hash=prompt_hash,
+                # Phase C.1 — injection assessment (mig 328)
+                injection_risk=injection_risk if injection_risk != "none" else None,
+                injection_score=injection_score,
+                injection_rules=injection_rules,
             ))
             _track_task(task)
 

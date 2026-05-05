@@ -222,6 +222,34 @@ def main() -> int:
             ),
             runbook="https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#latency-degradation",
         ),
+        # Phase C.1 — Prompt injection spike alert (CRITICAL).
+        # Triggers when ≥5 high-risk injection attempts in the last hour.
+        # High volume indicates an active attack — auto-block via env var
+        # AI_SECURITY_BLOCK_HIGH_RISK=true is recommended at this point.
+        build_rule(
+            folder_uid,
+            uid="facil-ai-injection-spike",
+            title="AI Observability — Prompt injection spike (≥5 high-risk / 1h)",
+            condition="B",
+            for_duration="5m",
+            sql=(
+                "SELECT count(*) AS value "
+                "FROM ai_call_metrics "
+                "WHERE \"timestamp\" > now() - interval '1 hour' "
+                "  AND injection_risk = 'high'"
+            ),
+            threshold=5.0,
+            severity="critical",
+            summary="≥5 high-risk prompt injection attempts in the last hour",
+            description=(
+                "{{ $values.A.Value }} high-risk prompt injection attempts "
+                "in the last hour. Drill into the dashboard 'Top matched rules' "
+                "panel to identify the attack vector. Consider enabling "
+                "AI_SECURITY_BLOCK_HIGH_RISK=true env var to auto-refuse "
+                "high-risk prompts."
+            ),
+            runbook="https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/security-observability.html#injection-spike",
+        ),
         # Phase B.6 — Tempo ingestion quota alert.
         # Free tier: 50 GB/month traces. With 100% sampling on FastAPI, we
         # could burn the budget in days at 1M users target. Monitor cumulative
