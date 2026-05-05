@@ -312,7 +312,7 @@
           <li data-i18n-html="aio.phaseb.act4">Wait 5-10 min for the auto-derivation pipeline to bootstrap. Service map appears under Observability &gt; Application.</li>
         </ol>
 
-        <h3 data-i18n="aio.phaseb.expected">Expected service map</h3>
+        <h3 data-i18n="aio.phaseb.expected">Expected service map (live capture)</h3>
         <pre><code>[client]
   └─ facil-backend (FastAPI)
        ├─ Postgres (Supabase pooler)
@@ -321,6 +321,34 @@
        ├─ Firebase Storage (signed URL generation)
        ├─ Grafana API (admin/grafana/discover)
        └─ BANGE webhook (payment validation)</code></pre>
+
+        <figure style="margin: 1.5rem 0; text-align: center;">
+          <img src="images/grafana/d_ob0.png" alt="Grafana Application Observability — Services list with facil-backend, postgres, redis auto-discovered from spans" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px;">
+          <figcaption style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="aio.phaseb.cap_services">
+            <strong>Services list</strong> (Observability → Application → Services). 3 services auto-discovered from the OTEL spans emitted by Phase B instrumentation: <code>facil-backend</code> (Python, p95 487.5ms), <code>postgres</code> (asyncpg, p95 725ms, rate 0.12 req/s), <code>redis</code> (cache, p95 2.35s — note: high p95 indicates rare slow operations). 0% errors across the board.
+          </figcaption>
+        </figure>
+
+        <figure style="margin: 1.5rem 0; text-align: center;">
+          <img src="images/grafana/d_ob.png" alt="facil-backend service Overview — RED metrics + Operations + Outbound databases" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px;">
+          <figcaption style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="aio.phaseb.cap_overview">
+            <strong>facil-backend Overview</strong>. RED metrics (Rate / Errors / Duration) auto-derived from the spans. Sub-panels: <em>Operations</em> shows <code>GET /health</code> at p95 487.5ms (excluded from telemetry middleware but still gets a FastAPI span); <em>Outbound &amp; databases</em> shows the call graph to Redis (2.35s p95) and Postgres (487ms p95).
+          </figcaption>
+        </figure>
+
+        <figure style="margin: 1.5rem 0; text-align: center;">
+          <img src="images/grafana/d_ob2.png" alt="Service map showing facil-backend → postgres + facil-backend → redis" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px;">
+          <figcaption style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="aio.phaseb.cap_servicemap">
+            <strong>Service map</strong> (auto-built from <code>asyncpg</code> + <code>redis</code> instrumenter spans). <code>facil-backend</code> calls Postgres at 211.88 ms/req (0.92 r/sec) and Redis at 129.76 ms/req (0.03 r/sec). Vertex AI / Firebase / BANGE will appear as additional nodes once those <code>httpx</code> calls fire (low-frequency operations).
+          </figcaption>
+        </figure>
+
+        <figure style="margin: 1.5rem 0; text-align: center;">
+          <img src="images/grafana/d_ob1.png" alt="Traces tab showing 20+ recent SQL traces with durations" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px;">
+          <figcaption style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="aio.phaseb.cap_traces">
+            <strong>Traces tab</strong> (TraceQL filter <code>resource.service.name="facil-backend"</code>). 20 most recent traces shown — mostly SELECT (101–906 ms), one INSERT (981 ms), one REFRESH (599 ms — this is the <code>request-telemetry-cleanup</code> cron MV refresh from Phase C.2). Click any trace_id to drill down into the full span tree (FastAPI route → asyncpg query → result).
+          </figcaption>
+        </figure>
 
         <h3 data-i18n="aio.phaseb.benefits">Concrete benefits</h3>
         <ul>

@@ -2019,7 +2019,11 @@ window.__I18N__.en =
       "b1": "<strong>Bundle workflow debug</strong> — trace a single <code>service_request_id</code> across web → backend → 5 entity locks → BANGE → email → vault, end-to-end in one click",
       "b2": "<strong>BD lock contention</strong> — heatmap of slow asyncpg queries surfaces deadlocks before users notice",
       "b3": "<strong>Deployment regression</strong> — p95 latency by endpoint pre/post deploy; revert decision in 30s",
-      "b4": "<strong>Auto anomaly detection</strong> — Grafana Knowledge Graph correlates spike + deploy + slow query without manual digging"
+      "b4": "<strong>Auto anomaly detection</strong> — Grafana Knowledge Graph correlates spike + deploy + slow query without manual digging",
+      "cap_services": "<strong>Services list</strong> (Observability → Application → Services). 3 services auto-discovered from the OTEL spans emitted by Phase B instrumentation: <code>facil-backend</code> (Python, p95 487.5ms), <code>postgres</code> (asyncpg, p95 725ms, rate 0.12 req/s), <code>redis</code> (cache, p95 2.35s — note: high p95 indicates rare slow operations). 0% errors across the board.",
+      "cap_overview": "<strong>facil-backend Overview</strong>. RED metrics (Rate / Errors / Duration) auto-derived from the spans. Sub-panels: <em>Operations</em> shows <code>GET /health</code> at p95 487.5ms; <em>Outbound &amp; databases</em> shows the call graph to Redis (2.35s p95) and Postgres (487ms p95).",
+      "cap_servicemap": "<strong>Service map</strong> (auto-built from <code>asyncpg</code> + <code>redis</code> instrumenter spans). <code>facil-backend</code> calls Postgres at 211.88 ms/req (0.92 r/sec) and Redis at 129.76 ms/req (0.03 r/sec). Vertex AI / Firebase / BANGE will appear as additional nodes once those <code>httpx</code> calls fire.",
+      "cap_traces": "<strong>Traces tab</strong> (TraceQL filter <code>resource.service.name=\"facil-backend\"</code>). 20 most recent traces shown — mostly SELECT (101–906 ms), one INSERT (981 ms), one REFRESH (599 ms — the <code>request-telemetry-cleanup</code> cron MV refresh from Phase C.2). Click any trace_id to drill down into the full span tree."
     }
   },
 

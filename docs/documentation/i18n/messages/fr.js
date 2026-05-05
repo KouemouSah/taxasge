@@ -2019,7 +2019,11 @@ window.__I18N__.fr =
       "b1": "<strong>Debug bundle workflow</strong> — tracer un seul <code>service_request_id</code> à travers web → backend → 5 locks d'entités → BANGE → email → coffre, end-to-end en un clic",
       "b2": "<strong>Lock contention BD</strong> — heatmap des queries asyncpg lentes fait émerger les deadlocks avant que les users ne le remarquent",
       "b3": "<strong>Régression de déploiement</strong> — p95 latence par endpoint pré/post deploy ; décision de revert en 30s",
-      "b4": "<strong>Détection d'anomalies auto</strong> — le Knowledge Graph Grafana corrèle pic + deploy + query lente sans creuser manuellement"
+      "b4": "<strong>Détection d'anomalies auto</strong> — le Knowledge Graph Grafana corrèle pic + deploy + query lente sans creuser manuellement",
+      "cap_services": "<strong>Liste des services</strong> (Observability → Application → Services). 3 services auto-découverts depuis les spans OTEL émis par l'instrumentation Phase B : <code>facil-backend</code> (Python, p95 487,5ms), <code>postgres</code> (asyncpg, p95 725ms, rate 0,12 req/s), <code>redis</code> (cache, p95 2,35s — note : p95 élevé indique des opérations rares lentes). 0% erreurs.",
+      "cap_overview": "<strong>Vue d'ensemble facil-backend</strong>. RED metrics (Rate / Errors / Duration) auto-dérivées des spans. Sous-panels : <em>Operations</em> montre <code>GET /health</code> à p95 487,5ms ; <em>Outbound &amp; databases</em> montre le call graph vers Redis (2,35s p95) et Postgres (487ms p95).",
+      "cap_servicemap": "<strong>Service map</strong> (auto-construit depuis les spans des instrumenters <code>asyncpg</code> + <code>redis</code>). <code>facil-backend</code> appelle Postgres à 211,88 ms/req (0,92 r/sec) et Redis à 129,76 ms/req (0,03 r/sec). Vertex AI / Firebase / BANGE apparaîtront comme nœuds supplémentaires dès que ces appels <code>httpx</code> se déclencheront.",
+      "cap_traces": "<strong>Onglet Traces</strong> (filtre TraceQL <code>resource.service.name=\"facil-backend\"</code>). 20 traces les plus récentes — principalement SELECT (101–906 ms), un INSERT (981 ms), un REFRESH (599 ms — le cron <code>request-telemetry-cleanup</code> rafraîchissant la MV en Phase C.2). Clic sur un trace_id pour drill-down complet de l'arbre des spans."
     }
   },
 
