@@ -569,8 +569,35 @@ if settings.SENTRY_DSN and not settings.DEBUG:
     logger.info(f"✅ Sentry initialised — env={_sentry_environment}")
 
 
+def _attach_otel_trace_id(event: dict) -> dict:
+    """Phase B.4 — Sentry-OTEL bridge.
+
+    When OTEL tracing is configured (Phase A.4 + B), every Sentry event gets
+    the active OTEL trace_id and span_id as tags. Lets the on-call engineer
+    click from a Sentry error → Grafana Tempo trace in 1 jump (search by
+    trace_id) instead of trying to correlate timestamps manually.
+
+    Soft-import: when opentelemetry isn't loaded, this is a no-op.
+    """
+    try:
+        from opentelemetry import trace as _otel_trace
+        span = _otel_trace.get_current_span()
+        if span is None:
+            return event
+        ctx = span.get_span_context()
+        if not ctx or not ctx.trace_id:
+            return event
+        tags = event.setdefault("tags", {})
+        tags["otel.trace_id"] = format(ctx.trace_id, "032x")
+        if ctx.span_id:
+            tags["otel.span_id"] = format(ctx.span_id, "016x")
+    except Exception:
+        pass  # never break event delivery
+    return event
+
+
 def _scrub_sentry_event(event):
-    """Remove Authorization / Cookie headers from Sentry request context."""
+    """Remove Authorization / Cookie headers + attach OTEL trace_id."""
     request = event.get("request", {})
     headers = request.get("headers", {})
     for key in list(headers.keys()):
@@ -580,6 +607,8 @@ def _scrub_sentry_event(event):
     url = request.get("url", "") or ""
     if any(seg in url for seg in ("/auth/login", "/auth/register", "/auth/2fa", "/auth/refresh")):
         request.pop("data", None)
+    # Phase B.4: attach OTEL trace_id so on-call jumps Sentry → Tempo
+    event = _attach_otel_trace_id(event)
     return event
 
 
