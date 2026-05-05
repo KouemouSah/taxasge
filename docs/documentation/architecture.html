@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="arch.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,162 +15,158 @@
 <body>
   <div class="page-wrapper">
 
-    <!-- Sidebar (same as all pages) -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
-        <div class="sidebar-subtitle">Technical Reference</div>
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div>
       </div>
       <nav class="sidebar-nav">
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Getting Started</div>
-          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Architecture</div>
-          <a href="architecture.html" class="sidebar-link active"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a>
-          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a>
-          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div>
+          <a href="architecture.html" class="sidebar-link active"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Reference</div>
-          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a>
-          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Features</div>
-          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a>
-          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Observability</div>
-          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a>
-          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Operations</div>
-          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a>
-          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a>
-          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a>
         </div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
 
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
         <nav class="breadcrumb">
-          <a href="index.html">Docs</a>
+          <a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current">System Architecture</span>
+          <span class="breadcrumb-current" data-i18n="common.sidebar.link.architecture">System Architecture</span>
         </nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">System Architecture</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="common.sidebar.link.architecture">System Architecture</h1>
+        <p class="page-description" data-i18n="arch.description">
           Facil is a monorepo-based platform with 4 packages: a Python/FastAPI backend, a Next.js frontend,
           and two Expo React Native mobile applications. This document details the architecture of each layer.
         </p>
 
-        <!-- TOC -->
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#system-overview">System Overview</a></li>
-            <li><a href="#backend">Backend 3-Tier Architecture</a></li>
-            <li><a href="#frontend">Frontend Architecture</a></li>
-            <li><a href="#mobile">Mobile Architecture</a></li>
-            <li><a href="#database-arch">Database Architecture</a></li>
-            <li><a href="#caching">Caching Architecture</a></li>
-            <li><a href="#ai-arch">AI Architecture</a></li>
-            <li><a href="#event-bus">Event Bus &amp; Background Processing</a></li>
+            <li><a href="#system-overview" data-i18n="arch.toc.overview">System Overview</a></li>
+            <li><a href="#backend" data-i18n="arch.toc.backend">Backend 3-Tier Architecture</a></li>
+            <li><a href="#frontend" data-i18n="arch.toc.frontend">Frontend Architecture</a></li>
+            <li><a href="#mobile" data-i18n="arch.toc.mobile">Mobile Architecture</a></li>
+            <li><a href="#database-arch" data-i18n="arch.toc.db">Database Architecture</a></li>
+            <li><a href="#caching" data-i18n="arch.toc.caching">Caching Architecture</a></li>
+            <li><a href="#ai-arch" data-i18n="arch.toc.ai">AI Architecture</a></li>
+            <li><a href="#event-bus" data-i18n="arch.toc.event">Event Bus &amp; Background Processing</a></li>
           </ul>
         </div>
 
-        <!-- ===== System Overview ===== -->
-        <h2 id="system-overview">System Overview <a href="#system-overview" class="anchor-link">#</a></h2>
+        <h2 id="system-overview"><span data-i18n="arch.toc.overview">System Overview</span> <a href="#system-overview" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">High-Level System Architecture</div>
+          <div class="diagram-title" data-i18n="arch.overview.diagram_title">High-Level System Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Citizens / Businesses<span class="diagram-box-subtitle">Web Browser + Mobile App</span></div>
-            <div class="diagram-box primary">Government Agents<span class="diagram-box-subtitle">Agent Dashboard</span></div>
-            <div class="diagram-box primary">Inspectors<span class="diagram-box-subtitle">Inspector Mobile App</span></div>
+            <div class="diagram-box primary"><span data-i18n="arch.overview.citizens">Citizens / Businesses</span><span class="diagram-box-subtitle" data-i18n="arch.overview.citizens_sub">Web Browser + Mobile App</span></div>
+            <div class="diagram-box primary"><span data-i18n="arch.overview.gov_agents">Government Agents</span><span class="diagram-box-subtitle" data-i18n="arch.overview.gov_agents_sub">Agent Dashboard</span></div>
+            <div class="diagram-box primary"><span data-i18n="arch.overview.inspectors">Inspectors</span><span class="diagram-box-subtitle" data-i18n="arch.overview.inspectors_sub">Inspector Mobile App</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">Firebase Hosting<span class="diagram-box-subtitle">CDN + Staging Channels</span></div>
+            <div class="diagram-box yellow">Firebase Hosting<span class="diagram-box-subtitle" data-i18n="arch.overview.firebase_sub">CDN + Staging Channels</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Next.js 14 Frontend<span class="diagram-box-subtitle">SSR + App Router + i18n (ES/FR/EN)</span></div>
+            <div class="diagram-box green filled">Next.js 14 Frontend<span class="diagram-box-subtitle" data-i18n="arch.overview.nextjs_sub">SSR + App Router + i18n (ES/FR/EN)</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; HTTPS / REST API</div>
+          <div class="diagram-arrow"><span data-i18n="arch.overview.https">▼ HTTPS / REST API</span></div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;">Google Cloud Run<span class="diagram-box-subtitle">Auto-scaling containers</span></div>
-          </div>
-          <div class="diagram-arrow">&#9660;</div>
-          <div class="diagram-row">
-            <div class="diagram-box green filled">FastAPI Backend v1.1.8<span class="diagram-box-subtitle">Python 3.11+ / asyncio</span></div>
+            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;">Google Cloud Run<span class="diagram-box-subtitle" data-i18n="arch.overview.cloudrun_sub">Auto-scaling containers</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">PostgreSQL (Supabase)<span class="diagram-box-subtitle">145 tables + pgvector</span></div>
-            <div class="diagram-box">Redis (Upstash)<span class="diagram-box-subtitle">Cache + Rate Limits</span></div>
+            <div class="diagram-box green filled">FastAPI Backend v1.1.8<span class="diagram-box-subtitle" data-i18n="arch.overview.fastapi_sub">Python 3.11+ / asyncio</span></div>
+          </div>
+          <div class="diagram-arrow">&#9660;</div>
+          <div class="diagram-row">
+            <div class="diagram-box">PostgreSQL (Supabase)<span class="diagram-box-subtitle" data-i18n="arch.overview.pg_sub">145 tables + pgvector</span></div>
+            <div class="diagram-box">Redis (Upstash)<span class="diagram-box-subtitle" data-i18n="arch.overview.redis_sub">Cache + Rate Limits</span></div>
             <div class="diagram-box">Vertex AI<span class="diagram-box-subtitle">Gemini 2.5 Flash</span></div>
-            <div class="diagram-box">Supabase Storage<span class="diagram-box-subtitle">Documents + Files</span></div>
+            <div class="diagram-box">Supabase Storage<span class="diagram-box-subtitle" data-i18n="arch.overview.storage_sub">Documents + Files</span></div>
           </div>
         </div>
 
-        <p>
+        <p data-i18n="arch.overview.body">
           The platform follows a strict separation of concerns with the backend serving as a stateless REST API
           consumed by multiple clients (web frontend, two mobile apps). All state is stored in PostgreSQL with
           Redis as a performance cache layer. External services include Vertex AI for intelligence features
           and BANGE for payment processing.
         </p>
 
-        <!-- ===== Backend Architecture ===== -->
-        <h2 id="backend">Backend 3-Tier Architecture <a href="#backend" class="anchor-link">#</a></h2>
+        <h2 id="backend"><span data-i18n="arch.toc.backend">Backend 3-Tier Architecture</span> <a href="#backend" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n="arch.backend.intro">
           The backend follows a strict 3-tier layered architecture within each of its 30 feature modules.
           Each layer has a single responsibility and communicates only with its adjacent layer.
         </p>
 
         <div class="diagram">
-          <div class="diagram-title">Backend Layer Architecture</div>
+          <div class="diagram-title" data-i18n="arch.backend.diagram_title">Backend Layer Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">API Layer<span class="diagram-box-subtitle">FastAPI Routers + Middleware + Auth Guards</span></div>
+            <div class="diagram-box primary"><span data-i18n="arch.backend.api_layer">API Layer</span><span class="diagram-box-subtitle" data-i18n="arch.backend.api_layer_sub">FastAPI Routers + Middleware + Auth Guards</span></div>
           </div>
-          <div class="diagram-connector">Pydantic v2 Request/Response Models</div>
+          <div class="diagram-connector" data-i18n="arch.backend.connector1">Pydantic v2 Request/Response Models</div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Service Layer<span class="diagram-box-subtitle">Business Logic + Validation + Rules Engine</span></div>
+            <div class="diagram-box green filled"><span data-i18n="arch.backend.svc_layer">Service Layer</span><span class="diagram-box-subtitle" data-i18n="arch.backend.svc_layer_sub">Business Logic + Validation + Rules Engine</span></div>
           </div>
-          <div class="diagram-connector">Domain Objects / Dicts</div>
+          <div class="diagram-connector" data-i18n="arch.backend.connector2">Domain Objects / Dicts</div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Repository Layer<span class="diagram-box-subtitle">asyncpg + Parameterized SQL + Connection Pool</span></div>
+            <div class="diagram-box"><span data-i18n="arch.backend.repo_layer">Repository Layer</span><span class="diagram-box-subtitle" data-i18n="arch.backend.repo_layer_sub">asyncpg + Parameterized SQL + Connection Pool</span></div>
           </div>
-          <div class="diagram-connector">asyncpg Records</div>
+          <div class="diagram-connector" data-i18n="arch.backend.connector3">asyncpg Records</div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-style:dashed;">PostgreSQL<span class="diagram-box-subtitle">Supabase-hosted</span></div>
+            <div class="diagram-box" style="border-style:dashed;">PostgreSQL<span class="diagram-box-subtitle" data-i18n="arch.backend.pg_sub">Supabase-hosted</span></div>
           </div>
         </div>
 
-        <h3 id="api-layer">API Layer</h3>
-        <p>The API layer consists of 62 FastAPI routers registered in <code>app/main.py</code>. Each router:</p>
+        <h3 id="api-layer" data-i18n="arch.backend.api_title">API Layer</h3>
+        <p data-i18n-html="arch.backend.api_intro">The API layer consists of 62 FastAPI routers registered in <code>app/main.py</code>. Each router:</p>
         <ul>
-          <li>Defines HTTP endpoints with type-annotated parameters</li>
-          <li>Applies authentication and permission decorators (<code>@permission_required</code>)</li>
-          <li>Validates input via Pydantic v2 models</li>
-          <li>Delegates to the service layer for business logic</li>
-          <li>Returns structured JSON responses with error codes</li>
+          <li data-i18n="arch.backend.api.bullet1">Defines HTTP endpoints with type-annotated parameters</li>
+          <li data-i18n-html="arch.backend.api.bullet2">Applies authentication and permission decorators (<code>@permission_required</code>)</li>
+          <li data-i18n="arch.backend.api.bullet3">Validates input via Pydantic v2 models</li>
+          <li data-i18n="arch.backend.api.bullet4">Delegates to the service layer for business logic</li>
+          <li data-i18n="arch.backend.api.bullet5">Returns structured JSON responses with error codes</li>
         </ul>
         <pre><code><span class="cmt"># Example: API route pattern</span>
 <span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends
@@ -187,14 +183,14 @@ router = APIRouter()
     service = <span class="kw">await</span> fiscal_service_service.get_by_id(db, service_id)
     <span class="kw">return</span> service</code></pre>
 
-        <h3 id="service-layer">Service Layer</h3>
-        <p>
+        <h3 id="service-layer" data-i18n="arch.backend.svc_title">Service Layer</h3>
+        <p data-i18n="arch.backend.svc_body">
           Services contain all business logic, validation, and coordination between repositories.
           They handle transaction management, event publishing, and cross-module orchestration.
         </p>
 
-        <h3 id="repository-layer">Repository Layer</h3>
-        <p>
+        <h3 id="repository-layer" data-i18n="arch.backend.repo_title">Repository Layer</h3>
+        <p data-i18n-html="arch.backend.repo_body">
           Repositories are the <strong>only</strong> layer that interacts with the database. All queries use
           <strong>parameterized SQL</strong> with <code>$1, $2</code> placeholders (never string formatting)
           for SQL injection prevention.
@@ -206,7 +202,7 @@ row = <span class="kw">await</span> db.fetchrow(query, email, <span class="str">
 <span class="cmt"># NEVER: string formatting (SQL injection risk)</span>
 <span class="cmt"># query = f"SELECT * FROM users WHERE email = '{email}'"</span></code></pre>
 
-        <h3 id="module-structure">Module File Structure</h3>
+        <h3 id="module-structure" data-i18n="arch.backend.modstruct_title">Module File Structure</h3>
         <pre><code>packages/backend/app/modules/{module}/
 ├── api/
 │   └── {module}_routes.py       <span class="cmt"># FastAPI router endpoints</span>
@@ -220,56 +216,55 @@ row = <span class="kw">await</span> db.fetchrow(query, email, <span class="str">
 ├── middleware/                   <span class="cmt"># HTTP middleware (optional)</span>
 └── __init__.py</code></pre>
 
-        <h3 id="startup">Application Startup Sequence</h3>
-        <p>The FastAPI application initializes in this order during startup (defined in <code>main.py</code> lifespan):</p>
+        <h3 id="startup" data-i18n="arch.backend.startup_title">Application Startup Sequence</h3>
+        <p data-i18n-html="arch.backend.startup_intro">The FastAPI application initializes in this order during startup (defined in <code>main.py</code> lifespan):</p>
         <ol>
-          <li><strong>Database pool</strong> &mdash; asyncpg connection pool (5-20 connections)</li>
-          <li><strong>Permissions sync</strong> &mdash; RBAC auto-discovery, role sync, obsolete cleanup</li>
-          <li><strong>Workflow sync</strong> &mdash; Python workflow classes synced to database (tariffs, docs, menus)</li>
-          <li><strong>Event Bus</strong> &mdash; Registers notification, audit, agent queue, payment assignment, and verification handlers</li>
-          <li><strong>Orphan repair</strong> &mdash; Self-healing for PAID requests not assigned to agents</li>
-          <li><strong>Cache system</strong> &mdash; Upstash Redis with in-memory fallback</li>
-          <li><strong>RBAC listener</strong> &mdash; PostgreSQL NOTIFY for real-time permission invalidation</li>
-          <li><strong>Internal scheduler</strong> &mdash; Cron jobs (replaces Cloud Scheduler)</li>
+          <li data-i18n-html="arch.backend.startup.s1"><strong>Database pool</strong> &mdash; asyncpg connection pool (5-20 connections)</li>
+          <li data-i18n-html="arch.backend.startup.s2"><strong>Permissions sync</strong> &mdash; RBAC auto-discovery, role sync, obsolete cleanup</li>
+          <li data-i18n-html="arch.backend.startup.s3"><strong>Workflow sync</strong> &mdash; Python workflow classes synced to database (tariffs, docs, menus)</li>
+          <li data-i18n-html="arch.backend.startup.s4"><strong>Event Bus</strong> &mdash; Registers notification, audit, agent queue, payment assignment, and verification handlers</li>
+          <li data-i18n-html="arch.backend.startup.s5"><strong>Orphan repair</strong> &mdash; Self-healing for PAID requests not assigned to agents</li>
+          <li data-i18n-html="arch.backend.startup.s6"><strong>Cache system</strong> &mdash; Upstash Redis with in-memory fallback</li>
+          <li data-i18n-html="arch.backend.startup.s7"><strong>RBAC listener</strong> &mdash; PostgreSQL NOTIFY for real-time permission invalidation</li>
+          <li data-i18n-html="arch.backend.startup.s8"><strong>Internal scheduler</strong> &mdash; Cron jobs (replaces Cloud Scheduler)</li>
         </ol>
 
-        <!-- ===== Frontend Architecture ===== -->
-        <h2 id="frontend">Frontend Architecture <a href="#frontend" class="anchor-link">#</a></h2>
+        <h2 id="frontend"><span data-i18n="arch.toc.frontend">Frontend Architecture</span> <a href="#frontend" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">Frontend Module Architecture</div>
+          <div class="diagram-title" data-i18n="arch.frontend.diagram_title">Frontend Module Architecture</div>
           <div class="diagram-row">
             <div class="diagram-box primary">Next.js 14 App Router<span class="diagram-box-subtitle">app/[locale]/(auth|dashboard|public)</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green">41+ Feature Modules<span class="diagram-box-subtitle">components / hooks / services / types</span></div>
-            <div class="diagram-box">Core Layer<span class="diagram-box-subtitle">api/client.ts, auth, providers</span></div>
+            <div class="diagram-box green"><span data-i18n="arch.frontend.modules">41+ Feature Modules</span><span class="diagram-box-subtitle" data-i18n="arch.frontend.modules_sub">components / hooks / services / types</span></div>
+            <div class="diagram-box"><span data-i18n="arch.frontend.core">Core Layer</span><span class="diagram-box-subtitle" data-i18n="arch.frontend.core_sub">api/client.ts, auth, providers</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Shadcn/UI Components<span class="diagram-box-subtitle">Tailwind CSS styling</span></div>
-            <div class="diagram-box">React Query<span class="diagram-box-subtitle">Server state</span></div>
-            <div class="diagram-box">Zustand<span class="diagram-box-subtitle">Client state</span></div>
+            <div class="diagram-box">Shadcn/UI Components<span class="diagram-box-subtitle" data-i18n="arch.frontend.shadcn_sub">Tailwind CSS styling</span></div>
+            <div class="diagram-box">React Query<span class="diagram-box-subtitle" data-i18n="arch.frontend.rq_sub">Server state</span></div>
+            <div class="diagram-box">Zustand<span class="diagram-box-subtitle" data-i18n="arch.frontend.zustand_sub">Client state</span></div>
             <div class="diagram-box">next-intl<span class="diagram-box-subtitle">i18n (ES/FR/EN)</span></div>
           </div>
         </div>
 
-        <h3 id="route-groups">Route Groups</h3>
+        <h3 id="route-groups" data-i18n="arch.frontend.routes_title">Route Groups</h3>
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Group</th><th>Path</th><th>Purpose</th><th>Auth Required</th></tr>
+              <tr><th data-i18n="arch.frontend.col_group">Group</th><th data-i18n="arch.frontend.col_path">Path</th><th data-i18n="arch.frontend.col_purpose">Purpose</th><th data-i18n="arch.frontend.col_auth">Auth Required</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>(auth)</code></td><td><code>/[locale]/login</code>, <code>/register</code>, etc.</td><td>Authentication pages</td><td>No</td></tr>
-              <tr><td><code>(public)</code></td><td><code>/[locale]/services</code>, <code>/about</code></td><td>Public information</td><td>No</td></tr>
-              <tr><td><code>(dashboard)</code></td><td><code>/[locale]/dashboard/*</code></td><td>Protected user/agent area</td><td>Yes (JWT)</td></tr>
+              <tr><td><code>(auth)</code></td><td data-i18n-html="arch.frontend.row.auth_path"><code>/[locale]/login</code>, <code>/register</code>, etc.</td><td data-i18n="arch.frontend.row.auth_purpose">Authentication pages</td><td data-i18n="arch.frontend.no">No</td></tr>
+              <tr><td><code>(public)</code></td><td data-i18n-html="arch.frontend.row.public_path"><code>/[locale]/services</code>, <code>/about</code></td><td data-i18n="arch.frontend.row.public_purpose">Public information</td><td data-i18n="arch.frontend.no">No</td></tr>
+              <tr><td><code>(dashboard)</code></td><td><code>/[locale]/dashboard/*</code></td><td data-i18n="arch.frontend.row.dash_purpose">Protected user/agent area</td><td data-i18n="arch.frontend.yes_jwt">Yes (JWT)</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="frontend-modules">Frontend Module Pattern</h3>
+        <h3 id="frontend-modules" data-i18n="arch.frontend.modpat_title">Frontend Module Pattern</h3>
         <pre><code>packages/web/src/modules/{module}/
 ├── components/      <span class="cmt"># React components specific to this module</span>
 │   ├── {Feature}.tsx
@@ -283,45 +278,43 @@ row = <span class="kw">await</span> db.fetchrow(query, email, <span class="str">
 │   └── index.ts
 └── index.ts         <span class="cmt"># Module barrel export</span></code></pre>
 
-        <!-- ===== Mobile Architecture ===== -->
-        <h2 id="mobile">Mobile Architecture <a href="#mobile" class="anchor-link">#</a></h2>
+        <h2 id="mobile"><span data-i18n="arch.toc.mobile">Mobile Architecture</span> <a href="#mobile" class="anchor-link">#</a></h2>
 
-        <p>Two separate Expo (React Native) applications serve different user groups:</p>
+        <p data-i18n="arch.mobile.intro">Two separate Expo (React Native) applications serve different user groups:</p>
 
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>App</th><th>Package</th><th>Users</th><th>Status</th></tr>
+              <tr><th data-i18n="arch.mobile.col_app">App</th><th data-i18n="arch.mobile.col_pkg">Package</th><th data-i18n="arch.mobile.col_users">Users</th><th data-i18n="arch.mobile.col_status">Status</th></tr>
             </thead>
             <tbody>
-              <tr><td>Facil (Citizen)</td><td><code>packages/mobile/</code></td><td>Citizens, businesses</td><td>P2 complete (dashboard, listings, services)</td></tr>
-              <tr><td>Facil Inspector</td><td><code>packages/inspector/</code></td><td>Field inspection agents</td><td>P0 architecture ready</td></tr>
+              <tr><td data-i18n="arch.mobile.row.citizen">Facil (Citizen)</td><td><code>packages/mobile/</code></td><td data-i18n="arch.mobile.row.citizen_users">Citizens, businesses</td><td data-i18n="arch.mobile.row.citizen_status">P2 complete (dashboard, listings, services)</td></tr>
+              <tr><td>Facil Inspector</td><td><code>packages/inspector/</code></td><td data-i18n="arch.mobile.row.inspector_users">Field inspection agents</td><td data-i18n="arch.mobile.row.inspector_status">P0 architecture ready</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="mobile-stack">Mobile Technology Stack</h3>
+        <h3 id="mobile-stack" data-i18n="arch.mobile.stack_title">Mobile Technology Stack</h3>
         <ul>
-          <li><strong>Framework:</strong> Expo SDK 54 with Expo Router (file-based routing)</li>
-          <li><strong>UI:</strong> React Native Paper (Material Design 3)</li>
-          <li><strong>State:</strong> React Query (server) + Zustand (client)</li>
-          <li><strong>Validation:</strong> Zod schemas on all forms</li>
-          <li><strong>Internationalization:</strong> 3 languages (ES/FR/EN)</li>
-          <li><strong>Design principle:</strong> Native Android patterns (flat lists, dividers, ripple effects)</li>
+          <li data-i18n-html="arch.mobile.stack.framework"><strong>Framework:</strong> Expo SDK 54 with Expo Router (file-based routing)</li>
+          <li data-i18n-html="arch.mobile.stack.ui"><strong>UI:</strong> React Native Paper (Material Design 3)</li>
+          <li data-i18n-html="arch.mobile.stack.state"><strong>State:</strong> React Query (server) + Zustand (client)</li>
+          <li data-i18n-html="arch.mobile.stack.validation"><strong>Validation:</strong> Zod schemas on all forms</li>
+          <li data-i18n-html="arch.mobile.stack.i18n"><strong>Internationalization:</strong> 3 languages (ES/FR/EN)</li>
+          <li data-i18n-html="arch.mobile.stack.design"><strong>Design principle:</strong> Native Android patterns (flat lists, dividers, ripple effects)</li>
         </ul>
 
-        <!-- ===== Database Architecture ===== -->
-        <h2 id="database-arch">Database Architecture <a href="#database-arch" class="anchor-link">#</a></h2>
+        <h2 id="database-arch"><span data-i18n="arch.toc.db">Database Architecture</span> <a href="#database-arch" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n="arch.db.intro">
           PostgreSQL hosted on Supabase serves as the primary data store. The schema includes 145 tables
           organized across 10 domains, with pgvector extension for AI embedding storage.
         </p>
 
         <div class="diagram">
-          <div class="diagram-title">Database Connection Architecture</div>
+          <div class="diagram-title" data-i18n="arch.db.diagram_title">Database Connection Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">FastAPI Application</div>
+            <div class="diagram-box primary" data-i18n="arch.db.fastapi">FastAPI Application</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
@@ -329,29 +322,28 @@ row = <span class="kw">await</span> db.fetchrow(query, email, <span class="str">
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">asyncpg Pool<span class="diagram-box-subtitle">min=5, max=20 connections</span></div>
+            <div class="diagram-box">asyncpg Pool<span class="diagram-box-subtitle" data-i18n="arch.db.pool_sub">min=5, max=20 connections</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-style:dashed;">PostgreSQL 15 (Supabase)<span class="diagram-box-subtitle">145 tables + 50 enums + pgvector</span></div>
+            <div class="diagram-box" style="border-style:dashed;">PostgreSQL 15 (Supabase)<span class="diagram-box-subtitle" data-i18n="arch.db.pg_sub">145 tables + 50 enums + pgvector</span></div>
           </div>
         </div>
 
-        <p>Key database features:</p>
+        <p data-i18n="arch.db.features_intro">Key database features:</p>
         <ul>
-          <li><strong>Connection pooling:</strong> asyncpg pool with 5-20 connections, auto-reconnect</li>
-          <li><strong>Lock ordering:</strong> Canonical lock sequence for bundle payments to prevent deadlocks</li>
-          <li><strong>Soft deletes:</strong> <code>deleted_at</code> timestamp pattern on applicable tables</li>
-          <li><strong>Audit trail:</strong> <code>created_at</code>, <code>updated_at</code> on all tables</li>
-          <li><strong>pgvector:</strong> For RAG chatbot embedding storage and similarity search</li>
-          <li><strong>tsvector:</strong> Full-text search on fiscal services catalog</li>
+          <li data-i18n-html="arch.db.feat.pool"><strong>Connection pooling:</strong> asyncpg pool with 5-20 connections, auto-reconnect</li>
+          <li data-i18n-html="arch.db.feat.lock"><strong>Lock ordering:</strong> Canonical lock sequence for bundle payments to prevent deadlocks</li>
+          <li data-i18n-html="arch.db.feat.soft"><strong>Soft deletes:</strong> <code>deleted_at</code> timestamp pattern on applicable tables</li>
+          <li data-i18n-html="arch.db.feat.audit"><strong>Audit trail:</strong> <code>created_at</code>, <code>updated_at</code> on all tables</li>
+          <li data-i18n-html="arch.db.feat.pgvector"><strong>pgvector:</strong> For RAG chatbot embedding storage and similarity search</li>
+          <li data-i18n-html="arch.db.feat.tsvector"><strong>tsvector:</strong> Full-text search on fiscal services catalog</li>
         </ul>
-        <p>See <a href="database.html">Database Schema Reference</a> for the full table catalog.</p>
+        <p data-i18n-html="arch.db.see_also">See <a href="database.html">Database Schema Reference</a> for the full table catalog.</p>
 
-        <!-- ===== Caching Architecture ===== -->
-        <h2 id="caching">Caching Architecture <a href="#caching" class="anchor-link">#</a></h2>
+        <h2 id="caching"><span data-i18n="arch.toc.caching">Caching Architecture</span> <a href="#caching" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="arch.cache.intro">
           The <code>HybridCache</code> system (<code>app/core/cache.py</code>) provides Redis (Upstash TLS) as primary
           cache with automatic in-memory fallback when Redis is unavailable.
         </p>
@@ -359,109 +351,107 @@ row = <span class="kw">await</span> db.fetchrow(query, email, <span class="str">
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Cache Instance</th><th>Factory Function</th><th>TTL</th><th>Purpose</th></tr>
+              <tr><th data-i18n="arch.cache.col_instance">Cache Instance</th><th data-i18n="arch.cache.col_factory">Factory Function</th><th data-i18n="arch.cache.col_ttl">TTL</th><th data-i18n="arch.cache.col_purpose">Purpose</th></tr>
             </thead>
             <tbody>
-              <tr><td>Default</td><td><code>get_cache()</code></td><td>5 min</td><td>General-purpose caching</td></tr>
-              <tr><td>Menu</td><td><code>get_menu_cache()</code></td><td>5 min</td><td>Menu configurations per role</td></tr>
-              <tr><td>Permissions</td><td><code>get_permissions_cache()</code></td><td>10 min</td><td>RBAC permission sets per user</td></tr>
-              <tr><td>Services</td><td><code>get_services_cache()</code></td><td>1 hour</td><td>Fiscal services catalog (873 items)</td></tr>
-              <tr><td>Translations</td><td><code>get_translations_cache()</code></td><td>1 hour</td><td>UI and entity translations</td></tr>
-              <tr><td>Workflow Mappings</td><td>&mdash;</td><td>30 min</td><td>Workflow menu mapping rules</td></tr>
-              <tr><td>Sessions</td><td>&mdash;</td><td>30 min</td><td>User session data</td></tr>
+              <tr><td data-i18n="arch.cache.row.default">Default</td><td><code>get_cache()</code></td><td data-i18n="arch.cache.5min">5 min</td><td data-i18n="arch.cache.row.default_purpose">General-purpose caching</td></tr>
+              <tr><td data-i18n="arch.cache.row.menu">Menu</td><td><code>get_menu_cache()</code></td><td data-i18n="arch.cache.5min">5 min</td><td data-i18n="arch.cache.row.menu_purpose">Menu configurations per role</td></tr>
+              <tr><td data-i18n="arch.cache.row.perm">Permissions</td><td><code>get_permissions_cache()</code></td><td data-i18n="arch.cache.10min">10 min</td><td data-i18n="arch.cache.row.perm_purpose">RBAC permission sets per user</td></tr>
+              <tr><td data-i18n="arch.cache.row.svc">Services</td><td><code>get_services_cache()</code></td><td data-i18n="arch.cache.1h">1 hour</td><td data-i18n="arch.cache.row.svc_purpose">Fiscal services catalog (873 items)</td></tr>
+              <tr><td data-i18n="arch.cache.row.tr">Translations</td><td><code>get_translations_cache()</code></td><td data-i18n="arch.cache.1h">1 hour</td><td data-i18n="arch.cache.row.tr_purpose">UI and entity translations</td></tr>
+              <tr><td data-i18n="arch.cache.row.wm">Workflow Mappings</td><td>&mdash;</td><td data-i18n="arch.cache.30min">30 min</td><td data-i18n="arch.cache.row.wm_purpose">Workflow menu mapping rules</td></tr>
+              <tr><td data-i18n="arch.cache.row.sess">Sessions</td><td>&mdash;</td><td data-i18n="arch.cache.30min">30 min</td><td data-i18n="arch.cache.row.sess_purpose">User session data</td></tr>
             </tbody>
           </table>
         </div>
 
-        <p>Additional cache features:</p>
+        <p data-i18n="arch.cache.features_intro">Additional cache features:</p>
         <ul>
-          <li><strong>Rate limiting:</strong> <code>check_rate_limit(identifier, endpoint, max_requests, window_seconds)</code></li>
-          <li><strong>Cache invalidation:</strong> <code>invalidate_user_permissions_cache(user_id)</code> triggered by PostgreSQL NOTIFY</li>
-          <li><strong>RBAC listener:</strong> Real-time cache invalidation via <code>app/core/rbac_listener.py</code> subscribed to PostgreSQL NOTIFY channel</li>
-          <li><strong>Decorators:</strong> <code>@cached(cache_getter, ttl)</code> for transparent result caching</li>
+          <li data-i18n-html="arch.cache.feat.rate"><strong>Rate limiting:</strong> <code>check_rate_limit(identifier, endpoint, max_requests, window_seconds)</code></li>
+          <li data-i18n-html="arch.cache.feat.invalidate"><strong>Cache invalidation:</strong> <code>invalidate_user_permissions_cache(user_id)</code> triggered by PostgreSQL NOTIFY</li>
+          <li data-i18n-html="arch.cache.feat.listener"><strong>RBAC listener:</strong> Real-time cache invalidation via <code>app/core/rbac_listener.py</code> subscribed to PostgreSQL NOTIFY channel</li>
+          <li data-i18n-html="arch.cache.feat.dec"><strong>Decorators:</strong> <code>@cached(cache_getter, ttl)</code> for transparent result caching</li>
         </ul>
 
-        <!-- ===== AI Architecture ===== -->
-        <h2 id="ai-arch">AI Architecture <a href="#ai-arch" class="anchor-link">#</a></h2>
+        <h2 id="ai-arch"><span data-i18n="arch.toc.ai">AI Architecture</span> <a href="#ai-arch" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">AI / RAG Pipeline</div>
+          <div class="diagram-title" data-i18n="arch.ai.diagram_title">AI / RAG Pipeline</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">User Query</div>
+            <div class="diagram-box primary" data-i18n="arch.ai.user_query">User Query</div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Query Preprocessor<span class="diagram-box-subtitle">Language detection, intent classification</span></div>
+            <div class="diagram-box"><span data-i18n="arch.ai.preproc">Query Preprocessor</span><span class="diagram-box-subtitle" data-i18n="arch.ai.preproc_sub">Language detection, intent classification</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green">Hybrid Search<span class="diagram-box-subtitle">70% pgvector cosine + 30% tsvector</span></div>
+            <div class="diagram-box green"><span data-i18n="arch.ai.hybrid">Hybrid Search</span><span class="diagram-box-subtitle" data-i18n="arch.ai.hybrid_sub">70% pgvector cosine + 30% tsvector</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box">Context Assembly<span class="diagram-box-subtitle">Relevant docs + user context + tools</span></div>
+            <div class="diagram-box"><span data-i18n="arch.ai.context">Context Assembly</span><span class="diagram-box-subtitle" data-i18n="arch.ai.context_sub">Relevant docs + user context + tools</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;">Gemini 2.5 Flash<span class="diagram-box-subtitle">35 tools + self-reflection loop</span></div>
+            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;">Gemini 2.5 Flash<span class="diagram-box-subtitle" data-i18n="arch.ai.gemini_sub">35 tools + self-reflection loop</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Response<span class="diagram-box-subtitle">15 formats + score check (re-gen if &lt;5/10)</span></div>
+            <div class="diagram-box green filled"><span data-i18n="arch.ai.response">Response</span><span class="diagram-box-subtitle" data-i18n="arch.ai.response_sub">15 formats + score check (re-gen if &lt;5/10)</span></div>
           </div>
         </div>
 
-        <p>
+        <p data-i18n="arch.ai.body">
           The AI system uses Gemini 2.5 Flash via Google Vertex AI with a Retrieval-Augmented Generation (RAG) pipeline.
           It supports 35 specialized tools (19 public, 8 authenticated, 8 deep reasoning) and 5 role-based agent
           configurations. The self-reflection loop scores each response and regenerates if quality is below 5/10.
         </p>
-        <p>See <a href="agents.html">AI &amp; Intelligence</a> for the complete AI reference.</p>
+        <p data-i18n-html="arch.ai.see_also">See <a href="agents.html">AI &amp; Intelligence</a> for the complete AI reference.</p>
 
-        <!-- ===== Event Bus ===== -->
-        <h2 id="event-bus">Event Bus &amp; Background Processing <a href="#event-bus" class="anchor-link">#</a></h2>
+        <h2 id="event-bus"><span data-i18n="arch.toc.event">Event Bus &amp; Background Processing</span> <a href="#event-bus" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="arch.event.intro">
           The <code>EventBus</code> (<code>app/core/events.py</code>) provides an in-process publish/subscribe system
           for decoupled cross-module communication.
         </p>
 
-        <h3>Registered Event Handlers</h3>
+        <h3 data-i18n="arch.event.handlers_title">Registered Event Handlers</h3>
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Handler</th><th>Module</th><th>Events</th></tr>
+              <tr><th data-i18n="arch.event.col_handler">Handler</th><th data-i18n="arch.event.col_module">Module</th><th data-i18n="arch.event.col_events">Events</th></tr>
             </thead>
             <tbody>
-              <tr><td>Notification Handler</td><td>communications</td><td>Request status changes, payment events</td></tr>
-              <tr><td>Audit Handler</td><td>admin</td><td>All critical operations (audit_logs table)</td></tr>
-              <tr><td>Agent Queue Handler</td><td>service_requests</td><td>Payment completed, request submitted</td></tr>
-              <tr><td>Payment Assignment Handler</td><td>payments</td><td>Auto-assign manual payments to Treasury</td></tr>
-              <tr><td>Verification Handler</td><td>verified_identifiers</td><td>External document verification events</td></tr>
+              <tr><td data-i18n="arch.event.row.notif">Notification Handler</td><td>communications</td><td data-i18n="arch.event.row.notif_events">Request status changes, payment events</td></tr>
+              <tr><td data-i18n="arch.event.row.audit">Audit Handler</td><td>admin</td><td data-i18n="arch.event.row.audit_events">All critical operations (audit_logs table)</td></tr>
+              <tr><td data-i18n="arch.event.row.queue">Agent Queue Handler</td><td>service_requests</td><td data-i18n="arch.event.row.queue_events">Payment completed, request submitted</td></tr>
+              <tr><td data-i18n="arch.event.row.pay">Payment Assignment Handler</td><td>payments</td><td data-i18n="arch.event.row.pay_events">Auto-assign manual payments to Treasury</td></tr>
+              <tr><td data-i18n="arch.event.row.verif">Verification Handler</td><td>verified_identifiers</td><td data-i18n="arch.event.row.verif_events">External document verification events</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Internal Scheduler</h3>
-        <p>
+        <h3 data-i18n="arch.event.sched_title">Internal Scheduler</h3>
+        <p data-i18n-html="arch.event.sched_intro">
           The <code>internal_scheduler</code> (<code>app/core/scheduler.py</code>) runs periodic tasks within the
           application process, replacing the need for an external Cloud Scheduler:
         </p>
         <ul>
-          <li>Appointment hold expiration (15-minute TTL cleanup)</li>
-          <li>SLA deadline monitoring and escalation</li>
-          <li>Agent workload rebalancing</li>
-          <li>Cache warm-up for frequently accessed data</li>
+          <li data-i18n="arch.event.sched.appt">Appointment hold expiration (15-minute TTL cleanup)</li>
+          <li data-i18n="arch.event.sched.sla">SLA deadline monitoring and escalation</li>
+          <li data-i18n="arch.event.sched.workload">Agent workload rebalancing</li>
+          <li data-i18n="arch.event.sched.warm">Cache warm-up for frequently accessed data</li>
         </ul>
 
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
         <div class="footer-links">
-          <a href="index.html">Home</a>
-          <a href="database.html">Database</a>
-          <a href="api-reference.html">API</a>
+          <a href="index.html" data-i18n="common.sidebar.link.home">Home</a>
+          <a href="database.html" data-i18n="common.sidebar.link.database">Database</a>
+          <a href="api-reference.html" data-i18n="common.footer.link.api">API</a>
         </div>
       </footer>
     </main>

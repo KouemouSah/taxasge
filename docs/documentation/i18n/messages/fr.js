@@ -1476,6 +1476,181 @@ window.__I18N__.fr =
         "menu_map": "Lister les mappings workflow-vers-menu"
       }
     }
+  },
+
+  "arch": {
+    "html_title": "Architecture système - Documentation Facil",
+    "description": "Facil est une plateforme basée sur un monorepo avec 4 packages : un backend Python/FastAPI, un frontend Next.js et deux applications mobiles Expo React Native. Ce document détaille l'architecture de chaque couche.",
+    "toc": {
+      "overview": "Vue d'ensemble du système",
+      "backend": "Architecture backend 3-tier",
+      "frontend": "Architecture frontend",
+      "mobile": "Architecture mobile",
+      "db": "Architecture base de données",
+      "caching": "Architecture de cache",
+      "ai": "Architecture IA",
+      "event": "Event Bus & traitement en arrière-plan"
+    },
+    "overview": {
+      "diagram_title": "Architecture système haut niveau",
+      "citizens": "Citoyens / Entreprises", "citizens_sub": "Navigateur web + App mobile",
+      "gov_agents": "Agents gouvernementaux", "gov_agents_sub": "Tableau de bord agent",
+      "inspectors": "Inspecteurs", "inspectors_sub": "App mobile inspecteur",
+      "firebase_sub": "CDN + canaux staging",
+      "nextjs_sub": "SSR + App Router + i18n (ES/FR/EN)",
+      "https": "▼ HTTPS / API REST",
+      "cloudrun_sub": "Conteneurs auto-scalés",
+      "fastapi_sub": "Python 3.11+ / asyncio",
+      "pg_sub": "145 tables + pgvector",
+      "redis_sub": "Cache + rate limits",
+      "storage_sub": "Documents + fichiers",
+      "body": "La plateforme suit une stricte séparation des préoccupations : le backend agit comme une API REST sans état consommée par plusieurs clients (frontend web, deux apps mobiles). Tout l'état est stocké dans PostgreSQL avec Redis comme couche de cache de performance. Les services externes incluent Vertex AI pour les fonctionnalités d'intelligence et BANGE pour le traitement des paiements."
+    },
+    "backend": {
+      "intro": "Le backend suit une architecture stricte 3-tier en couches au sein de chacun de ses 30 modules fonctionnels. Chaque couche a une responsabilité unique et ne communique qu'avec sa couche adjacente.",
+      "diagram_title": "Architecture en couches du backend",
+      "api_layer": "Couche API", "api_layer_sub": "Routeurs FastAPI + middleware + auth guards",
+      "connector1": "Modèles Request/Response Pydantic v2",
+      "svc_layer": "Couche Services", "svc_layer_sub": "Logique métier + validation + moteur de règles",
+      "connector2": "Objets de domaine / dicts",
+      "repo_layer": "Couche Repository", "repo_layer_sub": "asyncpg + SQL paramétré + pool de connexions",
+      "connector3": "Records asyncpg",
+      "pg_sub": "Hébergé sur Supabase",
+      "api_title": "Couche API",
+      "api_intro": "La couche API se compose de 62 routeurs FastAPI enregistrés dans <code>app/main.py</code>. Chaque routeur :",
+      "api": {
+        "bullet1": "Définit les endpoints HTTP avec paramètres typés",
+        "bullet2": "Applique les décorateurs d'authentification et de permission (<code>@permission_required</code>)",
+        "bullet3": "Valide l'entrée via les modèles Pydantic v2",
+        "bullet4": "Délègue à la couche services pour la logique métier",
+        "bullet5": "Retourne des réponses JSON structurées avec des codes d'erreur"
+      },
+      "svc_title": "Couche Services",
+      "svc_body": "Les services contiennent toute la logique métier, la validation et la coordination entre repositories. Ils gèrent la gestion de transactions, la publication d'événements et l'orchestration cross-module.",
+      "repo_title": "Couche Repository",
+      "repo_body": "Les repositories sont la <strong>seule</strong> couche qui interagit avec la base. Toutes les requêtes utilisent du <strong>SQL paramétré</strong> avec des placeholders <code>$1, $2</code> (jamais de concaténation) pour la prévention d'injections SQL.",
+      "modstruct_title": "Structure de fichiers d'un module",
+      "startup_title": "Séquence de démarrage de l'application",
+      "startup_intro": "L'application FastAPI s'initialise dans cet ordre au démarrage (défini dans le lifespan de <code>main.py</code>) :",
+      "startup": {
+        "s1": "<strong>Pool BD</strong> &mdash; pool de connexions asyncpg (5-20 connexions)",
+        "s2": "<strong>Sync permissions</strong> &mdash; auto-découverte RBAC, sync des rôles, nettoyage obsolète",
+        "s3": "<strong>Sync workflows</strong> &mdash; classes Python workflows synchronisées vers la BD (tarifs, docs, menus)",
+        "s4": "<strong>Event Bus</strong> &mdash; enregistre les handlers notification, audit, agent queue, payment assignment et verification",
+        "s5": "<strong>Réparation des orphelins</strong> &mdash; auto-réparation des demandes PAID non assignées aux agents",
+        "s6": "<strong>Système de cache</strong> &mdash; Upstash Redis avec fallback en mémoire",
+        "s7": "<strong>RBAC listener</strong> &mdash; PostgreSQL NOTIFY pour invalidation temps réel des permissions",
+        "s8": "<strong>Scheduler interne</strong> &mdash; jobs cron (remplace Cloud Scheduler)"
+      }
+    },
+    "frontend": {
+      "diagram_title": "Architecture modulaire du frontend",
+      "modules": "41+ modules fonctionnels", "modules_sub": "components / hooks / services / types",
+      "core": "Couche Core", "core_sub": "api/client.ts, auth, providers",
+      "shadcn_sub": "Stylage Tailwind CSS",
+      "rq_sub": "État serveur",
+      "zustand_sub": "État client",
+      "routes_title": "Groupes de routes",
+      "col_group": "Groupe", "col_path": "Chemin", "col_purpose": "Rôle", "col_auth": "Auth requise",
+      "no": "Non", "yes_jwt": "Oui (JWT)",
+      "row": {
+        "auth_path": "<code>/[locale]/login</code>, <code>/register</code>, etc.",
+        "auth_purpose": "Pages d'authentification",
+        "public_path": "<code>/[locale]/services</code>, <code>/about</code>",
+        "public_purpose": "Informations publiques",
+        "dash_purpose": "Zone protégée utilisateur/agent"
+      },
+      "modpat_title": "Pattern de module frontend"
+    },
+    "mobile": {
+      "intro": "Deux applications Expo (React Native) distinctes servent des groupes d'utilisateurs différents :",
+      "col_app": "Application", "col_pkg": "Package", "col_users": "Utilisateurs", "col_status": "Statut",
+      "row": {
+        "citizen": "Facil (citoyen)",
+        "citizen_users": "Citoyens, entreprises",
+        "citizen_status": "P2 complet (dashboard, listings, services)",
+        "inspector_users": "Agents d'inspection terrain",
+        "inspector_status": "Architecture P0 prête"
+      },
+      "stack_title": "Pile technique mobile",
+      "stack": {
+        "framework": "<strong>Framework :</strong> Expo SDK 54 avec Expo Router (routing par fichiers)",
+        "ui": "<strong>UI :</strong> React Native Paper (Material Design 3)",
+        "state": "<strong>État :</strong> React Query (serveur) + Zustand (client)",
+        "validation": "<strong>Validation :</strong> Schémas Zod sur tous les formulaires",
+        "i18n": "<strong>Internationalisation :</strong> 3 langues (ES/FR/EN)",
+        "design": "<strong>Principe de design :</strong> Patterns Android natifs (listes plates, séparateurs, effets ripple)"
+      }
+    },
+    "db": {
+      "intro": "PostgreSQL hébergé sur Supabase sert de stockage principal des données. Le schéma comprend 145 tables organisées sur 10 domaines, avec l'extension pgvector pour le stockage des embeddings IA.",
+      "diagram_title": "Architecture de connexion BD",
+      "fastapi": "Application FastAPI",
+      "pool_sub": "min=5, max=20 connexions",
+      "pg_sub": "145 tables + 50 enums + pgvector",
+      "features_intro": "Caractéristiques BD clés :",
+      "feat": {
+        "pool": "<strong>Pooling de connexions :</strong> pool asyncpg avec 5-20 connexions, auto-reconnect",
+        "lock": "<strong>Ordre des verrous :</strong> séquence de verrouillage canonique pour les paiements bundle pour prévenir les deadlocks",
+        "soft": "<strong>Suppressions logiques :</strong> pattern timestamp <code>deleted_at</code> sur les tables applicables",
+        "audit": "<strong>Piste d'audit :</strong> <code>created_at</code>, <code>updated_at</code> sur toutes les tables",
+        "pgvector": "<strong>pgvector :</strong> pour le stockage d'embeddings du chatbot RAG et la recherche par similarité",
+        "tsvector": "<strong>tsvector :</strong> recherche plein-texte sur le catalogue de services fiscaux"
+      },
+      "see_also": "Voir <a href=\"database.html\">Référence du schéma BD</a> pour le catalogue complet des tables."
+    },
+    "cache": {
+      "intro": "Le système <code>HybridCache</code> (<code>app/core/cache.py</code>) fournit Redis (Upstash TLS) comme cache primaire avec fallback automatique en mémoire si Redis est indisponible.",
+      "col_instance": "Instance de cache", "col_factory": "Fonction factory", "col_ttl": "TTL", "col_purpose": "Rôle",
+      "5min": "5 min", "10min": "10 min", "30min": "30 min", "1h": "1 heure",
+      "row": {
+        "default": "Par défaut", "default_purpose": "Mise en cache générale",
+        "menu": "Menu", "menu_purpose": "Configurations de menu par rôle",
+        "perm": "Permissions", "perm_purpose": "Ensembles de permissions RBAC par utilisateur",
+        "svc": "Services", "svc_purpose": "Catalogue de services fiscaux (873 items)",
+        "tr": "Traductions", "tr_purpose": "Traductions UI et d'entités",
+        "wm": "Mappings workflow", "wm_purpose": "Règles de mapping workflow vers menu",
+        "sess": "Sessions", "sess_purpose": "Données de session utilisateur"
+      },
+      "features_intro": "Fonctionnalités cache supplémentaires :",
+      "feat": {
+        "rate": "<strong>Rate limiting :</strong> <code>check_rate_limit(identifier, endpoint, max_requests, window_seconds)</code>",
+        "invalidate": "<strong>Invalidation de cache :</strong> <code>invalidate_user_permissions_cache(user_id)</code> déclenchée par PostgreSQL NOTIFY",
+        "listener": "<strong>RBAC listener :</strong> invalidation de cache temps réel via <code>app/core/rbac_listener.py</code> abonné au canal PostgreSQL NOTIFY",
+        "dec": "<strong>Décorateurs :</strong> <code>@cached(cache_getter, ttl)</code> pour mise en cache transparente des résultats"
+      }
+    },
+    "ai": {
+      "diagram_title": "Pipeline IA / RAG",
+      "user_query": "Requête utilisateur",
+      "preproc": "Pré-processeur de requête", "preproc_sub": "Détection de langue, classification d'intention",
+      "hybrid": "Recherche hybride", "hybrid_sub": "70 % cosinus pgvector + 30 % tsvector",
+      "context": "Assemblage du contexte", "context_sub": "Docs pertinents + contexte utilisateur + outils",
+      "gemini_sub": "35 outils + boucle d'auto-réflexion",
+      "response": "Réponse", "response_sub": "15 formats + vérif de score (régénération si <5/10)",
+      "body": "Le système IA utilise Gemini 2.5 Flash via Google Vertex AI avec un pipeline Retrieval-Augmented Generation (RAG). Il supporte 35 outils spécialisés (19 publics, 8 authentifiés, 8 raisonnement avancé) et 5 configurations d'agents par rôle. La boucle d'auto-réflexion score chaque réponse et régénère si la qualité est inférieure à 5/10.",
+      "see_also": "Voir <a href=\"agents.html\">IA &amp; Intelligence</a> pour la référence IA complète."
+    },
+    "event": {
+      "intro": "L'<code>EventBus</code> (<code>app/core/events.py</code>) fournit un système de publish/subscribe in-process pour la communication cross-module découplée.",
+      "handlers_title": "Handlers d'événements enregistrés",
+      "col_handler": "Handler", "col_module": "Module", "col_events": "Événements",
+      "row": {
+        "notif": "Handler de notification", "notif_events": "Changements de statut de demande, événements de paiement",
+        "audit": "Handler d'audit", "audit_events": "Toutes les opérations critiques (table audit_logs)",
+        "queue": "Handler de file agent", "queue_events": "Paiement complété, demande soumise",
+        "pay": "Handler d'assignation de paiement", "pay_events": "Auto-affectation des paiements manuels à Trésorerie",
+        "verif": "Handler de vérification", "verif_events": "Événements de vérification de documents externes"
+      },
+      "sched_title": "Scheduler interne",
+      "sched_intro": "Le <code>internal_scheduler</code> (<code>app/core/scheduler.py</code>) exécute des tâches périodiques au sein du processus de l'application, remplaçant le besoin d'un Cloud Scheduler externe :",
+      "sched": {
+        "appt": "Expiration des holds de rendez-vous (nettoyage TTL 15 minutes)",
+        "sla": "Suivi des échéances SLA et escalade",
+        "workload": "Rééquilibrage de la charge des agents",
+        "warm": "Préchauffage du cache pour les données fréquemment accédées"
+      }
+    }
   }
 }
 ;
