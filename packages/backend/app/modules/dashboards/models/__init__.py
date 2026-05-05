@@ -13,9 +13,19 @@ from app.modules.dashboards.models.dashboards import (
 from app.modules.dashboards.models.dashboard_config import (
     DashboardConfigDTO,
     DashboardConfigSource,
+    DashboardConfigCreateRequest,
     DashboardConfigUpdateRequest,
     DashboardConfigsListResponse,
+    DashboardMetadataPatchRequest,
     DashboardProvider,
+    DashboardRlsMode,
+    DashboardEmbedMode,
+    DashboardCategory,
+    GrafanaDiscoverEntry,
+    GrafanaDiscoverResponse,
+    GrafanaImportItem,
+    GrafanaImportRequest,
+    GrafanaImportResponse,
 )
 
 __all__ = [
@@ -29,7 +39,17 @@ __all__ = [
     "DashboardReportsConfigResponse",
     "DashboardConfigDTO",
     "DashboardConfigSource",
+    "DashboardConfigCreateRequest",
     "DashboardConfigUpdateRequest",
     "DashboardConfigsListResponse",
+    "DashboardMetadataPatchRequest",
     "DashboardProvider",
+    "DashboardRlsMode",
+    "DashboardEmbedMode",
+    "DashboardCategory",
+    "GrafanaDiscoverEntry",
+    "GrafanaDiscoverResponse",
+    "GrafanaImportItem",
+    "GrafanaImportRequest",
+    "GrafanaImportResponse",
 ]

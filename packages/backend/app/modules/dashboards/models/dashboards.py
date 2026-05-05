@@ -137,12 +137,33 @@ class DashboardReportEntry(BaseModel):
     `grafana_org_id`, and `embed_url`. The frontend reads `embed_url` directly
     when available — it's pre-built by the backend service from the active
     provider's config so the iframe just needs to be set to it.
+
+    Mig 323 (2026-05-05): metadata now BD-driven. `label` and `description` are
+    backwards-compat aliases (= title_es / description_es) so the existing
+    frontend code keeps working while the new code uses the i18n triplets
+    + category + display_order + icon_name + embed_mode fields.
     """
 
-    dashboard_id: str = Field(..., description="Stable id matching the registry key")
-    label: str = Field(..., description="Human-readable name shown on the listing page")
-    description: str = Field(..., description="One-line subtitle shown above the embed")
-    rls_mode: str = Field(..., description="entity / agent_via_join / admin_only / public")
+    dashboard_id: str = Field(..., description="Stable id matching the BD row")
+    label: str = Field(..., description="Human-readable name (= title_es for back-compat)")
+    description: str = Field(..., description="One-line subtitle (= description_es or '')")
+    rls_mode: str = Field(..., description="public / authenticated / entity / agent_via_join / admin_only")
+
+    # Mig 323 — i18n triplets (frontend picks the locale)
+    title_es: str = Field(default="")
+    title_fr: str = Field(default="")
+    title_en: str = Field(default="")
+    description_es: Optional[str] = None
+    description_fr: Optional[str] = None
+    description_en: Optional[str] = None
+
+    # Mig 323 — presentation
+    category: Optional[str] = None
+    display_order: int = 0
+    icon_name: Optional[str] = None
+    embed_mode: str = "kiosk"
+    panel_id: Optional[int] = None
+    default_time_range: str = "now-90d"
 
     # Provider switch — looker_studio (default) or grafana
     provider: str = Field(
@@ -165,7 +186,6 @@ class DashboardReportEntry(BaseModel):
     grafana_org_id: int = Field(default=1)
 
     # Backend-computed iframe URL based on the active provider's config.
-    # Null when no config is set. Frontend uses this directly.
     embed_url: Optional[str] = Field(
         default=None,
         description="Pre-built iframe URL. Null when the active provider has no config yet.",

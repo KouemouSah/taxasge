@@ -36,18 +36,24 @@ except Exception:
     sentry_sdk = None  # type: ignore[assignment]
     _SENTRY_AVAILABLE = False
 from app.modules.dashboards.models import (
+    DashboardConfigCreateRequest,
     DashboardConfigDTO,
     DashboardConfigUpdateRequest,
     DashboardConfigsListResponse,
     DashboardDataResponse,
+    DashboardMetadataPatchRequest,
     DashboardPingResponse,
     DashboardReportEntry,
     DashboardReportsConfigResponse,
     DashboardSchemaResponse,
+    GrafanaDiscoverResponse,
+    GrafanaImportRequest,
+    GrafanaImportResponse,
 )
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.dashboards.services import (
     DashboardAccessDenied,
+    DashboardAlreadyExists,
     DashboardConfigService,
     DashboardNotFoundError,
     DashboardsService,
@@ -151,32 +157,31 @@ async def _record_audit(
 # ---------------------------------------------------------------------------
 
 
-# Static metadata for the 3 dashboards we ship in B.3. Looker report IDs
-# come from env vars so the same code points at staging vs prod reports
-# without redeploying.
-_REPORTS_METADATA = {
-    "recaudacion": {
-        "label": "Recaudación Fiscal",
-        "description": "Treasury KPIs — daily revenue by entity, ministry, payment method, workflow.",
-        "rls_mode": "entity",
-    },
-    "agentes": {
-        "label": "Performance Agentes",
-        "description": "Daily workload per agent — approved, rejected, p50 duration, SLA breaches.",
-        "rls_mode": "agent_via_join",
-    },
-    "services": {
-        "label": "Catálogo de Servicios",
-        "description": "Reference catalog of fiscal services — multilingual, traffic counters.",
-        "rls_mode": "public",
-    },
-}
+# Mig 323 (2026-05-05): the `_REPORTS_METADATA` in-code dict was removed.
+# All metadata (label/description/rls_mode/category/etc.) now lives in the
+# `dashboard_registrations` BD table. Admins create/edit/delete dashboards
+# via POST/PATCH/DELETE — no redeploy needed.
+
+_RATE_LIMIT_WRITE_REQ = 10  # POST/PUT/PATCH/DELETE per minute per user
+
+
+async def _enforce_write_rate_limit(user_id: str, endpoint: str) -> None:
+    is_allowed, _remaining = await check_rate_limit(
+        identifier=user_id, endpoint=endpoint,
+        max_requests=_RATE_LIMIT_WRITE_REQ, window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: {_RATE_LIMIT_WRITE_REQ} write requests / 60s.",
+            headers={"Retry-After": "60"},
+        )
 
 
 @router.get(
     "/reports-config",
     response_model=DashboardReportsConfigResponse,
-    summary="List of embeddable Looker reports the caller is authorised to see",
+    summary="List of embeddable dashboards the caller is authorised to see",
 )
 async def get_reports_config(
     user=Depends(get_current_user),
@@ -188,48 +193,73 @@ async def get_reports_config(
     by migration 316. Anyone without it gets 403 from the dependency
     BEFORE we touch the BD.
 
-    E1 phase 2 refactor: the report_id / page_id mapping is now read from
-    the `dashboard_registrations` table (migration 317) — admins edit it
-    via /admin/dashboards/config, no redeploy required. Backwards-compat
-    fallback to LOOKER_REPORTS_<id>_REPORT_ID env vars when the BD row is
-    missing (e.g. fresh deploy where admins haven't populated the table
-    yet). Empty strings are still returned for dashboards with no source.
+    Mig 323 — fully BD-driven. Each row's metadata (i18n title/description,
+    category, embed mode, panel id, default time range) comes from
+    dashboard_registrations. Non-admin callers don't see admin_only rows.
 
     Hot path: cached server-side 5 min via DashboardConfigService.
     """
     pool = await get_db_pool()
-    svc = DashboardConfigService(pool, _REPORTS_METADATA)
-    entries = await svc.get_public_reports_config()
+    svc = DashboardConfigService(pool)
+    entries = await svc.get_public_reports_config(
+        user_role=getattr(user, "role", None),
+    )
     return DashboardReportsConfigResponse(reports=entries)
 
 
 @router.get(
     "/admin/configs",
     response_model=DashboardConfigsListResponse,
-    summary="Admin-only list of dashboard configs (BD row + provenance)",
+    summary="Admin-only list of dashboard configs (BD row + computed embed)",
 )
 async def list_admin_dashboard_configs(
     user=Depends(get_current_user),
     _perm: None = Depends(permission_required("dashboards.manage")),
 ):
-    """Power the admin /admin/dashboards/config page (E1 phase 3).
+    """Power the admin /admin/dashboards/config page.
 
-    Returns one entry per dashboard in the registry with its current
-    Looker IDs and a `source` label:
-      - "db"           → row in dashboard_registrations
-      - "env_fallback" → no row, env var is set (legacy mode)
-      - "unset"        → no row, no env var (UI shows "configurer")
+    Returns one entry per dashboard_registrations row, including
+    inactive rows. `source` is always "db" since mig 323.
     """
     pool = await get_db_pool()
-    svc = DashboardConfigService(pool, _REPORTS_METADATA)
+    svc = DashboardConfigService(pool)
     configs = await svc.list_admin_configs()
     return DashboardConfigsListResponse(configs=configs)
+
+
+@router.post(
+    "/admin/configs",
+    response_model=DashboardConfigDTO,
+    status_code=status.HTTP_201_CREATED,
+    summary="Admin-only create a new dashboard (mig 323)",
+)
+async def create_admin_dashboard_config(
+    request: Request,
+    body: DashboardConfigCreateRequest,
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Create a new dashboard row from scratch — replaces the old in-code
+    registry. Validates regex on dashboard_id, provider fields, and
+    metadata at the Pydantic layer (422) before any BD round-trip.
+
+    409 returned if dashboard_id already exists.
+    """
+    user_id = str(getattr(user, "id", ""))
+    await _enforce_write_rate_limit(user_id, "/dashboards/admin/configs:POST")
+
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool)
+    try:
+        return await svc.create_config(body, user_id=user_id, request=request)
+    except DashboardAlreadyExists as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
 
 @router.put(
     "/admin/configs/{dashboard_id}",
     response_model=DashboardConfigDTO,
-    summary="Admin-only upsert of one dashboard's Looker config",
+    summary="Admin-only update of one dashboard's provider/UID/active state",
 )
 async def upsert_admin_dashboard_config(
     request: Request,
@@ -238,40 +268,127 @@ async def upsert_admin_dashboard_config(
     user=Depends(get_current_user),
     _perm: None = Depends(permission_required("dashboards.manage")),
 ):
-    """UPSERT a single dashboard's Looker IDs and immediately invalidate
-    the public /reports-config cache so the change takes effect right
-    away (no redeploy).
+    """Update provider/Looker IDs/Grafana UID/is_active. Mig 323: requires
+    the row to exist already (use POST to create new). Metadata fields
+    (title/description/category/etc.) are patched separately via PATCH.
 
     OWASP / 1M+ guards:
     - permission_required('dashboards.manage')      → admin/super_admin only
     - rate limit 10 PUT/min/user                     → vs 60 read/min
-    - Pydantic regex on report_id / page_id          → 422 on invalid input
-    - dashboard_id validated against registry        → 404 on unknown
+    - Pydantic regex on provider/UID fields          → 422 on invalid input
+    - 404 when dashboard_id not in BD
     - audit_logs row emitted in the same transaction as the UPSERT
     """
     user_id = str(getattr(user, "id", ""))
-
-    is_allowed, _remaining = await check_rate_limit(
-        identifier=user_id,
-        endpoint="/dashboards/admin/configs",
-        max_requests=10,
-        window_seconds=60,
-    )
-    if not is_allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded: 10 PUT requests / 60s.",
-            headers={"Retry-After": "60"},
-        )
+    await _enforce_write_rate_limit(user_id, "/dashboards/admin/configs:PUT")
 
     pool = await get_db_pool()
-    svc = DashboardConfigService(pool, _REPORTS_METADATA)
+    svc = DashboardConfigService(pool)
     try:
         return await svc.upsert_config(
             dashboard_id, update, user_id=user_id, request=request,
         )
     except DashboardNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.patch(
+    "/admin/configs/{dashboard_id}/metadata",
+    response_model=DashboardConfigDTO,
+    summary="Admin-only patch of i18n + presentation metadata (mig 323)",
+)
+async def patch_admin_dashboard_metadata(
+    request: Request,
+    dashboard_id: str,
+    patch: DashboardMetadataPatchRequest,
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Partial update of title_*, description_*, rls_mode, embed_mode, panel_id,
+    display_order, default_time_range, icon_name, category. NULL fields
+    are left unchanged.
+    """
+    user_id = str(getattr(user, "id", ""))
+    await _enforce_write_rate_limit(user_id, "/dashboards/admin/configs:PATCH")
+
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool)
+    try:
+        return await svc.patch_metadata(
+            dashboard_id, patch, user_id=user_id, request=request,
+        )
+    except DashboardNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.delete(
+    "/admin/configs/{dashboard_id}",
+    response_model=DashboardConfigDTO,
+    summary="Admin-only soft-delete of a dashboard (sets is_active=false)",
+)
+async def soft_delete_admin_dashboard_config(
+    request: Request,
+    dashboard_id: str,
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Soft-delete: keeps the row + audit trail; just hides it from
+    /reports-config. Re-enable via PUT with is_active=true.
+    """
+    user_id = str(getattr(user, "id", ""))
+    await _enforce_write_rate_limit(user_id, "/dashboards/admin/configs:DELETE")
+
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool)
+    try:
+        return await svc.soft_delete_config(
+            dashboard_id, user_id=user_id, request=request,
+        )
+    except DashboardNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.get(
+    "/admin/grafana/discover",
+    response_model=GrafanaDiscoverResponse,
+    summary="List dashboards available in the Grafana workspace (mig 323)",
+)
+async def discover_grafana_dashboards(
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Read-only call to Grafana /api/search. Tags each dashboard with
+    `already_imported=true` when its UID is already in dashboard_registrations.
+
+    Returns a structured payload with `error` populated when GRAFANA_BASE_URL /
+    GRAFANA_SA_TOKEN are missing or the token is rejected — UI surfaces a
+    friendly hint instead of a 500.
+    """
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool)
+    return await svc.discover_grafana()
+
+
+@router.post(
+    "/admin/grafana/import",
+    response_model=GrafanaImportResponse,
+    summary="Bulk import multiple Grafana dashboards into the registry (mig 323)",
+)
+async def import_grafana_dashboards(
+    request: Request,
+    body: GrafanaImportRequest,
+    user=Depends(get_current_user),
+    _perm: None = Depends(permission_required("dashboards.manage")),
+):
+    """Per-item transaction: one bad item does NOT roll back the others.
+    Response splits results into imported / skipped (already_exists) / errors.
+    """
+    user_id = str(getattr(user, "id", ""))
+    await _enforce_write_rate_limit(user_id, "/dashboards/admin/grafana:import")
+
+    pool = await get_db_pool()
+    svc = DashboardConfigService(pool)
+    return await svc.import_grafana(body, user_id=user_id, request=request)
 
 
 @router.get(
