@@ -2032,6 +2032,16 @@ except Exception as e:
     logger.error(f"❌ Menu configuration router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load legal router (Phase 10/B — Privacy Policy + Terms versions + acceptance)
+try:
+    from app.modules.legal.api.legal_routes import router as legal_router
+    app.include_router(legal_router, prefix="/api/v1", tags=["legal"])
+    routers_loaded.append("legal")
+    logger.info("✅ Legal router loaded (versions + acceptance)")
+except Exception as e:
+    logger.error(f"❌ Legal router failed: {e}")
+    logger.error(traceback.format_exc())
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:

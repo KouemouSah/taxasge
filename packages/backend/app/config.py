@@ -389,6 +389,22 @@ class Settings(BaseSettings):
     CRON_SECRET: Optional[str] = Field(default=None, env="CRON_SECRET")
 
     # ========================================================================
+    # LEGAL — Privacy Policy + Terms of Service versions (Phase 10/B)
+    # ========================================================================
+    # Mobile reads these at sign-up via GET /api/v1/legal/versions and submits
+    # them back in POST /auth/register (or POST /legal/accept for existing
+    # users). Bumping these triggers the post-login mobile modal to re-prompt
+    # acceptance (only for citizen/business/accountant — admin/agent/funcionario
+    # are exempt by role check). See migration 331 + .claude/plans/MOBILE_PHASE_10_B_LEGAL_DETAILED.md.
+
+    LEGAL_PRIVACY_VERSION: str = Field(default="1.0.0", env="LEGAL_PRIVACY_VERSION")
+    LEGAL_PRIVACY_LAST_UPDATED: str = Field(default="2026-05-02", env="LEGAL_PRIVACY_LAST_UPDATED")
+    LEGAL_TERMS_VERSION: str = Field(default="1.0.0", env="LEGAL_TERMS_VERSION")
+    LEGAL_TERMS_LAST_UPDATED: str = Field(default="2026-05-02", env="LEGAL_TERMS_LAST_UPDATED")
+    LEGAL_COOKIES_VERSION: str = Field(default="1.0.0", env="LEGAL_COOKIES_VERSION")
+    LEGAL_COOKIES_LAST_UPDATED: str = Field(default="2026-05-02", env="LEGAL_COOKIES_LAST_UPDATED")
+
+    # ========================================================================
     # INTERNAL SCHEDULER (replaces Cloud Scheduler)
     # ========================================================================
 
