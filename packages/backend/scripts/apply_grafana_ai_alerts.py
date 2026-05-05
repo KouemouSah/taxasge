@@ -222,6 +222,43 @@ def main() -> int:
             ),
             runbook="https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#latency-degradation",
         ),
+        # Phase B.6 — Tempo ingestion quota alert.
+        # Free tier: 50 GB/month traces. With 100% sampling on FastAPI, we
+        # could burn the budget in days at 1M users target. Monitor cumulative
+        # usage from the ai_call_metrics fallback proxy (rough estimate: each
+        # row ≈ 0.5 KB of associated span data).
+        # Real Tempo billing metric `grafanacloud_traces_total_received_bytes`
+        # requires the org admin Prometheus datasource — fallback uses BD count
+        # × heuristic to give an early warning. Refine via Grafana dashboards
+        # built-in usage panel later.
+        build_rule(
+            folder_uid,
+            uid="facil-ai-tempo-quota",
+            title="AI Observability — Tempo ingestion approaching quota",
+            condition="B",
+            for_duration="15m",
+            sql=(
+                "SELECT "
+                "  -- Rough proxy: each ai_call_metrics row ≈ 1 corresponding "
+                "  -- gen_ai span ~0.5KB. With Phase B (FastAPI/asyncpg/httpx) "
+                "  -- the actual Tempo volume is ~10x this. We alert when the "
+                "  -- BD count itself exceeds 5M/month (= ~25GB raw at 5KB/trace). "
+                "  COALESCE(count(*), 0)::bigint AS value "
+                "FROM ai_call_metrics "
+                "WHERE \"timestamp\" >= date_trunc('month', now())"
+            ),
+            threshold=5_000_000.0,
+            severity="warning",
+            summary="AI calls ≥5M/month — Tempo quota at risk",
+            description=(
+                "AI call volume MTD: {{ $values.A.Value }} rows. With Phase B "
+                "100% sampling on FastAPI/asyncpg/httpx/redis, total Tempo "
+                "ingestion is ~10× this in spans. Free tier limit: 50 GB/mo. "
+                "Action: enable head sampling (TraceIdRatioBased(0.25)) in "
+                "main.py OTEL setup, or upgrade to Cloud Pro."
+            ),
+            runbook="https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#phaseb",
+        ),
     ]
 
     failures = 0
