@@ -87,7 +87,8 @@
             <li><a href="#dashboards" data-i18n="gr.toc.dashboards">4. The 10 Dashboards</a></li>
             <li><a href="#patterns" data-i18n="gr.toc.patterns">5. Engineering Patterns</a></li>
             <li><a href="#stack" data-i18n="gr.toc.stack">6. Stack &amp; Provisioning</a></li>
-            <li><a href="#limits" data-i18n="gr.toc.limits">7. Limits, Lineage &amp; Roadmap</a></li>
+            <li><a href="#admin-ui" data-i18n="gr.toc.admin">7. Admin Self-Service (mig 323)</a></li>
+            <li><a href="#limits" data-i18n="gr.toc.limits">8. Limits, Lineage &amp; Roadmap</a></li>
           </ul>
         </div>
 
@@ -503,7 +504,89 @@
           template variables, token leak, missing rollback, etc.).
         </p>
 
-        <h2 id="limits"><span data-i18n="gr.toc.limits">7. Limits, Lineage &amp; Roadmap</span> <a href="#limits" class="anchor-link">#</a></h2>
+        <h2 id="admin-ui"><span data-i18n="gr.toc.admin">7. Admin Self-Service (mig 323)</span> <a href="#admin-ui" class="anchor-link">#</a></h2>
+        <p data-i18n-html="gr.admin.intro">
+          Migration 323 (2026-05-05) makes the dashboard registry fully BD-driven.
+          Admins with the <code>dashboards.manage</code> permission can add, edit,
+          delete, and bulk-import dashboards via the web UI &mdash; <strong>no code
+          change, no redeploy</strong>. Out of the 10 Grafana dashboards live in
+          <code>kouemousah.grafana.net</code>, all 10 are seeded automatically by
+          mig 323 plus 1 Looker-only catalog (Services Catalog) for a total of 11
+          rows in <code>dashboard_registrations</code>.
+        </p>
+
+        <h3 data-i18n="gr.admin.where_title">Where to manage dashboards</h3>
+        <ul>
+          <li data-i18n-html="gr.admin.where.list"><code>/admin/dashboards</code> &mdash; public landing, grouped by category (executive / finance / operations / business / product / security)</li>
+          <li data-i18n-html="gr.admin.where.config"><code>/admin/dashboards/config</code> &mdash; admin CRUD: list (11 rows) + edit + soft-delete + import button</li>
+          <li data-i18n-html="gr.admin.where.detail"><code>/admin/dashboards/&lcub;slug&rcub;</code> &mdash; full-screen embed (kiosk mode) with breadcrumb back to the listing</li>
+        </ul>
+
+        <h3 data-i18n="gr.admin.add_title">Adding a new Grafana dashboard (3 clicks)</h3>
+        <ol>
+          <li data-i18n-html="gr.admin.add.s1"><strong>Push the dashboard JSON</strong> to <code>infra/grafana/dashboards/NN_name.json</code> via the existing <code>/grafana-dashboards</code> agent or by manual provisioning. Take note of the <code>uid</code> field (e.g. <code>facil-new-kpi</code>).</li>
+          <li data-i18n-html="gr.admin.add.s2"><strong>Open the admin page</strong> <code>/admin/dashboards/config</code>. Click the <strong>"Import from Grafana"</strong> button (top-right).</li>
+          <li data-i18n-html="gr.admin.add.s3"><strong>Modal opens</strong> with all dashboards in the workspace. Already-imported ones are filtered out. Check the row(s) you want, edit the slug + i18n titles + category inline, then click <strong>"Import"</strong>. The list refreshes automatically.</li>
+        </ol>
+        <p data-i18n-html="gr.admin.add_hint">
+          The slug becomes the URL segment (<code>/admin/dashboards/&lcub;slug&rcub;</code>) and the audit-log key &mdash; once set, it's immutable. Keep it lowercase, hyphenated, 3-40 chars.
+        </p>
+
+        <h3 data-i18n="gr.admin.where_get_title">Where to find the Grafana Dashboard UID and Organization ID</h3>
+        <ul>
+          <li data-i18n-html="gr.admin.where_get.uid"><strong>Dashboard UID</strong>: in Grafana, open the dashboard. The URL is <code>https://&lt;workspace&gt;.grafana.net/d/&lt;UID&gt;/&lt;slug&gt;</code> &mdash; the <code>&lt;UID&gt;</code> segment is what you need (4&ndash;40 alphanumeric chars + dashes/underscores). Also visible in <em>Dashboard settings &rarr; JSON Model &rarr; <code>uid</code></em>.</li>
+          <li data-i18n-html="gr.admin.where_get.org"><strong>Organization ID</strong>: <code>1</code> for any single-org Grafana Cloud workspace (the default, including <code>kouemousah.grafana.net</code>). Visible in any URL as <code>?orgId=1</code>, or in <em>Admin &rarr; Organizations</em>. Only change this if you actually run multiple Grafana orgs.</li>
+        </ul>
+
+        <h3 data-i18n="gr.admin.config_title">Required configuration</h3>
+        <p data-i18n-html="gr.admin.config_intro">
+          The Grafana import endpoint calls the Grafana HTTP API server-side; it requires two env vars in Cloud Run / Secret Manager:
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="gr.admin.col_var">Variable</th><th data-i18n="gr.admin.col_value">Value</th><th data-i18n="gr.admin.col_purpose">Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>GRAFANA_BASE_URL</code></td><td><code>https://kouemousah.grafana.net</code></td><td data-i18n="gr.admin.row.base">Workspace base URL &mdash; used to build the iframe URL <em>and</em> the discover API call.</td></tr>
+              <tr><td><code>GRAFANA_SA_TOKEN</code></td><td data-i18n="gr.admin.row.token_v"><em>Service-account token</em> with <code>dashboards:read</code> scope</td><td data-i18n="gr.admin.row.token_p">Authenticates <code>/api/v1/dashboards/admin/grafana/discover</code> against Grafana's <code>/api/search</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p data-i18n-html="gr.admin.config_token_hint">
+          To create the token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; role <code>Viewer</code> (or finer scope <code>dashboards:read</code>) &rarr; <em>Add token</em>. Store it in Google Secret Manager (<code>grafana-sa-token</code> secret) and bind it to the Cloud Run service. <strong>Rotate every 90 days.</strong>
+        </p>
+
+        <h3 data-i18n="gr.admin.api_title">Backend endpoints</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="gr.admin.col_method">Method</th><th data-i18n="gr.admin.col_path">Path</th><th data-i18n="gr.admin.col_perm">Permission</th><th data-i18n="gr.admin.col_desc">Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>GET</td><td><code>/api/v1/dashboards/reports-config</code></td><td><code>dashboards.view_business</code></td><td data-i18n="gr.admin.api.list">Public listing &mdash; admin sees admin_only rows, others don't (RLS).</td></tr>
+              <tr><td>GET</td><td><code>/api/v1/dashboards/admin/configs</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.adm_list">Admin listing &mdash; all rows, both active and inactive.</td></tr>
+              <tr><td>POST</td><td><code>/api/v1/dashboards/admin/configs</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.create">Create a new dashboard from scratch (409 on slug conflict).</td></tr>
+              <tr><td>PUT</td><td><code>/api/v1/dashboards/admin/configs/&lcub;id&rcub;</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.put">Update provider/UID/active state.</td></tr>
+              <tr><td>PATCH</td><td><code>/api/v1/dashboards/admin/configs/&lcub;id&rcub;/metadata</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.patch">Partial update of i18n + presentation metadata.</td></tr>
+              <tr><td>DELETE</td><td><code>/api/v1/dashboards/admin/configs/&lcub;id&rcub;</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.delete">Soft-delete (sets <code>is_active=false</code>, preserves audit trail).</td></tr>
+              <tr><td>GET</td><td><code>/api/v1/dashboards/admin/grafana/discover</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.discover">List Grafana workspace dashboards via Grafana <code>/api/search</code> (cached 5 min).</td></tr>
+              <tr><td>POST</td><td><code>/api/v1/dashboards/admin/grafana/import</code></td><td><code>dashboards.manage</code></td><td data-i18n="gr.admin.api.import">Bulk-import selected dashboards (per-item TX isolation).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 data-i18n="gr.admin.security_title">Security &amp; safeguards</h3>
+        <ul>
+          <li data-i18n-html="gr.admin.security.rate"><strong>Rate-limit 10 writes/min/user</strong> on POST/PUT/PATCH/DELETE/import.</li>
+          <li data-i18n-html="gr.admin.security.regex"><strong>3-layer regex</strong> on slug + Grafana UID + Looker IDs (Zod &rarr; Pydantic &rarr; BD CHECK).</li>
+          <li data-i18n-html="gr.admin.security.audit"><strong>Audit log</strong>: every write inserts a row into <code>audit_logs</code> in the same DB transaction (memory rule #24: <code>json.dumps</code> for JSONB).</li>
+          <li data-i18n-html="gr.admin.security.boot"><strong>Non-destructive boot</strong>: <code>dashboards.manage</code> permission is preserved at boot even if not mirrored in <code>dashboards_permissions.py</code> (memory rule #37).</li>
+          <li data-i18n-html="gr.admin.security.rls"><strong>RLS filtering</strong>: <code>admin_only</code> dashboards (e.g. <em>User Activity audit</em>) hidden from non-admin callers at the SQL layer, not just the UI.</li>
+          <li data-i18n-html="gr.admin.security.token"><strong>SA token never reaches the browser</strong>: discover/import are server-side only; the frontend never sees <code>GRAFANA_SA_TOKEN</code>.</li>
+        </ul>
+
+        <h2 id="limits"><span data-i18n="gr.toc.limits">8. Limits, Lineage &amp; Roadmap</span> <a href="#limits" class="anchor-link">#</a></h2>
 
         <h3 data-i18n="gr.limits.title">Known limits (honest)</h3>
         <ul>

@@ -1912,7 +1912,59 @@ window.__I18N__.es =
       "dashboards": "4. Los 10 paneles",
       "patterns": "5. Patrones de ingeniería",
       "stack": "6. Stack & provisioning",
-      "limits": "7. Límites, linaje & roadmap"
+      "admin": "7. Auto-servicio admin (mig 323)",
+      "limits": "8. Límites, linaje & roadmap"
+    },
+    "admin": {
+      "intro": "La migración 323 (2026-05-05) hace que el registro de paneles esté totalmente dirigido por la BD. Los administradores con permiso <code>dashboards.manage</code> pueden añadir, editar, eliminar e importar en lote paneles vía la UI web &mdash; <strong>sin cambio de código, sin redespliegue</strong>. De los 10 paneles Grafana activos en <code>kouemousah.grafana.net</code>, los 10 son seedados automáticamente por la mig 323 más 1 catálogo Looker (Catálogo de Servicios) para un total de 11 filas en <code>dashboard_registrations</code>.",
+      "where_title": "Dónde gestionar los paneles",
+      "where": {
+        "list": "<code>/admin/dashboards</code> &mdash; landing pública, agrupada por categoría (ejecutivo / finanzas / operaciones / negocio / producto / seguridad)",
+        "config": "<code>/admin/dashboards/config</code> &mdash; CRUD admin: lista (11 filas) + edición + soft-delete + botón de importación",
+        "detail": "<code>/admin/dashboards/{slug}</code> &mdash; embed pantalla completa (modo kiosk) con breadcrumb de retorno"
+      },
+      "add_title": "Añadir un nuevo panel Grafana (3 clics)",
+      "add": {
+        "s1": "<strong>Empuja el JSON del panel</strong> a <code>infra/grafana/dashboards/NN_nombre.json</code> vía el agente <code>/grafana-dashboards</code> existente o por aprovisionamiento manual. Anota el campo <code>uid</code> (ej: <code>facil-new-kpi</code>).",
+        "s2": "<strong>Abre la página admin</strong> <code>/admin/dashboards/config</code>. Haz clic en el botón <strong>«Importar desde Grafana»</strong> (arriba a la derecha).",
+        "s3": "<strong>Se abre el modal</strong> con todos los paneles del workspace. Los ya importados se filtran. Marca la(s) fila(s) deseada(s), edita el slug + títulos i18n + categoría inline, luego haz clic en <strong>«Importar»</strong>. La lista se refresca automáticamente."
+      },
+      "add_hint": "El slug se convierte en el segmento de URL (<code>/admin/dashboards/{slug}</code>) y la clave del audit log &mdash; una vez fijado, es inmutable. Mantén minúsculas, con guiones, 3-40 caracteres.",
+      "where_get_title": "Dónde encontrar el UID y Organization ID de Grafana",
+      "where_get": {
+        "uid": "<strong>UID del panel</strong>: en Grafana, abre el panel. La URL es <code>https://&lt;workspace&gt;.grafana.net/d/&lt;UID&gt;/&lt;slug&gt;</code> &mdash; el segmento <code>&lt;UID&gt;</code> es lo que necesitas (4&ndash;40 caracteres alfanuméricos + guiones/guiones bajos). También visible en <em>Configuración del panel &rarr; JSON Model &rarr; <code>uid</code></em>.",
+        "org": "<strong>Organization ID</strong>: <code>1</code> para cualquier workspace Grafana Cloud single-org (el predeterminado, incluyendo <code>kouemousah.grafana.net</code>). Visible en cualquier URL como <code>?orgId=1</code>, o en <em>Admin &rarr; Organizaciones</em>. Solo cambia esto si realmente operas múltiples orgs Grafana."
+      },
+      "config_title": "Configuración requerida",
+      "config_intro": "El endpoint de importación Grafana llama a la API HTTP de Grafana del lado del servidor; requiere dos variables de entorno en Cloud Run / Secret Manager:",
+      "col_var": "Variable", "col_value": "Valor", "col_purpose": "Función",
+      "row": {
+        "base": "URL base del workspace — usada para construir la URL del iframe <em>y</em> la llamada API discover.",
+        "token_v": "<em>Token de service account</em> con scope <code>dashboards:read</code>",
+        "token_p": "Autentica <code>/api/v1/dashboards/admin/grafana/discover</code> contra <code>/api/search</code> de Grafana."
+      },
+      "config_token_hint": "Para crear el token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; rol <code>Viewer</code> (o scope más fino <code>dashboards:read</code>) &rarr; <em>Add token</em>. Almacénalo en Google Secret Manager (secret <code>grafana-sa-token</code>) y enlázalo al servicio Cloud Run. <strong>Rota cada 90 días.</strong>",
+      "api_title": "Endpoints del backend",
+      "col_method": "Método", "col_path": "Ruta", "col_perm": "Permiso", "col_desc": "Descripción",
+      "api": {
+        "list": "Listado público — el admin ve filas admin_only, los demás no (RLS).",
+        "adm_list": "Listado admin — todas las filas, activas e inactivas.",
+        "create": "Crear un nuevo panel desde cero (409 si conflicto de slug).",
+        "put": "Actualizar provider/UID/estado activo.",
+        "patch": "Actualización parcial de metadatos i18n + presentación.",
+        "delete": "Soft-delete (pone is_active=false, preserva traza de auditoría).",
+        "discover": "Listar paneles del workspace vía /api/search de Grafana (cache 5 min).",
+        "import": "Importación en lote de paneles seleccionados (TX aislada por ítem)."
+      },
+      "security_title": "Seguridad & salvaguardas",
+      "security": {
+        "rate": "<strong>Rate-limit 10 escrituras/min/usuario</strong> en POST/PUT/PATCH/DELETE/import.",
+        "regex": "<strong>Regex de 3 capas</strong> sobre slug + UID Grafana + IDs Looker (Zod &rarr; Pydantic &rarr; CHECK BD).",
+        "audit": "<strong>Audit log</strong>: cada escritura inserta una fila en <code>audit_logs</code> en la misma transacción BD (memoria regla #24: <code>json.dumps</code> para JSONB).",
+        "boot": "<strong>Boot no destructivo</strong>: el permiso <code>dashboards.manage</code> se preserva al boot incluso si no hay espejo en <code>dashboards_permissions.py</code> (memoria regla #37).",
+        "rls": "<strong>Filtrado RLS</strong>: los paneles <code>admin_only</code> (ej: <em>User Activity audit</em>) ocultos a los callers no-admin a nivel SQL, no solo en la UI.",
+        "token": "<strong>El SA token nunca llega al navegador</strong>: discover/import son solo del lado servidor; el frontend nunca ve <code>GRAFANA_SA_TOKEN</code>."
+      }
     },
     "why": {
       "problem_title": "El problema",
