@@ -497,6 +497,34 @@ async def _traced_call(
     invoke,
 ) -> Any:
     """Shared core for both traced_generate and traced_embed."""
+    # Phase B.5 — prompt injection scan (cheap regex, ~50µs).
+    # Tags the span + persists risk in BD. When AI_SECURITY_BLOCK_HIGH_RISK
+    # env is true, raises PromptInjectionBlocked before the API call.
+    injection_risk = "none"
+    injection_score = 0
+    if operation in ("chat", "completion"):
+        try:
+            from app.core.ai_security import (
+                detect_prompt_injection, PromptInjectionBlocked,
+            )
+            assessment = detect_prompt_injection(prompt)
+            injection_risk = assessment.risk
+            injection_score = assessment.score
+            if assessment.is_suspicious:
+                logger.warning(
+                    "ai_security: feature={} risk={} score={} rules={}",
+                    feature, assessment.risk, assessment.score,
+                    list(assessment.matched_rules)[:5],
+                )
+            if assessment.should_block:
+                raise PromptInjectionBlocked(assessment)
+        except ImportError:
+            pass  # ai_security module unavailable, skip
+        except Exception as exc:
+            if exc.__class__.__name__ == "PromptInjectionBlocked":
+                raise
+            logger.debug("ai_security: scan skipped ({})", exc)
+
     # Refresh pricing cache from BD (mig 327) — fire-and-forget, non-blocking.
     # If the cache is fresh, this is a no-op. If stale, it kicks off a BD
     # query in the background; the *current* call uses whatever's cached.
@@ -526,6 +554,10 @@ async def _traced_call(
         span.set_attribute("facil.prompt_hash", prompt_hash)
         if user_role:
             span.set_attribute("facil.user_role", user_role)
+        # Phase B.5 — prompt injection assessment on the span
+        if injection_risk != "none":
+            span.set_attribute("ai_security.risk", injection_risk)
+            span.set_attribute("ai_security.score", injection_score)
 
         start = time.monotonic()
         status = "error"
