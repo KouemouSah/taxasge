@@ -663,6 +663,16 @@ class SecurityHeadersMiddleware:
 
 app.add_middleware(SecurityHeadersMiddleware)
 
+# Phase B.3 — OTEL user attribute enricher.
+# Tags every request span with user.id / user.role when authenticated.
+# Soft no-op when OTEL not configured.
+try:
+    from app.core.otel_user_middleware import OtelUserAttributeMiddleware
+    app.add_middleware(OtelUserAttributeMiddleware)
+    logger.debug("✅ OTEL user attribute middleware registered")
+except Exception as exc:
+    logger.warning(f"⚠️ OTEL user middleware setup failed: {exc}")
+
 # Compress JSON / text responses ≥ 1 KiB. The fiscal-services catalog
 # endpoints (ministries, categories, search) routinely return 30-80 KiB of
 # UTF-8 JSON; gzipping shrinks that 5-7x on the wire which is the single
