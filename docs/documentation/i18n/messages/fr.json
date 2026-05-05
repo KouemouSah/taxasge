@@ -1,0 +1,161 @@
+{
+  "common": {
+    "sidebar": {
+      "subtitle": "Référence technique",
+      "toggle_label": "Basculer la navigation",
+      "footer": "Facil v1.1.8 · Mis à jour mai 2026",
+      "section": {
+        "getting_started": "Démarrage",
+        "architecture": "Architecture",
+        "reference": "Référence",
+        "features": "Fonctionnalités",
+        "observability": "Observabilité",
+        "operations": "Opérations"
+      },
+      "link": {
+        "home": "Accueil",
+        "architecture": "Architecture système",
+        "database": "Schéma de base de données",
+        "workflows": "Moteur de workflows",
+        "api_reference": "Référence API",
+        "modules": "Catalogue des modules",
+        "agents": "IA & Intelligence",
+        "payments": "Paiements",
+        "grafana": "Tableaux de bord Grafana",
+        "logrocket": "Observabilité LogRocket",
+        "security": "Sécurité",
+        "deployment": "Déploiement",
+        "i18n": "Internationalisation"
+      }
+    },
+    "breadcrumb": {
+      "docs": "Docs"
+    },
+    "toc": {
+      "title": "Sur cette page"
+    },
+    "footer": {
+      "copyright": "Plateforme Facil v1.1.8 · © 2026 Sah Kouemou",
+      "link": {
+        "api": "API"
+      }
+    }
+  },
+
+  "modules": {
+    "html_title": "Catalogue des modules - Documentation Facil",
+    "title": "Catalogue des modules",
+    "description": "Inventaire complet des 30 modules backend et 41+ modules frontend, organisés par domaine. Chaque module suit une structure interne standard (API/services/repositories pour le backend ; composants/hooks/services/types pour le frontend).",
+    "toc": {
+      "backend": "Modules backend (30)",
+      "frontend": "Modules frontend (41+)",
+      "core": "Cœur & Identité",
+      "services": "Services & Workflows",
+      "financial": "Financier",
+      "agents": "Opérations agents",
+      "intelligence": "Intelligence",
+      "platform": "Plateforme"
+    },
+    "backend": {
+      "intro": "Situés dans <code>packages/backend/app/modules/</code>. Chaque module est un package Python avec des sous-packages pour les routes API, les modèles, les repositories et les services."
+    },
+    "frontend": {
+      "intro": "Situés dans <code>packages/web/src/modules/</code>. Chaque module contient des composants, hooks, services et types."
+    },
+    "table": {
+      "module": "Module",
+      "purpose": "Rôle",
+      "endpoints": "Endpoints clés",
+      "tables": "Tables",
+      "domain": "Domaine"
+    },
+    "row": {
+      "auth": { "purpose": "Authentification : connexion, inscription, JWT, 2FA, réinitialisation du mot de passe", "endpoints_count": "9 endpoints" },
+      "users": { "purpose": "Gestion du profil utilisateur, téléversement d'avatar" },
+      "permissions": { "purpose": "RBAC : rôles, permissions, surcharges utilisateur, synchronisation auto" },
+      "companies": { "purpose": "Gestion des entreprises, rôles des membres, classification, annuaire public", "routers_count": "5 routeurs" },
+      "funcionario": { "purpose": "Vérification des fonctionnaires", "tables_note": "champs fonctionnaire" },
+      "fiscal_services": { "purpose": "Catalogue de 873 services fiscaux, bundles, modèles, règles de configuration, licences, OMS", "routers_count": "7 routeurs" },
+      "service_requests": { "purpose": "Cycle de vie des demandes, sessions wizard, rendez-vous, traitement par agents, vues admin", "routers_count": "6 routeurs" },
+      "declarations": { "purpose": "Déclarations fiscales (34 types), opérations en lot" },
+      "documents": { "purpose": "Téléversement/téléchargement de documents, file de traitement OCR" },
+      "user_documents": { "purpose": "Coffre-fort documentaire de l'utilisateur" },
+      "batch_requests": { "purpose": "Opérations en masse sur les demandes de service" },
+      "verified_identifiers": { "purpose": "Vérification de documents externes" },
+      "inspections": { "purpose": "Inspections terrain : missions, analytique, collecte, export", "routers_count": "4 routeurs, 44+ endpoints" },
+      "payments": { "purpose": "Traitement des paiements, intégration BANGE, vérification" },
+      "treasury": { "purpose": "Tableau de bord trésorerie, suivi des recettes, réconciliation", "endpoints": "Endpoints scopés trésorerie" },
+      "accountant": { "purpose": "Outils comptables : suivi des échéances, déclarations en lot" },
+      "webhooks": { "purpose": "Webhooks de paiement BANGE, callbacks de systèmes externes" },
+      "agents": { "purpose": "Profils agents, outils d'analyse" },
+      "assignment": { "purpose": "Affectation des tâches, vues superviseur, statistiques" },
+      "admin": { "purpose": "Diagnostics admin, gestion utilisateurs, monitoring, journaux d'audit" },
+      "menu_config": { "purpose": "Configuration dynamique du menu agent (basée workflow + basée modules)" },
+      "chatbot": { "purpose": "Chatbot RAG avec Gemini 2.5 Flash, 35 outils, 5 rôles d'agents" },
+      "enrichment": { "purpose": "Enrichissement IA des descriptions de services (600 caractères, 3 paragraphes)", "tables_note": "descriptions" },
+      "communications": { "purpose": "Email, SMS, push, USSD, modèles WhatsApp et envois", "routers_count": "6 routeurs" },
+      "translations": { "purpose": "Traductions trilingues, traductions d'entités, gestion des enums, clés frontend", "routers_count": "4 routeurs" },
+      "support": { "purpose": "Système de tickets de support" },
+      "homepage": { "purpose": "Statistiques et données de la page d'accueil publique", "tables": "vue homepage_stats" },
+      "cities": { "purpose": "Gestion des villes/localisations" },
+      "entity_locations": { "purpose": "Gestion des sites physiques des entités" },
+      "shared": { "purpose": "Utilitaires partagés et classes de base" }
+    },
+    "fe": {
+      "domain": {
+        "core": "Cœur",
+        "public": "Public",
+        "services": "Services",
+        "financial": "Financier",
+        "business": "Entreprise",
+        "intelligence": "Intelligence",
+        "agent_ops": "Ops agents",
+        "admin": "Admin",
+        "platform": "Plateforme"
+      },
+      "row": {
+        "auth": "Formulaires de connexion, inscription, réinitialisation",
+        "users": "Affichage et édition du profil utilisateur",
+        "dashboard": "Mise en page principale du tableau de bord et widgets",
+        "homepage": "Section hero, fonctionnalités, statistiques",
+        "fiscal_services": "Catalogue de services, recherche, filtrage",
+        "service_requests": "Liste des demandes, détail, parcours wizard",
+        "declarations": "Formulaires de déclaration, fiches, opérations en lot",
+        "payments": "Fiches de paiement, interface de traitement",
+        "documents": "Téléversement, prévisualisation, gestion des documents",
+        "user_documents": "Coffre-fort documentaire utilisateur",
+        "companies": "Gestion d'entreprise, liste des membres, invitations",
+        "accountant": "Calendrier d'échéances, file de tâches",
+        "chatbot": "Interface chat, paramètres, suggestions, error boundary",
+        "agents": "Composants et outils agents",
+        "agent_dashboard": "Vues spécifiques au tableau de bord agent",
+        "assignment": "Composants de gestion des affectations",
+        "assignments_admin": "Administration des affectations",
+        "bundle_workflow": "Interface de paiement groupé multi-entités",
+        "inspections": "Gestion des inspections terrain",
+        "oms": "Vues du système de gestion d'ordre",
+        "treasury": "Tableau de bord agent trésorerie",
+        "permissions": "Composants d'affichage des permissions",
+        "permissions_admin": "Sélecteur de rôles, badges de permissions",
+        "user_permissions_admin": "Surcharges de permissions par utilisateur",
+        "roles_admin": "Gestion des rôles, dialogues de permissions",
+        "users_admin": "Panneau d'administration des utilisateurs",
+        "agents_admin": "Administration des profils agents",
+        "audit_logs_admin": "Visualiseur de journaux d'audit avec filtres",
+        "admin": "En-tête admin, alerte backend, composants admin centraux",
+        "service_requests_admin": "Vues admin pour les demandes de service",
+        "batch_requests": "Opérations en masse sur les demandes",
+        "support": "Interface de tickets de support",
+        "communications": "Gestion des communications",
+        "translations": "Interface de gestion des traductions",
+        "enrichment": "Gestion de l'enrichissement IA",
+        "templates": "Gestion des modèles de documents et procédures",
+        "webhooks": "Configuration des webhooks",
+        "cities": "Gestion des villes",
+        "entity_locations": "Gestion des sites des entités",
+        "verified_identifiers": "Gestion des identifiants vérifiés",
+        "funcionario": "Vérification des fonctionnaires"
+      }
+    }
+  }
+}

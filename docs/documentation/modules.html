@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="modules.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,191 +10,190 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
 </head>
 <body>
   <div class="page-wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle">Technical Reference</div></div>
+      <div class="sidebar-header"><img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section"><div class="sidebar-section-title">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a><a href="modules.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a></div>
-        <div class="sidebar-section"><div class="sidebar-section-title">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div><a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div><a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a><a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a><a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div><a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a><a href="modules.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div><a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a><a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div><a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a><a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a></div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div><a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a><a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a><a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a></div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated April 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb"><a href="index.html">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Module Catalog</span></nav>
+        <nav class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current" data-i18n="modules.title">Module Catalog</span></nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Module Catalog</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="modules.title">Module Catalog</h1>
+        <p class="page-description" data-i18n="modules.description">
           Complete inventory of all 30 backend modules and 41+ frontend modules, organized by domain.
           Each module follows a standard internal structure (API/service/repository for backend;
           components/hooks/services/types for frontend).
         </p>
 
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#backend-modules">Backend Modules (30)</a></li>
-            <li class="toc-sub"><a href="#be-core">Core &amp; Identity</a></li>
-            <li class="toc-sub"><a href="#be-services">Services &amp; Workflows</a></li>
-            <li class="toc-sub"><a href="#be-financial">Financial</a></li>
-            <li class="toc-sub"><a href="#be-agents">Agent Operations</a></li>
-            <li class="toc-sub"><a href="#be-intelligence">Intelligence</a></li>
-            <li class="toc-sub"><a href="#be-platform">Platform</a></li>
-            <li><a href="#frontend-modules">Frontend Modules (41+)</a></li>
+            <li><a href="#backend-modules" data-i18n="modules.toc.backend">Backend Modules (30)</a></li>
+            <li class="toc-sub"><a href="#be-core" data-i18n="modules.toc.core">Core &amp; Identity</a></li>
+            <li class="toc-sub"><a href="#be-services" data-i18n="modules.toc.services">Services &amp; Workflows</a></li>
+            <li class="toc-sub"><a href="#be-financial" data-i18n="modules.toc.financial">Financial</a></li>
+            <li class="toc-sub"><a href="#be-agents" data-i18n="modules.toc.agents">Agent Operations</a></li>
+            <li class="toc-sub"><a href="#be-intelligence" data-i18n="modules.toc.intelligence">Intelligence</a></li>
+            <li class="toc-sub"><a href="#be-platform" data-i18n="modules.toc.platform">Platform</a></li>
+            <li><a href="#frontend-modules" data-i18n="modules.toc.frontend">Frontend Modules (41+)</a></li>
           </ul>
         </div>
 
-        <!-- Backend Modules -->
-        <h2 id="backend-modules">Backend Modules (30) <a href="#backend-modules" class="anchor-link">#</a></h2>
-        <p>
+        <h2 id="backend-modules"><span data-i18n="modules.toc.backend">Backend Modules (30)</span> <a href="#backend-modules" class="anchor-link">#</a></h2>
+        <p data-i18n-html="modules.backend.intro">
           Located in <code>packages/backend/app/modules/</code>. Each module is a Python package with
           sub-packages for API routes, models, repositories, and services.
         </p>
 
-        <h3 id="be-core">Core &amp; Identity</h3>
+        <h3 id="be-core" data-i18n="modules.toc.core">Core &amp; Identity</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>auth</code></td><td>Authentication: login, register, JWT, 2FA, password reset</td><td><code>/auth/*</code> (9 endpoints)</td><td>users, sessions, refresh_tokens, pending_registrations</td></tr>
-              <tr><td><code>users</code></td><td>User profile management, avatar upload</td><td><code>/users/*</code></td><td>users</td></tr>
-              <tr><td><code>permissions</code></td><td>RBAC: roles, permissions, user overrides, auto-sync</td><td><code>/permissions/*</code>, <code>/roles/*</code></td><td>roles, permissions, role_permissions, user_permissions</td></tr>
-              <tr><td><code>companies</code></td><td>Company management, member roles, classification, public directory</td><td><code>/companies/*</code> (5 routers)</td><td>companies, user_company_roles</td></tr>
-              <tr><td><code>funcionario</code></td><td>Civil servant verification</td><td><code>/funcionario/*</code></td><td>users (civil servant fields)</td></tr>
+              <tr><td><code>auth</code></td><td data-i18n="modules.row.auth.purpose">Authentication: login, register, JWT, 2FA, password reset</td><td><code>/auth/*</code> (<span data-i18n="modules.row.auth.endpoints_count">9 endpoints</span>)</td><td>users, sessions, refresh_tokens, pending_registrations</td></tr>
+              <tr><td><code>users</code></td><td data-i18n="modules.row.users.purpose">User profile management, avatar upload</td><td><code>/users/*</code></td><td>users</td></tr>
+              <tr><td><code>permissions</code></td><td data-i18n="modules.row.permissions.purpose">RBAC: roles, permissions, user overrides, auto-sync</td><td><code>/permissions/*</code>, <code>/roles/*</code></td><td>roles, permissions, role_permissions, user_permissions</td></tr>
+              <tr><td><code>companies</code></td><td data-i18n="modules.row.companies.purpose">Company management, member roles, classification, public directory</td><td><code>/companies/*</code> (<span data-i18n="modules.row.companies.routers_count">5 routers</span>)</td><td>companies, user_company_roles</td></tr>
+              <tr><td><code>funcionario</code></td><td data-i18n="modules.row.funcionario.purpose">Civil servant verification</td><td><code>/funcionario/*</code></td><td>users (<span data-i18n="modules.row.funcionario.tables_note">civil servant fields</span>)</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="be-services">Services &amp; Workflows</h3>
+        <h3 id="be-services" data-i18n="modules.toc.services">Services &amp; Workflows</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>fiscal_services</code></td><td>873 fiscal services catalog, bundles, templates, config rules, licenses, OMS</td><td><code>/fiscal-services/*</code> (7 routers)</td><td>fiscal_services, categories, ministries, service_keywords</td></tr>
-              <tr><td><code>service_requests</code></td><td>Service request lifecycle, wizard sessions, appointments, agent processing, admin views</td><td><code>/service-requests/*</code> (6 routers)</td><td>service_requests, wizard_sessions, appointment_holds/reservations</td></tr>
-              <tr><td><code>declarations</code></td><td>Tax declarations (34 types), batch operations</td><td><code>/declarations/*</code>, <code>/accountant/*</code></td><td>tax_declarations, declaration_iva_details, etc.</td></tr>
-              <tr><td><code>documents</code></td><td>Document upload/download, OCR processing queue</td><td><code>/documents/*</code></td><td>uploaded_files, document_processing_queue, ocr_extraction_results</td></tr>
-              <tr><td><code>user_documents</code></td><td>User document vault (coffre-fort)</td><td><code>/user-documents/*</code></td><td>user_documents</td></tr>
-              <tr><td><code>batch_requests</code></td><td>Bulk service request operations</td><td><code>/batch-requests/*</code></td><td>import_batches, import_batch_items</td></tr>
-              <tr><td><code>verified_identifiers</code></td><td>External document verification</td><td><code>/verified-identifiers/*</code></td><td>verified_identifiers</td></tr>
-              <tr><td><code>inspections</code></td><td>Field inspections: missions, analytics, collection, export</td><td><code>/inspections/*</code> (4 routers, 44+ endpoints)</td><td>field_inspections, commercial_licenses, license_obligations</td></tr>
+              <tr><td><code>fiscal_services</code></td><td data-i18n="modules.row.fiscal_services.purpose">873 fiscal services catalog, bundles, templates, config rules, licenses, OMS</td><td><code>/fiscal-services/*</code> (<span data-i18n="modules.row.fiscal_services.routers_count">7 routers</span>)</td><td>fiscal_services, categories, ministries, service_keywords</td></tr>
+              <tr><td><code>service_requests</code></td><td data-i18n="modules.row.service_requests.purpose">Service request lifecycle, wizard sessions, appointments, agent processing, admin views</td><td><code>/service-requests/*</code> (<span data-i18n="modules.row.service_requests.routers_count">6 routers</span>)</td><td>service_requests, wizard_sessions, appointment_holds/reservations</td></tr>
+              <tr><td><code>declarations</code></td><td data-i18n="modules.row.declarations.purpose">Tax declarations (34 types), batch operations</td><td><code>/declarations/*</code>, <code>/accountant/*</code></td><td>tax_declarations, declaration_iva_details, etc.</td></tr>
+              <tr><td><code>documents</code></td><td data-i18n="modules.row.documents.purpose">Document upload/download, OCR processing queue</td><td><code>/documents/*</code></td><td>uploaded_files, document_processing_queue, ocr_extraction_results</td></tr>
+              <tr><td><code>user_documents</code></td><td data-i18n="modules.row.user_documents.purpose">User document vault</td><td><code>/user-documents/*</code></td><td>user_documents</td></tr>
+              <tr><td><code>batch_requests</code></td><td data-i18n="modules.row.batch_requests.purpose">Bulk service request operations</td><td><code>/batch-requests/*</code></td><td>import_batches, import_batch_items</td></tr>
+              <tr><td><code>verified_identifiers</code></td><td data-i18n="modules.row.verified_identifiers.purpose">External document verification</td><td><code>/verified-identifiers/*</code></td><td>verified_identifiers</td></tr>
+              <tr><td><code>inspections</code></td><td data-i18n="modules.row.inspections.purpose">Field inspections: missions, analytics, collection, export</td><td><code>/inspections/*</code> (<span data-i18n="modules.row.inspections.routers_count">4 routers, 44+ endpoints</span>)</td><td>field_inspections, commercial_licenses, license_obligations</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="be-financial">Financial</h3>
+        <h3 id="be-financial" data-i18n="modules.toc.financial">Financial</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>payments</code></td><td>Payment processing, BANGE integration, verification</td><td><code>/payments/*</code>, <code>/verify/*</code></td><td>payments, service_payments, payment_receipts</td></tr>
-              <tr><td><code>treasury</code></td><td>Treasury agent dashboard, revenue tracking, reconciliation</td><td>Treasury-scoped endpoints</td><td>service_payments, bank_transactions</td></tr>
-              <tr><td><code>accountant</code></td><td>Accountant tools: deadline tracking, batch declarations</td><td><code>/accountant/*</code></td><td>tax_declarations, companies</td></tr>
-              <tr><td><code>webhooks</code></td><td>BANGE payment webhooks, external system callbacks</td><td><code>/webhooks/*</code></td><td>bank_transactions, webhook_logs</td></tr>
+              <tr><td><code>payments</code></td><td data-i18n="modules.row.payments.purpose">Payment processing, BANGE integration, verification</td><td><code>/payments/*</code>, <code>/verify/*</code></td><td>payments, service_payments, payment_receipts</td></tr>
+              <tr><td><code>treasury</code></td><td data-i18n="modules.row.treasury.purpose">Treasury agent dashboard, revenue tracking, reconciliation</td><td data-i18n="modules.row.treasury.endpoints">Treasury-scoped endpoints</td><td>service_payments, bank_transactions</td></tr>
+              <tr><td><code>accountant</code></td><td data-i18n="modules.row.accountant.purpose">Accountant tools: deadline tracking, batch declarations</td><td><code>/accountant/*</code></td><td>tax_declarations, companies</td></tr>
+              <tr><td><code>webhooks</code></td><td data-i18n="modules.row.webhooks.purpose">BANGE payment webhooks, external system callbacks</td><td><code>/webhooks/*</code></td><td>bank_transactions, webhook_logs</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="be-agents">Agent Operations</h3>
+        <h3 id="be-agents" data-i18n="modules.toc.agents">Agent Operations</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>agents</code></td><td>Agent profiles, analyst tools</td><td><code>/agents/*</code></td><td>agent_profiles, ministry_agents</td></tr>
-              <tr><td><code>assignment</code></td><td>Task assignment, supervisor views, statistics</td><td><code>/assignments/*</code>, <code>/supervisor/*</code>, <code>/statistics/*</code></td><td>assignments, agent_workloads, agent_work_queue</td></tr>
-              <tr><td><code>admin</code></td><td>Admin diagnostics, user management, monitoring, audit logs</td><td><code>/admin/*</code>, <code>/audit-logs/*</code></td><td>audit_logs</td></tr>
-              <tr><td><code>menu_config</code></td><td>Dynamic agent menu configuration (workflow-based + module-based)</td><td><code>/menu-config/*</code></td><td>workflow_menu_mapping, roles.menu_config</td></tr>
+              <tr><td><code>agents</code></td><td data-i18n="modules.row.agents.purpose">Agent profiles, analyst tools</td><td><code>/agents/*</code></td><td>agent_profiles, ministry_agents</td></tr>
+              <tr><td><code>assignment</code></td><td data-i18n="modules.row.assignment.purpose">Task assignment, supervisor views, statistics</td><td><code>/assignments/*</code>, <code>/supervisor/*</code>, <code>/statistics/*</code></td><td>assignments, agent_workloads, agent_work_queue</td></tr>
+              <tr><td><code>admin</code></td><td data-i18n="modules.row.admin.purpose">Admin diagnostics, user management, monitoring, audit logs</td><td><code>/admin/*</code>, <code>/audit-logs/*</code></td><td>audit_logs</td></tr>
+              <tr><td><code>menu_config</code></td><td data-i18n="modules.row.menu_config.purpose">Dynamic agent menu configuration (workflow-based + module-based)</td><td><code>/menu-config/*</code></td><td>workflow_menu_mapping, roles.menu_config</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="be-intelligence">Intelligence</h3>
+        <h3 id="be-intelligence" data-i18n="modules.toc.intelligence">Intelligence</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>chatbot</code></td><td>RAG chatbot with Gemini 2.5 Flash, 35 tools, 5 agent roles</td><td><code>/chatbot/*</code></td><td>chatbot_conversations, chatbot_messages, embeddings</td></tr>
-              <tr><td><code>enrichment</code></td><td>AI-powered service description enrichment (600 char, 3 paragraphs)</td><td><code>/enrichment/*</code></td><td>fiscal_services (descriptions)</td></tr>
+              <tr><td><code>chatbot</code></td><td data-i18n="modules.row.chatbot.purpose">RAG chatbot with Gemini 2.5 Flash, 35 tools, 5 agent roles</td><td><code>/chatbot/*</code></td><td>chatbot_conversations, chatbot_messages, embeddings</td></tr>
+              <tr><td><code>enrichment</code></td><td data-i18n="modules.row.enrichment.purpose">AI-powered service description enrichment (600 char, 3 paragraphs)</td><td><code>/enrichment/*</code></td><td>fiscal_services (<span data-i18n="modules.row.enrichment.tables_note">descriptions</span>)</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3 id="be-platform">Platform</h3>
+        <h3 id="be-platform" data-i18n="modules.toc.platform">Platform</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Purpose</th><th>Key Endpoints</th><th>Tables</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.purpose">Purpose</th><th data-i18n="modules.table.endpoints">Key Endpoints</th><th data-i18n="modules.table.tables">Tables</th></tr></thead>
             <tbody>
-              <tr><td><code>communications</code></td><td>Email, SMS, push, USSD, WhatsApp templates and sending</td><td><code>/communications/*</code> (6 routers)</td><td>email_templates, sms_templates, push_templates, provider_settings</td></tr>
-              <tr><td><code>translations</code></td><td>Trilingual translations, entity translations, enum management, frontend keys</td><td><code>/translations/*</code> (4 routers)</td><td>translations, entity_translations</td></tr>
-              <tr><td><code>support</code></td><td>Support ticket system</td><td><code>/support/*</code></td><td>support_tickets, support_messages, support_attachments</td></tr>
-              <tr><td><code>homepage</code></td><td>Public homepage stats and data</td><td><code>/homepage/*</code></td><td>homepage_stats view</td></tr>
-              <tr><td><code>cities</code></td><td>City/location management</td><td><code>/cities/*</code></td><td>cities</td></tr>
-              <tr><td><code>entity_locations</code></td><td>Entity physical location management</td><td><code>/entity-locations/*</code></td><td>entity_locations</td></tr>
-              <tr><td><code>shared</code></td><td>Shared utilities and base classes</td><td>&mdash;</td><td>&mdash;</td></tr>
+              <tr><td><code>communications</code></td><td data-i18n="modules.row.communications.purpose">Email, SMS, push, USSD, WhatsApp templates and sending</td><td><code>/communications/*</code> (<span data-i18n="modules.row.communications.routers_count">6 routers</span>)</td><td>email_templates, sms_templates, push_templates, provider_settings</td></tr>
+              <tr><td><code>translations</code></td><td data-i18n="modules.row.translations.purpose">Trilingual translations, entity translations, enum management, frontend keys</td><td><code>/translations/*</code> (<span data-i18n="modules.row.translations.routers_count">4 routers</span>)</td><td>translations, entity_translations</td></tr>
+              <tr><td><code>support</code></td><td data-i18n="modules.row.support.purpose">Support ticket system</td><td><code>/support/*</code></td><td>support_tickets, support_messages, support_attachments</td></tr>
+              <tr><td><code>homepage</code></td><td data-i18n="modules.row.homepage.purpose">Public homepage stats and data</td><td><code>/homepage/*</code></td><td data-i18n="modules.row.homepage.tables">homepage_stats view</td></tr>
+              <tr><td><code>cities</code></td><td data-i18n="modules.row.cities.purpose">City/location management</td><td><code>/cities/*</code></td><td>cities</td></tr>
+              <tr><td><code>entity_locations</code></td><td data-i18n="modules.row.entity_locations.purpose">Entity physical location management</td><td><code>/entity-locations/*</code></td><td>entity_locations</td></tr>
+              <tr><td><code>shared</code></td><td data-i18n="modules.row.shared.purpose">Shared utilities and base classes</td><td>&mdash;</td><td>&mdash;</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Frontend Modules -->
-        <h2 id="frontend-modules">Frontend Modules (41+) <a href="#frontend-modules" class="anchor-link">#</a></h2>
-        <p>Located in <code>packages/web/src/modules/</code>. Each module contains components, hooks, services, and types.</p>
+        <h2 id="frontend-modules"><span data-i18n="modules.toc.frontend">Frontend Modules (41+)</span> <a href="#frontend-modules" class="anchor-link">#</a></h2>
+        <p data-i18n-html="modules.frontend.intro">Located in <code>packages/web/src/modules/</code>. Each module contains components, hooks, services, and types.</p>
 
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Module</th><th>Domain</th><th>Purpose</th></tr></thead>
+            <thead><tr><th data-i18n="modules.table.module">Module</th><th data-i18n="modules.table.domain">Domain</th><th data-i18n="modules.table.purpose">Purpose</th></tr></thead>
             <tbody>
-              <tr><td><code>auth</code></td><td>Core</td><td>Login, register, password reset forms</td></tr>
-              <tr><td><code>users</code></td><td>Core</td><td>User profile display and editing</td></tr>
-              <tr><td><code>dashboard</code></td><td>Core</td><td>Main dashboard layout and widgets</td></tr>
-              <tr><td><code>homepage</code></td><td>Public</td><td>Hero section, features, stats</td></tr>
-              <tr><td><code>fiscal-services</code></td><td>Services</td><td>Service catalog, search, filtering</td></tr>
-              <tr><td><code>service-requests</code></td><td>Services</td><td>Request list, detail, wizard flow</td></tr>
-              <tr><td><code>declarations</code></td><td>Financial</td><td>Declaration forms, cards, batch operations</td></tr>
-              <tr><td><code>payments</code></td><td>Financial</td><td>Payment cards, processing UI</td></tr>
-              <tr><td><code>documents</code></td><td>Services</td><td>Document upload, preview, management</td></tr>
-              <tr><td><code>user-documents</code></td><td>Services</td><td>User document vault</td></tr>
-              <tr><td><code>companies</code></td><td>Business</td><td>Company management, member list, invites</td></tr>
-              <tr><td><code>accountant</code></td><td>Business</td><td>Deadline calendar, task queue</td></tr>
-              <tr><td><code>chatbot</code></td><td>Intelligence</td><td>Chat UI, settings, suggestions, error boundary</td></tr>
-              <tr><td><code>agents</code></td><td>Agent Ops</td><td>Agent components and tools</td></tr>
-              <tr><td><code>agent-dashboard</code></td><td>Agent Ops</td><td>Agent-specific dashboard views</td></tr>
-              <tr><td><code>assignment</code></td><td>Agent Ops</td><td>Assignment management components</td></tr>
-              <tr><td><code>assignments-admin</code></td><td>Admin</td><td>Assignment administration</td></tr>
-              <tr><td><code>bundle-workflow</code></td><td>Services</td><td>Bundle payment multi-entity UI</td></tr>
-              <tr><td><code>inspections</code></td><td>Agent Ops</td><td>Field inspection management</td></tr>
-              <tr><td><code>oms</code></td><td>Agent Ops</td><td>Order Management System views</td></tr>
-              <tr><td><code>treasury</code></td><td>Financial</td><td>Treasury agent dashboard</td></tr>
-              <tr><td><code>permissions</code></td><td>Admin</td><td>Permission display components</td></tr>
-              <tr><td><code>permissions-admin</code></td><td>Admin</td><td>Role selector, permission badges</td></tr>
-              <tr><td><code>user-permissions-admin</code></td><td>Admin</td><td>Per-user permission overrides</td></tr>
-              <tr><td><code>roles-admin</code></td><td>Admin</td><td>Role management, permission dialogs</td></tr>
-              <tr><td><code>users-admin</code></td><td>Admin</td><td>User management admin panel</td></tr>
-              <tr><td><code>agents-admin</code></td><td>Admin</td><td>Agent profile administration</td></tr>
-              <tr><td><code>audit-logs-admin</code></td><td>Admin</td><td>Audit log viewer with filters</td></tr>
-              <tr><td><code>admin</code></td><td>Admin</td><td>Admin header, backend alert, core admin components</td></tr>
-              <tr><td><code>service-requests-admin</code></td><td>Admin</td><td>Admin views for service requests</td></tr>
-              <tr><td><code>batch-requests</code></td><td>Services</td><td>Bulk request operations</td></tr>
-              <tr><td><code>support</code></td><td>Platform</td><td>Support ticket UI</td></tr>
-              <tr><td><code>communications</code></td><td>Platform</td><td>Communication management</td></tr>
-              <tr><td><code>translations</code></td><td>Platform</td><td>Translation management UI</td></tr>
-              <tr><td><code>enrichment</code></td><td>Intelligence</td><td>AI enrichment management</td></tr>
-              <tr><td><code>templates</code></td><td>Platform</td><td>Document and procedure template management</td></tr>
-              <tr><td><code>webhooks</code></td><td>Platform</td><td>Webhook configuration</td></tr>
-              <tr><td><code>cities</code></td><td>Platform</td><td>City management</td></tr>
-              <tr><td><code>entity-locations</code></td><td>Platform</td><td>Entity location management</td></tr>
-              <tr><td><code>verified-identifiers</code></td><td>Services</td><td>Verified identifier management</td></tr>
-              <tr><td><code>funcionario</code></td><td>Core</td><td>Civil servant verification</td></tr>
+              <tr><td><code>auth</code></td><td data-i18n="modules.fe.domain.core">Core</td><td data-i18n="modules.fe.row.auth">Login, register, password reset forms</td></tr>
+              <tr><td><code>users</code></td><td data-i18n="modules.fe.domain.core">Core</td><td data-i18n="modules.fe.row.users">User profile display and editing</td></tr>
+              <tr><td><code>dashboard</code></td><td data-i18n="modules.fe.domain.core">Core</td><td data-i18n="modules.fe.row.dashboard">Main dashboard layout and widgets</td></tr>
+              <tr><td><code>homepage</code></td><td data-i18n="modules.fe.domain.public">Public</td><td data-i18n="modules.fe.row.homepage">Hero section, features, stats</td></tr>
+              <tr><td><code>fiscal-services</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.fiscal_services">Service catalog, search, filtering</td></tr>
+              <tr><td><code>service-requests</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.service_requests">Request list, detail, wizard flow</td></tr>
+              <tr><td><code>declarations</code></td><td data-i18n="modules.fe.domain.financial">Financial</td><td data-i18n="modules.fe.row.declarations">Declaration forms, cards, batch operations</td></tr>
+              <tr><td><code>payments</code></td><td data-i18n="modules.fe.domain.financial">Financial</td><td data-i18n="modules.fe.row.payments">Payment cards, processing UI</td></tr>
+              <tr><td><code>documents</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.documents">Document upload, preview, management</td></tr>
+              <tr><td><code>user-documents</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.user_documents">User document vault</td></tr>
+              <tr><td><code>companies</code></td><td data-i18n="modules.fe.domain.business">Business</td><td data-i18n="modules.fe.row.companies">Company management, member list, invites</td></tr>
+              <tr><td><code>accountant</code></td><td data-i18n="modules.fe.domain.business">Business</td><td data-i18n="modules.fe.row.accountant">Deadline calendar, task queue</td></tr>
+              <tr><td><code>chatbot</code></td><td data-i18n="modules.fe.domain.intelligence">Intelligence</td><td data-i18n="modules.fe.row.chatbot">Chat UI, settings, suggestions, error boundary</td></tr>
+              <tr><td><code>agents</code></td><td data-i18n="modules.fe.domain.agent_ops">Agent Ops</td><td data-i18n="modules.fe.row.agents">Agent components and tools</td></tr>
+              <tr><td><code>agent-dashboard</code></td><td data-i18n="modules.fe.domain.agent_ops">Agent Ops</td><td data-i18n="modules.fe.row.agent_dashboard">Agent-specific dashboard views</td></tr>
+              <tr><td><code>assignment</code></td><td data-i18n="modules.fe.domain.agent_ops">Agent Ops</td><td data-i18n="modules.fe.row.assignment">Assignment management components</td></tr>
+              <tr><td><code>assignments-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.assignments_admin">Assignment administration</td></tr>
+              <tr><td><code>bundle-workflow</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.bundle_workflow">Bundle payment multi-entity UI</td></tr>
+              <tr><td><code>inspections</code></td><td data-i18n="modules.fe.domain.agent_ops">Agent Ops</td><td data-i18n="modules.fe.row.inspections">Field inspection management</td></tr>
+              <tr><td><code>oms</code></td><td data-i18n="modules.fe.domain.agent_ops">Agent Ops</td><td data-i18n="modules.fe.row.oms">Order Management System views</td></tr>
+              <tr><td><code>treasury</code></td><td data-i18n="modules.fe.domain.financial">Financial</td><td data-i18n="modules.fe.row.treasury">Treasury agent dashboard</td></tr>
+              <tr><td><code>permissions</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.permissions">Permission display components</td></tr>
+              <tr><td><code>permissions-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.permissions_admin">Role selector, permission badges</td></tr>
+              <tr><td><code>user-permissions-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.user_permissions_admin">Per-user permission overrides</td></tr>
+              <tr><td><code>roles-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.roles_admin">Role management, permission dialogs</td></tr>
+              <tr><td><code>users-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.users_admin">User management admin panel</td></tr>
+              <tr><td><code>agents-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.agents_admin">Agent profile administration</td></tr>
+              <tr><td><code>audit-logs-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.audit_logs_admin">Audit log viewer with filters</td></tr>
+              <tr><td><code>admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.admin">Admin header, backend alert, core admin components</td></tr>
+              <tr><td><code>service-requests-admin</code></td><td data-i18n="modules.fe.domain.admin">Admin</td><td data-i18n="modules.fe.row.service_requests_admin">Admin views for service requests</td></tr>
+              <tr><td><code>batch-requests</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.batch_requests">Bulk request operations</td></tr>
+              <tr><td><code>support</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.support">Support ticket UI</td></tr>
+              <tr><td><code>communications</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.communications">Communication management</td></tr>
+              <tr><td><code>translations</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.translations">Translation management UI</td></tr>
+              <tr><td><code>enrichment</code></td><td data-i18n="modules.fe.domain.intelligence">Intelligence</td><td data-i18n="modules.fe.row.enrichment">AI enrichment management</td></tr>
+              <tr><td><code>templates</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.templates">Document and procedure template management</td></tr>
+              <tr><td><code>webhooks</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.webhooks">Webhook configuration</td></tr>
+              <tr><td><code>cities</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.cities">City management</td></tr>
+              <tr><td><code>entity-locations</code></td><td data-i18n="modules.fe.domain.platform">Platform</td><td data-i18n="modules.fe.row.entity_locations">Entity location management</td></tr>
+              <tr><td><code>verified-identifiers</code></td><td data-i18n="modules.fe.domain.services">Services</td><td data-i18n="modules.fe.row.verified_identifiers">Verified identifier management</td></tr>
+              <tr><td><code>funcionario</code></td><td data-i18n="modules.fe.domain.core">Core</td><td data-i18n="modules.fe.row.funcionario">Civil servant verification</td></tr>
             </tbody>
           </table>
         </div>
@@ -202,8 +201,8 @@
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026</span>
-        <div class="footer-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a href="api-reference.html">API</a></div>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="architecture.html" data-i18n="common.sidebar.link.architecture">Architecture</a><a href="api-reference.html" data-i18n="common.footer.link.api">API</a></div>
       </footer>
     </main>
   </div>

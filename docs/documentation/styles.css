@@ -198,6 +198,48 @@ a:hover {
   text-transform: uppercase;
 }
 
+/* ---------- Language switcher (i18n) ---------- */
+.lang-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  margin-top: var(--space-sm);
+}
+
+.lang-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.lang-switch-btn:hover {
+  color: var(--text-primary);
+  background: var(--border-light);
+}
+
+.lang-switch-btn.active {
+  background: var(--ge-blue);
+  color: #fff;
+}
+
+.lang-switch-btn.active:hover {
+  background: var(--blue-dark);
+  color: #fff;
+}
+
 .sidebar-nav {
   flex: 1;
   padding: var(--space-md) 0;
