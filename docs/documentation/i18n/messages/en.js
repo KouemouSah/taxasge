@@ -1344,6 +1344,138 @@ window.__I18N__.en =
     },
     "footer": "Facil Platform v1.1.8 · Republic of Equatorial Guinea · © 2026 Sah Kouemou",
     "footer.dashboards": "Dashboards"
+  },
+
+  "api": {
+    "html_title": "API Reference - Facil Documentation",
+    "title": "API Reference",
+    "description": "The Facil backend exposes 62 API routers via FastAPI, all mounted under the <code>/api/v1</code> prefix. This reference covers authentication, request conventions, and key endpoints by domain.",
+    "toc": {
+      "base_url": "Base URL & Conventions",
+      "auth": "Authentication",
+      "errors": "Error Handling",
+      "rate": "Rate Limiting",
+      "routers": "All 62 API Routers",
+      "auth_ep": "Auth Endpoints",
+      "user_ep": "User Endpoints",
+      "fiscal_ep": "Fiscal Services Endpoints",
+      "sr_ep": "Service Requests Endpoints",
+      "pay_ep": "Payment Endpoints",
+      "chat_ep": "Chatbot Endpoints",
+      "admin_ep": "Admin Endpoints"
+    },
+    "base": {
+      "col_env": "Environment", "col_url": "Base URL",
+      "row": { "prod": "Production", "local": "Local Dev" }
+    },
+    "headers": { "title": "Request Headers" },
+    "pag": { "title": "Pagination", "intro": "List endpoints accept standard pagination parameters:", "meta": "Response includes pagination metadata:" },
+    "auth": {
+      "flow_title": "Authentication Flow",
+      "step1": "Login (email+password)",
+      "step2": "Verify credentials",
+      "step3": "2FA check (if enabled)",
+      "step4": "Issue JWT pair",
+      "col_token": "Token", "col_lifetime": "Lifetime", "col_purpose": "Purpose",
+      "row": {
+        "access": "Access Token", "access_life": "30 minutes", "access_purpose": "API authorization (Bearer header)",
+        "refresh": "Refresh Token", "refresh_life": "30 days", "refresh_purpose": "Obtain new access tokens without re-login"
+      },
+      "jwt_title": "JWT Payload",
+      "2fa_title": "Two-Factor Authentication (2FA)",
+      "2fa_body": "Optional TOTP-based 2FA using <code>pyotp</code>. When enabled, login returns a <code>2fa_required</code> flag and the client must submit the TOTP code to complete authentication."
+    },
+    "err": {
+      "intro": "All errors follow a consistent response schema with trilingual support:",
+      "col_status": "HTTP Status", "col_code": "Error Code", "col_desc": "Description",
+      "row": {
+        "400": "Invalid request parameters",
+        "401": "Missing or invalid JWT token",
+        "403": "Insufficient permissions (RBAC)",
+        "404": "Resource not found",
+        "409": "Resource conflict (duplicate, version mismatch)",
+        "422": "Pydantic validation failure (detailed field errors)",
+        "429": "Rate limit exceeded",
+        "500": "Internal error (details sanitized for clients)"
+      },
+      "callout_title": "Security Note",
+      "callout_body": "For 5xx errors, the backend sanitizes the <code>detail</code> field to prevent leaking internal exception messages. Full stack traces are logged server-side via Loguru."
+    },
+    "rate": {
+      "intro": "Rate limiting is enforced per user (or IP for unauthenticated endpoints) via the Redis-backed <code>check_rate_limit()</code> function.",
+      "col_cat": "Endpoint Category", "col_limit": "Limit", "col_window": "Window",
+      "row": {
+        "auth": "Authentication (login/register)", "auth_limit": "10 requests",
+        "chat": "Chatbot messages", "chat_limit": "30 requests",
+        "general": "General API (authenticated)", "general_limit": "100 requests",
+        "upload": "File uploads", "upload_limit": "20 requests",
+        "window": "60 seconds"
+      }
+    },
+    "routers": {
+      "auth": "Authentication & Users (5 routers)",
+      "fiscal": "Fiscal Services & Bundles (7 routers)",
+      "sr": "Service Requests (6 routers)",
+      "pay": "Payments & Verification (3 routers)",
+      "agents": "Agents & Assignments (5 routers)",
+      "admin": "Admin & Permissions (7 routers)",
+      "tr": "Translations & i18n (4 routers)",
+      "comm": "Communications (6 routers)",
+      "companies": "Companies (5 routers)",
+      "insp": "Inspections (4 routers)",
+      "other": "Other (10 routers)",
+      "col_router": "Router", "col_prefix": "Prefix", "col_tags": "Tags"
+    },
+    "ep": {
+      "auth": {
+        "login": "Email + password login, returns JWT pair",
+        "register": "Create new user account",
+        "refresh": "Exchange refresh token for new access token",
+        "verify": "Send email verification code",
+        "reset": "Request password reset email",
+        "change": "Change password (authenticated)",
+        "2fa_setup": "Initialize TOTP 2FA setup",
+        "2fa_verify": "Verify TOTP code during login",
+        "logout": "Revoke refresh token"
+      },
+      "user": {
+        "me": "Get current user profile",
+        "update": "Update current user profile",
+        "byid": "Get user by ID (admin)"
+      },
+      "fs": {
+        "list": "List all fiscal services (873 total, paginated)",
+        "detail": "Get service details with tariff info",
+        "search": "Full-text search (tsvector)",
+        "ministry": "Services filtered by ministry"
+      },
+      "sr": {
+        "create": "Create new service request",
+        "list": "List user service requests",
+        "detail": "Get request details",
+        "wizard_create": "Create wizard session (cache-first flow)",
+        "wizard_update": "Update wizard step data",
+        "initiate": "Atomic persist + payment"
+      },
+      "pay": {
+        "initiate": "Initiate payment (BANGE or manual)",
+        "detail": "Get payment details",
+        "webhook": "BANGE payment callback",
+        "verify": "Verify payment receipt"
+      },
+      "chat": {
+        "message": "Send message to AI chatbot",
+        "list": "List conversation history",
+        "detail": "Get conversation messages"
+      },
+      "admin": {
+        "health": "System health dashboard",
+        "users": "List all users (admin only)",
+        "audit": "Query audit logs (2800+ entries)",
+        "menu_me": "Get agent menu for current user",
+        "menu_map": "List workflow-to-menu mappings"
+      }
+    }
   }
 }
 ;

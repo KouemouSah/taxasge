@@ -1344,6 +1344,138 @@ window.__I18N__.es =
     },
     "footer": "Plataforma Facil v1.1.8 · República de Guinea Ecuatorial · © 2026 Sah Kouemou",
     "footer.dashboards": "Paneles"
+  },
+
+  "api": {
+    "html_title": "Referencia API - Documentación Facil",
+    "title": "Referencia API",
+    "description": "El backend Facil expone 62 routers API vía FastAPI, todos montados bajo el prefijo <code>/api/v1</code>. Esta referencia cubre autenticación, convenciones de solicitud y endpoints clave por dominio.",
+    "toc": {
+      "base_url": "URL base & convenciones",
+      "auth": "Autenticación",
+      "errors": "Manejo de errores",
+      "rate": "Rate limiting",
+      "routers": "Los 62 routers API",
+      "auth_ep": "Endpoints de Auth",
+      "user_ep": "Endpoints de Usuario",
+      "fiscal_ep": "Endpoints de Servicios fiscales",
+      "sr_ep": "Endpoints de Solicitudes de servicio",
+      "pay_ep": "Endpoints de Pagos",
+      "chat_ep": "Endpoints de Chatbot",
+      "admin_ep": "Endpoints de Admin"
+    },
+    "base": {
+      "col_env": "Entorno", "col_url": "URL base",
+      "row": { "prod": "Producción", "local": "Dev local" }
+    },
+    "headers": { "title": "Cabeceras de solicitud" },
+    "pag": { "title": "Paginación", "intro": "Los endpoints de listado aceptan los parámetros de paginación estándar:", "meta": "La respuesta incluye metadatos de paginación:" },
+    "auth": {
+      "flow_title": "Flujo de autenticación",
+      "step1": "Inicio de sesión (email+contraseña)",
+      "step2": "Verificación de credenciales",
+      "step3": "Verificación 2FA (si está activada)",
+      "step4": "Emisión del par JWT",
+      "col_token": "Token", "col_lifetime": "Vida útil", "col_purpose": "Función",
+      "row": {
+        "access": "Token de acceso", "access_life": "30 minutos", "access_purpose": "Autorización API (cabecera Bearer)",
+        "refresh": "Token de refresco", "refresh_life": "30 días", "refresh_purpose": "Obtener nuevos tokens de acceso sin re-login"
+      },
+      "jwt_title": "Payload JWT",
+      "2fa_title": "Autenticación de dos factores (2FA)",
+      "2fa_body": "2FA TOTP opcional vía <code>pyotp</code>. Cuando está activado, el inicio de sesión devuelve un flag <code>2fa_required</code> y el cliente debe enviar el código TOTP para completar la autenticación."
+    },
+    "err": {
+      "intro": "Todos los errores siguen un esquema de respuesta consistente con soporte trilingüe:",
+      "col_status": "Estado HTTP", "col_code": "Código de error", "col_desc": "Descripción",
+      "row": {
+        "400": "Parámetros de solicitud inválidos",
+        "401": "Token JWT ausente o inválido",
+        "403": "Permisos insuficientes (RBAC)",
+        "404": "Recurso no encontrado",
+        "409": "Conflicto de recurso (duplicado, desajuste de versión)",
+        "422": "Fallo de validación Pydantic (errores de campo detallados)",
+        "429": "Límite de tasa excedido",
+        "500": "Error interno (detalles saneados para los clientes)"
+      },
+      "callout_title": "Nota de seguridad",
+      "callout_body": "Para los errores 5xx, el backend sanea el campo <code>detail</code> para impedir fugas de mensajes de excepciones internas. Los stack traces completos se registran del lado del servidor vía Loguru."
+    },
+    "rate": {
+      "intro": "El rate limiting se aplica por usuario (o por IP para endpoints no autenticados) mediante la función Redis <code>check_rate_limit()</code>.",
+      "col_cat": "Categoría de endpoint", "col_limit": "Límite", "col_window": "Ventana",
+      "row": {
+        "auth": "Autenticación (login/registro)", "auth_limit": "10 solicitudes",
+        "chat": "Mensajes de chatbot", "chat_limit": "30 solicitudes",
+        "general": "API general (autenticada)", "general_limit": "100 solicitudes",
+        "upload": "Subida de archivos", "upload_limit": "20 solicitudes",
+        "window": "60 segundos"
+      }
+    },
+    "routers": {
+      "auth": "Autenticación & Usuarios (5 routers)",
+      "fiscal": "Servicios fiscales & Bundles (7 routers)",
+      "sr": "Solicitudes de servicio (6 routers)",
+      "pay": "Pagos & Verificación (3 routers)",
+      "agents": "Agentes & Asignaciones (5 routers)",
+      "admin": "Admin & Permisos (7 routers)",
+      "tr": "Traducciones & i18n (4 routers)",
+      "comm": "Comunicaciones (6 routers)",
+      "companies": "Empresas (5 routers)",
+      "insp": "Inspecciones (4 routers)",
+      "other": "Otros (10 routers)",
+      "col_router": "Router", "col_prefix": "Prefijo", "col_tags": "Tags"
+    },
+    "ep": {
+      "auth": {
+        "login": "Inicio de sesión por email + contraseña, devuelve el par JWT",
+        "register": "Crear una nueva cuenta de usuario",
+        "refresh": "Intercambiar el token de refresco por un nuevo token de acceso",
+        "verify": "Enviar código de verificación por email",
+        "reset": "Solicitar email de restablecimiento de contraseña",
+        "change": "Cambiar contraseña (autenticado)",
+        "2fa_setup": "Inicializar la configuración 2FA TOTP",
+        "2fa_verify": "Verificar el código TOTP durante el inicio de sesión",
+        "logout": "Revocar el token de refresco"
+      },
+      "user": {
+        "me": "Obtener el perfil del usuario actual",
+        "update": "Actualizar el perfil del usuario actual",
+        "byid": "Obtener usuario por ID (admin)"
+      },
+      "fs": {
+        "list": "Listar todos los servicios fiscales (873 en total, paginado)",
+        "detail": "Obtener detalles del servicio con información de tasas",
+        "search": "Búsqueda full-text (tsvector)",
+        "ministry": "Servicios filtrados por ministerio"
+      },
+      "sr": {
+        "create": "Crear nueva solicitud de servicio",
+        "list": "Listar las solicitudes de servicio del usuario",
+        "detail": "Obtener detalles de la solicitud",
+        "wizard_create": "Crear sesión wizard (flujo cache-first)",
+        "wizard_update": "Actualizar datos de paso del wizard",
+        "initiate": "Persistencia + pago atómico"
+      },
+      "pay": {
+        "initiate": "Iniciar pago (BANGE o manual)",
+        "detail": "Obtener detalles del pago",
+        "webhook": "Callback de pago BANGE",
+        "verify": "Verificar recibo de pago"
+      },
+      "chat": {
+        "message": "Enviar mensaje al chatbot IA",
+        "list": "Listar el historial de conversaciones",
+        "detail": "Obtener los mensajes de una conversación"
+      },
+      "admin": {
+        "health": "Panel de salud del sistema",
+        "users": "Listar todos los usuarios (solo admin)",
+        "audit": "Consultar registros de auditoría (2800+ entradas)",
+        "menu_me": "Obtener el menú de agente para el usuario actual",
+        "menu_map": "Listar mapeos flujo-a-menú"
+      }
+    }
   }
 }
 ;
