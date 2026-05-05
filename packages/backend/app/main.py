@@ -51,6 +51,18 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Database connection pool initialized")
 
         # ----------------------------------------------------------------
+        # Phase C.4 — GeoIP DB initialization (best-effort, non-blocking).
+        # ----------------------------------------------------------------
+        # Looks for /tmp/GeoLite2-City.mmdb (or GEOIP_DB_PATH env var). If
+        # absent, geo enrichment in request_telemetry is silently disabled
+        # — middleware persists NULL for geo_country/city/lat/lon columns.
+        try:
+            from app.core.geoip import init_geoip
+            init_geoip()
+        except Exception as exc:
+            logger.warning(f"⚠️ GeoIP init failed (non-blocking): {exc}")
+
+        # ----------------------------------------------------------------
         # OpenTelemetry tracing (AI Observability — Phase A.2 / mig 325)
         # ----------------------------------------------------------------
         # Conditional: only configures the OTLP exporter when both
