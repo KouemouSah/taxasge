@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-title="aio.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil AI Observability — token cost, latency, error tracking on 18 Gemini call sites">
+  <meta name="author" content="Facil Engineering Team">
+  <title>AI Observability - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div>
+          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="ai-observability.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129303;</span> <span data-i18n="common.sidebar.link.ai_obs">AI Observability</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="common.sidebar.link.ai_obs">AI Observability</span>
+        </nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="aio.title">AI Observability &mdash; Gemini cost &amp; latency tracking</h1>
+        <p class="page-description" data-i18n-html="aio.description">
+          Per-call telemetry on every Gemini / Vertex AI request made by the Facil backend. 18 call sites instrumented across 16 features (chatbot RAG, OCR, classification, enrichment, routing, briefing, etc.). Outputs: 1 Grafana dashboard with 12 panels + 3 alert rules + a BD-persisted audit trail (<code>ai_call_metrics</code> table, mig 325). Privacy-safe by design: no raw prompt content stored, only SHA-256 truncated hashes.
+        </p>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#why" data-i18n="aio.toc.why">1. Why &amp; Gap analysis</a></li>
+            <li><a href="#stack" data-i18n="aio.toc.stack">2. Stack &amp; double-write design</a></li>
+            <li><a href="#schema" data-i18n="aio.toc.schema">3. BD schema (mig 325)</a></li>
+            <li><a href="#wrapper" data-i18n="aio.toc.wrapper">4. Wrapper API (traced_generate_sync)</a></li>
+            <li><a href="#features" data-i18n="aio.toc.features">5. Feature labels (16 mappings)</a></li>
+            <li><a href="#dashboard" data-i18n="aio.toc.dashboard">6. Dashboard (12 panels)</a></li>
+            <li><a href="#alerts" data-i18n="aio.toc.alerts">7. Alerts (3 rules + runbooks)</a></li>
+            <li><a href="#privacy" data-i18n="aio.toc.privacy">8. Privacy &amp; security</a></li>
+            <li><a href="#cohabitation" data-i18n="aio.toc.cohabitation">9. Coexistence with VertexAIManager</a></li>
+          </ul>
+        </div>
+
+        <h2 id="why"><span data-i18n="aio.toc.why">1. Why &amp; Gap analysis</span> <a href="#why" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.why.intro">
+          Before this work, the backend made <strong>~17 distinct Gemini call sites</strong> (RAG chat, embeddings, OCR, classification, enrichment, routing, briefing, agent decisions, supervisor tools, etc.) with <strong>zero observability</strong>. We could not answer 4 critical operational questions:
+        </p>
+        <ol>
+          <li data-i18n-html="aio.why.q1"><strong>Cost</strong>: how much do we spend in tokens per day, per model, per feature?</li>
+          <li data-i18n-html="aio.why.q2"><strong>Latency</strong>: what is the p95/p99 by call type (RAG vs OCR vs classification)?</li>
+          <li data-i18n-html="aio.why.q3"><strong>Reliability</strong>: what is the failure rate, and what type (rate-limit / timeout / JSON parse / content blocked)?</li>
+          <li data-i18n-html="aio.why.q4"><strong>Optimization</strong>: which prompts cost the most? Are there quick wins?</li>
+        </ol>
+
+        <h2 id="stack"><span data-i18n="aio.toc.stack">2. Stack &amp; double-write design</span> <a href="#stack" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.stack.intro">
+          Each call goes through a single wrapper <code>traced_generate_sync()</code> that emits <strong>both</strong> an OTEL span (to Grafana Tempo for trace drill-down) <strong>and</strong> a row in the <code>ai_call_metrics</code> BD table (long-term cost reporting + Grafana dashboard panels). Two writes, two consumers:
+        </p>
+        <div class="diagram">
+          <div class="diagram-row">
+            <div class="diagram-box"><strong data-i18n="aio.stack.step1">Call site</strong><br><small data-i18n="aio.stack.step1_sub">e.g. chatbot RAG</small></div>
+            <div class="diagram-arrow">&rarr;</div>
+            <div class="diagram-box"><strong data-i18n="aio.stack.step2">traced_generate_sync</strong><br><small data-i18n="aio.stack.step2_sub">app/core/ai_telemetry.py</small></div>
+            <div class="diagram-arrow">&rarr;</div>
+            <div class="diagram-box"><strong data-i18n="aio.stack.step3">model.generate_content()</strong><br><small data-i18n="aio.stack.step3_sub">Vertex AI sync via run_in_executor</small></div>
+          </div>
+          <div class="diagram-row">
+            <div class="diagram-box"><strong data-i18n="aio.stack.fanA">A. OTEL span</strong><br><small data-i18n="aio.stack.fanA_sub">→ Grafana Tempo (14d retention)</small></div>
+            <div class="diagram-arrow">&darr;</div>
+            <div class="diagram-box"><strong data-i18n="aio.stack.fanB">B. asyncio.create_task INSERT</strong><br><small data-i18n="aio.stack.fanB_sub">→ ai_call_metrics (BD persistent)</small></div>
+          </div>
+        </div>
+        <p data-i18n-html="aio.stack.why_double">
+          Why both? Tempo Free tier has 14-day retention &mdash; insufficient for monthly cost reports. The BD is the <strong>source of truth for long-term aggregation</strong>; Tempo provides drill-down debug (find the exact span of a given trace_id). Both writes are <strong>fire-and-forget</strong> via <code>asyncio.create_task</code> &mdash; never block the user-facing call.
+        </p>
+
+        <h2 id="schema"><span data-i18n="aio.toc.schema">3. BD schema (mig 325)</span> <a href="#schema" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.schema.intro">
+          Table <code>ai_call_metrics</code> (20 columns, 8 indexes, 9 CHECK constraints):
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="aio.schema.col_name">Column</th><th data-i18n="aio.schema.col_type">Type</th><th data-i18n="aio.schema.col_purpose">Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>id</code>, <code>timestamp</code>, <code>created_at</code></td><td>bigserial, timestamptz</td><td data-i18n="aio.schema.row_id">Primary key + ingestion time</td></tr>
+              <tr><td><code>trace_id</code>, <code>span_id</code></td><td>text (16/32 hex regex)</td><td data-i18n="aio.schema.row_trace">OTEL correlation with Tempo</td></tr>
+              <tr><td><code>provider</code>, <code>model_name</code>, <code>operation</code></td><td>text (enums)</td><td data-i18n="aio.schema.row_model">gemini | vertex_embedding × chat | embeddings | completion</td></tr>
+              <tr><td><code>feature</code>, <code>user_id</code>, <code>user_role</code></td><td>text, uuid, text</td><td data-i18n="aio.schema.row_feature">Facil context (chatbot_rag / ocr / etc.)</td></tr>
+              <tr><td><code>input_tokens</code>, <code>output_tokens</code>, <code>total_tokens</code></td><td>int (GENERATED)</td><td data-i18n="aio.schema.row_tokens">Usage counters; total_tokens auto-computed</td></tr>
+              <tr><td><code>cost_xaf</code></td><td>numeric(14, 6)</td><td data-i18n="aio.schema.row_cost">Estimated FCFA cost (input × pricing.input + output × pricing.output)</td></tr>
+              <tr><td><code>latency_ms</code>, <code>finish_reason</code>, <code>status</code>, <code>error_class</code></td><td>int, text, text, text</td><td data-i18n="aio.schema.row_status">end-start ms + 6-status enum (success / error / rate_limited / timeout / content_blocked / json_parse_error)</td></tr>
+              <tr><td><code>prompt_hash</code></td><td>text (16 hex regex)</td><td data-i18n="aio.schema.row_hash">SHA-256 truncated &mdash; privacy-safe identifier (no reverse mapping)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p data-i18n-html="aio.schema.views">
+          Two rollup views power the dashboard panels: <code>v_ai_cost_daily</code> (90 days, per-day per-feature per-model) and <code>v_ai_cost_hourly</code> (7 days, finer for spike detection alerts). Both granted to <code>looker_readonly</code> (mémoire règle #38: auto-wrapper VIEW au boot).
+        </p>
+
+        <h2 id="wrapper"><span data-i18n="aio.toc.wrapper">4. Wrapper API</span> <a href="#wrapper" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.wrapper.intro">
+          Module <code>app/core/ai_telemetry.py</code> exposes 4 wrappers:
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Function</th><th data-i18n="aio.wrapper.col_when">When to use</th><th data-i18n="aio.wrapper.col_signature">Signature shape</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>traced_generate_sync</code></td><td data-i18n="aio.wrapper.row_sync">Sync <code>model.generate_content()</code> + <code>run_in_executor</code>. <strong>Most common pattern in this codebase.</strong></td><td><code>await traced_generate_sync(model, prompt, *, feature, **gen_kwargs)</code></td></tr>
+              <tr><td><code>traced_generate</code></td><td data-i18n="aio.wrapper.row_async">Async <code>generate_content_async()</code> if SDK supports it</td><td><code>await traced_generate(model, prompt, *, feature, **kwargs)</code></td></tr>
+              <tr><td><code>traced_embed_sync</code></td><td data-i18n="aio.wrapper.row_emb_sync">Sync <code>model.get_embeddings()</code></td><td><code>await traced_embed_sync(model, texts, *, feature)</code></td></tr>
+              <tr><td><code>traced_embed</code></td><td data-i18n="aio.wrapper.row_emb_async">Async embeddings</td><td><code>await traced_embed(model, texts, *, feature)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p data-i18n-html="aio.wrapper.principles">
+          Design principles: (1) <strong>soft OTEL import</strong> &mdash; module loads without opentelemetry-sdk; spans become no-ops; BD persist still runs. (2) <strong>BD persist never blocks</strong> &mdash; <code>asyncio.create_task</code> + try/except; a BD outage cannot crash the chatbot. (3) <strong>privacy by construction</strong> &mdash; prompt content never stored, only the 16-char SHA-256 hash. RGPD-safe.
+        </p>
+
+        <h2 id="features"><span data-i18n="aio.toc.features">5. Feature labels (16 mappings)</span> <a href="#features" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.features.intro">
+          Each call site is tagged with a <code>feature</code> string used for cost/latency segmentation in the dashboard:
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="aio.features.col_label">Feature</th><th data-i18n="aio.features.col_module">Module</th><th data-i18n="aio.features.col_volume">Volume</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>chatbot_rag</code></td><td><code>chatbot/services/gemini_service.py</code></td><td data-i18n="aio.features.vol_high">High</td></tr>
+              <tr><td><code>embeddings_rag</code></td><td><code>chatbot/services/embedding_service.py</code></td><td data-i18n="aio.features.vol_vhigh">Very high</td></tr>
+              <tr><td><code>intent_classification</code></td><td><code>chatbot/services/gemini_service.py</code></td><td data-i18n="aio.features.vol_high">High</td></tr>
+              <tr><td><code>ocr</code></td><td><code>service_requests/services/gemini_document_processor.py</code></td><td data-i18n="aio.features.vol_vhigh">Very high</td></tr>
+              <tr><td><code>enrichment</code></td><td><code>enrichment/services/enrichment_service.py</code></td><td data-i18n="aio.features.vol_low">Low (cron)</td></tr>
+              <tr><td><code>routing</code></td><td><code>assignment/services/llm_routing_service.py</code></td><td data-i18n="aio.features.vol_med">Medium</td></tr>
+              <tr><td><code>briefing</code></td><td><code>agents/services/llm_briefing_service.py</code></td><td data-i18n="aio.features.vol_low">Low</td></tr>
+              <tr><td><code>classification_batch</code></td><td><code>batch_requests/services/document_classifier.py</code></td><td data-i18n="aio.features.vol_med">Medium (sporadic)</td></tr>
+              <tr><td><code>analyst_treasury</code>, <code>analyst_base</code> (×4)</td><td><code>service_requests/.../treasury_analyst_service.py</code> + <code>shared/.../base_analyst_service.py</code></td><td data-i18n="aio.features.vol_low">Low</td></tr>
+              <tr><td><code>agent_decision</code>, <code>agent_mixin</code> (×2)</td><td><code>shared/services/agent_decision_tools.py</code> + <code>llm_agent_mixin.py</code></td><td data-i18n="aio.features.vol_med">Medium</td></tr>
+              <tr><td><code>supervisor_tools</code></td><td><code>shared/services/supervisor_tools.py</code></td><td data-i18n="aio.features.vol_low">Low</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="dashboard"><span data-i18n="aio.toc.dashboard">6. Dashboard</span> <a href="#dashboard" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.dashboard.intro">
+          UID: <code>facil-ai-observability</code>. <strong>12 panels</strong> across 5 row sections. Listed at <code>/admin/dashboards</code> under category "security" (rls_mode <code>admin_only</code>). Open in new tab from the listing (Grafana Cloud Free blocks iframe embedding &mdash; see <a href="grafana-dashboards.html#admin-ui">Grafana docs §7</a>).
+        </p>
+        <ul>
+          <li data-i18n-html="aio.dashboard.s1"><strong>💰 Cost</strong>: today XAF, MTD XAF, total calls today, tokens in/out today (4 stat panels)</li>
+          <li data-i18n-html="aio.dashboard.s2"><strong>📈 Trends</strong>: cost stacked by feature per day, p95 latency per feature per hour (2 timeseries)</li>
+          <li data-i18n-html="aio.dashboard.s3"><strong>🚨 Errors</strong>: 24h error rate %, errors by status type bar chart, success-vs-error per hour stacked area (3 panels)</li>
+          <li data-i18n-html="aio.dashboard.s4"><strong>🔝 Top costs</strong>: top features by cost (7d), top prompt_hashes by cost (7d) &mdash; identifies dedup / optimization candidates (2 tables)</li>
+          <li data-i18n-html="aio.dashboard.s5"><strong>🤖 Models breakdown</strong> (collapsed): cost share donut + per-model table (2 panels)</li>
+        </ul>
+
+        <h2 id="alerts"><span data-i18n="aio.toc.alerts">7. Alerts</span> <a href="#alerts" class="anchor-link">#</a></h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Rule</th><th data-i18n="aio.alerts.col_threshold">Threshold</th><th data-i18n="aio.alerts.col_severity">Severity</th><th data-i18n="aio.alerts.col_for">For</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>facil-ai-cost-spike</td><td>SUM(cost_xaf) today &gt; 5000 XAF</td><td>warning</td><td>5min</td></tr>
+              <tr><td>facil-ai-error-rate</td><td>error_rate(5m) &gt; 10%</td><td><strong>critical</strong></td><td>5min</td></tr>
+              <tr><td>facil-ai-p95-latency</td><td>p95(15m) &gt; 8000ms</td><td>warning</td><td>10min</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="cost-spike" data-i18n="aio.alerts.runbook_cost">Runbook &mdash; Cost spike</h3>
+        <p data-i18n-html="aio.alerts.cost_body">
+          1. Open the dashboard, drill into "Top features by cost (7d)". 2. Identify the dominant feature. 3. Check "Top prompt hashes by cost (7d)" for duplicate expensive prompts (caching candidate). 4. If routing/briefing/enrichment cron is the culprit, throttle frequency. 5. If chatbot_rag explodes, suspect a bot or agent looping &mdash; check audit_logs for rapid-fire requests from one user_id.
+        </p>
+
+        <h3 id="error-spike" data-i18n="aio.alerts.runbook_error">Runbook &mdash; Error rate spike</h3>
+        <p data-i18n-html="aio.alerts.error_body">
+          1. Open "Errors by status type (last 7d)". 2. <strong>rate_limited</strong> &rarr; Vertex AI quota hit, increase via Google Cloud Console. 3. <strong>timeout</strong> &rarr; check Gemini API status page; consider raising <code>asyncio.wait_for</code> timeout. 4. <strong>content_blocked</strong> &rarr; SAFETY filter triggered, review prompt template. 5. <strong>json_parse_error</strong> &rarr; mémoire règle #21: ensure <code>response_mime_type="application/json"</code> in GenerationConfig.
+        </p>
+
+        <h3 id="latency-degradation" data-i18n="aio.alerts.runbook_latency">Runbook &mdash; p95 latency degraded</h3>
+        <p data-i18n-html="aio.alerts.latency_body">
+          1. Check "p95 latency by feature" panel. 2. If <code>ocr</code> spikes, suspect large PDFs &mdash; verify document_processing_queue isn't backlogged. 3. If <code>chatbot_rag</code> spikes, check pgvector search latency (separate Postgres metrics). 4. If all features spike together, suspect Vertex AI region-wide degradation &mdash; check <a href="https://status.cloud.google.com/" rel="noopener" target="_blank">Google Cloud Status</a>.
+        </p>
+
+        <h2 id="privacy"><span data-i18n="aio.toc.privacy">8. Privacy &amp; security</span> <a href="#privacy" class="anchor-link">#</a></h2>
+        <ul>
+          <li data-i18n-html="aio.privacy.no_content"><strong>No raw prompt content</strong> stored anywhere. Only SHA-256 truncated 16-char hash. No reverse-mapping table. RGPD-safe by design.</li>
+          <li data-i18n-html="aio.privacy.token_hash"><strong>prompt_hash format</strong> enforced by BD CHECK <code>chk_aim_prompt_hash_format</code>: <code>^[a-f0-9]&lcub;16&rcub;$</code></li>
+          <li data-i18n-html="aio.privacy.user_fk"><strong>user_id FK ON DELETE SET NULL</strong> &mdash; user deletion clears the link without deleting the audit row</li>
+          <li data-i18n-html="aio.privacy.token_secret"><strong>OTLP token via Secret Manager</strong> (<code>grafana-otlp-token</code>) &mdash; CAP token scoped to <code>traces:write</code> only, never exposed in YAML descriptors</li>
+          <li data-i18n-html="aio.privacy.iam"><strong>RLS</strong>: dashboard <code>rls_mode='admin_only'</code> — non-admins don't see cost data even via <code>/api/v1/dashboards/reports-config</code></li>
+        </ul>
+
+        <h2 id="cohabitation"><span data-i18n="aio.toc.cohabitation">9. Coexistence with VertexAIManager</span> <a href="#cohabitation" class="anchor-link">#</a></h2>
+        <p data-i18n-html="aio.cohabitation.intro">
+          The existing <code>app/modules/shared/services/vertex_ai_manager.py</code> singleton (in-memory token counters + circuit breaker) is INTENTIONALLY preserved. The two systems are complementary, not redundant:
+        </p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th data-i18n="aio.cohabitation.col_concern">Concern</th><th>VertexAIManager</th><th>ai_call_metrics</th></tr>
+            </thead>
+            <tbody>
+              <tr><td data-i18n="aio.cohabitation.row_circuit">Circuit breaker (10 fail/60s cooldown)</td><td>✅</td><td>❌</td></tr>
+              <tr><td data-i18n="aio.cohabitation.row_realtime">Sub-μs in-memory stats read</td><td>✅</td><td>❌</td></tr>
+              <tr><td data-i18n="aio.cohabitation.row_persist">BD persistence (cross-worker, survives restart)</td><td>❌</td><td>✅</td></tr>
+              <tr><td data-i18n="aio.cohabitation.row_cost">Cost in XAF</td><td>❌</td><td>✅</td></tr>
+              <tr><td data-i18n="aio.cohabitation.row_tags">Per-feature/model/user/trace tags</td><td>❌</td><td>✅</td></tr>
+              <tr><td data-i18n="aio.cohabitation.row_status">Status enum (6 values)</td><td>❌</td><td>✅</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p data-i18n-html="aio.cohabitation.pattern">
+          Call site pattern: <code>await traced_generate_sync(...)</code> followed by <code>VertexAIManager().track_usage(response, "X")</code> + <code>track_success()</code>. Both calls coexist; neither blocks the other.
+        </p>
+      </div>
+
+      <footer class="page-footer">
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026</span>
+        <div class="footer-links"><a href="index.html" data-i18n="common.sidebar.link.home">Home</a><a href="grafana-dashboards.html" data-i18n="common.sidebar.link.grafana">Grafana</a><a href="agents.html" data-i18n="common.sidebar.link.agents">AI</a></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle=document.getElementById('sidebar-toggle'),sidebar=document.getElementById('sidebar'),overlay=document.getElementById('sidebar-overlay');
+    if(toggle&&sidebar&&overlay){toggle.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active')});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active')})}
+  </script>
+</body>
+</html>

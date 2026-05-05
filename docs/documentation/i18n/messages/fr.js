@@ -24,6 +24,7 @@ window.__I18N__.fr =
         "agents": "IA & Intelligence",
         "payments": "Paiements",
         "grafana": "Tableaux de bord Grafana",
+        "ai_obs": "Observabilité IA",
         "logrocket": "Observabilité LogRocket",
         "security": "Sécurité",
         "deployment": "Déploiement",
@@ -1898,6 +1899,101 @@ window.__I18N__.fr =
       "quickstart": "<code>.claude/plans/OBSERVABILITY_QUICKSTART.md</code> — tutoriel pas-à-pas pour les nouveaux contributeurs.",
       "dashboards": "<code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> — doc compagnon côté Sentry (8 dashboards, règles d'alerte).",
       "grafana": "<a href=\"grafana-dashboards.html\">Tableaux de bord Grafana</a> — la couche analytique (KPIs orientés décision), complémentaire à LogRocket (rejeu forensique)."
+    }
+  },
+
+  "aio": {
+    "html_title": "Observabilité IA - Documentation Facil",
+    "title": "Observabilité IA — suivi coût & latence Gemini",
+    "description": "Télémétrie par appel sur chaque requête Gemini / Vertex AI émise par le backend Facil. 18 points d'appel instrumentés sur 16 fonctionnalités (RAG chatbot, OCR, classification, enrichissement, routage, briefing, etc.). Sorties : 1 dashboard Grafana avec 12 panels + 3 règles d'alerte + traçabilité persistée en BD (table <code>ai_call_metrics</code>, mig 325). Privacy by design : aucun contenu brut de prompt stocké, uniquement des hashes SHA-256 tronqués.",
+    "toc": {
+      "why": "1. Pourquoi & analyse de gap",
+      "stack": "2. Stack & double-écriture",
+      "schema": "3. Schéma BD (mig 325)",
+      "wrapper": "4. API Wrapper (traced_generate_sync)",
+      "features": "5. Labels feature (16 mappings)",
+      "dashboard": "6. Dashboard (12 panels)",
+      "alerts": "7. Alertes (3 règles + runbooks)",
+      "privacy": "8. Confidentialité & sécurité",
+      "cohabitation": "9. Cohabitation avec VertexAIManager"
+    },
+    "why": {
+      "intro": "Avant ce travail, le backend faisait <strong>~17 points d'appel Gemini distincts</strong> avec <strong>zéro observabilité</strong>. On ne pouvait répondre à 4 questions opérationnelles critiques :",
+      "q1": "<strong>Coût</strong> : combien dépense-t-on en tokens par jour, par modèle, par feature ?",
+      "q2": "<strong>Latence</strong> : quel est le p95/p99 par type d'appel (RAG vs OCR vs classification) ?",
+      "q3": "<strong>Fiabilité</strong> : quel est le failure rate, et de quel type (rate-limit / timeout / JSON parse / contenu bloqué) ?",
+      "q4": "<strong>Optimisation</strong> : quels prompts coûtent le plus ? Y a-t-il des quick wins ?"
+    },
+    "stack": {
+      "intro": "Chaque appel passe par un wrapper unique <code>traced_generate_sync()</code> qui émet <strong>à la fois</strong> un span OTEL (vers Grafana Tempo pour le drill-down trace) <strong>et</strong> une ligne dans la table BD <code>ai_call_metrics</code>.",
+      "step1": "Point d'appel", "step1_sub": "ex: chatbot RAG",
+      "step2": "traced_generate_sync", "step2_sub": "app/core/ai_telemetry.py",
+      "step3": "model.generate_content()", "step3_sub": "Vertex AI sync via run_in_executor",
+      "fanA": "A. Span OTEL", "fanA_sub": "→ Grafana Tempo (rétention 14j)",
+      "fanB": "B. asyncio.create_task INSERT", "fanB_sub": "→ ai_call_metrics (BD persistante)",
+      "why_double": "Tempo Free tier a une rétention de 14 jours — insuffisant pour rapports de coût mensuels. La BD est la <strong>source de vérité long-terme</strong> ; Tempo fait du drill-down debug. Les deux écritures sont <strong>fire-and-forget</strong> via <code>asyncio.create_task</code> — ne bloquent jamais l'appel utilisateur."
+    },
+    "schema": {
+      "intro": "Table <code>ai_call_metrics</code> (20 colonnes, 8 indexes, 9 CHECK constraints) :",
+      "col_name": "Colonne", "col_type": "Type", "col_purpose": "Rôle",
+      "row_id": "Clé primaire + temps d'ingestion",
+      "row_trace": "Corrélation OTEL avec Tempo",
+      "row_model": "gemini | vertex_embedding × chat | embeddings | completion",
+      "row_feature": "Contexte Facil (chatbot_rag / ocr / etc.)",
+      "row_tokens": "Compteurs d'usage; total_tokens auto-calculé",
+      "row_cost": "Coût FCFA estimé (input × pricing.input + output × pricing.output)",
+      "row_status": "ms end-start + enum 6 statuts (success / error / rate_limited / timeout / content_blocked / json_parse_error)",
+      "row_hash": "SHA-256 tronqué — identifiant privacy-safe (pas de mapping inverse)",
+      "views": "Deux vues d'agrégation alimentent les panels : <code>v_ai_cost_daily</code> (90 jours) et <code>v_ai_cost_hourly</code> (7 jours). Les deux grantées à <code>looker_readonly</code>."
+    },
+    "wrapper": {
+      "intro": "Le module <code>app/core/ai_telemetry.py</code> expose 4 wrappers :",
+      "col_when": "Quand utiliser", "col_signature": "Signature",
+      "row_sync": "<code>model.generate_content()</code> sync + <code>run_in_executor</code>. <strong>Pattern le plus courant dans ce codebase.</strong>",
+      "row_async": "<code>generate_content_async()</code> async si le SDK le supporte",
+      "row_emb_sync": "<code>model.get_embeddings()</code> sync",
+      "row_emb_async": "Embeddings async",
+      "principles": "Principes : (1) <strong>import OTEL soft</strong> — module charge sans opentelemetry-sdk; les spans deviennent no-op; persist BD continue. (2) <strong>persist BD ne bloque jamais</strong> — <code>asyncio.create_task</code> + try/except. (3) <strong>privacy by construction</strong> — contenu prompt jamais stocké, uniquement le hash 16-char SHA-256."
+    },
+    "features": {
+      "intro": "Chaque point d'appel est tagué avec une string <code>feature</code> utilisée pour la segmentation coût/latence dans le dashboard :",
+      "col_label": "Feature", "col_module": "Module", "col_volume": "Volume",
+      "vol_high": "Élevé", "vol_vhigh": "Très élevé", "vol_med": "Moyen", "vol_low": "Faible (cron)"
+    },
+    "dashboard": {
+      "intro": "UID : <code>facil-ai-observability</code>. <strong>12 panels</strong> répartis en 5 sections rangées. Listé à <code>/admin/dashboards</code> sous catégorie « security » (rls_mode <code>admin_only</code>).",
+      "s1": "<strong>💰 Coût</strong> : aujourd'hui XAF, MTD XAF, total appels jour, tokens in/out jour (4 stats)",
+      "s2": "<strong>📈 Tendances</strong> : coût empilé par feature/jour, p95 latence par feature/heure (2 timeseries)",
+      "s3": "<strong>🚨 Erreurs</strong> : taux d'erreur 24h, erreurs par type bar chart, succès-vs-erreur par heure (3 panels)",
+      "s4": "<strong>🔝 Top coûts</strong> : top features par coût (7j), top prompt_hashes par coût (7j) (2 tables)",
+      "s5": "<strong>🤖 Breakdown modèles</strong> (collapsé) : donut part de coût + table par-modèle (2 panels)"
+    },
+    "alerts": {
+      "col_threshold": "Seuil", "col_severity": "Sévérité", "col_for": "Durée",
+      "runbook_cost": "Runbook — Pic de coût",
+      "runbook_error": "Runbook — Pic de taux d'erreur",
+      "runbook_latency": "Runbook — Dégradation p95 latence",
+      "cost_body": "1. Ouvrir le dashboard, drill dans « Top features par coût (7j) ». 2. Identifier la feature dominante. 3. Vérifier « Top prompt hashes par coût (7j) » pour des prompts coûteux dupliqués (candidat caching). 4. Si routing/briefing/enrichment cron est en cause, throttler. 5. Si chatbot_rag explose, suspecter un bot ou un agent qui boucle — vérifier audit_logs.",
+      "error_body": "1. Ouvrir « Errors by status type (7j) ». 2. <strong>rate_limited</strong> → quota Vertex AI atteint, augmenter via Google Cloud Console. 3. <strong>timeout</strong> → vérifier le statut Gemini ; envisager un asyncio.wait_for plus long. 4. <strong>content_blocked</strong> → filtre SAFETY déclenché, revoir le template prompt. 5. <strong>json_parse_error</strong> → règle mémoire #21 : assurer <code>response_mime_type=\"application/json\"</code> dans GenerationConfig.",
+      "latency_body": "1. Vérifier le panel « p95 latency par feature ». 2. Si <code>ocr</code> pique, suspecter de gros PDFs. 3. Si <code>chatbot_rag</code> pique, vérifier la latence de la recherche pgvector. 4. Si toutes les features piquent, suspecter une dégradation région Vertex AI."
+    },
+    "privacy": {
+      "no_content": "<strong>Aucun contenu brut de prompt</strong> stocké. Uniquement le hash SHA-256 tronqué à 16 chars. Pas de table de mapping inverse. RGPD-safe by design.",
+      "token_hash": "<strong>Format prompt_hash</strong> enforced par CHECK BD <code>chk_aim_prompt_hash_format</code> : <code>^[a-f0-9]{16}$</code>",
+      "user_fk": "<strong>user_id FK ON DELETE SET NULL</strong> — la suppression d'un user efface le lien sans supprimer la ligne d'audit",
+      "token_secret": "<strong>Token OTLP via Secret Manager</strong> (<code>grafana-otlp-token</code>) — CAP token scopé à <code>traces:write</code>",
+      "iam": "<strong>RLS</strong> : dashboard <code>rls_mode='admin_only'</code> — les non-admins ne voient pas les données coût même via <code>/api/v1/dashboards/reports-config</code>"
+    },
+    "cohabitation": {
+      "intro": "Le singleton <code>app/modules/shared/services/vertex_ai_manager.py</code> existant est INTENTIONNELLEMENT préservé. Les deux systèmes sont complémentaires, pas redondants :",
+      "col_concern": "Préoccupation",
+      "row_circuit": "Circuit breaker (10 fail/60s cooldown)",
+      "row_realtime": "Lecture stats in-memory sub-μs",
+      "row_persist": "Persistance BD (cross-worker, survit restart)",
+      "row_cost": "Coût en XAF",
+      "row_tags": "Tags par feature/modèle/user/trace",
+      "row_status": "Enum statut (6 valeurs)",
+      "pattern": "Pattern d'appel : <code>await traced_generate_sync(...)</code> suivi de <code>VertexAIManager().track_usage(response, \"X\")</code> + <code>track_success()</code>. Les deux coexistent ; aucun ne bloque l'autre."
     }
   },
 
