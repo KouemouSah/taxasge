@@ -43,6 +43,7 @@ import {
 } from '@modules/auth/validations';
 import { useRequestVerificationCode } from '@modules/auth/services/auth-hooks';
 import { PasswordStrengthIndicator } from '@modules/auth/components/password-strength-indicator';
+import { LegalAcceptanceCard, useLegalVersions } from '@modules/legal';
 
 export default function SignUpScreen() {
   const { t } = useTranslation();
@@ -64,6 +65,14 @@ export default function SignUpScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [codeSent, setCodeSent] = useState(false);
+
+  // Phase 10/B — Legal acceptance state. Both must be checked before
+  // the submit button is enabled. The accepted versions are pulled from
+  // /api/v1/legal/versions and sent back in the register payload so the
+  // backend can persist `terms_version` / `privacy_version` on the user row.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const legalVersions = useLegalVersions();
 
   // Step 1: email verification form
   const emailForm = useForm<VerificationCodeRequestInput>({
@@ -137,12 +146,29 @@ export default function SignUpScreen() {
 
   const handleRegister = useCallback(
     async (data: RegisterInput) => {
+      // Defensive guard — submit button is already disabled in this case,
+      // but the Zod schema does not enforce these (they're mobile-only and
+      // not part of RegisterInput). Block here to avoid sending the
+      // payload without versions.
+      if (!termsAccepted || !privacyAccepted) {
+        setErrorMessage(t('legal.acceptance.required'));
+        return;
+      }
+      if (!legalVersions.data) {
+        setErrorMessage(t('common.errorRetry'));
+        return;
+      }
+
       setErrorMessage(null);
       setIsRegistering(true);
       try {
-         
+
         const { confirm_password, ...registerData } = data;
-        await signUp(registerData);
+        await signUp({
+          ...registerData,
+          terms_version_accepted: legalVersions.data.terms_version,
+          privacy_version_accepted: legalVersions.data.privacy_version,
+        });
         // Navigate to dashboard after successful registration
         router.replace('/(tabs)');
       } catch (error) {
@@ -152,7 +178,7 @@ export default function SignUpScreen() {
         setIsRegistering(false);
       }
     },
-    [signUp],
+    [signUp, termsAccepted, privacyAccepted, legalVersions.data, router, t],
   );
 
   const watchPassword = registerForm.watch('password');
@@ -446,6 +472,17 @@ export default function SignUpScreen() {
                   </Text>
                 )}
 
+                {/* Phase 10/B — Legal acceptance (mobile only, citizen sign-up).
+                    Both checkboxes are required before submit. Versions sent
+                    in payload come from /api/v1/legal/versions. */}
+                <LegalAcceptanceCard
+                  termsAccepted={termsAccepted}
+                  privacyAccepted={privacyAccepted}
+                  onTermsToggle={setTermsAccepted}
+                  onPrivacyToggle={setPrivacyAccepted}
+                  disabled={isRegistering}
+                />
+
                 <View style={styles.stepButtons}>
                   <Button
                     mode="outlined"
@@ -461,7 +498,12 @@ export default function SignUpScreen() {
                     mode="contained"
                     onPress={registerForm.handleSubmit(handleRegister)}
                     loading={isRegistering}
-                    disabled={isRegistering}
+                    disabled={
+                      isRegistering ||
+                      !termsAccepted ||
+                      !privacyAccepted ||
+                      !legalVersions.data
+                    }
                     contentStyle={styles.buttonContent}
                     style={{ flex: 1, borderRadius: borderRadius.sm }}
                   >

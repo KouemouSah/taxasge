@@ -385,6 +385,33 @@ function ProfileScreenContent() {
 
         <Divider />
 
+        {/* ── Legal — Phase 10/B Privacy Policy + Terms of Service + Cookies ── */}
+        <View style={{ backgroundColor: colors.surface }}>
+          <List.Subheader style={{ color: colors.primary }}>
+            {t('settings.legal', { defaultValue: 'Legal' })}
+          </List.Subheader>
+          <List.Item
+            title={t('legal.privacy.title', { defaultValue: 'Privacy Policy' })}
+            left={(props) => <List.Icon {...props} icon="shield-lock-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/legal/privacy' as never)}
+          />
+          <List.Item
+            title={t('legal.terms.title', { defaultValue: 'Terms of Service' })}
+            left={(props) => <List.Icon {...props} icon="file-document-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/legal/terms' as never)}
+          />
+          <List.Item
+            title={t('legal.cookies.title', { defaultValue: 'Cookie Policy' })}
+            left={(props) => <List.Icon {...props} icon="cookie-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/legal/cookies' as never)}
+          />
+        </View>
+
+        <Divider />
+
         {/* ── Danger zone — RGPD account deletion ── */}
         <View style={{ backgroundColor: colors.surface }}>
           <List.Subheader style={{ color: colors.error }}>
