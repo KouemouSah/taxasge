@@ -1966,7 +1966,8 @@ window.__I18N__.fr =
       "s2": "<strong>📈 Tendances</strong> : coût empilé par feature/jour, p95 latence par feature/heure (2 timeseries)",
       "s3": "<strong>🚨 Erreurs</strong> : taux d'erreur 24h, erreurs par type bar chart, succès-vs-erreur par heure (3 panels)",
       "s4": "<strong>🔝 Top coûts</strong> : top features par coût (7j), top prompt_hashes par coût (7j) (2 tables)",
-      "s5": "<strong>🤖 Breakdown modèles</strong> (collapsé) : donut part de coût + table par-modèle (2 panels)"
+      "s5": "<strong>🤖 Breakdown modèles</strong> (collapsé) : donut part de coût + table par-modèle (2 panels)",
+      "screenshot_caption": "Capture live : 5 appels aujourd'hui (3 chatbot_rag + 1 embeddings_rag + 1 intent_classification), 22,4K tokens d'entrée, 0% taux d'erreur. Le coût affiche « XAF0 » car volume × pricing arrondit en-dessous de 1 XAF — voir note Phase B ci-dessous pour corriger la troncature de model_name « publishers/google/models/g… »."
     },
     "alerts": {
       "col_threshold": "Seuil", "col_severity": "Sévérité", "col_for": "Durée",

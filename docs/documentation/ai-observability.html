@@ -199,6 +199,13 @@
         <p data-i18n-html="aio.dashboard.intro">
           UID: <code>facil-ai-observability</code>. <strong>12 panels</strong> across 5 row sections. Listed at <code>/admin/dashboards</code> under category "security" (rls_mode <code>admin_only</code>). Open in new tab from the listing (Grafana Cloud Free blocks iframe embedding &mdash; see <a href="grafana-dashboards.html#admin-ui">Grafana docs §7</a>).
         </p>
+
+        <figure style="margin: 1.5rem 0; text-align: center;">
+          <img src="images/grafana/d_ai.png" alt="Facil AI Observability dashboard — 12 panels in 5 row sections (Cost / Trends / Errors / Top costs / Models breakdown)" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px;">
+          <figcaption style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="aio.dashboard.screenshot_caption">
+            Live capture: 5 calls today (3 chatbot_rag + 1 embeddings_rag + 1 intent_classification), 22.4K input tokens, 0% error rate. Cost shows "XAF0" because token-volume × pricing rounds to sub-1 XAF — see Phase B note below for fixing the model_name "publishers/google/models/g..." truncation.
+          </figcaption>
+        </figure>
         <ul>
           <li data-i18n-html="aio.dashboard.s1"><strong>💰 Cost</strong>: today XAF, MTD XAF, total calls today, tokens in/out today (4 stat panels)</li>
           <li data-i18n-html="aio.dashboard.s2"><strong>📈 Trends</strong>: cost stacked by feature per day, p95 latency per feature per hour (2 timeseries)</li>

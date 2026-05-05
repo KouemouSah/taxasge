@@ -1966,7 +1966,8 @@ window.__I18N__.es =
       "s2": "<strong>📈 Tendencias</strong>: coste apilado por feature/día, p95 latencia por feature/hora (2 timeseries)",
       "s3": "<strong>🚨 Errores</strong>: tasa de error 24h, errores por tipo bar chart, success-vs-error por hora (3 paneles)",
       "s4": "<strong>🔝 Top costes</strong>: top features por coste (7d), top prompt_hashes por coste (7d) (2 tablas)",
-      "s5": "<strong>🤖 Breakdown modelos</strong> (colapsado): donut share de coste + tabla por-modelo (2 paneles)"
+      "s5": "<strong>🤖 Breakdown modelos</strong> (colapsado): donut share de coste + tabla por-modelo (2 paneles)",
+      "screenshot_caption": "Captura en vivo: 5 llamadas hoy (3 chatbot_rag + 1 embeddings_rag + 1 intent_classification), 22,4K tokens de entrada, 0% tasa de error. El coste muestra «XAF0» porque volumen × pricing redondea por debajo de 1 XAF — ver nota Phase B abajo para corregir el truncamiento de model_name «publishers/google/models/g…»."
     },
     "alerts": {
       "col_threshold": "Umbral", "col_severity": "Severidad", "col_for": "Duración",

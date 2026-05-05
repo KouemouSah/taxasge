@@ -1966,7 +1966,8 @@ window.__I18N__.en =
       "s2": "<strong>📈 Trends</strong>: cost stacked by feature per day, p95 latency per feature per hour (2 timeseries)",
       "s3": "<strong>🚨 Errors</strong>: 24h error rate %, errors by status type bar chart, success-vs-error per hour (3 panels)",
       "s4": "<strong>🔝 Top costs</strong>: top features by cost (7d), top prompt_hashes by cost (7d) (2 tables)",
-      "s5": "<strong>🤖 Models breakdown</strong> (collapsed): cost share donut + per-model table (2 panels)"
+      "s5": "<strong>🤖 Models breakdown</strong> (collapsed): cost share donut + per-model table (2 panels)",
+      "screenshot_caption": "Live capture: 5 calls today (3 chatbot_rag + 1 embeddings_rag + 1 intent_classification), 22.4K input tokens, 0% error rate. Cost shows \"XAF0\" because token-volume × pricing rounds to sub-1 XAF — see Phase B note below for fixing the model_name \"publishers/google/models/g…\" truncation."
     },
     "alerts": {
       "col_threshold": "Threshold", "col_severity": "Severity", "col_for": "For",
