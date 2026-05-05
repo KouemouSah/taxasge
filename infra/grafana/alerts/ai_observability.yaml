@@ -1,0 +1,121 @@
+# AI Observability Alerts (Phase A.6)
+# Reference YAML — provisioned to Grafana Cloud via packages/backend/scripts/apply_grafana_ai_alerts.py
+#
+# 3 alert rules in folder "GrafanaCloud", group "AI Observability":
+#   1. AI cost daily spike      — SUM(cost_xaf) today > 5000 XAF (warning)
+#   2. AI error rate spike      — error_rate(5m) > 10% (critical)
+#   3. AI p95 latency degraded  — percentile_cont(0.95)(15m) > 8000 ms (warning)
+#
+# Datasource: facil-postgres (mig 315) — same as the dashboard panels.
+# Evaluation cadence: every 1 min.
+
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: AI Observability
+    folder: GrafanaCloud
+    interval: 1m
+    rules:
+      - uid: facil-ai-cost-spike
+        title: "AI Observability — Daily cost spike (>5000 XAF)"
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: facil-postgres
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawSql: |
+                SELECT COALESCE(SUM(cost_xaf), 0) AS value
+                FROM ai_call_metrics
+                WHERE "timestamp" >= date_trunc('day', now())
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [5000] }
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "AI daily cost exceeded 5000 XAF"
+          description: "Total Gemini cost today is {{ $values.A.Value }} XAF (threshold 5000). Investigate top-cost features in the AI Observability dashboard."
+          runbook_url: "https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#cost-spike"
+
+      - uid: facil-ai-error-rate
+        title: "AI Observability — Error rate >10% over 5 min"
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: facil-postgres
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawSql: |
+                SELECT
+                  CASE WHEN COUNT(*) = 0 THEN 0
+                       ELSE (SUM((status != 'success')::int)::numeric / COUNT(*) * 100)
+                  END AS value
+                FROM ai_call_metrics
+                WHERE "timestamp" > now() - interval '5 minutes'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [10] }
+        labels:
+          severity: critical
+          team: ai
+        annotations:
+          summary: "AI error rate >10% over the last 5 minutes"
+          description: "Gemini error rate is {{ $values.A.Value }}%. Drill down into 'Errors by status type' to identify the failure pattern (rate_limited / timeout / content_blocked / json_parse_error)."
+          runbook_url: "https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#error-spike"
+
+      - uid: facil-ai-p95-latency
+        title: "AI Observability — p95 latency >8s over 15 min"
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: facil-postgres
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawSql: |
+                SELECT
+                  COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms), 0) AS value
+                FROM ai_call_metrics
+                WHERE "timestamp" > now() - interval '15 minutes'
+                  AND status = 'success'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [8000] }
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "AI p95 latency exceeded 8s over the last 15 minutes"
+          description: "Gemini p95 latency is {{ $values.A.Value }}ms (baseline 2000-3000ms). Check 'p95 latency by feature' to identify which workload is degrading."
+          runbook_url: "https://github.com/KouemouSah/taxasge/blob/develop/docs/documentation/ai-observability.html#latency-degradation"
