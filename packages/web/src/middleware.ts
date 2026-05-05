@@ -277,7 +277,10 @@ export async function middleware(request: NextRequest) {
       // LogRocket spawns a Web Worker created from a Blob URL; without
       // this the worker fails silently on Chrome.
       "worker-src 'self' blob:",
-      "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
+      // frame-src extended (mig 323) for embedded business dashboards:
+      //   - https://*.grafana.net          : Grafana Cloud workspace iframes (10 dashboards)
+      //   - https://lookerstudio.google.com : Looker Studio embeds (services catalog)
+      "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.firebasestorage.app https://*.grafana.net https://lookerstudio.google.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",

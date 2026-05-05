@@ -167,7 +167,7 @@ jobs:
             --set-env-vars="GEMINI_PRO_MODEL=${{ secrets.GEMINI_CHAT_MODEL }}" \
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-005" \
             --set-env-vars="GRAFANA_BASE_URL=https://kouemousah.grafana.net" \
-            --set-env-vars="GRAFANA_SA_TOKEN=${{ secrets.GRAFANA_SA_TOKEN }}" \
+            --set-secrets="GRAFANA_SA_TOKEN=grafana-sa-token:latest" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
             --min-instances=0 \
             --max-instances=10 \

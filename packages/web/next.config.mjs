@@ -91,7 +91,7 @@ const nextConfig = {
               "font-src 'self' data:",
               "connect-src 'self' https://*.run.app https://*.supabase.co https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.lr-in.com https://*.logr-in.com https://*.lr-ingest.io https://*.logrocket.io https://*.logrocket.com",
               "worker-src 'self' blob:",
-              "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com",
+              "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.grafana.net https://lookerstudio.google.com",
               "object-src 'none'",
               "base-uri 'self'",
             ].join('; '),
