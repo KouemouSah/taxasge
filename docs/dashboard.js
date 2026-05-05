@@ -23,16 +23,26 @@
     { file: 'inspector-ci.yml', label: 'Inspector CI' }
   ];
 
-  // Milestone progress data (known project state)
+  // Milestone progress data (known project state, updated 2026-05-05)
+  // Verifiable via .claude/plans/* + recent commits (gh issues #40 #41 bodies).
   var MILESTONE_DATA = [
     { key: 'infrastructure', name: 'M1 Infrastructure', icon: '\u2699', pct: 100, state: 'closed' },
     { key: 'backend',        name: 'M2 Backend',        icon: '\u2699', pct: 100, state: 'closed' },
-    { key: 'frontend',       name: 'M3 Frontend',       icon: '\uD83C\uDF10', pct: 95,  state: 'closed' },
-    { key: 'mobile',         name: 'M4 Mobile',         icon: '\uD83D\uDCF1', pct: 85,  state: 'open' },
-    { key: 'ai_ocr',         name: 'M5 AI/OCR',         icon: '\uD83E\uDD16', pct: 90,  state: 'closed' },
-    { key: 'bundle',         name: 'M6 Bundle',         icon: '\uD83D\uDCE6', pct: 75,  state: 'open' },
+    { key: 'frontend',       name: 'M3 Frontend',       icon: '\uD83C\uDF10', pct: 100, state: 'closed' },
+    // M4 Mobile: P0..P4 + P5 build+OTA done (issue #40 body 6/6 acceptance \u2713);
+    // remaining: Play Store + App Store submission only (Inspector P6 polish + perf).
+    { key: 'mobile',         name: 'M4 Mobile',         icon: '\uD83D\uDCF1', pct: 95,  state: 'open' },
+    // M5 AI/OCR: Gemini + RAG + OCR + Enrichment v2 \u2713. MCP Agent moved to CSI scope.
+    { key: 'ai_ocr',         name: 'M5 AI/OCR',         icon: '\uD83E\uDD16', pct: 100, state: 'closed' },
+    // M6 Bundle: P1 Foundations BD \u2713, Phase 8/9/10 debug \u2713; residual = small UX polish + doc.
+    { key: 'bundle',         name: 'M6 Bundle',         icon: '\uD83D\uDCE6', pct: 95,  state: 'open' },
+    // M7 Testing: backend coverage ~24%, no E2E Playwright, no mobile Detox/Maestro,
+    // no load tests for 100+ agents. Issue #44 (E2E) + #45 (security audit) open.
     { key: 'testing',        name: 'M7 Testing',        icon: '\uD83E\uDDEA', pct: 30,  state: 'open' },
-    { key: 'production',     name: 'M8 Production',     icon: '\uD83D\uDE80', pct: 10,  state: 'open' },
+    // M8 Production: staging \u2713, prod deploy pipeline (issue #46) + user docs (#47) pending.
+    { key: 'production',     name: 'M8 Production',     icon: '\uD83D\uDE80', pct: 25,  state: 'open' },
+    // M9 CSI = ITIL Continuous Service Improvement, post-MVP enhancement cycle.
+    // Issues #49 (WhatsApp/USSD), #50 (Multi-Country Framework) open under itil:csi label.
     { key: 'csi',            name: 'M9 CSI',            icon: '\uD83D\uDCCB', pct: 0,   state: 'open' }
   ];
 
