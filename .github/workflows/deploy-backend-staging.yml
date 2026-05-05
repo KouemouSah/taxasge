@@ -168,6 +168,11 @@ jobs:
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-005" \
             --set-env-vars="GRAFANA_BASE_URL=https://kouemousah.grafana.net" \
             --set-secrets="GRAFANA_SA_TOKEN=grafana-sa-token:latest" \
+            --set-env-vars="OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-west-0.grafana.net/otlp" \
+            --set-env-vars="OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf" \
+            --set-env-vars="OTEL_SERVICE_NAME=facil-backend" \
+            --set-env-vars="OTEL_RESOURCE_ATTRIBUTES=service.name=facil-backend,deployment.environment=staging" \
+            --set-secrets="OTEL_EXPORTER_OTLP_HEADERS=grafana-otlp-token:latest" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
             --min-instances=0 \
             --max-instances=10 \
