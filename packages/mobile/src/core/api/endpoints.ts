@@ -461,6 +461,19 @@ export const API_ENDPOINTS = {
   // server-internal (transactional emails/SMS sent on behalf of other flows).
   // Citizen apps never call them directly. Re-add only when a specific UI
   // need arises and the consumer is implemented in the same change.
+
+  // -------------------------------------------------------------------------
+  // Legal — Privacy Policy + Terms of Service versions and acceptance
+  //   Backend: app/modules/legal/api/legal_routes.py (prefix /api/v1/legal)
+  //   Phase 10/B — Mobile sign-up acceptance + post-login modal for existing
+  //   users with stale (NULL or "1.0.0-legacy") versions. Web V1 unchanged.
+  // -------------------------------------------------------------------------
+  legal: {
+    /** Public — current Privacy/Terms/Cookies versions + last-updated dates */
+    versions: '/legal/versions',
+    /** Auth required — record acceptance for current user (citizen/business/accountant only) */
+    accept: '/legal/accept',
+  },
 } as const;
 
 /**

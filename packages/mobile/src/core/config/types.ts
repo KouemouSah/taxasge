@@ -148,6 +148,13 @@ export interface RegisterData {
   address?: string;
   city?: string;
   preferred_language?: SupportedLanguage;
+  // Phase 10/B — Legal acceptance (mobile-only, citizen/business/accountant).
+  // Backend validates exact match against settings.LEGAL_*_VERSION and
+  // persists users.terms_* / users.privacy_* columns. Optional so other
+  // clients (web V1) can still register without it.
+  // See migration 331 + .claude/plans/MOBILE_PHASE_10_B_LEGAL_DETAILED.md
+  terms_version_accepted?: string;
+  privacy_version_accepted?: string;
 }
 
 // ---------------------------------------------------------------------------
