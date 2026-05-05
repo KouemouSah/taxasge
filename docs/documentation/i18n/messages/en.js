@@ -1851,6 +1851,236 @@ window.__I18N__.en =
       "dashboards": "<code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> — companion doc on the Sentry side (8 dashboards, alert rules).",
       "grafana": "<a href=\"grafana-dashboards.html\">Grafana Dashboards</a> — the analytics layer (decision-driven KPIs), complementary to LogRocket (forensic replay)."
     }
+  },
+
+  "gr": {
+    "html_title": "Grafana Dashboards - Facil Documentation",
+    "title": "Grafana Dashboards — Analytics Engineering",
+    "description": "10 production-grade Grafana dashboards built on a 4-layer semantic data architecture, enabling government decision-makers (treasury, ministry agents, supervisors, inspectors) to answer business questions in &lt; 30 seconds. This page documents the <em>why</em>, the <em>how</em>, and the <em>decisions</em> driven by each dashboard.",
+    "toc": {
+      "why": "1. Why & Business Context",
+      "ae": "2. Analytics Engineering — the Semantic Layer",
+      "personas": "3. Personas & Decision Map",
+      "dashboards": "4. The 10 Dashboards",
+      "patterns": "5. Engineering Patterns",
+      "stack": "6. Stack & Provisioning",
+      "limits": "7. Limits, Lineage & Roadmap"
+    },
+    "why": {
+      "problem_title": "The problem",
+      "problem_body": "Before this initiative, decision-makers across Facil's 20 government entities operated without a unified analytical view. Each ministry had isolated reports, treasury reconciliation was performed manually in spreadsheets, agent performance was assessed anecdotally, and inspectors had no field analytics. The platform was generating <strong>3,342+ audit events</strong>, processing payments in XAF, and assigning service requests across <strong>5 cities</strong> — but none of this data was actionable in real time.",
+      "need_title": "The need",
+      "need": {
+        "treasury": "<strong>Treasury</strong> needs daily revenue tracking by ministry, entity, payment method, and site, with reconciliation status visible at a glance.",
+        "agents": "<strong>Ministry agents</strong> need to know their workload, SLA pressure, and pending obligations.",
+        "supervisors": "<strong>Supervisors</strong> need cross-team performance comparisons and OMS (One-Stop-Shop) module adoption.",
+        "inspectors": "<strong>Inspectors</strong> need field activity tracking with GPS, photos, and seal counts.",
+        "execs": "<strong>Executives</strong> need a single Overview to see the platform's pulse."
+      },
+      "choice_title": "Why Grafana (and Looker Studio in parallel)",
+      "choice_body": "We evaluated three options: a custom React dashboard suite, Looker Studio, and Grafana Cloud. The decision was to run <strong>Grafana and Looker Studio in parallel</strong>, with a runtime toggle in <code>/admin/dashboards/config</code> driven by the <code>dashboard_provider_enum</code> column in <code>dashboard_registrations</code>. This dual-provider design lets us A/B compare in production and avoid vendor lock-in.",
+      "col_criterion": "Criterion", "col_custom": "Custom React",
+      "row": {
+        "ttfd": "Time-to-first-dashboard", "ttfd_g": "< 1 day", "ttfd_l": "~2 days (UI-only)", "ttfd_c": "2-3 weeks per dashboard",
+        "dac": "Dashboards-as-code (versioned in Git)", "dac_g": "JSON via API", "dac_l": "UI-only, no API for content", "dac_c": "React + manual",
+        "sql": "SQL-first (Postgres native)", "sql_l": "JDBC, MV-blind by default",
+        "embed": "Embed in admin (iframe + auth)", "embed_g": "&#9989; <code>d-solo</code> + kiosk=tv", "embed_l": "&#9989; embed token",
+        "cost": "Cost (10 dashboards, 100+ agents)", "cost_g": "Free tier sufficient", "cost_c": "~3 dev-months",
+        "refresh": "Auto-refresh + alerting", "refresh_g": "&#9989; native", "refresh_l": "&#9888; limited", "refresh_c": "To build"
+      },
+      "choice_summary": "Grafana won on time-to-value and dashboards-as-code. Looker Studio remained as a fallback / non-tech stakeholder option. Both consume the same semantic layer (Section 2).",
+      "goals_title": "Goals (business objectives)",
+      "goal1": "<strong>Reduce time-to-decision</strong>: from days (manual report request) to seconds (live dashboard).",
+      "goal2": "<strong>Single source of truth</strong>: every KPI traceable to one SQL view, with audit trail (<code>location_source</code> column).",
+      "goal3": "<strong>Cross-dimensional drill-down</strong>: every dashboard supports filter chains (ministry → entity → site → period).",
+      "goal4": "<strong>Per-site granularity</strong>: revenue, agents, inspections all attributable to specific cities (Malabo, Bata, Mongomo, …).",
+      "goal5": "<strong>OMS adoption tracking</strong>: dynamic classifier (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) to measure progressive rollout."
+    },
+    "ae": {
+      "intro": "Note on terminology: this work is <strong>Analytics Engineering</strong>, not Business Data Analysis. A Business Data Analyst <em>consumes</em> dashboards to find insights; an Analytics Engineer <em>builds the semantic layer</em> that makes those insights reliable, fast, and consistent across consumers (Grafana, Looker, custom apps). The work below is the latter.",
+      "diagram_title": "4-Layer Data Architecture",
+      "l1": "Layer 1 — Aggregations", "l1_sub": "Materialized Views (cron 15 min)",
+      "l2": "Layer 2 — Enriched Views", "l2_sub": "v_*_enriched (JOIN entities + locations + agents + classifiers)",
+      "l3": "Layer 3 — Auto-Wrappers", "l3_sub": "vw_* (boot-synced for Looker JDBC visibility)",
+      "l4": "Layer 4 — Consumers", "l4_sub": "Grafana Cloud + Looker Studio + Future BI tools",
+      "l1_title": "Layer 1 — Aggregations (MVs)",
+      "l1_body": "Materialized Views pre-compute heavy aggregations (sum, count, group by) on a 15-minute cron. They are the <em>backup</em> and <em>historical</em> source. <strong>Live queries on enriched views are the primary path</strong> for dashboards that need real-time data — MVs are read only when historical aggregations are needed (cf. Memory Rule #22).",
+      "l2_title": "Layer 2 — Enriched Views (the heart)",
+      "l2_intro": "This is the <strong>semantic layer</strong> — the canonical place where business logic lives:",
+      "l2": {
+        "joins": "<strong>Joins resolved once</strong>: entities, locations, agents, ministries are joined here so dashboards never reinvent the join.",
+        "classifiers": "<strong>Classifiers computed</strong>: <code>is_oms = workflow_codes ? 'BUNDLE_PAYMENT'</code>, <code>is_supervisor = role_code ILIKE '%supervisor%'</code>, etc.",
+        "multi": "<strong>Multi-source resolution</strong> (the killer feature): the canonical site for a payment is resolved as a 4-step <code>COALESCE</code> chain (field inspection → service request → agent collected → agent validated), with a <code>location_source</code> audit column so consumers can trust the data.",
+        "granted": "<strong>Granted to <code>looker_readonly</code></strong>: a dedicated read-only role with no write privileges, isolating BI access from application access."
+      },
+      "l3_title": "Layer 3 — Auto-Wrappers",
+      "l3_body": "Looker Studio's JDBC driver hides Materialized Views (<code>relkind='m'</code>). To make MVs visible in the picker without writing manual wrappers, the backend boots run <code>sync_looker_view_wrappers()</code> which auto-creates a <code>vw_*</code> view of <code>relkind='v'</code> over every MV granted to <code>looker_readonly</code>. Grafana doesn't need this layer (its Postgres driver sees MVs natively), so dashboards reference <code>v_*</code> and <code>mv_*</code> directly.",
+      "l4_title": "Layer 4 — Consumers (Grafana + Looker)",
+      "l4_body": "Both providers consume the same Layer 2 views. The <code>dashboard_registrations</code> table stores a <code>provider</code> column (<code>'looker' | 'grafana'</code>) so each registered dashboard knows how to be embedded."
+    },
+    "personas": {
+      "intro": "Every dashboard must answer at least one concrete decision. The mapping below is the <em>contract</em>: if a stakeholder can't answer their listed questions in &lt; 30 seconds, the dashboard is broken and gets reworked.",
+      "col_persona": "Persona", "col_dash": "Primary dashboards", "col_decisions": "Decisions driven",
+      "row": {
+        "treasury": { "name": "<strong>Treasury Manager</strong>", "dash": "Recaudación Fiscal, Payments Operations, Overview", "dec": "Daily revenue alerts, reconciliation gaps, payment-method drift, ministry contribution" },
+        "agent": { "name": "<strong>Ministry Agent (CNEDOGE, MIN_TRABAJO, …)</strong>", "dash": "Performance Agentes, Service Requests", "dec": "My queue depth, my SLA pressure, peer benchmarking" },
+        "oms": { "name": "<strong>OMS Supervisor (AYUNTAMIENTO, CAMARA_COMERCIO)</strong>", "dash": "OMS Modules, Empresas, Inspections", "dec": "Bundle obligation completion rate, license issuance velocity, field inspection quality" },
+        "insp": { "name": "<strong>Inspector Chief</strong>", "dash": "Inspections, Mobile vs Web vs Inspector", "dec": "Field activity by zone/city, photo evidence rate, seal usage, inspector adoption of mobile app" },
+        "dir": { "name": "<strong>Citizen Services Director</strong>", "dash": "Empresas, Service Requests, User Activity", "dec": "Active company cohort by zone, request backlog, citizen audit trail" },
+        "exec": { "name": "<strong>Executive (DG / Minister)</strong>", "dash": "Overview only", "dec": "Platform health pulse, cross-ministry comparison, mobile adoption velocity" }
+      }
+    },
+    "dash": {
+      "intro": "Each dashboard below documents: <strong>screenshot</strong>, <strong>primary KPIs</strong> with their SQL formula, <strong>filters</strong>, the <strong>source view</strong>, and the <strong>concrete decisions</strong> it enables. All dashboards share a tag (<code>facil</code>) and link to each other via the navigation dropdown.",
+      "col_kpi": "KPI", "col_formula": "Formula (simplified)", "col_formula_short": "Formula", "col_source": "Source", "col_decision": "Decision",
+      "overview": {
+        "title": "00 — Overview",
+        "meta": "<strong>UID</strong>: <code>facil-overview</code> · <strong>Audience</strong>: Executive · <strong>Filters</strong>: period only",
+        "body": "The pulse of the platform. 4-7 stat cards on top (revenue, active companies, agents online, audit events), 1-2 timeseries showing trend, and a navigation dropdown to all 9 other dashboards.",
+        "kpi": {
+          "revenue": "Recaudación total (XAF)", "revenue_dec": "Daily revenue alert if < threshold",
+          "empresas": "Empresas activas", "empresas_dec": "Onboarding velocity",
+          "agents": "Agentes activos (24h)", "agents_dec": "Capacity planning",
+          "audit": "Eventos de auditoría", "audit_dec": "Anomaly detection"
+        }
+      },
+      "treasury": {
+        "title": "01 — Recaudación Fiscal",
+        "meta": "<strong>UID</strong>: <code>facil-treasury</code> · <strong>Audience</strong>: Treasury Manager · <strong>Filters</strong>: Ministry, Entity, Workflow, Method, <strong>Site (multi-source)</strong>",
+        "body": "The flagship dashboard. Resolves revenue per <strong>physical site</strong> (city) using the 4-step COALESCE chain so a payment collected by an inspector in Bata is attributed to Bata, not to the validating agent in Malabo. The <code>location_source</code> donut shows the resolution breakdown.",
+        "kpi": {
+          "total": "Recaudación total", "total_dec": "Revenue tracking",
+          "recovery_dec": "Reconciliation gap",
+          "persite": "Per-site breakdown", "persite_dec": "Site performance",
+          "method": "Method mix", "method_dec": "BANGE adoption",
+          "attribution": "Source attribution", "attribution_dec": "Data quality audit"
+        }
+      },
+      "agents": {
+        "title": "02 — Performance Agentes",
+        "meta": "<strong>UID</strong>: <code>facil-agents</code> · <strong>Audience</strong>: Agent + Ministry Supervisor · <strong>Filters</strong>: OMS toggle, Entity, Site, Agent Type",
+        "body": "OMS toggle (custom variable) lets supervisors compare bundle-payment teams (AYUNTAMIENTO, CAMARA_COMERCIO) vs traditional ministry teams. Drill: ministry → entity → site → agent.",
+        "kpi": {
+          "active": "Active agents", "active_dec": "Resource allocation",
+          "queue": "Avg queue depth", "queue_dec": "Hire / rebalance signal",
+          "sla": "SLA pressure", "sla_dec": "Escalation alert",
+          "top": "Top performers", "top_dec": "Recognition / training"
+        }
+      },
+      "companies": {
+        "title": "03 — Empresas",
+        "meta": "<strong>UID</strong>: <code>facil-companies</code> · <strong>Audience</strong>: Citizen Services Director · <strong>Filters</strong>: Zone, <strong>City (JSONB drill)</strong>",
+        "body": "City filter uses JSONB drill on <code>mv_company_global_stats.by_city</code> — a pre-aggregated analytics column. Single-row JSONB query → multiple rows expanded via <code>jsonb_array_elements()</code>.",
+        "kpi": {
+          "regis": "Empresas registradas", "regis_dec": "Market penetration",
+          "zone": "Por zona (12 zones)", "zone_dec": "Regional outreach",
+          "city": "Por ciudad (16 cities)", "city_dec": "Local agent dispatch",
+          "debt": "Deuda por ciudad", "debt_src": "JSONB drill", "debt_dec": "Collection priority"
+        }
+      },
+      "oms": {
+        "title": "04 — OMS Modules",
+        "meta": "<strong>UID</strong>: <code>facil-oms</code> · <strong>Audience</strong>: OMS Supervisor · <strong>Filters</strong>: Ministry, Fee_type, Zone, Site",
+        "body": "OMS = One-Stop-Shop. Tracks the bundle-payment workflow rollout: an entity is OMS if its <code>workflow_codes</code> JSONB array contains <code>'BUNDLE_PAYMENT'</code>. This classifier is <strong>admin-managed via UI</strong> (no code redeploy needed) and consumed via the JSONB <code>?</code> operator.",
+        "kpi": {
+          "entities": "OMS entities", "entities_dec": "Rollout progress",
+          "obli": "Obligations issued", "obli_dec": "Bundle adoption",
+          "fees": "Avg fees per bundle", "fees_dec": "Pricing benchmark",
+          "compl": "Completion rate", "compl_dec": "Friction diagnosis"
+        }
+      },
+      "payments": {
+        "title": "05 — Payments Operations",
+        "meta": "<strong>UID</strong>: <code>facil-payments</code> · <strong>Audience</strong>: Treasury Operations · <strong>Filters</strong>: Status, Entity, Site",
+        "note": "Screenshot not captured at the time of writing — data structure identical to <code>v_treasury_payments_by_site</code>; visual identical to dashboard 01 with operational status emphasis.",
+        "kpi": {
+          "pending": "Pending validation", "pending_dec": "Backlog alert",
+          "gap": "Reconciliation gap", "gap_dec": "Audit follow-up",
+          "failed": "Failed payments", "failed_dec": "Provider issue tracking"
+        }
+      },
+      "sr": {
+        "title": "06 — Service Requests",
+        "meta": "<strong>UID</strong>: <code>facil-service-requests</code> · <strong>Audience</strong>: Ministry Agent · <strong>Filters</strong>: Workflow, Entity, Site",
+        "body": "Active service requests with <strong>age buckets</strong> (0-24h, 24-72h, 3-7d, 7d+) for SLA tracking. Status breakdown shows the bottleneck stage of the workflow.",
+        "kpi": {
+          "active": "Active SR", "active_dec": "Backlog volume",
+          "age": "Age buckets", "age_dec": "SLA escalation trigger",
+          "status": "Status mix", "status_dec": "Bottleneck identification"
+        }
+      },
+      "ua": {
+        "title": "07 — User Activity (Audit)",
+        "meta": "<strong>UID</strong>: <code>facil-user-activity</code> · <strong>Audience</strong>: Security & Director · <strong>Filters</strong>: Channel, Role, Action Category",
+        "body": "Built on <code>v_user_activity_audit</code> which canonicalizes 3,342+ audit_logs events with channel detection (mobile/web/inspector) via user-agent regex and action_category mapping."
+      },
+      "channel": {
+        "title": "08 — Mobile vs Web vs Inspector",
+        "meta": "<strong>UID</strong>: <code>facil-channel</code> · <strong>Audience</strong>: Director & Product · <strong>Filters</strong>: Workflow, Entity",
+        "body": "Tracks the adoption of the mobile citizen app and the inspector app vs traditional web access. Key for product strategy: where to invest UX effort."
+      },
+      "insp": {
+        "title": "09 — Inspections (field)",
+        "meta": "<strong>UID</strong>: <code>facil-inspections</code> · <strong>Audience</strong>: Inspector Chief · <strong>Filters</strong>: Entity, City, Result",
+        "body": "Currently shows « No data » on most cards because <code>field_inspections</code> is empty in production until the inspector mobile app captures its first reports. The schema is ready, all KPIs and filters are wired, and <code>noValue: \"0\"</code> ensures no parasite errors."
+      }
+    },
+    "patterns": {
+      "A_title": "Pattern A — Multi-source resolution (4-step COALESCE)",
+      "A_body": "When a dimension can be derived from multiple sources with priority, never pick one arbitrarily — fallback in priority order with audit trail. This pattern resolved the « all agents in Malabo » problem where revenue from field inspections in Bata was wrongly attributed to the validating agent's site.",
+      "B_title": "Pattern B — JSONB classifier (admin-managed, no redeploy)",
+      "B_body": "The OMS classifier (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) lives in the <code>entities</code> table as a JSONB array. Admins toggle OMS status from the UI; dashboards recompute instantly. No code change, no migration. Single source of truth.",
+      "C_title": "Pattern C — Chained template variables",
+      "C_body": "Filters chain via <code>refresh: 1</code> on each variable: ministry → entity → site population queries depend on the upstream selection. The <strong>population query</strong> for the Site filter must be the catalog (<code>v_entity_locations_browse</code>), not the fact table — otherwise sites without data become invisible.",
+      "D_title": "Pattern D — Engine-agnostic Grafana primitives",
+      "D_body": "Three Grafana-side primitives appear in all 10 dashboards and would work on MySQL / BigQuery / Snowflake / SQL Server unchanged (verified in our reusable <code>GRAFANA_DASHBOARDS_AGENT.md</code> v1.1):",
+      "D": {
+        "sqlstring": "<code>${var:sqlstring}</code> — the <em>only</em> way to handle multi-select « All ». Never <code>'$var' = 'All' OR ...</code>.",
+        "currency": "<code>\"unit\": \"currency:XAF\"</code> — the <code>currency:</code> prefix triggers ISO display. Without it, you get a literal « currencyXAF ».",
+        "novalue": "<code>\"noValue\": \"0\"</code> — on stat panels, NULL becomes « No data ». This forces a clean 0."
+      }
+    },
+    "stack": {
+      "row": {
+        "hosting": "Hosting", "hosting_val": "Grafana Cloud Free Tier (<code>kouemousah.grafana.net</code>)",
+        "datasource": "Datasource", "datasource_val": "Postgres pooler IPv4 (<code>aws-0-eu-west-3.pooler.supabase.com:6543</code>)",
+        "bi": "BI role", "bi_val": "<code>looker_readonly</code> (read-only on enriched views + MVs)",
+        "dac": "Dashboards-as-code", "dac_val": "10 JSON files in <code>infra/grafana/dashboards/</code>",
+        "push": "Push script", "push_val": "<code>packages/backend/scripts/push_grafana_dashboards.py</code> (idempotent API push)",
+        "prov": "Provisioning YAML", "prov_val": "<code>infra/grafana/provisioning/{datasources,dashboards}/</code> (for self-hosted)",
+        "refresh": "Auto-refresh", "refresh_val": "5 min default per dashboard",
+        "embed": "Embed in Facil admin", "embed_val": "<code>d-solo</code> URL + <code>kiosk=tv</code> via <code>DashboardConfigService._build_grafana_embed_url()</code>",
+        "token": "Token rotation", "token_val": "7-day expiry on <code>facil-deployer</code> service account"
+      },
+      "agent_title": "Reusable Agent",
+      "agent_body": "The work was distilled into <code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> — a reproducible 8-phase agent invokable via <code>/grafana-dashboards</code> slash-command. v1.1 added a multi-engine adapter (Postgres / MySQL / BigQuery / Snowflake / SQL Server) so the same agent runs on any project. 10 active guardrails neutralize known weaknesses (IPv4 pooler trap, currency format, template variables, token leak, missing rollback, etc.)."
+    },
+    "limits": {
+      "title": "Known limits (honest)",
+      "rls": "<strong>No row-level security (RLS) on Grafana</strong> — anyone with the embed URL can see the dashboard. Mitigation: permission gate at the wrapper application layer (<code>dashboards.view_business</code>). For real RLS, OAUTH2 community connector planned (Phase B.2).",
+      "seed": "<strong>Seed data has all agents in Malabo</strong> — per-site distribution depends on production agent profiles populating <code>entity_location_id</code>.",
+      "empty": "<strong>Inspections dashboard empty</strong> — legitimately, until the inspector mobile app captures field reports.",
+      "token": "<strong>Token rotation</strong> — manual every 7 days. Automate via Cloud Scheduler + service account API.",
+      "screenshot": "<strong>05 Payments screenshot missing</strong> at the time of writing this doc — the dashboard is live; capture pending."
+    },
+    "lineage": {
+      "title": "Data lineage (audit-ready)",
+      "intro": "Every panel can be traced through the stack:"
+    },
+    "roadmap": {
+      "title": "Roadmap",
+      "s1": "<strong>Q3 2026</strong>: OAUTH2 community connector for true multi-tenant RLS.",
+      "s2": "<strong>Q3 2026</strong>: Alerts on revenue threshold + SLA breach (Grafana native, push to Slack).",
+      "s3": "<strong>Q4 2026</strong>: Per-ministry deep-dive dashboards (1 per ministry, currently aggregated).",
+      "s4": "<strong>Q4 2026</strong>: Anomaly detection on user activity (audit log) via Grafana ML plugin."
+    },
+    "related": {
+      "title": "Related documentation",
+      "arch": "<a href=\"architecture.html\">System Architecture</a> — backend / data layer overview",
+      "db": "<a href=\"database.html\">Database Schema</a> — full table reference (145 tables)",
+      "readme": "<code>infra/grafana/README.md</code> — provisioning + push script reference",
+      "agent": "<code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> — reusable 8-phase agent"
+    }
   }
 }
 ;

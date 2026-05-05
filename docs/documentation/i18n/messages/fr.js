@@ -1851,6 +1851,236 @@ window.__I18N__.fr =
       "dashboards": "<code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> — doc compagnon côté Sentry (8 dashboards, règles d'alerte).",
       "grafana": "<a href=\"grafana-dashboards.html\">Tableaux de bord Grafana</a> — la couche analytique (KPIs orientés décision), complémentaire à LogRocket (rejeu forensique)."
     }
+  },
+
+  "gr": {
+    "html_title": "Tableaux de bord Grafana - Documentation Facil",
+    "title": "Tableaux de bord Grafana — Ingénierie analytique",
+    "description": "10 tableaux de bord Grafana production-grade construits sur une architecture de données sémantique 4-couches, permettant aux décideurs gouvernementaux (trésorerie, agents ministériels, superviseurs, inspecteurs) de répondre aux questions métier en moins de 30 secondes. Cette page documente le <em>pourquoi</em>, le <em>comment</em> et les <em>décisions</em> pilotées par chaque tableau de bord.",
+    "toc": {
+      "why": "1. Pourquoi & contexte métier",
+      "ae": "2. Ingénierie analytique — la couche sémantique",
+      "personas": "3. Personas & carte des décisions",
+      "dashboards": "4. Les 10 tableaux de bord",
+      "patterns": "5. Patterns d'ingénierie",
+      "stack": "6. Stack & provisioning",
+      "limits": "7. Limites, lignage & roadmap"
+    },
+    "why": {
+      "problem_title": "Le problème",
+      "problem_body": "Avant cette initiative, les décideurs des 20 entités gouvernementales de Facil opéraient sans vue analytique unifiée. Chaque ministère avait des rapports isolés, la réconciliation de trésorerie se faisait manuellement dans des tableurs, la performance des agents était évaluée de façon anecdotique et les inspecteurs n'avaient aucune analytique terrain. La plateforme générait <strong>3 342+ événements d'audit</strong>, traitait des paiements en XAF et affectait des demandes de service à travers <strong>5 villes</strong> — mais aucune de ces données n'était exploitable en temps réel.",
+      "need_title": "Le besoin",
+      "need": {
+        "treasury": "<strong>La trésorerie</strong> a besoin d'un suivi quotidien des recettes par ministère, entité, méthode de paiement et site, avec le statut de réconciliation visible d'un coup d'œil.",
+        "agents": "<strong>Les agents ministériels</strong> ont besoin de connaître leur charge, leur pression SLA et leurs obligations en attente.",
+        "supervisors": "<strong>Les superviseurs</strong> ont besoin de comparer la performance entre équipes et de suivre l'adoption des modules OMS (One-Stop-Shop).",
+        "inspectors": "<strong>Les inspecteurs</strong> ont besoin du suivi de l'activité terrain avec GPS, photos et compteurs de scellés.",
+        "execs": "<strong>Les dirigeants</strong> ont besoin d'un Overview unique pour voir le pouls de la plateforme."
+      },
+      "choice_title": "Pourquoi Grafana (et Looker Studio en parallèle)",
+      "choice_body": "Nous avons évalué trois options : une suite de tableaux de bord React custom, Looker Studio et Grafana Cloud. La décision a été d'exécuter <strong>Grafana et Looker Studio en parallèle</strong>, avec un toggle runtime dans <code>/admin/dashboards/config</code> piloté par la colonne <code>dashboard_provider_enum</code> de <code>dashboard_registrations</code>. Cette conception dual-provider permet de comparer A/B en production et d'éviter le vendor lock-in.",
+      "col_criterion": "Critère", "col_custom": "React custom",
+      "row": {
+        "ttfd": "Time-to-first-dashboard", "ttfd_g": "< 1 jour", "ttfd_l": "~2 jours (UI seulement)", "ttfd_c": "2-3 semaines par dashboard",
+        "dac": "Dashboards-as-code (versionnés en Git)", "dac_g": "JSON via API", "dac_l": "UI seulement, pas d'API pour le contenu", "dac_c": "React + manuel",
+        "sql": "SQL-first (Postgres natif)", "sql_l": "JDBC, MV-aveugle par défaut",
+        "embed": "Embed admin (iframe + auth)", "embed_g": "&#9989; <code>d-solo</code> + kiosk=tv", "embed_l": "&#9989; embed token",
+        "cost": "Coût (10 dashboards, 100+ agents)", "cost_g": "Free tier suffisant", "cost_c": "~3 dev-mois",
+        "refresh": "Auto-refresh + alerting", "refresh_g": "&#9989; natif", "refresh_l": "&#9888; limité", "refresh_c": "À construire"
+      },
+      "choice_summary": "Grafana l'a emporté sur le time-to-value et le dashboards-as-code. Looker Studio reste comme fallback / option pour les parties prenantes non-tech. Les deux consomment la même couche sémantique (Section 2).",
+      "goals_title": "Objectifs métiers",
+      "goal1": "<strong>Réduire le time-to-decision</strong> : de jours (demande de rapport manuel) à secondes (dashboard live).",
+      "goal2": "<strong>Source unique de vérité</strong> : chaque KPI traçable à une vue SQL, avec piste d'audit (colonne <code>location_source</code>).",
+      "goal3": "<strong>Drill-down multi-dimensionnel</strong> : chaque dashboard supporte des chaînes de filtres (ministère → entité → site → période).",
+      "goal4": "<strong>Granularité par site</strong> : recettes, agents, inspections tous attribuables à des villes spécifiques (Malabo, Bata, Mongomo, …).",
+      "goal5": "<strong>Suivi d'adoption OMS</strong> : classifieur dynamique (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) pour mesurer le déploiement progressif."
+    },
+    "ae": {
+      "intro": "Note de terminologie : ce travail est de l'<strong>Ingénierie analytique</strong>, pas de l'analyse de données métier. Un Business Data Analyst <em>consomme</em> les dashboards pour trouver des insights ; un Analytics Engineer <em>construit la couche sémantique</em> qui rend ces insights fiables, rapides et cohérents entre les consommateurs (Grafana, Looker, apps custom). Le travail ci-dessous relève du second.",
+      "diagram_title": "Architecture de données 4 couches",
+      "l1": "Couche 1 — Agrégations", "l1_sub": "Vues matérialisées (cron 15 min)",
+      "l2": "Couche 2 — Vues enrichies", "l2_sub": "v_*_enriched (JOIN entités + sites + agents + classifieurs)",
+      "l3": "Couche 3 — Wrappers auto", "l3_sub": "vw_* (sync au boot pour visibilité Looker JDBC)",
+      "l4": "Couche 4 — Consommateurs", "l4_sub": "Grafana Cloud + Looker Studio + futurs outils BI",
+      "l1_title": "Couche 1 — Agrégations (MVs)",
+      "l1_body": "Les vues matérialisées pré-calculent les agrégations lourdes (sum, count, group by) sur un cron de 15 minutes. Elles sont la source <em>backup</em> et <em>historique</em>. <strong>Les requêtes live sur les vues enrichies sont le chemin primaire</strong> pour les dashboards qui ont besoin de temps réel — les MVs sont lues uniquement pour les agrégations historiques (cf. règle mémoire #22).",
+      "l2_title": "Couche 2 — Vues enrichies (le cœur)",
+      "l2_intro": "C'est la <strong>couche sémantique</strong> — l'endroit canonique où vit la logique métier :",
+      "l2": {
+        "joins": "<strong>Jointures résolues une fois</strong> : entités, sites, agents, ministères sont joints ici pour que les dashboards ne réinventent jamais le JOIN.",
+        "classifiers": "<strong>Classifieurs calculés</strong> : <code>is_oms = workflow_codes ? 'BUNDLE_PAYMENT'</code>, <code>is_supervisor = role_code ILIKE '%supervisor%'</code>, etc.",
+        "multi": "<strong>Résolution multi-sources</strong> (la fonctionnalité killer) : le site canonique d'un paiement est résolu en chaîne <code>COALESCE</code> 4-étapes (inspection terrain → demande de service → agent collecté → agent validé), avec une colonne d'audit <code>location_source</code> pour que les consommateurs puissent faire confiance à la donnée.",
+        "granted": "<strong>Accordée à <code>looker_readonly</code></strong> : un rôle dédié en lecture seule sans privilèges d'écriture, isolant l'accès BI de l'accès applicatif."
+      },
+      "l3_title": "Couche 3 — Wrappers auto",
+      "l3_body": "Le driver JDBC de Looker Studio cache les vues matérialisées (<code>relkind='m'</code>). Pour rendre les MVs visibles dans le picker sans écrire de wrappers manuels, le boot du backend exécute <code>sync_looker_view_wrappers()</code> qui crée automatiquement une vue <code>vw_*</code> de <code>relkind='v'</code> sur chaque MV accordée à <code>looker_readonly</code>. Grafana n'a pas besoin de cette couche (son driver Postgres voit les MVs nativement), donc les dashboards référencent <code>v_*</code> et <code>mv_*</code> directement.",
+      "l4_title": "Couche 4 — Consommateurs (Grafana + Looker)",
+      "l4_body": "Les deux providers consomment les mêmes vues de la Couche 2. La table <code>dashboard_registrations</code> stocke une colonne <code>provider</code> (<code>'looker' | 'grafana'</code>) pour que chaque dashboard enregistré sache comment être embarqué."
+    },
+    "personas": {
+      "intro": "Chaque dashboard doit répondre à au moins une décision concrète. Le mapping ci-dessous est le <em>contrat</em> : si une partie prenante ne peut pas répondre à ses questions listées en moins de 30 secondes, le dashboard est cassé et est retravaillé.",
+      "col_persona": "Persona", "col_dash": "Dashboards principaux", "col_decisions": "Décisions pilotées",
+      "row": {
+        "treasury": { "name": "<strong>Responsable de trésorerie</strong>", "dash": "Recaudación Fiscal, Payments Operations, Overview", "dec": "Alertes recettes quotidiennes, écarts de réconciliation, drift de méthode de paiement, contribution par ministère" },
+        "agent": { "name": "<strong>Agent ministériel (CNEDOGE, MIN_TRABAJO, …)</strong>", "dash": "Performance Agentes, Service Requests", "dec": "Profondeur de ma file, ma pression SLA, benchmarking entre pairs" },
+        "oms": { "name": "<strong>Superviseur OMS (AYUNTAMIENTO, CAMARA_COMERCIO)</strong>", "dash": "OMS Modules, Empresas, Inspections", "dec": "Taux de complétion des obligations bundle, vélocité d'émission de licences, qualité des inspections terrain" },
+        "insp": { "name": "<strong>Chef inspecteur</strong>", "dash": "Inspections, Mobile vs Web vs Inspector", "dec": "Activité terrain par zone/ville, taux d'évidence photo, usage des scellés, adoption de l'app mobile par les inspecteurs" },
+        "dir": { "name": "<strong>Directeur des services aux citoyens</strong>", "dash": "Empresas, Service Requests, User Activity", "dec": "Cohorte d'entreprises actives par zone, backlog de demandes, piste d'audit citoyenne" },
+        "exec": { "name": "<strong>Direction (DG / Ministre)</strong>", "dash": "Overview uniquement", "dec": "Pouls de la santé plateforme, comparaison cross-ministères, vélocité d'adoption mobile" }
+      }
+    },
+    "dash": {
+      "intro": "Chaque dashboard ci-dessous documente : <strong>capture d'écran</strong>, <strong>KPIs principaux</strong> avec leur formule SQL, <strong>filtres</strong>, la <strong>vue source</strong> et les <strong>décisions concrètes</strong> qu'il permet. Tous les dashboards partagent un tag (<code>facil</code>) et se lient les uns aux autres via le menu déroulant de navigation.",
+      "col_kpi": "KPI", "col_formula": "Formule (simplifiée)", "col_formula_short": "Formule", "col_source": "Source", "col_decision": "Décision",
+      "overview": {
+        "title": "00 — Overview",
+        "meta": "<strong>UID</strong> : <code>facil-overview</code> · <strong>Audience</strong> : Direction · <strong>Filtres</strong> : période uniquement",
+        "body": "Le pouls de la plateforme. 4-7 stat cards en haut (recettes, entreprises actives, agents en ligne, événements d'audit), 1-2 timeseries montrant la tendance, et un menu déroulant de navigation vers les 9 autres dashboards.",
+        "kpi": {
+          "revenue": "Recaudación total (XAF)", "revenue_dec": "Alerte recettes quotidiennes si < seuil",
+          "empresas": "Empresas activas", "empresas_dec": "Vélocité d'onboarding",
+          "agents": "Agentes activos (24h)", "agents_dec": "Planification de capacité",
+          "audit": "Eventos de auditoría", "audit_dec": "Détection d'anomalies"
+        }
+      },
+      "treasury": {
+        "title": "01 — Recaudación Fiscal",
+        "meta": "<strong>UID</strong> : <code>facil-treasury</code> · <strong>Audience</strong> : Responsable de trésorerie · <strong>Filtres</strong> : Ministère, Entité, Workflow, Méthode, <strong>Site (multi-sources)</strong>",
+        "body": "Le dashboard phare. Résout les recettes par <strong>site physique</strong> (ville) en utilisant la chaîne COALESCE 4-étapes pour qu'un paiement collecté par un inspecteur à Bata soit attribué à Bata, pas à l'agent valideur à Malabo. Le donut <code>location_source</code> montre la ventilation de la résolution.",
+        "kpi": {
+          "total": "Recaudación total", "total_dec": "Suivi des recettes",
+          "recovery_dec": "Écart de réconciliation",
+          "persite": "Ventilation par site", "persite_dec": "Performance par site",
+          "method": "Mix de méthodes", "method_dec": "Adoption BANGE",
+          "attribution": "Attribution de source", "attribution_dec": "Audit de qualité de la donnée"
+        }
+      },
+      "agents": {
+        "title": "02 — Performance Agentes",
+        "meta": "<strong>UID</strong> : <code>facil-agents</code> · <strong>Audience</strong> : Agent + Superviseur ministériel · <strong>Filtres</strong> : toggle OMS, Entité, Site, Type d'agent",
+        "body": "Le toggle OMS (variable custom) permet aux superviseurs de comparer les équipes bundle-payment (AYUNTAMIENTO, CAMARA_COMERCIO) vs les équipes ministérielles traditionnelles. Drill : ministère → entité → site → agent.",
+        "kpi": {
+          "active": "Agents actifs", "active_dec": "Allocation de ressources",
+          "queue": "Profondeur moyenne de file", "queue_dec": "Signal d'embauche / rééquilibrage",
+          "sla": "Pression SLA", "sla_dec": "Alerte d'escalade",
+          "top": "Top performers", "top_dec": "Reconnaissance / formation"
+        }
+      },
+      "companies": {
+        "title": "03 — Empresas",
+        "meta": "<strong>UID</strong> : <code>facil-companies</code> · <strong>Audience</strong> : Directeur des services aux citoyens · <strong>Filtres</strong> : Zone, <strong>Ville (drill JSONB)</strong>",
+        "body": "Le filtre Ville utilise un drill JSONB sur <code>mv_company_global_stats.by_city</code> — une colonne d'analytique pré-agrégée. Requête JSONB single-row → multiples lignes étendues via <code>jsonb_array_elements()</code>.",
+        "kpi": {
+          "regis": "Empresas registradas", "regis_dec": "Pénétration de marché",
+          "zone": "Por zona (12 zones)", "zone_dec": "Outreach régional",
+          "city": "Por ciudad (16 villes)", "city_dec": "Dispatch d'agent local",
+          "debt": "Deuda por ciudad", "debt_src": "Drill JSONB", "debt_dec": "Priorité de recouvrement"
+        }
+      },
+      "oms": {
+        "title": "04 — OMS Modules",
+        "meta": "<strong>UID</strong> : <code>facil-oms</code> · <strong>Audience</strong> : Superviseur OMS · <strong>Filtres</strong> : Ministère, Fee_type, Zone, Site",
+        "body": "OMS = One-Stop-Shop. Suit le déploiement du workflow bundle-payment : une entité est OMS si son tableau JSONB <code>workflow_codes</code> contient <code>'BUNDLE_PAYMENT'</code>. Ce classifieur est <strong>géré par admin via UI</strong> (pas de redéploiement de code) et consommé via l'opérateur JSONB <code>?</code>.",
+        "kpi": {
+          "entities": "Entités OMS", "entities_dec": "Avancement du déploiement",
+          "obli": "Obligations émises", "obli_dec": "Adoption bundle",
+          "fees": "Frais moyens par bundle", "fees_dec": "Benchmark de tarification",
+          "compl": "Taux de complétion", "compl_dec": "Diagnostic de friction"
+        }
+      },
+      "payments": {
+        "title": "05 — Payments Operations",
+        "meta": "<strong>UID</strong> : <code>facil-payments</code> · <strong>Audience</strong> : Opérations trésorerie · <strong>Filtres</strong> : Statut, Entité, Site",
+        "note": "Capture d'écran non prise au moment de la rédaction — structure de données identique à <code>v_treasury_payments_by_site</code> ; visuel identique au dashboard 01 avec emphase sur le statut opérationnel.",
+        "kpi": {
+          "pending": "Validation en attente", "pending_dec": "Alerte de backlog",
+          "gap": "Écart de réconciliation", "gap_dec": "Suivi d'audit",
+          "failed": "Paiements échoués", "failed_dec": "Suivi des problèmes du provider"
+        }
+      },
+      "sr": {
+        "title": "06 — Service Requests",
+        "meta": "<strong>UID</strong> : <code>facil-service-requests</code> · <strong>Audience</strong> : Agent ministériel · <strong>Filtres</strong> : Workflow, Entité, Site",
+        "body": "Demandes de service actives avec <strong>buckets d'âge</strong> (0-24h, 24-72h, 3-7j, 7j+) pour le suivi SLA. La ventilation de statut montre l'étape goulot du workflow.",
+        "kpi": {
+          "active": "SR actives", "active_dec": "Volume de backlog",
+          "age": "Buckets d'âge", "age_dec": "Déclencheur d'escalade SLA",
+          "status": "Mix de statuts", "status_dec": "Identification de goulot"
+        }
+      },
+      "ua": {
+        "title": "07 — User Activity (Audit)",
+        "meta": "<strong>UID</strong> : <code>facil-user-activity</code> · <strong>Audience</strong> : Sécurité & Direction · <strong>Filtres</strong> : Canal, Rôle, Catégorie d'action",
+        "body": "Construit sur <code>v_user_activity_audit</code> qui canonicalise 3 342+ événements audit_logs avec détection de canal (mobile/web/inspector) via regex user-agent et mapping action_category."
+      },
+      "channel": {
+        "title": "08 — Mobile vs Web vs Inspector",
+        "meta": "<strong>UID</strong> : <code>facil-channel</code> · <strong>Audience</strong> : Direction & Produit · <strong>Filtres</strong> : Workflow, Entité",
+        "body": "Suit l'adoption de l'app mobile citoyen et de l'app inspector vs l'accès web traditionnel. Clé pour la stratégie produit : où investir l'effort UX."
+      },
+      "insp": {
+        "title": "09 — Inspections (terrain)",
+        "meta": "<strong>UID</strong> : <code>facil-inspections</code> · <strong>Audience</strong> : Chef inspecteur · <strong>Filtres</strong> : Entité, Ville, Résultat",
+        "body": "Affiche actuellement « No data » sur la plupart des cartes car <code>field_inspections</code> est vide en production tant que l'app mobile inspector n'a pas capturé ses premiers rapports. Le schéma est prêt, tous les KPIs et filtres sont wirés, et <code>noValue: \"0\"</code> garantit l'absence d'erreurs parasites."
+      }
+    },
+    "patterns": {
+      "A_title": "Pattern A — Résolution multi-sources (COALESCE 4 étapes)",
+      "A_body": "Quand une dimension peut être dérivée de plusieurs sources avec priorité, ne jamais en choisir une arbitrairement — fallback en ordre de priorité avec piste d'audit. Ce pattern a résolu le problème « tous les agents à Malabo » où les recettes des inspections terrain à Bata étaient à tort attribuées au site de l'agent valideur.",
+      "B_title": "Pattern B — Classifieur JSONB (géré par admin, pas de redéploiement)",
+      "B_body": "Le classifieur OMS (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) vit dans la table <code>entities</code> sous forme de tableau JSONB. Les admins toggle le statut OMS depuis l'UI ; les dashboards recalculent instantanément. Aucun changement de code, aucune migration. Source unique de vérité.",
+      "C_title": "Pattern C — Variables de template chaînées",
+      "C_body": "Les filtres se chaînent via <code>refresh: 1</code> sur chaque variable : ministère → entité → site les requêtes de population dépendent de la sélection amont. La <strong>requête de population</strong> pour le filtre Site doit être le catalogue (<code>v_entity_locations_browse</code>), pas la table de faits — sinon les sites sans donnée deviennent invisibles.",
+      "D_title": "Pattern D — Primitives Grafana engine-agnostic",
+      "D_body": "Trois primitives côté Grafana apparaissent dans les 10 dashboards et fonctionneraient sur MySQL / BigQuery / Snowflake / SQL Server inchangées (vérifié dans notre <code>GRAFANA_DASHBOARDS_AGENT.md</code> v1.1 réutilisable) :",
+      "D": {
+        "sqlstring": "<code>${var:sqlstring}</code> — la <em>seule</em> façon de gérer le multi-select « All ». Jamais <code>'$var' = 'All' OR ...</code>.",
+        "currency": "<code>\"unit\": \"currency:XAF\"</code> — le préfixe <code>currency:</code> déclenche l'affichage ISO. Sans lui, on obtient un littéral « currencyXAF ».",
+        "novalue": "<code>\"noValue\": \"0\"</code> — sur les panels stat, NULL devient « No data ». Cela force un 0 propre."
+      }
+    },
+    "stack": {
+      "row": {
+        "hosting": "Hébergement", "hosting_val": "Grafana Cloud Free Tier (<code>kouemousah.grafana.net</code>)",
+        "datasource": "Datasource", "datasource_val": "Pooler Postgres IPv4 (<code>aws-0-eu-west-3.pooler.supabase.com:6543</code>)",
+        "bi": "Rôle BI", "bi_val": "<code>looker_readonly</code> (lecture seule sur vues enrichies + MVs)",
+        "dac": "Dashboards-as-code", "dac_val": "10 fichiers JSON dans <code>infra/grafana/dashboards/</code>",
+        "push": "Script de push", "push_val": "<code>packages/backend/scripts/push_grafana_dashboards.py</code> (push API idempotent)",
+        "prov": "YAML de provisioning", "prov_val": "<code>infra/grafana/provisioning/{datasources,dashboards}/</code> (pour self-hosted)",
+        "refresh": "Auto-refresh", "refresh_val": "5 min par défaut par dashboard",
+        "embed": "Embed dans l'admin Facil", "embed_val": "URL <code>d-solo</code> + <code>kiosk=tv</code> via <code>DashboardConfigService._build_grafana_embed_url()</code>",
+        "token": "Rotation du token", "token_val": "Expiration 7 jours sur le service account <code>facil-deployer</code>"
+      },
+      "agent_title": "Agent réutilisable",
+      "agent_body": "Le travail a été distillé dans <code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> — un agent reproducible en 8 phases invocable via la slash-command <code>/grafana-dashboards</code>. La v1.1 a ajouté un adapter multi-engine (Postgres / MySQL / BigQuery / Snowflake / SQL Server) pour que le même agent tourne sur n'importe quel projet. 10 garde-fous actifs neutralisent les faiblesses connues (piège du pooler IPv4, format de devise, variables de template, fuite de token, rollback manquant, etc.)."
+    },
+    "limits": {
+      "title": "Limites connues (honnêtes)",
+      "rls": "<strong>Pas de sécurité au niveau ligne (RLS) sur Grafana</strong> — quiconque a l'URL embed peut voir le dashboard. Mitigation : permission gate au niveau wrapper applicatif (<code>dashboards.view_business</code>). Pour un vrai RLS, connecteur communautaire OAUTH2 prévu (Phase B.2).",
+      "seed": "<strong>Les seed data ont tous les agents à Malabo</strong> — la distribution par site dépend des profils d'agents en prod peuplant <code>entity_location_id</code>.",
+      "empty": "<strong>Dashboard Inspections vide</strong> — légitimement, jusqu'à ce que l'app mobile inspector capture des rapports terrain.",
+      "token": "<strong>Rotation du token</strong> — manuelle tous les 7 jours. À automatiser via Cloud Scheduler + API service account.",
+      "screenshot": "<strong>Capture 05 Payments manquante</strong> au moment de la rédaction de cette doc — le dashboard est en live ; capture en attente."
+    },
+    "lineage": {
+      "title": "Lignage des données (audit-ready)",
+      "intro": "Chaque panel peut être tracé à travers la stack :"
+    },
+    "roadmap": {
+      "title": "Roadmap",
+      "s1": "<strong>Q3 2026</strong> : connecteur communautaire OAUTH2 pour vrai RLS multi-tenant.",
+      "s2": "<strong>Q3 2026</strong> : alertes sur seuil de recettes + breach SLA (Grafana natif, push vers Slack).",
+      "s3": "<strong>Q4 2026</strong> : dashboards deep-dive par ministère (1 par ministère, actuellement agrégé).",
+      "s4": "<strong>Q4 2026</strong> : détection d'anomalies sur l'activité utilisateur (audit log) via plugin Grafana ML."
+    },
+    "related": {
+      "title": "Documentation associée",
+      "arch": "<a href=\"architecture.html\">Architecture système</a> — vue d'ensemble backend / couche données",
+      "db": "<a href=\"database.html\">Schéma de base de données</a> — référence complète des tables (145 tables)",
+      "readme": "<code>infra/grafana/README.md</code> — référence provisioning + script de push",
+      "agent": "<code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> — agent réutilisable en 8 phases"
+    }
   }
 }
 ;

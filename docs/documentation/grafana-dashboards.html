@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="gr.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,89 +16,85 @@
 <body>
   <div class="page-wrapper">
 
-    <!-- ===== Sidebar ===== -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
-        <div class="sidebar-subtitle">Technical Reference</div>
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div>
       </div>
       <nav class="sidebar-nav">
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Getting Started</div>
-          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Architecture</div>
-          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a>
-          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a>
-          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div>
+          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Reference</div>
-          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a>
-          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Features</div>
-          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a>
-          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Observability</div>
-          <a href="grafana-dashboards.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a>
-          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Operations</div>
-          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a>
-          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a>
-          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a>
         </div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated May 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
 
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- ===== Main Content ===== -->
     <main class="main-content">
       <header class="content-header">
         <nav class="breadcrumb">
-          <a href="index.html">Docs</a>
+          <a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current">Grafana Dashboards</span>
+          <span class="breadcrumb-current" data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span>
         </nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">Grafana Dashboards &mdash; Analytics Engineering</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="gr.title">Grafana Dashboards &mdash; Analytics Engineering</h1>
+        <p class="page-description" data-i18n-html="gr.description">
           10 production-grade Grafana dashboards built on a 4-layer semantic data architecture, enabling
           government decision-makers (treasury, ministry agents, supervisors, inspectors) to answer business
           questions in &lt; 30 seconds. This page documents the <em>why</em>, the <em>how</em>, and the
           <em>decisions</em> driven by each dashboard.
         </p>
 
-        <!-- TOC -->
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#why">1. Why &amp; Business Context</a></li>
-            <li><a href="#analytics-engineering">2. Analytics Engineering &mdash; the Semantic Layer</a></li>
-            <li><a href="#personas">3. Personas &amp; Decision Map</a></li>
-            <li><a href="#dashboards">4. The 10 Dashboards</a></li>
-            <li><a href="#patterns">5. Engineering Patterns</a></li>
-            <li><a href="#stack">6. Stack &amp; Provisioning</a></li>
-            <li><a href="#limits">7. Limits, Lineage &amp; Roadmap</a></li>
+            <li><a href="#why" data-i18n="gr.toc.why">1. Why &amp; Business Context</a></li>
+            <li><a href="#analytics-engineering" data-i18n="gr.toc.ae">2. Analytics Engineering &mdash; the Semantic Layer</a></li>
+            <li><a href="#personas" data-i18n="gr.toc.personas">3. Personas &amp; Decision Map</a></li>
+            <li><a href="#dashboards" data-i18n="gr.toc.dashboards">4. The 10 Dashboards</a></li>
+            <li><a href="#patterns" data-i18n="gr.toc.patterns">5. Engineering Patterns</a></li>
+            <li><a href="#stack" data-i18n="gr.toc.stack">6. Stack &amp; Provisioning</a></li>
+            <li><a href="#limits" data-i18n="gr.toc.limits">7. Limits, Lineage &amp; Roadmap</a></li>
           </ul>
         </div>
 
-        <!-- ===== Section 1: Why ===== -->
-        <h2 id="why">1. Why &amp; Business Context <a href="#why" class="anchor-link">#</a></h2>
+        <h2 id="why"><span data-i18n="gr.toc.why">1. Why &amp; Business Context</span> <a href="#why" class="anchor-link">#</a></h2>
 
-        <h3>The problem</h3>
-        <p>
+        <h3 data-i18n="gr.why.problem_title">The problem</h3>
+        <p data-i18n-html="gr.why.problem_body">
           Before this initiative, decision-makers across Facil&rsquo;s 20 government entities operated without
           a unified analytical view. Each ministry had isolated reports, treasury reconciliation was performed
           manually in spreadsheets, agent performance was assessed anecdotally, and inspectors had no field
@@ -107,17 +103,17 @@
           was actionable in real time.
         </p>
 
-        <h3>The need</h3>
+        <h3 data-i18n="gr.why.need_title">The need</h3>
         <ul>
-          <li><strong>Treasury</strong> needs daily revenue tracking by ministry, entity, payment method, and site, with reconciliation status visible at a glance.</li>
-          <li><strong>Ministry agents</strong> need to know their workload, SLA pressure, and pending obligations.</li>
-          <li><strong>Supervisors</strong> need cross-team performance comparisons and OMS (One-Stop-Shop) module adoption.</li>
-          <li><strong>Inspectors</strong> need field activity tracking with GPS, photos, and seal counts.</li>
-          <li><strong>Executives</strong> need a single Overview to see the platform&rsquo;s pulse.</li>
+          <li data-i18n-html="gr.why.need.treasury"><strong>Treasury</strong> needs daily revenue tracking by ministry, entity, payment method, and site, with reconciliation status visible at a glance.</li>
+          <li data-i18n-html="gr.why.need.agents"><strong>Ministry agents</strong> need to know their workload, SLA pressure, and pending obligations.</li>
+          <li data-i18n-html="gr.why.need.supervisors"><strong>Supervisors</strong> need cross-team performance comparisons and OMS (One-Stop-Shop) module adoption.</li>
+          <li data-i18n-html="gr.why.need.inspectors"><strong>Inspectors</strong> need field activity tracking with GPS, photos, and seal counts.</li>
+          <li data-i18n-html="gr.why.need.execs"><strong>Executives</strong> need a single Overview to see the platform&rsquo;s pulse.</li>
         </ul>
 
-        <h3>Why Grafana (and Looker Studio in parallel)</h3>
-        <p>
+        <h3 data-i18n="gr.why.choice_title">Why Grafana (and Looker Studio in parallel)</h3>
+        <p data-i18n-html="gr.why.choice_body">
           We evaluated three options: a custom React dashboard suite, Looker Studio, and Grafana Cloud. The
           decision was to run <strong>Grafana and Looker Studio in parallel</strong>, with a runtime toggle in
           <code>/admin/dashboards/config</code> driven by the <code>dashboard_provider_enum</code> column in
@@ -127,36 +123,35 @@
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Criterion</th><th>Grafana Cloud</th><th>Looker Studio</th><th>Custom React</th></tr>
+              <tr><th data-i18n="gr.why.col_criterion">Criterion</th><th>Grafana Cloud</th><th>Looker Studio</th><th data-i18n="gr.why.col_custom">Custom React</th></tr>
             </thead>
             <tbody>
-              <tr><td>Time-to-first-dashboard</td><td>&lt; 1 day</td><td>~2 days (UI-only)</td><td>2-3 weeks per dashboard</td></tr>
-              <tr><td>Dashboards-as-code (versioned in Git)</td><td>&#9989; JSON via API</td><td>&#10060; UI-only, no API for content</td><td>&#9989; React + manual</td></tr>
-              <tr><td>SQL-first (Postgres native)</td><td>&#9989;</td><td>&#9888; JDBC, MV-blind by default</td><td>&#9989;</td></tr>
-              <tr><td>Embed in admin (iframe + auth)</td><td>&#9989; <code>d-solo</code> + kiosk=tv</td><td>&#9989; embed token</td><td>N/A</td></tr>
-              <tr><td>Cost (10 dashboards, 100+ agents)</td><td>Free tier sufficient</td><td>Free</td><td>~3 dev-months</td></tr>
-              <tr><td>Auto-refresh + alerting</td><td>&#9989; native</td><td>&#9888; limited</td><td>To build</td></tr>
+              <tr><td data-i18n="gr.why.row.ttfd">Time-to-first-dashboard</td><td data-i18n="gr.why.row.ttfd_g">&lt; 1 day</td><td data-i18n="gr.why.row.ttfd_l">~2 days (UI-only)</td><td data-i18n="gr.why.row.ttfd_c">2-3 weeks per dashboard</td></tr>
+              <tr><td data-i18n="gr.why.row.dac">Dashboards-as-code (versioned in Git)</td><td>&#9989; <span data-i18n="gr.why.row.dac_g">JSON via API</span></td><td>&#10060; <span data-i18n="gr.why.row.dac_l">UI-only, no API for content</span></td><td>&#9989; <span data-i18n="gr.why.row.dac_c">React + manual</span></td></tr>
+              <tr><td data-i18n="gr.why.row.sql">SQL-first (Postgres native)</td><td>&#9989;</td><td>&#9888; <span data-i18n="gr.why.row.sql_l">JDBC, MV-blind by default</span></td><td>&#9989;</td></tr>
+              <tr><td data-i18n="gr.why.row.embed">Embed in admin (iframe + auth)</td><td data-i18n-html="gr.why.row.embed_g">&#9989; <code>d-solo</code> + kiosk=tv</td><td data-i18n="gr.why.row.embed_l">&#9989; embed token</td><td>N/A</td></tr>
+              <tr><td data-i18n="gr.why.row.cost">Cost (10 dashboards, 100+ agents)</td><td data-i18n="gr.why.row.cost_g">Free tier sufficient</td><td>Free</td><td data-i18n="gr.why.row.cost_c">~3 dev-months</td></tr>
+              <tr><td data-i18n="gr.why.row.refresh">Auto-refresh + alerting</td><td data-i18n="gr.why.row.refresh_g">&#9989; native</td><td data-i18n="gr.why.row.refresh_l">&#9888; limited</td><td data-i18n="gr.why.row.refresh_c">To build</td></tr>
             </tbody>
           </table>
         </div>
-        <p>
+        <p data-i18n="gr.why.choice_summary">
           Grafana won on time-to-value and dashboards-as-code. Looker Studio remained as a fallback / non-tech
           stakeholder option. Both consume the same semantic layer (Section 2).
         </p>
 
-        <h3>Goals (objectifs m&eacute;tiers)</h3>
+        <h3 data-i18n="gr.why.goals_title">Goals (objectifs métiers)</h3>
         <ol>
-          <li><strong>Reduce time-to-decision</strong>: from days (manual report request) to seconds (live dashboard).</li>
-          <li><strong>Single source of truth</strong>: every KPI traceable to one SQL view, with audit trail (<code>location_source</code> column).</li>
-          <li><strong>Cross-dimensional drill-down</strong>: every dashboard supports filter chains (ministry &rarr; entity &rarr; site &rarr; period).</li>
-          <li><strong>Per-site granularity</strong>: revenue, agents, inspections all attributable to specific cities (Malabo, Bata, Mongomo, &hellip;).</li>
-          <li><strong>OMS adoption tracking</strong>: dynamic classifier (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) to measure progressive rollout.</li>
+          <li data-i18n-html="gr.why.goal1"><strong>Reduce time-to-decision</strong>: from days (manual report request) to seconds (live dashboard).</li>
+          <li data-i18n-html="gr.why.goal2"><strong>Single source of truth</strong>: every KPI traceable to one SQL view, with audit trail (<code>location_source</code> column).</li>
+          <li data-i18n-html="gr.why.goal3"><strong>Cross-dimensional drill-down</strong>: every dashboard supports filter chains (ministry &rarr; entity &rarr; site &rarr; period).</li>
+          <li data-i18n-html="gr.why.goal4"><strong>Per-site granularity</strong>: revenue, agents, inspections all attributable to specific cities (Malabo, Bata, Mongomo, &hellip;).</li>
+          <li data-i18n-html="gr.why.goal5"><strong>OMS adoption tracking</strong>: dynamic classifier (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) to measure progressive rollout.</li>
         </ol>
 
-        <!-- ===== Section 2: Analytics Engineering ===== -->
-        <h2 id="analytics-engineering">2. Analytics Engineering &mdash; the Semantic Layer <a href="#analytics-engineering" class="anchor-link">#</a></h2>
+        <h2 id="analytics-engineering"><span data-i18n="gr.toc.ae">2. Analytics Engineering &mdash; the Semantic Layer</span> <a href="#analytics-engineering" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="gr.ae.intro">
           Note on terminology: this work is <strong>Analytics Engineering</strong>, not Business Data Analysis.
           A Business Data Analyst <em>consumes</em> dashboards to find insights; an Analytics Engineer
           <em>builds the semantic layer</em> that makes those insights reliable, fast, and consistent across
@@ -164,43 +159,43 @@
         </p>
 
         <div class="diagram">
-          <div class="diagram-title">4-Layer Data Architecture</div>
+          <div class="diagram-title" data-i18n="gr.ae.diagram_title">4-Layer Data Architecture</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Layer 1 &mdash; Aggregations<span class="diagram-box-subtitle">Materialized Views (cron 15 min)</span></div>
+            <div class="diagram-box primary"><span data-i18n="gr.ae.l1">Layer 1 — Aggregations</span><span class="diagram-box-subtitle" data-i18n="gr.ae.l1_sub">Materialized Views (cron 15 min)</span></div>
           </div>
-          <div class="diagram-connector">mv_treasury_daily_kpis &middot; mv_company_global_stats &middot; mv_obligation_stats_by_ministry &middot; mv_agent_daily_workload</div>
+          <div class="diagram-connector">mv_treasury_daily_kpis · mv_company_global_stats · mv_obligation_stats_by_ministry · mv_agent_daily_workload</div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Layer 2 &mdash; Enriched Views<span class="diagram-box-subtitle">v_*_enriched (JOIN entities + locations + agents + classifiers)</span></div>
+            <div class="diagram-box green filled"><span data-i18n="gr.ae.l2">Layer 2 — Enriched Views</span><span class="diagram-box-subtitle" data-i18n="gr.ae.l2_sub">v_*_enriched (JOIN entities + locations + agents + classifiers)</span></div>
           </div>
-          <div class="diagram-connector">v_agent_workload_enriched &middot; v_treasury_payments_by_site &middot; v_field_inspections_enriched &middot; v_user_activity_audit &middot; &hellip;</div>
+          <div class="diagram-connector">v_agent_workload_enriched · v_treasury_payments_by_site · v_field_inspections_enriched · v_user_activity_audit · …</div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">Layer 3 &mdash; Auto-Wrappers<span class="diagram-box-subtitle">vw_* (boot-synced for Looker JDBC visibility)</span></div>
+            <div class="diagram-box yellow"><span data-i18n="gr.ae.l3">Layer 3 — Auto-Wrappers</span><span class="diagram-box-subtitle" data-i18n="gr.ae.l3_sub">vw_* (boot-synced for Looker JDBC visibility)</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;">Layer 4 &mdash; Consumers<span class="diagram-box-subtitle">Grafana Cloud + Looker Studio + Future BI tools</span></div>
+            <div class="diagram-box" style="border-color:var(--ge-blue);background:var(--ge-blue);color:#fff;"><span data-i18n="gr.ae.l4">Layer 4 — Consumers</span><span class="diagram-box-subtitle" data-i18n="gr.ae.l4_sub">Grafana Cloud + Looker Studio + Future BI tools</span></div>
           </div>
         </div>
 
-        <h3>Layer 1 &mdash; Aggregations (MVs)</h3>
-        <p>
+        <h3 data-i18n="gr.ae.l1_title">Layer 1 &mdash; Aggregations (MVs)</h3>
+        <p data-i18n-html="gr.ae.l1_body">
           Materialized Views pre-compute heavy aggregations (sum, count, group by) on a 15-minute cron. They
           are the <em>backup</em> and <em>historical</em> source. <strong>Live queries on enriched views are
           the primary path</strong> for dashboards that need real-time data &mdash; MVs are read only when
           historical aggregations are needed (cf. Memory Rule #22).
         </p>
 
-        <h3>Layer 2 &mdash; Enriched Views (the heart)</h3>
-        <p>
+        <h3 data-i18n="gr.ae.l2_title">Layer 2 &mdash; Enriched Views (the heart)</h3>
+        <p data-i18n-html="gr.ae.l2_intro">
           This is the <strong>semantic layer</strong> &mdash; the canonical place where business logic lives:
         </p>
         <ul>
-          <li><strong>Joins resolved once</strong>: entities, locations, agents, ministries are joined here so dashboards never reinvent the join.</li>
-          <li><strong>Classifiers computed</strong>: <code>is_oms = workflow_codes ? 'BUNDLE_PAYMENT'</code>, <code>is_supervisor = role_code ILIKE '%supervisor%'</code>, etc.</li>
-          <li><strong>Multi-source resolution</strong> (the killer feature): the canonical site for a payment is resolved as a 4-step <code>COALESCE</code> chain (field inspection &rarr; service request &rarr; agent collected &rarr; agent validated), with a <code>location_source</code> audit column so consumers can trust the data.</li>
-          <li><strong>Granted to <code>looker_readonly</code></strong>: a dedicated read-only role with no write privileges, isolating BI access from application access.</li>
+          <li data-i18n-html="gr.ae.l2.joins"><strong>Joins resolved once</strong>: entities, locations, agents, ministries are joined here so dashboards never reinvent the join.</li>
+          <li data-i18n-html="gr.ae.l2.classifiers"><strong>Classifiers computed</strong>: <code>is_oms = workflow_codes ? 'BUNDLE_PAYMENT'</code>, <code>is_supervisor = role_code ILIKE '%supervisor%'</code>, etc.</li>
+          <li data-i18n-html="gr.ae.l2.multi"><strong>Multi-source resolution</strong> (the killer feature): the canonical site for a payment is resolved as a 4-step <code>COALESCE</code> chain (field inspection &rarr; service request &rarr; agent collected &rarr; agent validated), with a <code>location_source</code> audit column so consumers can trust the data.</li>
+          <li data-i18n-html="gr.ae.l2.granted"><strong>Granted to <code>looker_readonly</code></strong>: a dedicated read-only role with no write privileges, isolating BI access from application access.</li>
         </ul>
         <pre><code><span class="cmt">-- Example: v_treasury_payments_by_site (migration 322)</span>
 <span class="kw">CREATE OR REPLACE VIEW</span> v_treasury_payments_by_site <span class="kw">AS</span>
@@ -229,8 +224,8 @@
 
 <span class="kw">GRANT SELECT</span> <span class="kw">ON</span> v_treasury_payments_by_site <span class="kw">TO</span> looker_readonly;</code></pre>
 
-        <h3>Layer 3 &mdash; Auto-Wrappers</h3>
-        <p>
+        <h3 data-i18n="gr.ae.l3_title">Layer 3 &mdash; Auto-Wrappers</h3>
+        <p data-i18n-html="gr.ae.l3_body">
           Looker Studio&rsquo;s JDBC driver hides Materialized Views (<code>relkind='m'</code>). To make MVs
           visible in the picker without writing manual wrappers, the backend boots run
           <code>sync_looker_view_wrappers()</code> which auto-creates a <code>vw_*</code> view of
@@ -239,17 +234,16 @@
           <code>mv_*</code> directly.
         </p>
 
-        <h3>Layer 4 &mdash; Consumers (Grafana + Looker)</h3>
-        <p>
+        <h3 data-i18n="gr.ae.l4_title">Layer 4 &mdash; Consumers (Grafana + Looker)</h3>
+        <p data-i18n-html="gr.ae.l4_body">
           Both providers consume the same Layer 2 views. The <code>dashboard_registrations</code> table stores
           a <code>provider</code> column (<code>'looker' | 'grafana'</code>) so each registered dashboard knows
           how to be embedded.
         </p>
 
-        <!-- ===== Section 3: Personas ===== -->
-        <h2 id="personas">3. Personas &amp; Decision Map <a href="#personas" class="anchor-link">#</a></h2>
+        <h2 id="personas"><span data-i18n="gr.toc.personas">3. Personas &amp; Decision Map</span> <a href="#personas" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="gr.personas.intro">
           Every dashboard must answer at least one concrete decision. The mapping below is the
           <em>contract</em>: if a stakeholder can&rsquo;t answer their listed questions in &lt; 30 seconds, the
           dashboard is broken and gets reworked.
@@ -258,142 +252,112 @@
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Persona</th><th>Primary dashboards</th><th>Decisions driven</th></tr>
+              <tr><th data-i18n="gr.personas.col_persona">Persona</th><th data-i18n="gr.personas.col_dash">Primary dashboards</th><th data-i18n="gr.personas.col_decisions">Decisions driven</th></tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>Treasury Manager</strong></td>
-                <td>Recaudaci&oacute;n Fiscal, Payments Operations, Overview</td>
-                <td>Daily revenue alerts, reconciliation gaps, payment-method drift, ministry contribution</td>
-              </tr>
-              <tr>
-                <td><strong>Ministry Agent (CNEDOGE, MIN_TRABAJO, &hellip;)</strong></td>
-                <td>Performance Agentes, Service Requests</td>
-                <td>My queue depth, my SLA pressure, peer benchmarking</td>
-              </tr>
-              <tr>
-                <td><strong>OMS Supervisor (AYUNTAMIENTO, CAMARA_COMERCIO)</strong></td>
-                <td>OMS Modules, Empresas, Inspections</td>
-                <td>Bundle obligation completion rate, license issuance velocity, field inspection quality</td>
-              </tr>
-              <tr>
-                <td><strong>Inspector Chief</strong></td>
-                <td>Inspections, Mobile vs Web vs Inspector</td>
-                <td>Field activity by zone/city, photo evidence rate, seal usage, inspector adoption of mobile app</td>
-              </tr>
-              <tr>
-                <td><strong>Citizen Services Director</strong></td>
-                <td>Empresas, Service Requests, User Activity</td>
-                <td>Active company cohort by zone, request backlog, citizen audit trail</td>
-              </tr>
-              <tr>
-                <td><strong>Executive (DG / Minister)</strong></td>
-                <td>Overview only</td>
-                <td>Platform health pulse, cross-ministry comparison, mobile adoption velocity</td>
-              </tr>
+              <tr><td data-i18n-html="gr.personas.row.treasury.name"><strong>Treasury Manager</strong></td><td data-i18n="gr.personas.row.treasury.dash">Recaudación Fiscal, Payments Operations, Overview</td><td data-i18n="gr.personas.row.treasury.dec">Daily revenue alerts, reconciliation gaps, payment-method drift, ministry contribution</td></tr>
+              <tr><td data-i18n-html="gr.personas.row.agent.name"><strong>Ministry Agent (CNEDOGE, MIN_TRABAJO, …)</strong></td><td data-i18n="gr.personas.row.agent.dash">Performance Agentes, Service Requests</td><td data-i18n="gr.personas.row.agent.dec">My queue depth, my SLA pressure, peer benchmarking</td></tr>
+              <tr><td data-i18n-html="gr.personas.row.oms.name"><strong>OMS Supervisor (AYUNTAMIENTO, CAMARA_COMERCIO)</strong></td><td data-i18n="gr.personas.row.oms.dash">OMS Modules, Empresas, Inspections</td><td data-i18n="gr.personas.row.oms.dec">Bundle obligation completion rate, license issuance velocity, field inspection quality</td></tr>
+              <tr><td data-i18n-html="gr.personas.row.insp.name"><strong>Inspector Chief</strong></td><td data-i18n="gr.personas.row.insp.dash">Inspections, Mobile vs Web vs Inspector</td><td data-i18n="gr.personas.row.insp.dec">Field activity by zone/city, photo evidence rate, seal usage, inspector adoption of mobile app</td></tr>
+              <tr><td data-i18n-html="gr.personas.row.dir.name"><strong>Citizen Services Director</strong></td><td data-i18n="gr.personas.row.dir.dash">Empresas, Service Requests, User Activity</td><td data-i18n="gr.personas.row.dir.dec">Active company cohort by zone, request backlog, citizen audit trail</td></tr>
+              <tr><td data-i18n-html="gr.personas.row.exec.name"><strong>Executive (DG / Minister)</strong></td><td data-i18n="gr.personas.row.exec.dash">Overview only</td><td data-i18n="gr.personas.row.exec.dec">Platform health pulse, cross-ministry comparison, mobile adoption velocity</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- ===== Section 4: The 10 Dashboards ===== -->
-        <h2 id="dashboards">4. The 10 Dashboards <a href="#dashboards" class="anchor-link">#</a></h2>
+        <h2 id="dashboards"><span data-i18n="gr.toc.dashboards">4. The 10 Dashboards</span> <a href="#dashboards" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="gr.dash.intro">
           Each dashboard below documents: <strong>screenshot</strong>, <strong>primary KPIs</strong> with their
           SQL formula, <strong>filters</strong>, the <strong>source view</strong>, and the <strong>concrete
           decisions</strong> it enables. All dashboards share a tag (<code>facil</code>) and link to each
           other via the navigation dropdown.
         </p>
 
-        <!-- 00 Overview -->
-        <h3 id="d-overview">00 &mdash; Overview <a href="#d-overview" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-overview</code> &middot; <strong>Audience</strong>: Executive &middot; <strong>Filters</strong>: period only</p>
+        <h3 id="d-overview"><span data-i18n="gr.dash.overview.title">00 &mdash; Overview</span> <a href="#d-overview" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.overview.meta"><strong>UID</strong>: <code>facil-overview</code> · <strong>Audience</strong>: Executive · <strong>Filters</strong>: period only</p>
         <img src="images/grafana/d_overview.png" alt="Overview Dashboard top section" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
         <img src="images/grafana/d_overview1.png" alt="Overview Dashboard bottom section" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n="gr.dash.overview.body">
           The pulse of the platform. 4-7 stat cards on top (revenue, active companies, agents online, audit
           events), 1-2 timeseries showing trend, and a navigation dropdown to all 9 other dashboards.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula (simplified)</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula">Formula (simplified)</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Recaudaci&oacute;n total (XAF)</td><td><code>SUM(amount) WHERE status='completed'</code></td><td><code>mv_treasury_daily_kpis</code></td><td>Daily revenue alert if &lt; threshold</td></tr>
-              <tr><td>Empresas activas</td><td><code>COUNT(*) WHERE status='active'</code></td><td><code>mv_company_global_stats</code></td><td>Onboarding velocity</td></tr>
-              <tr><td>Agentes activos (24h)</td><td><code>COUNT(DISTINCT user_id) FROM v_user_activity_audit WHERE last_seen &gt; now()-interval'24h' AND role IN ('agent_*')</code></td><td><code>v_user_activity_audit</code></td><td>Capacity planning</td></tr>
-              <tr><td>Eventos de auditor&iacute;a</td><td><code>COUNT(*) FROM audit_logs LAST 7 DAYS</code></td><td><code>v_user_activity_audit</code></td><td>Anomaly detection</td></tr>
+              <tr><td data-i18n="gr.dash.overview.kpi.revenue">Recaudación total (XAF)</td><td><code>SUM(amount) WHERE status='completed'</code></td><td><code>mv_treasury_daily_kpis</code></td><td data-i18n="gr.dash.overview.kpi.revenue_dec">Daily revenue alert if &lt; threshold</td></tr>
+              <tr><td data-i18n="gr.dash.overview.kpi.empresas">Empresas activas</td><td><code>COUNT(*) WHERE status='active'</code></td><td><code>mv_company_global_stats</code></td><td data-i18n="gr.dash.overview.kpi.empresas_dec">Onboarding velocity</td></tr>
+              <tr><td data-i18n="gr.dash.overview.kpi.agents">Agentes activos (24h)</td><td><code>COUNT(DISTINCT user_id) FROM v_user_activity_audit WHERE last_seen &gt; now()-interval'24h' AND role IN ('agent_*')</code></td><td><code>v_user_activity_audit</code></td><td data-i18n="gr.dash.overview.kpi.agents_dec">Capacity planning</td></tr>
+              <tr><td data-i18n="gr.dash.overview.kpi.audit">Eventos de auditoría</td><td><code>COUNT(*) FROM audit_logs LAST 7 DAYS</code></td><td><code>v_user_activity_audit</code></td><td data-i18n="gr.dash.overview.kpi.audit_dec">Anomaly detection</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 01 Treasury -->
-        <h3 id="d-treasury">01 &mdash; Recaudaci&oacute;n Fiscal <a href="#d-treasury" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-treasury</code> &middot; <strong>Audience</strong>: Treasury Manager &middot; <strong>Filters</strong>: Ministry, Entity, Workflow, Method, <strong>Site (multi-source)</strong></p>
+        <h3 id="d-treasury"><span data-i18n="gr.dash.treasury.title">01 &mdash; Recaudación Fiscal</span> <a href="#d-treasury" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.treasury.meta"><strong>UID</strong>: <code>facil-treasury</code> · <strong>Audience</strong>: Treasury Manager · <strong>Filters</strong>: Ministry, Entity, Workflow, Method, <strong>Site (multi-source)</strong></p>
         <img src="images/grafana/d_reccuardacion.png" alt="Treasury Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.treasury.body">
           The flagship dashboard. Resolves revenue per <strong>physical site</strong> (city) using the 4-step
           COALESCE chain so a payment collected by an inspector in Bata is attributed to Bata, not to the
           validating agent in Malabo. The <code>location_source</code> donut shows the resolution breakdown.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Recaudaci&oacute;n total</td><td><code>SUM(amount) WHERE status='completed'</code></td><td><code>v_treasury_payments_by_site</code></td><td>Revenue tracking</td></tr>
-              <tr><td>Recovery %</td><td><code>SUM(completed) / SUM(total) * 100</code></td><td><code>v_treasury_payments_by_site</code></td><td>Reconciliation gap</td></tr>
-              <tr><td>Per-site breakdown</td><td><code>GROUP BY effective_location_id</code></td><td><code>v_treasury_payments_by_site</code></td><td>Site performance</td></tr>
-              <tr><td>Method mix</td><td><code>GROUP BY payment_method</code></td><td><code>v_treasury_payments_by_site</code></td><td>BANGE adoption</td></tr>
-              <tr><td>Source attribution</td><td><code>GROUP BY location_source</code></td><td><code>v_treasury_payments_by_site</code></td><td>Data quality audit</td></tr>
+              <tr><td data-i18n="gr.dash.treasury.kpi.total">Recaudación total</td><td><code>SUM(amount) WHERE status='completed'</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.treasury.kpi.total_dec">Revenue tracking</td></tr>
+              <tr><td>Recovery %</td><td><code>SUM(completed) / SUM(total) * 100</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.treasury.kpi.recovery_dec">Reconciliation gap</td></tr>
+              <tr><td data-i18n="gr.dash.treasury.kpi.persite">Per-site breakdown</td><td><code>GROUP BY effective_location_id</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.treasury.kpi.persite_dec">Site performance</td></tr>
+              <tr><td data-i18n="gr.dash.treasury.kpi.method">Method mix</td><td><code>GROUP BY payment_method</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.treasury.kpi.method_dec">BANGE adoption</td></tr>
+              <tr><td data-i18n="gr.dash.treasury.kpi.attribution">Source attribution</td><td><code>GROUP BY location_source</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.treasury.kpi.attribution_dec">Data quality audit</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 02 Agents -->
-        <h3 id="d-agents">02 &mdash; Performance Agentes <a href="#d-agents" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-agents</code> &middot; <strong>Audience</strong>: Agent + Ministry Supervisor &middot; <strong>Filters</strong>: OMS toggle, Entity, Site, Agent Type</p>
+        <h3 id="d-agents"><span data-i18n="gr.dash.agents.title">02 &mdash; Performance Agentes</span> <a href="#d-agents" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.agents.meta"><strong>UID</strong>: <code>facil-agents</code> · <strong>Audience</strong>: Agent + Ministry Supervisor · <strong>Filters</strong>: OMS toggle, Entity, Site, Agent Type</p>
         <img src="images/grafana/d_perf_agente.png" alt="Agent Performance Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n="gr.dash.agents.body">
           OMS toggle (custom variable) lets supervisors compare bundle-payment teams (AYUNTAMIENTO,
-          CAMARA_COMERCIO) vs traditional ministry teams. Drill: ministry &rarr; entity &rarr; site &rarr; agent.
+          CAMARA_COMERCIO) vs traditional ministry teams. Drill: ministry → entity → site → agent.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Active agents</td><td><code>COUNT(DISTINCT user_id) WHERE last_assignment &gt; now()-interval'7d'</code></td><td><code>v_agent_workload_enriched</code></td><td>Resource allocation</td></tr>
-              <tr><td>Avg queue depth</td><td><code>AVG(queue_size)</code></td><td><code>v_agent_workload_enriched</code></td><td>Hire / rebalance signal</td></tr>
-              <tr><td>SLA pressure</td><td><code>SUM(sla_breached) / SUM(total)</code></td><td><code>v_active_service_requests_enriched</code></td><td>Escalation alert</td></tr>
-              <tr><td>Top performers</td><td><code>ORDER BY validated_count DESC LIMIT 10</code></td><td><code>v_agent_workload_enriched</code></td><td>Recognition / training</td></tr>
+              <tr><td data-i18n="gr.dash.agents.kpi.active">Active agents</td><td><code>COUNT(DISTINCT user_id) WHERE last_assignment &gt; now()-interval'7d'</code></td><td><code>v_agent_workload_enriched</code></td><td data-i18n="gr.dash.agents.kpi.active_dec">Resource allocation</td></tr>
+              <tr><td data-i18n="gr.dash.agents.kpi.queue">Avg queue depth</td><td><code>AVG(queue_size)</code></td><td><code>v_agent_workload_enriched</code></td><td data-i18n="gr.dash.agents.kpi.queue_dec">Hire / rebalance signal</td></tr>
+              <tr><td data-i18n="gr.dash.agents.kpi.sla">SLA pressure</td><td><code>SUM(sla_breached) / SUM(total)</code></td><td><code>v_active_service_requests_enriched</code></td><td data-i18n="gr.dash.agents.kpi.sla_dec">Escalation alert</td></tr>
+              <tr><td data-i18n="gr.dash.agents.kpi.top">Top performers</td><td><code>ORDER BY validated_count DESC LIMIT 10</code></td><td><code>v_agent_workload_enriched</code></td><td data-i18n="gr.dash.agents.kpi.top_dec">Recognition / training</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 03 Companies -->
-        <h3 id="d-companies">03 &mdash; Empresas <a href="#d-companies" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-companies</code> &middot; <strong>Audience</strong>: Citizen Services Director &middot; <strong>Filters</strong>: Zone, <strong>City (JSONB drill)</strong></p>
+        <h3 id="d-companies"><span data-i18n="gr.dash.companies.title">03 &mdash; Empresas</span> <a href="#d-companies" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.companies.meta"><strong>UID</strong>: <code>facil-companies</code> · <strong>Audience</strong>: Citizen Services Director · <strong>Filters</strong>: Zone, <strong>City (JSONB drill)</strong></p>
         <img src="images/grafana/d_empresas.png" alt="Companies Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.companies.body">
           City filter uses JSONB drill on <code>mv_company_global_stats.by_city</code> &mdash; a pre-aggregated
           analytics column. Single-row JSONB query &rarr; multiple rows expanded via
           <code>jsonb_array_elements()</code>.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Empresas registradas</td><td><code>COUNT(*) WHERE status IN ('active','pending')</code></td><td><code>mv_company_global_stats</code></td><td>Market penetration</td></tr>
-              <tr><td>Por zona (12 zones)</td><td><code>GROUP BY zone_code</code></td><td><code>mv_company_stats_by_zone</code></td><td>Regional outreach</td></tr>
-              <tr><td>Por ciudad (16 cities)</td><td><code>jsonb_array_elements(by_city) WHERE zone IN(...)</code></td><td><code>mv_company_global_stats</code></td><td>Local agent dispatch</td></tr>
-              <tr><td>Deuda por ciudad</td><td><code>(j-&gt;&gt;'debt')::numeric ORDER BY DESC</code></td><td>JSONB drill</td><td>Collection priority</td></tr>
+              <tr><td data-i18n="gr.dash.companies.kpi.regis">Empresas registradas</td><td><code>COUNT(*) WHERE status IN ('active','pending')</code></td><td><code>mv_company_global_stats</code></td><td data-i18n="gr.dash.companies.kpi.regis_dec">Market penetration</td></tr>
+              <tr><td data-i18n="gr.dash.companies.kpi.zone">Por zona (12 zones)</td><td><code>GROUP BY zone_code</code></td><td><code>mv_company_stats_by_zone</code></td><td data-i18n="gr.dash.companies.kpi.zone_dec">Regional outreach</td></tr>
+              <tr><td data-i18n="gr.dash.companies.kpi.city">Por ciudad (16 cities)</td><td><code>jsonb_array_elements(by_city) WHERE zone IN(...)</code></td><td><code>mv_company_global_stats</code></td><td data-i18n="gr.dash.companies.kpi.city_dec">Local agent dispatch</td></tr>
+              <tr><td data-i18n="gr.dash.companies.kpi.debt">Deuda por ciudad</td><td><code>(j-&gt;&gt;'debt')::numeric ORDER BY DESC</code></td><td data-i18n="gr.dash.companies.kpi.debt_src">JSONB drill</td><td data-i18n="gr.dash.companies.kpi.debt_dec">Collection priority</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 04 OMS -->
-        <h3 id="d-oms">04 &mdash; OMS Modules <a href="#d-oms" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-oms</code> &middot; <strong>Audience</strong>: OMS Supervisor &middot; <strong>Filters</strong>: Ministry, Fee_type, Zone, Site</p>
+        <h3 id="d-oms"><span data-i18n="gr.dash.oms.title">04 &mdash; OMS Modules</span> <a href="#d-oms" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.oms.meta"><strong>UID</strong>: <code>facil-oms</code> · <strong>Audience</strong>: OMS Supervisor · <strong>Filters</strong>: Ministry, Fee_type, Zone, Site</p>
         <img src="images/grafana/d_OMS.png" alt="OMS Modules Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.oms.body">
           OMS = One-Stop-Shop. Tracks the bundle-payment workflow rollout: an entity is OMS if its
           <code>workflow_codes</code> JSONB array contains <code>'BUNDLE_PAYMENT'</code>. This classifier is
           <strong>admin-managed via UI</strong> (no code redeploy needed) and consumed via the JSONB
@@ -401,98 +365,92 @@
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>OMS entities</td><td><code>COUNT(*) WHERE workflow_codes ? 'BUNDLE_PAYMENT'</code></td><td><code>entities</code></td><td>Rollout progress</td></tr>
-              <tr><td>Obligations issued</td><td><code>COUNT(*) FROM license_obligations</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td>Bundle adoption</td></tr>
-              <tr><td>Avg fees per bundle</td><td><code>AVG(amount)</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td>Pricing benchmark</td></tr>
-              <tr><td>Completion rate</td><td><code>completed / issued</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td>Friction diagnosis</td></tr>
+              <tr><td data-i18n="gr.dash.oms.kpi.entities">OMS entities</td><td><code>COUNT(*) WHERE workflow_codes ? 'BUNDLE_PAYMENT'</code></td><td><code>entities</code></td><td data-i18n="gr.dash.oms.kpi.entities_dec">Rollout progress</td></tr>
+              <tr><td data-i18n="gr.dash.oms.kpi.obli">Obligations issued</td><td><code>COUNT(*) FROM license_obligations</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td data-i18n="gr.dash.oms.kpi.obli_dec">Bundle adoption</td></tr>
+              <tr><td data-i18n="gr.dash.oms.kpi.fees">Avg fees per bundle</td><td><code>AVG(amount)</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td data-i18n="gr.dash.oms.kpi.fees_dec">Pricing benchmark</td></tr>
+              <tr><td data-i18n="gr.dash.oms.kpi.compl">Completion rate</td><td><code>completed / issued</code></td><td><code>mv_obligation_stats_by_ministry</code></td><td data-i18n="gr.dash.oms.kpi.compl_dec">Friction diagnosis</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 05 Payments -->
-        <h3 id="d-payments">05 &mdash; Payments Operations <a href="#d-payments" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-payments</code> &middot; <strong>Audience</strong>: Treasury Operations &middot; <strong>Filters</strong>: Status, Entity, Site</p>
-        <p style="font-style:italic;color:var(--text-secondary);">Screenshot not captured at the time of writing &mdash; data structure identical to <code>v_treasury_payments_by_site</code>; visual identical to dashboard 01 with operational status emphasis.</p>
+        <h3 id="d-payments"><span data-i18n="gr.dash.payments.title">05 &mdash; Payments Operations</span> <a href="#d-payments" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.payments.meta"><strong>UID</strong>: <code>facil-payments</code> · <strong>Audience</strong>: Treasury Operations · <strong>Filters</strong>: Status, Entity, Site</p>
+        <p style="font-style:italic;color:var(--text-secondary);" data-i18n-html="gr.dash.payments.note">Screenshot not captured at the time of writing &mdash; data structure identical to <code>v_treasury_payments_by_site</code>; visual identical to dashboard 01 with operational status emphasis.</p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Pending validation</td><td><code>COUNT(*) WHERE workflow_status='pending_agent_review'</code></td><td><code>v_treasury_payments_by_site</code></td><td>Backlog alert</td></tr>
-              <tr><td>Reconciliation gap</td><td><code>SUM(bank) - SUM(reconciled)</code></td><td><code>bank_transactions + payments</code></td><td>Audit follow-up</td></tr>
-              <tr><td>Failed payments</td><td><code>COUNT(*) WHERE status='failed'</code></td><td><code>v_treasury_payments_by_site</code></td><td>Provider issue tracking</td></tr>
+              <tr><td data-i18n="gr.dash.payments.kpi.pending">Pending validation</td><td><code>COUNT(*) WHERE workflow_status='pending_agent_review'</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.payments.kpi.pending_dec">Backlog alert</td></tr>
+              <tr><td data-i18n="gr.dash.payments.kpi.gap">Reconciliation gap</td><td><code>SUM(bank) - SUM(reconciled)</code></td><td><code>bank_transactions + payments</code></td><td data-i18n="gr.dash.payments.kpi.gap_dec">Audit follow-up</td></tr>
+              <tr><td data-i18n="gr.dash.payments.kpi.failed">Failed payments</td><td><code>COUNT(*) WHERE status='failed'</code></td><td><code>v_treasury_payments_by_site</code></td><td data-i18n="gr.dash.payments.kpi.failed_dec">Provider issue tracking</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 06 Service Requests -->
-        <h3 id="d-sr">06 &mdash; Service Requests <a href="#d-sr" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-service-requests</code> &middot; <strong>Audience</strong>: Ministry Agent &middot; <strong>Filters</strong>: Workflow, Entity, Site</p>
+        <h3 id="d-sr"><span data-i18n="gr.dash.sr.title">06 &mdash; Service Requests</span> <a href="#d-sr" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.sr.meta"><strong>UID</strong>: <code>facil-service-requests</code> · <strong>Audience</strong>: Ministry Agent · <strong>Filters</strong>: Workflow, Entity, Site</p>
         <img src="images/grafana/d_sr.png" alt="Service Requests Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.sr.body">
           Active service requests with <strong>age buckets</strong> (0-24h, 24-72h, 3-7d, 7d+) for SLA
           tracking. Status breakdown shows the bottleneck stage of the workflow.
         </p>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>KPI</th><th>Formula</th><th>Source</th><th>Decision</th></tr></thead>
+            <thead><tr><th data-i18n="gr.dash.col_kpi">KPI</th><th data-i18n="gr.dash.col_formula_short">Formula</th><th data-i18n="gr.dash.col_source">Source</th><th data-i18n="gr.dash.col_decision">Decision</th></tr></thead>
             <tbody>
-              <tr><td>Active SR</td><td><code>COUNT(*) WHERE status NOT IN ('completed','cancelled')</code></td><td><code>v_active_service_requests_enriched</code></td><td>Backlog volume</td></tr>
-              <tr><td>Age buckets</td><td><code>CASE WHEN hours_since &lt; 24 THEN '0-24h' ...</code></td><td><code>v_active_service_requests_enriched</code></td><td>SLA escalation trigger</td></tr>
-              <tr><td>Status mix</td><td><code>GROUP BY workflow_status</code></td><td><code>v_active_service_requests_enriched</code></td><td>Bottleneck identification</td></tr>
+              <tr><td data-i18n="gr.dash.sr.kpi.active">Active SR</td><td><code>COUNT(*) WHERE status NOT IN ('completed','cancelled')</code></td><td><code>v_active_service_requests_enriched</code></td><td data-i18n="gr.dash.sr.kpi.active_dec">Backlog volume</td></tr>
+              <tr><td data-i18n="gr.dash.sr.kpi.age">Age buckets</td><td><code>CASE WHEN hours_since &lt; 24 THEN '0-24h' ...</code></td><td><code>v_active_service_requests_enriched</code></td><td data-i18n="gr.dash.sr.kpi.age_dec">SLA escalation trigger</td></tr>
+              <tr><td data-i18n="gr.dash.sr.kpi.status">Status mix</td><td><code>GROUP BY workflow_status</code></td><td><code>v_active_service_requests_enriched</code></td><td data-i18n="gr.dash.sr.kpi.status_dec">Bottleneck identification</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 07 User Activity -->
-        <h3 id="d-ua">07 &mdash; User Activity (Audit) <a href="#d-ua" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-user-activity</code> &middot; <strong>Audience</strong>: Security &amp; Director &middot; <strong>Filters</strong>: Channel, Role, Action Category</p>
+        <h3 id="d-ua"><span data-i18n="gr.dash.ua.title">07 &mdash; User Activity (Audit)</span> <a href="#d-ua" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.ua.meta"><strong>UID</strong>: <code>facil-user-activity</code> · <strong>Audience</strong>: Security &amp; Director · <strong>Filters</strong>: Channel, Role, Action Category</p>
         <img src="images/grafana/d_ua.png" alt="User Activity Audit Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.ua.body">
           Built on <code>v_user_activity_audit</code> which canonicalizes 3,342+ audit_logs events with channel
           detection (mobile/web/inspector) via user-agent regex and action_category mapping.
         </p>
 
-        <!-- 08 Channel -->
-        <h3 id="d-channel">08 &mdash; Mobile vs Web vs Inspector <a href="#d-channel" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-channel</code> &middot; <strong>Audience</strong>: Director &amp; Product &middot; <strong>Filters</strong>: Workflow, Entity</p>
+        <h3 id="d-channel"><span data-i18n="gr.dash.channel.title">08 &mdash; Mobile vs Web vs Inspector</span> <a href="#d-channel" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.channel.meta"><strong>UID</strong>: <code>facil-channel</code> · <strong>Audience</strong>: Director &amp; Product · <strong>Filters</strong>: Workflow, Entity</p>
         <img src="images/grafana/d_Mob_vs_Web.png" alt="Channel Mix Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n="gr.dash.channel.body">
           Tracks the adoption of the mobile citizen app and the inspector app vs traditional web access. Key
           for product strategy: where to invest UX effort.
         </p>
 
-        <!-- 09 Inspections -->
-        <h3 id="d-inspections">09 &mdash; Inspections (field) <a href="#d-inspections" class="anchor-link">#</a></h3>
-        <p><strong>UID</strong>: <code>facil-inspections</code> &middot; <strong>Audience</strong>: Inspector Chief &middot; <strong>Filters</strong>: Entity, City, Result</p>
+        <h3 id="d-inspections"><span data-i18n="gr.dash.insp.title">09 &mdash; Inspections (field)</span> <a href="#d-inspections" class="anchor-link">#</a></h3>
+        <p data-i18n-html="gr.dash.insp.meta"><strong>UID</strong>: <code>facil-inspections</code> · <strong>Audience</strong>: Inspector Chief · <strong>Filters</strong>: Entity, City, Result</p>
         <img src="images/grafana/d_inspec.png" alt="Inspections Dashboard" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
-        <p>
+        <p data-i18n-html="gr.dash.insp.body">
           Currently shows &laquo; No data &raquo; on most cards because <code>field_inspections</code> is
           empty in production until the inspector mobile app captures its first reports. The schema is ready,
           all KPIs and filters are wired, and <code>noValue: "0"</code> ensures no parasite errors.
         </p>
 
-        <!-- ===== Section 5: Patterns ===== -->
-        <h2 id="patterns">5. Engineering Patterns <a href="#patterns" class="anchor-link">#</a></h2>
+        <h2 id="patterns"><span data-i18n="gr.toc.patterns">5. Engineering Patterns</span> <a href="#patterns" class="anchor-link">#</a></h2>
 
-        <h3>Pattern A &mdash; Multi-source resolution (4-step COALESCE)</h3>
-        <p>
+        <h3 data-i18n="gr.patterns.A_title">Pattern A &mdash; Multi-source resolution (4-step COALESCE)</h3>
+        <p data-i18n-html="gr.patterns.A_body">
           When a dimension can be derived from multiple sources with priority, never pick one arbitrarily &mdash;
           fallback in priority order with audit trail. This pattern resolved the &laquo; all agents in
           Malabo &raquo; problem where revenue from field inspections in Bata was wrongly attributed to the
           validating agent&rsquo;s site.
         </p>
 
-        <h3>Pattern B &mdash; JSONB classifier (admin-managed, no redeploy)</h3>
-        <p>
+        <h3 data-i18n="gr.patterns.B_title">Pattern B &mdash; JSONB classifier (admin-managed, no redeploy)</h3>
+        <p data-i18n-html="gr.patterns.B_body">
           The OMS classifier (<code>workflow_codes ? 'BUNDLE_PAYMENT'</code>) lives in the
           <code>entities</code> table as a JSONB array. Admins toggle OMS status from the UI; dashboards
           recompute instantly. No code change, no migration. Single source of truth.
         </p>
 
-        <h3>Pattern C &mdash; Chained template variables</h3>
-        <p>
+        <h3 data-i18n="gr.patterns.C_title">Pattern C &mdash; Chained template variables</h3>
+        <p data-i18n-html="gr.patterns.C_body">
           Filters chain via <code>refresh: 1</code> on each variable: ministry &rarr; entity &rarr; site
           population queries depend on the upstream selection. The <strong>population query</strong> for the
           Site filter must be the catalog (<code>v_entity_locations_browse</code>), not the fact table &mdash;
@@ -506,39 +464,38 @@
   <span class="str">"multi"</span>: <span class="kw">true</span>
 }</code></pre>
 
-        <h3>Pattern D &mdash; Engine-agnostic Grafana primitives</h3>
-        <p>
+        <h3 data-i18n="gr.patterns.D_title">Pattern D &mdash; Engine-agnostic Grafana primitives</h3>
+        <p data-i18n-html="gr.patterns.D_body">
           Three Grafana-side primitives appear in all 10 dashboards and would work on MySQL / BigQuery /
           Snowflake / SQL Server unchanged (verified in our reusable
           <code>GRAFANA_DASHBOARDS_AGENT.md</code> v1.1):
         </p>
         <ul>
-          <li><code>${var:sqlstring}</code> &mdash; the <em>only</em> way to handle multi-select &laquo; All &raquo;. Never <code>'$var' = 'All' OR ...</code>.</li>
-          <li><code>"unit": "currency:XAF"</code> &mdash; the <code>currency:</code> prefix triggers ISO display. Without it, you get a literal &laquo; currencyXAF &raquo;.</li>
-          <li><code>"noValue": "0"</code> &mdash; on stat panels, NULL becomes &laquo; No data &raquo;. This forces a clean 0.</li>
+          <li data-i18n-html="gr.patterns.D.sqlstring"><code>${var:sqlstring}</code> &mdash; the <em>only</em> way to handle multi-select &laquo; All &raquo;. Never <code>'$var' = 'All' OR ...</code>.</li>
+          <li data-i18n-html="gr.patterns.D.currency"><code>"unit": "currency:XAF"</code> &mdash; the <code>currency:</code> prefix triggers ISO display. Without it, you get a literal &laquo; currencyXAF &raquo;.</li>
+          <li data-i18n-html="gr.patterns.D.novalue"><code>"noValue": "0"</code> &mdash; on stat panels, NULL becomes &laquo; No data &raquo;. This forces a clean 0.</li>
         </ul>
 
-        <!-- ===== Section 6: Stack ===== -->
-        <h2 id="stack">6. Stack &amp; Provisioning <a href="#stack" class="anchor-link">#</a></h2>
+        <h2 id="stack"><span data-i18n="gr.toc.stack">6. Stack &amp; Provisioning</span> <a href="#stack" class="anchor-link">#</a></h2>
 
         <div class="table-wrapper">
           <table>
             <tbody>
-              <tr><td>Hosting</td><td>Grafana Cloud Free Tier (<code>kouemousah.grafana.net</code>)</td></tr>
-              <tr><td>Datasource</td><td>Postgres pooler IPv4 (<code>aws-0-eu-west-3.pooler.supabase.com:6543</code>)</td></tr>
-              <tr><td>BI role</td><td><code>looker_readonly</code> (read-only on enriched views + MVs)</td></tr>
-              <tr><td>Dashboards-as-code</td><td>10 JSON files in <code>infra/grafana/dashboards/</code></td></tr>
-              <tr><td>Push script</td><td><code>packages/backend/scripts/push_grafana_dashboards.py</code> (idempotent API push)</td></tr>
-              <tr><td>Provisioning YAML</td><td><code>infra/grafana/provisioning/{datasources,dashboards}/</code> (for self-hosted)</td></tr>
-              <tr><td>Auto-refresh</td><td>5 min default per dashboard</td></tr>
-              <tr><td>Embed in Facil admin</td><td><code>d-solo</code> URL + <code>kiosk=tv</code> via <code>DashboardConfigService._build_grafana_embed_url()</code></td></tr>
-              <tr><td>Token rotation</td><td>7-day expiry on <code>facil-deployer</code> service account</td></tr>
+              <tr><td data-i18n="gr.stack.row.hosting">Hosting</td><td data-i18n-html="gr.stack.row.hosting_val">Grafana Cloud Free Tier (<code>kouemousah.grafana.net</code>)</td></tr>
+              <tr><td data-i18n="gr.stack.row.datasource">Datasource</td><td data-i18n-html="gr.stack.row.datasource_val">Postgres pooler IPv4 (<code>aws-0-eu-west-3.pooler.supabase.com:6543</code>)</td></tr>
+              <tr><td data-i18n="gr.stack.row.bi">BI role</td><td data-i18n-html="gr.stack.row.bi_val"><code>looker_readonly</code> (read-only on enriched views + MVs)</td></tr>
+              <tr><td data-i18n="gr.stack.row.dac">Dashboards-as-code</td><td data-i18n-html="gr.stack.row.dac_val">10 JSON files in <code>infra/grafana/dashboards/</code></td></tr>
+              <tr><td data-i18n="gr.stack.row.push">Push script</td><td data-i18n-html="gr.stack.row.push_val"><code>packages/backend/scripts/push_grafana_dashboards.py</code> (idempotent API push)</td></tr>
+              <tr><td data-i18n="gr.stack.row.prov">Provisioning YAML</td><td data-i18n-html="gr.stack.row.prov_val"><code>infra/grafana/provisioning/{datasources,dashboards}/</code> (for self-hosted)</td></tr>
+              <tr><td data-i18n="gr.stack.row.refresh">Auto-refresh</td><td data-i18n="gr.stack.row.refresh_val">5 min default per dashboard</td></tr>
+              <tr><td data-i18n="gr.stack.row.embed">Embed in Facil admin</td><td data-i18n-html="gr.stack.row.embed_val"><code>d-solo</code> URL + <code>kiosk=tv</code> via <code>DashboardConfigService._build_grafana_embed_url()</code></td></tr>
+              <tr><td data-i18n="gr.stack.row.token">Token rotation</td><td data-i18n-html="gr.stack.row.token_val">7-day expiry on <code>facil-deployer</code> service account</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Reusable Agent</h3>
-        <p>
+        <h3 data-i18n="gr.stack.agent_title">Reusable Agent</h3>
+        <p data-i18n-html="gr.stack.agent_body">
           The work was distilled into <code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> &mdash; a
           reproducible 8-phase agent invokable via <code>/grafana-dashboards</code> slash-command. v1.1 added
           a multi-engine adapter (Postgres / MySQL / BigQuery / Snowflake / SQL Server) so the same agent runs
@@ -546,20 +503,19 @@
           template variables, token leak, missing rollback, etc.).
         </p>
 
-        <!-- ===== Section 7: Limits ===== -->
-        <h2 id="limits">7. Limits, Lineage &amp; Roadmap <a href="#limits" class="anchor-link">#</a></h2>
+        <h2 id="limits"><span data-i18n="gr.toc.limits">7. Limits, Lineage &amp; Roadmap</span> <a href="#limits" class="anchor-link">#</a></h2>
 
-        <h3>Known limits (honest)</h3>
+        <h3 data-i18n="gr.limits.title">Known limits (honest)</h3>
         <ul>
-          <li><strong>No row-level security (RLS) on Grafana</strong> &mdash; anyone with the embed URL can see the dashboard. Mitigation: permission gate at the wrapper application layer (<code>dashboards.view_business</code>). For real RLS, OAUTH2 community connector planned (Phase B.2).</li>
-          <li><strong>Seed data has all agents in Malabo</strong> &mdash; per-site distribution depends on production agent profiles populating <code>entity_location_id</code>.</li>
-          <li><strong>Inspections dashboard empty</strong> &mdash; legitimately, until the inspector mobile app captures field reports.</li>
-          <li><strong>Token rotation</strong> &mdash; manual every 7 days. Automate via Cloud Scheduler + service account API.</li>
-          <li><strong>05 Payments screenshot missing</strong> at the time of writing this doc &mdash; the dashboard is live; capture pending.</li>
+          <li data-i18n-html="gr.limits.rls"><strong>No row-level security (RLS) on Grafana</strong> &mdash; anyone with the embed URL can see the dashboard. Mitigation: permission gate at the wrapper application layer (<code>dashboards.view_business</code>). For real RLS, OAUTH2 community connector planned (Phase B.2).</li>
+          <li data-i18n-html="gr.limits.seed"><strong>Seed data has all agents in Malabo</strong> &mdash; per-site distribution depends on production agent profiles populating <code>entity_location_id</code>.</li>
+          <li data-i18n-html="gr.limits.empty"><strong>Inspections dashboard empty</strong> &mdash; legitimately, until the inspector mobile app captures field reports.</li>
+          <li data-i18n-html="gr.limits.token"><strong>Token rotation</strong> &mdash; manual every 7 days. Automate via Cloud Scheduler + service account API.</li>
+          <li data-i18n-html="gr.limits.screenshot"><strong>05 Payments screenshot missing</strong> at the time of writing this doc &mdash; the dashboard is live; capture pending.</li>
         </ul>
 
-        <h3>Data lineage (audit-ready)</h3>
-        <p>Every panel can be traced through the stack:</p>
+        <h3 data-i18n="gr.lineage.title">Data lineage (audit-ready)</h3>
+        <p data-i18n="gr.lineage.intro">Every panel can be traced through the stack:</p>
         <pre><code>Panel KPI
   &rarr; Dashboard JSON (infra/grafana/dashboards/NN_*.json)
     &rarr; SQL rawSql in panel definition
@@ -567,30 +523,30 @@
         &rarr; Source MV / table (granted to looker_readonly)
           &rarr; Origin transactional table</code></pre>
 
-        <h3>Roadmap</h3>
+        <h3 data-i18n="gr.roadmap.title">Roadmap</h3>
         <ol>
-          <li><strong>Q3 2026</strong>: OAUTH2 community connector for true multi-tenant RLS.</li>
-          <li><strong>Q3 2026</strong>: Alerts on revenue threshold + SLA breach (Grafana native, push to Slack).</li>
-          <li><strong>Q4 2026</strong>: Per-ministry deep-dive dashboards (1 per ministry, currently aggregated).</li>
-          <li><strong>Q4 2026</strong>: Anomaly detection on user activity (audit log) via Grafana ML plugin.</li>
+          <li data-i18n-html="gr.roadmap.s1"><strong>Q3 2026</strong>: OAUTH2 community connector for true multi-tenant RLS.</li>
+          <li data-i18n-html="gr.roadmap.s2"><strong>Q3 2026</strong>: Alerts on revenue threshold + SLA breach (Grafana native, push to Slack).</li>
+          <li data-i18n-html="gr.roadmap.s3"><strong>Q4 2026</strong>: Per-ministry deep-dive dashboards (1 per ministry, currently aggregated).</li>
+          <li data-i18n-html="gr.roadmap.s4"><strong>Q4 2026</strong>: Anomaly detection on user activity (audit log) via Grafana ML plugin.</li>
         </ol>
 
-        <h3>Related documentation</h3>
+        <h3 data-i18n="gr.related.title">Related documentation</h3>
         <ul>
-          <li><a href="architecture.html">System Architecture</a> &mdash; backend / data layer overview</li>
-          <li><a href="database.html">Database Schema</a> &mdash; full table reference (145 tables)</li>
-          <li><code>infra/grafana/README.md</code> &mdash; provisioning + push script reference</li>
-          <li><code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> &mdash; reusable 8-phase agent</li>
+          <li data-i18n-html="gr.related.arch"><a href="architecture.html">System Architecture</a> &mdash; backend / data layer overview</li>
+          <li data-i18n-html="gr.related.db"><a href="database.html">Database Schema</a> &mdash; full table reference (145 tables)</li>
+          <li data-i18n-html="gr.related.readme"><code>infra/grafana/README.md</code> &mdash; provisioning + push script reference</li>
+          <li data-i18n-html="gr.related.agent"><code>infra/grafana/GRAFANA_DASHBOARDS_AGENT.md</code> &mdash; reusable 8-phase agent</li>
         </ul>
 
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026 Sah Kouemou</span>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026 Sah Kouemou</span>
         <div class="footer-links">
-          <a href="index.html">Home</a>
-          <a href="architecture.html">Architecture</a>
-          <a href="database.html">Database</a>
+          <a href="index.html" data-i18n="common.sidebar.link.home">Home</a>
+          <a href="architecture.html" data-i18n="common.sidebar.link.architecture">Architecture</a>
+          <a href="database.html" data-i18n="common.sidebar.link.database">Database</a>
         </div>
       </footer>
     </main>
