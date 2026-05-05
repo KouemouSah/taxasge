@@ -124,24 +124,48 @@ export default function VaultHomeScreen() {
   );
 
   // ----- Render bodies per tab ---------------------------------------------
-  // contentContainerStyle MUST include `flexGrow: 1` so the inner content
-  // container fills the FlatList area; combined with the default
-  // `justifyContent: 'flex-start'` of flexbox, items always top-align right
-  // under the filter chips, and the empty space appears below the last
-  // item (where the FAB also lives) instead of above the first one.
+  // Bug specific to this screen: large vertical gap between the filter chips
+  // row and the first visible item, with all items appearing pushed to the
+  // bottom of the visible area (see debug/tesoro/post-fix/m1.jpg, m2.jpg,
+  // 2.jpg, 3.jpg, 4.jpg, 5.jpg captures dated 2026-04-30 13:39+).
   //
-  // Bug history (post-fix captures 2-5.jpg from 2026-04-30):
-  //   - WITHOUT flexGrow:1 + WITH `removeClippedSubviews:true` + small
-  //     windowSize on Android, RN's FlatList rendered items at the BOTTOM
-  //     of the visible area with the first item half-clipped at the top.
-  //     Symptom: a large empty "block" between the filter chips and the
-  //     first visible row, items appearing under that block when scrolling.
-  //   - The previous attempt removed flexGrow:1 alone, assuming
-  //     RefreshControl + flexGrow conflicted. That actually masked the
-  //     real cause (windowsize/clipping) and left the bottom-alignment.
+  // Root cause (revised diagnosis 2026-05-02):
+  //   This screen stacks ~270dp of fixed-height components ABOVE the FlatList
+  //   (Appbar 56dp + DocumentQuotaBar 50dp + tabsRow 56dp + Searchbar 52dp
+  //    [uploads only] + DocumentFilterChips 56dp). On Android, when the
+  //   FlatList carries `style={flex:1}` AND `contentContainerStyle={flexGrow:1}`,
+  //   this double-stretch combined with the heavy header stack confuses the
+  //   layout calculator: the inner content container ends up taller than the
+  //   actual available area, and items render bottom-aligned within that
+  //   over-stretched container.
+  //
+  //   Why /payments and /requests don't suffer the same bug despite using
+  //   `flexGrow:1`: their pre-FlatList stack is much smaller (~120dp: just a
+  //   header + a chip row). The over-stretch is masked by the available
+  //   space matching the calculation.
+  //
+  //   Why the dashboard /(tabs)/index.tsx doesn't suffer: it uses
+  //   `<View><RecentPaymentsList items.map()></View>` (NOT a FlatList), so
+  //   flex/flexGrow stretching doesn't apply.
+  //
+  // Fix (Option 1A — minimal surface area):
+  //   Drop `flexGrow:1` from contentContainerStyle. Keep `style={flex:1}` on
+  //   the FlatList itself so it fills the residual vertical space below the
+  //   header stack. The inner content container then takes its natural
+  //   height (sum of items + paddings), so items stack from the top.
+  //
+  //   Empty state: DocumentEmptyState has its own `paddingTop:48 +
+  //   paddingBottom:24` (see vault/components/document-empty-state.tsx), so
+  //   it sits visually under the chips even when the contentContainer is
+  //   short. No need for flexGrow:1 to "fill" the empty area.
+  //
+  //   Virtualisation: keep `windowSize={21}` (large enough to avoid the RN
+  //   Android `removeClippedSubviews` bug where short lists unmount visible
+  //   items). Don't set `removeClippedSubviews` here — the perf gain is
+  //   negligible for <100 items and re-introducing it has historically
+  //   caused exactly this bug class.
   const listContentStyle = useMemo(
     () => ({
-      flexGrow: 1,
       paddingTop: 8,
       paddingBottom: 96 + insets.bottom,
     }),
