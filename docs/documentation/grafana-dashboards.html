@@ -548,13 +548,27 @@
               <tr><th data-i18n="gr.admin.col_var">Variable</th><th data-i18n="gr.admin.col_value">Value</th><th data-i18n="gr.admin.col_purpose">Purpose</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>GRAFANA_BASE_URL</code></td><td><code>https://kouemousah.grafana.net</code></td><td data-i18n="gr.admin.row.base">Workspace base URL &mdash; used to build the iframe URL <em>and</em> the discover API call.</td></tr>
-              <tr><td><code>GRAFANA_SA_TOKEN</code></td><td data-i18n="gr.admin.row.token_v"><em>Service-account token</em> with <code>dashboards:read</code> scope</td><td data-i18n="gr.admin.row.token_p">Authenticates <code>/api/v1/dashboards/admin/grafana/discover</code> against Grafana's <code>/api/search</code>.</td></tr>
+              <tr><td><code>GRAFANA_BASE_URL</code></td><td><code>https://kouemousah.grafana.net</code></td><td data-i18n="gr.admin.row.base">Workspace base URL &mdash; used to build the iframe URL <em>and</em> the discover API call. Plain env var (non-secret).</td></tr>
+              <tr><td><code>GRAFANA_SA_TOKEN</code></td><td data-i18n-html="gr.admin.row.token_v"><strong>Secret Manager binding</strong>: <code>grafana-sa-token:latest</code> &mdash; bound via <code>--set-secrets=</code> in the deploy workflow, NOT a plain env var.</td><td data-i18n="gr.admin.row.token_p">Authenticates <code>/api/v1/dashboards/admin/grafana/discover</code> against Grafana's <code>/api/search</code>. Token never appears in the Cloud Run service descriptor; rotation is a single <code>gcloud secrets versions add</code> with no workflow edit.</td></tr>
             </tbody>
           </table>
         </div>
         <p data-i18n-html="gr.admin.config_token_hint">
-          To create the token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; role <code>Viewer</code> (or finer scope <code>dashboards:read</code>) &rarr; <em>Add token</em>. Store it in Google Secret Manager (<code>grafana-sa-token</code> secret) and bind it to the Cloud Run service. <strong>Rotate every 90 days.</strong>
+          To create the token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; role <code>Viewer</code> (or finer scope <code>dashboards:read</code>) &rarr; <em>Add token</em>. Then provision in GCP:
+        </p>
+        <pre><code><span class="cmt"># 1. Create the GSM secret + add the token as version 1</span>
+gcloud secrets create grafana-sa-token --replication-policy=automatic
+echo -n "glsa_xxxxxxxxxxxxx" | gcloud secrets versions add grafana-sa-token --data-file=-
+
+<span class="cmt"># 2. Grant the Cloud Run runtime SA the accessor role</span>
+gcloud secrets add-iam-policy-binding grafana-sa-token \
+  --member="serviceAccount:&lt;PROJECT_NUMBER&gt;-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+<span class="cmt"># 3. Workflow already binds it via --set-secrets="GRAFANA_SA_TOKEN=grafana-sa-token:latest"</span>
+<span class="cmt">#    Rotation = gcloud secrets versions add ... + redeploy (auto on next push).</span></code></pre>
+        <p data-i18n-html="gr.admin.csp_hint">
+          <strong>Frontend CSP requirement</strong>: the Next.js middleware emits a <code>Content-Security-Policy</code> header with <code>frame-src</code>. Grafana's domain MUST be whitelisted there or the browser blocks the iframe with <em>"Framing 'https://kouemousah.grafana.net/' violates the following Content Security Policy directive"</em>. The current allow-list includes <code>https://*.grafana.net</code> and <code>https://lookerstudio.google.com</code> &mdash; defined in <code>packages/web/src/middleware.ts</code> and <code>packages/web/next.config.mjs</code>. Adding a new embed provider requires updating both.
         </p>
 
         <h3 data-i18n="gr.admin.api_title">Backend endpoints</h3>

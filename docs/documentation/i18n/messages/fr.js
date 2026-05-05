@@ -1939,11 +1939,12 @@ window.__I18N__.fr =
       "config_intro": "L'endpoint d'import Grafana appelle l'API HTTP Grafana côté serveur ; il requiert deux variables d'environnement dans Cloud Run / Secret Manager :",
       "col_var": "Variable", "col_value": "Valeur", "col_purpose": "Rôle",
       "row": {
-        "base": "URL de base du workspace — utilisée pour construire l'URL iframe <em>et</em> l'appel API discover.",
-        "token_v": "<em>Token de service account</em> avec scope <code>dashboards:read</code>",
-        "token_p": "Authentifie <code>/api/v1/dashboards/admin/grafana/discover</code> contre <code>/api/search</code> de Grafana."
+        "base": "URL de base du workspace — utilisée pour construire l'URL iframe <em>et</em> l'appel API discover. Variable d'env standard (non sensible).",
+        "token_v": "<strong>Liaison Secret Manager</strong> : <code>grafana-sa-token:latest</code> — bindée via <code>--set-secrets=</code> dans le workflow de déploiement, PAS une variable d'env standard.",
+        "token_p": "Authentifie <code>/api/v1/dashboards/admin/grafana/discover</code> contre <code>/api/search</code> de Grafana. Le token n'apparaît jamais dans le descriptor du service Cloud Run ; la rotation = un seul <code>gcloud secrets versions add</code> sans modification du workflow."
       },
-      "config_token_hint": "Pour créer le token : Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; rôle <code>Viewer</code> (ou scope plus fin <code>dashboards:read</code>) &rarr; <em>Add token</em>. Stocker dans Google Secret Manager (secret <code>grafana-sa-token</code>) et le binder au service Cloud Run. <strong>Rotation tous les 90 jours.</strong>",
+      "config_token_hint": "Pour créer le token : Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; rôle <code>Viewer</code> (ou scope plus fin <code>dashboards:read</code>) &rarr; <em>Add token</em>. Puis provisionner dans GCP :",
+      "csp_hint": "<strong>Exigence CSP frontend</strong> : le middleware Next.js émet un header <code>Content-Security-Policy</code> avec <code>frame-src</code>. Le domaine Grafana DOIT y être whitelisté sinon le navigateur bloque l'iframe avec <em>« Framing 'https://kouemousah.grafana.net/' violates the following Content Security Policy directive »</em>. La liste actuelle inclut <code>https://*.grafana.net</code> et <code>https://lookerstudio.google.com</code> &mdash; définie dans <code>packages/web/src/middleware.ts</code> et <code>packages/web/next.config.mjs</code>. Ajouter un nouveau provider d'embed nécessite de mettre à jour les deux.",
       "api_title": "Endpoints backend",
       "col_method": "Méthode", "col_path": "Chemin", "col_perm": "Permission", "col_desc": "Description",
       "api": {

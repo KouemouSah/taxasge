@@ -1939,11 +1939,12 @@ window.__I18N__.en =
       "config_intro": "The Grafana import endpoint calls the Grafana HTTP API server-side; it requires two env vars in Cloud Run / Secret Manager:",
       "col_var": "Variable", "col_value": "Value", "col_purpose": "Purpose",
       "row": {
-        "base": "Workspace base URL — used to build the iframe URL <em>and</em> the discover API call.",
-        "token_v": "<em>Service-account token</em> with <code>dashboards:read</code> scope",
-        "token_p": "Authenticates <code>/api/v1/dashboards/admin/grafana/discover</code> against Grafana's <code>/api/search</code>."
+        "base": "Workspace base URL — used to build the iframe URL <em>and</em> the discover API call. Plain env var (non-secret).",
+        "token_v": "<strong>Secret Manager binding</strong>: <code>grafana-sa-token:latest</code> — bound via <code>--set-secrets=</code> in the deploy workflow, NOT a plain env var.",
+        "token_p": "Authenticates <code>/api/v1/dashboards/admin/grafana/discover</code> against Grafana's <code>/api/search</code>. Token never appears in the Cloud Run service descriptor; rotation is a single <code>gcloud secrets versions add</code> with no workflow edit."
       },
-      "config_token_hint": "To create the token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; role <code>Viewer</code> (or finer scope <code>dashboards:read</code>) &rarr; <em>Add token</em>. Store it in Google Secret Manager (<code>grafana-sa-token</code> secret) and bind it to the Cloud Run service. <strong>Rotate every 90 days.</strong>",
+      "config_token_hint": "To create the token: Grafana &rarr; <em>Administration &rarr; Service Accounts &rarr; Add new</em> &rarr; role <code>Viewer</code> (or finer scope <code>dashboards:read</code>) &rarr; <em>Add token</em>. Then provision in GCP:",
+      "csp_hint": "<strong>Frontend CSP requirement</strong>: the Next.js middleware emits a <code>Content-Security-Policy</code> header with <code>frame-src</code>. Grafana's domain MUST be whitelisted there or the browser blocks the iframe with <em>\"Framing 'https://kouemousah.grafana.net/' violates the following Content Security Policy directive\"</em>. The current allow-list includes <code>https://*.grafana.net</code> and <code>https://lookerstudio.google.com</code> &mdash; defined in <code>packages/web/src/middleware.ts</code> and <code>packages/web/next.config.mjs</code>. Adding a new embed provider requires updating both.",
       "api_title": "Backend endpoints",
       "col_method": "Method", "col_path": "Path", "col_perm": "Permission", "col_desc": "Description",
       "api": {
