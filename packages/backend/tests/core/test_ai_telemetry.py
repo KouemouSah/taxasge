@@ -39,6 +39,29 @@ def test_estimate_cost_xaf_unknown_model_returns_zero() -> None:
     assert estimate_cost_xaf("gemini-99-future", 1000, 1000) == 0.0
 
 
+def test_estimate_cost_xaf_handles_vertex_ai_resource_path() -> None:
+    """Bug fix 2026-05-05: Vertex AI returns full path, pricing keyed on short name."""
+    from app.core.ai_telemetry import estimate_cost_xaf, normalize_model_name
+
+    # Full Vertex resource path (the actual format observed in d_ai.png)
+    full_path = "publishers/google/models/gemini-2.5-flash"
+    assert normalize_model_name(full_path) == "gemini-2.5-flash"
+
+    # Cost should be the same as the short-name lookup
+    cost_full = estimate_cost_xaf(full_path, 1_000_000, 1_000_000)
+    cost_short = estimate_cost_xaf("gemini-2.5-flash", 1_000_000, 1_000_000)
+    assert cost_full == cost_short == 225.0
+
+    # projects/.../publishers/.../models/X form
+    nested = "projects/12345/locations/us-central1/publishers/google/models/text-embedding-005"
+    assert normalize_model_name(nested) == "text-embedding-005"
+    assert estimate_cost_xaf(nested, 1_000_000, 0) == 7.5
+
+    # Empty / None handling
+    assert normalize_model_name("") == "unknown"
+    assert normalize_model_name("gemini-2.5-flash") == "gemini-2.5-flash"  # idempotent
+
+
 def test_estimate_cost_xaf_zero_tokens() -> None:
     from app.core.ai_telemetry import estimate_cost_xaf
 

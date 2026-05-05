@@ -96,11 +96,32 @@ PRICING_XAF: dict[str, dict[str, float]] = {
 }
 
 
+def normalize_model_name(model: str) -> str:
+    """Normalize Vertex AI model paths to short keys used in PRICING_XAF.
+
+    Vertex AI returns full resource paths like:
+      'publishers/google/models/gemini-2.5-flash'
+      'projects/.../publishers/google/models/text-embedding-005'
+
+    Pricing dict is keyed on short names ('gemini-2.5-flash'). Strip the
+    prefix so the lookup succeeds. Idempotent: short names pass through
+    unchanged.
+    """
+    if not model:
+        return "unknown"
+    # Strip everything up to and including the last '/' (handles both
+    # 'publishers/google/models/X' and 'projects/.../models/X').
+    if "/" in model:
+        return model.rsplit("/", 1)[-1]
+    return model
+
+
 def estimate_cost_xaf(model: str, input_tokens: int, output_tokens: int) -> float:
     """Estimate XAF cost from token counts. 0 for unknown models (logged once)."""
-    p = PRICING_XAF.get(model)
+    short = normalize_model_name(model)
+    p = PRICING_XAF.get(short)
     if p is None:
-        logger.warning("ai_telemetry: unknown model '{}' — cost will be 0", model)
+        logger.warning("ai_telemetry: unknown model '{}' (short='{}') — cost will be 0", model, short)
         return 0.0
     return (
         (input_tokens / 1_000_000.0) * p["input"]
@@ -418,11 +439,14 @@ async def _traced_call(
     invoke,
 ) -> Any:
     """Shared core for both traced_generate and traced_embed."""
-    model_name = (
+    raw_model_name = (
         getattr(model, "_model_name", None)
         or getattr(model, "model_name", None)
         or "unknown"
     )
+    # Normalize Vertex AI resource paths (publishers/google/models/X → X)
+    # so model_name is consistent across BD rows + spans + dashboard panels.
+    model_name = normalize_model_name(raw_model_name)
     prompt_hash = hash_prompt(prompt)
 
     with _start_span(f"gen_ai.{operation}") as span:
