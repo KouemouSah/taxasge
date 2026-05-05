@@ -287,10 +287,13 @@
     var container = $('#progress-rings');
     if (!container) return;
 
-    // Calculate overall average
+    // Calculate overall average — EXCLUDE M9 CSI (continuous improvement
+    // cycle, not a deliverable with a 100% target; including it would
+    // unfairly drag the average down).
+    var deliverable = MILESTONE_DATA.filter(function (m) { return m.key !== 'csi'; });
     var total = 0;
-    MILESTONE_DATA.forEach(function (m) { total += m.pct; });
-    var avg = Math.round(total / MILESTONE_DATA.length);
+    deliverable.forEach(function (m) { total += m.pct; });
+    var avg = Math.round(total / deliverable.length);
     if (overall) overall.textContent = avg + '%';
 
     // Generate mini SVG rings for top 5 milestones
@@ -415,6 +418,47 @@
     '</div>';
   }
 
+  // ---------- 5b. CSI counter (M9 — continuous improvement) ----------
+  // Replaces the meaningless 0% on the M9 CSI card with "N delivered"
+  // = count of issues labeled `itil:csi` closed in the last 12 months.
+  // Source: GitHub Search API. Cached via fetchCached (10 min TTL).
+  async function loadCSIStats() {
+    var grid = $('#milestones-container');
+    if (!grid) return;
+    try {
+      var since = new Date();
+      since.setMonth(since.getMonth() - 12);
+      var sinceStr = since.toISOString().slice(0, 10);
+      var query = 'repo:' + REPO_OWNER + '/' + REPO_NAME +
+                  ' is:issue is:closed label:"itil:csi" closed:>' + sinceStr;
+      var url = API_BASE + '/search/issues?q=' + encodeURIComponent(query) + '&per_page=1';
+      var result = await fetchCached('csi_closed_12mo', url);
+      var count = (result && result.data && result.data.total_count) || 0;
+
+      // Patch the M9 CSI row inline (avoids re-render race with sync grid)
+      var cards = grid.querySelectorAll('.ms-card');
+      for (var i = 0; i < cards.length; i++) {
+        var nameEl = cards[i].querySelector('.ms-name');
+        if (nameEl && nameEl.textContent.indexOf('M9') === 0) {
+          var pctEl = cards[i].querySelector('.ms-pct-circle');
+          var badgeEl = cards[i].querySelector('.ms-badge');
+          if (pctEl) {
+            pctEl.textContent = count + ' ✓';
+            pctEl.style.color = count > 0 ? 'var(--ge-green)' : 'var(--text-muted)';
+            pctEl.title = count + ' CSI items shipped in last 12 months';
+          }
+          if (badgeEl) {
+            badgeEl.className = 'ms-badge ' + (count > 0 ? 'progress' : 'planned');
+            badgeEl.textContent = count > 0 ? count + ' delivered' : 'Continuous';
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      // Silent — keep default 0% on rate limit / network error.
+    }
+  }
+
   // ---------- 6. Issue Statistics (compact inline) ----------
   async function loadIssueStats() {
     var container = $('#issues-container');
@@ -470,6 +514,7 @@
     loadMilestones();
     loadCommits();     // also builds activity chart
     loadIssueStats();
+    loadCSIStats();    // patches M9 CSI card with closed-CSI count (12mo)
   }
 
   if (document.readyState === 'loading') {
