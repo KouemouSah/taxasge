@@ -137,6 +137,26 @@ class RegisterRequest(BaseModel):
         description="Preferred language (es/fr/en). If not provided, uses Accept-Language header"
     )
 
+    # Phase 10/B — Legal acceptance (mobile only, citizen/business/accountant only).
+    # Both fields are Optional at the schema level so the existing web sign-up
+    # flow keeps working unchanged. The service layer enforces:
+    # if role IN (citizen, business, accountant) AND versions are provided
+    # (mobile case), they must match settings.LEGAL_*_VERSION exactly,
+    # otherwise 400 outdated_legal_versions. admin/agent/funcionario are
+    # exempt entirely. See migration 331 + .claude/plans/MOBILE_PHASE_10_B_LEGAL_DETAILED.md.
+    terms_version_accepted: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=16,
+        description="Version of Terms of Service the user is accepting (mobile-only field)"
+    )
+    privacy_version_accepted: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=16,
+        description="Version of Privacy Policy the user is accepting (mobile-only field)"
+    )
+
     @model_validator(mode='after')
     def validate_password_strength(self):
         """Validate password contains: uppercase, lowercase, digit, special character"""
@@ -550,6 +570,70 @@ async def register(
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+        # STEP 2.5: Phase 10/B — persist legal acceptance for mobile sign-up.
+        # Public-onboarding roles (citizen/business/accountant) on mobile send
+        # `terms_version_accepted` + `privacy_version_accepted`. We validate
+        # exact match against settings (force-update mobile if stale) and
+        # persist on the freshly created users row. Web sign-up sends None →
+        # no validation, NULL stays in BD (alignment with V1 web scope).
+        # admin/agent/funcionario are exempt regardless.
+        # See migration 331 + .claude/plans/MOBILE_PHASE_10_B_LEGAL_DETAILED.md
+        if (
+            request.role in ("citizen", "business", "accountant")
+            and request.terms_version_accepted is not None
+            and request.privacy_version_accepted is not None
+        ):
+            from app.config import settings as _settings
+            from app.database.connection import get_db_pool
+            from datetime import datetime, timezone
+
+            if request.terms_version_accepted != _settings.LEGAL_TERMS_VERSION:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": "outdated_terms_version",
+                        "expected": _settings.LEGAL_TERMS_VERSION,
+                        "received": request.terms_version_accepted,
+                    },
+                )
+            if request.privacy_version_accepted != _settings.LEGAL_PRIVACY_VERSION:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": "outdated_privacy_version",
+                        "expected": _settings.LEGAL_PRIVACY_VERSION,
+                        "received": request.privacy_version_accepted,
+                    },
+                )
+
+            new_user_id = result.get("user", {}).get("id")
+            if new_user_id:
+                _now = datetime.now(timezone.utc)
+                _pool = await get_db_pool()
+                async with _pool.acquire() as _conn:
+                    await _conn.execute(
+                        """
+                        UPDATE users
+                        SET terms_accepted_at   = $1,
+                            terms_version       = $2,
+                            privacy_accepted_at = $3,
+                            privacy_version     = $4,
+                            updated_at          = $5
+                        WHERE id = $6
+                        """,
+                        _now,
+                        request.terms_version_accepted,
+                        _now,
+                        request.privacy_version_accepted,
+                        _now,
+                        new_user_id,
+                    )
+                logger.info(
+                    f"Legal acceptance persisted for new user {new_user_id} "
+                    f"(terms={request.terms_version_accepted}, "
+                    f"privacy={request.privacy_version_accepted})"
+                )
 
         # STEP 3: Delete pending registration (cleanup)
         await pending_repo.delete_by_email(request.email)
