@@ -287,3 +287,112 @@ async def test_traced_embed_uses_correct_provider_and_operation() -> None:
     assert args[6] == "embeddings_rag"    # feature
     assert args[9] == 200                 # input_tokens
     assert args[10] == 0                  # output_tokens
+
+
+# ---------------------------------------------------------------------------
+# Sync-via-executor variants (the actual codebase pattern)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_traced_generate_sync_runs_sync_call_in_executor() -> None:
+    """traced_generate_sync wraps the sync `model.generate_content` in
+    loop.run_in_executor. Replaces the manual pattern used in 19 call sites."""
+    from app.core.ai_telemetry import traced_generate_sync, flush_pending_persists
+
+    pool = _make_pool_mock()
+    model = MagicMock()
+    model._model_name = "gemini-2.5-flash"
+    # Sync method (not AsyncMock!)
+    model.generate_content = MagicMock(return_value=_make_response(120, 60))
+
+    response = await traced_generate_sync(
+        model, "hello",
+        feature="chatbot_rag", pool=pool,
+        user_role="citizen",
+    )
+
+    assert response.usage_metadata.prompt_token_count == 120
+    model.generate_content.assert_called_once()
+
+    await flush_pending_persists(timeout=2.0)
+
+    args = pool._mock_conn.execute.await_args.args
+    assert args[5] == "chat"
+    assert args[6] == "chatbot_rag"
+    assert args[9] == 120
+    assert args[10] == 60
+    assert args[14] == "success"
+
+
+@pytest.mark.asyncio
+async def test_traced_generate_sync_propagates_exception_with_classify() -> None:
+    from app.core.ai_telemetry import traced_generate_sync, flush_pending_persists
+
+    pool = _make_pool_mock()
+    model = MagicMock()
+    model._model_name = "gemini-2.5-flash"
+    model.generate_content = MagicMock(side_effect=RuntimeError("Quota exceeded"))
+
+    with pytest.raises(RuntimeError):
+        await traced_generate_sync(model, "hi", feature="ocr", pool=pool)
+
+    await flush_pending_persists(timeout=2.0)
+
+    args = pool._mock_conn.execute.await_args.args
+    assert args[14] == "rate_limited"
+    assert args[15] == "RuntimeError"
+
+
+@pytest.mark.asyncio
+async def test_traced_embed_sync_runs_sync_get_embeddings() -> None:
+    from app.core.ai_telemetry import traced_embed_sync, flush_pending_persists
+
+    pool = _make_pool_mock()
+    embed_model = MagicMock()
+    embed_model._model_name = "text-embedding-005"
+    embed_model.get_embeddings = MagicMock(
+        return_value=SimpleNamespace(
+            usage_metadata=SimpleNamespace(prompt_token_count=350, candidates_token_count=0),
+            candidates=[],
+        )
+    )
+
+    await traced_embed_sync(
+        embed_model, ["a", "b"],
+        feature="embeddings_rag", pool=pool,
+    )
+
+    embed_model.get_embeddings.assert_called_once()
+    await flush_pending_persists(timeout=2.0)
+
+    args = pool._mock_conn.execute.await_args.args
+    assert args[3] == "vertex_embedding"
+    assert args[5] == "embeddings"
+    assert args[9] == 350
+    assert args[10] == 0
+
+
+@pytest.mark.asyncio
+async def test_pool_default_resolves_via_get_db_pool(monkeypatch) -> None:
+    """When pool is omitted, the wrapper falls back to get_db_pool()."""
+    from app.core import ai_telemetry
+    from app.core.ai_telemetry import traced_generate_sync, flush_pending_persists
+
+    pool = _make_pool_mock()
+
+    async def fake_get_db_pool():
+        return pool
+
+    # Monkeypatch the lazy import
+    import app.database.connection as connmod
+    monkeypatch.setattr(connmod, "get_db_pool", fake_get_db_pool)
+
+    model = MagicMock()
+    model._model_name = "gemini-2.5-flash"
+    model.generate_content = MagicMock(return_value=_make_response())
+
+    # Note: no `pool=...` kwarg passed
+    await traced_generate_sync(model, "hi", feature="chatbot_rag")
+
+    await flush_pending_persists(timeout=2.0)
+    pool._mock_conn.execute.assert_awaited_once()

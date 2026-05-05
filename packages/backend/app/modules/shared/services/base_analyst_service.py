@@ -32,6 +32,7 @@ from typing import Any, Callable, Dict, List, Optional
 from loguru import logger
 
 from app.config import get_settings
+from app.core.ai_telemetry import traced_generate_sync
 
 try:
     from vertexai.generative_models import (
@@ -488,9 +489,10 @@ class BaseAnalystService(abc.ABC):
                 _r1_kwargs["tool_config"] = _TOOL_CONFIG_ANY
 
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(prompt_text, **_r1_kwargs),
+                traced_generate_sync(
+                    self._model, prompt_text,
+                    feature="analyst_base",
+                    **_r1_kwargs,
                 ),
                 timeout=GEMINI_TIMEOUT_FIRST_CALL,
             )
@@ -588,13 +590,11 @@ class BaseAnalystService(abc.ABC):
                             logger.debug(f"{service_name}: thinking_config not supported by SDK")
 
                 next_response = await asyncio.wait_for(
-                    loop.run_in_executor(
-                        None,
-                        lambda: self._model.generate_content(
-                            chat_history,
-                            generation_config=final_gen_config,
-                            **extra_gen_kwargs,
-                        ),
+                    traced_generate_sync(
+                        self._model, chat_history,
+                        feature="analyst_base",
+                        generation_config=final_gen_config,
+                        **extra_gen_kwargs,
                     ),
                     timeout=(
                         GEMINI_TIMEOUT_EXTRA_ROUND
@@ -696,12 +696,10 @@ class BaseAnalystService(abc.ABC):
                         f'Responde SOLO con un número.\n\nPregunta: {question[:100]}\n\nRespuesta: {answer[:500]}'
                     )
                     ref_response = await asyncio.wait_for(
-                        loop.run_in_executor(
-                            None,
-                            lambda: self._model.generate_content(
-                                reflection_prompt,
-                                generation_config=GenerationConfig(temperature=0.1, max_output_tokens=10),
-                            ),
+                        traced_generate_sync(
+                            self._model, reflection_prompt,
+                            feature="analyst_base",
+                            generation_config=GenerationConfig(temperature=0.1, max_output_tokens=10),
                         ),
                         timeout=8.0,
                     )
@@ -714,18 +712,17 @@ class BaseAnalystService(abc.ABC):
                             logger.warning(f"{service_name} low quality ({reflection_score}/10), regenerating")
                             # Regenerate with explicit improvement instruction
                             regen_response = await asyncio.wait_for(
-                                loop.run_in_executor(
-                                    None,
-                                    lambda: self._model.generate_content(
-                                        chat_history + [Content(
-                                            role="user",
-                                            parts=[Part.from_text(
-                                                f"Tu respuesta anterior fue evaluada {reflection_score}/10. "
-                                                f"Mejórala: más completa, precisa y estructurada."
-                                            )]
-                                        )],
-                                        generation_config=GenerationConfig(temperature=0.4, max_output_tokens=self._get_second_call_max_tokens()),
-                                    ),
+                                traced_generate_sync(
+                                    self._model,
+                                    chat_history + [Content(
+                                        role="user",
+                                        parts=[Part.from_text(
+                                            f"Tu respuesta anterior fue evaluada {reflection_score}/10. "
+                                            f"Mejórala: más completa, precisa y estructurada."
+                                        )]
+                                    )],
+                                    feature="analyst_base",
+                                    generation_config=GenerationConfig(temperature=0.4, max_output_tokens=self._get_second_call_max_tokens()),
                                 ),
                                 timeout=GEMINI_TIMEOUT_SECOND_CALL,
                             )

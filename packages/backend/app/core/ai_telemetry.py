@@ -10,6 +10,36 @@ Used to wrap every Gemini / Vertex AI call so we capture:
 - OTEL trace_id / span_id for Tempo correlation
 - privacy-safe prompt_hash (SHA-256 truncated to 16 hex)
 
+Coexistence with VertexAIManager (memory: 2026-05-05 audit)
+-----------------------------------------------------------
+This module does NOT replace `app.modules.shared.services.vertex_ai_manager`
+(VertexAIManager singleton). The two systems are COMPLEMENTARY:
+
+  | Concern                       | VertexAIManager  | ai_call_metrics (this) |
+  | Circuit breaker (10 fail/60s) | YES              | no                     |
+  | In-memory stats (sub-μs read) | YES              | no                     |
+  | BD persistence (cross-worker) | no               | YES                    |
+  | Cost in XAF                   | no               | YES                    |
+  | Per-feature/model/user tags   | no               | YES                    |
+  | OTEL trace correlation        | no               | YES                    |
+  | Time series + drill-down      | no               | YES (vw_ai_cost_*)     |
+
+Call sites should keep their existing pattern:
+
+    response = await traced_generate_sync(model, prompt, feature="X", ...)
+    VertexAIManager().track_usage(response, "ServiceName")  # circuit breaker
+    VertexAIManager().track_success()                       # reset consecutive
+
+In except blocks:
+    except Exception:
+        VertexAIManager().track_failure()                   # circuit breaker
+        raise
+
+Both systems run independently. ai_call_metrics' persist is fire-and-forget
+(asyncio.create_task) so it never blocks the user-facing call. VertexAIManager
+remains the source of truth for "should I make this call right now?" via its
+`is_available` check.
+
 Memory rules:
 - #21: Gemini JSON mode obligatoire — wrapper detects json_parse_error status
 - #24: json.dumps for JSONB — n/a here (no JSONB column in ai_call_metrics)
@@ -25,6 +55,7 @@ wrapper before completing the OTLP endpoint setup.
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import hashlib
 import time
 from typing import Any, Optional, Sequence
@@ -230,31 +261,46 @@ def _format_trace_id(span: Any) -> tuple[Optional[str], Optional[str]]:
 # ---------------------------------------------------------------------------
 # Public API: traced_generate (chat / completion) + traced_embed
 # ---------------------------------------------------------------------------
+async def _resolve_pool(pool: Optional[asyncpg.Pool]) -> asyncpg.Pool:
+    """When the caller doesn't pass an explicit pool, fall back to the global
+    `get_db_pool()` singleton. Done lazily inside the wrapper so the import
+    cycle (ai_telemetry → database → models → ai_telemetry) doesn't break.
+    """
+    if pool is not None:
+        return pool
+    from app.database.connection import get_db_pool
+    return await get_db_pool()
+
+
 async def traced_generate(
     model: Any,
     prompt: Any,
     *,
     feature: str,
-    pool: asyncpg.Pool,
+    pool: Optional[asyncpg.Pool] = None,
     user_id: Optional[str] = None,
     user_role: Optional[str] = None,
     operation: str = "chat",
     **kwargs: Any,
 ) -> Any:
-    """Wrapper around `model.generate_content_async(prompt, **kwargs)`.
+    """Wrapper around the **async** `model.generate_content_async(prompt, **kwargs)`.
 
     Emits an OTEL span + persists a row in ai_call_metrics. Returns whatever
     the underlying SDK returns. Errors propagate after recording.
 
+    Use `traced_generate_sync` if your SDK exposes only the synchronous
+    `model.generate_content()` (most of Vertex AI in this codebase).
+
     :param model:       a Vertex AI / Gemini GenerativeModel instance
     :param prompt:      whatever the model accepts (str / list of parts)
     :param feature:     Facil feature label (chatbot_rag | ocr | classification | ...)
-    :param pool:        asyncpg pool used for the BD persist
+    :param pool:        optional asyncpg pool — defaults to `get_db_pool()`
     :param user_id:     optional UUID of the user triggering the call (audit)
     :param user_role:   optional role (citizen | agent | admin) for segmentation
     :param operation:   'chat' (default) | 'completion'
     :param **kwargs:    forwarded to generate_content_async
     """
+    pool = await _resolve_pool(pool)
     return await _traced_call(
         model=model, prompt=prompt, feature=feature, pool=pool,
         user_id=user_id, user_role=user_role,
@@ -263,28 +309,99 @@ async def traced_generate(
     )
 
 
+async def traced_generate_sync(
+    model: Any,
+    prompt: Any,
+    *,
+    feature: str,
+    pool: Optional[asyncpg.Pool] = None,
+    user_id: Optional[str] = None,
+    user_role: Optional[str] = None,
+    operation: str = "chat",
+    executor: Optional[concurrent.futures.Executor] = None,
+    **kwargs: Any,
+) -> Any:
+    """Wrapper around the **sync** `model.generate_content(prompt, **kwargs)`,
+    run in an executor.
+
+    This is the right entry point for the Vertex AI Gemini SDK as currently
+    used in this codebase (the SDK exposes a sync-only `generate_content`
+    that we run with `loop.run_in_executor`). Replaces the manual pattern:
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None, lambda: model.generate_content(prompt, **kwargs),
+        )
+
+    With:
+
+        from app.core.ai_telemetry import traced_generate_sync
+        response = await traced_generate_sync(
+            model, prompt, feature='chatbot_rag', **kwargs,
+        )
+
+    Behavior is preserved (still runs sync call in default thread executor);
+    only telemetry is added.
+    """
+    pool = await _resolve_pool(pool)
+    loop = asyncio.get_event_loop()
+    return await _traced_call(
+        model=model, prompt=prompt, feature=feature, pool=pool,
+        user_id=user_id, user_role=user_role,
+        operation=operation, provider="gemini",
+        invoke=lambda m, p: loop.run_in_executor(
+            executor, lambda: m.generate_content(p, **kwargs)
+        ),
+    )
+
+
 async def traced_embed(
     embed_model: Any,
     texts: Sequence[Any],
     *,
     feature: str,
-    pool: asyncpg.Pool,
+    pool: Optional[asyncpg.Pool] = None,
     user_id: Optional[str] = None,
     user_role: Optional[str] = None,
     **kwargs: Any,
 ) -> Any:
-    """Wrapper around `embed_model.get_embeddings_async(texts, **kwargs)`.
+    """Wrapper around the **async** `embed_model.get_embeddings_async(texts, **kwargs)`.
 
     Same telemetry pattern as `traced_generate` but with `operation='embeddings'`
-    and `provider='vertex_embedding'`. Embeddings produce no output tokens; we
-    sum the input tokens reported by the SDK (or estimate from text length when
-    unavailable).
+    and `provider='vertex_embedding'`.
     """
+    pool = await _resolve_pool(pool)
     return await _traced_call(
         model=embed_model, prompt=texts, feature=feature, pool=pool,
         user_id=user_id, user_role=user_role,
         operation="embeddings", provider="vertex_embedding",
         invoke=lambda m, p: m.get_embeddings_async(p, **kwargs),
+    )
+
+
+async def traced_embed_sync(
+    embed_model: Any,
+    texts: Sequence[Any],
+    *,
+    feature: str,
+    pool: Optional[asyncpg.Pool] = None,
+    user_id: Optional[str] = None,
+    user_role: Optional[str] = None,
+    executor: Optional[concurrent.futures.Executor] = None,
+    **kwargs: Any,
+) -> Any:
+    """Wrapper around the **sync** `embed_model.get_embeddings(texts, **kwargs)`,
+    run in an executor. Symmetric to `traced_generate_sync` for embeddings.
+    """
+    pool = await _resolve_pool(pool)
+    loop = asyncio.get_event_loop()
+    return await _traced_call(
+        model=embed_model, prompt=texts, feature=feature, pool=pool,
+        user_id=user_id, user_role=user_role,
+        operation="embeddings", provider="vertex_embedding",
+        invoke=lambda m, p: loop.run_in_executor(
+            executor, lambda: m.get_embeddings(p, **kwargs)
+        ),
     )
 
 
@@ -381,7 +498,9 @@ async def _traced_call(
 
 __all__ = [
     "traced_generate",
+    "traced_generate_sync",
     "traced_embed",
+    "traced_embed_sync",
     "estimate_cost_xaf",
     "hash_prompt",
     "classify_error",

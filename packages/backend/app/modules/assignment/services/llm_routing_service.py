@@ -22,6 +22,7 @@ from uuid import UUID
 from loguru import logger
 
 from app.config import get_settings
+from app.core.ai_telemetry import traced_generate_sync
 
 from app.modules.shared.services.vertex_ai_manager import (
     VERTEX_AI_AVAILABLE,
@@ -165,17 +166,14 @@ class LLMRoutingService:
         prompt = self._build_prompt(context, candidates)
 
         try:
-            loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        prompt,
-                        generation_config=GenerationConfig(
-                            temperature=settings.LLM_ROUTING_TEMPERATURE,
-                            max_output_tokens=settings.LLM_ROUTING_MAX_TOKENS,
-                            response_mime_type="application/json",
-                        ),
+                traced_generate_sync(
+                    self._model, prompt,
+                    feature="routing",
+                    generation_config=GenerationConfig(
+                        temperature=settings.LLM_ROUTING_TEMPERATURE,
+                        max_output_tokens=settings.LLM_ROUTING_MAX_TOKENS,
+                        response_mime_type="application/json",
                     ),
                 ),
                 timeout=settings.LLM_ROUTING_TIMEOUT_SECONDS,

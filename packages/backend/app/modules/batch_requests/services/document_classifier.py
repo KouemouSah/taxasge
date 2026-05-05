@@ -41,6 +41,7 @@ from app.modules.service_requests.services.gemini_document_processor import (
 )
 from app.modules.service_requests.services.schema_loader import schema_loader
 from app.modules.service_requests.services.workflow_engine import workflow_engine
+from app.core.ai_telemetry import traced_generate_sync
 from app.modules.service_requests.models.enums import SolicitudType
 
 from .batch_session_service import batch_session_service, BatchSessionError
@@ -247,14 +248,11 @@ RESPOND ONLY IN THIS JSON FORMAT (no markdown, no explanation):
                 contents = [document_part, Part.from_text(prompt)]
 
                 model = self._get_model()
-                loop = asyncio.get_event_loop()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: model.generate_content(
-                        contents,
-                        generation_config=self._classify_config,
-                        safety_settings=self._safety_settings,
-                    ),
+                response = await traced_generate_sync(
+                    model, contents,
+                    feature="classification_batch",
+                    generation_config=self._classify_config,
+                    safety_settings=self._safety_settings,
                 )
 
                 # Parse JSON response

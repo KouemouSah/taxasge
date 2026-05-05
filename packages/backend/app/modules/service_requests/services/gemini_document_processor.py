@@ -52,6 +52,7 @@ except ImportError:
 
 from uuid import UUID
 from app.config import settings
+from app.core.ai_telemetry import traced_generate_sync
 from .schema_loader import schema_loader
 from .schema_validation_engine import SchemaValidationEngine
 
@@ -2639,14 +2640,11 @@ class GeminiDocumentProcessor:
 
         for attempt in range(1, max_attempts + 1):
             # Call Gemini
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.model.generate_content(
-                    contents,
-                    generation_config=self.generation_config,
-                    safety_settings=self.safety_settings
-                )
+            response = await traced_generate_sync(
+                self.model, contents,
+                feature="ocr",
+                generation_config=self.generation_config,
+                safety_settings=self.safety_settings,
             )
 
             # Capture token usage from Vertex AI response

@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
+from app.core.ai_telemetry import traced_generate_sync
 from app.modules.shared.services.base_analyst_service import (
     BaseAnalystService,
     VERTEX_AI_AVAILABLE,
@@ -1666,14 +1667,11 @@ class TreasuryAnalystService(BaseAnalystService):
         recommendations: list = []
 
         try:
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        briefing_prompt,
-                        generation_config=GenerationConfig(temperature=0.2, max_output_tokens=600),
-                    ),
+                traced_generate_sync(
+                    self._model, briefing_prompt,
+                    feature="analyst_treasury",
+                    generation_config=GenerationConfig(temperature=0.2, max_output_tokens=600),
                 ),
                 timeout=GEMINI_TIMEOUT_SECOND_CALL,
             )

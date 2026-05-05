@@ -66,6 +66,36 @@ Span name : `gen_ai.{operation}` (ex: `gen_ai.chat`, `gen_ai.embeddings`, `gen_a
 
 ## 1. Architecture
 
+### Décision : COEXISTENCE avec `VertexAIManager` existant (audit 2026-05-05)
+
+Le code possède déjà `app/modules/shared/services/vertex_ai_manager.py` (singleton in-memory) qui track les tokens cumulés + circuit breaker (10 failures consécutives → 60s cooldown). Mes investigations initiales l'avaient ignoré — correction.
+
+**Décision** : NE PAS supprimer ni remplacer `VertexAIManager`. Les deux systèmes sont **complémentaires** :
+
+| Concern | VertexAIManager (existant) | ai_call_metrics (nouveau) |
+|---|---|---|
+| Circuit breaker (10 fail/60s) | ✅ | ❌ |
+| Stats in-memory sub-μs read | ✅ | ❌ |
+| BD persistence (cross-worker) | ❌ | ✅ |
+| Cost en XAF | ❌ | ✅ |
+| Per-feature/model/user tags | ❌ | ✅ |
+| OTEL trace correlation | ❌ | ✅ |
+| Time series + drill-down | ❌ | ✅ |
+| Survit redémarrage Cloud Run | ❌ | ✅ |
+| Status enum (6 valeurs : rate_limited/timeout/...) | ❌ | ✅ |
+
+**Pattern call site final** :
+```python
+response = await traced_generate_sync(model, prompt, feature="X", ...)
+VertexAIManager().track_usage(response, "ServiceName")   # circuit breaker
+VertexAIManager().track_success()                        # reset consecutive
+# except: VertexAIManager().track_failure(); raise
+```
+
+Les deux systèmes tournent indépendamment. Le wrapper ne touche pas à `VertexAIManager` (pas de couplage inverse). Migration est **purement additive** : zéro régression sur le système existant.
+
+**Phase B future** (séparée) : refactor optionnel pour migrer les compteurs flat de `VertexAIManager.get_stats()` vers une query BD `SELECT count(*), sum(...) FROM ai_call_metrics`. Garde uniquement le circuit breaker côté singleton. Allège la duplication mais pas critique.
+
 ### Décision : SDK OTEL Python natif, PAS OpenLLMetry
 
 **Pourquoi pas OpenLLMetry ?**

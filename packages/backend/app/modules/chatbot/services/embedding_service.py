@@ -22,6 +22,7 @@ except ImportError:
     logger.warning("⚠️ Vertex AI SDK not installed. Install with: pip install google-cloud-aiplatform")
 
 from app.config import settings
+from app.core.ai_telemetry import traced_embed_sync
 
 
 class EmbeddingService:
@@ -110,11 +111,10 @@ class EmbeddingService:
                 title=title
             )
 
-            # Generate embedding (sync call, run in executor)
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None,
-                lambda: self.model.get_embeddings([embedding_input])
+            # Generate embedding via wrapper (telemetry + executor)
+            embeddings = await traced_embed_sync(
+                self.model, [embedding_input],
+                feature="embeddings_rag",
             )
 
             if not embeddings or len(embeddings) == 0:

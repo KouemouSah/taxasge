@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 
 from app.config import get_settings
+from app.core.ai_telemetry import traced_generate_sync
 from app.modules.enrichment.repositories.enrichment_repository import (
     EnrichmentRepository,
 )
@@ -955,14 +956,11 @@ class EnrichmentService:
         config = GenerationConfig(**gen_config_kwargs)
 
         try:
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        [prompt],
-                        generation_config=config,
-                    ),
+                traced_generate_sync(
+                    self._model, [prompt],
+                    feature="enrichment",
+                    generation_config=config,
                 ),
                 timeout=15.0,
             )

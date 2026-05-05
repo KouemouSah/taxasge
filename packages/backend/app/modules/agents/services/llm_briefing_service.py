@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from app.config import get_settings
+from app.core.ai_telemetry import traced_generate_sync
 
 from app.modules.shared.services.vertex_ai_manager import (
     VERTEX_AI_AVAILABLE,
@@ -128,17 +129,15 @@ class LLMBriefingService:
         start_time = time.monotonic()
 
         try:
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        [prompt, f"Datos de alertas:\n{user_data}"],
-                        generation_config=GenerationConfig(
-                            temperature=0.2,
-                            max_output_tokens=512,
-                            response_mime_type="application/json",
-                        ),
+                traced_generate_sync(
+                    self._model,
+                    [prompt, f"Datos de alertas:\n{user_data}"],
+                    feature="briefing",
+                    generation_config=GenerationConfig(
+                        temperature=0.2,
+                        max_output_tokens=512,
+                        response_mime_type="application/json",
                     ),
                 ),
                 timeout=10.0,

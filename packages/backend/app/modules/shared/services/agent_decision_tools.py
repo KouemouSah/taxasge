@@ -18,6 +18,8 @@ import asyncio
 from typing import Dict, Tuple, List, Optional, Any
 from loguru import logger
 
+from app.core.ai_telemetry import traced_generate_sync
+
 
 def _site_filter(kwargs: dict, alias: str, param_offset: int) -> Tuple[str, List]:
     """Site-scoping: satellite agents see only their location."""
@@ -51,9 +53,8 @@ async def _llm_analyze(data_context: str, analysis_prompt: str) -> str:
             return "[Modèle IA non disponible]"
 
         prompt = f"{analysis_prompt}\n\nDADOS REALES DEL SISTEMA:\n{data_context}"
-        loop = asyncio.get_running_loop()
         response = await asyncio.wait_for(
-            loop.run_in_executor(None, lambda: model.generate_content(prompt)),
+            traced_generate_sync(model, prompt, feature="agent_decision"),
             timeout=15.0,
         )
         manager.track_usage(response, "decision_tool")

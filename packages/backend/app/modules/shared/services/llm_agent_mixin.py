@@ -34,6 +34,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from app.core.ai_telemetry import traced_generate_sync
 from app.modules.shared.services.vertex_ai_manager import (
     VERTEX_AI_AVAILABLE,
     VertexAIManager,
@@ -153,14 +154,11 @@ class LLMAgentMixin:
             else:
                 gen_config = None
 
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._mixin_model.generate_content(
-                        prompt,
-                        generation_config=gen_config,
-                    ),
+                traced_generate_sync(
+                    self._mixin_model, prompt,
+                    feature="agent_mixin",
+                    generation_config=gen_config,
                 ),
                 timeout=timeout,
             )
@@ -251,11 +249,11 @@ class LLMAgentMixin:
             call_kwargs: Dict[str, Any] = {"generation_config": gen_config}
             call_kwargs.update(kwargs)
 
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._mixin_model.generate_content(prompt, **call_kwargs),
+                traced_generate_sync(
+                    self._mixin_model, prompt,
+                    feature="agent_mixin",
+                    **call_kwargs,
                 ),
                 timeout=timeout,
             )

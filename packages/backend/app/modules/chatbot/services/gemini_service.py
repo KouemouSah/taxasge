@@ -17,6 +17,7 @@ from datetime import datetime
 from loguru import logger
 
 from app.config import settings
+from app.core.ai_telemetry import traced_generate_sync
 
 # ============================================================================
 # Vertex AI — Single backend for chat, embeddings, and function calling
@@ -606,13 +607,10 @@ Principles: concise, each data point on its own line, total in bold, end with su
         except Exception as e:
             logger.error(f"REST API thinking call failed: {e}")
             # Fallback to SDK without thinking
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None,
-                lambda: self.chat_model.generate_content(
-                    contents,
-                    generation_config=gen_config or self.generation_config,
-                )
+            return await traced_generate_sync(
+                self.chat_model, contents,
+                feature="chatbot_rag",
+                generation_config=gen_config or self.generation_config,
             )
 
     async def chat(
@@ -819,9 +817,10 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
 
             # Generate response via Vertex AI
             loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
+            response = await traced_generate_sync(
+                self.chat_model, contents,
+                feature="chatbot_rag",
+                **generate_kwargs,
             )
 
             # Check for function calls in response
@@ -943,10 +942,10 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
             if function_declarations:
                 generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
 
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.chat_model.generate_content(chat_history, **generate_kwargs)
+            response = await traced_generate_sync(
+                self.chat_model, chat_history,
+                feature="chatbot_rag",
+                **generate_kwargs,
             )
 
             # Check if Gemini wants MORE tools (chain-of-tools, rare)
@@ -1034,6 +1033,11 @@ Facil simplifica los trámites que antes requerían múltiples visitas a oficina
             full_prompt = f"{system_prompt}\n\n{context_content}\n\nPREGUNTA DEL USUARIO:\n{user_message}"
 
             # Generate streaming response
+            # NOTE: streaming calls (stream=True) are NOT wrapped with
+            # traced_generate_sync because the response is an iterable
+            # (chunks consumed by the for-loop below) — the wrapper expects
+            # a single response object with usage_metadata. AI Observability
+            # for streamed chat is a Phase B follow-up.
             loop = asyncio.get_event_loop()
             response_stream = await loop.run_in_executor(
                 None,
@@ -1133,16 +1137,13 @@ Intenciones:
 Responde SOLO con el JSON, sin explicaciones adicionales."""
 
         try:
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.chat_model.generate_content(
-                    prompt,
-                    generation_config=GenerationConfig(
-                        temperature=0.1,  # Low temperature for structured output
-                        max_output_tokens=500
-                    )
-                )
+            response = await traced_generate_sync(
+                self.chat_model, prompt,
+                feature="intent_classification",
+                generation_config=GenerationConfig(
+                    temperature=0.1,  # Low temperature for structured output
+                    max_output_tokens=500
+                ),
             )
 
             # Parse JSON response

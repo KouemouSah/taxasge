@@ -19,6 +19,8 @@ Site scoping model:
 
 import asyncio
 import json
+
+from app.core.ai_telemetry import traced_generate_sync
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
@@ -1052,14 +1054,11 @@ async def generate_supervisor_briefing(
 
             from app.config import get_settings as _get_settings
             model = GenerativeModel(_get_settings().GEMINI_CHAT_MODEL)
-            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: model.generate_content(
-                        briefing_prompt,
-                        generation_config=GenerationConfig(temperature=0.2, max_output_tokens=600),
-                    ),
+                traced_generate_sync(
+                    model, briefing_prompt,
+                    feature="supervisor_tools",
+                    generation_config=GenerationConfig(temperature=0.2, max_output_tokens=600),
                 ),
                 timeout=15.0,
             )
