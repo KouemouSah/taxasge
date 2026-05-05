@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-title="lr.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,90 +16,86 @@
 <body>
   <div class="page-wrapper">
 
-    <!-- ===== Sidebar ===== -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
-        <div class="sidebar-subtitle">Technical Reference</div>
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div>
       </div>
       <nav class="sidebar-nav">
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Getting Started</div>
-          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> Home</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Architecture</div>
-          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> System Architecture</a>
-          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> Database Schema</a>
-          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> Workflow Engine</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div>
+          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Reference</div>
-          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> API Reference</a>
-          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> Module Catalog</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Features</div>
-          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> AI &amp; Intelligence</a>
-          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> Payments</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Observability</div>
-          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> Grafana Dashboards</a>
-          <a href="logrocket-observability.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128249;</span> LogRocket Observability</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Operations</div>
-          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> Security</a>
-          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> Deployment</a>
-          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> Internationalization</a>
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a>
         </div>
       </nav>
-      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated May 2026</div>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
     </aside>
 
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- ===== Main Content ===== -->
     <main class="main-content">
       <header class="content-header">
         <nav class="breadcrumb">
-          <a href="index.html">Docs</a>
+          <a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current">LogRocket Observability</span>
+          <span class="breadcrumb-current" data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span>
         </nav>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title">LogRocket &mdash; Session Replay &amp; Privacy-First Observability</h1>
-        <p class="page-description">
+        <h1 class="page-title" data-i18n="lr.title">LogRocket &mdash; Session Replay &amp; Privacy-First Observability</h1>
+        <p class="page-description" data-i18n-html="lr.description">
           LogRocket is wired across <strong>3 surfaces</strong> (web, mobile, inspector) as the &laquo;CCTV&raquo;
           of the Facil platform. While Sentry catches crashes after they happen, LogRocket records
           <em>what the user did</em> before, during, and after &mdash; making citizen-reported bugs and UX
           frictions reproducible without ever asking the user to repeat steps.
         </p>
 
-        <!-- TOC -->
         <div class="toc">
-          <div class="toc-title">On This Page</div>
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
           <ul class="toc-list">
-            <li><a href="#why">1. Why LogRocket (and why not just Sentry)</a></li>
-            <li><a href="#architecture">2. Architecture &mdash; 3 surfaces, 1 SDK family</a></li>
-            <li><a href="#privacy">3. Privacy-first design (PII redaction)</a></li>
-            <li><a href="#wiring">4. Repository wiring (file-by-file)</a></li>
-            <li><a href="#secrets">5. Secret topology</a></li>
-            <li><a href="#daily-flows">6. Daily usage flows</a></li>
-            <li><a href="#dashboard-tour">7. LogRocket dashboard tour</a></li>
-            <li><a href="#sentry-bridge">8. The Sentry bridge</a></li>
-            <li><a href="#limits">9. Limits, traps, roadmap</a></li>
+            <li><a href="#why" data-i18n="lr.toc.why">1. Why LogRocket (and why not just Sentry)</a></li>
+            <li><a href="#architecture" data-i18n="lr.toc.architecture">2. Architecture &mdash; 3 surfaces, 1 SDK family</a></li>
+            <li><a href="#privacy" data-i18n="lr.toc.privacy">3. Privacy-first design (PII redaction)</a></li>
+            <li><a href="#wiring" data-i18n="lr.toc.wiring">4. Repository wiring (file-by-file)</a></li>
+            <li><a href="#secrets" data-i18n="lr.toc.secrets">5. Secret topology</a></li>
+            <li><a href="#daily-flows" data-i18n="lr.toc.flows">6. Daily usage flows</a></li>
+            <li><a href="#dashboard-tour" data-i18n="lr.toc.tour">7. LogRocket dashboard tour</a></li>
+            <li><a href="#sentry-bridge" data-i18n="lr.toc.bridge">8. The Sentry bridge</a></li>
+            <li><a href="#limits" data-i18n="lr.toc.limits">9. Limits, traps, roadmap</a></li>
           </ul>
         </div>
 
-        <!-- ===== Section 1: Why ===== -->
-        <h2 id="why">1. Why LogRocket (and why not just Sentry) <a href="#why" class="anchor-link">#</a></h2>
+        <h2 id="why"><span data-i18n="lr.toc.why">1. Why LogRocket (and why not just Sentry)</span> <a href="#why" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n="lr.why.intro">
           LogRocket and Sentry look similar at first &mdash; both &laquo;catch errors&raquo; &mdash; but they solve
           different problems. Picking the right one under pressure is half the on-call skill.
         </p>
@@ -110,27 +106,27 @@
               <tr><th></th><th>Sentry</th><th>LogRocket</th></tr>
             </thead>
             <tbody>
-              <tr><td>Capture cadence</td><td>At error time only</td><td><strong>Continuously</strong>, like a CCTV</td></tr>
-              <tr><td>What's stored</td><td>Stack trace + 60 s of breadcrumbs</td><td><strong>Full session video</strong> &mdash; clicks, scrolls, network, console, redux/zustand</td></tr>
-              <tr><td>Pricing model</td><td>Per error event</td><td>Per <strong>session</strong> (one user visit = one session)</td></tr>
-              <tr><td>Free tier</td><td>5K errors / month</td><td>1K sessions / month</td></tr>
-              <tr><td>Best for</td><td>"Why did this crash?" &mdash; root-cause</td><td>"What did the user do before X?" &mdash; reproduce a parcours</td></tr>
-              <tr><td>Trigger</td><td><code>captureException(err)</code> or auto-uncaught</td><td>SDK init at boot &rarr; captures until session end</td></tr>
-              <tr><td>Primary UI</td><td>Issues / Errors list</td><td>Sessions list with replay video</td></tr>
+              <tr><td data-i18n="lr.compare.cadence">Capture cadence</td><td data-i18n="lr.compare.cadence_sentry">At error time only</td><td data-i18n-html="lr.compare.cadence_lr"><strong>Continuously</strong>, like a CCTV</td></tr>
+              <tr><td data-i18n="lr.compare.stored">What's stored</td><td data-i18n="lr.compare.stored_sentry">Stack trace + 60 s of breadcrumbs</td><td data-i18n-html="lr.compare.stored_lr"><strong>Full session video</strong> &mdash; clicks, scrolls, network, console, redux/zustand</td></tr>
+              <tr><td data-i18n="lr.compare.pricing">Pricing model</td><td data-i18n="lr.compare.pricing_sentry">Per error event</td><td data-i18n-html="lr.compare.pricing_lr">Per <strong>session</strong> (one user visit = one session)</td></tr>
+              <tr><td data-i18n="lr.compare.tier">Free tier</td><td data-i18n="lr.compare.tier_sentry">5K errors / month</td><td data-i18n="lr.compare.tier_lr">1K sessions / month</td></tr>
+              <tr><td data-i18n="lr.compare.best">Best for</td><td data-i18n="lr.compare.best_sentry">"Why did this crash?" &mdash; root-cause</td><td data-i18n="lr.compare.best_lr">"What did the user do before X?" &mdash; reproduce a parcours</td></tr>
+              <tr><td data-i18n="lr.compare.trigger">Trigger</td><td data-i18n-html="lr.compare.trigger_sentry"><code>captureException(err)</code> or auto-uncaught</td><td data-i18n="lr.compare.trigger_lr">SDK init at boot &rarr; captures until session end</td></tr>
+              <tr><td data-i18n="lr.compare.ui">Primary UI</td><td data-i18n="lr.compare.ui_sentry">Issues / Errors list</td><td data-i18n="lr.compare.ui_lr">Sessions list with replay video</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Why we run both</h3>
+        <h3 data-i18n="lr.why.both_title">Why we run both</h3>
         <ul>
-          <li><strong>Sentry's strength is alerting + grouping</strong>. When error rate spikes, Sentry pings the on-call and dedupes by stack-trace fingerprint. Cheap, low-volume.</li>
-          <li><strong>LogRocket's strength is context</strong>. When a citizen says "the app crashed when I clicked submit", you replay that exact session and <em>see</em> the bug, not just the symptom.</li>
-          <li><strong>They complement each other</strong>: Sentry detects &rarr; LogRocket explains. The bridge (<code>bridgeLogRocketToSentry()</code>) attaches the LogRocket session URL to every Sentry event, so an Issue in Sentry deep-links straight to its replay in one click.</li>
+          <li data-i18n-html="lr.why.both1"><strong>Sentry's strength is alerting + grouping</strong>. When error rate spikes, Sentry pings the on-call and dedupes by stack-trace fingerprint. Cheap, low-volume.</li>
+          <li data-i18n-html="lr.why.both2"><strong>LogRocket's strength is context</strong>. When a citizen says "the app crashed when I clicked submit", you replay that exact session and <em>see</em> the bug, not just the symptom.</li>
+          <li data-i18n-html="lr.why.both3"><strong>They complement each other</strong>: Sentry detects &rarr; LogRocket explains. The bridge (<code>bridgeLogRocketToSentry()</code>) attaches the LogRocket session URL to every Sentry event, so an Issue in Sentry deep-links straight to its replay in one click.</li>
         </ul>
 
         <div class="callout callout-warning">
-          <div class="callout-title">Common pitfall</div>
-          <p>
+          <div class="callout-title" data-i18n="lr.why.pitfall_title">Common pitfall</div>
+          <p data-i18n-html="lr.why.pitfall_body">
             "I have Sentry, I don't need LogRocket" &mdash; <strong>wrong</strong>. UX bugs (frozen UI, wrong
             navigation, confusing form) leave no Sentry trace because no exception is thrown. LogRocket is
             the only tool that captures <em>non-error sessions</em>, which is exactly what you need to
@@ -138,58 +134,57 @@
           </p>
         </div>
 
-        <!-- ===== Section 2: Architecture ===== -->
-        <h2 id="architecture">2. Architecture &mdash; 3 surfaces, 1 SDK family <a href="#architecture" class="anchor-link">#</a></h2>
+        <h2 id="architecture"><span data-i18n="lr.toc.architecture">2. Architecture &mdash; 3 surfaces, 1 SDK family</span> <a href="#architecture" class="anchor-link">#</a></h2>
 
         <div class="diagram">
-          <div class="diagram-title">LogRocket coverage matrix</div>
+          <div class="diagram-title" data-i18n="lr.arch.diagram_title">LogRocket coverage matrix</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">Web (Next.js 14)<span class="diagram-box-subtitle">logrocket@12 + logrocket-react@7</span></div>
-            <div class="diagram-box primary">Mobile citizen app (Expo SDK 54)<span class="diagram-box-subtitle">@logrocket/react-native@1.62</span></div>
-            <div class="diagram-box primary">Inspector app (Expo SDK 54)<span class="diagram-box-subtitle">@logrocket/react-native@1.62</span></div>
+            <div class="diagram-box primary"><span data-i18n="lr.arch.web">Web (Next.js 14)</span><span class="diagram-box-subtitle">logrocket@12 + logrocket-react@7</span></div>
+            <div class="diagram-box primary"><span data-i18n="lr.arch.mobile">Mobile citizen app (Expo SDK 54)</span><span class="diagram-box-subtitle">@logrocket/react-native@1.62</span></div>
+            <div class="diagram-box primary"><span data-i18n="lr.arch.inspector">Inspector app (Expo SDK 54)</span><span class="diagram-box-subtitle">@logrocket/react-native@1.62</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Single LogRocket project<span class="diagram-box-subtitle">app.logrocket.com/0eqns2/facil &mdash; shared 1K sessions/month quota</span></div>
+            <div class="diagram-box green filled"><span data-i18n="lr.arch.single">Single LogRocket project</span><span class="diagram-box-subtitle" data-i18n="lr.arch.single_sub">app.logrocket.com/0eqns2/facil — shared 1K sessions/month quota</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">PII redaction (3-layer defense)<span class="diagram-box-subtitle">SDK options + sanitizers + DOM/JSX opt-in</span></div>
-            <div class="diagram-box yellow">Sentry bridge (web today)<span class="diagram-box-subtitle">extra.logrocketURL on every Sentry event</span></div>
+            <div class="diagram-box yellow"><span data-i18n="lr.arch.pii">PII redaction (3-layer defense)</span><span class="diagram-box-subtitle" data-i18n="lr.arch.pii_sub">SDK options + sanitizers + DOM/JSX opt-in</span></div>
+            <div class="diagram-box yellow"><span data-i18n="lr.arch.bridge">Sentry bridge (web today)</span><span class="diagram-box-subtitle" data-i18n="lr.arch.bridge_sub">extra.logrocketURL on every Sentry event</span></div>
           </div>
         </div>
 
-        <h3>Per-surface init policy</h3>
+        <h3 data-i18n="lr.arch.policy_title">Per-surface init policy</h3>
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Surface</th><th>Init location</th><th>Auto no-op when</th><th>Default capture</th></tr>
+              <tr><th data-i18n="lr.arch.col_surface">Surface</th><th data-i18n="lr.arch.col_init">Init location</th><th data-i18n="lr.arch.col_noop">Auto no-op when</th><th data-i18n="lr.arch.col_default">Default capture</th></tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>Web</strong></td>
-                <td><code>&lt;LogRocketProvider&gt;</code> mounted in <code>Providers.tsx</code></td>
-                <td><code>NODE_ENV=development</code> OR empty <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code> OR SSR (<code>!window</code>)</td>
-                <td>Capture all visible text; <strong>opt-out</strong> via <code>data-private="redact"</code></td>
+                <td data-i18n-html="lr.arch.row.web.name"><strong>Web</strong></td>
+                <td data-i18n-html="lr.arch.row.web.init"><code>&lt;LogRocketProvider&gt;</code> mounted in <code>Providers.tsx</code></td>
+                <td data-i18n-html="lr.arch.row.web.noop"><code>NODE_ENV=development</code> OR empty <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code> OR SSR (<code>!window</code>)</td>
+                <td data-i18n-html="lr.arch.row.web.default">Capture all visible text; <strong>opt-out</strong> via <code>data-private="redact"</code></td>
               </tr>
               <tr>
-                <td><strong>Mobile</strong></td>
-                <td><code>initLogRocket()</code> in <code>&lt;DeferredEffects&gt;</code> of <code>_layout.tsx</code></td>
-                <td><code>__DEV__=true</code> OR empty <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code></td>
-                <td>Redact all text; <strong>opt-in</strong> via <code>&lt;LRAllow&gt;</code></td>
+                <td data-i18n-html="lr.arch.row.mobile.name"><strong>Mobile</strong></td>
+                <td data-i18n-html="lr.arch.row.mobile.init"><code>initLogRocket()</code> in <code>&lt;DeferredEffects&gt;</code> of <code>_layout.tsx</code></td>
+                <td data-i18n-html="lr.arch.row.mobile.noop"><code>__DEV__=true</code> OR empty <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code></td>
+                <td data-i18n-html="lr.arch.row.mobile.default">Redact all text; <strong>opt-in</strong> via <code>&lt;LRAllow&gt;</code></td>
               </tr>
               <tr>
-                <td><strong>Inspector</strong></td>
-                <td>Same as mobile</td>
-                <td>Same as mobile</td>
-                <td>Same as mobile (RN-default redact)</td>
+                <td data-i18n-html="lr.arch.row.insp.name"><strong>Inspector</strong></td>
+                <td data-i18n="lr.arch.row.insp.init">Same as mobile</td>
+                <td data-i18n="lr.arch.row.insp.init">Same as mobile</td>
+                <td data-i18n="lr.arch.row.insp.default">Same as mobile (RN-default redact)</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Why opposite defaults (web vs mobile)?</h3>
-        <p>
+        <h3 data-i18n="lr.arch.opposite_title">Why opposite defaults (web vs mobile)?</h3>
+        <p data-i18n-html="lr.arch.opposite_body">
           Web is desktop, often used by agents on shared machines &mdash; capturing is more useful for triage
           and the desktop browser doesn't usually contain the same intensity of PII as a personal device.
           Mobile is a personal device with sensitive forms (passport, NIF, address) &mdash; redacting by default
@@ -197,20 +192,19 @@
           and wrap non-PII zones with <code>&lt;LRAllow&gt;</code>.
         </p>
 
-        <!-- ===== Section 3: Privacy ===== -->
-        <h2 id="privacy">3. Privacy-first design (PII redaction) <a href="#privacy" class="anchor-link">#</a></h2>
+        <h2 id="privacy"><span data-i18n="lr.toc.privacy">3. Privacy-first design (PII redaction)</span> <a href="#privacy" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="lr.priv.intro">
           Facil processes citizen passports, NIFs, declarations, payment receipts. PII leakage to a
           third-party SaaS is a regulatory risk. The SDK wrappers enforce <strong>4 layers of defense</strong>,
           each independently sufficient (defense-in-depth):
         </p>
 
         <ol>
-          <li><strong>L1 &mdash; SDK options</strong>: <code>inputSanitizer: true</code> (web) / <code>textSanitizer: 'excluded'</code> (mobile) masks raw user input before it ever leaves the device.</li>
-          <li><strong>L2 &mdash; Network sanitizers</strong>: every request strips <code>Authorization</code> + <code>Cookie</code> headers; bodies are dropped on <code>/auth/login</code>, <code>/auth/register</code>, <code>/auth/password-reset</code>, <code>/auth/2fa</code>; response bodies are dropped on token-issuing endpoints (<code>/auth/login</code>, <code>/auth/refresh</code>, <code>/auth/2fa</code>).</li>
-          <li><strong>L3 &mdash; DOM / JSX opt-in</strong>: app-team responsibility &mdash; tag PII fields explicitly. <code>data-private="redact"</code> on web; <code>&lt;LRAllow&gt;</code> wrapping non-PII content on mobile (inverse: anything not wrapped stays masked).</li>
-          <li><strong>L4 &mdash; Identify policy</strong>: only <code>id + role + locale</code> are sent via <code>LogRocket.identify()</code>. <strong>Never</strong> email, phone, NIF, address. Enforced via TypeScript signature on the wrapper.</li>
+          <li data-i18n-html="lr.priv.l1"><strong>L1 &mdash; SDK options</strong>: <code>inputSanitizer: true</code> (web) / <code>textSanitizer: 'excluded'</code> (mobile) masks raw user input before it ever leaves the device.</li>
+          <li data-i18n-html="lr.priv.l2"><strong>L2 &mdash; Network sanitizers</strong>: every request strips <code>Authorization</code> + <code>Cookie</code> headers; bodies are dropped on <code>/auth/login</code>, <code>/auth/register</code>, <code>/auth/password-reset</code>, <code>/auth/2fa</code>; response bodies are dropped on token-issuing endpoints (<code>/auth/login</code>, <code>/auth/refresh</code>, <code>/auth/2fa</code>).</li>
+          <li data-i18n-html="lr.priv.l3"><strong>L3 &mdash; DOM / JSX opt-in</strong>: app-team responsibility &mdash; tag PII fields explicitly. <code>data-private="redact"</code> on web; <code>&lt;LRAllow&gt;</code> wrapping non-PII content on mobile (inverse: anything not wrapped stays masked).</li>
+          <li data-i18n-html="lr.priv.l4"><strong>L4 &mdash; Identify policy</strong>: only <code>id + role + locale</code> are sent via <code>LogRocket.identify()</code>. <strong>Never</strong> email, phone, NIF, address. Enforced via TypeScript signature on the wrapper.</li>
         </ol>
 
         <pre><code><span class="cmt">// L3 — Web: tag PII fields explicitly</span>
@@ -228,45 +222,43 @@
 <span class="cmt">// Default behaviour — masked:</span>
 &lt;Text&gt;{user.nif}&lt;/Text&gt;</code></pre>
 
-        <h3>Other privacy-relevant defaults</h3>
+        <h3 data-i18n="lr.priv.other_title">Other privacy-relevant defaults</h3>
         <ul>
-          <li><code>shouldCaptureIP: false</code> (web) / <code>enableIPCapture: false</code> (mobile) &mdash; never geolocate users.</li>
-          <li><code>console.isEnabled = { warn: true, error: true, log: false }</code> &mdash; drop developer logs that may carry sensitive context.</li>
-          <li><code>release: NEXT_PUBLIC_BUILD_VERSION</code> &mdash; per-build session attribution for regression hunting.</li>
+          <li data-i18n-html="lr.priv.other.ip"><code>shouldCaptureIP: false</code> (web) / <code>enableIPCapture: false</code> (mobile) &mdash; never geolocate users.</li>
+          <li data-i18n-html="lr.priv.other.console"><code>console.isEnabled = { warn: true, error: true, log: false }</code> &mdash; drop developer logs that may carry sensitive context.</li>
+          <li data-i18n-html="lr.priv.other.release"><code>release: NEXT_PUBLIC_BUILD_VERSION</code> &mdash; per-build session attribution for regression hunting.</li>
         </ul>
 
-        <!-- ===== Section 4: Repository wiring ===== -->
-        <h2 id="wiring">4. Repository wiring (file-by-file) <a href="#wiring" class="anchor-link">#</a></h2>
+        <h2 id="wiring"><span data-i18n="lr.toc.wiring">4. Repository wiring (file-by-file)</span> <a href="#wiring" class="anchor-link">#</a></h2>
 
-        <h3>Web (<code>packages/web/</code>)</h3>
+        <h3 data-i18n-html="lr.wiring.web_title">Web (<code>packages/web/</code>)</h3>
         <ul>
-          <li><code>src/core/observability/logrocket.ts</code> &mdash; SDK wrapper (init, identify, track, capture, sentry bridge).</li>
-          <li><code>src/components/observability/LogRocketProvider.tsx</code> &mdash; client component mounted in <code>Providers.tsx</code>.</li>
-          <li><code>src/core/auth/storage.ts</code> &mdash; <code>identifyLogRocket</code> plugged into <code>setAuthData/clearAuthData</code>.</li>
-          <li><code>.env.example</code> &mdash; <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code>, <code>NEXT_PUBLIC_BUILD_VERSION</code>.</li>
-          <li><code>Dockerfile</code> &mdash; <code>ARG NEXT_PUBLIC_LOGROCKET_APP_ID</code> + <code>ENV</code> line.</li>
-          <li><code>.github/workflows/deploy-frontend-staging.yml</code> &mdash; passes <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> to Cloud Build.</li>
+          <li data-i18n-html="lr.wiring.web.wrapper"><code>src/core/observability/logrocket.ts</code> &mdash; SDK wrapper (init, identify, track, capture, sentry bridge).</li>
+          <li data-i18n-html="lr.wiring.web.provider"><code>src/components/observability/LogRocketProvider.tsx</code> &mdash; client component mounted in <code>Providers.tsx</code>.</li>
+          <li data-i18n-html="lr.wiring.web.storage"><code>src/core/auth/storage.ts</code> &mdash; <code>identifyLogRocket</code> plugged into <code>setAuthData/clearAuthData</code>.</li>
+          <li data-i18n-html="lr.wiring.web.env"><code>.env.example</code> &mdash; <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code>, <code>NEXT_PUBLIC_BUILD_VERSION</code>.</li>
+          <li data-i18n-html="lr.wiring.web.docker"><code>Dockerfile</code> &mdash; <code>ARG NEXT_PUBLIC_LOGROCKET_APP_ID</code> + <code>ENV</code> line.</li>
+          <li data-i18n-html="lr.wiring.web.gha"><code>.github/workflows/deploy-frontend-staging.yml</code> &mdash; passes <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> to Cloud Build.</li>
         </ul>
 
-        <h3>Mobile (<code>packages/mobile/</code>)</h3>
+        <h3 data-i18n-html="lr.wiring.mobile_title">Mobile (<code>packages/mobile/</code>)</h3>
         <ul>
-          <li><code>src/core/observability/logrocket.ts</code> &mdash; LogRocket RN wrapper.</li>
-          <li><code>src/core/observability/sentry.ts</code> &mdash; companion Sentry RN wrapper.</li>
-          <li><code>src/app/_layout.tsx</code> &mdash; <code>initSentry()</code> + <code>initLogRocket()</code> inside <code>&lt;DeferredEffects&gt;</code>.</li>
-          <li><code>src/core/auth/auth-provider.tsx</code> &mdash; <code>setSentryUser</code> + <code>identifyLogRocket</code> co-located.</li>
-          <li><code>app.json</code> &mdash; <code>expo-build-properties</code> plugin: <code>minSdkVersion: 25</code> + <code>extraMavenRepos</code> (informational in non-CNG mode).</li>
-          <li><code>android/build.gradle</code> &mdash; <code>ext.minSdkVersion = 25</code> + Maven repo entry (canonical in non-CNG mode &mdash; committed natives).</li>
-          <li><code>eas.json</code> &mdash; <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code> in <code>preview</code> + <code>production</code> env blocks.</li>
-          <li><code>.easignore</code> &mdash; overrides <code>.gitignore</code> so <code>/android</code> ships to EAS (without it: <code>ENOENT gradlew</code> at FIX_GRADLEW phase).</li>
+          <li data-i18n-html="lr.wiring.mobile.wrapper"><code>src/core/observability/logrocket.ts</code> &mdash; LogRocket RN wrapper.</li>
+          <li data-i18n-html="lr.wiring.mobile.sentry"><code>src/core/observability/sentry.ts</code> &mdash; companion Sentry RN wrapper.</li>
+          <li data-i18n-html="lr.wiring.mobile.layout"><code>src/app/_layout.tsx</code> &mdash; <code>initSentry()</code> + <code>initLogRocket()</code> inside <code>&lt;DeferredEffects&gt;</code>.</li>
+          <li data-i18n-html="lr.wiring.mobile.auth"><code>src/core/auth/auth-provider.tsx</code> &mdash; <code>setSentryUser</code> + <code>identifyLogRocket</code> co-located.</li>
+          <li data-i18n-html="lr.wiring.mobile.appjson"><code>app.json</code> &mdash; <code>expo-build-properties</code> plugin: <code>minSdkVersion: 25</code> + <code>extraMavenRepos</code> (informational in non-CNG mode).</li>
+          <li data-i18n-html="lr.wiring.mobile.gradle"><code>android/build.gradle</code> &mdash; <code>ext.minSdkVersion = 25</code> + Maven repo entry (canonical in non-CNG mode &mdash; committed natives).</li>
+          <li data-i18n-html="lr.wiring.mobile.eas"><code>eas.json</code> &mdash; <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code> in <code>preview</code> + <code>production</code> env blocks.</li>
+          <li data-i18n-html="lr.wiring.mobile.easignore"><code>.easignore</code> &mdash; overrides <code>.gitignore</code> so <code>/android</code> ships to EAS (without it: <code>ENOENT gradlew</code> at FIX_GRADLEW phase).</li>
         </ul>
 
-        <h3>Inspector (<code>packages/inspector/</code>)</h3>
-        <p>Same files as mobile. No Sentry RN yet &mdash; <code>bridgeLogRocketToSentry()</code> is a no-op stub awaiting Sentry inspector integration.</p>
+        <h3 data-i18n-html="lr.wiring.insp_title">Inspector (<code>packages/inspector/</code>)</h3>
+        <p data-i18n-html="lr.wiring.insp_body">Same files as mobile. No Sentry RN yet &mdash; <code>bridgeLogRocketToSentry()</code> is a no-op stub awaiting Sentry inspector integration.</p>
 
-        <!-- ===== Section 5: Secrets ===== -->
-        <h2 id="secrets">5. Secret topology <a href="#secrets" class="anchor-link">#</a></h2>
+        <h2 id="secrets"><span data-i18n="lr.toc.secrets">5. Secret topology</span> <a href="#secrets" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="lr.secrets.intro">
           Origin of truth: <strong>Google Cloud Secret Manager</strong> (project <code>taxasge-dev</code>).
           The <code>logrocket-app-id</code> secret is mirrored to GitHub repo secrets and EAS env vars,
           stored as <strong>plaintext</strong> deliberately &mdash; the App ID is baked into the client bundle
@@ -274,102 +266,100 @@
         </p>
 
         <div class="diagram">
-          <div class="diagram-title">Secret flow (Web)</div>
+          <div class="diagram-title" data-i18n="lr.secrets.web_diagram">Secret flow (Web)</div>
           <div class="diagram-row">
             <div class="diagram-box">GCP Secret Manager<span class="diagram-box-subtitle">logrocket-app-id</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; manually mirrored once</div>
+          <div class="diagram-arrow"><span data-i18n="lr.secrets.web_step1">▼ manually mirrored once</span></div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">GitHub repo secrets<span class="diagram-box-subtitle">LOGROCKET_APP_ID</span></div>
+            <div class="diagram-box yellow"><span data-i18n="lr.secrets.gh_secrets">GitHub repo secrets</span><span class="diagram-box-subtitle">LOGROCKET_APP_ID</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; --build-arg NEXT_PUBLIC_LOGROCKET_APP_ID=...</div>
+          <div class="diagram-arrow">▼ --build-arg NEXT_PUBLIC_LOGROCKET_APP_ID=...</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">Docker BUILDER stage (Next.js bake)<span class="diagram-box-subtitle">NEXT_PUBLIC_* embedded in client bundle</span></div>
+            <div class="diagram-box green filled"><span data-i18n="lr.secrets.docker">Docker BUILDER stage (Next.js bake)</span><span class="diagram-box-subtitle" data-i18n="lr.secrets.docker_sub">NEXT_PUBLIC_* embedded in client bundle</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">End-user browser<span class="diagram-box-subtitle">SDK init at page load</span></div>
+            <div class="diagram-box primary"><span data-i18n="lr.secrets.browser">End-user browser</span><span class="diagram-box-subtitle" data-i18n="lr.secrets.browser_sub">SDK init at page load</span></div>
           </div>
         </div>
 
         <div class="diagram">
-          <div class="diagram-title">Secret flow (Mobile / Inspector via EAS)</div>
+          <div class="diagram-title" data-i18n="lr.secrets.mobile_diagram">Secret flow (Mobile / Inspector via EAS)</div>
           <div class="diagram-row">
             <div class="diagram-box">GCP Secret Manager<span class="diagram-box-subtitle">logrocket-app-id</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; eas env:create plaintext</div>
+          <div class="diagram-arrow">▼ eas env:create plaintext</div>
           <div class="diagram-row">
-            <div class="diagram-box yellow">EAS Cloud env (preview + production)<span class="diagram-box-subtitle">EXPO_PUBLIC_LOGROCKET_APP_ID</span></div>
+            <div class="diagram-box yellow"><span data-i18n="lr.secrets.eas_env">EAS Cloud env (preview + production)</span><span class="diagram-box-subtitle">EXPO_PUBLIC_LOGROCKET_APP_ID</span></div>
           </div>
-          <div class="diagram-arrow">&#9660; eas build (Cloud)</div>
+          <div class="diagram-arrow">▼ eas build (Cloud)</div>
           <div class="diagram-row">
-            <div class="diagram-box green filled">EAS Build worker (Expo CLI bake)<span class="diagram-box-subtitle">EXPO_PUBLIC_* embedded in JS bundle</span></div>
+            <div class="diagram-box green filled"><span data-i18n="lr.secrets.eas_worker">EAS Build worker (Expo CLI bake)</span><span class="diagram-box-subtitle" data-i18n="lr.secrets.eas_worker_sub">EXPO_PUBLIC_* embedded in JS bundle</span></div>
           </div>
           <div class="diagram-arrow">&#9660;</div>
           <div class="diagram-row">
-            <div class="diagram-box primary">APK / IPA / AAB artifact<span class="diagram-box-subtitle">Distributed via Play / App Store / direct</span></div>
+            <div class="diagram-box primary"><span data-i18n="lr.secrets.artifact">APK / IPA / AAB artifact</span><span class="diagram-box-subtitle" data-i18n="lr.secrets.artifact_sub">Distributed via Play / App Store / direct</span></div>
           </div>
         </div>
 
-        <p>Full secret topology + multi-cloud (AWS / Azure / VPS) migration: see <code>.claude/plans/OBSERVABILITY_STACK.md §2 / §5</code>.</p>
+        <p data-i18n-html="lr.secrets.full_topology">Full secret topology + multi-cloud (AWS / Azure / VPS) migration: see <code>.claude/plans/OBSERVABILITY_STACK.md §2 / §5</code>.</p>
 
-        <!-- ===== Section 6: Daily flows ===== -->
-        <h2 id="daily-flows">6. Daily usage flows <a href="#daily-flows" class="anchor-link">#</a></h2>
+        <h2 id="daily-flows"><span data-i18n="lr.toc.flows">6. Daily usage flows</span> <a href="#daily-flows" class="anchor-link">#</a></h2>
 
-        <h3>Flow 1 &mdash; A user reports a bug ("L'app a planté quand j'ai cliqué sur soumettre")</h3>
+        <h3 data-i18n="lr.flow1.title">Flow 1 &mdash; A user reports a bug ("L'app a planté quand j'ai cliqué sur soumettre")</h3>
         <ol>
-          <li>Open LogRocket dashboard &rarr; <strong>Session Replay</strong>.</li>
-          <li>Filter by <code>user_id</code> (the value sent via <code>LogRocket.identify()</code> &mdash; <strong>not email</strong>, by design, since email is PII). If you only have an email, look up the user_id in the backend admin UI first.</li>
-          <li>Click the most recent session in the result list.</li>
-          <li>The replay video shows the exact parcours: clicks, scrolls, the form they filled, the moment of the crash.</li>
-          <li>The right-side panel mirrors a DevTools view, time-aligned with the video &mdash; console errors, network requests, redux/zustand state.</li>
-          <li>Click the failed request in the network panel &rarr; see request body + response &rarr; diagnose the cause without ever reproducing the bug.</li>
+          <li data-i18n-html="lr.flow1.s1">Open LogRocket dashboard &rarr; <strong>Session Replay</strong>.</li>
+          <li data-i18n-html="lr.flow1.s2">Filter by <code>user_id</code> (the value sent via <code>LogRocket.identify()</code> &mdash; <strong>not email</strong>, by design, since email is PII). If you only have an email, look up the user_id in the backend admin UI first.</li>
+          <li data-i18n="lr.flow1.s3">Click the most recent session in the result list.</li>
+          <li data-i18n="lr.flow1.s4">The replay video shows the exact parcours: clicks, scrolls, the form they filled, the moment of the crash.</li>
+          <li data-i18n="lr.flow1.s5">The right-side panel mirrors a DevTools view, time-aligned with the video &mdash; console errors, network requests, redux/zustand state.</li>
+          <li data-i18n="lr.flow1.s6">Click the failed request in the network panel &rarr; see request body + response &rarr; diagnose the cause without ever reproducing the bug.</li>
         </ol>
-        <p><strong>Why not Sentry first</strong>: Sentry fires only if the bug throws an actual exception. UX bugs (frozen UI, wrong navigation, confusing form) leave no Sentry trace. LogRocket captures all of those.</p>
+        <p data-i18n-html="lr.flow1.note"><strong>Why not Sentry first</strong>: Sentry fires only if the bug throws an actual exception. UX bugs (frozen UI, wrong navigation, confusing form) leave no Sentry trace. LogRocket captures all of those.</p>
         <img src="images/logrocket/logrocket.png" alt="LogRocket Sessions list" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
 
-        <h3>Flow 2 &mdash; A production error spike</h3>
-        <p>Sentry alert: "TypeError: Cannot read property 'name' of undefined &mdash; 12 occurrences in 5 minutes".</p>
+        <h3 data-i18n="lr.flow2.title">Flow 2 &mdash; A production error spike</h3>
+        <p data-i18n="lr.flow2.intro">Sentry alert: "TypeError: Cannot read property 'name' of undefined &mdash; 12 occurrences in 5 minutes".</p>
         <ol>
-          <li>Sentry <strong>Issues</strong> &rarr; click the alert &rarr; see stack trace + frequency over time + which release introduced it.</li>
-          <li>Open one of the affected sessions in LogRocket via <code>event.extra.logrocketURL</code> (the bridge link).</li>
-          <li>LogRocket replay shows the sequence: user navigated to <code>/services</code>, clicked search, typed "passport", clicked one result. Network panel reveals <code>GET /api/services/12345</code> returned <code>null</code> instead of the expected object.</li>
-          <li>You now know: backend regression, not a frontend bug.</li>
-          <li>Roll back the backend release OR write a defensive frontend null-check.</li>
+          <li data-i18n-html="lr.flow2.s1">Sentry <strong>Issues</strong> &rarr; click the alert &rarr; see stack trace + frequency over time + which release introduced it.</li>
+          <li data-i18n-html="lr.flow2.s2">Open one of the affected sessions in LogRocket via <code>event.extra.logrocketURL</code> (the bridge link).</li>
+          <li data-i18n-html="lr.flow2.s3">LogRocket replay shows the sequence: user navigated to <code>/services</code>, clicked search, typed "passport", clicked one result. Network panel reveals <code>GET /api/services/12345</code> returned <code>null</code> instead of the expected object.</li>
+          <li data-i18n="lr.flow2.s4">You now know: backend regression, not a frontend bug.</li>
+          <li data-i18n="lr.flow2.s5">Roll back the backend release OR write a defensive frontend null-check.</li>
         </ol>
         <img src="images/logrocket/logrocket1.png" alt="LogRocket Issues view" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
 
-        <h3>Flow 3 &mdash; Optimising a funnel drop-off</h3>
-        <p>"Why do 80% of users abandon at step 3 of the wizard?"</p>
+        <h3 data-i18n="lr.flow3.title">Flow 3 &mdash; Optimising a funnel drop-off</h3>
+        <p data-i18n="lr.flow3.intro">"Why do 80% of users abandon at step 3 of the wizard?"</p>
         <ol>
-          <li>Find a custom event already wired through <code>trackLogRocket()</code> &mdash; e.g. <code>wizard_step_completed</code> with <code>{ step: number }</code>.</li>
-          <li>LogRocket <strong>Dashboards</strong> &rarr; create a funnel: <code>wizard_step_completed</code> (step:1) &rarr; step:2 &rarr; step:3 &rarr; <code>wizard_submitted</code>.</li>
-          <li>Funnel shows: 100% &rarr; 95% &rarr; 85% &rarr; <strong>15%</strong>. Massive drop at step 3.</li>
-          <li>Filter sessions: those that hit step:3 but never <code>wizard_submitted</code>. Sample 10 replays.</li>
-          <li>You observe a pattern: 6 of the 10 users stare at the "NIF" field for &gt; 30 s, then abandon. The label is too technical.</li>
-          <li>Ship a clearer label + tooltip. Re-measure the funnel a week later.</li>
+          <li data-i18n-html="lr.flow3.s1">Find a custom event already wired through <code>trackLogRocket()</code> &mdash; e.g. <code>wizard_step_completed</code> with <code>{ step: number }</code>.</li>
+          <li data-i18n-html="lr.flow3.s2">LogRocket <strong>Dashboards</strong> &rarr; create a funnel: <code>wizard_step_completed</code> (step:1) &rarr; step:2 &rarr; step:3 &rarr; <code>wizard_submitted</code>.</li>
+          <li data-i18n-html="lr.flow3.s3">Funnel shows: 100% &rarr; 95% &rarr; 85% &rarr; <strong>15%</strong>. Massive drop at step 3.</li>
+          <li data-i18n-html="lr.flow3.s4">Filter sessions: those that hit step:3 but never <code>wizard_submitted</code>. Sample 10 replays.</li>
+          <li data-i18n="lr.flow3.s5">You observe a pattern: 6 of the 10 users stare at the "NIF" field for &gt; 30 s, then abandon. The label is too technical.</li>
+          <li data-i18n="lr.flow3.s6">Ship a clearer label + tooltip. Re-measure the funnel a week later.</li>
         </ol>
-        <p><strong>Why not Sentry</strong>: nothing crashed. There's no exception. This is a UX diagnosis pure and simple.</p>
+        <p data-i18n-html="lr.flow3.note"><strong>Why not Sentry</strong>: nothing crashed. There's no exception. This is a UX diagnosis pure and simple.</p>
         <img src="images/logrocket/logrocket2.png" alt="LogRocket Dashboards / Funnels" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
 
-        <!-- ===== Section 7: Dashboard tour ===== -->
-        <h2 id="dashboard-tour">7. LogRocket dashboard tour <a href="#dashboard-tour" class="anchor-link">#</a></h2>
+        <h2 id="dashboard-tour"><span data-i18n="lr.toc.tour">7. LogRocket dashboard tour</span> <a href="#dashboard-tour" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="lr.tour.intro">
           The LogRocket UI at <code>app.logrocket.com/0eqns2/facil</code> exposes 5 main sections:
         </p>
 
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>Section</th><th>Purpose</th><th>When to use</th></tr>
+              <tr><th data-i18n="lr.tour.col_section">Section</th><th data-i18n="lr.tour.col_purpose">Purpose</th><th data-i18n="lr.tour.col_when">When to use</th></tr>
             </thead>
             <tbody>
-              <tr><td><strong>Session Replay</strong></td><td>Per-user visit replays with timeline of console + network</td><td>Citizen complaint, UX bug, intermittent crash</td></tr>
-              <tr><td><strong>Issues</strong></td><td>JS errors auto-detected, similar to Sentry but with a session attached</td><td>Triage non-Sentry-alerted errors</td></tr>
-              <tr><td><strong>Dashboards</strong></td><td>Custom event aggregations (counts, funnels, conversion rates)</td><td>Funnel drop-off, A/B comparison</td></tr>
-              <tr><td><strong>Surveys / Feedback</strong></td><td>NPS surveys + in-app feedback widgets (not used today)</td><td>UX research, post-launch sentiment</td></tr>
-              <tr><td><strong>Settings &rarr; Integrations</strong></td><td>Slack / Jira / Linear hooks (free tier limited)</td><td>Push critical issues to the team chat</td></tr>
+              <tr><td data-i18n-html="lr.tour.row.replay.name"><strong>Session Replay</strong></td><td data-i18n="lr.tour.row.replay.purpose">Per-user visit replays with timeline of console + network</td><td data-i18n="lr.tour.row.replay.when">Citizen complaint, UX bug, intermittent crash</td></tr>
+              <tr><td data-i18n-html="lr.tour.row.issues.name"><strong>Issues</strong></td><td data-i18n="lr.tour.row.issues.purpose">JS errors auto-detected, similar to Sentry but with a session attached</td><td data-i18n="lr.tour.row.issues.when">Triage non-Sentry-alerted errors</td></tr>
+              <tr><td data-i18n-html="lr.tour.row.dashboards.name"><strong>Dashboards</strong></td><td data-i18n="lr.tour.row.dashboards.purpose">Custom event aggregations (counts, funnels, conversion rates)</td><td data-i18n="lr.tour.row.dashboards.when">Funnel drop-off, A/B comparison</td></tr>
+              <tr><td data-i18n-html="lr.tour.row.surveys.name"><strong>Surveys / Feedback</strong></td><td data-i18n="lr.tour.row.surveys.purpose">NPS surveys + in-app feedback widgets (not used today)</td><td data-i18n="lr.tour.row.surveys.when">UX research, post-launch sentiment</td></tr>
+              <tr><td data-i18n-html="lr.tour.row.settings.name"><strong>Settings &rarr; Integrations</strong></td><td data-i18n="lr.tour.row.settings.purpose">Slack / Jira / Linear hooks (free tier limited)</td><td data-i18n="lr.tour.row.settings.when">Push critical issues to the team chat</td></tr>
             </tbody>
           </table>
         </div>
@@ -381,10 +371,9 @@
         <img src="images/logrocket/logrocket7.png" alt="LogRocket retention / cohort view" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
         <img src="images/logrocket/logrocket8.png" alt="LogRocket session events panel" style="max-width:100%;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin:var(--space-md) 0;">
 
-        <!-- ===== Section 8: Sentry bridge ===== -->
-        <h2 id="sentry-bridge">8. The Sentry bridge <a href="#sentry-bridge" class="anchor-link">#</a></h2>
+        <h2 id="sentry-bridge"><span data-i18n="lr.toc.bridge">8. The Sentry bridge</span> <a href="#sentry-bridge" class="anchor-link">#</a></h2>
 
-        <p>
+        <p data-i18n-html="lr.bridge.intro">
           Activated 2026-04-30 once <code>@sentry/nextjs</code> was wired (web side). The bridge attaches the
           LogRocket session URL to every Sentry event so an Issue in Sentry deep-links straight to its
           replay in one click &mdash; eliminating the context-switch cost between two tools.
@@ -398,7 +387,7 @@
   });
 }</code></pre>
 
-        <p>
+        <p data-i18n-html="lr.bridge.ordering">
           <strong>Why this ordering</strong>: <code>getSessionURL()</code> fires <em>after</em> the first
           network flush (~2-5 s into the session). Sentry events can be captured immediately on page load.
           Initialising LogRocket first and registering the bridge inside its <code>init()</code> means: by
@@ -406,68 +395,67 @@
           LogRocket init it depends on; no circular dependency.
         </p>
 
-        <p>
+        <p data-i18n-html="lr.bridge.mobile">
           <strong>Mobile bridge</strong>: stub today. Activates the day Sentry RN events on mobile/inspector
           should carry a LogRocket session URL. Same 4-line edit as web once both SDKs are confirmed live.
         </p>
 
-        <!-- ===== Section 9: Limits ===== -->
-        <h2 id="limits">9. Limits, traps &amp; roadmap <a href="#limits" class="anchor-link">#</a></h2>
+        <h2 id="limits"><span data-i18n="lr.toc.limits">9. Limits, traps &amp; roadmap</span> <a href="#limits" class="anchor-link">#</a></h2>
 
-        <h3>Known limits (honest)</h3>
+        <h3 data-i18n="lr.limits.title">Known limits (honest)</h3>
         <ul>
-          <li><strong>Free tier 1K sessions / month</strong> &mdash; shared across web + mobile + inspector. At current scale (~20 staging users) ample headroom; production scaling needs Team plan.</li>
-          <li><strong>Source-map upload not wired</strong> &mdash; LogRocket stack traces are minified. Plan: reuse Sentry CLI sourcemap upload (<code>@sentry/cli</code>) at build time. <em>Tracked: OBSERVABILITY_STACK.md §8</em>.</li>
-          <li><strong>Mobile redact-by-default</strong> &mdash; replays informative only on screens audited and wrapped with <code>&lt;LRAllow&gt;</code>. Audit cadence: per feature shipping.</li>
-          <li><strong>No on-prem free tier</strong> &mdash; air-gapped deployments must disable LogRocket entirely.</li>
+          <li data-i18n-html="lr.limits.tier"><strong>Free tier 1K sessions / month</strong> &mdash; shared across web + mobile + inspector. At current scale (~20 staging users) ample headroom; production scaling needs Team plan.</li>
+          <li data-i18n-html="lr.limits.sourcemap"><strong>Source-map upload not wired</strong> &mdash; LogRocket stack traces are minified. Plan: reuse Sentry CLI sourcemap upload (<code>@sentry/cli</code>) at build time. <em>Tracked: OBSERVABILITY_STACK.md §8</em>.</li>
+          <li data-i18n-html="lr.limits.redact"><strong>Mobile redact-by-default</strong> &mdash; replays informative only on screens audited and wrapped with <code>&lt;LRAllow&gt;</code>. Audit cadence: per feature shipping.</li>
+          <li data-i18n-html="lr.limits.onprem"><strong>No on-prem free tier</strong> &mdash; air-gapped deployments must disable LogRocket entirely.</li>
         </ul>
 
-        <h3>Known traps</h3>
+        <h3 data-i18n="lr.traps.title">Known traps</h3>
         <div class="table-wrapper">
           <table>
-            <thead><tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr></thead>
+            <thead><tr><th data-i18n="lr.traps.col_symptom">Symptom</th><th data-i18n="lr.traps.col_cause">Root cause</th><th data-i18n="lr.traps.col_fix">Fix</th></tr></thead>
             <tbody>
-              <tr><td><code>uses-sdk:minSdkVersion 24 cannot be smaller than 25</code></td><td>LogRocket RN requires Android API 25+</td><td>Bump <code>ext.minSdkVersion</code> to 25 in <code>android/build.gradle</code> + <code>app.json</code> (cf. <code>OBSERVABILITY_STACK.md §7.6</code>)</td></tr>
-              <tr><td><code>ENOENT gradlew</code> at EAS FIX_GRADLEW phase</td><td><code>/android</code> in <code>.gitignore</code> strips natives from EAS upload</td><td>Add <code>.easignore</code> overriding <code>.gitignore</code> for EAS uploads (cf. <code>OBSERVABILITY_STACK.md §7.2</code>)</td></tr>
-              <tr><td>Frontend lacks <code>LOGROCKET_APP_ID</code> in bundle</td><td><code>--build-arg</code> not passed at Docker build</td><td>Cloud Build YAML must pass <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> as substitution (cf. <code>OBSERVABILITY_STACK.md §7.5</code>)</td></tr>
-              <tr><td>Mobile sessions all anonymous</td><td><code>identifyLogRocket()</code> not called in auth provider</td><td>Wire in <code>auth-provider.tsx</code> alongside <code>setSentryUser</code></td></tr>
-              <tr><td>Replays show only blank fields on mobile</td><td>Default <code>textSanitizer: 'excluded'</code> + no <code>&lt;LRAllow&gt;</code> wrapping</td><td>Audit screens; wrap non-PII text in <code>&lt;LRAllow&gt;</code></td></tr>
+              <tr><td><code>uses-sdk:minSdkVersion 24 cannot be smaller than 25</code></td><td data-i18n="lr.traps.row.minsdk_cause">LogRocket RN requires Android API 25+</td><td data-i18n-html="lr.traps.row.minsdk_fix">Bump <code>ext.minSdkVersion</code> to 25 in <code>android/build.gradle</code> + <code>app.json</code> (cf. <code>OBSERVABILITY_STACK.md §7.6</code>)</td></tr>
+              <tr><td><code>ENOENT gradlew</code> at EAS FIX_GRADLEW phase</td><td data-i18n-html="lr.traps.row.gradlew_cause"><code>/android</code> in <code>.gitignore</code> strips natives from EAS upload</td><td data-i18n-html="lr.traps.row.gradlew_fix">Add <code>.easignore</code> overriding <code>.gitignore</code> for EAS uploads (cf. <code>OBSERVABILITY_STACK.md §7.2</code>)</td></tr>
+              <tr><td data-i18n-html="lr.traps.row.bundle_symptom">Frontend lacks <code>LOGROCKET_APP_ID</code> in bundle</td><td data-i18n-html="lr.traps.row.bundle_cause"><code>--build-arg</code> not passed at Docker build</td><td data-i18n-html="lr.traps.row.bundle_fix">Cloud Build YAML must pass <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> as substitution (cf. <code>OBSERVABILITY_STACK.md §7.5</code>)</td></tr>
+              <tr><td data-i18n="lr.traps.row.anon_symptom">Mobile sessions all anonymous</td><td data-i18n-html="lr.traps.row.anon_cause"><code>identifyLogRocket()</code> not called in auth provider</td><td data-i18n-html="lr.traps.row.anon_fix">Wire in <code>auth-provider.tsx</code> alongside <code>setSentryUser</code></td></tr>
+              <tr><td data-i18n="lr.traps.row.blank_symptom">Replays show only blank fields on mobile</td><td data-i18n-html="lr.traps.row.blank_cause">Default <code>textSanitizer: 'excluded'</code> + no <code>&lt;LRAllow&gt;</code> wrapping</td><td data-i18n-html="lr.traps.row.blank_fix">Audit screens; wrap non-PII text in <code>&lt;LRAllow&gt;</code></td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>Roadmap</h3>
+        <h3 data-i18n="lr.roadmap.title">Roadmap</h3>
         <ol>
-          <li><strong>Sentry RN on inspector</strong> &mdash; activate <code>bridgeLogRocketToSentry()</code> body in inspector wrapper.</li>
-          <li><strong>Source-map upload</strong> &mdash; via reused Sentry CLI in CI for both web and mobile.</li>
-          <li><strong>Auto-rotation cron</strong> for <code>logrocket-app-id</code> (low cadence &mdash; public anyway).</li>
-          <li><strong>Funnel templates</strong> &mdash; pre-built funnels for the 4 critical user journeys (signup, payment, wizard, document upload) with target conversion thresholds + alerts.</li>
+          <li data-i18n-html="lr.roadmap.s1"><strong>Sentry RN on inspector</strong> &mdash; activate <code>bridgeLogRocketToSentry()</code> body in inspector wrapper.</li>
+          <li data-i18n-html="lr.roadmap.s2"><strong>Source-map upload</strong> &mdash; via reused Sentry CLI in CI for both web and mobile.</li>
+          <li data-i18n-html="lr.roadmap.s3"><strong>Auto-rotation cron</strong> for <code>logrocket-app-id</code> (low cadence &mdash; public anyway).</li>
+          <li data-i18n-html="lr.roadmap.s4"><strong>Funnel templates</strong> &mdash; pre-built funnels for the 4 critical user journeys (signup, payment, wizard, document upload) with target conversion thresholds + alerts.</li>
         </ol>
 
-        <h3>Reusable agent for other projects</h3>
-        <p>
+        <h3 data-i18n="lr.agent.title">Reusable agent for other projects</h3>
+        <p data-i18n-html="lr.agent.body">
           Distilled into <code>infra/observability/LOGROCKET_OBSERVABILITY_AGENT.md</code> &mdash; a 7-phase
           reproducible agent invokable via <code>/logrocket-observability</code> slash-command. Works on any
           web (Next.js / Vite / CRA), mobile (Expo / bare RN), or hybrid project. Enforces 8 active
           guardrails (PII redaction, gating, identify policy, secret topology, source-map drift, etc.).
         </p>
 
-        <h3>Related documentation</h3>
+        <h3 data-i18n="lr.related.title">Related documentation</h3>
         <ul>
-          <li><code>.claude/plans/OBSERVABILITY_STACK.md</code> &mdash; full reference (~750 lines): secret topology, multi-cloud migration, traps catalogue.</li>
-          <li><code>.claude/plans/OBSERVABILITY_QUICKSTART.md</code> &mdash; hands-on tutorial for new contributors.</li>
-          <li><code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> &mdash; companion doc on the Sentry side (8 dashboards, alert rules).</li>
-          <li><a href="grafana-dashboards.html">Grafana Dashboards</a> &mdash; the analytics layer (decision-driven KPIs), complementary to LogRocket (forensic replay).</li>
+          <li data-i18n-html="lr.related.stack"><code>.claude/plans/OBSERVABILITY_STACK.md</code> &mdash; full reference (~750 lines): secret topology, multi-cloud migration, traps catalogue.</li>
+          <li data-i18n-html="lr.related.quickstart"><code>.claude/plans/OBSERVABILITY_QUICKSTART.md</code> &mdash; hands-on tutorial for new contributors.</li>
+          <li data-i18n-html="lr.related.dashboards"><code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> &mdash; companion doc on the Sentry side (8 dashboards, alert rules).</li>
+          <li data-i18n-html="lr.related.grafana"><a href="grafana-dashboards.html">Grafana Dashboards</a> &mdash; the analytics layer (decision-driven KPIs), complementary to LogRocket (forensic replay).</li>
         </ul>
 
       </div>
 
       <footer class="page-footer">
-        <span>Facil Platform v1.1.8 &middot; &copy; 2026 Sah Kouemou</span>
+        <span data-i18n="common.footer.copyright">Facil Platform v1.1.8 &middot; &copy; 2026 Sah Kouemou</span>
         <div class="footer-links">
-          <a href="index.html">Home</a>
-          <a href="grafana-dashboards.html">Grafana</a>
-          <a href="security.html">Security</a>
+          <a href="index.html" data-i18n="common.sidebar.link.home">Home</a>
+          <a href="grafana-dashboards.html" data-i18n="common.sidebar.link.grafana">Grafana</a>
+          <a href="security.html" data-i18n="common.sidebar.link.security">Security</a>
         </div>
       </footer>
     </main>

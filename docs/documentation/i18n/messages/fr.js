@@ -1651,6 +1651,206 @@ window.__I18N__.fr =
         "warm": "Préchauffage du cache pour les données fréquemment accédées"
       }
     }
+  },
+
+  "lr": {
+    "html_title": "Observabilité LogRocket - Documentation Facil",
+    "title": "LogRocket — Rejeu de session & observabilité confidentialité d'abord",
+    "description": "LogRocket est wiré sur <strong>3 surfaces</strong> (web, mobile, inspector) comme la « CCTV » de la plateforme Facil. Tandis que Sentry capture les plantages après coup, LogRocket enregistre <em>ce que l'utilisateur a fait</em> avant, pendant et après — rendant les bugs signalés par les citoyens et les frictions UX reproductibles sans jamais demander à l'utilisateur de répéter ses étapes.",
+    "toc": {
+      "why": "1. Pourquoi LogRocket (et pas seulement Sentry)",
+      "architecture": "2. Architecture — 3 surfaces, 1 famille de SDK",
+      "privacy": "3. Conception confidentialité d'abord (caviardage PII)",
+      "wiring": "4. Wiring du dépôt (fichier par fichier)",
+      "secrets": "5. Topologie des secrets",
+      "flows": "6. Flux d'utilisation quotidiens",
+      "tour": "7. Tour du tableau de bord LogRocket",
+      "bridge": "8. Le bridge Sentry",
+      "limits": "9. Limites, pièges, roadmap"
+    },
+    "why": {
+      "intro": "LogRocket et Sentry semblent similaires au premier abord — tous deux « capturent les erreurs » — mais résolvent des problèmes différents. Choisir le bon sous pression représente la moitié de l'art de l'astreinte.",
+      "both_title": "Pourquoi nous utilisons les deux",
+      "both1": "<strong>La force de Sentry, c'est l'alerting + le regroupement</strong>. Quand le taux d'erreurs grimpe, Sentry ping l'astreinte et déduplique par fingerprint de stack-trace. Léger, faible volume.",
+      "both2": "<strong>La force de LogRocket, c'est le contexte</strong>. Quand un citoyen dit « l'app a planté quand j'ai cliqué sur soumettre », tu rejoues exactement cette session et tu <em>vois</em> le bug, pas seulement le symptôme.",
+      "both3": "<strong>Ils se complètent</strong> : Sentry détecte → LogRocket explique. Le bridge (<code>bridgeLogRocketToSentry()</code>) attache l'URL de session LogRocket à chaque événement Sentry, donc un Issue dans Sentry permet d'accéder en un clic au rejeu correspondant.",
+      "pitfall_title": "Piège fréquent",
+      "pitfall_body": "« J'ai Sentry, je n'ai pas besoin de LogRocket » — <strong>faux</strong>. Les bugs UX (UI gelée, mauvaise navigation, formulaire confus) ne laissent aucune trace Sentry car aucune exception n'est levée. LogRocket est le seul outil qui capture les <em>sessions sans erreur</em>, ce qu'il faut exactement pour diagnostiquer une plainte citoyenne sur le wizard."
+    },
+    "compare": {
+      "cadence": "Cadence de capture", "cadence_sentry": "Uniquement à l'erreur", "cadence_lr": "<strong>En continu</strong>, comme une CCTV",
+      "stored": "Ce qui est stocké", "stored_sentry": "Stack trace + 60 s de breadcrumbs", "stored_lr": "<strong>Vidéo de session complète</strong> — clics, scrolls, réseau, console, redux/zustand",
+      "pricing": "Modèle de tarification", "pricing_sentry": "Par événement d'erreur", "pricing_lr": "Par <strong>session</strong> (une visite utilisateur = une session)",
+      "tier": "Free tier", "tier_sentry": "5K erreurs / mois", "tier_lr": "1K sessions / mois",
+      "best": "Idéal pour", "best_sentry": "« Pourquoi ce plantage ? » — root-cause", "best_lr": "« Qu'a fait l'utilisateur avant X ? » — reproduire un parcours",
+      "trigger": "Déclencheur", "trigger_sentry": "<code>captureException(err)</code> ou auto-uncaught", "trigger_lr": "Init SDK au boot → capture jusqu'à la fin de session",
+      "ui": "UI principale", "ui_sentry": "Liste Issues / Errors", "ui_lr": "Liste de sessions avec rejeu vidéo"
+    },
+    "arch": {
+      "diagram_title": "Matrice de couverture LogRocket",
+      "web": "Web (Next.js 14)",
+      "mobile": "App mobile citoyen (Expo SDK 54)",
+      "inspector": "App inspecteur (Expo SDK 54)",
+      "single": "Projet LogRocket unique",
+      "single_sub": "app.logrocket.com/0eqns2/facil — quota partagé 1K sessions/mois",
+      "pii": "Caviardage PII (défense 3 couches)",
+      "pii_sub": "Options SDK + sanitizers + opt-in DOM/JSX",
+      "bridge": "Bridge Sentry (web aujourd'hui)",
+      "bridge_sub": "extra.logrocketURL sur chaque événement Sentry",
+      "policy_title": "Politique d'init par surface",
+      "col_surface": "Surface", "col_init": "Localisation de l'init", "col_noop": "Auto no-op si", "col_default": "Capture par défaut",
+      "row": {
+        "web": { "name": "<strong>Web</strong>", "init": "<code>&lt;LogRocketProvider&gt;</code> monté dans <code>Providers.tsx</code>", "noop": "<code>NODE_ENV=development</code> OU <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code> vide OU SSR (<code>!window</code>)", "default": "Capture tout le texte visible ; <strong>opt-out</strong> via <code>data-private=\"redact\"</code>" },
+        "mobile": { "name": "<strong>Mobile</strong>", "init": "<code>initLogRocket()</code> dans <code>&lt;DeferredEffects&gt;</code> de <code>_layout.tsx</code>", "noop": "<code>__DEV__=true</code> OU <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code> vide", "default": "Caviarde tout le texte ; <strong>opt-in</strong> via <code>&lt;LRAllow&gt;</code>" },
+        "insp": { "name": "<strong>Inspector</strong>", "init": "Idem mobile", "default": "Idem mobile (caviardage RN par défaut)" }
+      },
+      "opposite_title": "Pourquoi des défauts opposés (web vs mobile) ?",
+      "opposite_body": "Le web est un poste de bureau, souvent utilisé par des agents sur des machines partagées — capturer est plus utile pour le triage et le navigateur desktop ne contient généralement pas la même intensité de PII qu'un appareil personnel. Le mobile est un appareil personnel avec des formulaires sensibles (passeport, NIF, adresse) — caviarder par défaut est plus sûr. Coût du compromis : les rejeux sont moins informatifs sur mobile tant que tu n'audites pas chaque écran et n'enveloppes pas les zones non-PII avec <code>&lt;LRAllow&gt;</code>."
+    },
+    "priv": {
+      "intro": "Facil traite des passeports citoyens, NIFs, déclarations, reçus de paiement. La fuite de PII vers un SaaS tiers est un risque réglementaire. Les wrappers SDK appliquent <strong>4 couches de défense</strong>, chacune indépendamment suffisante (défense en profondeur) :",
+      "l1": "<strong>L1 — Options SDK</strong> : <code>inputSanitizer: true</code> (web) / <code>textSanitizer: 'excluded'</code> (mobile) masque l'entrée brute de l'utilisateur avant qu'elle ne quitte l'appareil.",
+      "l2": "<strong>L2 — Sanitizers réseau</strong> : chaque requête supprime les en-têtes <code>Authorization</code> + <code>Cookie</code> ; les corps sont supprimés sur <code>/auth/login</code>, <code>/auth/register</code>, <code>/auth/password-reset</code>, <code>/auth/2fa</code> ; les corps de réponse sont supprimés sur les endpoints émettant des tokens (<code>/auth/login</code>, <code>/auth/refresh</code>, <code>/auth/2fa</code>).",
+      "l3": "<strong>L3 — Opt-in DOM / JSX</strong> : responsabilité de l'équipe app — taguer explicitement les champs PII. <code>data-private=\"redact\"</code> sur web ; <code>&lt;LRAllow&gt;</code> enveloppant le contenu non-PII sur mobile (inverse : tout ce qui n'est pas enveloppé reste masqué).",
+      "l4": "<strong>L4 — Politique d'identification</strong> : seuls <code>id + role + locale</code> sont envoyés via <code>LogRocket.identify()</code>. <strong>Jamais</strong> email, téléphone, NIF, adresse. Imposé via la signature TypeScript du wrapper.",
+      "other_title": "Autres défauts pertinents pour la confidentialité",
+      "other": {
+        "ip": "<code>shouldCaptureIP: false</code> (web) / <code>enableIPCapture: false</code> (mobile) — ne jamais géolocaliser les utilisateurs.",
+        "console": "<code>console.isEnabled = { warn: true, error: true, log: false }</code> — supprimer les logs développeur qui peuvent porter du contexte sensible.",
+        "release": "<code>release: NEXT_PUBLIC_BUILD_VERSION</code> — attribution de session par build pour la chasse aux régressions."
+      }
+    },
+    "wiring": {
+      "web_title": "Web (<code>packages/web/</code>)",
+      "web": {
+        "wrapper": "<code>src/core/observability/logrocket.ts</code> — wrapper SDK (init, identify, track, capture, bridge sentry).",
+        "provider": "<code>src/components/observability/LogRocketProvider.tsx</code> — composant client monté dans <code>Providers.tsx</code>.",
+        "storage": "<code>src/core/auth/storage.ts</code> — <code>identifyLogRocket</code> branché dans <code>setAuthData/clearAuthData</code>.",
+        "env": "<code>.env.example</code> — <code>NEXT_PUBLIC_LOGROCKET_APP_ID</code>, <code>NEXT_PUBLIC_BUILD_VERSION</code>.",
+        "docker": "<code>Dockerfile</code> — ligne <code>ARG NEXT_PUBLIC_LOGROCKET_APP_ID</code> + <code>ENV</code>.",
+        "gha": "<code>.github/workflows/deploy-frontend-staging.yml</code> — passe <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> à Cloud Build."
+      },
+      "mobile_title": "Mobile (<code>packages/mobile/</code>)",
+      "mobile": {
+        "wrapper": "<code>src/core/observability/logrocket.ts</code> — wrapper LogRocket RN.",
+        "sentry": "<code>src/core/observability/sentry.ts</code> — wrapper Sentry RN compagnon.",
+        "layout": "<code>src/app/_layout.tsx</code> — <code>initSentry()</code> + <code>initLogRocket()</code> dans <code>&lt;DeferredEffects&gt;</code>.",
+        "auth": "<code>src/core/auth/auth-provider.tsx</code> — <code>setSentryUser</code> + <code>identifyLogRocket</code> co-localisés.",
+        "appjson": "<code>app.json</code> — plugin <code>expo-build-properties</code> : <code>minSdkVersion: 25</code> + <code>extraMavenRepos</code> (informatif en mode non-CNG).",
+        "gradle": "<code>android/build.gradle</code> — <code>ext.minSdkVersion = 25</code> + entrée Maven repo (canonique en mode non-CNG — natifs commités).",
+        "eas": "<code>eas.json</code> — <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code> dans les blocs env <code>preview</code> + <code>production</code>.",
+        "easignore": "<code>.easignore</code> — surcharge <code>.gitignore</code> pour que <code>/android</code> soit envoyé à EAS (sans : <code>ENOENT gradlew</code> à la phase FIX_GRADLEW)."
+      },
+      "insp_title": "Inspector (<code>packages/inspector/</code>)",
+      "insp_body": "Mêmes fichiers que mobile. Pas encore de Sentry RN — <code>bridgeLogRocketToSentry()</code> est un stub no-op en attente de l'intégration Sentry inspector."
+    },
+    "secrets": {
+      "intro": "Source de vérité : <strong>Google Cloud Secret Manager</strong> (projet <code>taxasge-dev</code>). Le secret <code>logrocket-app-id</code> est mirroré vers les secrets de dépôt GitHub et les variables d'env EAS, stocké en <strong>plaintext</strong> délibérément — l'App ID est baké dans le bundle client et visible dans les requêtes réseau DevTools de toute façon. Le mirroring conserve un point de rotation unique.",
+      "web_diagram": "Flux du secret (web)",
+      "web_step1": "▼ mirroré manuellement une fois",
+      "gh_secrets": "Secrets de dépôt GitHub",
+      "docker": "Stage Docker BUILDER (bake Next.js)",
+      "docker_sub": "NEXT_PUBLIC_* embarqué dans le bundle client",
+      "browser": "Navigateur de l'utilisateur final",
+      "browser_sub": "Init SDK au chargement de la page",
+      "mobile_diagram": "Flux du secret (Mobile / Inspector via EAS)",
+      "eas_env": "Env EAS Cloud (preview + production)",
+      "eas_worker": "Worker EAS Build (bake Expo CLI)",
+      "eas_worker_sub": "EXPO_PUBLIC_* embarqué dans le bundle JS",
+      "artifact": "Artefact APK / IPA / AAB",
+      "artifact_sub": "Distribué via Play / App Store / direct",
+      "full_topology": "Topologie complète des secrets + migration multi-cloud (AWS / Azure / VPS) : voir <code>.claude/plans/OBSERVABILITY_STACK.md §2 / §5</code>."
+    },
+    "flow1": {
+      "title": "Flux 1 — Un utilisateur signale un bug (« L'app a planté quand j'ai cliqué sur soumettre »)",
+      "s1": "Ouvrir le tableau de bord LogRocket → <strong>Session Replay</strong>.",
+      "s2": "Filtrer par <code>user_id</code> (la valeur envoyée via <code>LogRocket.identify()</code> — <strong>pas l'email</strong>, par conception, l'email étant PII). Si tu n'as que l'email, retrouve le user_id dans l'UI admin du backend d'abord.",
+      "s3": "Cliquer sur la session la plus récente dans la liste de résultats.",
+      "s4": "La vidéo de rejeu montre le parcours exact : clics, scrolls, le formulaire rempli, le moment du plantage.",
+      "s5": "Le panneau de droite reflète une vue DevTools, alignée temporellement avec la vidéo — erreurs console, requêtes réseau, état redux/zustand.",
+      "s6": "Cliquer sur la requête en échec dans le panneau réseau → voir corps de requête + réponse → diagnostiquer la cause sans jamais reproduire le bug.",
+      "note": "<strong>Pourquoi pas Sentry d'abord</strong> : Sentry ne fire que si le bug lève une véritable exception. Les bugs UX (UI gelée, mauvaise navigation, formulaire confus) ne laissent aucune trace Sentry. LogRocket capture tout cela."
+    },
+    "flow2": {
+      "title": "Flux 2 — Un pic d'erreurs en production",
+      "intro": "Alerte Sentry : « TypeError: Cannot read property 'name' of undefined — 12 occurrences en 5 minutes ».",
+      "s1": "Sentry <strong>Issues</strong> → cliquer sur l'alerte → voir stack trace + fréquence dans le temps + quelle release l'a introduite.",
+      "s2": "Ouvrir une des sessions affectées dans LogRocket via <code>event.extra.logrocketURL</code> (le lien du bridge).",
+      "s3": "Le rejeu LogRocket montre la séquence : l'utilisateur a navigué vers <code>/services</code>, cliqué sur recherche, tapé « passport », cliqué sur un résultat. Le panneau réseau révèle que <code>GET /api/services/12345</code> a retourné <code>null</code> au lieu de l'objet attendu.",
+      "s4": "Tu sais maintenant : régression backend, pas un bug frontend.",
+      "s5": "Rollback la release backend OU écrire un null-check défensif côté frontend."
+    },
+    "flow3": {
+      "title": "Flux 3 — Optimiser un drop-off d'entonnoir",
+      "intro": "« Pourquoi 80 % des utilisateurs abandonnent à l'étape 3 du wizard ? »",
+      "s1": "Trouver un événement custom déjà wiré via <code>trackLogRocket()</code> — par ex. <code>wizard_step_completed</code> avec <code>{ step: number }</code>.",
+      "s2": "LogRocket <strong>Dashboards</strong> → créer un entonnoir : <code>wizard_step_completed</code> (step:1) → step:2 → step:3 → <code>wizard_submitted</code>.",
+      "s3": "L'entonnoir montre : 100 % → 95 % → 85 % → <strong>15 %</strong>. Chute massive à l'étape 3.",
+      "s4": "Filtrer les sessions : celles qui ont atteint step:3 mais jamais <code>wizard_submitted</code>. Échantillonner 10 rejeux.",
+      "s5": "Tu observes un pattern : 6 des 10 utilisateurs fixent le champ « NIF » > 30 s, puis abandonnent. L'étiquette est trop technique.",
+      "s6": "Livrer une étiquette plus claire + une bulle d'aide. Re-mesurer l'entonnoir une semaine plus tard.",
+      "note": "<strong>Pourquoi pas Sentry</strong> : rien n'a planté. Aucune exception. C'est purement un diagnostic UX."
+    },
+    "tour": {
+      "intro": "L'UI LogRocket à <code>app.logrocket.com/0eqns2/facil</code> expose 5 sections principales :",
+      "col_section": "Section", "col_purpose": "Rôle", "col_when": "Quand l'utiliser",
+      "row": {
+        "replay": { "name": "<strong>Session Replay</strong>", "purpose": "Rejeux par visite utilisateur avec timeline console + réseau", "when": "Plainte citoyen, bug UX, plantage intermittent" },
+        "issues": { "name": "<strong>Issues</strong>", "purpose": "Erreurs JS auto-détectées, similaires à Sentry mais avec une session attachée", "when": "Triage des erreurs non alertées par Sentry" },
+        "dashboards": { "name": "<strong>Dashboards</strong>", "purpose": "Agrégations d'événements custom (compteurs, entonnoirs, taux de conversion)", "when": "Drop-off d'entonnoir, comparaison A/B" },
+        "surveys": { "name": "<strong>Surveys / Feedback</strong>", "purpose": "Sondages NPS + widgets de feedback in-app (non utilisés aujourd'hui)", "when": "Recherche UX, sentiment post-lancement" },
+        "settings": { "name": "<strong>Settings → Integrations</strong>", "purpose": "Hooks Slack / Jira / Linear (free tier limité)", "when": "Pousser les issues critiques au chat de l'équipe" }
+      }
+    },
+    "bridge": {
+      "intro": "Activé le 2026-04-30 une fois <code>@sentry/nextjs</code> wiré (côté web). Le bridge attache l'URL de session LogRocket à chaque événement Sentry pour qu'un Issue dans Sentry permette d'accéder en un clic au rejeu correspondant — éliminant le coût de context-switch entre les deux outils.",
+      "ordering": "<strong>Pourquoi cet ordre</strong> : <code>getSessionURL()</code> fire <em>après</em> le premier flush réseau (~2-5 s dans la session). Les événements Sentry peuvent être capturés immédiatement au chargement de la page. Initialiser LogRocket en premier et enregistrer le bridge à l'intérieur de son <code>init()</code> signifie : au moment où le bridge se connecte, Sentry écoute déjà ; le site d'appel du bridge vit à côté de l'init LogRocket dont il dépend ; pas de dépendance circulaire.",
+      "mobile": "<strong>Bridge mobile</strong> : stub aujourd'hui. S'active le jour où les événements Sentry RN sur mobile/inspector doivent porter une URL de session LogRocket. Même édition de 4 lignes que le web une fois les deux SDKs confirmés en live."
+    },
+    "limits": {
+      "title": "Limites connues (honnêtes)",
+      "tier": "<strong>Free tier 1K sessions / mois</strong> — partagé entre web + mobile + inspector. À l'échelle actuelle (~20 utilisateurs staging) marge confortable ; le passage en production nécessite le plan Team.",
+      "sourcemap": "<strong>Téléversement de sourcemaps non wiré</strong> — les stack traces LogRocket sont minifiées. Plan : réutiliser le téléversement de sourcemaps Sentry CLI (<code>@sentry/cli</code>) au build time. <em>Suivi : OBSERVABILITY_STACK.md §8</em>.",
+      "redact": "<strong>Caviardage par défaut sur mobile</strong> — rejeux informatifs uniquement sur les écrans audités et enveloppés avec <code>&lt;LRAllow&gt;</code>. Cadence d'audit : à chaque livraison de feature.",
+      "onprem": "<strong>Pas de free tier on-prem</strong> — les déploiements air-gapped doivent désactiver LogRocket entièrement."
+    },
+    "traps": {
+      "title": "Pièges connus",
+      "col_symptom": "Symptôme", "col_cause": "Cause racine", "col_fix": "Fix",
+      "row": {
+        "minsdk_cause": "LogRocket RN nécessite Android API 25+",
+        "minsdk_fix": "Bumper <code>ext.minSdkVersion</code> à 25 dans <code>android/build.gradle</code> + <code>app.json</code> (cf. <code>OBSERVABILITY_STACK.md §7.6</code>)",
+        "gradlew_cause": "<code>/android</code> dans <code>.gitignore</code> retire les natifs de l'upload EAS",
+        "gradlew_fix": "Ajouter <code>.easignore</code> qui surcharge <code>.gitignore</code> pour les uploads EAS (cf. <code>OBSERVABILITY_STACK.md §7.2</code>)",
+        "bundle_symptom": "Le frontend manque de <code>LOGROCKET_APP_ID</code> dans le bundle",
+        "bundle_cause": "<code>--build-arg</code> non passé au build Docker",
+        "bundle_fix": "Le YAML Cloud Build doit passer <code>_NEXT_PUBLIC_LOGROCKET_APP_ID=${{ secrets.LOGROCKET_APP_ID }}</code> en substitution (cf. <code>OBSERVABILITY_STACK.md §7.5</code>)",
+        "anon_symptom": "Sessions mobile toutes anonymes",
+        "anon_cause": "<code>identifyLogRocket()</code> non appelé dans l'auth provider",
+        "anon_fix": "Wirer dans <code>auth-provider.tsx</code> aux côtés de <code>setSentryUser</code>",
+        "blank_symptom": "Les rejeux ne montrent que des champs vides sur mobile",
+        "blank_cause": "Défaut <code>textSanitizer: 'excluded'</code> + pas d'enveloppage <code>&lt;LRAllow&gt;</code>",
+        "blank_fix": "Auditer les écrans ; envelopper le texte non-PII avec <code>&lt;LRAllow&gt;</code>"
+      }
+    },
+    "roadmap": {
+      "title": "Roadmap",
+      "s1": "<strong>Sentry RN sur inspector</strong> — activer le corps de <code>bridgeLogRocketToSentry()</code> dans le wrapper inspector.",
+      "s2": "<strong>Téléversement de sourcemaps</strong> — via réutilisation de Sentry CLI en CI pour web et mobile.",
+      "s3": "<strong>Cron d'auto-rotation</strong> pour <code>logrocket-app-id</code> (cadence faible — public de toute façon).",
+      "s4": "<strong>Templates d'entonnoir</strong> — entonnoirs préconstruits pour les 4 parcours utilisateur critiques (signup, paiement, wizard, téléversement de document) avec seuils de conversion cibles + alertes."
+    },
+    "agent": {
+      "title": "Agent réutilisable pour d'autres projets",
+      "body": "Distillé dans <code>infra/observability/LOGROCKET_OBSERVABILITY_AGENT.md</code> — un agent reproducible en 7 phases invocable via la slash-command <code>/logrocket-observability</code>. Fonctionne sur tout projet web (Next.js / Vite / CRA), mobile (Expo / bare RN) ou hybride. Applique 8 garde-fous actifs (caviardage PII, gating, politique d'identification, topologie des secrets, drift de sourcemap, etc.)."
+    },
+    "related": {
+      "title": "Documentation associée",
+      "stack": "<code>.claude/plans/OBSERVABILITY_STACK.md</code> — référence complète (~750 lignes) : topologie des secrets, migration multi-cloud, catalogue des pièges.",
+      "quickstart": "<code>.claude/plans/OBSERVABILITY_QUICKSTART.md</code> — tutoriel pas-à-pas pour les nouveaux contributeurs.",
+      "dashboards": "<code>.claude/plans/OBSERVABILITY_DASHBOARDS_AND_SENTRY_BACKEND.md</code> — doc compagnon côté Sentry (8 dashboards, règles d'alerte).",
+      "grafana": "<a href=\"grafana-dashboards.html\">Tableaux de bord Grafana</a> — la couche analytique (KPIs orientés décision), complémentaire à LogRocket (rejeu forensique)."
+    }
   }
 }
 ;
