@@ -46,8 +46,46 @@ _reader = None
 _AVAILABLE = False
 
 
+def _try_auto_download(target: str) -> bool:
+    """Best-effort download of GeoLite2-City.mmdb at boot.
+
+    Triggered when MAXMIND_LICENSE_KEY env var is set and the file is missing
+    at `target`. Useful on Cloud Run where /tmp/ is wiped on each cold-start.
+    Returns True if file is now on disk, False otherwise.
+
+    The actual download is delegated to scripts/download_geolite.py so the
+    sha256 verification + license-key handling lives in one place. We import
+    that module's `main()` rather than reimplementing.
+    """
+    if not os.environ.get("MAXMIND_LICENSE_KEY"):
+        return False
+    try:
+        os.environ.setdefault("GEOIP_DB_PATH", target)
+        import importlib.util
+        from pathlib import Path
+        script = Path(__file__).resolve().parents[2] / "scripts" / "download_geolite.py"
+        if not script.exists():
+            return False
+        spec = importlib.util.spec_from_file_location("_geolite_dl", str(script))
+        if spec is None or spec.loader is None:
+            return False
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rc = mod.main()
+        return rc == 0 and os.path.exists(target)
+    except Exception as exc:
+        logger.warning("geoip auto-download failed: {}", exc)
+        return False
+
+
 def init_geoip(db_path: str | None = None) -> bool:
     """Initialize the MMDB reader. Idempotent. Safe to call repeatedly.
+
+    On boot:
+    1. If MMDB exists at path → open it.
+    2. Else if MAXMIND_LICENSE_KEY is set → auto-download (fresh Cloud Run
+       cold-start case), then open.
+    3. Else → soft-fail (returns False, geo enrichment disabled).
 
     Returns True if reader is ready, False otherwise. Caller should handle
     False as a soft-fail (log + continue without geo enrichment).
@@ -58,8 +96,15 @@ def init_geoip(db_path: str | None = None) -> bool:
 
     path = db_path or os.environ.get("GEOIP_DB_PATH") or _DB_PATH_DEFAULT
     if not os.path.exists(path):
-        logger.info("geoip: DB not found at {} — geo enrichment disabled", path)
-        return False
+        if _try_auto_download(path):
+            logger.info("geoip: auto-downloaded MMDB to {}", path)
+        else:
+            logger.info(
+                "geoip: DB not found at {} (set MAXMIND_LICENSE_KEY for auto-download) — "
+                "geo enrichment disabled",
+                path,
+            )
+            return False
 
     try:
         import geoip2.database

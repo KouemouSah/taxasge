@@ -5,14 +5,22 @@
 
 ---
 
-## TL;DR — état au 2026-05-05 21:10 CET
+## TL;DR — état au 2026-05-05 21:30 CET (mise à jour après finalisation)
 
 ✅ **Livré (~30 commits, 8 migrations BD, 35 panels, 8 alertes)** :
 - Grafana Dashboards Dynamic (mig 323-324) — admin self-service complete
 - AI Observability Phase A (8 sub-phases) + Phase B (8 sub-phases) — instrumentation full backend OTEL + 5 alertes + injection detection
 - Security Observability Phase C (6 sub-phases) — `request_telemetry` table + middleware + UA + GeoIP + dashboard 20 panels + 3 alertes
 
-⏳ **Reste avant clôture définitive** : 6 items (3 bloqueurs prod + 3 optimisations).
+✅ **Items finalisés en post-bilan (2026-05-05 21:30)** :
+- Cron `request-telemetry-cleanup` enregistré dans `app/core/scheduler.py:201` (toutes les 6h) — finalement déjà fait, j'avais raté ça lors du bilan initial
+- Script `scripts/download_geolite.py` — sha256-verified MaxMind download (CLI standalone + boot hook)
+- `app/core/geoip.py::init_geoip()` — auto-download au boot si `MAXMIND_LICENSE_KEY` env var set + fichier absent (Cloud Run cold-start friendly)
+- Cron `geolite-refresh` enregistré dans `app/core/scheduler.py:206` (mensuel, no-op sans license key)
+- Script `scripts/smoke_security_observability.py` — 10 checks Phase C
+- Captions HTML i18n fixed (data-i18n → data-i18n-html, balises rendues correctement) + enrichies pédagogiquement (4 sections : What it is / What you read / Numbers / How to use it)
+
+⏳ **Reste avant clôture prod définitive** : 3 items (provisioning ops + activation).
 
 ---
 
@@ -25,37 +33,36 @@ Bilan session 2026-05-05 : .claude/plans/SESSION_BILAN_2026_05_05.md
 
 Reste à faire (par priorité) :
 
-1. [BLOQUEUR PROD] Provisionner GeoLite2-City.mmdb
-   - Créer license key MaxMind (https://www.maxmind.com/en/geolite2/signup)
-   - Cron mensuel `scripts/download_geolite.py` qui DL `.mmdb` dans /tmp/
-   - Boot hook `init_geoip("/tmp/GeoLite2-City.mmdb")` déjà présent dans main.py
-   - Sans ce fichier, geoip.py retourne country=None → dashboard Geographic vide
+1. [OPS — MaxMind license] Créer la license MaxMind GeoLite2
+   - https://www.maxmind.com/en/geolite2/signup (gratuit)
+   - Account → My License Key → Generate (case "Will this key be used for GeoIP Update?" cochée)
+   - Provisionner dans GCP Secret Manager : gcloud secrets create maxmind-license-key
+   - Bind dans workflow Cloud Run : --set-secrets="MAXMIND_LICENSE_KEY=maxmind-license-key:latest"
+   - Au prochain cold-start, geoip.py auto-download le .mmdb dans /tmp/ (auto-download already wired)
 
-2. [BLOQUEUR PROD] Smoke validation staging — Phase B + Phase C
-   - scripts/smoke_ai_observability.py existe (Phase B.8) — exécuter
-   - Créer scripts/smoke_security_observability.py équivalent
-   - Vérifier : (a) request_telemetry remplie après 1h trafic, (b) ai_call_metrics avec injection_risk peuplé, (c) Tempo spans visibles
+2. [SMOKE STAGING] Exécuter les 2 scripts smoke après next deploy
+   - python scripts/smoke_phase_b_full.py        # AI obs
+   - python scripts/smoke_security_observability.py   # Security obs
+   - Tous doivent passer (failures = 0)
 
-3. [BLOQUEUR PROD] Cron `request-telemetry-cleanup` enregistré dans scheduler
-   - Endpoint /cron/request-telemetry-cleanup existe (Phase C.2)
-   - Doit être ajouté à app/core/scheduler.py sinon ne tourne JAMAIS
-   - Référence : règle MEMORY #23
-
-4. [OPTIMISATION] Activer AI_SECURITY_BLOCK_HIGH_RISK=true en prod
+3. [OPTIMISATION — attendre 7j baseline] Activer AI_SECURITY_BLOCK_HIGH_RISK=true
    - Phase B.5 implémenté mais désactivé (env var false par défaut)
    - Attendre 7 jours baseline injection metrics avant activation
-   - Cible : <0.5% requêtes high-risk → safe à activer
+   - Vérifier : count(WHERE injection_risk='high') / count(*) < 0.5%
+   - Si > 0.5% : false positives, raffiner les patterns regex avant activation
 
-5. [OPTIMISATION] Streaming Gemini call gemini_service.py:1042 instrumenté
+4. [OPTIMISATION — différé] Streaming Gemini call gemini_service.py:1042 instrumenté
    - Skip Phase A.3 — wrapper attend single response
    - Phase B+ : créer wrapper `traced_generate_stream()` qui agrège les chunks et émet le span à la fin
+```
 
-6. [REUSE] Agents + commands AI obs + Security obs créés
-   - infra/observability/AI_OBSERVABILITY_AGENT.md
-   - infra/observability/SECURITY_OBSERVABILITY_AGENT.md
-   - .claude/commands/ai-observability.md
-   - .claude/commands/security-observability.md
-   - infra/observability/README.md (index global stack)
+✅ Items déjà finalisés (initialement listés ici, complétés en fin de session 2026-05-05) :
+- Cron `request-telemetry-cleanup` enregistré dans scheduler.py:201 — était déjà là, j'avais raté
+- Cron `geolite-refresh` enregistré dans scheduler.py:206 — refresh mensuel
+- Auto-download boot hook dans `geoip.py::init_geoip()` — Cloud Run cold-start friendly
+- Script `scripts/download_geolite.py` — sha256 verified
+- Script `scripts/smoke_security_observability.py` — 10 checks
+- Agents + commands AI obs + Security obs créés (`infra/observability/{AI,SECURITY}_OBSERVABILITY_AGENT.md` + `.claude/commands/{ai,security}-observability.md` + `infra/observability/README.md`)
 
 Mémoires de référence :
 - memory/project_grafana_dynamic_2026_05_05.md

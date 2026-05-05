@@ -202,6 +202,13 @@ class InternalScheduler:
                 self._request_telemetry_cleanup,
                 21600,  # 6 hours
             ),
+            (
+                # Phase C.4 — refresh MaxMind GeoLite2-City.mmdb monthly.
+                # No-op when MAXMIND_LICENSE_KEY is not set.
+                "geolite-refresh",
+                self._geolite_refresh,
+                2592000,  # 30 days
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -2012,6 +2019,34 @@ class InternalScheduler:
             if "does not exist" in str(e):
                 return None
             logger.error(f"request_telemetry cleanup failed: {e}")
+        return None
+
+    async def _geolite_refresh(self):
+        """Phase C.4 — refresh GeoLite2-City.mmdb (~80 MB) monthly.
+
+        No-op when MAXMIND_LICENSE_KEY is unset. Runs in a thread to avoid
+        blocking the event loop on the ~10s download. After success, the
+        next geoip lookup miss will pick up the fresher file (the open
+        reader keeps using its mmap'd snapshot until the process restarts —
+        acceptable since Cloud Run instances rotate frequently).
+        """
+        import os
+        if not os.environ.get("MAXMIND_LICENSE_KEY"):
+            return None
+        try:
+            from app.core.geoip import _try_auto_download, init_geoip
+            target = os.environ.get("GEOIP_DB_PATH") or "/tmp/GeoLite2-City.mmdb"
+            ok = await asyncio.to_thread(_try_auto_download, target)
+            if ok:
+                # Force re-init so a subsequent process restart picks up the fresh DB
+                # (current reader keeps the old snapshot mmap'd; benign).
+                logger.info("geolite-refresh: refreshed {} successfully", target)
+                init_geoip(target)
+                return {"refreshed": True, "path": target}
+            logger.warning("geolite-refresh: download failed (license key invalid?)")
+            return {"refreshed": False}
+        except Exception as e:
+            logger.error(f"geolite-refresh failed: {e}")
         return None
 
 
