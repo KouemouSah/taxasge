@@ -96,6 +96,57 @@ PRICING_XAF: dict[str, dict[str, float]] = {
 }
 
 
+# Phase B.2 — BD-backed pricing cache.
+# Refreshed every CACHE_TTL seconds; fallback to PRICING_XAF if BD unreachable.
+_PRICING_CACHE: dict[str, dict[str, float]] = {}
+_PRICING_CACHE_TS: float = 0.0
+_PRICING_CACHE_TTL = 600.0  # 10 minutes
+
+
+async def _load_pricing_from_db(pool: asyncpg.Pool) -> dict[str, dict[str, float]]:
+    """Load active pricing rows from ai_pricing_config (Phase B.2)."""
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT model_name, "
+                "       input_xaf_per_1m_tokens AS input, "
+                "       output_xaf_per_1m_tokens AS output "
+                "FROM ai_pricing_config WHERE is_active = true"
+            )
+        return {
+            r["model_name"]: {"input": float(r["input"]), "output": float(r["output"])}
+            for r in rows
+        }
+    except Exception as exc:
+        logger.warning("ai_telemetry: BD pricing load failed (fallback to static): {}", exc)
+        return {}
+
+
+async def get_pricing(pool: Optional[asyncpg.Pool] = None) -> dict[str, dict[str, float]]:
+    """Return the pricing dict, refreshed from BD when stale.
+
+    Priority order:
+    1. BD ai_pricing_config (cached 10 min)
+    2. Static PRICING_XAF in this module (fallback)
+    """
+    global _PRICING_CACHE, _PRICING_CACHE_TS
+    now = time.monotonic()
+    if not _PRICING_CACHE or (now - _PRICING_CACHE_TS) > _PRICING_CACHE_TTL:
+        if pool is None:
+            try:
+                from app.database.connection import get_db_pool
+                pool = await get_db_pool()
+            except Exception:
+                return PRICING_XAF
+        bd = await _load_pricing_from_db(pool)
+        if bd:
+            _PRICING_CACHE = bd
+            _PRICING_CACHE_TS = now
+        else:
+            return PRICING_XAF
+    return _PRICING_CACHE
+
+
 def normalize_model_name(model: str) -> str:
     """Normalize Vertex AI model paths to short keys used in PRICING_XAF.
 
@@ -117,9 +168,16 @@ def normalize_model_name(model: str) -> str:
 
 
 def estimate_cost_xaf(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Estimate XAF cost from token counts. 0 for unknown models (logged once)."""
+    """Estimate XAF cost from token counts. Reads from BD cache (mig 327)
+    when populated; falls back to static PRICING_XAF. 0 for unknown models.
+
+    Sync-only (called from finally blocks). The async `get_pricing()` helper
+    pre-fills `_PRICING_CACHE` from BD periodically.
+    """
     short = normalize_model_name(model)
-    p = PRICING_XAF.get(short)
+    # BD cache wins when populated; static dict is fallback.
+    pricing = _PRICING_CACHE if _PRICING_CACHE else PRICING_XAF
+    p = pricing.get(short)
     if p is None:
         logger.warning("ai_telemetry: unknown model '{}' (short='{}') — cost will be 0", model, short)
         return 0.0
@@ -439,6 +497,15 @@ async def _traced_call(
     invoke,
 ) -> Any:
     """Shared core for both traced_generate and traced_embed."""
+    # Refresh pricing cache from BD (mig 327) — fire-and-forget, non-blocking.
+    # If the cache is fresh, this is a no-op. If stale, it kicks off a BD
+    # query in the background; the *current* call uses whatever's cached.
+    try:
+        if not _PRICING_CACHE or (time.monotonic() - _PRICING_CACHE_TS) > _PRICING_CACHE_TTL:
+            asyncio.create_task(get_pricing(pool))
+    except Exception:
+        pass
+
     raw_model_name = (
         getattr(model, "_model_name", None)
         or getattr(model, "model_name", None)
