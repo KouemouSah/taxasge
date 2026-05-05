@@ -132,19 +132,12 @@ jobs:
             FIREBASE_SA_ESCAPED=$(echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' | jq -c .)
           fi
 
-          # Conditional MaxMind binding — only set if the secret was provisioned.
-          # Provision via: echo -n "<key>" | gcloud secrets create maxmind-license-key --data-file=-
-          # Then bind IAM: gcloud secrets add-iam-policy-binding maxmind-license-key \
-          #     --member="serviceAccount:392159428433-compute@developer.gserviceaccount.com" \
-          #     --role="roles/secretmanager.secretAccessor"
-          MAXMIND_BINDING=""
-          if gcloud secrets describe maxmind-license-key --project=${{ env.PROJECT_ID }} --format=json >/dev/null 2>&1; then
-            MAXMIND_BINDING="--set-secrets=MAXMIND_LICENSE_KEY=maxmind-license-key:latest"
-            echo "✓ maxmind-license-key found — binding will be applied"
-          else
-            echo "⚠ maxmind-license-key secret missing — geo enrichment will be disabled (run: gcloud secrets create maxmind-license-key)"
-          fi
-
+          # MaxMind license — secret provisioned once on 2026-05-05, IAM granted
+          # to the runtime SA (392159428433-compute@developer.gserviceaccount.com).
+          # Binding is unconditional: rotation = `gcloud secrets versions add`,
+          # the `:latest` reference picks it up at the next deploy.
+          # Note: the deploy SA does NOT need viewer access — Cloud Run only
+          # needs `secretAccessor` at runtime, which is already granted.
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --platform managed \
@@ -195,7 +188,7 @@ jobs:
             --concurrency=80 \
             --command="uvicorn" \
             --args="app.main:app,--host,0.0.0.0,--port,8080,--workers,1" \
-            $MAXMIND_BINDING
+            --set-secrets="MAXMIND_LICENSE_KEY=maxmind-license-key:latest"
 
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
