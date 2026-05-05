@@ -132,6 +132,19 @@ jobs:
             FIREBASE_SA_ESCAPED=$(echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' | jq -c .)
           fi
 
+          # Conditional MaxMind binding — only set if the secret was provisioned.
+          # Provision via: echo -n "<key>" | gcloud secrets create maxmind-license-key --data-file=-
+          # Then bind IAM: gcloud secrets add-iam-policy-binding maxmind-license-key \
+          #     --member="serviceAccount:392159428433-compute@developer.gserviceaccount.com" \
+          #     --role="roles/secretmanager.secretAccessor"
+          MAXMIND_BINDING=""
+          if gcloud secrets describe maxmind-license-key --project=${{ env.PROJECT_ID }} --format=json >/dev/null 2>&1; then
+            MAXMIND_BINDING="--set-secrets=MAXMIND_LICENSE_KEY=maxmind-license-key:latest"
+            echo "✓ maxmind-license-key found — binding will be applied"
+          else
+            echo "⚠ maxmind-license-key secret missing — geo enrichment will be disabled (run: gcloud secrets create maxmind-license-key)"
+          fi
+
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --platform managed \
@@ -181,7 +194,8 @@ jobs:
             --timeout=300 \
             --concurrency=80 \
             --command="uvicorn" \
-            --args="app.main:app,--host,0.0.0.0,--port,8080,--workers,1"
+            --args="app.main:app,--host,0.0.0.0,--port,8080,--workers,1" \
+            $MAXMIND_BINDING
 
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
@@ -253,7 +267,51 @@ jobs:
           print(f'✅ Migrations: {ok} OK, {err} warnings')
           "
 
-  # Job 4: Generate Embeddings (RAG)
+  # Job 4: Post-deploy observability smoke (Phase B AI obs + Phase C Security obs)
+  smoke-observability:
+    name: Smoke — Observability (Phase B + C)
+    runs-on: ubuntu-latest
+    needs: [deploy, migrate]
+    # Don't block downstream jobs if smoke fails — show ❌ in CI but let
+    # embeddings + notify still run. Smoke failures = data gap, not deploy break.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install smoke dependencies
+        run: pip install psycopg2-binary python-dotenv loguru
+
+      - name: Wait 90s for new revision to receive traffic + emit telemetry
+        # Cloud Run revisions take ~30-60s to become healthy and start
+        # serving. Sleeping ensures the smoke checks see fresh rows from
+        # the new build (otherwise we'd validate the previous revision).
+        run: sleep 90
+
+      - name: Smoke — AI Observability (Phase B)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # Tolerant of "no recent calls" when traffic is low post-deploy:
+        # Phase B smoke marks empty-data as warning (not failure).
+        run: python scripts/smoke_phase_b_full.py
+
+      - name: Smoke — Security Observability (Phase C)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # Same tolerance as above. Hard failures = mig 329/330 missing
+        # or middleware bypass broken.
+        run: python scripts/smoke_security_observability.py
+
+  # Job 5: Generate Embeddings (RAG)
   embeddings:
     name: Generate RAG Embeddings
     runs-on: ubuntu-latest
