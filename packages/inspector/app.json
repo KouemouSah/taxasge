@@ -74,7 +74,8 @@
             ]
           }
         }
-      ]
+      ],
+      "./plugins/with-adi-registration"
     ],
     "experiments": {
       "typedRoutes": true

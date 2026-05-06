@@ -177,6 +177,87 @@ gh secret list --repo=KouemouSah/taxasge | grep GOOGLE_PLAY_SA_JSON_BASE64
 
 ---
 
-## 6. Changelog
+## 6. Android Developer Verification token (ADI registration)
+
+Google now requires every new developer account to prove ownership of each
+package name **before** any track (internal/closed/production) becomes
+available. The proof is a token file `assets/adi-registration.properties`
+embedded in a release-signed APK uploaded via Play Console → "Validation des
+développeurs Android" → "Signer et importer un APK".
+
+### 6.1 Token values (per app)
+
+| App | Package | Token | Source |
+|-----|---------|-------|--------|
+| Facil (citizen) | `com.taxasge.app` | `CXZYNVIZWNFLAAAAAAAAAAAAAA` | Play Console snippet, copied 2026-05-06 |
+| Facil Inspeccion | `com.facil.inspeccion` | _(not issued yet)_ | Generate when first publishing inspector |
+
+Tokens are tied to (package name, signing key SHA-256). After verification,
+they are useless to anyone else (cannot claim ownership of a package whose
+signing key they don't control), so storing them in code is acceptable.
+
+### 6.2 Where the token lives
+
+| Location | Purpose |
+|----------|---------|
+| `packages/mobile/plugins/with-adi-registration.js` `DEFAULT_TOKEN` constant | Hardcoded fallback, used when env var unset |
+| `packages/inspector/plugins/with-adi-registration.js` (env-only) | No fallback — placeholder until first inspector Play Store publish |
+| GitHub Secret `ADI_REGISTRATION_TOKEN` | Optional override for `mobile-build.yml` CI native build |
+| EAS env var `ADI_REGISTRATION_TOKEN` (preview + production) | Optional override for EAS Cloud builds |
+
+### 6.3 Plugin behaviour
+
+Both `with-adi-registration.js` plugins use `withDangerousMod` to write
+`android/app/src/main/assets/adi-registration.properties` during prebuild.
+The plugin runs in:
+
+- **EAS Cloud (CNG mode)** : prebuild runs on Expo's infrastructure → file written.
+- **EAS Cloud (non-CNG, committed `android/`)** : prebuild does NOT run → committed file used as-is. The plugin's output is harmless overlap.
+- **GitHub Actions `mobile-build.yml`** : prebuild runs (with `--no-install`, no `--clean`) → file written.
+- **Local `expo prebuild --clean`** : file is wiped then immediately rewritten by the plugin.
+
+### 6.4 Rotation procedure
+
+If the upload key SHA-256 changes (e.g. EAS regenerates the keystore), the
+old ADI token becomes invalid. Steps:
+
+1. Re-export keystore from EAS → capture new SHA-256
+2. Play Console → "Changer de clé" → declare new SHA-256 as eligible
+3. Click "Signer et importer un APK" → copy NEW token snippet
+4. Update `DEFAULT_TOKEN` in `packages/mobile/plugins/with-adi-registration.js`
+   _OR_ update `ADI_REGISTRATION_TOKEN` env var (EAS + GitHub Secret)
+5. Trigger fresh build → upload new APK to Play Console
+
+---
+
+## 7. Required GitHub Secrets (per repo)
+
+Set via `gh secret set <NAME>` from the repo root:
+
+| Secret | Required for | How to set |
+|--------|--------------|------------|
+| `ANDROID_KEYSTORE_BASE64` | `mobile-build.yml` native APK/AAB | `base64 -w0 packages/mobile/facil-release.keystore \| gh secret set ANDROID_KEYSTORE_BASE64` |
+| `ANDROID_KEYSTORE_PASSWORD` | `mobile-build.yml` native APK/AAB | `echo -n '<store-password>' \| gh secret set ANDROID_KEYSTORE_PASSWORD` |
+| `ANDROID_KEY_ALIAS` | `mobile-build.yml` native APK/AAB | `echo -n '<alias>' \| gh secret set ANDROID_KEY_ALIAS` |
+| `ANDROID_KEY_PASSWORD` | `mobile-build.yml` native APK/AAB | `echo -n '<key-password>' \| gh secret set ANDROID_KEY_PASSWORD` |
+| `ADI_REGISTRATION_TOKEN` | `mobile-build.yml` (optional override) | `echo -n '<token>' \| gh secret set ADI_REGISTRATION_TOKEN` |
+| `EXPO_TOKEN` | `mobile-eas-build.yml` / `inspector-build.yml` / `mobile-eas-submit.yml` | Sourced from `gcloud secrets versions access latest --secret=expo-token --project=taxasge-dev` |
+| `GOOGLE_PLAY_SA_JSON_BASE64` | `mobile-eas-submit.yml` | `gcloud secrets versions access latest --secret=google-play-service-account --project=taxasge-dev \| base64 -w0 \| gh secret set GOOGLE_PLAY_SA_JSON_BASE64` |
+
+Use the EAS-managed keystore values for the 3 password/alias secrets:
+
+```text
+ANDROID_KEYSTORE_PASSWORD = 2db52d3c8a4c1ca300fd7edc982d0feb
+ANDROID_KEY_ALIAS         = b9520ded4f892b6ed2b0ef8afede0bbd
+ANDROID_KEY_PASSWORD      = 05f8854a46eb2a325579ba6b908fbb0d
+```
+
+Source : `Documentations/workflow/debug/tesoro/key/@emacsah__facil-keystore-credentials.md` (gitignored).
+
+---
+
+## 8. Changelog
 
 - **2026-05-02 v1.0** : Initial document. Service account `play-publisher` created, GCP Secret `google-play-service-account` v1 active, GitHub Secret `GOOGLE_PLAY_SA_JSON_BASE64` synced. Keystore fingerprints TODO once password is captured.
+- **2026-05-02 v1.1** : Captured real EAS keystore fingerprints (SHA-1 + SHA-256) from `@emacsah__facil-keystore.bak.jks` (commit `ab823d54`).
+- **2026-05-07 v1.2** : Added §6 ADI registration token + §7 GitHub Secrets reference. Created `with-adi-registration` config plugin for both mobile + inspector. Hardened `mobile-build.yml` to fail-fast when keystore secrets missing (was silently producing debug-signed APKs since 2026-05-02 — see commit `19e54900` regression).

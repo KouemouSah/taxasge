@@ -92,7 +92,8 @@
           "organization": "taxasge",
           "project": "react-native"
         }
-      ]
+      ],
+      "./plugins/with-adi-registration"
     ],
     "experiments": {
       "typedRoutes": true
