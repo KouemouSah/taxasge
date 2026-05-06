@@ -7,8 +7,15 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { Appbar, Divider, FAB, SegmentedButtons, Searchbar } from 'react-native-paper';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { ActivityIndicator, Appbar, Divider, FAB, SegmentedButtons, Searchbar } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -124,52 +131,56 @@ export default function VaultHomeScreen() {
   );
 
   // ----- Render bodies per tab ---------------------------------------------
-  // Bug specific to this screen: large vertical gap between the filter chips
-  // row and the first visible item, with all items appearing pushed to the
-  // bottom of the visible area (see debug/tesoro/post-fix/m1.jpg, m2.jpg,
-  // 2.jpg, 3.jpg, 4.jpg, 5.jpg captures dated 2026-04-30 13:39+).
+  // FINAL FIX (2026-05-02 — Option 2 after Option 1A failed on device).
   //
-  // Root cause (revised diagnosis 2026-05-02):
-  //   This screen stacks ~270dp of fixed-height components ABOVE the FlatList
-  //   (Appbar 56dp + DocumentQuotaBar 50dp + tabsRow 56dp + Searchbar 52dp
-  //    [uploads only] + DocumentFilterChips 56dp). On Android, when the
-  //   FlatList carries `style={flex:1}` AND `contentContainerStyle={flexGrow:1}`,
-  //   this double-stretch combined with the heavy header stack confuses the
-  //   layout calculator: the inner content container ends up taller than the
-  //   actual available area, and items render bottom-aligned within that
-  //   over-stretched container.
+  // Bug history:
+  //   The 3 lists used <FlatList style={flex:1}/> wrapped under a heavy
+  //   ~270dp header stack (Appbar + QuotaBar + Tabs + Search + Chips). On
+  //   Samsung Android devices, this combination produced a large empty gap
+  //   between the chips row and the first visible item; users reported
+  //   items "disappearing under a card" when scrolling up, which suggests
+  //   the FlatList's virtualisation window was clipping items mid-render
+  //   (post-fix captures: m1, m2, 2-5.jpg).
   //
-  //   Why /payments and /requests don't suffer the same bug despite using
-  //   `flexGrow:1`: their pre-FlatList stack is much smaller (~120dp: just a
-  //   header + a chip row). The over-stretch is masked by the available
-  //   space matching the calculation.
+  //   Option 1A (drop flexGrow:1, keep flex:1) was attempted in commit
+  //   ab1d20a1 but did NOT fix the bug on real devices.
   //
-  //   Why the dashboard /(tabs)/index.tsx doesn't suffer: it uses
-  //   `<View><RecentPaymentsList items.map()></View>` (NOT a FlatList), so
-  //   flex/flexGrow stretching doesn't apply.
+  //   The /payments and /requests screens use the same FlatList pattern
+  //   and do NOT bug — the difference is the much shorter pre-FlatList
+  //   stack on those screens. The dashboard /(tabs)/index.tsx uses
+  //   <View><RecentPaymentsList items.map()></View> (no FlatList) and
+  //   never bugs.
   //
-  // Fix (Option 1A — minimal surface area):
-  //   Drop `flexGrow:1` from contentContainerStyle. Keep `style={flex:1}` on
-  //   the FlatList itself so it fills the residual vertical space below the
-  //   header stack. The inner content container then takes its natural
-  //   height (sum of items + paddings), so items stack from the top.
+  // Final fix (Option 2):
+  //   Replace FlatList with ScrollView + items.map(). No virtualisation,
+  //   no flex/flexGrow stretching, no measurement quirks. The vault list
+  //   is bounded by the user quota (≤100MB total → typically <200 docs),
+  //   so the perf cost of rendering everything inline is negligible.
   //
-  //   Empty state: DocumentEmptyState has its own `paddingTop:48 +
-  //   paddingBottom:24` (see vault/components/document-empty-state.tsx), so
-  //   it sits visually under the chips even when the contentContainer is
-  //   short. No need for flexGrow:1 to "fill" the empty area.
-  //
-  //   Virtualisation: keep `windowSize={21}` (large enough to avoid the RN
-  //   Android `removeClippedSubviews` bug where short lists unmount visible
-  //   items). Don't set `removeClippedSubviews` here — the perf gain is
-  //   negligible for <100 items and re-introducing it has historically
-  //   caused exactly this bug class.
-  const listContentStyle = useMemo(
+  //   Pull-to-refresh: ScrollView's `refreshControl` prop, identical UX.
+  //   Infinite scroll: onScroll handler triggers fetchNextPage near the
+  //   bottom — same threshold as before (0.4 = 40% from end).
+  //   Empty state: rendered inline when data.length === 0.
+  const contentContainerStyle = useMemo(
     () => ({
       paddingTop: 8,
       paddingBottom: 96 + insets.bottom,
     }),
     [insets.bottom],
+  );
+
+  // Trigger fetchNextPage when the user has scrolled within 40% of the bottom.
+  const handleScrollEndReached = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>, hasNextPage: boolean, isFetching: boolean, fetchNext: () => void) => {
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      // 40% of viewport height from the end (matches the previous
+      // FlatList onEndReachedThreshold={0.4} behaviour).
+      if (distanceFromBottom < layoutMeasurement.height * 0.4 && hasNextPage && !isFetching) {
+        fetchNext();
+      }
+    },
+    [],
   );
 
   const renderUploadsBody = () => {
@@ -178,29 +189,12 @@ export default function VaultHomeScreen() {
       ? search.data ?? []
       : (list.data?.pages ?? []).flatMap((p) => p.items);
     const refreshing = list.isRefetching && !list.isFetchingNextPage;
+    const isEmpty = data.length === 0;
 
     return (
-      <FlatList
+      <ScrollView
         style={styles.flex1}
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <DocumentListItem item={item} onPress={handleItemPress} />
-        )}
-        ItemSeparatorComponent={() => <Divider />}
-        ListEmptyComponent={
-          <DocumentEmptyState
-            variant="uploads"
-            onUpload={() => router.push('/documents/upload' as never)}
-          />
-        }
-        contentContainerStyle={listContentStyle}
-        onEndReached={() => {
-          if (!showSearch && list.hasNextPage && !list.isFetchingNextPage) {
-            list.fetchNextPage();
-          }
-        }}
-        onEndReachedThreshold={0.4}
+        contentContainerStyle={contentContainerStyle}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -209,61 +203,43 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
-        // P8.3 — perf knobs. removeClippedSubviews omitted intentionally:
-        // Android RN has a known bug that unmounts items that should be
-        // visible on lists shorter than ~2× the viewport, causing the
-        // bottom-alignment glitch (see listContentStyle comment above).
-        // The lists in this screen are typically <100 items, so the perf
-        // gain of removeClippedSubviews is negligible vs the bug risk.
-        initialNumToRender={15}
-        maxToRenderPerBatch={20}
-        windowSize={21}
-      />
+        onScroll={(e) =>
+          handleScrollEndReached(
+            e,
+            !showSearch && (list.hasNextPage ?? false),
+            list.isFetchingNextPage,
+            () => list.fetchNextPage(),
+          )
+        }
+        scrollEventThrottle={32}
+      >
+        {isEmpty ? (
+          <DocumentEmptyState
+            variant="uploads"
+            onUpload={() => router.push('/documents/upload' as never)}
+          />
+        ) : (
+          data.map((item, idx) => (
+            <View key={item.id}>
+              {idx > 0 ? <Divider /> : null}
+              <DocumentListItem item={item} onPress={handleItemPress} />
+            </View>
+          ))
+        )}
+        {list.isFetchingNextPage ? (
+          <ActivityIndicator style={{ paddingVertical: 16 }} color={colors.primary} />
+        ) : null}
+      </ScrollView>
     );
   };
 
   const renderGeneratedBody = () => {
     const data = generatedFilteredPages.flat();
+    const isEmpty = data.length === 0;
     return (
-      <FlatList
+      <ScrollView
         style={styles.flex1}
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          // Adapt the GeneratedDocumentResponse shape to the generic
-          // UserDocumentListItem the row renderer expects. `category` must be
-          // one of the upload-category enum values (DocumentListItem only uses
-          // it to pick an icon colour, with a 'default' fallback) — using
-          // 'other' is the cheapest way to satisfy the type without losing
-          // the dedicated icon path. `expiry_status: 'no_expiry'` matches the
-          // semantics for platform-generated PDFs (receipts, certificates).
-          const display: UserDocumentListItem = {
-            id: item.id,
-            document_type: item.generation_type,
-            category: 'other',
-            file_name: item.file_name,
-            display_name: item.title,
-            expiry_date: null,
-            days_until_expiry: null,
-            expiry_status: 'no_expiry',
-            status: 'active',
-            source: 'platform_generated',
-            thumbnail_path: null,
-            mime_type: 'application/pdf',
-            file_size_bytes: 0,
-            created_at: item.created_at,
-            is_verified: true,
-          };
-          return (
-            <DocumentListItem
-              item={display}
-              onPress={() => handleGeneratedPress(item)}
-            />
-          );
-        }}
-        ItemSeparatorComponent={() => <Divider />}
-        ListEmptyComponent={<DocumentEmptyState variant="generated" />}
-        contentContainerStyle={listContentStyle}
+        contentContainerStyle={contentContainerStyle}
         refreshControl={
           <RefreshControl
             refreshing={generated.isRefetching}
@@ -272,30 +248,53 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
-        initialNumToRender={15}
-        maxToRenderPerBatch={20}
-        windowSize={21}
-      />
+      >
+        {isEmpty ? (
+          <DocumentEmptyState variant="generated" />
+        ) : (
+          data.map((item, idx) => {
+            // Adapt the GeneratedDocumentResponse shape to the generic
+            // UserDocumentListItem the row renderer expects (see prior FlatList
+            // implementation for rationale on category / expiry_status).
+            const display: UserDocumentListItem = {
+              id: item.id,
+              document_type: item.generation_type,
+              category: 'other',
+              file_name: item.file_name,
+              display_name: item.title,
+              expiry_date: null,
+              days_until_expiry: null,
+              expiry_status: 'no_expiry',
+              status: 'active',
+              source: 'platform_generated',
+              thumbnail_path: null,
+              mime_type: 'application/pdf',
+              file_size_bytes: 0,
+              created_at: item.created_at,
+              is_verified: true,
+            };
+            return (
+              <View key={item.id}>
+                {idx > 0 ? <Divider /> : null}
+                <DocumentListItem
+                  item={display}
+                  onPress={() => handleGeneratedPress(item)}
+                />
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
     );
   };
 
   const renderAlertsBody = () => {
     const data = alerts.data ?? [];
+    const isEmpty = data.length === 0;
     return (
-      <FlatList
+      <ScrollView
         style={styles.flex1}
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <AlertListItem
-            alert={item}
-            onPress={handleAlertPress}
-            onLongPress={handleAlertLongPress}
-          />
-        )}
-        ItemSeparatorComponent={() => <Divider />}
-        ListEmptyComponent={<DocumentEmptyState variant="alerts" />}
-        contentContainerStyle={listContentStyle}
+        contentContainerStyle={contentContainerStyle}
         refreshControl={
           <RefreshControl
             refreshing={alerts.isRefetching}
@@ -304,7 +303,22 @@ export default function VaultHomeScreen() {
             tintColor={colors.primary}
           />
         }
-      />
+      >
+        {isEmpty ? (
+          <DocumentEmptyState variant="alerts" />
+        ) : (
+          data.map((item, idx) => (
+            <View key={item.id}>
+              {idx > 0 ? <Divider /> : null}
+              <AlertListItem
+                alert={item}
+                onPress={handleAlertPress}
+                onLongPress={handleAlertLongPress}
+              />
+            </View>
+          ))
+        )}
+      </ScrollView>
     );
   };
 
@@ -324,55 +338,69 @@ export default function VaultHomeScreen() {
   return (
     <SafeAreaView edges={['top']} style={[styles.root, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <Appbar.Header style={{ backgroundColor: colors.surface }}>
+      {/* Phase 10/A — disable Material elevation on Paper header + searchbar.
+          On Android these draw a 4dp/1dp drop-shadow that can visually clip
+          the first scrollable items below them, producing the "items hidden
+          under a card" effect reported on m1.jpg. payments/requests don't
+          use these Paper components at all, which is why they don't bug. */}
+      <Appbar.Header
+        style={{ backgroundColor: colors.surface, elevation: 0, shadowOpacity: 0 }}
+      >
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title={t('vault.title')} />
       </Appbar.Header>
 
-      {stats.data ? (
-        <DocumentQuotaBar
-          usedBytes={stats.data.quota_used_bytes}
-          maxBytes={stats.data.quota_max_bytes}
-        />
-      ) : null}
-
-      <View style={styles.tabsRow}>
-        <SegmentedButtons
-          value={tab}
-          onValueChange={(v) => setTab(v as VaultTabValue)}
-          buttons={[
-            { value: 'uploads', label: t('vault.tabs.uploads') },
-            { value: 'generated', label: t('vault.tabs.generated') },
-            { value: 'alerts', label: t('vault.tabs.alerts') },
-          ]}
-        />
-      </View>
-
-      {tab === 'uploads' ? (
-        <>
-          <Searchbar
-            placeholder={t('vault.search.placeholder')}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={styles.searchBar}
+      {/* Single non-elevated header wrapper — mirrors the payments/requests
+          pattern that doesn't bug. All sticky bits (quota, tabs, search,
+          chips) live in this one container so the scrolling body sits
+          flat below it without any shadow overlap. */}
+      <View style={styles.headerWrapper}>
+        {stats.data ? (
+          <DocumentQuotaBar
+            usedBytes={stats.data.quota_used_bytes}
+            maxBytes={stats.data.quota_max_bytes}
           />
-          {searchTerm.trim().length < 2 ? (
-            <DocumentFilterChips
-              tab="uploads"
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-            />
-          ) : null}
-        </>
-      ) : null}
+        ) : null}
 
-      {tab === 'generated' ? (
-        <DocumentFilterChips
-          tab="generated"
-          value={generationFilter}
-          onChange={setGenerationFilter}
-        />
-      ) : null}
+        <View style={styles.tabsRow}>
+          <SegmentedButtons
+            value={tab}
+            onValueChange={(v) => setTab(v as VaultTabValue)}
+            buttons={[
+              { value: 'uploads', label: t('vault.tabs.uploads') },
+              { value: 'generated', label: t('vault.tabs.generated') },
+              { value: 'alerts', label: t('vault.tabs.alerts') },
+            ]}
+          />
+        </View>
+
+        {tab === 'uploads' ? (
+          <>
+            <Searchbar
+              placeholder={t('vault.search.placeholder')}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              style={styles.searchBar}
+              elevation={0}
+            />
+            {searchTerm.trim().length < 2 ? (
+              <DocumentFilterChips
+                tab="uploads"
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        {tab === 'generated' ? (
+          <DocumentFilterChips
+            tab="generated"
+            value={generationFilter}
+            onChange={setGenerationFilter}
+          />
+        ) : null}
+      </View>
 
       {tab === 'uploads' ? renderUploadsBody() : null}
       {tab === 'generated' ? renderGeneratedBody() : null}
@@ -396,8 +424,17 @@ export default function VaultHomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  // Top-aligned content for every list state (full / 1-item / empty) — see
-  // listContentStyle in the component for the rationale.
+  // Phase 10/A — single non-elevated wrapper containing quota + tabs +
+  // search + chips. Mirrors the payments/requests structure (one View
+  // header, no Material elevation). Elevation 0 + shadowOpacity 0 are
+  // applied per-component (Appbar.Header + Searchbar) above; the wrapper
+  // itself just stacks them with no border or shadow.
+  headerWrapper: {
+    // No elevation, no border — purely a flex container.
+  },
+  // Used by each tab's body ScrollView so the FlatList → ScrollView
+  // migration keeps the same height behaviour (fills residual vertical
+  // space below the headerWrapper).
   flex1: { flex: 1 },
   tabsRow: { paddingHorizontal: 16, paddingVertical: 8 },
   searchBar: { marginHorizontal: 16, marginTop: 4, marginBottom: 4 },
