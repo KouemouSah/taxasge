@@ -135,3 +135,10 @@ Phase F = Tests E2E + Build AAB v1.0.0 + Internal Testing. Tous les pré-requis 
 ## 6. Changelog
 
 - **2026-05-02 v1.0** : Phase E livrée. 2 assets PNG générés (icon-512 + feature-graphic-1024x500). 8 screenshots existants sélectionnés. Captions × 3 langues prêts. Aucune capture nouvelle requise. 6 risques/gaps documentés (pas de blocker V1).
+- **2026-05-02 v1.1 (post-feedback user)** : Mises à jour suite retour user :
+  - Feature graphic v3 régénéré : hero text "Plataforma con IA para digitalizar sus procedimientos" (intègre IA), éléments montés ~30px, logo icon-512 en fondu arrière-plan droite (7% opacité, 600px partiellement clippé), chips + country pill aérés au pied
+  - 8 captures ES copiées dans `playstore-assets/screenshots-es/` (numérotées par ordre funnel) — accessibles à user pour vérification
+  - 8 captures FR copiées dans `playstore-assets/screenshots-fr/` (V1.1 multilingual store)
+  - Sélection ES revisée : 01=onboarding-hero (o1.jpg), 02=home (0.jpg), 03=AI welcome (8.jpg), 04=services catalog (1.jpg), 05=license simulator (5.jpg), 06=my requests (15.jpg), 07=bundle payment (18.jpg), 08=official receipt (f2.png)
+  - Scripts vidéo promo créés : `playstore-assets/video-promo/README.md` — 2 vidéos × 8s, format 9:16 vertical, prompts Veo 3 + Runway Flow détaillés, storyboards frame-by-frame, reference images mappées
+  - **Décision actée : PAS de copyright sur le feature graphic** (challenge expert) — copyright à mettre dans `Settings → About` de l'app mobile (Phase F follow-up) ou dans Privacy Policy (déjà fait Phase B)
