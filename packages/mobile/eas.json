@@ -12,6 +12,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "development"
       }
     },
     "preview": {
@@ -24,6 +27,7 @@
         "simulator": true
       },
       "env": {
+        "EXPO_PUBLIC_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app",
         "EXPO_PUBLIC_LOGROCKET_APP_ID": "$LOGROCKET_APP_ID",
         "EXPO_PUBLIC_BUILD_VERSION": "$EAS_BUILD_GIT_COMMIT_HASH",
@@ -45,6 +49,7 @@
         "gradleCommand": ":app:bundleRelease -Pandroid.enableMinifyInReleaseBuilds=true"
       },
       "env": {
+        "EXPO_PUBLIC_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://taxasge-backend-staging-392159428433.us-central1.run.app",
         "EXPO_PUBLIC_LOGROCKET_APP_ID": "$LOGROCKET_APP_ID",
         "EXPO_PUBLIC_BUILD_VERSION": "$EAS_BUILD_GIT_COMMIT_HASH",

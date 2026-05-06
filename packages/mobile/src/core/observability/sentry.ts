@@ -61,10 +61,16 @@ export function initSentry(): void {
 
   Sentry.init({
     dsn: SENTRY_DSN,
-    // Bumping 'environment' lets us split staging vs production in the dashboard.
-    environment: process.env.EXPO_PUBLIC_API_URL?.includes('staging')
-      ? 'staging'
-      : 'production',
+    // Phase 10/D — split development / preview / production / staging in the
+    // Sentry dashboard. The EXPO_PUBLIC_ENV env var is set per build profile
+    // in `packages/mobile/eas.json` (development = unset, preview = "preview",
+    // production = "production"). Falling back to URL-based detection for
+    // backwards compat with any pre-D11 build still in distribution.
+    environment:
+      process.env.EXPO_PUBLIC_ENV ??
+      (process.env.EXPO_PUBLIC_API_URL?.includes('staging')
+        ? 'staging'
+        : 'production'),
     // Release identifier — falls back to expo-constants version if EAS doesn't pin it.
     release:
       Constants.expoConfig?.version ??
