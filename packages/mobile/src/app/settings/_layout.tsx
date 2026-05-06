@@ -40,6 +40,10 @@ export default function SettingsLayout() {
         name="sessions"
         options={{ title: t('profile.sessions') }}
       />
+      <Stack.Screen
+        name="about"
+        options={{ title: t('settings.about.title', { defaultValue: 'About' }) }}
+      />
     </Stack>
   );
 }

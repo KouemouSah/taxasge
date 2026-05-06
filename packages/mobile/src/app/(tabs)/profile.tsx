@@ -408,6 +408,13 @@ function ProfileScreenContent() {
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => router.push('/legal/cookies' as never)}
           />
+          <List.Item
+            title={t('settings.about.title', { defaultValue: 'About Facil' })}
+            description={t('settings.about.subtitle', { defaultValue: 'Version, copyright, contact' })}
+            left={(props) => <List.Icon {...props} icon="information-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/settings/about' as never)}
+          />
         </View>
 
         <Divider />

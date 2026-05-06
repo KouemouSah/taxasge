@@ -468,6 +468,22 @@
         "wrongPassword": "Contraseña incorrecta.",
         "alreadyDeleted": "La cuenta ya está marcada para eliminación."
       }
+    },
+    "about": {
+      "title": "Acerca de Facil",
+      "subtitle": "Versión, copyright, contacto",
+      "tagline": "Plataforma adaptable para la digitalización de procedimientos administrativos",
+      "version": "Versión",
+      "deployment": "Despliegue actual",
+      "country": "República de Guinea Ecuatorial",
+      "partner": "En colaboración con la Dirección General de Impuestos (DGI)",
+      "framework": "Framework",
+      "author": "Autor",
+      "contact": "Contacto",
+      "repo": "Repositorio fuente",
+      "copyrightSuffix": "Todos los derechos reservados.",
+      "licenseNote": "Facil es un framework propietario. La instancia actual está desplegada para la República de Guinea Ecuatorial.",
+      "builtWith": "Construido con"
     }
   },
   "roles": {

@@ -468,6 +468,22 @@
         "wrongPassword": "Incorrect password.",
         "alreadyDeleted": "Account already scheduled for deletion."
       }
+    },
+    "about": {
+      "title": "About Facil",
+      "subtitle": "Version, copyright, contact",
+      "tagline": "Adaptable framework for digitizing administrative procedures",
+      "version": "Version",
+      "deployment": "Current deployment",
+      "country": "Republic of Equatorial Guinea",
+      "partner": "In partnership with the General Directorate of Taxes (DGI)",
+      "framework": "Framework",
+      "author": "Author",
+      "contact": "Contact",
+      "repo": "Source repository",
+      "copyrightSuffix": "All rights reserved.",
+      "licenseNote": "Facil is a proprietary framework. The current deployment instance is operated for the Republic of Equatorial Guinea.",
+      "builtWith": "Built with"
     }
   },
   "roles": {
