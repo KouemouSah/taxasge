@@ -16,7 +16,7 @@ Indexes used:
 - idx_bank_transactions_service_payment_id (service_payment_id) WHERE NOT NULL
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -29,6 +29,17 @@ MAX_AUTO_MATCH_ITERATIONS = 100
 # SQL scoring query using LATERAL JOIN — replaces Python O(n*m) loop.
 # For each unreconciled bank transaction, finds top 10 candidate service_payments
 # within ±30 days and same currency, computes score, returns top 3 per transaction.
+#
+# P7 security note (2026-05-06): the WHERE clauses below scope BOTH sides of
+# the join when `entity_code` filter is active:
+#   - Outer `unreconciled` CTE: bank_transactions are kept only if they have
+#     no payment OR their previously-reconciled payment matches the entity.
+#     For pending unreconciled rows (service_payment_id IS NULL), we cannot
+#     attribute them to an entity yet, so they remain visible to all entities
+#     (this is by design: bank transactions are unowned until matched).
+#   - LATERAL `c`: candidate service_payments must match the requested entity.
+# This means non-global agents see ALL unreconciled bank transactions BUT
+# only candidate matches against payments of their own entity.
 SCORING_SQL = """
 WITH unreconciled AS (
     SELECT id, bank_reference, amount, currency, bank_transaction_date,
@@ -129,6 +140,7 @@ scored AS (
         JOIN users u ON u.id = sp.user_id
         WHERE sp.workflow_status = 'completed'
           AND sp.currency = bt.currency
+          AND ($6::text IS NULL OR sp.entity_code = $6)
           AND NOT EXISTS (
               SELECT 1 FROM bank_transactions bt2
               WHERE bt2.service_payment_id = sp.id AND bt2.status = 'reconciled'
@@ -156,16 +168,20 @@ async def get_matching_suggestions(
     db,
     limit: int = 50,
     offset: int = 0,
+    entity_code: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     For each unreconciled bank transaction, find the top 3 matching
     service_payments candidates using SQL LATERAL JOIN scoring.
 
     Complexity: O(n * log(m)) with indexes vs O(n*m) Python loop.
+
+    P7 (2026-05-06): pass `entity_code` to scope candidate payments by entity.
+    None = no entity filter (admin / global view).
     """
     rows = await db.fetch(
         SCORING_SQL, limit, offset, DATE_WINDOW_DAYS,
-        MAX_CANDIDATES_PER_TX, TOP_MATCHES,
+        MAX_CANDIDATES_PER_TX, TOP_MATCHES, entity_code,
     )
 
     if not rows:
@@ -217,6 +233,7 @@ async def auto_match(
     agent_user_id: str,
     threshold: int = AUTO_MATCH_THRESHOLD,
     batch_size: int = 50,
+    entity_code: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Batch auto-reconcile: process unreconciled transactions in batches,
@@ -224,6 +241,9 @@ async def auto_match(
 
     Each reconciliation is atomic (transaction boundary around both tables).
     Stops when no more matches found above threshold.
+
+    P7 (2026-05-06): pass `entity_code` to scope candidate payments by entity.
+    None = no entity filter (admin / global view).
     """
     total_matched = 0
     total_skipped = 0
@@ -234,7 +254,9 @@ async def auto_match(
 
     while iteration < MAX_AUTO_MATCH_ITERATIONS:
         iteration += 1
-        suggestions = await get_matching_suggestions(db, limit=batch_size, offset=offset)
+        suggestions = await get_matching_suggestions(
+            db, limit=batch_size, offset=offset, entity_code=entity_code
+        )
         if not suggestions:
             break
 

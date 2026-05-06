@@ -81,6 +81,7 @@ class TreasuryAnomalyService:
         self,
         db: asyncpg.Connection,
         detection_types: Optional[List[str]] = None,
+        entity_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run anomaly detection across all types with transaction isolation.
@@ -88,10 +89,21 @@ class TreasuryAnomalyService:
         Args:
             db: Database connection
             detection_types: Optional list of specific types to detect
+            entity_code: Optional entity scope. None = global (all entities).
+                P7 (2026-05-06): currently accepted for API compatibility but
+                NOT yet propagated to the individual _detect_* methods. The
+                generated anomalies are global until those methods filter on
+                sp.entity_code. Tracked as TODO P7.D.2.
 
         Returns:
             Dict with detection results by type
         """
+        if entity_code:
+            logger.info(
+                f"run_detection called with entity_code={entity_code} — "
+                f"WARN: per-entity scoping not yet propagated to detection "
+                f"methods (TODO P7.D.2). Detections will run globally."
+            )
         results = {
             "detected_at": datetime.now().isoformat(),
             "anomalies_found": 0,

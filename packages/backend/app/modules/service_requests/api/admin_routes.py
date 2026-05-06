@@ -3132,6 +3132,153 @@ def _authorize_payment_action(tctx: TreasuryAgentContext, payment: Mapping) -> N
     )
 
 
+async def _authorize_export_action(
+    db: asyncpg.Connection,
+    tctx: TreasuryAgentContext,
+    export_id: str,
+) -> None:
+    """Raise 403 if the current agent cannot read/download/manage this export.
+
+    Background (P7 hotfix — 2026-05-06):
+      `treasury_exports` has no `entity_code` column. Scope is derived from
+      `treasury_exports.requested_by` -> `agent_profiles.entity_id` ->
+      `entities.code`. This is a best-effort check: if the requester has no
+      active agent_profile (e.g. global admin without profile), the export
+      is treated as global and only visible to global-scope viewers.
+
+    Authorization matrix:
+      1. Global scope (treasury.view_all): any export
+      2. Entity supervisor / scoped agent: only exports whose requester
+         belongs to the same entity (e.code).
+    """
+    if tctx.has_global_scope:
+        # Verify export exists at minimum — return 404 instead of 403 if missing
+        exists = await db.fetchval(
+            "SELECT 1 FROM treasury_exports WHERE id = $1::uuid", export_id
+        )
+        if not exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Export not found: {export_id}",
+            )
+        return
+
+    row = await db.fetchrow(
+        """
+        SELECT te.id, e.code AS owner_entity_code
+        FROM treasury_exports te
+        LEFT JOIN agent_profiles ap
+            ON ap.user_id = te.requested_by AND ap.is_active = true
+        LEFT JOIN entities e ON e.id = ap.entity_id
+        WHERE te.id = $1::uuid
+        LIMIT 1
+        """,
+        export_id,
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Export not found: {export_id}",
+        )
+
+    owner_entity_code = row["owner_entity_code"]
+    if not tctx.entity_code:
+        # Caller has no entity scope and no global perm: deny by default.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Not authorized: export {export_id} requires entity scope "
+                f"(caller has none, owner entity {owner_entity_code!r})"
+            ),
+        )
+
+    # If the requester had no agent_profile (owner_entity_code is NULL), only
+    # global admins can see it — already handled above. Scoped users get 403.
+    if owner_entity_code is None or owner_entity_code != tctx.entity_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Not authorized: export entity {owner_entity_code!r} is "
+                f"outside your scope (role entity {tctx.entity_code!r})"
+            ),
+        )
+
+
+async def _authorize_anomaly_action(
+    db: asyncpg.Connection,
+    tctx: TreasuryAgentContext,
+    anomaly_id: str,
+) -> None:
+    """Raise 403 if the current agent cannot read/update this anomaly.
+
+    Polymorphic check (P7 hotfix — 2026-05-06):
+      `payment_anomalies` is polymorphic (entity_type + entity_id). For
+      entity_type='service_payment', the linked payment's entity_code drives
+      scope. For other entity_types (bank_transaction, reconciliation),
+      treasury domain is shared — only global-scope users see them, scoped
+      users are denied (defensive default).
+    """
+    if tctx.has_global_scope:
+        exists = await db.fetchval(
+            "SELECT 1 FROM payment_anomalies WHERE id = $1::uuid", anomaly_id
+        )
+        if not exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Anomaly not found: {anomaly_id}",
+            )
+        return
+
+    row = await db.fetchrow(
+        """
+        SELECT pa.id, pa.entity_type, pa.entity_id,
+               sp.entity_code AS payment_entity_code
+        FROM payment_anomalies pa
+        LEFT JOIN service_payments sp
+            ON pa.entity_type = 'service_payment' AND sp.id = pa.entity_id
+        WHERE pa.id = $1::uuid
+        LIMIT 1
+        """,
+        anomaly_id,
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Anomaly not found: {anomaly_id}",
+        )
+
+    if not tctx.entity_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Not authorized: anomaly {anomaly_id} requires entity scope"
+            ),
+        )
+
+    # Service-payment anomaly: must share entity_code with caller
+    if row["entity_type"] == "service_payment":
+        payment_entity = row["payment_entity_code"]
+        if payment_entity is None or payment_entity != tctx.entity_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Not authorized: anomaly entity {payment_entity!r} is "
+                    f"outside your scope (role entity {tctx.entity_code!r})"
+                ),
+            )
+        return
+
+    # Non-payment anomaly (bank_transaction, reconciliation): treasury-shared
+    # domain — only global-scope users may act. Scoped users denied.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=(
+            f"Not authorized: anomaly type {row['entity_type']!r} is shared "
+            f"treasury domain — requires treasury.view_all permission"
+        ),
+    )
+
+
 # Backward-compat wrappers (used by endpoints not yet migrated)
 async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional[str]:
     """Get agent_profile_id from user_id. Prefer _get_treasury_context for new code."""
@@ -3793,6 +3940,7 @@ async def get_payment_details(
                 u.first_name || ' ' || u.last_name
             ) AS beneficiary_name,
             sp.assigned_agent_id,
+            sp.entity_code,
             COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
@@ -3809,6 +3957,11 @@ async def get_payment_details(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Payment not found: {payment_id}"
         )
+
+    # P7 security (2026-05-06): scope check by entity. Without this, any
+    # treasury-permitted user could read any payment's details by UUID.
+    tctx = await _get_treasury_context(db, current_user.id)
+    _authorize_payment_action(tctx, row)
 
     return PendingPaymentResponse(
         payment_id=str(row["payment_id"]),
@@ -4406,11 +4559,17 @@ async def reassign_payment(
 
     # Verify payment exists and is in actionable status
     payment = await db.fetchrow(
-        "SELECT id, workflow_status, assigned_agent_id FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, workflow_status, assigned_agent_id, entity_code "
+        "FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
     if not payment:
         payment_not_found(payment_id)
+
+    # P7 security (2026-05-06): scope check on source payment. A non-global
+    # supervisor must NOT be able to reassign payments belonging to another
+    # entity (the existing target check only validated the destination agent).
+    _authorize_payment_action(tctx, payment)
 
     if payment["workflow_status"] not in ("pending_agent_review", "escalated_supervisor"):
         raise TreasuryError(
@@ -4695,6 +4854,36 @@ async def validate_batch_payments(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail_override=f"Lote no encontrado: {batch_id}"
             )
+
+        # P7 security (2026-05-06): for non-global agents, every payment in
+        # the batch must belong to the caller's entity. Block if any payment
+        # in the batch leaks across entity scope (or has NULL entity_code).
+        if not tctx.has_global_scope:
+            if not tctx.entity_code:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        f"Not authorized: batch {batch_id} requires entity scope"
+                    ),
+                )
+            mismatched = await db.fetchval(
+                """
+                SELECT COUNT(*) FROM service_payments
+                WHERE batch_id = $1::uuid
+                  AND (entity_code IS NULL OR entity_code <> $2)
+                """,
+                batch_id,
+                tctx.entity_code,
+            )
+            if mismatched and mismatched > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        f"Not authorized: batch {batch_id} contains "
+                        f"{mismatched} payment(s) outside your entity scope "
+                        f"({tctx.entity_code!r})"
+                    ),
+                )
 
         # 2. Count pending payments in this batch
         pending_count = await db.fetchval("""
@@ -5563,7 +5752,9 @@ async def get_payment_audit_history(
             sr.reference AS service_request_reference,
             sr.workflow_code,
             sp.workflow_status,
-            sp.created_at
+            sp.created_at,
+            sp.assigned_agent_id,
+            sp.entity_code
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
         WHERE sp.id = $1::uuid
@@ -5574,6 +5765,11 @@ async def get_payment_audit_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Payment not found: {payment_id}"
         )
+
+    # P7 security (2026-05-06): scope check by entity. Audit history is
+    # sensitive (reveals validators, comments, IPs).
+    tctx = await _get_treasury_context(db, current_user.id)
+    _authorize_payment_action(tctx, payment)
 
     # Get audit entries
     audit_rows = await db.fetch("""
@@ -7575,6 +7771,11 @@ async def get_anomaly(
     _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get anomaly by ID."""
+    # P7 security (2026-05-06): scope check by polymorphic entity. Without
+    # this, an AYUNT supervisor could read TESORO anomalies by UUID.
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_anomaly_action(db, tctx, anomaly_id)
+
     row = await db.fetchrow("""
         SELECT
             pa.id,
@@ -7744,6 +7945,11 @@ async def update_anomaly_status(
     _=Depends(permission_required("treasury_anomaly.update"))
 ):
     """Update anomaly status."""
+    # P7 security (2026-05-06): scope check. An AYUNT supervisor must NOT
+    # be able to resolve a TESORO anomaly.
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_anomaly_action(db, tctx, anomaly_id)
+
     # Get current anomaly
     current = await db.fetchrow(
         "SELECT status::text as status FROM payment_anomalies WHERE id = $1::uuid",
@@ -7822,6 +8028,10 @@ async def get_anomaly_actions(
     _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get anomaly action history."""
+    # P7 security (2026-05-06): scope check.
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_anomaly_action(db, tctx, anomaly_id)
+
     rows = await db.fetch("""
         SELECT
             aa.id,
@@ -7875,6 +8085,11 @@ async def add_anomaly_comment(
     comment = body.get("comment")
     if not comment:
         comment_required()
+
+    # P7 security (2026-05-06): scope check (also returns 404 if not found,
+    # so we can drop the redundant existence probe below).
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_anomaly_action(db, tctx, anomaly_id)
 
     # Verify anomaly exists
     exists = await db.fetchval(
@@ -7948,10 +8163,22 @@ async def run_anomaly_detection(
 
     detection_types = body.detection_types if body else None
 
+    # P7 security (2026-05-06): pass entity_code so the service can scope
+    # the detection. Note: the service currently accepts but does not yet
+    # propagate this filter to all _detect_* methods (logged as WARN). Until
+    # then, detection runs globally regardless of caller — anomaly LIST and
+    # detail endpoints already enforce read-side scope. TODO P7.D.2.
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
     try:
         results = await treasury_anomaly_service.run_detection(
             db=db,
-            detection_types=detection_types
+            detection_types=detection_types,
+            entity_code=target_entity_code,
         )
 
         return AnomalyDetectionResponse(
@@ -8088,6 +8315,14 @@ async def list_treasury_exports(
     _=Depends(permission_required("treasury_export.view"))
 ):
     """List treasury exports with filters."""
+    # P7 security (2026-05-06): scope by entity via requested_by JOIN. Without
+    # this, supervisors of any entity could enumerate all entities' exports.
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
     conditions = []
     params = []
     param_count = 0
@@ -8111,6 +8346,17 @@ async def list_treasury_exports(
         param_count += 1
         conditions.append(f"te.period_end <= ${param_count}::date")
         params.append(datetime.strptime(period_end, '%Y-%m-%d').date())
+
+    if target_entity_code:
+        param_count += 1
+        conditions.append(
+            f"te.requested_by IN ("
+            f"SELECT ap.user_id FROM agent_profiles ap "
+            f"JOIN entities e ON e.id = ap.entity_id "
+            f"WHERE e.code = ${param_count} AND ap.is_active = true"
+            f")"
+        )
+        params.append(target_entity_code)
 
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
@@ -8286,6 +8532,18 @@ async def generate_treasury_export(
         logger.error(f"Failed to import treasury_export_service: {e}")
         raise HTTPException(status_code=500, detail=f"Export service unavailable: {e}")
 
+    # P7 security (2026-05-06): force entity_code on filters when caller is
+    # scoped. Without this, a TESORO supervisor could pass filters.entity_code
+    # = 'AYUNTAMIENTO' in the body and exfiltrate AYUNT data via export.
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_global_scope and tctx.entity_code:
+        if request.filters is None:
+            request.filters = ExportFilters(entity_code=tctx.entity_code)
+        else:
+            # Force-overwrite any caller-supplied entity_code (defensive: don't
+            # raise — silently coerce so a malformed UI cannot bypass).
+            request.filters.entity_code = tctx.entity_code
+
     # Validate period
     start_date = datetime.strptime(request.period_start, '%Y-%m-%d').date()
     end_date = datetime.strptime(request.period_end, '%Y-%m-%d').date()
@@ -8435,6 +8693,10 @@ async def get_treasury_export(
     _=Depends(permission_required("treasury_export.view"))
 ):
     """Get treasury export details."""
+    # P7 security (2026-05-06): scope check by export owner's entity.
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_export_action(db, tctx, export_id)
+
     row = await db.fetchrow("""
         SELECT
             te.id,
@@ -8509,6 +8771,12 @@ async def download_treasury_export(
     """Download treasury export file — serves file content directly."""
     from fastapi.responses import StreamingResponse
     import io as _io
+
+    # P7 security (2026-05-06): scope check BEFORE serving file content. This
+    # is the most critical leak in the export flow because the file contains
+    # raw payment data of another entity.
+    tctx = await _get_treasury_context(db, current_user.id)
+    await _authorize_export_action(db, tctx, export_id)
 
     # Get export details
     row = await db.fetchrow("""
@@ -9458,7 +9726,17 @@ async def get_reconciliation_suggestions(
     """Get automated matching suggestions for bank reconciliation."""
     from ..services.treasury_reconciliation_service import get_matching_suggestions
 
-    suggestions = await get_matching_suggestions(db, limit=limit)
+    # P7 security (2026-05-06): scope candidate payments by entity. Without
+    # this, a TESORO supervisor could see suggestions matching AYUNT payments.
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
+    suggestions = await get_matching_suggestions(
+        db, limit=limit, entity_code=target_entity_code
+    )
     return {"suggestions": suggestions, "count": len(suggestions)}
 
 
@@ -9477,7 +9755,19 @@ async def auto_match_reconciliation(
     from ..services.treasury_reconciliation_service import auto_match
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
-    result = await auto_match(db, str(user_id), threshold=threshold)
+
+    # P7 security (2026-05-06): scope candidate payments by entity. Without
+    # this, auto-match could reconcile a TESORO bank tx against an AYUNT
+    # payment.
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
+    result = await auto_match(
+        db, str(user_id), threshold=threshold, entity_code=target_entity_code
+    )
     return result
 
 
