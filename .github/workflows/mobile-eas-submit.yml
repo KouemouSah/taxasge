@@ -1,0 +1,165 @@
+# ============================================================================
+# Facil Mobile — EAS Submit (Play Console upload)
+# ============================================================================
+# Submits the latest production AAB built on EAS Cloud to Google Play Console
+# (Internal Testing track by default, configurable). Decouples submit from
+# build so we can re-submit an existing AAB without rebuilding it (saves EAS
+# build credits).
+#
+# Triggers:
+#   - workflow_dispatch (manual): submit any specific build by ID, or the
+#     latest production build (default).
+#   - tag push v*.*.* (after `mobile-eas-build.yml` finishes): auto-submit
+#     once the build is FINISHED.
+#
+# Required GitHub Secrets:
+#   EXPO_TOKEN                        — Expo personal access token (already exists)
+#   GOOGLE_PLAY_SA_JSON_BASE64        — base64 of the GCP play-publisher
+#                                       service account JSON key. Synced from
+#                                       Secret Manager `google-play-service-account`
+#                                       (project `taxasge-dev`).
+#
+# Pre-requisite (one-off, manual on Google Play Console):
+#   Invite `play-publisher@taxasge-dev.iam.gserviceaccount.com` as a user with
+#   "Manage testing tracks" permission for the Facil app (com.taxasge.app).
+#   Allow ~24h for propagation before the first submit will succeed.
+#
+# Output:
+#   AAB visible in Play Console → Internal Testing → Releases.
+#   Promotion to Production track stays MANUAL (V1 — gated by user review).
+# ============================================================================
+
+name: Mobile EAS Submit (Play Console)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: 'EAS build ID to submit (leave empty for --latest)'
+        required: false
+        type: string
+      track:
+        description: 'Play Console track'
+        required: true
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+  workflow_run:
+    workflows: ['Mobile EAS Build (Cloud)']
+    types: [completed]
+
+concurrency:
+  group: mobile-eas-submit-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  WORKING_DIR: packages/mobile
+
+jobs:
+  submit:
+    name: Submit AAB to Play Console
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only auto-submit on workflow_run if the trigger build was on a tag push
+    # (i.e. a release) AND it succeeded. Manual dispatch always runs.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: cd ${{ env.WORKING_DIR }} && npm ci --prefer-offline
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Decode service account JSON to expected path
+        # eas.json submit.production.android.serviceAccountKeyPath references
+        # ./google-play-service-account.json (relative to packages/mobile).
+        # We materialise it from the GitHub secret base64 just before submit
+        # and remove it after — never committed to git, never persisted to
+        # disk beyond the workflow run.
+        env:
+          B64: ${{ secrets.GOOGLE_PLAY_SA_JSON_BASE64 }}
+        run: |
+          if [ -z "$B64" ]; then
+            echo "::error::GOOGLE_PLAY_SA_JSON_BASE64 secret is missing. Cannot submit." >&2
+            exit 1
+          fi
+          echo "$B64" | base64 -d > "${{ env.WORKING_DIR }}/google-play-service-account.json"
+          # Sanity: validate JSON structure (must contain "type": "service_account")
+          if ! grep -q '"type": "service_account"' "${{ env.WORKING_DIR }}/google-play-service-account.json"; then
+            echo "::error::Decoded JSON does not look like a service-account key." >&2
+            rm -f "${{ env.WORKING_DIR }}/google-play-service-account.json"
+            exit 1
+          fi
+          # Verify file size sanity (typical key ~2.3KB)
+          SIZE=$(wc -c < "${{ env.WORKING_DIR }}/google-play-service-account.json")
+          if [ "$SIZE" -lt 1500 ] || [ "$SIZE" -gt 5000 ]; then
+            echo "::warning::Decoded service-account JSON size = $SIZE bytes (expected 1.5-5KB)."
+          fi
+
+      - name: Resolve track + build_id
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TRACK="${{ inputs.track }}"
+            BUILD_ID="${{ inputs.build_id }}"
+          else
+            # workflow_run trigger after a tag-push build → internal track
+            TRACK="internal"
+            BUILD_ID=""
+          fi
+          echo "track=$TRACK" >> $GITHUB_OUTPUT
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+
+      - name: Submit to Play Console (${{ steps.params.outputs.track }})
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          ARGS="--profile production --platform android --non-interactive"
+          # Override track via inline eas.json modification using --json-output
+          # is not supported by EAS CLI; we override via a CLI flag-equivalent
+          # by patching the runtime profile track in eas.json before submit.
+          if [ "${{ steps.params.outputs.track }}" != "internal" ]; then
+            node -e "
+              const fs=require('fs');
+              const cfg=JSON.parse(fs.readFileSync('eas.json','utf8'));
+              cfg.submit.production.android.track='${{ steps.params.outputs.track }}';
+              fs.writeFileSync('eas.json',JSON.stringify(cfg,null,2));
+              console.log('Patched eas.json submit track to ${{ steps.params.outputs.track }}');
+            "
+          fi
+          if [ -n "${{ steps.params.outputs.build_id }}" ]; then
+            ARGS="$ARGS --id ${{ steps.params.outputs.build_id }}"
+          else
+            ARGS="$ARGS --latest"
+          fi
+          echo "Running: eas submit $ARGS"
+          eas submit $ARGS
+
+      - name: Cleanup service account JSON
+        if: always()
+        run: |
+          rm -f "${{ env.WORKING_DIR }}/google-play-service-account.json"
+          # Also revert any track override on eas.json (don't commit drift)
+          cd ${{ env.WORKING_DIR }} && git checkout -- eas.json 2>/dev/null || true
