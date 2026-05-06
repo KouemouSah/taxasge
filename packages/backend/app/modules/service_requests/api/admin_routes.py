@@ -7852,17 +7852,58 @@ async def create_anomaly(
     _=Depends(permission_required("treasury_anomaly.create"))
 ):
     """Create manual anomaly."""
+    # P7 follow-up (2026-05-06): scope check before allowing creation, so
+    # a scoped supervisor cannot fabricate an anomaly on another entity's
+    # payment by guessing/leaking a UUID. Mirrors _authorize_anomaly_action
+    # used by the read/update endpoints.
+    tctx = await _get_treasury_context(db, current_user.id)
+
     # Get payment reference if entity is service_payment
     payment_reference = None
     service_request_id = None
     if body.entity_type == "service_payment":
         payment = await db.fetchrow(
-            "SELECT payment_reference, service_request_id FROM service_payments WHERE id = $1::uuid",
+            "SELECT payment_reference, service_request_id, entity_code "
+            "FROM service_payments WHERE id = $1::uuid",
             body.entity_id
         )
-        if payment:
-            payment_reference = payment["payment_reference"]
-            service_request_id = payment["service_request_id"]
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service payment not found: {body.entity_id}",
+            )
+        # Cross-entity guard
+        if (
+            not tctx.has_global_scope
+            and payment["entity_code"]
+            and tctx.entity_code
+            and payment["entity_code"] != tctx.entity_code
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Not authorized: payment entity {payment['entity_code']!r} "
+                    f"is outside your scope (role entity {tctx.entity_code!r})"
+                ),
+            )
+        if not tctx.has_global_scope and not tctx.entity_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized: caller has no entity scope",
+            )
+        payment_reference = payment["payment_reference"]
+        service_request_id = payment["service_request_id"]
+    else:
+        # Non-payment anomalies (bank_transaction, reconciliation) are
+        # treasury-domain shared resources — restrict creation to global scope.
+        if not tctx.has_global_scope:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Not authorized: creating a {body.entity_type!r} anomaly "
+                    f"requires treasury.view_all (global scope)"
+                ),
+            )
 
     # Insert anomaly
     row = await db.fetchrow("""

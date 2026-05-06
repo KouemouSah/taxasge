@@ -57,6 +57,30 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       email_verified: authData.user.email_verified ?? false,
     }
 
+    // Bug 4 follow-up (2026-05-06): when an agent/admin lands on the bare
+    // `/dashboard` URL (citizen route), redirect them to their proper home
+    // BEFORE rendering the layout sidebar with citizen affordances. This
+    // keeps `isLoading=true` so the loader stays visible during the
+    // redirect (no flicker of the citizen Quick Actions, no
+    // ipsa-inconsistent role-based routing). Page-level `dashboard/page.tsx`
+    // also redirects (defense in depth).
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname
+      // Strip locale prefix to get the canonical path (`/es/dashboard` → `/dashboard`)
+      const canonical = path.replace(/^\/[a-z]{2}/, '')
+      const role = (userData.role || '').toLowerCase()
+      if (canonical === '/dashboard' || canonical === '/dashboard/') {
+        if (role === 'admin') {
+          router.replace(`/${locale}/dashboard/admin`)
+          return
+        }
+        if (role === 'agent' || role.startsWith('supervisor_')) {
+          router.replace(`/${locale}/dashboard/supervisor`)
+          return
+        }
+      }
+    }
+
     setUser(userData as User)
     setIsLoading(false)
   }, [router, locale])
