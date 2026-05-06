@@ -18,20 +18,22 @@
 | **App or game** | App |
 | **Free or paid** | Free |
 | **Category** | Finance |
-| **Tags** | Tax, Government services, Equatorial Guinea, Fiscal |
+| **Tags** | Workflow automation, Document processing, Administrative procedures, Digital government, Fiscal |
 | **Email** | `kouemou.sah@gmail.com` (developer contact) |
 | **Phone** (optional) | _laisser vide ou numéro support_ |
-| **Website** | `https://taxasge-frontend-staging-392159428433.us-central1.run.app/` (idéalement custom domain `taxasge.gob.gq`) |
+| **Website** | `https://taxasge-frontend-staging-392159428433.us-central1.run.app/` (idéalement custom domain à confirmer) |
 
 ---
 
 ## 2. Store Listing — Short description (≤80 chars × 3 langues)
 
-**ES (default)** : `Facil — Servicios fiscales digitales de Guinea Ecuatorial` (58 chars)
+> **Framing officiel (README + précision user 2026-05-02)** : Facil est un **framework adaptable** pour la digitalisation des workflows et procédures de toute entité (gouvernement, organisation, entreprise). Le cas actuellement déployé est celui de la République de Guinée Équatoriale. Le store listing doit refléter ce positionnement framework en premier, et l'instance GE en sous-texte (pas dans le titre).
 
-**FR** : `Facil — Services fiscaux numériques de la Guinée Équatoriale` (60 chars)
+**ES (default)** : `Facil — Plataforma para la digitalización de procedimientos administrativos` (74 chars)
 
-**EN** : `Facil — Digital fiscal services for Equatorial Guinea` (54 chars)
+**FR** : `Facil — Plateforme de digitalisation des procédures administratives` (67 chars)
+
+**EN** : `Facil — Platform for digitizing administrative procedures` (57 chars)
 
 ---
 
@@ -39,98 +41,119 @@
 
 ### ES
 ```
-Facil es la plataforma oficial de la Dirección General de Impuestos de Guinea Ecuatorial para la gestión digital de servicios fiscales y administrativos.
+Facil es una plataforma con IA, adaptable y configurable, para digitalizar los workflows y procedimientos administrativos de cualquier entidad — gobierno, organización o empresa.
 
-QUÉ PUEDE HACER CON FACIL
-• Solicitar y pagar trámites administrativos: pasaportes, permisos de conducir, permisos de residencia, certificados, licencias comerciales
-• Gestionar las obligaciones fiscales de su empresa (IVA, IRPF, Impuesto de Sociedades, contribuciones)
+INSTANCIA ACTUAL
+La presente versión es la instancia desplegada para la República de Guinea Ecuatorial, en colaboración con la Dirección General de Impuestos. Permite a ciudadanos, empresas, autónomos y contables realizar de forma 100% digital los procedimientos administrativos y obligaciones fiscales del país.
+
+QUÉ PUEDE HACER
+• Realizar trámites administrativos: pasaportes, permisos de residencia, permisos de conducir, contratos, licencias comerciales, inspecciones
+• Gestionar las obligaciones fiscales (IVA, IRPF, Impuesto de Sociedades, contribuciones)
+• Procesar documentos oficiales con IA (OCR + extracción automática sobre 39+ tipos de documentos)
 • Pagar de forma segura mediante BANGE Mobile Money u otros métodos disponibles
 • Almacenar sus documentos oficiales en un coffre-fort digital seguro
-• Programar citas en las oficinas de los ministerios competentes
+• Consultar 873 servicios administrativos de 21 ministerios y 20 entidades
+• Programar citas en las oficinas competentes
 • Consultar el estado de sus trámites en tiempo real
 • Recibir notificaciones sobre vencimientos y nuevos requisitos
-• Acceder a un asistente IA multilingüe (español, francés, inglés)
+• Acceder a un asistente IA multilingüe (español, francés, inglés) con respuestas adaptadas a su rol
 
 PARA QUIÉN
-• Ciudadanos: solicitudes individuales (DIP, pasaporte, permisos)
-• Empresarios y autónomos: gestión de licencias comerciales, contribuciones
+• Ciudadanos: solicitudes individuales (DIP, pasaporte, residencia, permisos)
+• Empresarios y autónomos: gestión de licencias comerciales y obligaciones fiscales
 • Contables: cumplimiento fiscal de sus clientes
 • Diáspora: trámites desde el extranjero
+
+EL FRAMEWORK FACIL
+Facil es un framework agnóstico, configurable mediante datos (workflows, entidades, roles, traducciones, reglas de negocio). Su despliegue para una nueva entidad o país consiste en configurar sus servicios y workflows — no en reescribir código. Modular, multilingüe, AI-powered.
 
 PRIVACIDAD Y SEGURIDAD
 • Cifrado TLS para todas las comunicaciones
 • Autenticación de dos factores (2FA) opcional
-• Cumplimiento RGPD: derecho de acceso, rectificación, eliminación
+• Cumplimiento GDPR: derecho de acceso, rectificación, eliminación
+• 335 permisos granulares (RBAC) protegen el acceso a sus datos
 • Datos almacenados en infraestructura segura (Google Cloud)
 
 SOPORTE
-Soporte técnico disponible directamente desde la aplicación. Email: soporte@taxasge.gob.gq
-
-Facil es desarrollado y operado por la Dirección General de Impuestos de Guinea Ecuatorial.
+Soporte técnico disponible directamente desde la aplicación.
 ```
 
 ### FR
 ```
-Facil est la plateforme officielle de la Direction Générale des Impôts de la Guinée Équatoriale pour la gestion numérique des services fiscaux et administratifs.
+Facil est une plateforme avec IA, adaptable et configurable, conçue pour digitaliser les workflows et procédures administratives de toute entité — gouvernement, organisation ou entreprise.
 
-QUE POUVEZ-VOUS FAIRE AVEC FACIL
-• Demander et payer des démarches administratives : passeports, permis de conduire, titres de séjour, certificats, licences commerciales
-• Gérer les obligations fiscales de votre entreprise (TVA, IRPF, IS, contributions)
+INSTANCE ACTUELLE
+La présente version est l'instance déployée pour la République de Guinée Équatoriale, en partenariat avec la Direction Générale des Impôts. Elle permet aux citoyens, entreprises, indépendants et comptables d'effectuer de manière 100% numérique les démarches administratives et obligations fiscales du pays.
+
+QUE POUVEZ-VOUS FAIRE
+• Effectuer des démarches administratives : passeports, permis de séjour, permis de conduire, contrats, licences commerciales, inspections
+• Gérer les obligations fiscales (TVA, IRPF, IS, contributions)
+• Traiter vos documents officiels avec l'IA (OCR + extraction automatique sur plus de 39 types de documents)
 • Payer en toute sécurité via BANGE Mobile Money ou d'autres méthodes disponibles
 • Stocker vos documents officiels dans un coffre-fort numérique sécurisé
-• Prendre rendez-vous dans les bureaux des ministères compétents
+• Consulter 873 services administratifs issus de 21 ministères et 20 entités
+• Prendre rendez-vous dans les bureaux compétents
 • Consulter l'état de vos démarches en temps réel
 • Recevoir des notifications sur les échéances et nouvelles exigences
-• Accéder à un assistant IA multilingue (espagnol, français, anglais)
+• Accéder à un assistant IA multilingue (espagnol, français, anglais) avec des réponses adaptées à votre rôle
 
 POUR QUI
-• Citoyens : demandes individuelles (DIP, passeport, permis)
-• Entrepreneurs et indépendants : gestion des licences commerciales, contributions
+• Citoyens : demandes individuelles (DIP, passeport, résidence, permis)
+• Entrepreneurs et indépendants : gestion des licences commerciales et obligations fiscales
 • Comptables : conformité fiscale de leurs clients
 • Diaspora : démarches depuis l'étranger
+
+LE FRAMEWORK FACIL
+Facil est un framework agnostique, configurable par les données (workflows, entités, rôles, traductions, règles métier). Son déploiement pour une nouvelle entité ou un nouveau pays consiste à configurer ses services et workflows — pas à réécrire du code. Modulaire, multilingue, AI-powered.
 
 CONFIDENTIALITÉ ET SÉCURITÉ
 • Chiffrement TLS pour toutes les communications
 • Authentification à deux facteurs (2FA) optionnelle
 • Conformité RGPD : droit d'accès, de rectification, de suppression
+• 335 permissions granulaires (RBAC) protègent l'accès à vos données
 • Données hébergées sur infrastructure sécurisée (Google Cloud)
 
 ASSISTANCE
-Support technique disponible directement depuis l'application. Email : soporte@taxasge.gob.gq
-
-Facil est développé et opéré par la Direction Générale des Impôts de la Guinée Équatoriale.
+Support technique disponible directement depuis l'application.
 ```
 
 ### EN
 ```
-Facil is the official platform of the General Directorate of Taxes of Equatorial Guinea for digital management of fiscal and administrative services.
+Facil is an AI-powered, adaptable, and configurable platform designed to digitize the workflows and administrative procedures of any entity — government, organization, or enterprise.
 
-WHAT YOU CAN DO WITH FACIL
-• Request and pay for administrative procedures: passports, driver's licenses, residence permits, certificates, commercial licenses
-• Manage your company's fiscal obligations (VAT, income tax, corporate tax, contributions)
+CURRENT INSTANCE
+This version is the instance deployed for the Republic of Equatorial Guinea, in partnership with the General Directorate of Taxes. It enables citizens, businesses, self-employed professionals, and accountants to fully digitize the country's administrative procedures and fiscal obligations.
+
+WHAT YOU CAN DO
+• Process administrative procedures: passports, residence permits, driver's licenses, contracts, commercial licenses, inspections
+• Manage fiscal obligations (VAT, income tax, corporate tax, contributions)
+• Process official documents with AI (OCR + automatic field extraction on 39+ document types)
 • Pay securely via BANGE Mobile Money or other available methods
 • Store your official documents in a secure digital vault
-• Schedule appointments at competent ministry offices
+• Browse 873 administrative services from 21 ministries and 20 entities
+• Schedule appointments at competent offices
 • Track the status of your procedures in real time
 • Receive notifications about deadlines and new requirements
-• Access a multilingual AI assistant (Spanish, French, English)
+• Access a multilingual AI assistant (Spanish, French, English) with role-adapted responses
 
 FOR WHOM
-• Citizens: individual requests (DIP, passport, permits)
-• Business owners and self-employed: commercial license and contribution management
+• Citizens: individual requests (DIP, passport, residency, permits)
+• Business owners and self-employed: commercial license and fiscal obligation management
 • Accountants: client tax compliance
 • Diaspora: procedures from abroad
+
+THE FACIL FRAMEWORK
+Facil is an agnostic framework, configurable through data (workflows, entities, roles, translations, business rules). Deploying it for a new entity or country means configuring services and workflows — not rewriting code. Modular, multilingual, AI-powered.
 
 PRIVACY AND SECURITY
 • TLS encryption for all communications
 • Optional two-factor authentication (2FA)
 • GDPR compliance: right to access, rectification, deletion
+• 335 granular permissions (RBAC) protect access to your data
 • Data stored on secure infrastructure (Google Cloud)
 
 SUPPORT
-Technical support available directly from the app. Email: soporte@taxasge.gob.gq
-
-Facil is developed and operated by the General Directorate of Taxes of Equatorial Guinea.
+Technical support available directly from the app.
 ```
 
 ---
@@ -236,22 +259,25 @@ https://taxasge-frontend-staging-392159428433.us-central1.run.app/es/legal/priva
 
 ---
 
-## 8. Government App Declaration
+## 8. Government App Declaration — DÉCISION : Soumission standard
 
-> **À CONFIRMER user** : domain `.gob.gq` enregistré ? Lettre d'autorisation officielle Direction Générale des Impôts disponible ?
+**Décision user 2026-05-02** : soumettre comme **app standard** (PAS Government App Declaration).
 
-### Si OUI (preuve disponible)
+**Rationale** : Facil est conçu comme un **framework adaptable** par n'importe quel pays, organisation ou entreprise selon son workflow. Le cas applicatif présent est l'instance pour la Guinée Équatoriale (Direction Générale des Impôts), mais le code/produit est généralisable. Cocher "Government Entity" lierait l'app à une seule juridiction et compliquerait les futures instances multi-pays.
+
+### Réponses Play Console
 - **Q**: Does this app belong to a government entity?
-- **R**: ✅ **YES**
-- **Type**: National government
-- **Country**: Equatorial Guinea
-- **Authority**: Dirección General de Impuestos (DGI)
-- **Proof**: Upload de la lettre d'autorisation OU domain `.gob.gq` confirmé
+- **R**: ❌ **NO**
 
-### Si NON (en attente)
-- Soumettre comme app standard
-- Description précise dans store listing : "Plateforme officielle de la Direction Générale des Impôts de la Guinée Équatoriale"
-- Risque : Google peut demander preuve gov en review post-submission
+### Description store listing — phrasing neutre framework + instance
+- ✅ "Framework adaptable pour la digitalisation des workflows et procédures administratives de toute entité"
+- ✅ "Cette version est l'instance déployée pour la République de Guinée Équatoriale, en partenariat avec la Direction Générale des Impôts"
+- ❌ NE PAS écrire "official government app" / "ministry app" — réservé aux apps Government Entity déclarées
+- ❌ NE PAS positionner l'app comme "app gouvernementale Guinée Équatoriale" — c'est un produit framework qui se trouve actuellement déployé en GE
+- ✅ Tags neutres orientés framework (Workflow automation, Document processing) plutôt que "Equatorial Guinea fiscal" pur
+
+### Risque résiduel
+Google peut quand même demander preuve si le contenu de l'app suggère une autorité gouvernementale (logos officiels, mentions "gobierno"/"ministerio", données fiscales sensibles). Mitigation : description framing "plateforme opérée par" (pas "plateforme du gouvernement") et logo Facil neutre (pas armoiries Guinée Équatoriale).
 
 ---
 
