@@ -239,6 +239,25 @@ export default function DashboardPage() {
       router.push(`/${locale}/auth`)
       return
     }
+
+    // Bug 4 fix (2026-05-06): the citizen dashboard must NOT render for
+    // agent/admin roles — it shows "Nueva Solicitud", "Mis Solicitudes",
+    // etc. which are citizen-only actions. Reported when supcomercio1
+    // (supervisor MIN_COMERCIO) hit /dashboard via back-button and saw
+    // citizen Quick Actions instead of an agent UI. Redirect by role
+    // before any citizen UI is painted (returns null below until redirect
+    // completes).
+    const userRole = (authData.user.role || '').toLowerCase()
+    if (userRole === 'admin') {
+      router.replace(`/${locale}/dashboard/admin`)
+      return
+    }
+    if (userRole === 'agent' || userRole.startsWith('supervisor_')) {
+      router.replace(`/${locale}/dashboard/supervisor`)
+      return
+    }
+    // Citizens, businesses, accountants → stay on this citizen dashboard
+
     const userData = {
       ...authData.user,
       is_active: authData.user.status === 'active',
