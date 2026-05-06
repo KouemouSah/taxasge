@@ -29,6 +29,7 @@ window.__I18N__.es =
         "logrocket": "Observabilidad LogRocket",
         "security": "Seguridad",
         "deployment": "Despliegue",
+        "mobile_publishing": "Publicación móvil",
         "i18n": "Internacionalización"
       }
     },
@@ -1306,7 +1307,8 @@ window.__I18N__.es =
       "deployment": "— Pipeline CI/CD, Cloud Run, Firebase Hosting, monitorización",
       "i18n": "— Soporte trilingüe (ES/FR/EN), 11.400+ claves, arquitectura de traducción",
       "grafana": "— 10 paneles producción, ingeniería analítica, capa semántica de datos, KPIs orientados a decisión",
-      "logrocket": "— Reproducción de sesión (web + móvil + inspector), censura PII ante todo, bridge Sentry, flujos de uso diarios"
+      "logrocket": "— Reproducción de sesión (web + móvil + inspector), censura PII ante todo, bridge Sentry, flujos de uso diarios",
+      "mobile_publishing": "— Flujo completo de Play Store (EAS Cloud + GitHub Actions + Play Console), validación de desarrollador Android (token ADI), gestión de keystore, resolución de problemas"
     },
     "overview": {
       "title": "Resumen de la plataforma",
@@ -1359,7 +1361,8 @@ window.__I18N__.es =
       "deployment": "8 workflows GitHub Actions, contenedores Cloud Run, Firebase Hosting, gestión de entornos y monitorización.",
       "i18n": "Soporte trilingüe (español, francés, inglés), 11.400+ claves de traducción, traducciones de entidades backend y renderizado de plantillas.",
       "grafana": "10 paneles producción, arquitectura de datos semántica de 4 capas, resolución multi-fuente y KPIs orientados a decisión para tesorería, agentes e inspectores.",
-      "logrocket": "Reproducción de sesión en web + móvil + inspector con censura PII de 4 capas, aplicación de la política de identificación y bridge Sentry para debug forense."
+      "logrocket": "Reproducción de sesión en web + móvil + inspector con censura PII de 4 capas, aplicación de la política de identificación y bridge Sentry para debug forense.",
+      "mobile_publishing": "Flujo de release de Play Store de extremo a extremo: builds de EAS Cloud, orquestación de GitHub Actions, validación de desarrollador Android (token ADI), gestión de keystore con firma gestionada por EAS y resolución de problemas."
     },
     "dec": {
       "title": "Decisiones de arquitectura clave",

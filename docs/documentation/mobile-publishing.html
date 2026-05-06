@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-title="mobpub.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Mobile Publishing — Play Store + EAS Cloud + GitHub Actions + Android Developer Verification">
+  <title>Mobile Publishing - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Technical Reference</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.getting_started">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="common.sidebar.link.home">Home</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.architecture">Architecture</div>
+          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="common.sidebar.link.architecture">System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span data-i18n="common.sidebar.link.database">Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="common.sidebar.link.workflows">Workflow Engine</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.reference">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span data-i18n="common.sidebar.link.api_reference">API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="common.sidebar.link.modules">Module Catalog</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.features">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="common.sidebar.link.agents">AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span data-i18n="common.sidebar.link.payments">Payments</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.observability">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="common.sidebar.link.grafana">Grafana Dashboards</span></a>
+          <a href="ai-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#129303;</span> <span data-i18n="common.sidebar.link.ai_obs">AI Observability</span></a>
+          <a href="security-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="common.sidebar.link.security_obs">Security Observability</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span data-i18n="common.sidebar.link.logrocket">LogRocket Observability</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="common.sidebar.section.operations">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="common.sidebar.link.security">Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span data-i18n="common.sidebar.link.deployment">Deployment</span></a>
+          <a href="mobile-publishing.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="common.sidebar.link.mobile_publishing">Mobile Publishing</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="common.sidebar.link.i18n">Internationalization</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 &middot; Updated May 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="common.breadcrumb.docs">Docs</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="common.sidebar.link.mobile_publishing">Mobile Publishing</span>
+        </nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="mobpub.title">Mobile Publishing &mdash; Play Store, EAS Cloud, GitHub Actions</h1>
+        <p class="page-description" data-i18n-html="mobpub.description">
+          End-to-end tutorial for shipping the Facil citizen app (<code>com.taxasge.app</code>) and the Facil Inspector
+          app (<code>com.facil.inspeccion</code>) to the Google Play Store. Covers Google Play developer verification
+          (the 2024+ ADI registration flow), EAS-managed signing keys, GitHub Actions fallback builds, and the
+          <code>eas submit</code> automation. Every command is reproducible from a clean checkout. Apple App Store
+          paths are stubbed pending the Apple Developer Account (V1.1).
+        </p>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">On This Page</div>
+          <ul class="toc-list">
+            <li><a href="#overview" data-i18n="mobpub.toc.overview">1. Architecture overview</a></li>
+            <li><a href="#prereqs" data-i18n="mobpub.toc.prereqs">2. Account &amp; project prerequisites</a></li>
+            <li><a href="#sa" data-i18n="mobpub.toc.sa">3. Play Developer service account</a></li>
+            <li><a href="#keystore" data-i18n="mobpub.toc.keystore">4. Keystore management (EAS-managed)</a></li>
+            <li><a href="#adi" data-i18n="mobpub.toc.adi">5. Android Developer Verification (ADI token)</a></li>
+            <li><a href="#workflows" data-i18n="mobpub.toc.workflows">6. GitHub workflows reference</a></li>
+            <li><a href="#easenv" data-i18n="mobpub.toc.easenv">7. EAS environment variables</a></li>
+            <li><a href="#daily" data-i18n="mobpub.toc.daily">8. Daily build &amp; release workflow</a></li>
+            <li><a href="#troubleshoot" data-i18n="mobpub.toc.troubleshoot">9. Troubleshooting</a></li>
+            <li><a href="#reference" data-i18n="mobpub.toc.reference">10. Reference (secrets, env vars, paths)</a></li>
+          </ul>
+        </div>
+
+        <h2 id="overview"><span data-i18n="mobpub.toc.overview">1. Architecture overview</span> <a href="#overview" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.overview.intro">
+          The Facil mobile publishing pipeline has <strong>four moving parts</strong>: GCP (secret storage, service account),
+          Expo / EAS Cloud (canonical build + submit), GitHub Actions (orchestration + native fallback build), and Google Play Console
+          (developer verification + release tracks). Each layer is independent and replaceable, but the canonical happy path is:
+          push a tag &rarr; EAS Cloud builds the AAB &rarr; <code>eas submit</code> uploads it to Play Console internal track.
+        </p>
+
+        <pre><code>                    +-----------------------------------+
+                    |   Developer machine (this repo)   |
+                    +-----------------+-----------------+
+                                      |  git push develop / git tag v*
+                                      v
+                    +-----------------------------------+
+                    |        GitHub Actions             |
+                    |  - lint + tsc gate                |
+                    |  - decode keystore                |
+                    |  - trigger EAS build              |
+                    |  - trigger eas submit             |
+                    +--------+----------------+---------+
+                             |                |
+                             v                v
+              +--------------+--+         +---+--------------------+
+              |   EAS Cloud     |         |  GCP Secret Manager     |
+              |  (Expo)         |         |  - expo-token           |
+              |  - prebuild     |&lt;--------|  - google-play-sa       |
+              |  - gradle build |  fetch  |  - sentry-dsn-mobile    |
+              |  - sign w/ JKS  |         +-------------------------+
+              |  - emit AAB/APK |
+              +--------+--------+
+                       |  applicationArchiveUrl
+                       v
+              +--------+----------------------+
+              |   Google Play Console         |
+              |  - developer verification     |
+              |  - internal testing track     |
+              |  - production track           |
+              +-------------------------------+</code></pre>
+
+        <h3 data-i18n="mobpub.overview.apps">Two apps, one pipeline</h3>
+        <table>
+          <thead><tr><th>App</th><th>Path</th><th>Package</th><th>EAS slug</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Facil (citizen)</td><td><code>packages/mobile</code></td><td><code>com.taxasge.app</code></td><td><code>@emacsah/facil</code></td><td>V1 publishing in progress</td></tr>
+            <tr><td>Facil Inspeccion</td><td><code>packages/inspector</code></td><td><code>com.facil.inspeccion</code></td><td><code>@emacsah/facil-inspeccion</code></td><td>V1.1 (ADI registration pending)</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="prereqs"><span data-i18n="mobpub.toc.prereqs">2. Account &amp; project prerequisites</span> <a href="#prereqs" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.prereqs.intro">
+          Before any code is built, the following accounts must exist and be linked together. Skipping a step here
+          will cause obscure failures later (e.g. <em>"The uploaded APK does not have the required token file"</em>).
+        </p>
+
+        <table>
+          <thead><tr><th>#</th><th>Resource</th><th>Owner / Account</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Google Play Developer account ($25 one-off)</td><td><code>kouemou.sah@gmail.com</code></td><td>Linked to the GCP billing account; required for both apps</td></tr>
+            <tr><td>2</td><td>GCP project &mdash; primary</td><td><code>taxasge-dev</code> (id <code>392159428433</code>)</td><td>Hosts secrets, service account, Cloud Run, Firebase</td></tr>
+            <tr><td>3</td><td>GCP project &mdash; production</td><td><code>taxasge-pro</code></td><td>Dormant in V1, used post-soft-launch</td></tr>
+            <tr><td>4</td><td>Expo / EAS account</td><td><code>libressai@gmail.com</code> (org <code>emacsah</code>)</td><td>Holds the upload keystore + builds + env vars</td></tr>
+            <tr><td>5</td><td>Sentry organisation</td><td><code>taxasge</code> &mdash; project <code>react-native</code></td><td>DSN stored in GCP secret <code>sentry-dsn-mobile</code></td></tr>
+            <tr><td>6</td><td>LogRocket account</td><td>Shared org</td><td>App ID stored in EAS env <code>EXPO_PUBLIC_LOGROCKET_APP_ID</code></td></tr>
+            <tr><td>7</td><td>Apple Developer Program</td><td>Not provisioned (V1.1)</td><td>Gates iOS builds &mdash; eas.json profiles are pre-wired</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="sa"><span data-i18n="mobpub.toc.sa">3. Play Developer service account</span> <a href="#sa" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.sa.intro">
+          <code>eas submit</code> uploads AABs to Play Console using a Google service account with the
+          <em>"Manage testing tracks"</em> role. The SA is stored once in GCP Secret Manager and mirrored
+          to GitHub + EAS so all three layers can authenticate with the same identity.
+        </p>
+
+        <h3 data-i18n="mobpub.sa.create">3.1 Create the service account (one-off)</h3>
+        <pre><code># In GCP project taxasge-dev
+gcloud iam service-accounts create play-publisher \
+  --display-name="Play Publisher" \
+  --description="EAS Submit upload of AABs to Google Play" \
+  --project=taxasge-dev
+
+# Generate a JSON key
+TMP_KEY=$(mktemp --suffix=.json)
+gcloud iam service-accounts keys create "$TMP_KEY" \
+  --iam-account=play-publisher@taxasge-dev.iam.gserviceaccount.com \
+  --project=taxasge-dev
+
+# Store in GCP Secret Manager
+gcloud secrets create google-play-service-account \
+  --replication-policy=automatic \
+  --project=taxasge-dev
+gcloud secrets versions add google-play-service-account \
+  --data-file="$TMP_KEY" \
+  --project=taxasge-dev
+rm -f "$TMP_KEY"</code></pre>
+
+        <h3 data-i18n="mobpub.sa.invite">3.2 Invite the SA to Play Console</h3>
+        <ol>
+          <li>Play Console &rarr; <strong>Users and permissions</strong> &rarr; <em>Invite new user</em></li>
+          <li>Email: <code>play-publisher@taxasge-dev.iam.gserviceaccount.com</code></li>
+          <li>App access &rarr; <strong>Facil</strong> &rarr; permission <em>"Manage testing tracks"</em> only</li>
+          <li>Wait <strong>up to 24 h</strong> for permission propagation before the first <code>eas submit</code></li>
+        </ol>
+
+        <h3 data-i18n="mobpub.sa.mirror">3.3 Mirror the SA to GitHub + EAS</h3>
+        <pre><code># GitHub Secret (consumed by mobile-eas-submit.yml)
+gcloud secrets versions access latest \
+  --secret=google-play-service-account \
+  --project=taxasge-dev \
+  | base64 -w0 \
+  | gh secret set GOOGLE_PLAY_SA_JSON_BASE64 --repo=KouemouSah/taxasge
+
+# EAS Credentials (consumed by `eas submit` directly)
+# Manual step: https://expo.dev/accounts/emacsah/projects/facil/credentials/android
+#   &rarr; "Add a Google service account key" &rarr; upload the JSON file</code></pre>
+
+        <h3 data-i18n="mobpub.sa.rotate">3.4 Annual rotation</h3>
+        <ol>
+          <li><code>gcloud iam service-accounts keys create</code> a fresh JSON key</li>
+          <li><code>gcloud secrets versions add</code> to bump the GCP secret version</li>
+          <li>Re-run the GitHub + EAS sync commands above</li>
+          <li>Verify the new key works (dry run) then <code>gcloud iam service-accounts keys disable</code> the previous one</li>
+          <li>After 7 days grace, <code>gcloud iam service-accounts keys delete</code></li>
+        </ol>
+
+        <h2 id="keystore"><span data-i18n="mobpub.toc.keystore">4. Keystore management (EAS-managed)</span> <a href="#keystore" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.keystore.intro">
+          The mobile <strong>upload keystore</strong> is generated and held by EAS Cloud at build time.
+          It must also live in two mirrored locations so the GitHub Actions native build path
+          (<code>mobile-build.yml</code>) can sign with the same key when EAS quota is exhausted.
+        </p>
+
+        <h3 data-i18n="mobpub.keystore.fingerprints">4.1 Fingerprints (Facil citizen)</h3>
+        <table>
+          <thead><tr><th>Field</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Alias</td><td><code>b9520ded4f892b6ed2b0ef8afede0bbd</code> (EAS auto-generated)</td></tr>
+            <tr><td>Validity</td><td>2026-03-30 &rarr; 2053-08-15 (~27 years)</td></tr>
+            <tr><td>Signature algorithm</td><td><code>SHA256withRSA</code></td></tr>
+            <tr><td>SHA-1</td><td><code>30:CA:7A:88:25:95:09:18:56:EF:40:62:54:88:41:E2:19:4C:34:4F</code></td></tr>
+            <tr><td>SHA-256</td><td><code>C4:78:D6:B0:6D:88:5F:E6:20:AA:DB:B7:2B:00:73:F4:57:C1:64:F8:47:9E:63:D5:AC:78:3B:3C:23:AD:87:1E</code></td></tr>
+          </tbody>
+        </table>
+        <p data-i18n-html="mobpub.keystore.fingerprints_use">
+          The SHA-256 above is the value declared as <em>eligible public key</em> in the Play Console
+          developer verification dialog (see &sect;5). Capture it from
+          <a href="https://expo.dev/accounts/emacsah/projects/facil/credentials/android" target="_blank" rel="noopener">expo.dev &rarr; Credentials &rarr; Android</a>
+          before declaring it elsewhere.
+        </p>
+
+        <h3 data-i18n="mobpub.keystore.three">4.2 Three storage locations (must stay in sync)</h3>
+        <table>
+          <thead><tr><th>Location</th><th>Format</th><th>Used by</th></tr></thead>
+          <tbody>
+            <tr><td>EAS Cloud (managed)</td><td>JKS, online only</td><td>Default <code>eas build</code></td></tr>
+            <tr><td>GCP-encrypted backup</td><td><code>@emacsah__facil-keystore.bak.jks</code> (gitignored, 2193 bytes)</td><td>Disaster recovery, fingerprint capture</td></tr>
+            <tr><td>GitHub Secret <code>ANDROID_KEYSTORE_BASE64</code></td><td>base64 of the JKS</td><td><code>mobile-build.yml</code> native fallback</td></tr>
+          </tbody>
+        </table>
+
+        <h3 data-i18n="mobpub.keystore.sync">4.3 Sync GitHub Secret with the EAS-managed keystore</h3>
+        <p data-i18n-html="mobpub.keystore.sync_desc">
+          When EAS regenerates the keystore (rotation, recovery), GitHub Actions still holds the previous one
+          and silently produces an APK with a <strong>different signing fingerprint</strong> &mdash; rejected by
+          Play Console. Re-sync via:
+        </p>
+        <pre><code># Download the EAS keystore + credentials
+eas credentials --platform android  # interactive: pick "Build credentials" -&gt; "Download keystore"
+# Saved to ./@emacsah__facil-keystore.bak.jks
+
+# Encode and push
+base64 -w0 @emacsah__facil-keystore.bak.jks \
+  | gh secret set ANDROID_KEYSTORE_BASE64 --repo=KouemouSah/taxasge
+
+# Update password / alias / key password from the credentials.md file:
+printf '&lt;keystore-password&gt;' | gh secret set ANDROID_KEYSTORE_PASSWORD --repo=KouemouSah/taxasge
+printf '&lt;key-alias&gt;'          | gh secret set ANDROID_KEY_ALIAS         --repo=KouemouSah/taxasge
+printf '&lt;key-password&gt;'       | gh secret set ANDROID_KEY_PASSWORD      --repo=KouemouSah/taxasge
+
+# Wipe local copies (the JKS + credentials.md live under
+# Documentations/workflow/debug/tesoro/key/, which is gitignored at line 146
+# of .gitignore but should never be committed under any circumstance).</code></pre>
+
+        <h2 id="adi"><span data-i18n="mobpub.toc.adi">5. Android Developer Verification (ADI token)</span> <a href="#adi" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.adi.intro">
+          Since 2024, Google requires every <strong>new</strong> developer account to prove ownership of each
+          package name <em>before</em> any release track becomes available. The proof is a token file
+          <code>assets/adi-registration.properties</code> embedded in a release-signed APK uploaded via
+          <em>"Validation des d&eacute;veloppeurs Android"</em> &rarr; <em>"Signer et importer un APK"</em>.
+          Without it the entire Play Console UI for the package stays in <em>Brouillon</em> state.
+        </p>
+
+        <h3 data-i18n="mobpub.adi.flow">5.1 Play Console flow</h3>
+        <ol>
+          <li>Play Console &rarr; <strong>Validation des d&eacute;veloppeurs Android</strong></li>
+          <li>Register the package name (e.g. <code>com.taxasge.app</code>)</li>
+          <li>Click <strong>"S&eacute;lectionnez une cl&eacute; publique &eacute;ligible"</strong> and paste the SHA-256
+            from &sect;4.1 (must come from EAS &mdash; mismatch = silent rejection)</li>
+          <li>Click <strong>"Signer et importer un APK"</strong> &rarr; copy the unique token snippet (e.g. <code>CXZYNVIZWNFLAAAAAAAAAAAAAA</code>)</li>
+          <li>Build a release APK that contains the token (see &sect;5.2)</li>
+          <li>Upload the APK in the same dialog &rarr; Play Console verifies signature + token, then unlocks the standard release UI</li>
+        </ol>
+
+        <h3 data-i18n="mobpub.adi.plugin">5.2 Expo config plugin <code>with-adi-registration</code></h3>
+        <p data-i18n-html="mobpub.adi.plugin_desc">
+          The token is injected at <code>expo prebuild</code> time by a tiny config plugin shipped under
+          <code>packages/mobile/plugins/with-adi-registration.js</code> and
+          <code>packages/inspector/plugins/with-adi-registration.js</code>. It writes the token to the right
+          path on every prebuild so neither <code>expo prebuild --clean</code> nor a future EAS regeneration
+          can wipe it. Token resolution order: <code>ADI_REGISTRATION_TOKEN</code> env var &rarr; hardcoded
+          <code>DEFAULT_TOKEN</code> fallback.
+        </p>
+        <pre><code>// packages/mobile/plugins/with-adi-registration.js (excerpt)
+const { withDangerousMod } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
+
+const DEFAULT_TOKEN = 'CXZYNVIZWNFLAAAAAAAAAAAAAA';
+
+module.exports = function withAdiRegistration(config) {
+  return withDangerousMod(config, ['android', async (cfg) =&gt; {
+    const token = (process.env.ADI_REGISTRATION_TOKEN || DEFAULT_TOKEN).trim();
+    if (!token) return cfg;  // inspector placeholder mode
+    const dir = path.join(cfg.modRequest.platformProjectRoot, 'app', 'src', 'main', 'assets');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'adi-registration.properties'), token + '\n');
+    return cfg;
+  }]);
+};</code></pre>
+        <p data-i18n-html="mobpub.adi.plugin_register">
+          Both plugins are registered as the last entry in <code>app.json</code> &rarr; <code>expo.plugins</code>:
+          <code>"./plugins/with-adi-registration"</code>.
+        </p>
+
+        <h3 data-i18n="mobpub.adi.rotation">5.3 Token rotation</h3>
+        <p data-i18n-html="mobpub.adi.rotation_desc">
+          Once Play Console accepts the verification, the token is useless to anyone else (it can only prove
+          ownership of a package name whose signing key the bearer doesn't control). Treat it as
+          near-public &mdash; the hardcoded fallback in the plugin is acceptable. If the upload key SHA-256
+          changes (rotation), re-issue the token via the same Play Console dialog and update either the
+          <code>DEFAULT_TOKEN</code> constant or the <code>ADI_REGISTRATION_TOKEN</code> env var.
+        </p>
+
+        <h3 data-i18n="mobpub.adi.inspector">5.4 Inspector (V1.1)</h3>
+        <p data-i18n-html="mobpub.adi.inspector_desc">
+          The Inspector plugin ships in placeholder mode (no <code>DEFAULT_TOKEN</code>): when its env var
+          <code>ADI_REGISTRATION_TOKEN_INSPECTOR</code> is unset, the plugin no-ops. To activate Inspector
+          publishing later: register <code>com.facil.inspeccion</code> on Play Console, declare the EAS
+          inspector key SHA-256, copy the new token, set the env var (EAS + GitHub Secret), trigger a build.
+        </p>
+
+        <h2 id="workflows"><span data-i18n="mobpub.toc.workflows">6. GitHub workflows reference</span> <a href="#workflows" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.wf.intro">
+          Four workflows orchestrate the mobile pipeline. Three are explicit (<em>EAS build</em>,
+          <em>EAS submit</em>, <em>native fallback build</em>); the fourth is a side-effect tagger that
+          turns every push to <code>develop</code> into a versioned tag&mdash;know it exists or you will
+          be confused by <em>"why did a production build start when I only pushed docs?"</em>.
+        </p>
+
+        <table>
+          <thead><tr><th>Workflow</th><th>Trigger</th><th>Output</th><th>Required secrets</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>mobile-eas-build.yml</code></td>
+              <td>Manual dispatch (any profile/platform) <em>or</em> <code>v*.*.*</code> tag (production / Android)</td>
+              <td>EAS-Cloud-built AAB or APK on <a href="https://expo.dev/accounts/emacsah/projects/facil/builds" target="_blank" rel="noopener">expo.dev</a></td>
+              <td><code>EXPO_TOKEN</code></td>
+            </tr>
+            <tr>
+              <td><code>mobile-eas-submit.yml</code></td>
+              <td>Manual dispatch (track configurable) <em>or</em> <code>workflow_run</code> after a successful production build</td>
+              <td>AAB pushed to Play Console <em>internal</em> track via <code>eas submit</code></td>
+              <td><code>EXPO_TOKEN</code>, <code>GOOGLE_PLAY_SA_JSON_BASE64</code></td>
+            </tr>
+            <tr>
+              <td><code>mobile-build.yml</code></td>
+              <td>Push to <code>develop</code>/<code>main</code> with mobile changes <em>or</em> tag <em>or</em> manual</td>
+              <td>Native Gradle APK (split: arm64 + armv7 + universal) + AAB, signed with the EAS upload key</td>
+              <td><code>ANDROID_KEYSTORE_BASE64</code> + 3 password / alias / key-password secrets</td>
+            </tr>
+            <tr>
+              <td><code>auto-tag-mobile-inspector.yml</code></td>
+              <td>Push to <code>develop</code> touching mobile or inspector source</td>
+              <td>Auto-creates a <code>v&lt;next-patch&gt;</code> tag &rarr; cascades into <code>mobile-eas-build.yml</code> production</td>
+              <td>None (uses default <code>GITHUB_TOKEN</code>)</td>
+            </tr>
+            <tr>
+              <td><code>inspector-build.yml</code></td>
+              <td>Manual dispatch <em>or</em> <code>inspector-v*.*.*</code> tag</td>
+              <td>EAS-Cloud-built APK or AAB for the Inspector app</td>
+              <td><code>EXPO_TOKEN</code></td>
+            </tr>
+            <tr>
+              <td><code>inspector-ci.yml</code></td>
+              <td>Push / PR with inspector changes</td>
+              <td>TypeScript + ESLint gate (no artefact)</td>
+              <td>None</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 data-i18n="mobpub.wf.native">6.1 Why <code>mobile-build.yml</code> exists alongside EAS</h3>
+        <p data-i18n-html="mobpub.wf.native_desc">
+          EAS Cloud is the canonical channel: reproducible toolchain, shared keystore, sourcemap upload to
+          Sentry, env var management. <code>mobile-build.yml</code> is the <strong>fallback</strong>:
+          when the monthly EAS quota is exhausted (30 builds / month on the free plan) or expo.dev is down,
+          a fresh APK can be produced on a GitHub-hosted runner using the mirrored keystore. The workflow is
+          hardened to <em>fail fast</em> on missing keystore secrets &mdash; it will <strong>never</strong>
+          silently fall back to the debug key (which would produce an APK that looks signed but is rejected
+          by Play Console).
+        </p>
+
+        <h3 data-i18n="mobpub.wf.tag">6.2 The auto-tag side effect</h3>
+        <p data-i18n-html="mobpub.wf.tag_desc">
+          <code>auto-tag-mobile-inspector.yml</code> creates a <code>v&lt;X.Y.Z&gt;</code> tag on every push
+          to <code>develop</code> that touches mobile/inspector source. That tag triggers
+          <code>mobile-eas-build.yml</code> with <code>profile=production</code>, consuming an EAS slot.
+          To avoid surprise builds: keep developer-facing changes (config plugins, docs, secrets) confined
+          to clearly identified pushes; or temporarily disable the workflow if you only want a TS-only push.
+        </p>
+
+        <h2 id="easenv"><span data-i18n="mobpub.toc.easenv">7. EAS environment variables</span> <a href="#easenv" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.easenv.intro">
+          EAS env vars are scoped per <em>environment</em> (development / preview / production) and per
+          <em>visibility</em> (plain text / sensitive / secret). Use the CLI to manage them &mdash; the
+          web UI exists but is fiddly:
+        </p>
+        <pre><code>cd packages/mobile
+
+# Plain text variable, all environments
+eas env:create --name EXPO_PUBLIC_API_URL \
+  --value https://taxasge-backend-staging-392159428433.us-central1.run.app \
+  --visibility plaintext \
+  --environment preview \
+  --environment production
+
+# Sensitive (read in build logs as ***)
+eas env:create --name SENTRY_AUTH_TOKEN --value &lt;token&gt; --visibility sensitive \
+  --environment preview --environment production
+
+# Secret (never readable, only consumable)
+eas env:create --name EXPO_PUBLIC_SENTRY_DSN --value &lt;dsn&gt; --visibility secret \
+  --environment preview --environment production</code></pre>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Visibility</th><th>Environments</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>EXPO_PUBLIC_ENV</code></td><td>plain</td><td>dev / preview / prod</td><td>Distinguishes runtime environment in app code</td></tr>
+            <tr><td><code>EXPO_PUBLIC_API_URL</code></td><td>plain</td><td>preview / prod</td><td>Backend Cloud Run URL</td></tr>
+            <tr><td><code>EXPO_PUBLIC_LOGROCKET_APP_ID</code></td><td>plain</td><td>preview / prod</td><td>LogRocket session replay app id</td></tr>
+            <tr><td><code>EXPO_PUBLIC_BUILD_VERSION</code></td><td>plain</td><td>preview / prod</td><td><code>$EAS_BUILD_GIT_COMMIT_HASH</code> placeholder</td></tr>
+            <tr><td><code>EXPO_PUBLIC_SENTRY_DSN</code></td><td>secret</td><td>preview / prod</td><td>React Native Sentry DSN</td></tr>
+            <tr><td><code>SENTRY_ORG</code> / <code>SENTRY_PROJECT</code></td><td>plain</td><td>preview / prod</td><td>Sourcemap upload target</td></tr>
+            <tr><td><code>SENTRY_AUTH_TOKEN</code></td><td>sensitive</td><td>preview / prod</td><td>Sourcemap upload auth (handled by EAS, not by GitHub Actions)</td></tr>
+            <tr><td><code>ADI_REGISTRATION_TOKEN</code></td><td>plain</td><td>preview / prod (optional)</td><td>Override the hardcoded ADI token (rare)</td></tr>
+            <tr><td><code>EAS_SKIP_AUTO_FINGERPRINT</code></td><td>plain</td><td>preview (inspector only)</td><td>Skip RN-fingerprint check &mdash; transitional</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="daily"><span data-i18n="mobpub.toc.daily">8. Daily build &amp; release workflow</span> <a href="#daily" class="anchor-link">#</a></h2>
+
+        <p data-i18n-html="mobpub.daily.intro">
+          The <em>happy path</em> from a finished feature branch to a release on the Play Console internal
+          track is six steps. Steps that touch shared state (push, tag, submit) are flagged
+          <strong>SHARED</strong>: confirm before running them.
+        </p>
+
+        <ol>
+          <li><strong data-i18n="mobpub.daily.s1">Local validation</strong>:
+            <pre><code>cd packages/mobile
+npm run type-check
+npm run lint
+# Optional: launch Expo Go to validate UX
+npx expo start --tunnel</code></pre>
+          </li>
+          <li><strong data-i18n="mobpub.daily.s2">Commit &amp; push (SHARED)</strong> &mdash; the push triggers <code>auto-tag-mobile-inspector.yml</code>, which creates a tag <code>v&lt;next-patch&gt;</code>, which in turn fires the production EAS build. Allow ~25 minutes.
+            <pre><code>git push origin develop  # confirm with user before running</code></pre>
+          </li>
+          <li><strong data-i18n="mobpub.daily.s3">Watch the EAS build</strong> on <a href="https://expo.dev/accounts/emacsah/projects/facil/builds" target="_blank" rel="noopener">expo.dev</a> or via API:
+            <pre><code>EXPO_TOKEN=$(gcloud secrets versions access latest --secret=expo-token --project=taxasge-dev)
+curl -s -H "Authorization: Bearer $EXPO_TOKEN" \
+     -H "User-Agent: eas-cli" \
+     -H "Content-Type: application/json" \
+     -X POST https://api.expo.dev/graphql \
+     -d '{"query":"query{app{byFullName(fullName:\"@emacsah/facil\"){builds(limit:3,offset:0){id status buildProfile gitCommitHash artifacts{applicationArchiveUrl}}}}}"}'</code></pre>
+          </li>
+          <li><strong data-i18n="mobpub.daily.s4">Submit to internal track (SHARED)</strong> via <code>mobile-eas-submit.yml</code>:
+            <pre><code>gh workflow run mobile-eas-submit.yml \
+  --repo=KouemouSah/taxasge \
+  -f track=internal</code></pre>
+            The workflow fetches the latest production AAB and pushes it to the internal track via the
+            <code>play-publisher</code> service account.
+          </li>
+          <li><strong data-i18n="mobpub.daily.s5">Test internally</strong> on real devices via the Play Console internal-tester opt-in URL. Soft-launch with the QA team for 24 h.</li>
+          <li><strong data-i18n="mobpub.daily.s6">Promote to production</strong>: Play Console &rarr; <em>Production</em> &rarr; <em>Promote release</em>. Manual review by Google: 1 to 7 days.</li>
+        </ol>
+
+        <h3 data-i18n="mobpub.daily.preview">8.1 One-off preview APK (sideload)</h3>
+        <pre><code># Trigger a preview APK (no submit) via GitHub
+gh workflow run mobile-eas-build.yml \
+  --repo=KouemouSah/taxasge \
+  -f profile=preview \
+  -f platform=android
+
+# Or directly via EAS CLI (locally, in packages/mobile/)
+eas build --profile preview --platform android --non-interactive --no-wait</code></pre>
+
+        <h3 data-i18n="mobpub.daily.fallback">8.2 Native fallback (EAS quota exhausted)</h3>
+        <pre><code># Manual dispatch &mdash; build APK + AAB on a GitHub-hosted runner
+gh workflow run mobile-build.yml \
+  --repo=KouemouSah/taxasge \
+  -f build_type=release</code></pre>
+        <p data-i18n-html="mobpub.daily.fallback_desc">
+          The artefacts land under <em>Actions &rarr; Artifacts</em> with names <code>facil-apk-&lt;ref&gt;-&lt;sha&gt;</code>
+          and <code>facil-aab-&lt;ref&gt;-&lt;sha&gt;</code>. Signed with the EAS upload key (synced via &sect;4.3).
+        </p>
+
+        <h2 id="troubleshoot"><span data-i18n="mobpub.toc.troubleshoot">9. Troubleshooting</span> <a href="#troubleshoot" class="anchor-link">#</a></h2>
+
+        <h3 data-i18n="mobpub.tr.token">9.1 <em>"The uploaded APK does not have the required token file"</em></h3>
+        <p data-i18n-html="mobpub.tr.token_desc">
+          The APK is missing <code>assets/adi-registration.properties</code>. Either the
+          <code>with-adi-registration</code> plugin didn't run (check <code>app.json</code> &rarr; <code>plugins</code>),
+          or the build predates &sect;5.2. Trigger a fresh EAS preview build from a commit that contains the plugin.
+        </p>
+
+        <h3 data-i18n="mobpub.tr.signature">9.2 Play Console rejects the upload silently</h3>
+        <p data-i18n-html="mobpub.tr.signature_desc">
+          Likely a signing-key mismatch: the APK was signed with a key whose SHA-256 differs from the
+          <em>eligible public key</em> declared in Play Console. Run the cert-extract script under
+          <code>packages/backend/scripts/verify_apk_signature.py</code>, compare with the value at
+          <a href="https://expo.dev/accounts/emacsah/projects/facil/credentials/android" target="_blank" rel="noopener">expo.dev &rarr; Credentials</a>,
+          and re-declare on Play Console via <em>"Changer de cl&eacute;"</em> if needed.
+        </p>
+
+        <h3 data-i18n="mobpub.tr.debugkey">9.3 CI APK signed with debug key</h3>
+        <p data-i18n-html="mobpub.tr.debugkey_desc">
+          Symptom: APK fingerprint starts with <code>FA:C6:17:45:...</code> (Android debug keystore default).
+          Means <code>ANDROID_KEYSTORE_BASE64</code> + 3 password secrets are missing or stale. The hardened
+          <code>mobile-build.yml</code> now fails fast on this; if the failure mentions <em>"silently fall
+          back to debug signing"</em>, re-run &sect;4.3.
+        </p>
+
+        <h3 data-i18n="mobpub.tr.quota">9.4 EAS quota exhausted</h3>
+        <p data-i18n-html="mobpub.tr.quota_desc">
+          Free EAS plan: 30 builds / month / org. Falls back to long queue. Three options:
+          (1) wait for the next billing cycle; (2) upgrade the EAS plan; (3) use the native
+          <code>mobile-build.yml</code> path (&sect;8.2). The artefact is identical (same upload key).
+        </p>
+
+        <h3 data-i18n="mobpub.tr.prebuild">9.5 <code>expo prebuild --clean</code> wipes my Android customisations</h3>
+        <p data-i18n-html="mobpub.tr.prebuild_desc">
+          The committed <code>android/</code> folder is the source of truth in this repo (non-CNG mode).
+          Never run <code>--clean</code>: it deletes hand-edited files (e.g. <code>build.gradle</code>
+          tweaks, the ADI token, custom signing config). Use <code>npx expo prebuild --no-install</code>
+          instead. <code>mobile-build.yml</code> was hardened to drop the <code>--clean</code> flag in
+          commit <code>afffdfe4</code>.
+        </p>
+
+        <h3 data-i18n="mobpub.tr.sa">9.6 <em>"This service account has not been granted access"</em> from <code>eas submit</code></h3>
+        <p data-i18n-html="mobpub.tr.sa_desc">
+          The <code>play-publisher</code> SA must be invited to Play Console with the <em>"Manage testing
+          tracks"</em> role on the Facil app, AND Google must have propagated the permission (up to 24 h).
+          Verify with <code>gcloud secrets versions access latest --secret=google-play-service-account --project=taxasge-dev | jq '.client_email'</code>
+          then check the email under Play Console &rarr; <em>Users and permissions</em>.
+        </p>
+
+        <h3 data-i18n="mobpub.tr.tag">9.7 Production build fired from a docs-only push</h3>
+        <p data-i18n-html="mobpub.tr.tag_desc">
+          <code>auto-tag-mobile-inspector.yml</code> reacts to every push to <code>develop</code> that
+          changes mobile/inspector source. To prevent the side effect on a single push, edit
+          <code>.github/workflows/auto-tag-mobile-inspector.yml</code> &rarr; <code>paths-ignore</code>
+          to skip docs / config-plugin-only changes, or revert the side-effect tag with
+          <code>git push origin :v&lt;X.Y.Z&gt;</code> after the fact (cancels the in-flight EAS build).
+        </p>
+
+        <h3 data-i18n="mobpub.tr.iossim">9.8 iOS profiles fail with <em>"no Apple credentials"</em></h3>
+        <p data-i18n-html="mobpub.tr.iossim_desc">
+          iOS is gated off in V1 &mdash; expected. Provision the Apple Developer account, run
+          <code>eas credentials --platform ios</code> in <code>packages/mobile</code>, upload the App Store
+          Connect API key (<code>.p8</code>), then set <code>MOBILE_BUILD_PLATFORM=all</code> in repo
+          <em>Variables</em>. The workflow honours this var on tag pushes.
+        </p>
+
+        <h2 id="reference"><span data-i18n="mobpub.toc.reference">10. Reference</span> <a href="#reference" class="anchor-link">#</a></h2>
+
+        <h3 data-i18n="mobpub.ref.gh_secrets">10.1 GitHub secrets (consumed by mobile workflows)</h3>
+        <table>
+          <thead><tr><th>Secret</th><th>Sensitive?</th><th>Source</th><th>Consumer workflow</th></tr></thead>
+          <tbody>
+            <tr><td><code>EXPO_TOKEN</code></td><td>Yes</td><td>GCP secret <code>expo-token</code></td><td><code>mobile-eas-build.yml</code>, <code>inspector-build.yml</code>, <code>mobile-eas-submit.yml</code></td></tr>
+            <tr><td><code>GOOGLE_PLAY_SA_JSON_BASE64</code></td><td>Yes</td><td>GCP secret <code>google-play-service-account</code> (base64)</td><td><code>mobile-eas-submit.yml</code></td></tr>
+            <tr><td><code>ANDROID_KEYSTORE_BASE64</code></td><td>Yes</td><td>EAS-managed keystore (base64)</td><td><code>mobile-build.yml</code></td></tr>
+            <tr><td><code>ANDROID_KEYSTORE_PASSWORD</code></td><td>Yes</td><td>EAS keystore credentials</td><td><code>mobile-build.yml</code></td></tr>
+            <tr><td><code>ANDROID_KEY_ALIAS</code></td><td>Yes</td><td>EAS keystore credentials</td><td><code>mobile-build.yml</code></td></tr>
+            <tr><td><code>ANDROID_KEY_PASSWORD</code></td><td>Yes</td><td>EAS keystore credentials</td><td><code>mobile-build.yml</code></td></tr>
+            <tr><td><code>ADI_REGISTRATION_TOKEN</code></td><td>No</td><td>Play Console verification dialog (optional override)</td><td><code>mobile-build.yml</code></td></tr>
+            <tr><td><code>FIREBASE_ANDROID_APP_ID</code></td><td>No</td><td>Firebase console</td><td>Future Crashlytics integration</td></tr>
+          </tbody>
+        </table>
+
+        <h3 data-i18n="mobpub.ref.gcp_secrets">10.2 GCP Secret Manager (canonical source)</h3>
+        <table>
+          <thead><tr><th>Secret</th><th>Project</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>expo-token</code></td><td>taxasge-dev</td><td>Expo personal access token (build / submit)</td></tr>
+            <tr><td><code>google-play-service-account</code></td><td>taxasge-dev</td><td>JSON key of <code>play-publisher@</code> SA</td></tr>
+            <tr><td><code>sentry-auth-token</code></td><td>taxasge-dev</td><td>Sentry CLI sourcemap upload</td></tr>
+            <tr><td><code>sentry-dsn-mobile</code></td><td>taxasge-dev</td><td>React Native Sentry DSN (mirrored to EAS env)</td></tr>
+            <tr><td><code>logrocket-app-id</code></td><td>taxasge-dev</td><td>LogRocket session replay app id</td></tr>
+          </tbody>
+        </table>
+
+        <h3 data-i18n="mobpub.ref.paths">10.3 Repository paths</h3>
+        <table>
+          <thead><tr><th>Path</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>packages/mobile/app.json</code></td><td>Expo manifest (Facil citizen)</td></tr>
+            <tr><td><code>packages/mobile/eas.json</code></td><td>EAS build / submit profiles</td></tr>
+            <tr><td><code>packages/mobile/android/app/src/main/assets/adi-registration.properties</code></td><td>ADI token committed copy (defensive)</td></tr>
+            <tr><td><code>packages/mobile/plugins/with-adi-registration.js</code></td><td>Config plugin that re-emits the token at prebuild</td></tr>
+            <tr><td><code>packages/inspector/{app.json,eas.json,plugins/with-adi-registration.js}</code></td><td>Inspector counterpart, ADI placeholder</td></tr>
+            <tr><td><code>.github/workflows/mobile-eas-build.yml</code></td><td>Canonical EAS Cloud build</td></tr>
+            <tr><td><code>.github/workflows/mobile-eas-submit.yml</code></td><td><code>eas submit</code> automation</td></tr>
+            <tr><td><code>.github/workflows/mobile-build.yml</code></td><td>Native fallback build</td></tr>
+            <tr><td><code>.github/workflows/auto-tag-mobile-inspector.yml</code></td><td>Push-to-tag side effect</td></tr>
+            <tr><td><code>.claude/plans/MOBILE_PHASE_10_*.md</code></td><td>Phase 10 publication plan and bilans</td></tr>
+            <tr><td><code>Documentations/workflow/debug/tesoro/key/</code></td><td>Local-only keystore + credentials backup (gitignored)</td></tr>
+          </tbody>
+        </table>
+
+        <h3 data-i18n="mobpub.ref.commands">10.4 Cheat sheet</h3>
+        <pre><code># Trigger a preview APK build (manual)
+gh workflow run mobile-eas-build.yml --repo=KouemouSah/taxasge -f profile=preview -f platform=android
+
+# Trigger production AAB submit to Play Console internal track
+gh workflow run mobile-eas-submit.yml --repo=KouemouSah/taxasge -f track=internal
+
+# Native fallback APK + AAB (uses GitHub-hosted runner)
+gh workflow run mobile-build.yml --repo=KouemouSah/taxasge -f build_type=release
+
+# Re-sync GitHub keystore secret with EAS-managed keystore
+base64 -w0 @emacsah__facil-keystore.bak.jks \
+  | gh secret set ANDROID_KEYSTORE_BASE64 --repo=KouemouSah/taxasge
+
+# Inspect the latest 5 EAS builds (status + artefact URL)
+EXPO_TOKEN=$(gcloud secrets versions access latest --secret=expo-token --project=taxasge-dev)
+curl -s -H "Authorization: Bearer $EXPO_TOKEN" -H "User-Agent: eas-cli" \
+     -H "Content-Type: application/json" -X POST https://api.expo.dev/graphql \
+     -d '{"query":"query{app{byFullName(fullName:\"@emacsah/facil\"){builds(limit:5,offset:0){id status buildProfile gitCommitHash artifacts{applicationArchiveUrl}}}}}"}' | jq
+
+# Verify an APK signing fingerprint locally (no Java required)
+python packages/backend/scripts/verify_apk_signature.py path/to/app.apk</code></pre>
+
+        <h3 data-i18n="mobpub.ref.related">10.5 Related documentation</h3>
+        <ul>
+          <li><a href="deployment.html">Deployment &amp; Operations</a> &mdash; backend Cloud Run + Firebase Hosting CI/CD</li>
+          <li><a href="security.html">Security Architecture</a> &mdash; JWT, RBAC, audit logging</li>
+          <li><a href="logrocket-observability.html">LogRocket Observability</a> &mdash; mobile session replay setup</li>
+          <li><code>.claude/plans/MOBILE_PHASE_10_PUBLISH_PLAYSTORE_MASTER.md</code> &mdash; per-phase implementation plan (A through F)</li>
+          <li><code>.claude/plans/MOBILE_PHASE_10_D_SIGNING_KEYS.md</code> &mdash; signing keys reference (kept in sync with this page)</li>
+        </ul>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

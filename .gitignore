@@ -145,6 +145,11 @@ config/*.json
 packages/mobile/scripts/
 Documentations/
 scripts/
+# packages/backend/scripts/ already holds committed Python utilities
+# (apply_*.py, etc.). Re-include the folder itself + the verify_apk_signature.py
+# helper added in Phase 10. Other locally-staged scripts remain ignored.
+!packages/backend/scripts/
+!packages/backend/scripts/verify_apk_signature.py
 
 # E2E Test Data (keep README only)
 test-data/*.pdf

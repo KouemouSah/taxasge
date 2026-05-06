@@ -29,6 +29,7 @@ window.__I18N__.en =
         "logrocket": "LogRocket Observability",
         "security": "Security",
         "deployment": "Deployment",
+        "mobile_publishing": "Mobile Publishing",
         "i18n": "Internationalization"
       }
     },
@@ -1306,7 +1307,8 @@ window.__I18N__.en =
       "deployment": "— CI/CD pipeline, Cloud Run, Firebase Hosting, monitoring",
       "i18n": "— Trilingual support (ES/FR/EN), 11,400+ keys, translation architecture",
       "grafana": "— 10 production dashboards, Analytics Engineering, semantic data layer, decision-driven KPIs",
-      "logrocket": "— Session replay (web + mobile + inspector), privacy-first PII redaction, Sentry bridge, daily usage flows"
+      "logrocket": "— Session replay (web + mobile + inspector), privacy-first PII redaction, Sentry bridge, daily usage flows",
+      "mobile_publishing": "— End-to-end Play Store flow (EAS Cloud + GitHub Actions + Play Console), Android Developer Verification (ADI token), keystore management, troubleshooting"
     },
     "overview": {
       "title": "Platform Overview",
@@ -1359,7 +1361,8 @@ window.__I18N__.en =
       "deployment": "8 GitHub Actions workflows, Cloud Run containers, Firebase Hosting, environment management, and monitoring.",
       "i18n": "Trilingual support (Spanish, French, English), 11,400+ translation keys, backend entity translations, and template rendering.",
       "grafana": "10 production-grade dashboards, 4-layer semantic data architecture, multi-source site resolution, and decision-driven KPIs for treasury, agents, and inspectors.",
-      "logrocket": "Session replay on web + mobile + inspector with 4-layer PII redaction, identify policy enforcement, and Sentry bridge for forensic debugging."
+      "logrocket": "Session replay on web + mobile + inspector with 4-layer PII redaction, identify policy enforcement, and Sentry bridge for forensic debugging.",
+      "mobile_publishing": "Play Store release flow end-to-end: EAS Cloud builds, GitHub Actions orchestration, Android Developer Verification (ADI token), keystore management with EAS-managed signing, and troubleshooting."
     },
     "dec": {
       "title": "Key Architecture Decisions",
