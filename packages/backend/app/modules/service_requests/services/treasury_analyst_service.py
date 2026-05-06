@@ -431,18 +431,35 @@ def _site_scope_via_request(kwargs: dict, table_alias: str, param_offset: int,
 # ============================================================================
 
 async def _get_revenue_summary(db, days: int = 30, **kwargs) -> Dict[str, Any]:
-    # Completed revenue → PVA-based scope (TESORO agent who validated)
+    # Bug 1 fix dynamic (2026-05-06): entity scope is now dynamic — taken from
+    # kwargs['_entity_code'] (set by caller from tctx.entity_code). When None
+    # (admin global scope), no entity clause is applied and the chatbot sees
+    # all entities. Otherwise the supervisor sees only own-entity data.
+    target_entity = kwargs.get("_entity_code")
+
+    # Helper to build an entity clause + params relative to current $N offset.
+    def _ent_clause(alias: str, current_offset: int):
+        if not target_entity:
+            return "", []
+        return f"AND {alias}.entity_code = ${current_offset + 1}", [target_entity]
+
+    # Completed revenue → PVA-based site scope + dynamic entity scope.
+    # Order of params after $1 (days): site-scope first (offset=1 → $2),
+    # then entity-scope (offset=1+len(sp_v) → $3 if site scope active, else $2).
     sc_v, sp_v = _site_scope_validated(kwargs, "service_payments", 1)
+    e_clause, e_params = _ent_clause("service_payments", 1 + len(sp_v))
     row = await db.fetchrow(f"""
         SELECT
             COALESCE(SUM(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS completed_amount,
             COUNT(*) FILTER (WHERE workflow_status = 'completed') AS completed_count,
             COALESCE(AVG(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS avg_amount
         FROM service_payments
-        WHERE created_at >= NOW() - make_interval(days => $1) {sc_v}
-    """, days, *sp_v)
-    # Pending payments → no site scope (centralized TESORO queue)
-    pending_row = await db.fetchrow("""
+        WHERE created_at >= NOW() - make_interval(days => $1)
+          {sc_v} {e_clause}
+    """, days, *sp_v, *e_params)
+    # Pending payments → no site scope (centralized queue) + dynamic entity scope
+    pe_clause, pe_params = _ent_clause("service_payments", 1)
+    pending_row = await db.fetchrow(f"""
         SELECT
             COALESCE(SUM(total_amount), 0) AS pending_amount,
             COUNT(*) AS pending_count
@@ -450,30 +467,37 @@ async def _get_revenue_summary(db, days: int = 30, **kwargs) -> Dict[str, Any]:
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
           AND created_at >= NOW() - make_interval(days => $1)
-    """, days)
-    # Rejected count → no scope (central queue info)
-    rejected_count = await db.fetchval("""
+          {pe_clause}
+    """, days, *pe_params)
+    # Rejected count → no site scope + dynamic entity scope
+    re_clause, re_params = _ent_clause("service_payments", 1)
+    rejected_count = await db.fetchval(f"""
         SELECT COUNT(*) FROM service_payments
         WHERE workflow_status = 'rejected_by_agent'
           AND created_at >= NOW() - make_interval(days => $1)
-    """, days)
+          {re_clause}
+    """, days, *re_params)
     sc2, sp2 = _site_scope_validated(kwargs, "service_payments", 1)
+    me_clause, me_params = _ent_clause("service_payments", 1 + len(sp2))
     methods = await db.fetch(f"""
         SELECT payment_method::text AS method, COUNT(*) AS count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
-        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1) {sc2}
+        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1)
+          {sc2} {me_clause}
         GROUP BY payment_method ORDER BY amount DESC
-    """, days, *sp2)
+    """, days, *sp2, *me_params)
     sc3, sp3 = _site_scope_validated(kwargs, "sp", 1)
+    be_clause, be_params = _ent_clause("sp", 1 + len(sp3))
     by_entity = await db.fetch(f"""
         SELECT sp.entity_code, e.name AS entity_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         LEFT JOIN entities e ON e.code = sp.entity_code
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc3}
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+          {sc3} {be_clause}
         GROUP BY sp.entity_code, e.name ORDER BY amount DESC
-    """, days, *sp3)
+    """, days, *sp3, *be_params)
     return {
         "period_days": days,
         "completed": {"amount": float(row["completed_amount"]), "count": row["completed_count"], "avg": float(row["avg_amount"])},
@@ -485,25 +509,38 @@ async def _get_revenue_summary(db, days: int = 30, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_revenue_by_service(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope is now driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
+
+    def _ent_clause(alias: str, current_offset: int):
+        if not target_entity:
+            return "", []
+        return f"AND {alias}.entity_code = ${current_offset + 1}", [target_entity]
+
     sc, sp_params = _site_scope_validated(kwargs, "sp", 1)
+    e_clause, e_params = _ent_clause("sp", 1 + len(sp_params))
     rows = await db.fetch(f"""
         SELECT sr.workflow_code, COALESCE(fs.name_es, sr.workflow_code) AS service_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+          {sc} {e_clause}
         GROUP BY sr.workflow_code, fs.name_es ORDER BY amount DESC LIMIT 10
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     sc2, sp2 = _site_scope_validated(kwargs, "sp", 1)
+    e2_clause, e2_params = _ent_clause("sp", 1 + len(sp2))
     by_entity = await db.fetch(f"""
         SELECT sp.entity_code, e.name AS entity_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         LEFT JOIN entities e ON e.code = sp.entity_code
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc2}
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+          {sc2} {e2_clause}
         GROUP BY sp.entity_code, e.name ORDER BY amount DESC LIMIT 10
-    """, days, *sp2)
+    """, days, *sp2, *e2_params)
     return {
         "period_days": days,
         "services": [{"code": r["workflow_code"], "name": r["service_name"], "count": r["count"], "amount": float(r["amount"])} for r in rows],
@@ -512,7 +549,17 @@ async def _get_revenue_by_service(db, days: int = 30, **kwargs) -> Dict[str, Any
 
 
 async def _get_agent_performance(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
+
+    def _ent_clause(alias: str, current_offset: int):
+        if not target_entity:
+            return "", []
+        return f"AND {alias}.entity_code = ${current_offset + 1}", [target_entity]
+
     sc, sp_params = _site_scope_direct(kwargs, "pva", 1, id_col="agent_user_id")
+    e_clause, e_params = _ent_clause("sp", 1 + len(sp_params))
     rows = await db.fetch(f"""
         SELECT u.full_name AS agent_name,
                COUNT(*) FILTER (WHERE pva.action = 'approve') AS validations,
@@ -523,9 +570,10 @@ async def _get_agent_performance(db, days: int = 30, **kwargs) -> Dict[str, Any]
         FROM payment_validation_audit pva
         JOIN users u ON u.id = pva.agent_user_id
         JOIN service_payments sp ON sp.id = pva.payment_id
-        WHERE pva.created_at >= NOW() - make_interval(days => $1) AND pva.agent_user_id IS NOT NULL {sc}
+        WHERE pva.created_at >= NOW() - make_interval(days => $1) AND pva.agent_user_id IS NOT NULL
+          {sc} {e_clause}
         GROUP BY u.full_name ORDER BY (COUNT(*) FILTER (WHERE pva.action = 'approve') + COUNT(*) FILTER (WHERE pva.action = 'reject')) DESC
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     return {
         "period_days": days,
         "agents": [{"name": r["agent_name"], "validations": r["validations"], "rejections": r["rejections"],
@@ -534,8 +582,17 @@ async def _get_agent_performance(db, days: int = 30, **kwargs) -> Dict[str, Any]
 
 
 async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
+
     # Pending payments — site-scoped via service_request entity_location_id
     sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${len(sp) + len(e_params)}"
     row = await db.fetchrow(f"""
         SELECT
             COUNT(*) AS total_pending,
@@ -547,7 +604,8 @@ async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
           {sc}
-    """, *sp)
+          {e_clause}
+    """, *sp, *e_params)
     total = row["total_pending"] or 0
     return {
         "total_pending": total,
@@ -560,23 +618,48 @@ async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_anomaly_summary(db, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no EXISTS subselect).
+    # Otherwise: only anomalies whose service_payment belongs to the entity.
+    target_entity = kwargs.get("_entity_code")
     # Site-scoped via service_request_id → service_requests.entity_location_id
     # Satellite agents see only anomalies from their site's requests
     sc, sp = _site_scope_via_request(kwargs, "pa", 0, fk_col="service_request_id")
+
+    # The entity EXISTS subselect needs a $N placeholder if active.
+    # The same param value is reused across the 3 queries — each query gets
+    # its own param tuple so we recompute the placeholder index per-query.
+    def _entity_exists_clause(starting_offset: int):
+        if not target_entity:
+            return "", []
+        return (
+            f"AND (pa.entity_type != 'service_payment' OR EXISTS ("
+            f"SELECT 1 FROM service_payments sp2 "
+            f"WHERE sp2.id = pa.entity_id AND sp2.entity_code = ${starting_offset + 1}))",
+            [target_entity],
+        )
+
+    e_clause_1, e_params_1 = _entity_exists_clause(len(sp))
     rows = await db.fetch(f"""
         SELECT pa.anomaly_type, pa.severity, pa.status, COUNT(*) AS count
         FROM payment_anomalies pa
-        WHERE true {sc}
+        WHERE true
+          {e_clause_1} {sc}
         GROUP BY pa.anomaly_type, pa.severity, pa.status
         ORDER BY count DESC
-    """, *sp)
+    """, *sp, *e_params_1)
+    e_clause_2, e_params_2 = _entity_exists_clause(len(sp))
     total = await db.fetchval(f"""
-        SELECT COUNT(*) FROM payment_anomalies pa WHERE true {sc}
-    """, *sp)
+        SELECT COUNT(*) FROM payment_anomalies pa
+        WHERE true
+          {e_clause_2} {sc}
+    """, *sp, *e_params_2)
+    e_clause_3, e_params_3 = _entity_exists_clause(len(sp))
     open_count = await db.fetchval(f"""
         SELECT COUNT(*) FROM payment_anomalies pa
-        WHERE pa.status NOT IN ('resolved', 'false_positive') {sc}
-    """, *sp)
+        WHERE pa.status NOT IN ('resolved', 'false_positive')
+          {e_clause_3} {sc}
+    """, *sp, *e_params_3)
     return {
         "total": total or 0,
         "open": open_count or 0,
@@ -585,14 +668,23 @@ async def _get_anomaly_summary(db, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_payment_trends(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${1 + len(sp_params) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT DATE(validated_at) AS date, COUNT(*) AS count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
-        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1) {sc}
+        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1)
+          {sc} {e_clause}
         GROUP BY DATE(validated_at) ORDER BY date
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     return {
         "period_days": days,
         "daily": [{"date": str(r["date"]), "count": r["count"], "amount": float(r["amount"])} for r in rows],
@@ -617,17 +709,26 @@ async def _get_reconciliation_status(db, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_top_payers(db, days: int = 30, limit: int = 10, **kwargs) -> Dict[str, Any]:
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "sp", 2)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND sp.entity_code = ${2 + len(sp_params) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT u.full_name AS payer_name, u.email,
                COUNT(*) AS payment_count,
                COALESCE(SUM(sp.total_amount), 0) AS total_paid
         FROM service_payments sp
         JOIN users u ON u.id = sp.user_id
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+          {sc} {e_clause}
         GROUP BY u.id, u.full_name, u.email
         ORDER BY total_paid DESC LIMIT $2
-    """, days, limit, *sp_params)
+    """, days, limit, *sp_params, *e_params)
     return {
         "period_days": days,
         "payers": [{"name": r["payer_name"], "email": r["email"], "payments": r["payment_count"],
@@ -640,8 +741,21 @@ async def _get_top_payers(db, days: int = 30, limit: int = 10, **kwargs) -> Dict
 # ============================================================================
 
 async def _get_entity_comparison(db, days: int = 30, **kwargs) -> Dict[str, Any]:
-    """Revenue and volume comparison across entities."""
+    """Revenue and volume comparison across entities.
+
+    When kwargs['_entity_code'] is set (entity-scoped supervisor), the result
+    is trivially 1 row (own entity) — that is the correct intent. When None
+    (admin global), all entities are returned for cross-entity comparison.
+    """
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (compares all entities).
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "sp", 1)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND sp.entity_code = ${1 + len(sp_params) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT sp.entity_code, e.name AS entity_name,
                COUNT(*) AS tx_count,
@@ -652,10 +766,11 @@ async def _get_entity_comparison(db, days: int = 30, **kwargs) -> Dict[str, Any]
         FROM service_payments sp
         LEFT JOIN entities e ON e.code = sp.entity_code
         WHERE sp.workflow_status = 'completed'
-          AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
+          AND sp.validated_at >= NOW() - make_interval(days => $1)
+          {sc} {e_clause}
         GROUP BY sp.entity_code, e.name
         ORDER BY total_amount DESC
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     grand_total = sum(float(r["total_amount"]) for r in rows) or 1
     return {
         "period_days": days,
@@ -674,8 +789,16 @@ async def _get_entity_comparison(db, days: int = 30, **kwargs) -> Dict[str, Any]
 
 async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
     """Time-in-status distribution for pending payments."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     # Pending payments — site-scoped via service_request entity_location_id
     sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${len(sp) + len(e_params)}"
     row = await db.fetchrow(f"""
         SELECT
             COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 < 4) AS lt_4h,
@@ -689,7 +812,8 @@ async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
           {sc}
-    """, *sp)
+          {e_clause}
+    """, *sp, *e_params)
     return {
         "total_pending": row["total"] or 0,
         "lt_4h": row["lt_4h"] or 0,
@@ -703,7 +827,15 @@ async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
 
 async def _get_workflow_pipeline(db, **kwargs) -> Dict[str, Any]:
     """Status funnel counts for the last 90 days — site-scoped via service_request."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${len(sp) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT workflow_status::text AS status,
                COUNT(*) AS count,
@@ -711,9 +843,10 @@ async def _get_workflow_pipeline(db, **kwargs) -> Dict[str, Any]:
         FROM service_payments
         WHERE created_at >= NOW() - INTERVAL '90 days'
           {sc}
+          {e_clause}
         GROUP BY workflow_status
         ORDER BY count DESC
-    """, *sp)
+    """, *sp, *e_params)
     return {
         "period": "90 days",
         "statuses": [{
@@ -726,21 +859,32 @@ async def _get_workflow_pipeline(db, **kwargs) -> Dict[str, Any]:
 
 async def _get_period_comparison(db, current_days: int = 30, **kwargs) -> Dict[str, Any]:
     """Compare current period vs previous equivalent period."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause). Both CTEs
+    # reference the same $N placeholder for the entity_code value.
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
-    # sc is used in both CTEs — same param placeholder
+    # sc is used in both CTEs — same param placeholder.
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${1 + len(sp_params) + len(e_params)}"
     row = await db.fetchrow(f"""
         WITH current_period AS (
             SELECT COUNT(*) AS tx_count, COALESCE(SUM(total_amount), 0) AS total_amount
             FROM service_payments
             WHERE workflow_status = 'completed'
-              AND validated_at >= NOW() - make_interval(days => $1) {sc}
+              AND validated_at >= NOW() - make_interval(days => $1)
+              {sc} {e_clause}
         ),
         previous_period AS (
             SELECT COUNT(*) AS tx_count, COALESCE(SUM(total_amount), 0) AS total_amount
             FROM service_payments
             WHERE workflow_status = 'completed'
               AND validated_at >= NOW() - make_interval(days => $1 * 2)
-              AND validated_at < NOW() - make_interval(days => $1) {sc}
+              AND validated_at < NOW() - make_interval(days => $1)
+              {sc} {e_clause}
         )
         SELECT
             c.tx_count AS current_count, c.total_amount AS current_amount,
@@ -752,7 +896,7 @@ async def _get_period_comparison(db, current_days: int = 30, **kwargs) -> Dict[s
                 THEN ROUND(((c.tx_count - p.tx_count)::numeric / p.tx_count * 100)::numeric, 1)
                 ELSE 0 END AS count_delta_pct
         FROM current_period c, previous_period p
-    """, current_days, *sp_params)
+    """, current_days, *sp_params, *e_params)
     return {
         "period_days": current_days,
         "current": {"count": row["current_count"], "amount": float(row["current_amount"])},
@@ -766,7 +910,15 @@ async def _get_period_comparison(db, current_days: int = 30, **kwargs) -> Dict[s
 
 async def _get_cash_flow_daily(db, days: int = 30, **kwargs) -> Dict[str, Any]:
     """Daily cash flow: inflow (completed) vs outflow (cancelled/expired)."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${1 + len(sp_params) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT DATE(validated_at) AS date,
                COALESCE(SUM(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS inflow,
@@ -775,10 +927,11 @@ async def _get_cash_flow_daily(db, days: int = 30, **kwargs) -> Dict[str, Any]:
                ), 0) AS outflow
         FROM service_payments
         WHERE validated_at >= NOW() - make_interval(days => $1)
-          AND validated_at IS NOT NULL {sc}
+          AND validated_at IS NOT NULL
+          {sc} {e_clause}
         GROUP BY DATE(validated_at)
         ORDER BY date
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     cumulative = 0.0
     daily = []
     for r in rows:
@@ -797,7 +950,29 @@ async def _get_cash_flow_daily(db, days: int = 30, **kwargs) -> Dict[str, Any]:
 
 async def _get_rejection_analysis(db, days: int = 30, **kwargs) -> Dict[str, Any]:
     """Rejection patterns by agent and by reason."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no EXISTS subselect).
+    target_entity = kwargs.get("_entity_code")
+
+    def _entity_exists(agent_alias: str, starting_offset: int):
+        """Build EXISTS clause restricting to agents of target_entity.
+
+        agent_alias = column expression for pva.agent_user_id.
+        """
+        if not target_entity:
+            return "", []
+        return (
+            f"AND EXISTS ("
+            f"SELECT 1 FROM agent_profiles ap2 "
+            f"JOIN entities e2 ON e2.id = ap2.entity_id "
+            f"WHERE ap2.user_id = {agent_alias} "
+            f"AND e2.code = ${starting_offset + 1} "
+            f"AND ap2.is_active = true)",
+            [target_entity],
+        )
+
     sc, sp_params = _site_scope_direct(kwargs, "pva", 1, id_col="agent_user_id")
+    e_clause, e_params = _entity_exists("pva.agent_user_id", 1 + len(sp_params))
     agent_rows = await db.fetch(f"""
         SELECT u.full_name AS agent_name,
                COUNT(*) FILTER (WHERE pva.action = 'reject') AS rejections,
@@ -809,30 +984,39 @@ async def _get_rejection_analysis(db, days: int = 30, **kwargs) -> Dict[str, Any
         FROM payment_validation_audit pva
         JOIN users u ON u.id = pva.agent_user_id
         WHERE pva.created_at >= NOW() - make_interval(days => $1)
-          AND pva.agent_user_id IS NOT NULL {sc}
+          AND pva.agent_user_id IS NOT NULL
+          {sc} {e_clause}
         GROUP BY u.full_name
         HAVING COUNT(*) FILTER (WHERE pva.action = 'reject') > 0
         ORDER BY rejections DESC
-    """, days, *sp_params)
+    """, days, *sp_params, *e_params)
     sc2, sp2 = _site_scope_direct(kwargs, "payment_validation_audit", 1, id_col="agent_user_id")
+    e2_clause, e2_params = _entity_exists("payment_validation_audit.agent_user_id", 1 + len(sp2))
     reason_rows = await db.fetch(f"""
         SELECT unnest(rejection_reasons) AS reason, COUNT(*) AS count
         FROM payment_validation_audit
         WHERE action = 'reject'
           AND created_at >= NOW() - make_interval(days => $1)
           AND rejection_reasons IS NOT NULL
-          AND array_length(rejection_reasons, 1) > 0 {sc2}
+          AND array_length(rejection_reasons, 1) > 0
+          {sc2} {e2_clause}
         GROUP BY reason
         ORDER BY count DESC LIMIT 15
-    """, days, *sp2)
+    """, days, *sp2, *e2_params)
     sc3, sp3 = _site_scope_validated(kwargs, "service_payments", 1)
+    e3_clause = ""
+    e3_params: list = []
+    if target_entity:
+        e3_params.append(target_entity)
+        e3_clause = f"AND service_payments.entity_code = ${1 + len(sp3) + len(e3_params)}"
     resubmit_row = await db.fetchrow(f"""
         SELECT COUNT(*) FILTER (WHERE rejection_count > 0) AS resubmitted,
                COUNT(*) FILTER (WHERE rejection_count > 1) AS multi_rejected,
                AVG(rejection_count) FILTER (WHERE rejection_count > 0) AS avg_rejections
         FROM service_payments
-        WHERE created_at >= NOW() - make_interval(days => $1) {sc3}
-    """, days, *sp3)
+        WHERE created_at >= NOW() - make_interval(days => $1)
+          {sc3} {e3_clause}
+    """, days, *sp3, *e3_params)
     return {
         "period_days": days,
         "by_agent": [{
@@ -854,6 +1038,9 @@ async def _get_anomaly_details(
     db, anomaly_type: str = None, severity: str = None, **kwargs
 ) -> Dict[str, Any]:
     """Detailed anomaly drill-down with false positive rates. Site-scoped."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no EXISTS subselect).
+    target_entity = kwargs.get("_entity_code")
     conditions: List[str] = []
     params: list = []
     idx = 1
@@ -864,6 +1051,15 @@ async def _get_anomaly_details(
     if severity:
         conditions.append(f"pa.severity::text = ${idx}")
         params.append(severity)
+        idx += 1
+    # Entity scoping (parameterized, only if target_entity set)
+    if target_entity:
+        conditions.append(
+            "(pa.entity_type != 'service_payment' OR EXISTS ("
+            "SELECT 1 FROM service_payments sp2 "
+            f"WHERE sp2.id = pa.entity_id AND sp2.entity_code = ${idx}))"
+        )
+        params.append(target_entity)
         idx += 1
     # Site scoping via service_request_id
     sc, sp_site = _site_scope_via_request(kwargs, "pa", idx - 1, fk_col="service_request_id")
@@ -892,9 +1088,18 @@ async def _get_anomaly_details(
         ORDER BY open_count DESC
     """, *params)
 
-    # Recent actions — also site-scoped
+    # Recent actions — also site-scoped + dynamic entity scope
     sc_aa, sp_aa = _site_scope_via_request(kwargs, "pa", 0, fk_col="service_request_id")
-    aa_where = f"WHERE true {sc_aa}" if sc_aa else ""
+    aa_params: list = list(sp_aa)
+    aa_e_clause = ""
+    if target_entity:
+        aa_params.append(target_entity)
+        aa_e_clause = (
+            "AND (pa.entity_type != 'service_payment' OR EXISTS ("
+            "SELECT 1 FROM service_payments sp2 "
+            f"WHERE sp2.id = pa.entity_id AND sp2.entity_code = ${len(aa_params)}))"
+        )
+    aa_where = f"WHERE true {sc_aa} {aa_e_clause}"
     recent = await db.fetch(f"""
         SELECT aa.action, aa.from_status::text, aa.to_status::text,
                aa.comment, aa.performed_at,
@@ -903,7 +1108,7 @@ async def _get_anomaly_details(
         JOIN payment_anomalies pa ON pa.id = aa.anomaly_id
         {aa_where}
         ORDER BY aa.performed_at DESC LIMIT 10
-    """, *sp_aa)
+    """, *aa_params)
 
     return {
         "filters": {"anomaly_type": anomaly_type, "severity": severity},
@@ -938,17 +1143,26 @@ async def _get_revenue_forecast(db, days_history: int = 90, **kwargs) -> Dict[st
     Uses simple linear regression + 7-day moving average.
     Returns confidence level based on data point count.
     """
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${1 + len(sp_params) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT DATE(validated_at) AS date,
                COUNT(*) AS tx_count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND validated_at >= NOW() - make_interval(days => $1) {sc}
+          AND validated_at >= NOW() - make_interval(days => $1)
+          {sc} {e_clause}
         GROUP BY DATE(validated_at)
         ORDER BY date
-    """, days_history, *sp_params)
+    """, days_history, *sp_params, *e_params)
 
     data_points = len(rows)
 
@@ -1034,7 +1248,15 @@ async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[s
     Tracks daily new payments (all statuses) to project future workload.
     Site-scoped via service_request entity_location_id.
     """
+    # Bug 1 fix dynamic (2026-05-06): entity scope driven by
+    # kwargs['_entity_code']. None = global admin (no clause).
+    target_entity = kwargs.get("_entity_code")
     sc, sp = _site_scope_via_request(kwargs, "service_payments", 1)
+    e_clause = ""
+    e_params: list = []
+    if target_entity:
+        e_params.append(target_entity)
+        e_clause = f"AND service_payments.entity_code = ${1 + len(sp) + len(e_params)}"
     rows = await db.fetch(f"""
         SELECT DATE(created_at) AS date,
                COUNT(*) AS new_payments,
@@ -1042,9 +1264,10 @@ async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[s
         FROM service_payments
         WHERE created_at >= NOW() - make_interval(days => $1)
           {sc}
+          {e_clause}
         GROUP BY DATE(created_at)
         ORDER BY date
-    """, days_history, *sp)
+    """, days_history, *sp, *e_params)
 
     data_points = len(rows)
 
@@ -1084,14 +1307,20 @@ async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[s
     denominator = sum((i - x_mean) ** 2 for i in range(n))
     slope = numerator / denominator if denominator else 0
 
-    # Current pending backlog — site-scoped
+    # Current pending backlog — site-scoped + dynamic entity scope
     sc_p, sp_p = _site_scope_via_request(kwargs, "service_payments", 0)
+    p_e_clause = ""
+    p_e_params: list = []
+    if target_entity:
+        p_e_params.append(target_entity)
+        p_e_clause = f"AND service_payments.entity_code = ${len(sp_p) + len(p_e_params)}"
     pending = await db.fetchval(f"""
         SELECT COUNT(*) FROM service_payments
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
           {sc_p}
-    """, *sp_p)
+          {p_e_clause}
+    """, *sp_p, *p_e_params)
 
     # Forecast
     forecasts = {}

@@ -126,6 +126,28 @@ class TreasuryAnalyticsService:
     }
 
     # =========================================================================
+    # JSON-SAFE NUMERIC HELPER
+    # =========================================================================
+
+    @staticmethod
+    def _safe_float(x: Any, default: float = 0.0) -> float:
+        """Convert numpy/scipy/pandas value to JSON-safe float.
+
+        scipy.stats.pearsonr returns NaN for constant series, LinearRegression
+        can produce Inf on pathological fits, and numpy.std can return 0.0
+        triggering NaN downstream. Starlette's JSON encoder rejects NaN/Inf
+        with `Out of range float values are not JSON compliant` (HTTP 500).
+
+        This helper normalizes any non-finite numeric to `default` (0.0 by
+        default) so the entire analytics report can serialize safely.
+        """
+        try:
+            v = float(x)
+            return v if np.isfinite(v) else default
+        except (TypeError, ValueError):
+            return default
+
+    # =========================================================================
     # DATA EXTRACTION
     # =========================================================================
 
@@ -135,6 +157,7 @@ class TreasuryAnalyticsService:
         period: str,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        entity_code: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Extract KPI data from materialized view
@@ -144,6 +167,9 @@ class TreasuryAnalyticsService:
             period: Period type (day, week, month, year)
             date_from: Start date
             date_to: End date
+            entity_code: Optional entity scope filter. If None, no entity
+                filter is applied (admin global view). Otherwise filters
+                rows by the supplied entity_code.
 
         Returns:
             DataFrame with KPI data
@@ -161,7 +187,17 @@ class TreasuryAnalyticsService:
         date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
         date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
 
-        query = """
+        # Bug 1 fix dynamic (2026-05-06): mv_treasury_daily_kpis aggregates
+        # payments for ALL entities (TESORO + AYUNTAMIENTO + CAMARA + ...).
+        # The entity filter is now parameterized so admin global scope sees
+        # everything while entity-scoped supervisors see only their own
+        # entity. None = no clause (global admin).
+        query_params: list = [date_from_obj, date_to_obj]
+        entity_clause = ""
+        if entity_code:
+            query_params.append(entity_code)
+            entity_clause = f"AND entity_code = ${len(query_params)}"
+        query = f"""
             SELECT
                 report_date,
                 payment_method,
@@ -176,11 +212,12 @@ class TreasuryAnalyticsService:
                 avg_processing_minutes
             FROM mv_treasury_daily_kpis
             WHERE report_date BETWEEN $1 AND $2
+              {entity_clause}
             ORDER BY report_date
         """
 
         try:
-            rows = await db.fetch(query, date_from_obj, date_to_obj)
+            rows = await db.fetch(query, *query_params)
             if not rows:
                 logger.warning(f"No KPI data found for period {date_from} to {date_to}")
                 return pd.DataFrame()
@@ -207,13 +244,36 @@ class TreasuryAnalyticsService:
         db: asyncpg.Connection,
         date_from: str,
         date_to: str,
+        entity_code: Optional[str] = None,
     ) -> pd.DataFrame:
         """Extract agent performance data from payment_validation_audit.
 
         Uses actual audit trail (not the empty agent_performance_stats table)
         to provide monthly agent metrics for cross-correlation with treasury KPIs.
+
+        Args:
+            entity_code: Optional entity scope filter. If None, no entity
+                filter (admin global view). Otherwise filters by EXISTS
+                join on agent_profiles → entities.code.
         """
-        query = """
+        # Bug 1 fix dynamic (2026-05-06): entity filter is now parameterized.
+        # None = global admin (no clause), explicit entity_code restricts via
+        # EXISTS join on agent_profiles → entities.
+        # asyncpg requires datetime.date objects for date columns
+        df_obj = datetime.strptime(date_from, "%Y-%m-%d").date() if isinstance(date_from, str) else date_from
+        dt_obj = datetime.strptime(date_to, "%Y-%m-%d").date() if isinstance(date_to, str) else date_to
+        query_params: list = [df_obj, dt_obj]
+        entity_clause = ""
+        if entity_code:
+            query_params.append(entity_code)
+            entity_clause = f"""AND EXISTS (
+                SELECT 1 FROM agent_profiles ap2
+                JOIN entities e2 ON e2.id = ap2.entity_id
+                WHERE ap2.id = pva.agent_profile_id
+                  AND e2.code = ${len(query_params)}
+                  AND ap2.is_active = true
+            )"""
+        query = f"""
             SELECT
                 pva.agent_profile_id::text AS agent_id,
                 to_char(date_trunc('month', pva.created_at), 'YYYY-MM') AS month_year,
@@ -232,15 +292,13 @@ class TreasuryAnalyticsService:
             WHERE pva.agent_profile_id IS NOT NULL
             AND pva.created_at >= $1::date
             AND pva.created_at < ($2::date + INTERVAL '1 month')
+            {entity_clause}
             GROUP BY pva.agent_profile_id, date_trunc('month', pva.created_at)
             ORDER BY month_year, validations_count DESC
         """
 
         try:
-            # asyncpg requires datetime.date objects for date columns
-            df_obj = datetime.strptime(date_from, "%Y-%m-%d").date() if isinstance(date_from, str) else date_from
-            dt_obj = datetime.strptime(date_to, "%Y-%m-%d").date() if isinstance(date_to, str) else date_to
-            rows = await db.fetch(query, df_obj, dt_obj)
+            rows = await db.fetch(query, *query_params)
             if not rows:
                 return pd.DataFrame()
             df = pd.DataFrame([dict(row) for row in rows])
@@ -294,14 +352,14 @@ class TreasuryAnalyticsService:
                 DescriptiveStats(
                     metric_name=col,
                     count=int(desc["count"]),
-                    mean=float(desc["mean"]),
-                    median=float(data.median()),
-                    std=float(desc["std"]) if desc["std"] == desc["std"] else 0.0,
-                    min=float(desc["min"]),
-                    max=float(desc["max"]),
-                    q1=float(q1),
-                    q3=float(q3),
-                    iqr=float(q3 - q1),
+                    mean=self._safe_float(desc["mean"]),
+                    median=self._safe_float(data.median()),
+                    std=self._safe_float(desc["std"]),
+                    min=self._safe_float(desc["min"]),
+                    max=self._safe_float(desc["max"]),
+                    q1=self._safe_float(q1),
+                    q3=self._safe_float(q3),
+                    iqr=self._safe_float(q3 - q1),
                 )
             )
 
@@ -313,9 +371,10 @@ class TreasuryAnalyticsService:
         period: str,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        entity_code: Optional[str] = None,
     ) -> StatisticsResponse:
         """Get descriptive statistics for treasury data"""
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         if df.empty:
             return StatisticsResponse(
@@ -383,19 +442,30 @@ class TreasuryAnalyticsService:
                 if mask.sum() < 3:  # Need at least 3 points
                     continue
 
-                try:
-                    coefficient, p_value = stats.pearsonr(
-                        data1[mask].values, data2[mask].values
+                v1 = data1[mask].astype(float).values
+                v2 = data2[mask].astype(float).values
+
+                # pearsonr returns NaN when either series has zero variance
+                # (constant input). NaN cannot be JSON-serialized, so skip.
+                if np.std(v1) == 0 or np.std(v2) == 0:
+                    logger.debug(
+                        f"Skipping correlation {col1}/{col2}: constant series"
                     )
+                    continue
+
+                try:
+                    coefficient, p_value = stats.pearsonr(v1, v2)
+                    coef = self._safe_float(coefficient, 0.0)
+                    p = self._safe_float(p_value, 1.0)
 
                     results.append(
                         CorrelationResult(
                             variable_1=col1,
                             variable_2=col2,
-                            coefficient=float(coefficient),
-                            p_value=float(p_value),
-                            strength=self._interpret_correlation(coefficient),
-                            is_significant=p_value < 0.05,
+                            coefficient=coef,
+                            p_value=p,
+                            strength=self._interpret_correlation(coef),
+                            is_significant=(p < 0.05 and coef != 0.0),
                         )
                     )
                 except Exception as e:
@@ -409,9 +479,10 @@ class TreasuryAnalyticsService:
         period: str,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        entity_code: Optional[str] = None,
     ) -> CorrelationMatrix:
         """Get correlation matrix for treasury metrics"""
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         columns = [
             "total_amount",
@@ -507,19 +578,19 @@ class TreasuryAnalyticsService:
             n_days = len(daily)
             is_reliable = n_days >= 14 and r_squared >= 0.5
 
-            proj_7d = float(model.predict([[last_day + 7]])[0])
-            proj_30d = float(model.predict([[last_day + 30]])[0])
+            proj_7d = self._safe_float(model.predict([[last_day + 7]])[0])
+            proj_30d = self._safe_float(model.predict([[last_day + 30]])[0])
 
             return TrendAnalysis(
                 metric_name=value_col,
-                slope=float(slope),
-                intercept=float(intercept),
-                r_squared=float(r_squared),
+                slope=self._safe_float(slope),
+                intercept=self._safe_float(intercept),
+                r_squared=self._safe_float(r_squared),
                 direction=self._interpret_trend(slope_pct),
-                slope_percentage=float(slope_pct),
+                slope_percentage=self._safe_float(slope_pct),
                 confidence_level=confidence,
-                projection_7d=max(0, proj_7d) if is_reliable else None,
-                projection_30d=max(0, proj_30d) if is_reliable else None,
+                projection_7d=max(0.0, proj_7d) if is_reliable else None,
+                projection_30d=max(0.0, proj_30d) if is_reliable else None,
                 data_points=n_days,
                 is_reliable=is_reliable,
             )
@@ -534,9 +605,10 @@ class TreasuryAnalyticsService:
         period: str,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        entity_code: Optional[str] = None,
     ) -> TrendsResponse:
         """Get trend analysis for treasury metrics"""
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         trends = []
         if not df.empty:
@@ -596,17 +668,21 @@ class TreasuryAnalyticsService:
         anomalies = []
         for i, z in enumerate(z_scores):
             if abs(z) > z_threshold:
-                value = float(values[i])
+                value = self._safe_float(values[i])
+                expected = self._safe_float(mean_val)
+                deviation = (
+                    self._safe_float((value - expected) / expected * 100)
+                    if expected > 0
+                    else 0.0
+                )
                 anomalies.append(
                     AnomalyPoint(
                         date=daily.iloc[i][date_col].strftime("%Y-%m-%d"),
                         metric_name=value_col,
                         value=value,
-                        expected_value=float(mean_val),
-                        z_score=float(z),
-                        deviation_percentage=float((value - mean_val) / mean_val * 100)
-                        if mean_val > 0
-                        else 0,
+                        expected_value=expected,
+                        z_score=self._safe_float(z),
+                        deviation_percentage=deviation,
                         anomaly_type="high" if z > 0 else "low",
                     )
                 )
@@ -619,9 +695,10 @@ class TreasuryAnalyticsService:
         period: str,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
+        entity_code: Optional[str] = None,
     ) -> AnomaliesResponse:
         """Get detected anomalies for treasury data"""
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         all_anomalies = []
         by_metric: Dict[str, int] = {}
@@ -706,22 +783,22 @@ class TreasuryAnalyticsService:
         for i in range(1, horizon_days + 1):
             pred_day = last_day + i
             pred_date = last_date + timedelta(days=i)
-            pred_value = float(model.predict([[pred_day]])[0])
+            pred_value = self._safe_float(model.predict([[pred_day]])[0])
 
             # Prediction interval
-            margin = t_value * se * np.sqrt(1 + 1 / n)
+            margin = self._safe_float(t_value * se * np.sqrt(1 + 1 / n))
 
             predictions.append(
                 PredictionPoint(
                     date=pred_date.strftime("%Y-%m-%d"),
-                    predicted_value=max(0, pred_value),  # No negative predictions
-                    lower_bound=max(0, pred_value - margin),
-                    upper_bound=pred_value + margin,
+                    predicted_value=max(0.0, pred_value),  # No negative predictions
+                    lower_bound=max(0.0, pred_value - margin),
+                    upper_bound=self._safe_float(pred_value + margin),
                     confidence_level=confidence_level,
                 )
             )
 
-        return predictions, float(r_squared)
+        return predictions, self._safe_float(r_squared)
 
     async def get_predictions(
         self,
@@ -730,9 +807,10 @@ class TreasuryAnalyticsService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         horizon_days: int = 7,
+        entity_code: Optional[str] = None,
     ) -> PredictionsResponse:
         """Get predictions for treasury revenue"""
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         predictions, r_squared = (
             self.generate_predictions(
@@ -998,6 +1076,7 @@ class TreasuryAnalyticsService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         language: str = "es",
+        entity_code: Optional[str] = None,
     ) -> AnalyticsReport:
         """
         Generate comprehensive analytics report
@@ -1008,12 +1087,15 @@ class TreasuryAnalyticsService:
             date_from: Start date
             date_to: End date
             language: Report language (es, fr, en)
+            entity_code: Optional entity scope filter. None = global admin
+                view (all entities). Otherwise restricts the report to the
+                supplied entity_code.
 
         Returns:
             Complete AnalyticsReport
         """
         # Get all data
-        df = await self.get_kpi_data(db, period, date_from, date_to)
+        df = await self.get_kpi_data(db, period, date_from, date_to, entity_code=entity_code)
 
         if df.empty:
             return AnalyticsReport(
@@ -1171,7 +1253,7 @@ class TreasuryAnalyticsService:
             health_status = "critical"
 
         # Summary metrics
-        total_amount = float(df["total_amount"].sum())
+        total_amount = self._safe_float(df["total_amount"].sum())
         total_transactions = int(df["transaction_count"].sum())
 
         # Data quality
@@ -1191,9 +1273,9 @@ class TreasuryAnalyticsService:
             total_records=len(df),
             total_amount=total_amount,
             total_transactions=total_transactions,
-            avg_transaction_amount=total_amount / total_transactions
-            if total_transactions > 0
-            else 0,
+            avg_transaction_amount=self._safe_float(
+                total_amount / total_transactions
+            ) if total_transactions > 0 else 0.0,
             statistics=statistics,
             correlations=correlations,
             trends=trends,

@@ -5408,10 +5408,31 @@ async def get_treasury_audit(
     tctx = await _get_treasury_context(db, current_user.id)
     effective_location_id = tctx.get_effective_location(entity_location_id)
 
+    # Bug 1 fix dynamic (2026-05-06): scope by tctx.entity_code (own entity
+    # for non-global supervisors, None for treasury.view_all admins meaning
+    # see-all). Endpoint historically TESORO-dedicated but now reusable for
+    # any payment-validating entity (AYUNTAMIENTO, CAMARA, etc.) without
+    # hardcoded values. None = no filter (admin global scope).
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
     # Build dynamic WHERE clause
-    where_clauses = ["1=1"]
+    where_clauses = []
     params = []
     param_idx = 1
+
+    # Entity scope: only include audit entries linked to a payment of the
+    # supervisor's entity. Use EXISTS (not JOIN) so the count_query that
+    # doesn't join service_payments still works.
+    if target_entity_code:
+        where_clauses.append(
+            f"EXISTS (SELECT 1 FROM service_payments sp2 "
+            f"WHERE sp2.id = pva.payment_id AND sp2.entity_code = ${param_idx})"
+        )
+        params.append(target_entity_code)
+        param_idx += 1
 
     # Site-scope: filter audit entries by agent location
     if effective_location_id:
@@ -5444,7 +5465,7 @@ async def get_treasury_audit(
         params.append(date_to)
         param_idx += 1
 
-    where_sql = " AND ".join(where_clauses)
+    where_sql = (" AND ".join(where_clauses)) if where_clauses else "TRUE"
     offset = (page - 1) * page_size
 
     query = f"""
@@ -5477,7 +5498,7 @@ async def get_treasury_audit(
 
     rows = await db.fetch(query, *params)
 
-    # Get total count
+    # Get total count (excludes the trailing LIMIT/OFFSET params)
     count_query = f"""
         SELECT COUNT(*)
         FROM payment_validation_audit pva
@@ -5867,8 +5888,24 @@ async def get_sla_stats(
     # Site-scoping
     tctx = await _get_treasury_context(db, current_user.id)
     effective_loc = tctx.get_effective_location(entity_location_id)
-    loc_filter = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $1::uuid AND is_active = true)" if effective_loc else ""
-    loc_params = [effective_loc] if effective_loc else []
+
+    # Bug 1 fix (2026-05-06): scope by entity_code (own entity for non-global
+    # supervisor, all entities for treasury.view_all admins) so SLA stats
+    # don't leak Ayuntamiento/Camara payments into a TESORO supervisor view.
+    # Mirrors the pattern used by /treasury/stats/dashboard.
+    loc_params: list = []
+    entity_clause = ""
+    if not tctx.has_global_scope and tctx.entity_code:
+        loc_params.append(tctx.entity_code)
+        entity_clause = f"AND sp.entity_code = ${len(loc_params)}"
+
+    loc_filter = ""
+    if effective_loc:
+        loc_params.append(effective_loc)
+        loc_filter = f"AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${len(loc_params)}::uuid AND is_active = true)"
+
+    # Combine both clauses (entity + optional location) for query templating
+    loc_filter = f"{entity_clause} {loc_filter}".strip()
 
     # Get SLA breakdown for pending payments
     sla_stats = await db.fetchrow(f"""
@@ -6333,12 +6370,28 @@ async def get_agent_performance(
     tctx = await _get_treasury_context(db, current_user.id)
     effective_location_id = tctx.get_effective_location(entity_location_id)
 
-    # Build location filter for agent site scoping
-    agent_loc_filter = ""
+    # Bug 1 fix dynamic (2026-05-06): scope by tctx.entity_code (own entity
+    # for non-global supervisors, None for treasury.view_all admins).
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
+    # Build dynamic filters for agent site + entity scoping. Numbering of $N
+    # is local to this query: $1=start_date, $2=end_date, then each filter
+    # appends in order it is constructed.
     query_params = [start_date, end_date]
+    entity_clause = ""
+    if target_entity_code:
+        query_params.append(target_entity_code)
+        entity_clause = f"AND sp.entity_code = ${len(query_params)}"
+    agent_loc_filter = ""
     if effective_location_id:
-        agent_loc_filter = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $3::uuid AND is_active = true)"
         query_params.append(effective_location_id)
+        agent_loc_filter = (
+            f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles "
+            f"WHERE entity_location_id = ${len(query_params)}::uuid AND is_active = true)"
+        )
 
     # Get agent performance from audit log
     # Note: agent_profile_id (UUID) is the current standard, agent_id (int) is deprecated
@@ -6357,6 +6410,7 @@ async def get_agent_performance(
             JOIN service_payments sp ON sp.id = pva.payment_id
             WHERE pva.created_at BETWEEN $1 AND $2
               AND pva.agent_user_id IS NOT NULL
+              {entity_clause}
               {agent_loc_filter}
         ),
         agent_summary AS (
@@ -6749,9 +6803,20 @@ async def get_workload_dashboard(
     tctx = await _get_treasury_context(db, current_user.id)
     effective_location_id = tctx.get_effective_location(entity_location_id)
 
+    # Bug 1 fix dynamic (2026-05-06): scope by tctx.entity_code (own entity
+    # for non-global supervisors, None for treasury.view_all admins meaning
+    # see-all). Endpoint historically TESORO-dedicated but now reusable for
+    # any payment-validating entity (AYUNTAMIENTO, CAMARA, etc.) without
+    # hardcoded values. None = no filter (admin global scope).
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
     cache = get_cache()
     loc_key = effective_location_id or "all"
-    cache_key = f"treasury:workload_dashboard:{days}:{loc_key}"
+    entity_key = target_entity_code or "all"
+    cache_key = f"treasury:workload_dashboard:{days}:{loc_key}:{entity_key}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
@@ -6765,19 +6830,34 @@ async def get_workload_dashboard(
 
     async def q_daily_velocity():
         async with db_manager.get_connection() as conn:
-            loc_filter = ""
             params = [lookback_start]
+            entity_clause = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause = f"""AND EXISTS (
+                    SELECT 1 FROM agent_profiles ap2
+                    JOIN entities e2 ON e2.id = ap2.entity_id
+                    WHERE ap2.id = mv.agent_profile_id
+                      AND e2.code = ${len(params)}
+                      AND ap2.is_active = true
+                )"""
+            loc_filter = ""
             if effective_location_id:
-                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_filter = f"AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+            # Bug 1 fix (2026-05-06): mv_agent_daily_workload aggregates ALL
+            # agents (no entity column). Without entity filter the supervisor
+            # would see other entities' agents in workload charts. Filter is
+            # dynamic via tctx.entity_code (None = global admin = see all).
             rows = await conn.fetch(f"""
                 SELECT
                     report_date::text as date,
                     agent_name,
                     approved,
                     rejected
-                FROM mv_agent_daily_workload
+                FROM mv_agent_daily_workload mv
                 WHERE report_date >= $1::date
+                  {entity_clause}
                   {loc_filter}
                 ORDER BY report_date
             """, *params)
@@ -6786,11 +6866,15 @@ async def get_workload_dashboard(
 
     async def q_agent_load():
         async with db_manager.get_connection() as conn:
-            loc_filter = ""
             params = [lookback_start]
+            entity_clause = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause = f"AND e.code = ${len(params)}"
+            loc_filter = ""
             if effective_location_id:
-                loc_filter = "AND ap.entity_location_id = $2::uuid"
                 params.append(effective_location_id)
+                loc_filter = f"AND ap.entity_location_id = ${len(params)}::uuid"
             rows = await conn.fetch(f"""
                 WITH agent_period_stats AS (
                     SELECT
@@ -6830,7 +6914,8 @@ async def get_workload_dashboard(
                 JOIN users u ON u.id = ap.user_id
                 LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
                 LEFT JOIN agent_period_stats aps ON aps.agent_profile_id = ap.id
-                WHERE e.code = 'TESORO' AND ap.is_active = true
+                WHERE ap.is_active = true
+                  {entity_clause}
                   {loc_filter}
                 ORDER BY completed_period DESC
             """, *params)
@@ -6843,11 +6928,24 @@ async def get_workload_dashboard(
 
     async def q_sla_breakdown():
         async with db_manager.get_connection() as conn:
-            loc_filter = ""
             params = [lookback_start]
+            entity_clause = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause = f"""AND EXISTS (
+                      SELECT 1 FROM agent_profiles ap2
+                      JOIN entities e2 ON e2.id = ap2.entity_id
+                      WHERE ap2.id = pva.agent_profile_id
+                        AND e2.code = ${len(params)}
+                        AND ap2.is_active = true
+                  )"""
+            loc_filter = ""
             if effective_location_id:
-                loc_filter = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_filter = (
+                    f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+                )
             row = await conn.fetchrow(f"""
                 SELECT
                     COUNT(*) FILTER (WHERE
@@ -6873,6 +6971,7 @@ async def get_workload_dashboard(
                 JOIN service_payments sp ON sp.id = pva.payment_id
                 WHERE pva.action IN ('approve', 'reject')
                   AND pva.created_at >= $1
+                  {entity_clause}
                   {loc_filter}
             """, *params)
             return {
@@ -6885,13 +6984,31 @@ async def get_workload_dashboard(
 
     async def q_volume_trend():
         async with db_manager.get_connection() as conn:
+            params = [lookback_start]
+            entity_clause_sp = ""
+            entity_clause_pva = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause_sp = f"AND sp.entity_code = ${len(params)}"
+                entity_clause_pva = f"""AND EXISTS (
+                          SELECT 1 FROM agent_profiles ap2
+                          JOIN entities e2 ON e2.id = ap2.entity_id
+                          WHERE ap2.id = pva.agent_profile_id
+                            AND e2.code = ${len(params)}
+                            AND ap2.is_active = true
+                      )"""
             loc_filter_sp = ""
             loc_filter_pva = ""
-            params = [lookback_start]
             if effective_location_id:
-                loc_filter_sp = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
-                loc_filter_pva = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_filter_sp = (
+                    f"AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+                )
+                loc_filter_pva = (
+                    f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+                )
             rows = await conn.fetch(f"""
                 SELECT d.date::date,
                     COALESCE(incoming.cnt, 0) as incoming,
@@ -6905,6 +7022,7 @@ async def get_workload_dashboard(
                     SELECT sp.created_at::date as date, COUNT(*) as cnt
                     FROM service_payments sp
                     WHERE sp.created_at >= $1
+                      {entity_clause_sp}
                       {loc_filter_sp}
                     GROUP BY sp.created_at::date
                 ) incoming ON incoming.date = d.date::date
@@ -6913,6 +7031,7 @@ async def get_workload_dashboard(
                     FROM payment_validation_audit pva
                     WHERE pva.action IN ('approve','reject')
                       AND pva.created_at >= $1
+                      {entity_clause_pva}
                       {loc_filter_pva}
                     GROUP BY pva.created_at::date
                 ) outgoing ON outgoing.date = d.date::date
@@ -6923,11 +7042,24 @@ async def get_workload_dashboard(
 
     async def q_processing_times():
         async with db_manager.get_connection() as conn:
-            loc_filter = ""
             params = [lookback_start]
+            entity_clause = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause = f"""AND EXISTS (
+                      SELECT 1 FROM agent_profiles ap2
+                      JOIN entities e2 ON e2.id = ap2.entity_id
+                      WHERE ap2.id = mv.agent_profile_id
+                        AND e2.code = ${len(params)}
+                        AND ap2.is_active = true
+                  )"""
+            loc_filter = ""
             if effective_location_id:
-                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_filter = (
+                    f"AND agent_profile_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+                )
             rows = await conn.fetch(f"""
                 SELECT
                     agent_name,
@@ -6938,9 +7070,10 @@ async def get_workload_dashboard(
                     ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP
                         (ORDER BY COALESCE(p50_duration_seconds, 0)) / 3600.0)::numeric, 2) as p50_hours,
                     SUM(total_actions)::int as count
-                FROM mv_agent_daily_workload
+                FROM mv_agent_daily_workload mv
                 WHERE report_date >= $1::date
                   AND avg_duration_seconds IS NOT NULL
+                  {entity_clause}
                   {loc_filter}
                 GROUP BY agent_profile_id, agent_name
                 ORDER BY avg_hours
@@ -6951,16 +7084,37 @@ async def get_workload_dashboard(
 
     async def q_kpis():
         async with db_manager.get_connection() as conn:
+            params = [lookback_start, days]
+            entity_clause_pva = ""
+            entity_clause_sp = ""
+            entity_clause_ap = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_param_idx = len(params)
+                entity_clause_pva = f"""AND EXISTS (
+                          SELECT 1 FROM agent_profiles ap2
+                          JOIN entities e2 ON e2.id = ap2.entity_id
+                          WHERE ap2.id = pva.agent_profile_id
+                            AND e2.code = ${entity_param_idx}
+                            AND ap2.is_active = true
+                      )"""
+                entity_clause_sp = f"AND sp.entity_code = ${entity_param_idx}"
+                entity_clause_ap = f"AND e.code = ${entity_param_idx}"
             loc_filter_pva = ""
             loc_filter_ap = ""
             loc_filter_sp = ""
-            params = [lookback_start, days]
             if effective_location_id:
-                param_idx = len(params) + 1
-                loc_filter_pva = f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)"
-                loc_filter_ap = f"AND ap.entity_location_id = ${param_idx}::uuid"
-                loc_filter_sp = f"AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_param_idx = len(params)
+                loc_filter_pva = (
+                    f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${loc_param_idx}::uuid AND is_active = true)"
+                )
+                loc_filter_ap = f"AND ap.entity_location_id = ${loc_param_idx}::uuid"
+                loc_filter_sp = (
+                    f"AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${loc_param_idx}::uuid AND is_active = true)"
+                )
             row = await conn.fetchrow(f"""
                 WITH period_stats AS (
                     SELECT
@@ -6969,6 +7123,7 @@ async def get_workload_dashboard(
                     FROM payment_validation_audit pva
                     WHERE pva.action IN ('approve','reject')
                       AND pva.created_at >= $1
+                      {entity_clause_pva}
                       {loc_filter_pva}
                 ),
                 queue AS (
@@ -6980,12 +7135,14 @@ async def get_workload_dashboard(
                     WHERE sp.workflow_status IN (
                         'pending_agent_review', 'submitted', 'auto_processing'
                     )
+                    {entity_clause_sp}
                     {loc_filter_sp}
                 )
                 SELECT
                     (SELECT COUNT(*) FROM agent_profiles ap
                      JOIN entities e ON e.id = ap.entity_id
-                     WHERE e.code = 'TESORO' AND ap.is_active = true
+                     WHERE ap.is_active = true
+                     {entity_clause_ap}
                      {loc_filter_ap}) as total_agents,
                     ps.active_agents,
                     q.queue_size,
@@ -7008,11 +7165,24 @@ async def get_workload_dashboard(
 
     async def q_rankings():
         async with db_manager.get_connection() as conn:
-            loc_filter = ""
             params = [lookback_start]
+            entity_clause = ""
+            if target_entity_code:
+                params.append(target_entity_code)
+                entity_clause = f"""AND EXISTS (
+                          SELECT 1 FROM agent_profiles ap2
+                          JOIN entities e2 ON e2.id = ap2.entity_id
+                          WHERE ap2.id = mv.agent_profile_id
+                            AND e2.code = ${len(params)}
+                            AND ap2.is_active = true
+                      )"""
+            loc_filter = ""
             if effective_location_id:
-                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
                 params.append(effective_location_id)
+                loc_filter = (
+                    f"AND agent_profile_id IN (SELECT id FROM agent_profiles "
+                    f"WHERE entity_location_id = ${len(params)}::uuid AND is_active = true)"
+                )
             rows = await conn.fetch(f"""
                 WITH agent_totals AS (
                     SELECT
@@ -7026,8 +7196,9 @@ async def get_workload_dashboard(
                             / NULLIF(SUM(total_actions), 0),
                             0
                         ) as avg_seconds
-                    FROM mv_agent_daily_workload
+                    FROM mv_agent_daily_workload mv
                     WHERE report_date >= $1::date
+                      {entity_clause}
                       {loc_filter}
                     GROUP BY agent_profile_id, agent_name
                 ),
@@ -7219,10 +7390,31 @@ async def list_anomalies(
     tctx = await _get_treasury_context(db, current_user.id)
     effective_location_id = tctx.get_effective_location(entity_location_id)
 
-    # Build dynamic WHERE clause
-    where_clauses = ["1=1"]
+    # Bug 1 fix dynamic (2026-05-06): scope by tctx.entity_code (own entity
+    # for non-global supervisors, None for treasury.view_all admins meaning
+    # see-all). Reusable for any payment-validating entity.
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
+
+    # Build dynamic WHERE clause. Anomalies on service_payments must
+    # reference a payment of the supervisor's entity; non-payment anomalies
+    # (bank_transaction, reconciliation) remain visible since treasury owns
+    # those domains too — and global admins see everything.
+    where_clauses = []
     params = []
     param_idx = 1
+
+    if target_entity_code:
+        where_clauses.append(
+            f"(pa.entity_type != 'service_payment' OR EXISTS ("
+            f"SELECT 1 FROM service_payments sp2 "
+            f"WHERE sp2.id = pa.entity_id "
+            f"AND sp2.entity_code = ${param_idx}))"
+        )
+        params.append(target_entity_code)
+        param_idx += 1
 
     # Site-scope: filter anomalies linked to payments handled by agents at this site
     if effective_location_id:
@@ -7258,7 +7450,7 @@ async def list_anomalies(
         params.append(date_to)
         param_idx += 1
 
-    where_sql = " AND ".join(where_clauses)
+    where_sql = (" AND ".join(where_clauses)) if where_clauses else "TRUE"
     offset = (page - 1) * page_size
 
     # Main query
@@ -8488,11 +8680,19 @@ async def get_analytics_statistics(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get descriptive statistics for treasury data."""
+    # Bug 1 fix dynamic (2026-05-06): entity scope is taken from tctx.entity_code
+    # when the user is not a global-scope admin. None = see everything (admin).
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.get_statistics(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
+        entity_code=target_entity_code,
     )
 
 
@@ -8526,11 +8726,17 @@ async def get_analytics_correlations(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get correlation analysis for treasury data."""
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.get_correlations(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
+        entity_code=target_entity_code,
     )
 
 
@@ -8564,11 +8770,17 @@ async def get_analytics_trends(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get trend analysis for treasury data."""
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.get_trends(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
+        entity_code=target_entity_code,
     )
 
 
@@ -8601,11 +8813,17 @@ async def get_analytics_anomalies(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get statistical anomalies in treasury data."""
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.get_anomalies(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
+        entity_code=target_entity_code,
     )
 
 
@@ -8642,12 +8860,18 @@ async def get_analytics_predictions(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get revenue predictions."""
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.get_predictions(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
         horizon_days=horizon_days,
+        entity_code=target_entity_code,
     )
 
 
@@ -8692,12 +8916,18 @@ async def get_analytics_report(
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get complete analytics report."""
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     return await treasury_analytics_service.generate_report(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
         language=language,
+        entity_code=target_entity_code,
     )
 
 
@@ -8749,12 +8979,19 @@ async def explore_analytics(
             detail=f"Invalid secondary_variable. Must be one of: {valid_variables}"
         )
 
+    # Bug 1 fix dynamic (2026-05-06): scope by tctx.entity_code (None = global admin)
+    tctx = await _get_treasury_context(db, current_user.id)
+    target_entity_code = (
+        None if tctx.has_global_scope or not tctx.entity_code
+        else tctx.entity_code
+    )
     # Get data
     df = await treasury_analytics_service.get_kpi_data(
         db=db,
         period=period,
         date_from=date_from,
         date_to=date_to,
+        entity_code=target_entity_code,
     )
 
     if df.empty:
@@ -8840,7 +9077,14 @@ async def _get_analyst_entity_context(db, user_id: str) -> dict:
 
     Returns context dict with entity_code, entity_location_id, is_main_office.
     Main office users see all data; satellite site users see only their site.
+
+    Bug 1 fix dynamic (2026-05-06): when the user has `treasury.view_all`
+    (admin global scope), `entity_code` is intentionally set to None so the
+    SQL functions skip the entity filter and return cross-entity data.
     """
+    # Resolve treasury context first to check global-scope permission.
+    tctx = await _get_treasury_context(db, user_id)
+
     row = await db.fetchrow("""
         SELECT ap.entity_location_id, e.code AS entity_code,
                COALESCE(el.is_main_office, true) AS is_main_office
@@ -8851,8 +9095,13 @@ async def _get_analyst_entity_context(db, user_id: str) -> dict:
     """, user_id)
     if not row:
         return {}
+
+    # If admin has global scope, drop the entity_code so _build_entity_kwargs
+    # does not propagate `_entity_code` and the chatbot sees ALL entities.
+    entity_code = None if tctx.has_global_scope else row["entity_code"]
+
     return {
-        "entity_code": row["entity_code"],
+        "entity_code": entity_code,
         "entity_location_id": str(row["entity_location_id"]) if row["entity_location_id"] else None,
         "is_main_office": row["is_main_office"],
     }
