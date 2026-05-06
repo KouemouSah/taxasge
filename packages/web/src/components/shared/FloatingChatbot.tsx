@@ -132,27 +132,39 @@ export const FloatingChatbot = () => {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — pinned bottom-LEFT for visibility (opposite side
+          of locale switcher / cookie banners). Pill shape with persistent
+          label, pulse halo to draw attention, larger touch target. */}
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-110 z-50 print:hidden relative"
-          size="icon"
+          className="fixed bottom-6 left-6 z-50 print:hidden group flex items-center gap-2 h-14 pl-4 pr-5 rounded-full shadow-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:shadow-primary/40"
           aria-label={t('openChat') || 'Open chat'}
         >
-          <MessageCircle className="h-6 w-6" />
+          {/* Pulse halo (purely decorative, attracts attention without
+              spamming the rest of the page) */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-full bg-primary/40 animate-ping opacity-60"
+          />
+          <span className="relative flex items-center justify-center h-9 w-9 rounded-full bg-white/15">
+            <MessageCircle className="h-5 w-5" />
+          </span>
+          <span className="relative text-sm font-medium whitespace-nowrap">
+            {t('title') || 'Asistente IA'}
+          </span>
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
-        </Button>
+        </button>
       )}
 
-      {/* Chat Window */}
+      {/* Chat Window — same side (left) as the trigger for spatial coherence */}
       {isOpen && (
         <div
-          className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 print:hidden"
+          className="fixed bottom-6 left-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 print:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="chatbot-title"
