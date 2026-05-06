@@ -434,6 +434,56 @@ class RulesRepository:
         processed = self._process_row(row)
         return AssignmentRule(**processed) if processed else None
 
+    async def get_effectiveness_report(
+        self,
+        entity_type: Optional[str] = None,
+        min_times_applied: int = 10,
+        db=None,
+    ) -> List[dict]:
+        """Get rule effectiveness report sorted by score DESC.
+
+        Returns rows with: id, name, priority, times_applied, times_matched,
+        success_rate, effectiveness_score (success_rate*100), application_rate
+        ((times_applied/times_matched)*100), last_applied_at.
+
+        Filters:
+        - status = 'active' (skip archived/inactive)
+        - times_applied >= min_times_applied
+        - entity_type if provided
+
+        Used by GET /api/v1/supervisor/rules/effectiveness/report.
+        """
+        conn = db or self._db
+        params: list = [min_times_applied]
+        entity_filter = ""
+        if entity_type:
+            entity_filter = f"AND entity_type = ${len(params) + 1}"
+            params.append(entity_type)
+
+        query = f"""
+            SELECT
+                id,
+                name,
+                priority,
+                times_applied,
+                times_matched,
+                COALESCE(success_rate, 0) AS success_rate,
+                (COALESCE(success_rate, 0) * 100) AS effectiveness_score,
+                CASE
+                    WHEN times_matched > 0
+                        THEN (times_applied::numeric / times_matched) * 100
+                    ELSE 0
+                END AS application_rate,
+                last_applied_at
+            FROM assignment_rules
+            WHERE status = 'active'
+              AND times_applied >= $1
+              {entity_filter}
+            ORDER BY effectiveness_score DESC, times_applied DESC
+        """
+        rows = await conn.fetch(query, *params)
+        return [dict(row) for row in rows]
+
 
 def get_rules_repository(db=None) -> RulesRepository:
     """Dependency injection for RulesRepository"""
