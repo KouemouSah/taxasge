@@ -21,21 +21,40 @@ keystore that lives in two places :
 - `ANDROID_KEY_ALIAS` — key alias (`facil-release`)
 - `ANDROID_KEY_PASSWORD` — key password
 
-### 1.2 Fingerprints (to be captured manually with `keytool -list -v`)
+### 1.2 Fingerprints — Facil Mobile (citizen) UPLOAD keystore
 
+**Captured 2026-05-02 from EAS-managed keystore** (`@emacsah__facil-keystore.bak.jks` downloaded
+from https://expo.dev/accounts/emacsah/projects/facil/credentials → Phase F.6 Play Console
+developer registration step).
+
+| Field | Value |
+|-------|-------|
+| Alias | `b9520ded4f892b6ed2b0ef8afede0bbd` (EAS auto-generated) |
+| Validity | 2026-03-30 → **2053-08-15** (~27 years) |
+| Signature algorithm | `SHA256withRSA` |
+| **SHA-1** | `30:CA:7A:88:25:95:09:18:56:EF:40:62:54:88:41:E2:19:4C:34:4F` |
+| **SHA-256** | `C4:78:D6:B0:6D:88:5F:E6:20:AA:DB:B7:2B:00:73:F4:57:C1:64:F8:47:9E:63:D5:AC:78:3B:3C:23:AD:87:1E` |
+
+**SHA-256 used for** :
+- Play Console developer verification (package name registration step) — selected option 1 in
+  the developer keys list at the registration dialog
+- Play App Signing enrolment (Phase F.6 first AAB upload)
+- Firebase Cloud Messaging (FCM) sender authentication if needed
+- Google Sign-In (if added later)
+
+**Local extraction command** (for future re-verification with the EAS-downloaded keystore):
 ```bash
-# From a machine that has the keystore + password
-keytool -list -v \
-  -keystore packages/mobile/android/app/facil-release.keystore \
-  -alias facil-release
+"/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe" -list -v \
+  -keystore "<path-to-EAS-keystore.jks>" \
+  -alias "b9520ded4f892b6ed2b0ef8afede0bbd" \
+  -storepass "<password-from-credentials.md>"
 ```
 
-Expected output sections to record :
-- **MD5**:    `XX:XX:..` (legacy, kept for reference)
-- **SHA1**:   `XX:XX:..` (used by Firebase / Google Sign-In, FCM)
-- **SHA256**: `XX:XX:..` (modern, required for Play App Signing v2)
-
-> TODO Phase D.7 : capture and append here once we run keytool with the password.
+**Note** : This SHA-256 corresponds to the upload key (signed by us, then re-signed by Google
+via Play App Signing once enrolled). After Play App Signing enrolment, end users / FCM /
+Google Sign-In APIs will see the **app signing key** SHA-256 instead — a different fingerprint
+that lives only inside Google's KMS. Capture it from Play Console → App integrity once the
+first AAB is uploaded (Phase F.6).
 
 ---
 
