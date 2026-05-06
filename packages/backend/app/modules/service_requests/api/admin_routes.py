@@ -3163,13 +3163,27 @@ async def _authorize_export_action(
             )
         return
 
+    # Prefer the denormalized requested_by_entity_code column (mig 333).
+    # Fallback to JOIN agent_profiles only when the column is NULL (legacy
+    # rows pre-migration, or rows generated before the INSERT-time wiring).
+    # This makes the scope check independent of the agent_profile.is_active
+    # state, fixing the audit's "inactive profile -> 403" edge case.
     row = await db.fetchrow(
         """
-        SELECT te.id, e.code AS owner_entity_code
+        SELECT
+            te.id,
+            COALESCE(
+                te.requested_by_entity_code,
+                (
+                    SELECT e.code
+                    FROM agent_profiles ap
+                    JOIN entities e ON e.id = ap.entity_id
+                    WHERE ap.user_id = te.requested_by
+                    ORDER BY ap.is_active DESC, ap.created_at DESC
+                    LIMIT 1
+                )
+            ) AS owner_entity_code
         FROM treasury_exports te
-        LEFT JOIN agent_profiles ap
-            ON ap.user_id = te.requested_by AND ap.is_active = true
-        LEFT JOIN entities e ON e.id = ap.entity_id
         WHERE te.id = $1::uuid
         LIMIT 1
         """,
@@ -6707,7 +6721,8 @@ async def get_supervisor_overview(
 
     cache = get_cache()
     loc_suffix = f":{effective_location_id}" if effective_location_id else ""
-    cache_key = f"treasury:supervisor_overview:{days}{loc_suffix}"
+    # v2 (2026-05-06): bumped after Bug 1 fix to invalidate stale cross-entity cache
+    cache_key = f"treasury:supervisor_overview:v2:{days}{loc_suffix}"
     cached = await cache.get(cache_key)
     if cached:
         # Inject is_main_office flag for frontend to know whether to show filter
@@ -7012,7 +7027,8 @@ async def get_workload_dashboard(
     cache = get_cache()
     loc_key = effective_location_id or "all"
     entity_key = target_entity_code or "all"
-    cache_key = f"treasury:workload_dashboard:{days}:{loc_key}:{entity_key}"
+    # v2 (2026-05-06): bumped after Bug 1 fix (entity_key added) to invalidate stale data
+    cache_key = f"treasury:workload_dashboard:v2:{days}:{loc_key}:{entity_key}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
@@ -8620,21 +8636,29 @@ async def generate_treasury_export(
     # Insert export request
     filters_json = request.filters.model_dump() if request.filters else None
 
+    # P8 (2026-05-06, mig 333): denormalize requested_by_entity_code at INSERT
+    # so the scope check in _authorize_export_action() does not depend on the
+    # requester's agent_profile state at read time. tctx.entity_code is the
+    # caller's own entity (already coerced into request.filters.entity_code
+    # earlier when not has_global_scope).
     row = await db.fetchrow("""
         INSERT INTO treasury_exports (
             export_type, export_format, period_start, period_end,
-            filters, status, requested_by, file_name
+            filters, status, requested_by, file_name,
+            requested_by_entity_code
         )
         VALUES (
             $1::export_type_enum, $2, $3::date, $4::date,
-            $5::jsonb, 'pending'::export_status_enum, $6::uuid, $7
+            $5::jsonb, 'pending'::export_status_enum, $6::uuid, $7,
+            $8
         )
         RETURNING
             id, export_type::text, export_format, period_start, period_end,
             filters, status::text, progress_percentage, requested_at
     """, request.export_type.value, request.export_format.value,
         start_date, end_date, json.dumps(filters_json) if filters_json else None,
-        current_user.id, file_name)
+        current_user.id, file_name,
+        tctx.entity_code)
 
     export_id = str(row["id"])
 
@@ -9475,7 +9499,8 @@ async def treasury_analyst_ask(
     cache = get_cache()
     scope_key = entity_ctx.get("entity_location_id", "global")
     question_hash = hashlib.md5(request.question.strip().lower().encode()).hexdigest()
-    cache_key = f"treasury:analyst:ask:{scope_key}:{question_hash}"
+    # v2 (2026-05-06): bumped after Bug 1 fix (entity scope) to invalidate stale answers
+    cache_key = f"treasury:analyst:ask:v2:{scope_key}:{question_hash}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
@@ -9514,7 +9539,8 @@ async def treasury_analyst_briefing(
 
     cache = get_cache()
     scope_key = entity_ctx.get("entity_location_id", "global")
-    cache_key = f"treasury:analyst:briefing:{scope_key}"
+    # v2 (2026-05-06): bumped after Bug 1 fix to invalidate stale cross-entity briefings
+    cache_key = f"treasury:analyst:briefing:v2:{scope_key}"
     cached = await cache.get(cache_key)
     if cached:
         return cached

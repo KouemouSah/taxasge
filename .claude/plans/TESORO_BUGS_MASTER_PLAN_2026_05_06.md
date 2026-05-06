@@ -80,3 +80,21 @@ Phase par phase, du plus simple au plus impactant. Chaque phase produit son prop
 1. Voir uniquement les 3 agents TESORO (Tesoro TGE, Tesoro Bata, Sup Tesoro) — JAMAIS Camara/Ayuntamiento dans Workload, Audit, Analista IA, Estadisticas.
 2. Charger la page Analytics Reporte sans erreur (correlations rendues correctement même sur séries constantes).
 3. Voir la card "Eficacia de Reglas" du dashboard sans erreur 500.
+
+---
+
+## Phase 8 — Hardening pre-push (2026-05-06)
+
+Traitement des risques résiduels identifiés à l'audit avant push :
+
+### Résolus
+- **Risque 1 (cache stale)** → bumped 4 cache_keys to `:v2` (supervisor_overview, workload_dashboard, analyst:ask, analyst:briefing). Effet immédiat post-deploy : ancien cache abandonné, nouvelles entrées scopées.
+- **Risque 2 (run_detection global)** → propagation de `entity_code` aux 7 méthodes `_detect_*` du service. Pattern paramétré ($N), entity_code=None → comportement global préservé. `_detect_orphan_transactions` court-circuite avec log explicite (bank tx orphelines non-attribuables).
+- **Risque 4 (export inactif profile)** → migration 333 ajoute `requested_by_entity_code` dénormalisé sur `treasury_exports`. Backfill auto. `_authorize_export_action` utilise COALESCE(col, JOIN agent_profiles) → indépendant de l'état du profile. INSERT côté `/treasury/exports/generate` capture la valeur au moment de la création.
+
+### Documenté (pas de fix code)
+- **Risque 3 (bank_transactions partagées)** : design intentionnel. Les transactions bancaires arrivent du système bancaire AVANT toute attribution à un payment ; le scoping par entité n'est pas applicable au niveau de la table. La reconciliation (`/treasury/reconciliation/*`) est elle scopée côté candidat-payment via `service_payments.entity_code`. Les transactions non-réconciliées restent visibles à toutes les entités, ce qui est nécessaire pour l'opération (toute entité doit pouvoir matcher une tx pending). Aucune PII dans `bank_transactions` (ref bancaire + montant). Acceptable.
+
+### Out of scope (à traiter ultérieurement si besoin)
+- **Frontend dashboards "TESORO" hardcoded** : si certaines pages frontend affichent encore "Tesoro Público" comme titre statique pour un supervisor AYUNTAMIENTO, il faudra dériver le titre depuis `tctx.entity_code` côté UI.
+- **Audit /api/v1/inspection/* et /api/v1/oms/*** : autres modules potentiellement vulnérables au même bug, hors scope car non rapporté.

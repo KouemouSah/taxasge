@@ -90,20 +90,16 @@ class TreasuryAnomalyService:
             db: Database connection
             detection_types: Optional list of specific types to detect
             entity_code: Optional entity scope. None = global (all entities).
-                P7 (2026-05-06): currently accepted for API compatibility but
-                NOT yet propagated to the individual _detect_* methods. The
-                generated anomalies are global until those methods filter on
-                sp.entity_code. Tracked as TODO P7.D.2.
+                Propagated to every _detect_* method (P8 2026-05-06,
+                resolves TODO P7.D.2). When set, the detection SQL filters
+                on sp.entity_code so only payments belonging to that entity
+                produce anomalies.
 
         Returns:
             Dict with detection results by type
         """
         if entity_code:
-            logger.info(
-                f"run_detection called with entity_code={entity_code} — "
-                f"WARN: per-entity scoping not yet propagated to detection "
-                f"methods (TODO P7.D.2). Detections will run globally."
-            )
+            logger.info(f"run_detection scoped to entity_code={entity_code}")
         results = {
             "detected_at": datetime.now().isoformat(),
             "anomalies_found": 0,
@@ -141,7 +137,7 @@ class TreasuryAnomalyService:
 
                 # Run detection within a savepoint for isolation
                 async with db.transaction():
-                    found = await method(db)
+                    found = await method(db, entity_code=entity_code)
 
                 results["by_type"][anomaly_type] = {
                     "found": found,
@@ -166,7 +162,9 @@ class TreasuryAnomalyService:
         )
         return results
 
-    async def _detect_duplicates(self, db: asyncpg.Connection) -> int:
+    async def _detect_duplicates(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect potential duplicate payments with enhanced criteria.
 
@@ -174,7 +172,19 @@ class TreasuryAnomalyService:
         - Same user, same amount, same service within configurable time window
         - Excludes cancelled payments
         - Groups duplicates to avoid multiple alerts for same set
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                filters on sp1.entity_code via parameterized query.
         """
+        # Build optional entity scope clause (parameterized $1)
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = "AND sp1.entity_code = $1"
+            extra_params.append(entity_code)
+
         query = f"""
             WITH potential_duplicates AS (
                 SELECT
@@ -206,6 +216,7 @@ class TreasuryAnomalyService:
                 JOIN service_requests sr1 ON sr1.id = sp1.service_request_id
                 WHERE sp1.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
                   AND sp1.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
+                  {entity_clause}
             )
             SELECT *
             FROM potential_duplicates
@@ -222,7 +233,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query)
+        rows = await db.fetch(query, *extra_params)
         anomalies_created = 0
 
         for row in rows:
@@ -252,11 +263,27 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_amount_mismatches(self, db: asyncpg.Connection) -> int:
+    async def _detect_amount_mismatches(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect mismatches between payment amounts and bank transactions.
         Uses configurable percentage threshold.
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                filters on sp.entity_code via parameterized query.
         """
+        # Existing param: $1 = AMOUNT_MISMATCH_THRESHOLD
+        # Optional param: $2 = entity_code
+        existing_params: List[Any] = [self.AMOUNT_MISMATCH_THRESHOLD]
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = f"AND sp.entity_code = ${len(existing_params) + 1}"
+            extra_params.append(entity_code)
+
         query = f"""
             SELECT
                 sp.id as payment_id,
@@ -282,6 +309,7 @@ class TreasuryAnomalyService:
               AND sp.total_amount > 0
               AND ABS(sp.total_amount - bt.amount) > 0
               AND ABS(sp.total_amount - bt.amount) / sp.total_amount > $1
+              {entity_clause}
               AND NOT EXISTS (
                 SELECT 1 FROM payment_anomalies pa
                 WHERE pa.entity_id = sp.id
@@ -292,7 +320,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query, self.AMOUNT_MISMATCH_THRESHOLD)
+        rows = await db.fetch(query, *existing_params, *extra_params)
         anomalies_created = 0
 
         for row in rows:
@@ -328,11 +356,32 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_orphan_transactions(self, db: asyncpg.Connection) -> int:
+    async def _detect_orphan_transactions(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect bank transactions without matching payments.
         Enhanced with age-based severity.
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. NOTE: orphan bank transactions
+                have NO linked service_payment by definition (status='unreconciled',
+                service_payment_id IS NULL), so they cannot be attributed to any
+                entity. When entity_code is set, this detection returns 0 with a
+                warning log. Detection only runs globally (entity_code is None).
         """
+        # Orphan transactions are not attributable to an entity (no sp link).
+        # Skip detection cleanly when entity-scoped to avoid leaking
+        # cross-entity anomalies into a single entity dashboard.
+        if entity_code:
+            logger.info(
+                f"_detect_orphan_transactions skipped for entity_code={entity_code}: "
+                f"orphan bank transactions have no linked service_payment, cannot be "
+                f"attributed to any entity. Detection runs globally only."
+            )
+            return 0
+
         query = f"""
             SELECT
                 bt.id as transaction_id,
@@ -396,11 +445,25 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_late_validations(self, db: asyncpg.Connection) -> int:
+    async def _detect_late_validations(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect payments that exceeded SLA threshold.
         Uses parameterized query for safety.
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                filters on sp.entity_code via parameterized query.
         """
+        # Build optional entity scope clause (parameterized $1)
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = "AND sp.entity_code = $1"
+            extra_params.append(entity_code)
+
         query = f"""
             SELECT
                 sp.id as payment_id,
@@ -422,6 +485,7 @@ class TreasuryAnomalyService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
               AND sp.created_at < NOW() - INTERVAL '{self.SLA_THRESHOLD_HOURS} hours'
+              {entity_clause}
               AND NOT EXISTS (
                 SELECT 1 FROM payment_anomalies pa
                 WHERE pa.entity_id = sp.id
@@ -432,7 +496,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query)
+        rows = await db.fetch(query, *extra_params)
         anomalies_created = 0
 
         for row in rows:
@@ -476,12 +540,26 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_suspicious_patterns(self, db: asyncpg.Connection) -> int:
+    async def _detect_suspicious_patterns(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect suspicious payment patterns:
         - Multiple payments from same user in short time
         - Unusually high total amounts
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                filters on sp.entity_code via parameterized query.
         """
+        # Build optional entity scope clause (parameterized $1)
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = "AND sp.entity_code = $1"
+            extra_params.append(entity_code)
+
         query = f"""
             WITH user_payment_frequency AS (
                 SELECT
@@ -502,6 +580,7 @@ class TreasuryAnomalyService:
                 JOIN users u ON u.id = sr.user_id
                 WHERE sp.created_at > NOW() - INTERVAL '24 hours'
                   AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
+                  {entity_clause}
                 GROUP BY sr.user_id, u.full_name, u.email
                 HAVING COUNT(*) >= {self.SUSPICIOUS_PAYMENT_COUNT}
             )
@@ -518,7 +597,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query)
+        rows = await db.fetch(query, *extra_params)
         anomalies_created = 0
 
         for row in rows:
@@ -564,13 +643,31 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_high_amounts(self, db: asyncpg.Connection) -> int:
+    async def _detect_high_amounts(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect unusually high amount transactions.
         Uses statistical analysis (mean + N standard deviations).
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                BOTH the statistical baseline and the detection scan are
+                filtered on entity_code (entity-scoped baseline so outliers
+                are detected relative to the entity's own distribution,
+                not the global one).
         """
-        # First, calculate statistics for recent payments
-        stats_query = """
+        # First, calculate statistics for recent payments.
+        # Entity-scoped baseline when entity_code is provided so outliers are
+        # detected relative to the entity's own distribution.
+        stats_entity_clause = ""
+        stats_params: List[Any] = []
+        if entity_code:
+            stats_entity_clause = "AND entity_code = $1"
+            stats_params.append(entity_code)
+
+        stats_query = f"""
             SELECT
                 AVG(total_amount) as avg_amount,
                 STDDEV(total_amount) as std_amount,
@@ -580,13 +677,17 @@ class TreasuryAnomalyService:
             WHERE created_at > NOW() - INTERVAL '30 days'
               AND workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
               AND total_amount > 0
+              {stats_entity_clause}
         """
 
-        stats = await db.fetchrow(stats_query)
+        stats = await db.fetchrow(stats_query, *stats_params)
 
         if not stats or not stats["std_amount"] or stats["total_count"] < 100:
             # Not enough data for statistical analysis
-            logger.info("Not enough data for high amount detection (need 100+ payments)")
+            logger.info(
+                f"Not enough data for high amount detection (need 100+ payments)"
+                f"{f' for entity_code={entity_code}' if entity_code else ''}"
+            )
             return 0
 
         avg_amount = float(stats["avg_amount"])
@@ -600,6 +701,15 @@ class TreasuryAnomalyService:
             f"High amount threshold: {threshold:,.0f} XAF "
             f"(avg: {avg_amount:,.0f}, std: {std_amount:,.0f})"
         )
+
+        # Existing params: $1 = avg_amount, $2 = std_amount, $3 = threshold
+        # Optional param: $4 = entity_code
+        existing_params: List[Any] = [avg_amount, std_amount, threshold]
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = f"AND sp.entity_code = ${len(existing_params) + 1}"
+            extra_params.append(entity_code)
 
         query = f"""
             SELECT
@@ -622,6 +732,7 @@ class TreasuryAnomalyService:
             WHERE sp.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND sp.total_amount >= $3
               AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
+              {entity_clause}
               AND NOT EXISTS (
                 SELECT 1 FROM payment_anomalies pa
                 WHERE pa.entity_id = sp.id
@@ -632,7 +743,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query, avg_amount, std_amount, threshold)
+        rows = await db.fetch(query, *existing_params, *extra_params)
         anomalies_created = 0
 
         for row in rows:
@@ -677,10 +788,24 @@ class TreasuryAnomalyService:
 
         return anomalies_created
 
-    async def _detect_missing_references(self, db: asyncpg.Connection) -> int:
+    async def _detect_missing_references(
+        self, db: asyncpg.Connection, entity_code: Optional[str] = None
+    ) -> int:
         """
         Detect payments with missing or invalid references.
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity scope. None = global. When set,
+                filters on sp.entity_code via parameterized query.
         """
+        # Build optional entity scope clause (parameterized $1)
+        entity_clause = ""
+        extra_params: List[Any] = []
+        if entity_code:
+            entity_clause = "AND sp.entity_code = $1"
+            extra_params.append(entity_code)
+
         query = f"""
             SELECT
                 sp.id as payment_id,
@@ -695,6 +820,7 @@ class TreasuryAnomalyService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE sp.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
+              {entity_clause}
               AND (
                 sp.payment_reference IS NULL
                 OR sp.payment_reference = ''
@@ -711,7 +837,7 @@ class TreasuryAnomalyService:
             LIMIT {self.BATCH_SIZE}
         """
 
-        rows = await db.fetch(query)
+        rows = await db.fetch(query, *extra_params)
         anomalies_created = 0
 
         for row in rows:
