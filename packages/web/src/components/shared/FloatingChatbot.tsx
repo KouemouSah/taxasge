@@ -132,13 +132,14 @@ export const FloatingChatbot = () => {
 
   return (
     <>
-      {/* Floating Button — pinned bottom-LEFT for visibility (opposite side
-          of locale switcher / cookie banners). Pill shape with persistent
+      {/* Floating Button — pinned bottom-RIGHT (same side as the footer
+          "Contacto" block, so the help affordance lives in the user's
+          natural support-seeking quadrant). Pill shape with persistent
           label, pulse halo to draw attention, larger touch target. */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 left-6 z-50 print:hidden group flex items-center gap-2 h-14 pl-4 pr-5 rounded-full shadow-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:shadow-primary/40"
+          className="fixed bottom-6 right-6 z-50 print:hidden group flex items-center gap-2 h-14 pl-4 pr-5 rounded-full shadow-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:shadow-primary/40"
           aria-label={t('openChat') || 'Open chat'}
         >
           {/* Pulse halo (purely decorative, attracts attention without
@@ -161,10 +162,10 @@ export const FloatingChatbot = () => {
         </button>
       )}
 
-      {/* Chat Window — same side (left) as the trigger for spatial coherence */}
+      {/* Chat Window — same side (right) as the trigger for spatial coherence */}
       {isOpen && (
         <div
-          className="fixed bottom-6 left-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 print:hidden"
+          className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 print:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="chatbot-title"
