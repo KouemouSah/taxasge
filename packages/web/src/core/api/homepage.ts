@@ -5,6 +5,43 @@
 
 import apiClient from './client';
 
+// ============================================================================
+// COLD-START TOLERANCE — public homepage endpoints retry on timeout
+// ============================================================================
+// Cloud Run scales to zero on staging during low-traffic windows. The first
+// hit after idle takes 5-15s to boot (Python imports + DB pool warmup +
+// migrations check). With the default axios timeout of 30s, a single in-
+// flight request that races the cold start can fail outright. Public
+// homepage endpoints are read-only, idempotent, and safe to retry.
+const PUBLIC_TIMEOUT_MS = 45_000; // 45s tolerates a typical cold start
+const PUBLIC_RETRY_DELAYS = [2_000, 5_000]; // 2s, then 5s — total budget ~52s
+
+function isTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  return e.code === 'ECONNABORTED' || (e.message?.includes('timeout') ?? false);
+}
+
+async function withRetryOnTimeout<T>(
+  attempt: () => Promise<T>,
+  delays: number[] = PUBLIC_RETRY_DELAYS
+): Promise<T> {
+  let lastError: unknown;
+  // First try + retries: delays.length + 1 total attempts
+  for (let i = 0; i <= delays.length; i++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      lastError = err;
+      if (i >= delays.length || !isTimeoutError(err)) {
+        throw err; // non-timeout error or budget exhausted
+      }
+      await new Promise(resolve => setTimeout(resolve, delays[i]));
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Homepage statistics response
  */
@@ -61,7 +98,9 @@ export interface ApiError {
  */
 export async function getHomepageStats(): Promise<HomepageStats> {
   try {
-    const response = await apiClient.get<HomepageStats>('/homepage/stats');
+    const response = await withRetryOnTimeout(() =>
+      apiClient.get<HomepageStats>('/homepage/stats', { timeout: PUBLIC_TIMEOUT_MS })
+    );
     return response.data;
   } catch (error) {
     console.error('Error fetching homepage stats:', error);
@@ -185,14 +224,17 @@ export async function getServicesByType(
   }
 ): Promise<ServicesByTypeResponse> {
   try {
-    const response = await apiClient.get<ServicesByTypeResponse>('/homepage/services-by-type', {
-      params: {
-        type,
-        letter: options?.letter,
-        language: options?.language || 'es',
-        limit: options?.limit || 10,
-      },
-    });
+    const response = await withRetryOnTimeout(() =>
+      apiClient.get<ServicesByTypeResponse>('/homepage/services-by-type', {
+        params: {
+          type,
+          letter: options?.letter,
+          language: options?.language || 'es',
+          limit: options?.limit || 10,
+        },
+        timeout: PUBLIC_TIMEOUT_MS,
+      })
+    );
     return response.data;
   } catch (error) {
     console.error('Error fetching services by type:', error);
