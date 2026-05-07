@@ -10791,6 +10791,63 @@
       "managementContent": "Puede gestionar las cookies a través de la configuración de su navegador. Tenga en cuenta que desactivar las cookies esenciales impedirá el uso normal de la plataforma, incluyendo el inicio de sesión y la realización de trámites.",
       "contactTitle": "Contacto",
       "contactContent": "Para consultas sobre el uso de cookies, puede contactarnos a través del módulo de soporte de la plataforma."
+    },
+    "accountDeletion": {
+      "title": "Eliminación de cuenta y datos",
+      "lastUpdated": "Última actualización: mayo 2026",
+      "intro": "De acuerdo con el artículo 17 del RGPD (\"derecho al olvido\"), puede solicitar en cualquier momento la eliminación de su cuenta Facil y de los datos personales asociados. Esta página describe los métodos disponibles, los plazos y las categorías de datos afectadas.",
+      "warning": {
+        "title": "Atención: la eliminación es irreversible tras el período de gracia",
+        "body": "Una vez completado el plazo de 30 días, los datos eliminados no se pueden recuperar. Le recomendamos exportar previamente sus documentos importantes desde la sección \"Mi bóveda de documentos\"."
+      },
+      "fromMobileTitle": "Desde la aplicación móvil Facil",
+      "fromMobileIntro": "Si tiene la aplicación instalada y puede iniciar sesión, este es el método más rápido:",
+      "steps": {
+        "openApp": "Abra la aplicación Facil en su teléfono.",
+        "openProfile": "Pulse la pestaña \"Perfil\" en la barra inferior.",
+        "dangerZone": "Desplácese hasta la sección \"Zona peligrosa\" al final del perfil.",
+        "confirmPassword": "Pulse \"Eliminar mi cuenta\" e introduzca su contraseña actual.",
+        "typeDelete": "Escriba la palabra \"DELETE\" (en mayúsculas) en el campo de confirmación.",
+        "confirmFinal": "Pulse el botón rojo \"Confirmar eliminación\". Recibirá una confirmación por email."
+      },
+      "fromWebTitle": "Desde la versión web",
+      "fromWebIntro": "Si prefiere utilizar la versión web, inicie sesión y siga el mismo procedimiento desde Configuración > Cuenta > Eliminar cuenta.",
+      "fromWebCta": "Iniciar sesión en la web",
+      "fromEmailTitle": "Por correo electrónico (si perdió el acceso)",
+      "fromEmailIntro": "Si ya no puede acceder a la aplicación o a la web (contraseña olvidada y email de recuperación inaccesible), envíenos un correo desde la dirección de email asociada a su cuenta:",
+      "emailToLabel": "Destinatario",
+      "emailSubjectLabel": "Asunto",
+      "emailSubjectValue": "Solicitud de eliminación de cuenta",
+      "emailBodyLabel": "Cuerpo del mensaje",
+      "emailBodyTemplate": "Solicito la eliminación completa de mi cuenta Facil y de mis datos personales asociados, conforme al art. 17 del RGPD.\n\nNombre completo: [su nombre]\nEmail registrado: [su email]\nDocumento de identidad (DIP/Pasaporte) últimos 4 dígitos: [opcional]\n\nConfirmo haber leído la política de retención de datos fiscales obligatorios.",
+      "emailResponseTime": "Procesaremos su solicitud en un plazo máximo de 5 días hábiles. Le pediremos un documento de identidad para verificar la legitimidad de la solicitud antes de proceder a la eliminación.",
+      "lifecycleTitle": "Plazos y ciclo de vida de los datos",
+      "lifecycle": {
+        "immediate": "Inmediatamente: su cuenta queda desactivada, sus sesiones activas se cierran en todos los dispositivos, y sus tokens de acceso se revocan. Ya no podrá iniciar sesión.",
+        "gracePeriod": "Durante 30 días: los datos se conservan en estado \"soft-deleted\" como medida de seguridad. Si fue un error, contacte con soporte para reactivar la cuenta.",
+        "finalPurge": "Al pasar el plazo de 30 días: un proceso automático elimina definitivamente todos los datos elegibles. Esta operación es irreversible."
+      },
+      "dataCategoriesTitle": "Categorías de datos eliminadas y conservadas",
+      "purgedTitle": "Datos eliminados",
+      "purged": {
+        "profile": "Información del perfil (nombre, apellidos, foto, fecha de nacimiento)",
+        "contact": "Datos de contacto (correo electrónico, número de teléfono, dirección)",
+        "preferences": "Preferencias de usuario (idioma, notificaciones, tema)",
+        "documents": "Documentos personales subidos a su bóveda (DIP, foto, justificantes)",
+        "sessions": "Historial de sesiones, tokens de autenticación y dispositivos asociados",
+        "notifications": "Notificaciones, mensajes del chatbot y consultas de búsqueda"
+      },
+      "retainedTitle": "Datos conservados (obligaciones legales)",
+      "retained": {
+        "fiscalRecords": "Declaraciones fiscales y obligaciones tributarias presentadas (mínimo 5 años, art. 73 LGT)",
+        "payments": "Recibos de pago e historial de transacciones financieras (10 años, código de comercio)",
+        "auditLogs": "Registros de auditoría anonimizados con fines de seguridad y trazabilidad legal",
+        "legalObligations": "Cualquier dato cuya conservación sea exigida por una autoridad pública o un tribunal"
+      },
+      "retainedNote": "Estos datos se anonimizan en la medida de lo posible y solo se conservan los campos estrictamente necesarios para cumplir las obligaciones legales aplicables.",
+      "legalTitle": "Marco legal y contacto",
+      "legalContent": "Esta política se aplica conforme al Reglamento General de Protección de Datos (RGPD), a la legislación fiscal de la República de Guinea Ecuatorial, y a las políticas de Google Play y App Store relativas a la eliminación de cuentas. El responsable del tratamiento es la entidad operadora de Facil:",
+      "languageLabel": "Esta página también está disponible en"
     }
   },
   "bundleWorkflow": {

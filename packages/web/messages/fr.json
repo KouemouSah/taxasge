@@ -10791,6 +10791,63 @@
       "managementContent": "Vous pouvez gérer les cookies via les paramètres de votre navigateur. Notez que la désactivation des cookies essentiels empêchera l'utilisation normale de la plateforme, y compris la connexion et la réalisation de démarches.",
       "contactTitle": "Contact",
       "contactContent": "Pour toute question sur l'utilisation des cookies, vous pouvez nous contacter via le module de support de la plateforme."
+    },
+    "accountDeletion": {
+      "title": "Suppression du compte et des données",
+      "lastUpdated": "Dernière mise à jour : mai 2026",
+      "intro": "Conformément à l'article 17 du RGPD (\"droit à l'oubli\"), vous pouvez à tout moment demander la suppression de votre compte Facil et des données personnelles associées. Cette page décrit les méthodes disponibles, les délais et les catégories de données concernées.",
+      "warning": {
+        "title": "Attention : la suppression est irréversible après le délai de grâce",
+        "body": "Une fois le délai de 30 jours écoulé, les données supprimées ne peuvent pas être récupérées. Nous vous recommandons d'exporter au préalable vos documents importants depuis la section \"Mon coffre-fort de documents\"."
+      },
+      "fromMobileTitle": "Depuis l'application mobile Facil",
+      "fromMobileIntro": "Si l'application est installée et que vous pouvez vous connecter, c'est la méthode la plus rapide :",
+      "steps": {
+        "openApp": "Ouvrez l'application Facil sur votre téléphone.",
+        "openProfile": "Touchez l'onglet \"Profil\" dans la barre du bas.",
+        "dangerZone": "Faites défiler jusqu'à la section \"Zone dangereuse\" en bas du profil.",
+        "confirmPassword": "Touchez \"Supprimer mon compte\" et saisissez votre mot de passe actuel.",
+        "typeDelete": "Tapez le mot \"DELETE\" (en majuscules) dans le champ de confirmation.",
+        "confirmFinal": "Touchez le bouton rouge \"Confirmer la suppression\". Vous recevrez un e-mail de confirmation."
+      },
+      "fromWebTitle": "Depuis la version web",
+      "fromWebIntro": "Si vous préférez la version web, connectez-vous et suivez la même procédure depuis Paramètres > Compte > Supprimer le compte.",
+      "fromWebCta": "Se connecter sur le web",
+      "fromEmailTitle": "Par e-mail (si vous avez perdu l'accès)",
+      "fromEmailIntro": "Si vous ne pouvez plus accéder à l'application ou au site (mot de passe oublié et e-mail de récupération inaccessible), envoyez-nous un courriel depuis l'adresse e-mail associée à votre compte :",
+      "emailToLabel": "Destinataire",
+      "emailSubjectLabel": "Objet",
+      "emailSubjectValue": "Demande de suppression de compte",
+      "emailBodyLabel": "Corps du message",
+      "emailBodyTemplate": "Je demande la suppression complète de mon compte Facil et des données personnelles associées, conformément à l'art. 17 du RGPD.\n\nNom complet : [votre nom]\nE-mail enregistré : [votre e-mail]\n4 derniers chiffres de la pièce d'identité (DIP/Passeport) : [optionnel]\n\nJe confirme avoir lu la politique de conservation des données fiscales obligatoires.",
+      "emailResponseTime": "Nous traiterons votre demande dans un délai maximum de 5 jours ouvrables. Une pièce d'identité vous sera demandée pour vérifier la légitimité de la demande avant la suppression.",
+      "lifecycleTitle": "Délais et cycle de vie des données",
+      "lifecycle": {
+        "immediate": "Immédiatement : votre compte est désactivé, vos sessions actives sont fermées sur tous les appareils, et vos jetons d'accès sont révoqués. Vous ne pourrez plus vous connecter.",
+        "gracePeriod": "Pendant 30 jours : les données sont conservées en état \"soft-deleted\" par sécurité. En cas d'erreur, contactez le support pour réactiver le compte.",
+        "finalPurge": "Après le délai de 30 jours : un processus automatique supprime définitivement toutes les données éligibles. Cette opération est irréversible."
+      },
+      "dataCategoriesTitle": "Catégories de données supprimées et conservées",
+      "purgedTitle": "Données supprimées",
+      "purged": {
+        "profile": "Informations de profil (nom, prénom, photo, date de naissance)",
+        "contact": "Coordonnées (e-mail, numéro de téléphone, adresse)",
+        "preferences": "Préférences utilisateur (langue, notifications, thème)",
+        "documents": "Documents personnels téléchargés dans votre coffre-fort (DIP, photo, justificatifs)",
+        "sessions": "Historique de sessions, jetons d'authentification et appareils associés",
+        "notifications": "Notifications, messages du chatbot et requêtes de recherche"
+      },
+      "retainedTitle": "Données conservées (obligations légales)",
+      "retained": {
+        "fiscalRecords": "Déclarations fiscales et obligations soumises (minimum 5 ans, art. 73 LGT)",
+        "payments": "Reçus de paiement et historique des transactions financières (10 ans, code de commerce)",
+        "auditLogs": "Journaux d'audit anonymisés à des fins de sécurité et de traçabilité légale",
+        "legalObligations": "Toute donnée dont la conservation est exigée par une autorité publique ou un tribunal"
+      },
+      "retainedNote": "Ces données sont anonymisées dans la mesure du possible et seuls les champs strictement nécessaires au respect des obligations légales applicables sont conservés.",
+      "legalTitle": "Cadre légal et contact",
+      "legalContent": "Cette politique s'applique conformément au Règlement Général sur la Protection des Données (RGPD), à la législation fiscale de la République de Guinée Équatoriale, et aux politiques de Google Play et de l'App Store relatives à la suppression de compte. Le responsable du traitement est l'entité opératrice de Facil :",
+      "languageLabel": "Cette page est également disponible en"
     }
   },
   "bundleWorkflow": {

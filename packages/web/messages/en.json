@@ -10791,6 +10791,63 @@
       "managementContent": "You can manage cookies through your browser settings. Please note that disabling essential cookies will prevent normal use of the platform, including logging in and completing procedures.",
       "contactTitle": "Contact",
       "contactContent": "For inquiries about cookie usage, you can contact us through the platform's support module."
+    },
+    "accountDeletion": {
+      "title": "Account & data deletion",
+      "lastUpdated": "Last updated: May 2026",
+      "intro": "Pursuant to Article 17 of the GDPR (\"right to erasure\"), you may request deletion of your Facil account and the associated personal data at any time. This page describes the available methods, timelines, and data categories involved.",
+      "warning": {
+        "title": "Warning: deletion is irreversible after the grace period",
+        "body": "Once the 30-day window has elapsed, deleted data cannot be recovered. We recommend exporting your important documents beforehand from the \"My document vault\" section."
+      },
+      "fromMobileTitle": "From the Facil mobile app",
+      "fromMobileIntro": "If you have the app installed and can sign in, this is the fastest method:",
+      "steps": {
+        "openApp": "Open the Facil app on your phone.",
+        "openProfile": "Tap the \"Profile\" tab in the bottom bar.",
+        "dangerZone": "Scroll to the \"Danger zone\" section at the bottom of the profile.",
+        "confirmPassword": "Tap \"Delete my account\" and enter your current password.",
+        "typeDelete": "Type the word \"DELETE\" (uppercase) in the confirmation field.",
+        "confirmFinal": "Tap the red \"Confirm deletion\" button. You will receive an email confirmation."
+      },
+      "fromWebTitle": "From the web version",
+      "fromWebIntro": "If you prefer the web version, sign in and follow the same procedure under Settings > Account > Delete account.",
+      "fromWebCta": "Sign in on the web",
+      "fromEmailTitle": "By email (if you lost access)",
+      "fromEmailIntro": "If you can no longer access the app or website (forgotten password and recovery email unreachable), email us from the address registered on your account:",
+      "emailToLabel": "Recipient",
+      "emailSubjectLabel": "Subject",
+      "emailSubjectValue": "Account deletion request",
+      "emailBodyLabel": "Message body",
+      "emailBodyTemplate": "I request the full deletion of my Facil account and the associated personal data, pursuant to GDPR art. 17.\n\nFull name: [your name]\nRegistered email: [your email]\nLast 4 digits of ID document (DIP/Passport): [optional]\n\nI confirm I have read the policy on retained mandatory tax data.",
+      "emailResponseTime": "We will process your request within 5 business days. We will ask for an ID document to verify the legitimacy of the request before deletion.",
+      "lifecycleTitle": "Timelines and data lifecycle",
+      "lifecycle": {
+        "immediate": "Immediately: your account is deactivated, all active sessions are closed across all devices, and your access tokens are revoked. You will no longer be able to sign in.",
+        "gracePeriod": "For 30 days: data is kept in \"soft-deleted\" state as a safety measure. If this was a mistake, contact support to reactivate the account.",
+        "finalPurge": "After the 30-day window: an automated process permanently deletes all eligible data. This operation is irreversible."
+      },
+      "dataCategoriesTitle": "Deleted vs retained data categories",
+      "purgedTitle": "Deleted data",
+      "purged": {
+        "profile": "Profile information (first name, last name, photo, date of birth)",
+        "contact": "Contact details (email, phone number, address)",
+        "preferences": "User preferences (language, notifications, theme)",
+        "documents": "Personal documents uploaded to your vault (ID, photo, supporting documents)",
+        "sessions": "Session history, authentication tokens, and associated devices",
+        "notifications": "Notifications, chatbot messages, and search queries"
+      },
+      "retainedTitle": "Retained data (legal obligations)",
+      "retained": {
+        "fiscalRecords": "Submitted tax filings and tax obligations (minimum 5 years, art. 73 LGT)",
+        "payments": "Payment receipts and financial transaction history (10 years, commercial code)",
+        "auditLogs": "Anonymized audit logs for security and legal traceability purposes",
+        "legalObligations": "Any data whose retention is required by a public authority or court order"
+      },
+      "retainedNote": "These data are anonymized to the extent possible and only the fields strictly necessary to comply with applicable legal obligations are retained.",
+      "legalTitle": "Legal framework and contact",
+      "legalContent": "This policy applies in accordance with the General Data Protection Regulation (GDPR), the tax laws of the Republic of Equatorial Guinea, and the Google Play and App Store policies regarding account deletion. The data controller is the entity operating Facil:",
+      "languageLabel": "This page is also available in"
     }
   },
   "bundleWorkflow": {
