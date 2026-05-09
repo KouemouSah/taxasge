@@ -1,10 +1,32 @@
 # Database Migrations — TaxasGE Backend
 
-> **Last update**: 2026-05-09 — Phase A of MIGRATIONS_BASELINE_REFACTOR_PLAN.
+> **Last update**: 2026-05-10 — Phase H test (move 319 historical migrations
+> to `historical/` subdirectory, see commit history).
 
-This directory contains all DDL migrations applied to the production
-PostgreSQL (Supabase) database. There are currently **322+ migrations**
-ranging from `001_*.sql` to `336_*.sql`.
+This directory contains the **active migrations** path (anything new goes
+here) plus a `historical/` subdirectory holding the 319 already-applied
+migrations from 010 → 336.
+
+## Layout
+
+```
+migrations/
+├── README.md                      # this file
+├── historical/                    # 319 migrations 010-336 (already applied)
+│   ├── README.md
+│   ├── 010_*.sql ... 336_*.sql
+│   └── (4 unnumbered legacy SQLs)
+├── 040_secrets_to_configure.md    # documentation note (legacy companion)
+├── 189_encrypt_totp_secrets.py    # one-off helper script (legacy)
+└── 337_my_next_migration.sql      # → put any new migration here
+```
+
+The non-recursive `glob('*.sql')` used by `deploy-backend-staging.yml`
+and `init_database.py` only scans the **root** of `migrations/` — the
+historical/ subdirectory is intentionally invisible to them. This is the
+mechanism that lets us keep the 319 historical migrations in git for
+audit while skipping their replay (already applied in staging + captured
+in `database/baseline/000_baseline_2026_05_09.sql`).
 
 The migration system is in transition between two patterns. Both work
 side-by-side until Phase G validation completes.
@@ -79,11 +101,11 @@ NNN_short_description.sql
 ## Adding a new migration
 
 ```bash
-# 1. Find next number
-ls database/migrations/ | grep -E '^[0-9]' | sort | tail -3
-# → highest is e.g. 336
+# 1. Find next number — include historical/ in the search
+ls database/migrations/ database/migrations/historical/ | grep -E '^[0-9]' | sort | tail -3
+# → highest is currently 336
 
-# 2. Create the file
+# 2. Create the file IN THE ROOT of migrations/ (NOT in historical/)
 NEXT=337
 $EDITOR database/migrations/${NEXT}_my_change.sql
 
@@ -97,6 +119,10 @@ cd packages/backend && pytest tests/test_init_database.py -v
 # The legacy deploy-backend-staging.yml will apply it on next deploy.
 # Optionally trigger DB Migrate (Auto Mode) to populate schema_migrations.
 ```
+
+**Do NOT create new files in `historical/`** — that directory is for
+already-applied migrations only. New migrations belong in the root of
+`migrations/` so the workflows pick them up.
 
 ---
 
