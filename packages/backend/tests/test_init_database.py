@@ -164,3 +164,30 @@ class TestConstants:
         assert init_db.REPO_ROOT.name == "backend"
         assert init_db.REPO_ROOT.parent.name == "packages"
         assert init_db.MIGRATIONS_DIR == init_db.REPO_ROOT / "database" / "migrations"
+
+    def test_baseline_dir_path(self) -> None:
+        """BASELINE_DIR points at database/baseline/ — used for fresh-DB fast path."""
+        assert init_db.BASELINE_DIR == init_db.REPO_ROOT / "database" / "baseline"
+
+    def test_seeds_dir_path(self) -> None:
+        assert init_db.SEEDS_DIR == init_db.REPO_ROOT / "database" / "seeds"
+
+
+# ---------------------------------------------------------------------------
+# is_database_empty — query shape (no live DB)
+# ---------------------------------------------------------------------------
+
+class TestIsDatabaseEmptySignature:
+    """Cannot exercise is_database_empty without a live DB; assert the
+    function exists, is async, and is reachable through the module surface
+    so the baseline-first branch in main() can call it."""
+
+    def test_function_exists(self) -> None:
+        assert hasattr(init_db, "is_database_empty")
+
+    def test_function_is_async(self) -> None:
+        import asyncio
+        coro = init_db.is_database_empty
+        # Calling on a sentinel should produce a coroutine.
+        # We can't await it (no conn), but we can detect the wrapping.
+        assert asyncio.iscoroutinefunction(coro)

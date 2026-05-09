@@ -90,8 +90,8 @@ ADVISORY_LOCK_TIMEOUT_SEC: float = 60.0
 # Repo layout (resolved at import time relative to this file).
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]  # packages/backend/
 MIGRATIONS_DIR: Path = REPO_ROOT / "database" / "migrations"
-SEEDS_DIR: Path = REPO_ROOT / "database" / "seeds"   # Phase C target
-BASELINE_DIR: Path = REPO_ROOT / "database" / "baseline"  # Phase D target
+SEEDS_DIR: Path = REPO_ROOT / "database" / "seeds"        # idempotent DML
+BASELINE_DIR: Path = REPO_ROOT / "database" / "baseline"  # consolidated DDL
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +151,25 @@ async def schema_migrations_exists(conn: asyncpg.Connection) -> bool:
         "SELECT to_regclass('public.schema_migrations') AS oid"
     )
     return row is not None and row["oid"] is not None
+
+
+async def is_database_empty(conn: asyncpg.Connection) -> bool:
+    """True if the `public` schema has no user-defined tables.
+
+    schema_migrations itself is excluded from the count — it gets created
+    by ensure_schema_migrations_table() before this function is called,
+    and we don't want it to mark the DB as 'not empty'.
+    """
+    count = await conn.fetchval(
+        """
+        SELECT COUNT(*)
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+          AND table_name != 'schema_migrations'
+        """
+    )
+    return count == 0
 
 
 async def ensure_schema_migrations_table(conn: asyncpg.Connection) -> None:
@@ -376,9 +395,53 @@ async def main(argv: Optional[list[str]] = None) -> int:
 
             result = ApplyResult()
 
-            if args.mode != "seeds-only":
+            # ---- Baseline-first detection (auto / hybrid only) ----
+            # If the DB is empty AND a baseline/*.sql exists, prefer it
+            # over replaying the 319 incremental migrations (≈30s vs ≈4min
+            # on a fresh DB). Falls back to migrations otherwise.
+            applied_baseline = False
+            if args.mode in ("auto", "hybrid") and BASELINE_DIR.exists():
+                baselines = discover_files(BASELINE_DIR, filetype="baseline")
+                if baselines and await is_database_empty(conn):
+                    log("INFO",
+                        f"Empty DB detected — applying {len(baselines)} "
+                        f"baseline file(s) from "
+                        f"{BASELINE_DIR.relative_to(REPO_ROOT)}")
+                    await apply_directory(
+                        conn, baselines,
+                        mode=args.mode,
+                        applied_by=args.applied_by,
+                        applied_versions=applied_versions,
+                        result=result,
+                    )
+                    applied_baseline = True
+                    # Mark every existing migration as applied (so future
+                    # `--mode=hybrid` runs skip them — they're already
+                    # captured by the baseline).
+                    pending_migs = discover_files(
+                        MIGRATIONS_DIR, filetype="migration"
+                    )
+                    log("INFO",
+                        f"Marking {len(pending_migs)} legacy migration(s) "
+                        f"as applied via baseline (no replay needed).")
+                    for mig in pending_migs:
+                        await conn.execute(
+                            """
+                            INSERT INTO schema_migrations
+                                (version, checksum, applied_by, filename, filetype)
+                            VALUES ($1, $2, $3, $4, 'migration')
+                            ON CONFLICT (version) DO NOTHING
+                            """,
+                            mig.version, mig.checksum,
+                            f"{args.applied_by}:via-baseline",
+                            mig.filename,
+                        )
+
+            if not applied_baseline and args.mode != "seeds-only":
                 migs = discover_files(MIGRATIONS_DIR, filetype="migration")
-                log("INFO", f"Discovered {len(migs)} migration files.")
+                log("INFO",
+                    f"Discovered {len(migs)} migration files "
+                    f"(baseline {'absent' if not BASELINE_DIR.exists() else 'skipped'}).")
                 await apply_directory(
                     conn, migs,
                     mode=args.mode,
