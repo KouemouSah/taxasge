@@ -108,11 +108,8 @@ ui-debug.log
 gcloud-config/
 .gcloud/
 
-# Claude Code (keep agent files but ignore session data)
-.claude/.agent/Sessions/
-.claude/settings.local.json
-.claude/worktrees/
-.claude/scheduled_tasks.lock
+# Claude Code — entirely local (agents, plans, skills, reports, sessions)
+.claude/
 .mcp.json
 
 # Documentation drafts (keep final docs only)
@@ -140,8 +137,10 @@ config/*.json
 # SQL Migrations Archives
 **/.github-docs-migrations-archive/
 
-# Docs-internal
+# Docs-internal + GitHub archives (local only — not pushed to remote)
 .github/docs-internal/
+.github/workflows-archive/
+.github/security-tests/
 packages/mobile/scripts/
 Documentations/
 scripts/
@@ -155,4 +154,5 @@ scripts/
 test-data/*.pdf
 test-data/*.jpg
 test-data/*.png
+test-data/*.md
 !test-data/README.md
