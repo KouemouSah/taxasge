@@ -153,6 +153,8 @@ scripts/
 # helper added in Phase 10. Other locally-staged scripts remain ignored.
 !packages/backend/scripts/
 !packages/backend/scripts/verify_apk_signature.py
+# Deploy system scripts (Phase A.5+) — tracked
+!deploy/scripts/
 
 # E2E Test Data (keep README only)
 test-data/*.pdf
