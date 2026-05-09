@@ -142,8 +142,6 @@ config/*.json
 .github/workflows-archive/
 .github/security-tests/
 packages/mobile/scripts/
-# Backend legacy migrations (replaced by packages/backend/database/migrations/)
-packages/backend/migrations/
 # Anomaly: GitHub only reads .github/ at repo root, not nested
 packages/backend/.github/
 Documentations/
