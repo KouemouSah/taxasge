@@ -59,3 +59,14 @@ Thumbs.db
 *.backup
 legacy/
 archive/
+
+# DB migrations applied by GitHub Actions (deploy-backend-staging.yml),
+# not at runtime startup — no need to ship 321 .sql files in the image.
+database/migrations/
+# Legacy migrations folder (kept locally, untracked from git)
+migrations/
+# Anomaly: nested .github/ has no semantic for GitHub or Docker
+.github/
+# Misc local-only files
+coverage.xml
+test_results.txt
