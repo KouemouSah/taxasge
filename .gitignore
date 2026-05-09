@@ -108,8 +108,10 @@ ui-debug.log
 gcloud-config/
 .gcloud/
 
-# Claude Code — entirely local (agents, plans, skills, reports, sessions)
+# Claude Code — entirely local (agents, plans, skills, reports, sessions,
+# and the per-developer .claudeignore that tunes Claude Code's repo scan)
 .claude/
+.claudeignore
 .mcp.json
 
 # Documentation drafts (keep final docs only)
