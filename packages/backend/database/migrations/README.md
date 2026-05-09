@@ -1,88 +1,136 @@
-# Database Migrations for TaxasGE Backend
+# Database Migrations — TaxasGE Backend
 
-This directory contains SQL migration scripts for the TaxasGE database.
+> **Last update**: 2026-05-09 — Phase A of MIGRATIONS_BASELINE_REFACTOR_PLAN.
 
-## Migration Files
+This directory contains all DDL migrations applied to the production
+PostgreSQL (Supabase) database. There are currently **322+ migrations**
+ranging from `001_*.sql` to `336_*.sql`.
 
-### Module 1: Authentication & User Management
+The migration system is in transition between two patterns. Both work
+side-by-side until Phase G validation completes.
 
-- `001_create_sessions_table.sql` - Creates the sessions table for JWT authentication
-- `002_create_refresh_tokens_table.sql` - Creates the refresh_tokens table for token management
+---
 
-## Running Migrations
+## Two patterns coexist (transition period)
 
-### Using Supabase Dashboard
+### Pattern 1 — Legacy "replay-all" (still active in `deploy-backend-staging.yml`)
 
-1. Open your Supabase project at https://supabase.com/dashboard
-2. Go to **SQL Editor**
-3. Copy the content of each migration file in order (001, 002, etc.)
-4. Paste and run each script
+The historical workflow reads every `*.sql` file in this directory at each
+deploy and re-applies them, swallowing `'already exists'`/`'duplicate'`
+errors silently.
 
-### Using Supabase CLI
+- **Pros**: simple, no tracking infrastructure required.
+- **Cons**: slow (322+ statements parsed per deploy), no auditability, no
+  checksum, no concurrency control, DML migrations re-execute side effects.
+
+This pattern remains the **default** for the staging deploy until Phase G
+validates Pattern 2.
+
+### Pattern 2 — `init_database.py` orchestrator (Phase A)
+
+A new script `packages/backend/scripts/deploy/init_database.py` introduces
+a tracking table (`schema_migrations`), SHA-256 checksums, and a Postgres
+`pg_advisory_lock` — see the script's docstring for full details.
+
+Triggered manually via the `DB Migrate (Auto Mode)` workflow
+(`.github/workflows/db-migrate-auto.yml`):
+
+1. GitHub UI → **Actions** → "DB Migrate (Auto Mode)" → **Run workflow**
+2. Choose mode (`hybrid` recommended — see below) and target (staging only
+   for now)
+3. Inspect the workflow logs and verify `SELECT COUNT(*) FROM
+   schema_migrations` post-run
+
+---
+
+## Modes (init_database.py `--mode=...`)
+
+| Mode             | Use case                                                |
+|------------------|---------------------------------------------------------|
+| `hybrid`         | Default. Skip applied migrations, fall back to legacy   |
+|                  | "already exists" swallow on first apply. Safe rollout.  |
+| `auto`           | Same as hybrid in Phase A. In Phase D will detect       |
+|                  | empty DB and apply baseline.                            |
+| `strict`         | Error on any unexpected SQL exception. No fallback.     |
+|                  | Use after Phase G validation.                           |
+| `legacy-compat`  | Replay every file, swallow errors everywhere.           |
+|                  | Equivalent to the historical workflow. Rollback path.   |
+| `migrations-only`| Apply only `database/migrations/`. Skip seeds.          |
+| `seeds-only`     | Apply only `database/seeds/` (Phase C target).          |
+
+---
+
+## Naming convention
+
+```
+NNN_short_description.sql
+```
+
+- `NNN` = three-digit version (zero-padded, lexicographically sortable).
+  The next available number is **337**.
+- Description = snake_case, max ~60 characters.
+- One file = one logical change. Don't bundle unrelated DDL.
+- Always idempotent: `CREATE TABLE IF NOT EXISTS`, `DROP CONSTRAINT IF
+  EXISTS`, `ON CONFLICT DO NOTHING/UPDATE` for inserts.
+- Wrap in `BEGIN; ... COMMIT;` to make the file atomic.
+
+---
+
+## Adding a new migration
 
 ```bash
-# Apply all migrations
-supabase db push
+# 1. Find next number
+ls database/migrations/ | grep -E '^[0-9]' | sort | tail -3
+# → highest is e.g. 336
 
-# Or apply individual migrations
-psql $DATABASE_URL -f 001_create_sessions_table.sql
-psql $DATABASE_URL -f 002_create_refresh_tokens_table.sql
+# 2. Create the file
+NEXT=337
+$EDITOR database/migrations/${NEXT}_my_change.sql
+
+# 3. Test locally against a copy of the DB (DO NOT touch staging directly)
+psql $DATABASE_URL_LOCAL -f database/migrations/${NEXT}_my_change.sql
+
+# 4. Run the unit tests
+cd packages/backend && pytest tests/test_init_database.py -v
+
+# 5. Commit + push to develop
+# The legacy deploy-backend-staging.yml will apply it on next deploy.
+# Optionally trigger DB Migrate (Auto Mode) to populate schema_migrations.
 ```
 
-### Using Python Script
+---
 
-```python
-from app.core.supabase import get_supabase_client
+## Tables in this directory's scope
 
-supabase = get_supabase_client()
+The `schema_migrations` table (created by `336_create_schema_migrations.sql`)
+tracks which migrations have been applied. See its inline comment for the
+full column reference, or run `\d+ schema_migrations` in psql.
 
-# Read and execute migration
-with open('database/migrations/001_create_sessions_table.sql') as f:
-    sql = f.read()
-    # Execute via Supabase admin API or direct PostgreSQL connection
+---
+
+## Future structure (post Phase D)
+
+```
+database/
+├── baseline/                      # Phase D target
+│   └── 000_baseline_2026_XX_XX.sql
+├── migrations/                    # incremental DDL (this directory)
+│   ├── 336_create_schema_migrations.sql
+│   └── 337+_*.sql
+├── seeds/                         # Phase C target — idempotent DML
+│   ├── 001_categories.sql
+│   ├── 002_roles.sql
+│   └── …
+└── tools/                         # admin one-shots
+    └── looker_studio_url_generator.py
 ```
 
-## Table Schemas
+---
 
-### sessions
+## References
 
-Stores user authentication sessions with JWT tokens.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Session unique identifier |
-| user_id | UUID | Reference to users table |
-| access_token | TEXT | JWT access token |
-| refresh_token | TEXT | JWT refresh token |
-| status | VARCHAR(20) | Session status (active, expired, revoked) |
-| ip_address | VARCHAR(45) | Client IP address |
-| user_agent | TEXT | Client user agent |
-| device_info | JSONB | Additional device information |
-| expires_at | TIMESTAMPTZ | Session expiration time |
-| created_at | TIMESTAMPTZ | Session creation time |
-| last_activity | TIMESTAMPTZ | Last activity timestamp |
-| revoked_at | TIMESTAMPTZ | Revocation timestamp (if revoked) |
-
-### refresh_tokens
-
-Stores refresh tokens with revocation support.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Token unique identifier |
-| token | TEXT | Hashed refresh token (SHA-256) |
-| user_id | UUID | Reference to users table |
-| session_id | UUID | Reference to sessions table |
-| is_revoked | BOOLEAN | Whether token is revoked |
-| expires_at | TIMESTAMPTZ | Token expiration time |
-| created_at | TIMESTAMPTZ | Token creation time |
-| revoked_at | TIMESTAMPTZ | Revocation timestamp (if revoked) |
-| last_used_at | TIMESTAMPTZ | Last use timestamp |
-
-## Notes
-
-- All migrations use `CREATE TABLE IF NOT EXISTS` to be idempotent
-- Foreign keys are set with `ON DELETE CASCADE` for automatic cleanup
-- Indexes are created for common query patterns
-- Timestamps use `TIMESTAMP WITH TIME ZONE` for timezone awareness
-- UUIDs are auto-generated using `gen_random_uuid()`
+- Plan: `.claude/plans/MIGRATIONS_BASELINE_REFACTOR_PLAN.md` (local only)
+- Orchestrator: `packages/backend/scripts/deploy/init_database.py`
+- Workflow auto: `.github/workflows/db-migrate-auto.yml`
+- Workflow legacy (untouched): `.github/workflows/deploy-backend-staging.yml`
+- Memory: `memory/project_repo_cleanup_2026_05_09.md`
