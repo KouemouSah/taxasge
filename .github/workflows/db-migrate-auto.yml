@@ -1,0 +1,128 @@
+# =============================================================================
+# Database Migration — Auto Mode (Phase A.3 of MIGRATIONS_BASELINE_REFACTOR_PLAN)
+# =============================================================================
+# Validates init_database.py orchestrator against the staging database in
+# READ-MOSTLY hybrid mode. Does NOT touch any Cloud Run service.
+#
+# Purpose: prove that the v2 orchestrator (advisory lock + schema_migrations
+# tracking + checksum + idempotent fallback) works on real data without
+# regression risk on the existing staging deploy workflow.
+#
+# Behaviour: hybrid mode skips already-applied migrations (looked up in
+# schema_migrations) and falls back to "already exists" swallowing for
+# entries that error on first apply. The first run on staging will:
+#   1. Create schema_migrations table (mig 336 applied)
+#   2. Treat all 322+ existing migrations as "new" since the table is
+#      empty — but every CREATE / INSERT is idempotent (existing schema
+#      from legacy applies), so the fallback path absorbs them
+#   3. End state: schema_migrations populated, future deploys fast
+#
+# Trigger: manual only (workflow_dispatch). No automatic firing.
+#
+# Safety: runs on staging DB. To run on a fresh env, use deploy/ system
+# (Phase A.5, future).
+# =============================================================================
+
+name: DB Migrate (Auto Mode)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Mode (hybrid | strict | legacy-compat)'
+        required: true
+        default: 'hybrid'
+        type: choice
+        options:
+          - hybrid
+          - strict
+          - legacy-compat
+      target:
+        description: 'Target environment (staging only for now)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+
+env:
+  TARGET: ${{ github.event.inputs.target || 'staging' }}
+  MODE: ${{ github.event.inputs.mode || 'hybrid' }}
+
+jobs:
+  migrate:
+    name: Apply migrations via init_database.py
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Only what init_database.py needs — keeps the job fast.
+          pip install asyncpg
+
+      - name: Sanity check — script compiles and tests pass
+        run: |
+          python -m py_compile scripts/deploy/init_database.py
+          # Run only the unit tests for init_database (no live DB needed).
+          pip install pytest pytest-asyncio pytest-cov
+          pytest tests/test_init_database.py -v --tb=short --no-cov
+
+      - name: Run init_database.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          APPLIED_BY: github-actions-${{ github.run_id }}
+        run: |
+          echo "::group::init_database.py output"
+          python scripts/deploy/init_database.py --mode=${{ env.MODE }}
+          echo "::endgroup::"
+
+      - name: Verify schema_migrations populated
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python - <<'PY'
+          import asyncio, os
+          import asyncpg
+
+          async def main():
+              conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+              try:
+                  count = await conn.fetchval(
+                      "SELECT COUNT(*) FROM schema_migrations"
+                  )
+                  print(f"schema_migrations rows: {count}")
+                  if count == 0:
+                      print("::error::schema_migrations is empty after run")
+                      raise SystemExit(2)
+                  recent = await conn.fetch(
+                      "SELECT version, filename, applied_at "
+                      "FROM schema_migrations "
+                      "ORDER BY applied_at DESC LIMIT 5"
+                  )
+                  print("Last 5 applied:")
+                  for r in recent:
+                      print(f"  {r['version']} ({r['filename']}) at {r['applied_at']}")
+              finally:
+                  await conn.close()
+
+          asyncio.run(main())
+          PY
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Mode: ${{ env.MODE }}"
+          echo "Target: ${{ env.TARGET }}"
+          echo "Workflow run id: ${{ github.run_id }}"
