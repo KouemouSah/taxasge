@@ -20,15 +20,16 @@ Per-target additional prerequisites are listed in [Targets](#targets).
 
 ---
 
-## Quick start
+## Quick start (recommended: use the wizard)
 
 ```bash
 git clone https://github.com/KouemouSah/taxasge.git
 cd taxasge
 
-# 1. Copy the template and fill in your values.
-cp deploy/config.example.yaml deploy/config.yaml
-$EDITOR deploy/config.yaml
+# 1. Run the interactive wizard. It generates deploy/config.yaml +
+#    .env.secrets, auto-creates the random JWT/SECRET/TOTP/CRON keys,
+#    and validates the schema before writing.
+python deploy/init.py
 
 # 2. End-to-end validation (no cloud changes).
 python deploy/deploy.py --provider=gcp --action=validate
@@ -40,11 +41,29 @@ python deploy/deploy.py --provider=gcp --action=plan
 python deploy/deploy.py --provider=gcp --action=apply
 ```
 
-For Docker Compose (local dev):
+For Docker Compose (local dev / demo):
 
 ```bash
-python deploy/deploy.py --provider=docker-local --action=apply
+python deploy/init.py                                    # answer 9 questions
+python deploy/providers/docker_local.py --apply          # bring up stack
 ```
+
+### Manual config (no wizard)
+
+If you prefer editing files by hand (CI use, scripted setup):
+
+```bash
+cp deploy/config.example.yaml deploy/config.yaml
+cp deploy/.env.secrets.example .env.secrets
+$EDITOR deploy/config.yaml          # fill in project values
+$EDITOR .env.secrets                # fill in secrets
+
+python deploy/deploy.py --provider=gcp --action=apply
+```
+
+The wizard supports CI mode too — set `WIZ_*` env vars and run with
+`--non-interactive --force`. See `python deploy/init.py --help` for the
+list of variables.
 
 ---
 
@@ -128,40 +147,94 @@ Exit codes: `0` success, `1` validation/render error, `2` provider failed, `3` f
 
 **Prerequisites**
 - `docker` installed (Docker Desktop or Engine)
-- `docker compose` v2 plugin available
+- `docker compose` v2 plugin available (legacy `docker-compose` v1 is NOT supported)
 
 **Setup**
 
-Create a `.env.secrets` file at the repo root (gitignored) with the secret values that the backend expects:
-
-```
-JWT_SECRET_KEY=...
-SECRET_KEY=...
-TOTP_ENCRYPTION_KEY=...
-GEMINI_API_KEY=...
-CRON_SECRET=...
-```
-
-`DATABASE_URL` and `REDIS_URL` are injected automatically by the compose file (pointing to the local containers).
-
-**Run**
+Use the wizard (recommended) or copy the secrets template manually:
 
 ```bash
-python deploy/deploy.py --provider=docker-local --action=apply
+# Option A — wizard generates everything
+python deploy/init.py
+
+# Option B — manual
+cp deploy/.env.secrets.example .env.secrets
+$EDITOR .env.secrets
 ```
 
-This generates `docker-compose.local.yml` at the repo root and runs `docker compose -f docker-compose.local.yml up -d --build`. The stack includes:
+The `.env.secrets` file is gitignored at the repo root and contains JWT,
+TOTP, CRON keys and the Gemini API key. `DATABASE_URL` and `REDIS_URL`
+are injected automatically by the compose file (pointing to the in-stack
+containers, not your local Postgres).
 
-- Postgres (with persistent volume named per `docker_local.postgres_volume`)
-- Redis
-- Backend (built from `packages/backend/Dockerfile`)
-- Frontend (built from `packages/web/Dockerfile`)
+**Stack architecture (docker-local v2)**
 
-URLs after start:
+The generated `docker-compose.local.yml` declares 5 services with
+proper dependency ordering:
+
+```
+postgres   (healthcheck: pg_isready)
+   ↓
+redis      (healthcheck: redis-cli ping)
+   ↓
+db-init    ── one-shot service that runs scripts/deploy/init_database.py
+              in --mode=hybrid:
+                · DB empty + baseline.sql present → applies baseline +
+                  seeds (~30s)
+                · DB existing → applies pending migrations + seeds
+              backend depends on this service exiting with code 0.
+   ↓
+backend    (uvicorn FastAPI, healthcheck: GET /health)
+   ↓
+frontend   (Next.js, depends on backend healthy)
+```
+
+`db-init` is the critical fix that makes the stack actually work — without
+it, backend would start against an empty schema. It reuses the backend
+image (no extra build) and runs once per `up`.
+
+**Available commands**
+
+```bash
+# Validate prereqs (docker present, compose v2)
+python deploy/providers/docker_local.py --validate
+
+# Print the generated compose file without writing
+python deploy/providers/docker_local.py --plan
+
+# Bring the stack up (writes compose file, builds images, starts services)
+python deploy/providers/docker_local.py --apply
+python deploy/providers/docker_local.py --apply --yes   # skip prompts (CI)
+
+# Tail logs of all services (Ctrl+C to stop)
+python deploy/providers/docker_local.py --logs
+
+# Restart services (no rebuild)
+python deploy/providers/docker_local.py --restart
+
+# Stop and remove containers, KEEP postgres data
+python deploy/providers/docker_local.py --down
+
+# Stop and WIPE postgres data
+python deploy/providers/docker_local.py --down --volumes
+```
+
+URLs after `--apply`:
 - Backend: `http://localhost:<docker_local.backend_port>` (default 8080)
 - Frontend: `http://localhost:<docker_local.frontend_port>` (default 3000)
 
-**Stop**: `docker compose -f docker-compose.local.yml down` (volumes preserved).
+**SSR vs CSR API URLs**
+
+The frontend container receives two URL variables:
+- `NEXT_PUBLIC_API_URL=http://localhost:8080` — baked into the client bundle
+  for browser-side fetches (you open the app from your host machine)
+- `INTERNAL_API_URL=http://backend:8080` — runtime env for SSR fetches
+  (Next.js code that runs server-side inside the frontend container)
+
+If your Next.js code does server-side fetches (e.g., in
+`getServerSideProps` / `loaders` / Server Components), it should branch
+on `typeof window === 'undefined'` to pick the right URL. Browser code
+keeps using `NEXT_PUBLIC_API_URL`.
 
 ### AWS (planned)
 
@@ -296,27 +369,44 @@ Add the provider name to `deploy/deploy.py:SUPPORTED_PROVIDERS`. Add tests in `d
 ## Architecture (one-paragraph summary)
 
 ```
+                ┌─────────────────────┐
+                │ deploy/init.py      │  Q&A wizard (optional first step)
+                │ (interactive)       │  generates config.yaml + .env.secrets
+                └──────────┬──────────┘
+                           │
+                           ▼
 +-------------------+         +---------------------+         +----------------------+
 | deploy/config.yaml|  ───►   | scripts/validate    |  ───►   | scripts/render_env   |
-| (operator-filled) |         | _config.py          |         | (.env.deploy.gen +   |
-+-------------------+         | (Pydantic schema)   |         |  secrets-manifest)   |
-                              +---------------------+         +----------+-----------+
+| (filled by user   |         | _config.py          |         | (.env.deploy.gen +   |
+|  or wizard)       |         | (Pydantic schema)   |         |  secrets-manifest)   |
++-------------------+         +---------------------+         +----------+-----------+
                                                                          │
                                                                          ▼
                                                               +----------+-----------+
                                                               | providers/<X>.py     |
                                                               | --validate / --plan  |
                                                               | --apply              |
+                                                              | (gcp.py |            |
+                                                              |  docker_local.py)    |
                                                               +----------+-----------+
                                                                          │
                                                                          ▼
-                                                              +---------+----------+
-                                                              | Cloud Run / Docker |
-                                                              | / RDS / ECS / ...  |
-                                                              +--------------------+
+                                                              ┌──────────┴───────────┐
+                                                              │ Cloud Run / Docker / │
+                                                              │ ECS (planned) / etc. │
+                                                              └──────────────────────┘
 ```
 
-The orchestrator `deploy.py` chains these steps and propagates failures with distinct exit codes. The validator, renderer, and providers are independently testable Python modules with their own pytest suites under `deploy/`.
+The orchestrator `deploy.py` chains the validate → render → provider
+steps and propagates failures with distinct exit codes. The wizard
+`deploy/init.py` is an optional convenience layer that generates the
+config files via guided Q&A. The validator, renderer, providers, and
+wizard are independently testable Python modules with their own pytest
+suites under `deploy/` (162+ tests passing).
+
+For Docker local specifically, the in-stack `db-init` service runs
+`scripts/deploy/init_database.py` once before the backend boots,
+guaranteeing the schema is applied (baseline + seeds OR migrations).
 
 ---
 
@@ -337,10 +427,13 @@ The GCP provider's `--validate` mode is **read-only** and safe to run repeatedly
 ## Troubleshooting
 
 **"ERROR: schema validation failed"**
-Read the Pydantic error: it identifies the section and field that's wrong (e.g. `server.frontend_url: URL must start with http:// or https://`).
+Read the Pydantic error: it identifies the section and field that's wrong (e.g. `server.frontend_url: URL must start with http:// or https://`). The wizard `deploy/init.py` validates the same way before writing.
 
 **"ERROR: 1 secret(s) MISSING in GCP"**
 The cross-check found a secret name in your config that doesn't exist in GCP Secret Manager. Either create it (`gcloud secrets create`) or update `deploy/config.yaml` to point at the correct existing name.
+
+**"ERROR: missing secrets file"** (docker-local)
+You haven't created `.env.secrets` at the repo root. Either run the wizard (`python deploy/init.py`) or copy the template (`cp deploy/.env.secrets.example .env.secrets`).
 
 **"gcloud not found"**
 Install Google Cloud SDK (https://cloud.google.com/sdk/docs/install). On Windows, the script also looks at `C:/Program Files (x86)/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd`.
@@ -351,12 +444,37 @@ Update Docker Desktop / Docker Engine. Compose v2 ships built-in since 2022; the
 **"Application Default Credentials missing"**
 Run `gcloud auth application-default login` once on the operator's machine.
 
+**Docker stack: "port already allocated"**
+A previous run is still up. Stop it first:
+```bash
+python deploy/providers/docker_local.py --down
+python deploy/providers/docker_local.py --apply
+```
+The provider auto-detects this and prompts you (use `--yes` to skip the prompt in CI).
+
+**Docker stack: backend keeps restarting / cannot connect to DB**
+Inspect the logs:
+```bash
+python deploy/providers/docker_local.py --logs
+```
+The most common cause is `db-init` failing — it must exit 0 before backend
+starts. If `db-init` errors, the backend will wait forever (compose
+dependency). Check the `db-init` log lines for migration errors.
+
 ---
 
 ## References
 
+- Wizard: `deploy/init.py` (interactive setup)
+- Orchestrator: `deploy/deploy.py`
+- Schema validator: `deploy/scripts/validate_config.py`
+- Env renderer: `deploy/scripts/render_env.py`
+- Providers: `deploy/providers/{gcp,docker_local}.py`
+- Database init: `packages/backend/scripts/deploy/init_database.py`
+- Schema baseline: `packages/backend/database/baseline/000_baseline_*.sql`
+- Seeds (TIER_0 universal + TIER_1 deployment-specific): `packages/backend/database/seeds/`
 - Plan: `.claude/plans/DEPLOY_SYSTEM_PLAN.md` (local only)
+- Migrations refactor: `.claude/plans/MIGRATIONS_BASELINE_REFACTOR_PLAN.md` (local)
 - Audit: `deploy/AUDIT.md`
-- Migrations refactor: `.claude/plans/MIGRATIONS_BASELINE_REFACTOR_PLAN.md`
-- Backend config: `packages/backend/app/config.py`
-- Project root README: [README.md](README.md)
+- Backend config schema: `packages/backend/app/config.py`
+- Project root: [README.md](README.md)
