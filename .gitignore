@@ -146,6 +146,10 @@ packages/mobile/scripts/
 packages/backend/.github/
 Documentations/
 scripts/
+# Centralized local-only archive folder (legacy scripts, snapshots,
+# anything that should never reach the remote — see "Cleanup conventions"
+# in DEPLOYMENT.md).
+_local/
 # packages/backend/scripts/ holds the active utilities (smoke tests run by CI,
 # populate_embeddings used by the Cloud Run Job, cleanup_obsolete_permissions
 # CLI, geoip downloader, deploy/ subfolder). The historical/ subdirectory is
