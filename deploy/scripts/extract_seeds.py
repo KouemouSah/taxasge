@@ -11,10 +11,14 @@ extractor that:
   - Auto-detects the primary key from pg_constraint.
   - Falls back to `ON CONFLICT DO NOTHING` for tables without a PK.
 
-Default table set (TIER_0): the strict minimum needed for a fresh DB
-to be usable. Permissions / role_permissions are NOT in this set —
-they are auto-synced at boot by `initialize_permissions()`
-(see MEMORY.md rule #37).
+Default table set (TIER_0): the **universal** seeds — RBAC + communication
+templates. Reusable across any deployment of Facil (any country / org).
+Permissions are also auto-synced at boot by `initialize_permissions()`
+(see MEMORY.md rule #37); seeding them here is defense-in-depth.
+
+TIER_1 is **deployment-specific** (TaxasGE Guinea-Ecuatorial taxonomies,
+fiscal services, cities, etc.). NOT reusable across countries. See the
+TIER_1_TABLES docstring inside this module for details.
 
 Usage
 -----
@@ -94,18 +98,30 @@ TIER_0_TABLES: list[str] = [
     "communication_provider_settings",
 ]
 
-# TIER_1 — taxonomies + catalog + i18n + dashboards. Adds the data needed
-# for the catalog browsing UI, workflow building, and admin dashboards.
+# TIER_1 — DEPLOYMENT-SPECIFIC data. WARNING: this set is **NOT universal**.
+# It contains tables whose content is bound to a specific country / state /
+# institution (TaxasGE Guinea-Ecuatorial: Spanish ministries, local cities,
+# country-specific fiscal services and tariffs, etc.).
+#
+# A new deployer in another country (e.g. Cameroon, Senegal) MUST NOT
+# re-use this seed as-is — they should:
+#   1. Skip TIER_1 on first deploy.
+#   2. Configure their own taxonomies (ministries, sectors, categories,
+#      cities, fiscal_services, etc.) via the admin UI.
+#   3. Optionally re-run extract_seeds.py against THEIR DB to capture
+#      their own TIER_1 for backups / disaster recovery.
+#
+# Use TIER_1 ONLY when re-bootstrapping an environment of the SAME
+# deployment (e.g. setting up a staging clone of TaxasGE production).
 TIER_1_TABLES: list[str] = TIER_0_TABLES + [
-    # Reference taxonomies
+    # Country-specific taxonomies
     "categories",
     "ministries",
     "sectors",
-    "valid_workflow_codes",
     "cities",
-    "system_rules",
     "entities",
-    # Catalog
+    "entity_locations",
+    # Country-specific catalog
     "fiscal_services",
     "service_keywords",
     "service_document_assignments",
@@ -113,13 +129,6 @@ TIER_1_TABLES: list[str] = TIER_0_TABLES + [
     "procedure_templates",
     "procedure_template_steps",
     "document_templates",
-    # i18n
-    "translations",
-    "entity_translations",
-    # Workflow + admin
-    "workflow_menu_mapping",
-    "workflows",
-    "dashboard_registrations",
     "service_bundles",
     "service_bundle_items",
     "workflow_document_requirements",
@@ -127,9 +136,19 @@ TIER_1_TABLES: list[str] = TIER_0_TABLES + [
     "workflow_supplement_config",
     "workflow_display_config",
     "tariff_supplements",
+    # Country-specific i18n strings
+    "translations",
+    "entity_translations",
+    # Country-specific scheduling
     "appointment_delay_rules",
     "appointment_slot_configs",
-    "entity_locations",
+    # Mostly universal, but country-specific in practice (workflow names,
+    # menu labels, etc.)
+    "valid_workflow_codes",
+    "system_rules",
+    "workflow_menu_mapping",
+    "workflows",
+    "dashboard_registrations",
     "export_templates",
 ]
 

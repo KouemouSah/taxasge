@@ -11,17 +11,36 @@ Applies SQL migrations from `database/migrations/` to a Postgres database with:
 Modes
 -----
 auto         Same as hybrid for now (Phase A). Will detect baseline vs
-             migration application in Phase D.
+             migration application in a future Phase D (pg_dump baseline).
 hybrid       Default. Uses schema_migrations if present (skip applied).
              Falls back to legacy "replay-all with already-exists skip"
              for entries that error on first apply (smooth rollout).
+             For a FRESH DB this is the recommended mode: applies all
+             319 migrations + 9 TIER_0 seeds in one shot.
 strict       Errors out on any unexpected SQL exception. No legacy fallback.
-             Use after Phase G validation.
+             Use only after Phase G validation has confirmed all migrations
+             apply cleanly on a fresh DB.
 legacy-compat Replays every .sql, swallowing 'already exists'/'duplicate'
              errors. Equivalent to the inline Python in the legacy
              deploy-backend-staging.yml (rollback safety).
-seeds-only    (Phase C) Apply only files in database/seeds/.
+seeds-only    Apply only files in database/seeds/. Useful when reseeding
+             after manual schema changes or restoring from a partial backup.
 migrations-only Apply only DDL migrations, skip seeds.
+
+Fresh DB workflow
+-----------------
+For a brand-new Postgres DB (new env, fork install, dev local):
+
+    DATABASE_URL=postgresql://... \
+      python scripts/deploy/init_database.py --mode=hybrid
+
+This applies (in order):
+  1. The 319 migrations in database/migrations/   (idempotent skip on
+     re-runs once schema_migrations is populated)
+  2. The 9 TIER_0 seeds in database/seeds/        (ON CONFLICT DO UPDATE)
+
+After this, the boot of the FastAPI app calls initialize_permissions()
+which auto-syncs any new permissions added in code since the last run.
 
 Usage
 -----
@@ -369,11 +388,14 @@ async def main(argv: Optional[list[str]] = None) -> int:
                 )
 
             if args.mode in ("auto", "hybrid", "strict", "seeds-only"):
-                # Phase C target — empty until seeds are extracted.
+                # Apply TIER_0 seeds (RBAC + communication templates).
+                # Idempotent ON CONFLICT DO UPDATE — safe to re-apply.
                 if SEEDS_DIR.exists():
                     seeds = discover_files(SEEDS_DIR, filetype="seed")
                     if seeds:
-                        log("INFO", f"Discovered {len(seeds)} seed files.")
+                        log("INFO",
+                            f"Applying {len(seeds)} seed files from "
+                            f"{SEEDS_DIR.relative_to(REPO_ROOT)}")
                         await apply_directory(
                             conn, seeds,
                             mode=args.mode,
@@ -381,6 +403,14 @@ async def main(argv: Optional[list[str]] = None) -> int:
                             applied_versions=applied_versions,
                             result=result,
                         )
+                    else:
+                        log("INFO",
+                            f"No seed files in {SEEDS_DIR.relative_to(REPO_ROOT)} "
+                            f"— skipping seeds step.")
+                else:
+                    log("INFO",
+                        "No seeds/ directory found — skipping seeds step. "
+                        "(Generate with deploy/scripts/extract_seeds.py)")
 
             log("INFO",
                 f"Summary: applied={result.applied} skipped={result.skipped} "

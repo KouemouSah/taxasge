@@ -169,6 +169,79 @@ Phase A.5.7 of the deploy plan. ECS Fargate + RDS + ElastiCache + Secrets Manage
 
 ---
 
+## Seeds (this is a TaxasGE deployment, not a generic framework)
+
+> **Honest scoping**: This repo is the **concrete TaxasGE deployment for
+> Guinea-Ecuatorial gov services**, built on top of the Facil architecture.
+> The seeds shipped here reflect that context. If you fork to deploy
+> elsewhere (different country, private enterprise, SaaS, banking, etc.),
+> you will need to **adapt the seeds** — see "Forking for another context"
+> below.
+
+The architecture (FastAPI/Next.js code, the 319 DDL migrations, the
+init/render/provider scripts under `deploy/`) is reusable as-is. The
+**data** in the seeds is TaxasGE-specific.
+
+### Seeds shipped in this repo
+
+`packages/backend/database/seeds/` contains the data needed to bring up
+a working TaxasGE staging or production instance from a fresh DB:
+
+- **TIER 0 (auto-applied by init_database.py mode `auto`/`hybrid`)** —
+  RBAC + communication templates. ~2,400 rows across 9 tables:
+  `roles` (47), `permissions` (337), `role_permissions` (1890),
+  `email_templates` (32), `sms_templates` (34), `push_templates` (12),
+  `notification_templates` (16), `ussd_configurations` (2),
+  `communication_provider_settings` (4).
+
+- **TIER 1 (NOT shipped, regenerable on demand)** — country taxonomies,
+  fiscal services catalog (850+), procedures, document templates,
+  translations. Run `extract_seeds.py --tier=1 --output-dir=...` against
+  the staging DB whenever you need a fresh snapshot.
+
+### Forking for another context
+
+If you want to deploy Facil for a **different country**, a **private
+enterprise**, a **multi-tenant SaaS**, or any other context, the seeds
+shipped here are NOT directly applicable. The role codes, permission
+names, ministry/branch names, fiscal service catalog, etc. all reflect
+TaxasGE / Guinea-Ecuatorial gov.
+
+Recommended fork workflow:
+
+1. Fork the repo.
+2. **Delete** the existing `packages/backend/database/seeds/*.sql`.
+3. Run `init_database.py` against your fresh DB → applies the schema only.
+4. Configure your own data via the admin UI:
+   - Define your own roles (e.g. `customer`, `agent`, `manager` for an
+     enterprise) and permissions (e.g. `order.create`, `invoice.approve`)
+   - Define your own taxonomies / branches / catalog
+5. Once your data is in your DB, run `extract_seeds.py` against it to
+   capture **your own** seeds:
+   ```bash
+   python deploy/scripts/extract_seeds.py --tier=1 \
+     --output-dir=packages/backend/database/seeds/
+   ```
+6. Commit your seeds to your fork. Future re-deploys (DR, new env) will
+   use them.
+
+A future "Voie B" project may abstract Facil into a true generic
+framework with seed *profiles* (gov / enterprise / SaaS). For now, fork
++ adapt is the documented path.
+
+### Regenerating seeds for THIS (TaxasGE) deployment
+
+```bash
+# Read-only against staging, captures the current state.
+DATABASE_URL=$(grep DATABASE_URL packages/backend/.env | cut -d= -f2-) \
+  python deploy/scripts/extract_seeds.py --tier=1 \
+  --output-dir=packages/backend/database/seeds-tier1/
+```
+
+Output goes to a separate directory (`seeds-tier1/`) so it doesn't
+overwrite the TIER 0 seeds. TIER 1 output is intentionally NOT in the
+gitignore — commit it if you want a versioned snapshot for DR.
+
 ## Secrets management
 
 The pipeline produces `deploy/.secrets-manifest.json` mapping each secret-bound env var to its provider secret name:
