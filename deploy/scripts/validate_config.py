@@ -69,6 +69,10 @@ class DatabaseConfig(BaseModel):
     password_secret: str = ""
     ssl_mode: Literal["disable", "require", "verify-ca", "verify-full"] = "require"
     pool: DatabasePool = Field(default_factory=DatabasePool)
+    # Optional Supabase bridge fields (kept for legacy code paths that read
+    # SUPABASE_URL / SUPABASE_ANON_KEY in addition to / instead of DATABASE_URL).
+    supabase_url_secret: str = ""
+    supabase_anon_key_secret: str = ""
 
     @model_validator(mode="after")
     def must_have_url_or_parts(self) -> "DatabaseConfig":
@@ -98,7 +102,9 @@ class FirebaseConfig(BaseModel):
     project_id: str = Field(min_length=1)
     storage_bucket: str = Field(min_length=1)
     android_app_id: str = ""
-    service_account_secret: str = ""
+    # Different secrets for dev vs prod environments. Empty = not used.
+    service_account_dev_secret: str = ""
+    service_account_pro_secret: str = ""
 
 
 class AIGenerationConfig(BaseModel):
@@ -175,10 +181,14 @@ class SmtpConfig(BaseModel):
 
 
 class ObservabilityConfig(BaseModel):
-    sentry_dsn: str = ""
-    logrocket_app_id: str = ""
+    # Backend Sentry DSN (different from web Sentry DSN — separate projects).
+    sentry_dsn_backend_secret: str = ""
+    sentry_dsn_web_secret: str = ""        # Public, but kept in Secret Manager for parity.
+    sentry_auth_token_secret: str = ""     # Build-time only (sourcemap upload).
+    logrocket_app_id_secret: str = ""      # Public, kept in Secret Manager for parity.
     grafana_otlp_endpoint: str = ""
     grafana_token_secret: str = ""
+    maxmind_license_key_secret: str = ""   # GeoIP DB auto-download at boot.
     slack_webhook_url: str = ""
 
 

@@ -107,6 +107,8 @@ class TestExampleYaml:
         raw["firebase"]["storage_bucket"] = "facil-prod-uploads"
         raw["server"]["frontend_url"] = "https://facil.gq"
         raw["server"]["api_base_url"] = "https://api.facil.gq"
+        # ai requires either gemini_api_key_secret OR google_cloud_project.
+        raw["ai"]["google_cloud_project"] = "facil-prod"
         cfg = vc.DeployConfig.model_validate(raw)
         assert cfg.meta.project_name == "facil"
 

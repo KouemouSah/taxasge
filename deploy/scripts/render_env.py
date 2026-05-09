@@ -61,31 +61,49 @@ PLACEHOLDER_RE = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
 # script (gcp.sh / docker-local.sh) reads this manifest to wire the
 # bindings.
 SECRET_REF_TO_ENV_VAR: dict[str, str] = {
-    "database.url_secret":               "DATABASE_URL",
-    "database.password_secret":          "DATABASE_PASSWORD",
-    "redis.url_secret":                  "REDIS_URL",
-    "auth.jwt_secret_name":              "JWT_SECRET_KEY",
-    "auth.app_secret_name":              "SECRET_KEY",
-    "auth.totp_encryption_secret":       "TOTP_ENCRYPTION_KEY",
-    "auth.receipt_verification_secret":  "RECEIPT_VERIFICATION_SECRET",
-    "ai.gemini_api_key_secret":          "GEMINI_API_KEY",
-    "firebase.service_account_secret":   "FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV",
-    "payments.bange.api_key_secret":     "BANGE_API_KEY",
-    "payments.bange.webhook_secret_secret": "BANGE_WEBHOOK_SECRET",
+    # --- Database / cache ---
+    "database.url_secret":                    "DATABASE_URL",
+    "database.password_secret":               "DATABASE_PASSWORD",
+    "database.supabase_url_secret":           "SUPABASE_URL",
+    "database.supabase_anon_key_secret":      "SUPABASE_ANON_KEY",
+    "redis.url_secret":                       "REDIS_URL",
+    # --- Auth / signing ---
+    "auth.jwt_secret_name":                   "JWT_SECRET_KEY",
+    "auth.app_secret_name":                   "SECRET_KEY",
+    "auth.totp_encryption_secret":            "TOTP_ENCRYPTION_KEY",
+    "auth.receipt_verification_secret":       "RECEIPT_VERIFICATION_SECRET",
+    # --- AI ---
+    "ai.gemini_api_key_secret":               "GEMINI_API_KEY",
+    # --- Firebase (env-dependent: dev or pro) ---
+    "firebase.service_account_dev_secret":    "FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV",
+    "firebase.service_account_pro_secret":    "FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO",
+    # --- Payments ---
+    "payments.bange.api_key_secret":          "BANGE_API_KEY",
+    "payments.bange.webhook_secret_secret":   "BANGE_WEBHOOK_SECRET",
     "payments.ecobank.client_secret_secret":  "ECOBANK_CLIENT_SECRET",
     "payments.ecobank.webhook_secret_secret": "ECOBANK_WEBHOOK_SECRET",
     "payments.mpgs.api_password_secret":      "MPGS_API_PASSWORD",
     "payments.mpgs.webhook_secret_secret":    "MPGS_WEBHOOK_SECRET",
-    "smtp.password_secret":              "SMTP_PASSWORD",
-    "cron.secret_name":                  "CRON_SECRET",
-    "observability.grafana_token_secret": "GRAFANA_SA_TOKEN",
+    # --- Email ---
+    "smtp.password_secret":                   "SMTP_PASSWORD",
+    # --- Cron / scheduling ---
+    "cron.secret_name":                       "CRON_SECRET",
+    # --- Observability ---
+    "observability.sentry_dsn_backend_secret":  "SENTRY_DSN",
+    "observability.sentry_auth_token_secret":   "SENTRY_AUTH_TOKEN",  # build-time, harmless at runtime
+    "observability.grafana_token_secret":       "GRAFANA_SA_TOKEN",
+    "observability.maxmind_license_key_secret": "MAXMIND_LICENSE_KEY",
+}
+
+# Frontend build-time secret bindings (NEXT_PUBLIC_* values that come from
+# Secret Manager at build time, baked into the client bundle).
+FRONTEND_SECRET_REF_TO_ENV_VAR: dict[str, str] = {
+    "observability.sentry_dsn_web_secret":     "NEXT_PUBLIC_SENTRY_DSN",
+    "observability.logrocket_app_id_secret":   "NEXT_PUBLIC_LOGROCKET_APP_ID",
+    "observability.sentry_auth_token_secret":  "SENTRY_AUTH_TOKEN",  # build-only
 }
 
 # Frontend build-time secret (only one).
-FRONTEND_SECRET_REF_TO_ENV_VAR: dict[str, str] = {
-    # No secret directly required for runtime web env.
-    # SENTRY_AUTH_TOKEN is build-time only — handled by the provider's build step.
-}
 
 
 # ---------------------------------------------------------------------------
