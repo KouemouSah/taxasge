@@ -155,6 +155,10 @@ scripts/
 !packages/backend/scripts/verify_apk_signature.py
 # Deploy system scripts (Phase A.5+) — tracked
 !deploy/scripts/
+# Generated artifacts from deploy/scripts/render_env.py — local only
+**/.env.deploy.gen
+deploy/.secrets-manifest.json
+deploy/config.yaml
 
 # E2E Test Data (keep README only)
 test-data/*.pdf
