@@ -94,9 +94,51 @@ class TestGenerateCompose:
         parsed = yaml.safe_load(out)
         assert parsed is not None
         assert "services" in parsed
+        # 5 services: postgres + redis + db-init (one-shot) + backend + frontend
         assert set(parsed["services"].keys()) == {
-            "postgres", "redis", "backend", "frontend"
+            "postgres", "redis", "db-init", "backend", "frontend"
         }
+
+    def test_no_deprecated_version_field(self, cfg: vc.DeployConfig) -> None:
+        """Compose v2 ignores `version:` and warns when present."""
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        assert "version" not in parsed
+
+    def test_db_init_runs_init_database_script(self, cfg: vc.DeployConfig) -> None:
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        db_init = parsed["services"]["db-init"]
+        # Must run init_database.py (not just any python command).
+        assert "init_database.py" in " ".join(db_init["command"])
+        # Must NOT auto-restart (it's a one-shot bootstrap).
+        assert db_init["restart"] == "no"
+        # Must wait for postgres healthcheck.
+        assert db_init["depends_on"]["postgres"]["condition"] == "service_healthy"
+
+    def test_backend_waits_for_db_init_completion(self, cfg: vc.DeployConfig) -> None:
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        backend_deps = parsed["services"]["backend"]["depends_on"]
+        # The critical guarantee: backend never starts before db-init exits 0.
+        assert backend_deps["db-init"]["condition"] == "service_completed_successfully"
+
+    def test_internal_api_url_for_ssr(self, cfg: vc.DeployConfig) -> None:
+        """Frontend container must have INTERNAL_API_URL pointing at the
+        backend service hostname (not localhost) so SSR works."""
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        env = parsed["services"]["frontend"]["environment"]
+        assert env["INTERNAL_API_URL"].startswith("http://backend:")
+
+    def test_restart_policy_on_long_running_services(
+        self, cfg: vc.DeployConfig
+    ) -> None:
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        for svc in ("postgres", "redis", "backend", "frontend"):
+            assert parsed["services"][svc].get("restart") == "unless-stopped", \
+                f"{svc} missing restart: unless-stopped"
 
 
 # ---------------------------------------------------------------------------
@@ -210,3 +252,139 @@ class TestCli:
                 "--apply",
             ])
         assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# stack_running detection
+# ---------------------------------------------------------------------------
+
+class TestStackRunning:
+    def test_returns_false_when_no_compose_file(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(dl, "COMPOSE_FILE", tmp_path / "absent.yml")
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"):
+            assert not dl.stack_running()
+
+    def test_returns_true_when_ps_lists_containers(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        compose = tmp_path / "compose.yml"
+        compose.write_text("services: {}")
+        monkeypatch.setattr(dl, "COMPOSE_FILE", compose)
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"), \
+             patch("docker_local.subprocess.run",
+                   return_value=MagicMock(returncode=0,
+                                          stdout="abc123\ndef456\n",
+                                          stderr="")):
+            assert dl.stack_running()
+
+    def test_returns_false_when_ps_empty(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        compose = tmp_path / "compose.yml"
+        compose.write_text("services: {}")
+        monkeypatch.setattr(dl, "COMPOSE_FILE", compose)
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"), \
+             patch("docker_local.subprocess.run",
+                   return_value=MagicMock(returncode=0, stdout="", stderr="")):
+            assert not dl.stack_running()
+
+
+# ---------------------------------------------------------------------------
+# --down / --logs / --restart commands
+# ---------------------------------------------------------------------------
+
+class TestDownLogsRestart:
+    def test_down_fails_without_compose_file(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(dl, "COMPOSE_FILE", tmp_path / "absent.yml")
+        rc = dl.main(["--down"])
+        assert rc == 1
+
+    def test_down_runs_compose_down(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        compose = tmp_path / "compose.yml"
+        compose.write_text("services: {}")
+        monkeypatch.setattr(dl, "COMPOSE_FILE", compose)
+        called = []
+
+        def fake_run_compose(args, **kwargs):
+            called.append(args)
+            return 0
+
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"), \
+             patch("docker_local.run_compose", side_effect=fake_run_compose):
+            rc = dl.main(["--down"])
+
+        assert rc == 0
+        assert called and "down" in called[0]
+        assert "-v" not in called[0]
+
+    def test_down_with_volumes_passes_v_flag(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        compose = tmp_path / "compose.yml"
+        compose.write_text("services: {}")
+        monkeypatch.setattr(dl, "COMPOSE_FILE", compose)
+        called = []
+
+        def fake_run_compose(args, **kwargs):
+            called.append(args)
+            return 0
+
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"), \
+             patch("docker_local.run_compose", side_effect=fake_run_compose):
+            rc = dl.main(["--down", "--volumes"])
+
+        assert rc == 0
+        assert "-v" in called[0]
+
+    def test_logs_fails_without_compose_file(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(dl, "COMPOSE_FILE", tmp_path / "absent.yml")
+        rc = dl.main(["--logs"])
+        assert rc == 1
+
+    def test_restart_runs_compose_restart(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        compose = tmp_path / "compose.yml"
+        compose.write_text("services: {}")
+        monkeypatch.setattr(dl, "COMPOSE_FILE", compose)
+        called = []
+
+        def fake_run_compose(args, **kwargs):
+            called.append(args)
+            return 0
+
+        with patch("docker_local.find_docker", return_value="/usr/bin/docker"), \
+             patch("docker_local.run_compose", side_effect=fake_run_compose):
+            rc = dl.main(["--restart"])
+
+        assert rc == 0
+        assert "restart" in called[0]
+
+
+# ---------------------------------------------------------------------------
+# BuildKit env vars
+# ---------------------------------------------------------------------------
+
+class TestBuildKit:
+    def test_run_compose_sets_buildkit_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured_env = {}
+
+        def fake_subprocess_run(args, **kwargs):
+            captured_env.update(kwargs.get("env", {}))
+            return MagicMock(returncode=0)
+
+        monkeypatch.setattr(dl.subprocess, "run", fake_subprocess_run)
+        dl.run_compose(["docker", "compose", "version"])
+
+        assert captured_env.get("DOCKER_BUILDKIT") == "1"
+        assert captured_env.get("COMPOSE_DOCKER_CLI_BUILD") == "1"

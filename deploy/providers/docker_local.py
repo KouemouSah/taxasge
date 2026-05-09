@@ -1,26 +1,41 @@
 #!/usr/bin/env python3
 """docker-local provider — Phase A.5.5 of DEPLOY_SYSTEM_PLAN.
 
-Generates a docker-compose.yml at the repo root that brings up:
-  - Postgres (with persistent volume)
-  - Redis
-  - Backend (FastAPI / uvicorn)
-  - Frontend (Next.js)
+Generates a docker-compose.local.yml at the repo root and brings up:
 
-Secrets are NOT bound through Cloud Secret Manager here. Instead, they
-must be present in a local .env.secrets file (gitignored). The compose
-file maps them to backend env vars.
+  - Postgres                   (with persistent named volume)
+  - Redis
+  - db-init (one-shot)         runs init_database.py to create schema +
+                               apply baseline + seeds. Backend depends on
+                               its successful completion.
+  - Backend (FastAPI/uvicorn)  starts only after db-init finishes
+  - Frontend (Next.js)         starts after backend is healthy
+
+Secrets are NOT bound through Cloud Secret Manager here. Instead, copy
+deploy/.env.secrets.example to .env.secrets at the repo root and fill in
+the required values. The compose file maps that file as env_file for
+backend + db-init.
 
 Usage
 -----
     # Validate prereqs (docker installed, compose available).
     python deploy/providers/docker_local.py --config=deploy/config.yaml --validate
 
-    # Show the generated docker-compose.yml content.
+    # Show the generated docker-compose.local.yml content.
     python deploy/providers/docker_local.py --config=deploy/config.yaml --plan
 
-    # Write docker-compose.local.yml + start containers.
+    # Write docker-compose.local.yml + start the stack.
     python deploy/providers/docker_local.py --config=deploy/config.yaml --apply
+
+    # Stop and remove containers (volumes preserved unless --volumes).
+    python deploy/providers/docker_local.py --config=deploy/config.yaml --down
+    python deploy/providers/docker_local.py --config=deploy/config.yaml --down --volumes
+
+    # Tail logs of all services.
+    python deploy/providers/docker_local.py --config=deploy/config.yaml --logs
+
+    # Restart all services without rebuilding.
+    python deploy/providers/docker_local.py --config=deploy/config.yaml --restart
 
 Exit codes
 ----------
@@ -28,11 +43,13 @@ Exit codes
 1  Validation error (docker missing, secrets file missing in --apply mode).
 2  Subprocess error (docker compose up failed).
 3  YAML / file error.
+4  User aborted at a confirmation prompt.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -49,6 +66,7 @@ REPO_ROOT = DEPLOY_DIR.parent
 DEFAULT_CONFIG = DEPLOY_DIR / "config.yaml"
 COMPOSE_FILE = REPO_ROOT / "docker-compose.local.yml"
 SECRETS_FILE = REPO_ROOT / ".env.secrets"  # local-only, gitignored
+SECRETS_EXAMPLE = DEPLOY_DIR / ".env.secrets.example"
 
 
 # ---------------------------------------------------------------------------
@@ -71,50 +89,118 @@ def docker_compose_available() -> bool:
     return proc.returncode == 0
 
 
+def stack_running() -> bool:
+    """True if the local stack already has running containers.
+
+    Used to detect conflicts before --apply (which would otherwise hit
+    'port already allocated' errors).
+    """
+    docker = find_docker()
+    if not docker or not COMPOSE_FILE.exists():
+        return False
+    proc = subprocess.run(
+        [docker, "compose", "-f", str(COMPOSE_FILE), "ps", "-q"],
+        capture_output=True, text=True, check=False, cwd=REPO_ROOT,
+    )
+    return proc.returncode == 0 and bool(proc.stdout.strip())
+
+
 # ---------------------------------------------------------------------------
 # Compose file generator
 # ---------------------------------------------------------------------------
 
 def generate_compose(cfg: vc.DeployConfig) -> str:
-    """Build a docker-compose.yml string from the deploy config."""
+    """Build a docker-compose.yml string from the deploy config.
+
+    No `version:` field — Compose v2 ignores it (and warns when present).
+    """
     backend_port = cfg.docker_local.backend_port
     frontend_port = cfg.docker_local.frontend_port
     pg_image = cfg.docker_local.postgres_image
     pg_volume = cfg.docker_local.postgres_volume
     redis_image = cfg.docker_local.redis_image
+    project = cfg.meta.project_name
+    env_label = cfg.meta.environment
+
+    # DATABASE_URL pointing at the postgres service inside the compose network.
+    # ${POSTGRES_PASSWORD:-localdev} lets the operator override via shell env.
+    db_url = (
+        f"postgresql://{project}:${{POSTGRES_PASSWORD:-localdev}}"
+        f"@postgres:5432/{project}"
+    )
+    redis_url = "redis://redis:6379/0"
+
+    # The browser-facing URL is `localhost:<backend_port>` because the user
+    # opens the app from their host machine. Server-side rendering inside
+    # the frontend container needs `http://backend:<backend_port>` — exposed
+    # as INTERNAL_API_URL so Next.js code can branch on `typeof window`.
+    public_api_url = f"http://localhost:{backend_port}"
+    internal_api_url = f"http://backend:{backend_port}"
 
     return f"""# Generated by deploy/providers/docker_local.py — DO NOT EDIT MANUALLY.
-# Edit deploy/config.yaml and re-run the provider.
-
-version: "3.9"
+# Regenerate by editing deploy/config.yaml then running the provider with --apply.
 
 services:
+  # ---------------------------------------------------------------------
+  # Postgres — persistent volume, healthcheck-gated for dependents.
+  # ---------------------------------------------------------------------
   postgres:
     image: {pg_image}
     environment:
-      POSTGRES_DB: {cfg.meta.project_name}
-      POSTGRES_USER: {cfg.meta.project_name}
+      POSTGRES_DB: {project}
+      POSTGRES_USER: {project}
       POSTGRES_PASSWORD: ${{POSTGRES_PASSWORD:-localdev}}
     volumes:
       - {pg_volume}:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "{cfg.meta.project_name}"]
+      test: ["CMD", "pg_isready", "-U", "{project}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  # ---------------------------------------------------------------------
+  # Redis — for cache, rate limit, idempotency.
+  # ---------------------------------------------------------------------
   redis:
     image: {redis_image}
     ports:
       - "6379:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  # ---------------------------------------------------------------------
+  # db-init — one-shot bootstrap. Reuses the backend image (same build
+  # context) and runs init_database.py in hybrid mode:
+  #   - empty DB + baseline.sql present → applies baseline + seeds (~30s)
+  #   - existing DB                       → applies pending migrations + seeds
+  # Backend container does NOT start until this exits with code 0.
+  # ---------------------------------------------------------------------
+  db-init:
+    build:
+      context: ./packages/backend
+    env_file:
+      - ./.env.secrets
+    environment:
+      DATABASE_URL: {db_url}
+      ENVIRONMENT: {env_label}
+      APPLIED_BY: docker-local-init
+    command: ["python", "scripts/deploy/init_database.py", "--mode=hybrid"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ---------------------------------------------------------------------
+  # Backend — FastAPI / uvicorn. Schema is guaranteed to be ready
+  # (db-init completed) before this container starts.
+  # ---------------------------------------------------------------------
   backend:
     build:
       context: ./packages/backend
@@ -122,35 +208,79 @@ services:
       - ./.env.secrets
       - ./packages/backend/.env.deploy.gen
     environment:
-      DATABASE_URL: postgresql://{cfg.meta.project_name}:${{POSTGRES_PASSWORD:-localdev}}@postgres:5432/{cfg.meta.project_name}
-      REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: {cfg.meta.environment}
-      PORT: {backend_port}
+      DATABASE_URL: {db_url}
+      REDIS_URL: {redis_url}
+      ENVIRONMENT: {env_label}
+      PORT: "{backend_port}"
     ports:
       - "{backend_port}:{backend_port}"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://localhost:{backend_port}/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
+  # ---------------------------------------------------------------------
+  # Frontend — Next.js. Browser hits localhost:<port>; SSR inside the
+  # container hits http://backend:<port> via INTERNAL_API_URL.
+  # The Next.js code should branch on typeof window === 'undefined'
+  # to pick the right URL (see DEPLOYMENT.md "SSR vs CSR API URLs").
+  # ---------------------------------------------------------------------
   frontend:
     build:
       context: ./packages/web
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:{backend_port}
+        NEXT_PUBLIC_API_URL: {public_api_url}
         NEXT_PUBLIC_BUILD_VERSION: {cfg.meta.version}
-        NEXT_PUBLIC_ENVIRONMENT: {cfg.meta.environment}
+        NEXT_PUBLIC_ENVIRONMENT: {env_label}
     env_file:
       - ./packages/web/.env.deploy.gen
+    environment:
+      INTERNAL_API_URL: {internal_api_url}
     ports:
       - "{frontend_port}:3000"
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   {pg_volume}:
 """
+
+
+# ---------------------------------------------------------------------------
+# Compose subcommand wrappers
+# ---------------------------------------------------------------------------
+
+def compose_cmd(*args: str) -> list[str]:
+    """Build `docker compose -f <file> <args...>` invocation."""
+    docker = find_docker()
+    if not docker:
+        raise RuntimeError("docker not found on PATH")
+    return [docker, "compose", "-f", str(COMPOSE_FILE), *args]
+
+
+def run_compose(args: list[str], *, env_extra: dict[str, str] | None = None) -> int:
+    env = os.environ.copy()
+    # Enable BuildKit + Compose CLI build for faster, cached builds.
+    env.setdefault("DOCKER_BUILDKIT", "1")
+    env.setdefault("COMPOSE_DOCKER_CLI_BUILD", "1")
+    if env_extra:
+        env.update(env_extra)
+    proc = subprocess.run(args, cwd=REPO_ROOT, env=env, check=False)
+    return proc.returncode
 
 
 # ---------------------------------------------------------------------------
@@ -161,79 +291,177 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--validate", action="store_true")
-    mode.add_argument("--plan", action="store_true")
-    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--validate", action="store_true",
+                      help="Check prereqs (docker, compose v2). No mutation.")
+    mode.add_argument("--plan", action="store_true",
+                      help="Print the generated docker-compose file. No mutation.")
+    mode.add_argument("--apply", action="store_true",
+                      help="Write compose file + bring the stack up.")
+    mode.add_argument("--down", action="store_true",
+                      help="Stop and remove containers. Preserves volumes.")
+    mode.add_argument("--logs", action="store_true",
+                      help="Tail logs of all services (Ctrl+C to stop).")
+    mode.add_argument("--restart", action="store_true",
+                      help="Restart services without rebuilding images.")
+    parser.add_argument("--volumes", action="store_true",
+                        help="With --down: also remove the postgres volume "
+                             "(WIPES the local DB).")
+    parser.add_argument("--yes", action="store_true",
+                        help="Skip interactive confirmations.")
     args = parser.parse_args(argv)
 
-    if not args.config.exists():
-        print(f"ERROR: config not found: {args.config}", file=sys.stderr)
-        return 3
+    # Config is required for plan/apply (template generation depends on it).
+    # For --down/--logs/--restart we only need the compose file already on disk.
+    if args.validate or args.plan or args.apply:
+        if not args.config.exists():
+            print(f"ERROR: config not found: {args.config}", file=sys.stderr)
+            return 3
+        raw = vc.load_yaml(args.config)
+        try:
+            cfg = vc.DeployConfig.model_validate(raw)
+        except Exception as e:
+            print(f"ERROR: config validation failed:\n{e}", file=sys.stderr)
+            return 1
+    else:
+        cfg = None  # Not needed for compose-only commands.
 
-    raw = vc.load_yaml(args.config)
-    try:
-        cfg = vc.DeployConfig.model_validate(raw)
-    except Exception as e:
-        print(f"ERROR: config validation failed:\n{e}", file=sys.stderr)
-        return 1
+    # ---- Mode dispatch ----
 
-    # 1. Prereqs
+    if args.validate:
+        return _do_validate()
+
+    if args.plan:
+        return _do_plan(cfg)
+
+    if args.apply:
+        return _do_apply(cfg, yes=args.yes)
+
+    if args.down:
+        return _do_down(remove_volumes=args.volumes)
+
+    if args.logs:
+        return _do_logs()
+
+    if args.restart:
+        return _do_restart()
+
+    return 0  # unreachable
+
+
+def _do_validate() -> int:
     print(f"=== Prerequisites ===")
     docker = find_docker()
     if not docker:
         print("[FAIL] docker not found on PATH")
-        if not args.plan:
-            return 1
-    else:
-        print(f"[OK] docker: {docker}")
+        return 1
+    print(f"[OK] docker: {docker}")
     if not docker_compose_available():
-        print("[FAIL] docker compose plugin not available")
-        if not args.plan:
-            return 1
+        print("[FAIL] docker compose v2 plugin not available "
+              "(legacy docker-compose v1 is NOT supported)")
+        return 1
+    print("[OK] docker compose v2 available")
+    if not SECRETS_EXAMPLE.exists():
+        print(f"[WARN] deploy/.env.secrets.example missing — "
+              f"deployers won't have a template to copy from")
+    if SECRETS_FILE.exists():
+        print(f"[OK] .env.secrets present at repo root "
+              f"(content not validated here)")
     else:
-        print("[OK] docker compose v2 available")
+        print(f"[INFO] .env.secrets not yet created at repo root — "
+              f"will be required for --apply")
+    print("\n[OK] Prereqs validated. Use --plan to see the compose file.")
+    return 0
 
-    if args.validate:
-        print("\n[OK] Prereqs validated. Use --plan to see compose file content.")
-        return 0
 
-    # 2. Generate compose
-    compose_text = generate_compose(cfg)
+def _do_plan(cfg: vc.DeployConfig) -> int:
+    print(f"=== Generated {COMPOSE_FILE.name} ===")
+    print(generate_compose(cfg))
+    return 0
 
-    if args.plan:
-        print(f"\n=== Generated {COMPOSE_FILE.name} ===")
-        print(compose_text)
-        return 0
 
-    # 3. Apply
+def _do_apply(cfg: vc.DeployConfig, *, yes: bool) -> int:
     if not SECRETS_FILE.exists():
         print(
             f"ERROR: missing secrets file: {SECRETS_FILE}\n"
-            f"       Create it with the required env vars (DATABASE_URL is "
-            f"injected automatically; you still need JWT_SECRET_KEY, "
-            f"GEMINI_API_KEY, etc.).",
+            f"       Copy deploy/.env.secrets.example to .env.secrets at "
+            f"the repo root and fill in the values.",
             file=sys.stderr,
         )
         return 1
 
-    COMPOSE_FILE.write_text(compose_text, encoding="utf-8")
-    print(f"[OK] Wrote {COMPOSE_FILE}")
+    if stack_running():
+        msg = ("[WARN] Stack already running. --apply on top can hit "
+               "'port already allocated' errors.")
+        if yes:
+            print(msg + " Proceeding (--yes).")
+        else:
+            print(msg)
+            answer = input("Run --down first then --apply? [Y/n] ").strip().lower()
+            if answer in ("", "y", "yes"):
+                rc = _do_down(remove_volumes=False)
+                if rc != 0:
+                    print(f"ERROR: --down failed (exit {rc})", file=sys.stderr)
+                    return rc
 
-    print("\n=== Starting containers ===")
-    proc = subprocess.run(
-        [docker, "compose", "-f", str(COMPOSE_FILE), "up", "-d", "--build"],
-        cwd=REPO_ROOT,
-        check=False,
-    )
-    if proc.returncode != 0:
-        print(f"ERROR: docker compose up failed (exit {proc.returncode})",
-              file=sys.stderr)
+    # Render env files first (idempotent — required for env_file: in compose).
+    rc = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / "render_env.py"),
+         f"--config={DEFAULT_CONFIG}", "--target=both"],
+        cwd=REPO_ROOT, check=False,
+    ).returncode
+    if rc != 0:
+        print(f"ERROR: render_env.py failed (exit {rc})", file=sys.stderr)
+        return 1
+
+    COMPOSE_FILE.write_text(generate_compose(cfg), encoding="utf-8")
+    print(f"[OK] Wrote {COMPOSE_FILE.name}")
+
+    print("\n=== Building images + starting containers ===")
+    rc = run_compose(compose_cmd("up", "-d", "--build"))
+    if rc != 0:
+        print(f"ERROR: docker compose up failed (exit {rc})", file=sys.stderr)
         return 2
 
-    print("\n[OK] Stack up. Check status:")
+    print("\n[OK] Stack up. Inspect:")
     print(f"  docker compose -f {COMPOSE_FILE.name} ps")
+    print(f"  docker compose -f {COMPOSE_FILE.name} logs -f")
     print(f"  Backend:  http://localhost:{cfg.docker_local.backend_port}")
     print(f"  Frontend: http://localhost:{cfg.docker_local.frontend_port}")
+    return 0
+
+
+def _do_down(*, remove_volumes: bool) -> int:
+    if not COMPOSE_FILE.exists():
+        print(f"ERROR: {COMPOSE_FILE.name} not found. Run --apply first.",
+              file=sys.stderr)
+        return 1
+    args = ["down"]
+    if remove_volumes:
+        args.append("-v")
+        print("[WARN] --volumes flag: postgres data will be DELETED.")
+    rc = run_compose(compose_cmd(*args))
+    if rc != 0:
+        print(f"ERROR: docker compose down failed (exit {rc})", file=sys.stderr)
+        return 2
+    print("[OK] Stack stopped.")
+    return 0
+
+
+def _do_logs() -> int:
+    if not COMPOSE_FILE.exists():
+        print(f"ERROR: {COMPOSE_FILE.name} not found.", file=sys.stderr)
+        return 1
+    return run_compose(compose_cmd("logs", "-f"))
+
+
+def _do_restart() -> int:
+    if not COMPOSE_FILE.exists():
+        print(f"ERROR: {COMPOSE_FILE.name} not found.", file=sys.stderr)
+        return 1
+    rc = run_compose(compose_cmd("restart"))
+    if rc != 0:
+        return 2
+    print("[OK] Services restarted.")
     return 0
 
 
