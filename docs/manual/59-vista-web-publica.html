@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page59.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Panorama de la versión Web (desktop) del sitio público Facil — homepage, servicios, calculadora, directorio, licencias, asistente IA, guía, ministerios.">
+  <title>Vista Web del sitio público — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+          <a href="59-vista-web-publica.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128187;</span> <span data-i18n="nav.link.web_public_view">Vista Web del sitio público</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.web_public_view">Vista Web del sitio público</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page59.title">Vista Web del sitio público (desktop)</h1>
+        <p class="page-description" data-i18n="page59.description">Panorama completo de la versión Web (desktop) del sitio público Facil. Las páginas dedicadas (51-58) cubren cada función en detalle con un enfoque mobile-first ; esta página agrupa las capturas Web desktop para tener una visión global del recorrido del visitante en navegador.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page59.toc.s1">1. Acceder al sitio web</a></li>
+            <li><a href="#homepage" data-i18n="page59.toc.s2">2. Homepage (página de inicio)</a></li>
+            <li><a href="#servicios" data-i18n="page59.toc.s3">3. Catálogo de Servicios Fiscales</a></li>
+            <li><a href="#calculadora" data-i18n="page59.toc.s4">4. Calculadora de Impuestos</a></li>
+            <li><a href="#directorio" data-i18n="page59.toc.s5">5. Directorio de Empresas</a></li>
+            <li><a href="#licencias" data-i18n="page59.toc.s6">6. Simulador de Licencias Comerciales</a></li>
+            <li><a href="#asistente" data-i18n="page59.toc.s7">7. Asistente IA (modo chat completo + widget)</a></li>
+            <li><a href="#guia" data-i18n="page59.toc.s8">8. Guía Fiscal</a></li>
+            <li><a href="#ministerios" data-i18n="page59.toc.s9">9. Catálogo de Ministerios</a></li>
+            <li><a href="#diff" data-i18n="page59.toc.s10">10. Diferencias Web vs Móvil</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page59.s1.title">1. Acceder al sitio web</h2>
+          <p data-i18n-html="page59.s1.intro">Abra <code>https://taxasge.emacsah.com/</code> en cualquier navegador moderno (Chrome, Firefox, Safari, Edge). El sitio se redirige automáticamente al idioma de su navegador (ES por defecto). El header global con menú de navegación es presente en todas las páginas: <strong>Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA</strong>, además del selector de idioma y el botón <strong>«Iniciar sesión»</strong>.</p>
+        </section>
+
+        <section>
+          <h2 id="homepage" data-i18n="page59.s2.title">2. Homepage (página de inicio)</h2>
+          <p data-i18n-html="page59.s2.intro">La homepage acoge al visitante con un hero verde «Simplifica tus trámites», un badge «Trámites Digitales AI de Guinea Ecuatorial» y una <strong>barra de búsqueda principal</strong>. Debajo, 3 cards clave (Calculadora, Documentos, Guía).</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/public/1.png" alt="Homepage Facil hero" data-i18n-attr-alt="page59.s2.fig1.alt">
+            <figcaption data-i18n="page59.s2.fig1.caption">Homepage <code>taxasge.emacsah.com/es</code> — header con nav (Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA), hero verde con eslogan + barra de búsqueda + 3 cards de acceso rápido.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s2.footer.title">Footer + widget chat flotante</h3>
+          <p data-i18n-html="page59.s2.footer.body">Al desplazarse hacia abajo, encuentra una <strong>grilla de servicios tarifados</strong> (legalización 1/8 página, tarifas variables) y el footer con enlaces rápidos (Servicios / Legal). Un widget flotante <strong>«Asistente Facil – En línea»</strong> (esquina inferior derecha) se abre permanentemente para preguntas rápidas.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/public/2.png" alt="Footer + widget chat flotante" data-i18n-attr-alt="page59.s2.fig2.alt">
+            <figcaption data-i18n="page59.s2.fig2.caption">Bas de la homepage — grille de services tarifés en haut (legalización, formato A3/A4...) + widget chat flotante «Asistente Facil – En línea» abierto à droite.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="servicios" data-i18n="page59.s3.title">3. Catálogo de Servicios Fiscales</h2>
+          <p data-i18n-html="page59.s3.intro">URL <code>/es/services</code>. Título «Servicios Fiscales – 869 servicios encontrados». Toggle <strong>Cuadrícula / Lista</strong>, 4 dropdowns de filtros (sector, ministerio, tipo, ordre) + barra de búsqueda. Cada card muestra el título del servicio, su tarifa en XAF, y la entidad gestora.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/public/3.png" alt="Catálogo servicios fiscales grille" data-i18n-attr-alt="page59.s3.fig1.alt">
+            <figcaption data-i18n="page59.s3.fig1.caption">Catálogo en vista cuadrícula — Legalización Documentos 2 000 XAF, Certificado matrícula 60 000 XAF, etc. Filtros activos visibles arriba.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s3.detail.title">Detalle de un servicio</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/3A.png" alt="Detalle servicio Legalización" data-i18n-attr-alt="page59.s3.fig2.alt">
+            <figcaption data-i18n="page59.s3.fig2.caption">Detalle servicio (URL <code>/es/services/8</code>) — «Legalización de Documentos», tarifa 2 000 XAF, plazo 1 día, ministerio MAE/Diáspora. Cards «Documentos requeridos» (2) + «Procedimientos» (3 etapas).</figcaption>
+          </figure>
+
+          <p data-i18n-html="page59.s3.body">Para más detalles funcionales (filtros, búsqueda por palabra clave, comparación de servicios), consulte la <a href="51-explorar-servicios.html">página dedicada Explorar servicios</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="calculadora" data-i18n="page59.s4.title">4. Calculadora de Impuestos</h2>
+          <p data-i18n-html="page59.s4.intro">URL <code>/es/calculateur</code>. 4 pestañas: <strong>IRPF, IVA, Sociedades, Servicios Fiscales</strong>. Saisie del monto en XAF + visualización de los tramos progresivos + resultado calculado en tiempo real.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/public/16.png" alt="Calculadora de impuestos web" data-i18n-attr-alt="page59.s4.fig1.alt">
+            <figcaption data-i18n="page59.s4.fig1.caption">Calculadora de Impuestos en versión Web — IRPF activa con ingreso 5 000 000 XAF, tramos 0/10/15/20/25/35% mostrados, panel resultado vacío en espera del cálculo. Disclaimer «cálculos solo indicativos» abajo.</figcaption>
+          </figure>
+
+          <p data-i18n-html="page59.s4.body">Detalles de las fórmulas y reglas en la <a href="52-calculadora.html">página Calculadora fiscal</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="directorio" data-i18n="page59.s5.title">5. Directorio de Empresas</h2>
+          <p data-i18n-html="page59.s5.intro">URL <code>/es/annuaire</code>. Listado público de empresas registradas con búsqueda + filtros por sector y forma jurídica (S.L., Autónomo, S.A., ONG). Cada card muestra NIF, sector, ciudad, badge tier.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/public/10.png" alt="Directorio empresas web" data-i18n-attr-alt="page59.s5.fig1.alt">
+            <figcaption data-i18n="page59.s5.fig1.caption">Directorio de Empresas — barra de búsqueda + filtros (Todos los sectores, Forma jurídica, S.L. 23, Autónomo 14, S.A. 8, ONG 3) + 48 resultados. Cards Aceite Palma SA, Agroexport SA, Bar Tropical, etc.</figcaption>
+          </figure>
+
+          <p data-i18n-html="page59.s5.body">Más detalles en la <a href="53-directorio.html">página Directorio de empresas</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="licencias" data-i18n="page59.s6.title">6. Simulador de Licencias Comerciales</h2>
+          <p data-i18n-html="page59.s6.intro">URL <code>/es/licencias-comerciales</code>. Wizard de 3 etapas con stepper visible siempre. La versión web muestra una <strong>grilla iconada</strong> de los tipos de comercio (más visual que móvil).</p>
+
+          <h3 data-i18n="page59.s6.s1.title">Etapa 1 — Tipo de Comercio</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/4.png" alt="Licencias étape 1" data-i18n-attr-alt="page59.s6.fig1.alt">
+            <figcaption data-i18n="page59.s6.fig1.caption">Stepper «1 Tipo de Comercio» activa. Grilla de 10 cards iconadas (Abacerías, Bares y Restaurantes, Cafeterías-Pastelerías, Carpinterías, Clínicas/Farmacias, Discotecas, Ferreterías, Talleres, Video Clubs...).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s6.s2.title">Etapa 2 — Zona Geográfica</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/5.png" alt="Licencias étape 2 zone" data-i18n-attr-alt="page59.s6.fig2.alt">
+            <figcaption data-i18n="page59.s6.fig2.caption">Stepper etapa 2. Pills «Cambiar tipo» + tipo seleccionado. 3 secciones color-codadas: Capitales de Regiones (A1/A2/A3 rojas), Capitales de Provincias (B1/B2/B3 naranjas), Capitales Distritales y Municipales (C1/C2/C3 azules).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s6.s3.title">Etapa 3 — Ficha Tarifaria</h3>
+          <p data-i18n-html="page59.s6.s3.body">Resultado completo con desglose detallado por entidad emisora, total general, documentos requeridos y botón <strong>«Imprimir»</strong> para generar un PDF oficial.</p>
+
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/public/6.png" alt="Ficha tarifaria haut" data-i18n-attr-alt="page59.s6.fig3.alt">
+              <figcaption data-i18n="page59.s6.fig3.caption">Ficha tarifaria parte superior — pills selección + referencia legal «Decreto Presidencial» + tabla Tesoro Público (MinHacienda CMF 45 000, MinComercio Cuota Anual 30 000, etc.).</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/public/7.png" alt="Ficha tarifaria total" data-i18n-attr-alt="page59.s6.fig4.alt">
+              <figcaption data-i18n="page59.s6.fig4.caption">Ficha tarifaria parte inferior — Sub-Total Tesoro 144 000, Cámara de Comercio 20 000, <strong>TOTAL GENERAL 164 000 XAF</strong> + Documentos Requeridos (2 obligatorios) + botón «Imprimir».</figcaption>
+            </figure>
+          </div>
+
+          <h3 data-i18n="page59.s6.print.title">Generación e impresión del PDF</h3>
+          <p data-i18n-html="page59.s6.print.body">El botón «Imprimir» abre el dialog nativo del navegador (Chrome aquí). Puede elegir <strong>«Enregistrer au format PDF»</strong> para guardar el documento en su computadora antes de presentarlo a la administración.</p>
+
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/public/8.png" alt="Dialog impresión Chrome" data-i18n-attr-alt="page59.s6.fig5.alt">
+              <figcaption data-i18n="page59.s6.fig5.caption">Dialog de impresión Chrome con preview PDF — Destination «Enregistrer au format PDF», Pages Toutes, Couleur. Aperçu del documento Ficha Tarifaria a la derecha.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/public/9.png" alt="PDF Ficha Tarifaria final" data-i18n-attr-alt="page59.s6.fig6.alt">
+              <figcaption data-i18n="page59.s6.fig6.caption">PDF Ficha Tarifaria generado — header logo Facil + título, tabla completa Tesoro+Cámara, TOTAL 164 000 XAF, Documentos Requeridos, footer «FACIL — Plataforma de Servicios Fiscales / República de Guinea Ecuatorial / 19 de abril de 2026» + QR «Verificar en línea».</figcaption>
+            </figure>
+          </div>
+
+          <p data-i18n-html="page59.s6.body">Para los detalles del cálculo y los tipos de comercio, consulte la <a href="54-licencias-comerciales.html">página Simulador de licencias</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="asistente" data-i18n="page59.s7.title">7. Asistente IA — modo chat completo + widget flotante</h2>
+          <p data-i18n-html="page59.s7.intro">El asistente IA está accesible de 2 maneras en la versión Web:</p>
+
+          <h3 data-i18n="page59.s7.full.title">Modo full-page (URL dedicada)</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/0.png" alt="Asistente IA full page" data-i18n-attr-alt="page59.s7.fig1.alt">
+            <figcaption data-i18n="page59.s7.fig1.caption">URL <code>/es/chat</code> — sidebar gauche (Página Web, Licencias Comerciales, Directorio Empresas, Ministerios, Guía, Iniciar sesión), título «¡Hola! Soy tu asistente Facil», input chat 0/2000 chars, 5 quick-prompts (pasaporte, licencia comercial, residencia, empresas registradas, ministerios, ¿Qué es Facil?).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s7.widget.title">Modo widget flotante (en cualquier página)</h3>
+          <p data-i18n-html="page59.s7.widget.body">En cualquier página del sitio (homepage, catálogo, etc.), un <strong>widget flotante</strong> en la esquina inferior derecha permite abrir el asistente sin abandonar la navegación actual. Útil para preguntas contextuales mientras explora un servicio.</p>
+
+          <p data-i18n-html="page59.s7.body">Consulte la imagen <code>2.png</code> de la sección 2 «Homepage» para ver el widget flotante en acción.</p>
+
+          <p data-i18n-html="page59.s7.more">Más detalles funcionales en la <a href="55-asistente-ia-publica.html">página Asistente IA público</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="guia" data-i18n="page59.s8.title">8. Guía Fiscal — recursos y formularios</h2>
+          <p data-i18n-html="page59.s8.intro">URL <code>/es/guide</code>. 4 pestañas: <strong>Declaración, Legislación, Descargas, FAQ</strong>. La versión Web ofrece una experiencia más rica que la móvil con preview integrado de los PDFs.</p>
+
+          <h3 data-i18n="page59.s8.declaracion.title">Pestaña Declaración</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/14.png" alt="Guía Declaración" data-i18n-attr-alt="page59.s8.fig1.alt">
+            <figcaption data-i18n="page59.s8.fig1.caption">Pestaña «Declaración» activa — sección «Cómo Hacer una Declaración» con 2 etapas detalladas (Reúne tus documentos, Calcula tus impuestos) + consejos prácticos + acciones plataforma.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s8.descargas.title">Pestaña Descargas (con preview PDF)</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/15.png" alt="Guía Descargas con preview" data-i18n-attr-alt="page59.s8.fig2.alt">
+            <figcaption data-i18n="page59.s8.fig2.caption">Pestaña «Descargas» — columna izquierda «Formularios Descargables» (Retención 3% Sector Petrolero seleccionado, 5%, 10% No Residentes, Cuota Mínima Petrolero) + columna derecha «Vista Previa PDF» con preview inline del formulario «AUTOLIQUIDACION RETENCIÓN A LA FUENTE DEL 3%» (Cod. Impuesto 0320).</figcaption>
+          </figure>
+
+          <p data-i18n-html="page59.s8.body">Detalles de cada pestaña en la <a href="56-guia.html">página Guía rápida</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="ministerios" data-i18n="page59.s9.title">9. Catálogo de Ministerios</h2>
+          <p data-i18n-html="page59.s9.intro">URL <code>/es/ministere</code>. Vista panorámica de los 21 ministerios de Guinea Ecuatorial con sus servicios fiscales asociados. Toggle Kanban / Lista. Cada card ministerio muestra el número de servicios disponibles.</p>
+
+          <h3 data-i18n="page59.s9.list.title">Vista catálogo</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/11.png" alt="Catálogo Ministerios" data-i18n-attr-alt="page59.s9.fig1.alt">
+            <figcaption data-i18n="page59.s9.fig1.caption">Catálogo Ministerios en vista Kanban — MIN. TRANSPORTE/TIC 292 servicios, AVIACIÓN CIVIL 155, COMERCIO/PYMES 80, IGUALDAD 76, INFORMACIÓN 52, INTERIOR 39, etc.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page59.s9.detail.title">Detalle de un ministerio</h3>
+          <figure>
+            <img src="_assets/screenshots/web/public/13.png" alt="Detalle Ministerio Transporte" data-i18n-attr-alt="page59.s9.fig2.alt">
+            <figcaption data-i18n="page59.s9.fig2.caption">Detalle ministerio (URL <code>/es/ministere/97</code>) — «MINISTERIO DE TRANSPORTE, TELECOMUNICACIONES Y SISTEMAS DE INTELIGENCIA ARTIFICIAL», descripción institucional, 3 stats (292 servicios, 8 categorías, 1 sectores).</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="diff" data-i18n="page59.s10.title">10. Diferencias Web vs Móvil</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page59.s10.table.col1">Característica</th><th data-i18n="page59.s10.table.col2">Web (desktop)</th><th data-i18n="page59.s10.table.col3">Móvil</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page59.s10.table.r1.c1">Header con menú permanente</td><td>✅ 7 enlaces visibles</td><td data-i18n="page59.s10.table.r1.c3">Menú hamburguesa</td></tr>
+                <tr><td data-i18n="page59.s10.table.r2.c1">Asistente IA</td><td data-i18n="page59.s10.table.r2.c2">Modo full-page + widget flotante</td><td data-i18n="page59.s10.table.r2.c3">Pantalla dedicada solamente</td></tr>
+                <tr><td data-i18n="page59.s10.table.r3.c1">Catálogo de Ministerios</td><td>✅ Kanban + Lista</td><td data-i18n="page59.s10.table.r3.c3">Lista solamente</td></tr>
+                <tr><td data-i18n="page59.s10.table.r4.c1">Preview PDF de formularios</td><td>✅ Iframe inline (Guía)</td><td>❌ (descarga directa)</td></tr>
+                <tr><td data-i18n="page59.s10.table.r5.c1">Generación PDF Ficha Tarifaria</td><td data-i18n="page59.s10.table.r5.c2">Dialog Chrome native</td><td data-i18n="page59.s10.table.r5.c3">Compartir nativo (WhatsApp...)</td></tr>
+                <tr><td data-i18n="page59.s10.table.r6.c1">Vista cuadrícula vs lista</td><td>✅ Toggle disponible</td><td data-i18n="page59.s10.table.r6.c3">Auto-adapta según tamaño</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page59.s10.info">La versión Web es la <strong>más completa</strong> en términos de funcionalidades visuales (preview PDF, kanban, dialog impresión nativo). La versión Móvil compensa con funcionalidades exclusivas (compartir nativo, modo offline, biometría tras login).</p>
+          </aside>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page59.s10.success">Ya conoce la vista panorámica del sitio web público. Para los detalles funcionales de cada función, consulte las páginas dedicadas (51-58).</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="58-legal.html" class="pagination-prev"><span data-i18n="page59.prev">← Anterior: Información legal</span></a>
+          <a href="11-crear-cuenta.html" class="pagination-next"><span data-i18n="page59.next">Siguiente: Crear cuenta →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

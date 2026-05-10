@@ -103,6 +103,7 @@ window.__I18N__.es = {
       "guide": "Guía",
       "verify": "Verificar un recibo",
       "legal": "Información legal",
+      "web_public_view": "Vista Web del sitio público",
       "contact": "Contacto",
       "dashboard_web": "Panel principal (Web)",
       "start_request_web": "Iniciar trámite (Web)",

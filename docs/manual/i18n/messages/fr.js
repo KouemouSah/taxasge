@@ -89,6 +89,7 @@ window.__I18N__.fr = {
       "guide": "Guide",
       "verify": "Vérifier un reçu",
       "legal": "Mentions légales",
+      "web_public_view": "Vue Web du site public",
       "contact": "Contact",
       "dashboard_web": "Tableau de bord (Web)",
       "start_request_web": "Démarrer une démarche (Web)",
@@ -521,6 +522,14 @@ window.__I18N__.fr = {
     "description": "Cette page combine 2 fonctions complémentaires pour utilisateurs connectés : l'assistant IA connecté (accès au contexte personnel — coffre numérique, entreprises, demandes) et le système de tickets de support.",
     "prev": "← Précédent : Notifications",
     "next": "Suivant : Tableau de bord Mobile →"
+  },
+
+  "page59": {
+    "html_title": "Vue Web du site public — Manuel Facil",
+    "title": "Vue Web du site public (desktop)",
+    "description": "Panorama complet de la version Web (desktop) du site public Facil. Les pages dédiées (51-58) couvrent chaque fonction en détail avec une approche mobile-first ; cette page regroupe les captures Web desktop pour avoir une vue globale du parcours du visiteur sur navigateur.",
+    "prev": "← Précédent : Mentions légales",
+    "next": "Suivant : Créer un compte →"
   }
 
 };

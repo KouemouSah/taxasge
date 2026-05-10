@@ -89,6 +89,7 @@ window.__I18N__.en = {
       "guide": "Guide",
       "verify": "Verify a receipt",
       "legal": "Legal information",
+      "web_public_view": "Web view of public site",
       "contact": "Contact",
       "dashboard_web": "Dashboard (Web)",
       "start_request_web": "Start a procedure (Web)",
@@ -521,6 +522,14 @@ window.__I18N__.en = {
     "description": "This page combines 2 complementary features for signed-in users: the connected AI assistant (access to personal context — digital vault, companies, requests) and the support ticket system.",
     "prev": "← Previous: Notifications",
     "next": "Next: Mobile dashboard →"
+  },
+
+  "page59": {
+    "html_title": "Web view of public site — Facil Manual",
+    "title": "Web view of the public site (desktop)",
+    "description": "Complete overview of the Web (desktop) version of the public Facil site. Dedicated pages (51-58) cover each feature in detail with a mobile-first approach; this page gathers desktop Web screenshots for a global view of the visitor's browser journey.",
+    "prev": "← Previous: Legal information",
+    "next": "Next: Create account →"
   }
 
 };
