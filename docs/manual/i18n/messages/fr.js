@@ -226,6 +226,15 @@ window.__I18N__.fr = {
     }
   },
 
+  // ---- page01 — Bienvenue + Onboarding (Phase 1 fix, traduction minimale) ----
+  "page01": {
+    "html_title": "Bienvenue — Manuel Facil",
+    "title": "Bienvenue sur Facil",
+    "description": "Le premier écran que vous voyez en ouvrant Facil — version Web ou application Mobile. Cette page décrit chaque élément de l'écran d'accueil, les étapes de l'onboarding (première installation mobile) et les actions disponibles sans connexion.",
+    "next": "Suivant : Explorer les services →",
+    "prev": "← Précédent : Accueil du manuel"
+  },
+
   "searchpage": {
     "html_title": "Rechercher — Manuel Facil",
     "title": "Rechercher dans le manuel",

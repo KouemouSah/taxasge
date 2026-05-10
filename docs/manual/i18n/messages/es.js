@@ -269,6 +269,123 @@ window.__I18N__.es = {
   // PÁGINAS DE SECCIONES
   // ====================================================================
 
+  // ---- page01 — Bienvenida + Onboarding (Phase 1 fix) ----
+  "page01": {
+    "html_title": "Bienvenida — Manual Facil",
+    "title": "Bienvenida a Facil",
+    "description": "La primera pantalla que ve cuando abre Facil — versión Web o aplicación Móvil. Esta página describe cada elemento de la bienvenida, los pasos del onboarding (primera instalación móvil) y las acciones disponibles sin necesidad de iniciar sesión.",
+    "next": "Siguiente: Explorar servicios →",
+    "prev": "← Anterior: Inicio del manual",
+    "toc": {
+      "s1": "1. La pantalla de inicio",
+      "s2": "2. El carrusel de novedades",
+      "s3": "3. Las 4 acciones principales",
+      "s4": "4. Onboarding móvil (primera instalación)",
+      "s5": "5. Explorar sin cuenta o iniciar sesión",
+      "s6": "6. Diferencias Web vs Móvil"
+    },
+    "s1": {
+      "title": "1. La pantalla de inicio",
+      "intro": "Cuando abre <strong>Facil</strong> sin haber iniciado sesión — ya sea desde un navegador en <code>facil.gov.gq</code> o desde la aplicación móvil — accede a la pantalla de bienvenida pública. Esta pantalla está disponible <strong>en español, francés e inglés</strong>: el selector de idioma está en la cabecera (ES / FR / EN).",
+      "body": "La pantalla está estructurada en 4 zonas principales:",
+      "zone1": "<strong>Banner principal (hero)</strong> — eslogan «Nada más fácil para servirle», con el logo Facil y el escudo de la República de Guinea Ecuatorial.",
+      "zone2": "<strong>4 tarjetas de acción</strong> — accesos rápidos a Servicios, Licencias, Empresas y Calculadora. Cada tarjeta lleva directamente a su sección.",
+      "zone3": "<strong>Cabecera con menú</strong> — selector de idioma, accesos rápidos (Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA).",
+      "zone4": "<strong>Botones de cuenta</strong> — «Crear cuenta» (rojo) e «Iniciar sesión» (azul) en la parte inferior, claramente visibles.",
+      "fig1": {
+        "alt": "Pantalla de bienvenida en español",
+        "caption": "Pantalla de inicio en versión móvil (idioma español). Selector ES/FR/EN arriba, banner hero, 4 tarjetas de acceso rápido, botones Crear cuenta / Iniciar sesión abajo."
+      }
+    },
+    "s2": {
+      "title": "2. El carrusel de novedades",
+      "intro": "La pantalla de bienvenida incluye un <strong>carrusel</strong> de varias diapositivas que destaca las funcionalidades clave de Facil. Las diapositivas pasan automáticamente cada 5 segundos, o usted puede pasar manualmente con un deslizamiento.",
+      "slide1": {
+        "title": "Diapositiva 1 — Bienvenida general",
+        "body": "Presentación principal con eslogan «Nada más fácil para servirle» y las 4 tarjetas de acción."
+      },
+      "slide2": {
+        "title": "Diapositiva 2 — Asistente IA",
+        "body": "Banner azul que destaca el <strong>Asistente IA fiscal</strong>: «Pregunte a nuestro asistente IA sobre los trámites en Guinea Ecuatorial — disponible 24/7». Las 4 tarjetas de acción siguen visibles debajo."
+      },
+      "fig1": {
+        "alt": "Carrusel diapositiva 2 - Asistente IA",
+        "caption": "Diapositiva 2 del carrusel — banner del Asistente IA fiscal disponible 24/7 (capturada en versión francesa, comportamiento idéntico en español)."
+      }
+    },
+    "s3": {
+      "title": "3. Las 4 acciones principales",
+      "intro": "Desde la pantalla de bienvenida, 4 tarjetas le dan acceso directo a las funciones más utilizadas — sin necesidad de iniciar sesión:",
+      "table": {
+        "col1": "Tarjeta", "col2": "Para qué sirve", "col3": "Página manual",
+        "r1": { "c1": "Servicios", "c2": "Catálogo completo de los 873 servicios fiscales y administrativos disponibles, agrupados por entidad." },
+        "r2": { "c1": "Licencias", "c2": "Simulador de tarifas para licencias comerciales (3 etapas: tipo de comercio, zona, resultado)." },
+        "r3": { "c1": "Empresas", "c2": "Directorio público de empresas registradas con su clasificación tier (A1, B2, C1, D1...)." },
+        "r4": { "c1": "Calculadora", "c2": "Calculadora fiscal con 4 pestañas: IRPF (impuesto sobre la renta), IVA (impuesto sobre el valor añadido), IS (impuesto de sociedades), Servicios fiscales." }
+      },
+      "tip": "Pulse cualquier tarjeta para descubrir la sección. Puede regresar a la pantalla de bienvenida en cualquier momento desde el botón «Inicio» de la cabecera."
+    },
+    "s4": {
+      "title": "4. Onboarding móvil (primera instalación)",
+      "intro": "La <strong>primera vez</strong> que abre la aplicación móvil Facil después de instalarla, accede a una pantalla de presentación en 3 diapositivas (onboarding) antes de ver la pantalla de bienvenida estándar. Estas diapositivas explican rápidamente las ventajas de Facil.",
+      "slide1": {
+        "title": "Diapositiva 1 — Bienvenida",
+        "body": "Ilustración de un robot conversacional, mensaje «Bienvenido a FACIL — La plataforma digital de los procedimientos administrativos». Botones <strong>«Saltar»</strong> y <strong>flecha siguiente»</strong> en la parte inferior."
+      },
+      "fig1": {
+        "alt": "Onboarding diapositiva 1",
+        "caption": "Onboarding diapositiva 1/3 — Bienvenida con ilustración del asistente."
+      },
+      "slide2": {
+        "title": "Diapositiva 2 — Inteligente y seguro",
+        "body": "Fondo rojo con ilustración de una mujer y un smartphone, mensaje «Inteligente y Seguro — Asistente IA + Seguridad reforzada». Mención de la <strong>autenticación 2FA</strong> y del <strong>cifrado de datos</strong>."
+      },
+      "fig2": {
+        "alt": "Onboarding diapositiva 2",
+        "caption": "Onboarding diapositiva 2/3 — Mensaje sobre la inteligencia (IA) y la seguridad (2FA, cifrado)."
+      },
+      "slide3": {
+        "title": "Diapositiva 3 — Final con elección",
+        "body": "Fondo naranja con ilustración de un cohete, mensaje «Comience ahora — Todo en un solo lugar». 3 enlaces para elegir su próxima acción :",
+        "option1": "<strong>Explorar sin cuenta</strong> — accede directamente a la pantalla de bienvenida estándar (servicios, licencias, calculadora) sin iniciar sesión.",
+        "option2": "<strong>Crear una cuenta</strong> — si es la primera vez en Facil.",
+        "option3": "<strong>Iniciar sesión</strong> — si ya tiene una cuenta."
+      },
+      "fig3": {
+        "alt": "Onboarding diapositiva 3",
+        "caption": "Onboarding diapositiva 3/3 — Pantalla final con 3 opciones de inicio."
+      },
+      "warning": "<strong>Limitación conocida</strong>: actualmente las 3 diapositivas de onboarding muestran el texto en francés incluso si su teléfono está configurado en español o inglés. Es un bug de internacionalización conocido (la pantalla cargaba siempre el archivo francés). El comportamiento de los botones es idéntico en todos los idiomas. Esto se corregirá en una versión futura.",
+      "info": "El onboarding solo se muestra en la primera apertura de la aplicación móvil. Después, la aplicación abre directamente la pantalla de bienvenida estándar (Sección 1). Para volver a ver el onboarding, hay que desinstalar y reinstalar la aplicación."
+    },
+    "s5": {
+      "title": "5. Explorar sin cuenta o iniciar sesión",
+      "intro": "Desde la pantalla de bienvenida, tiene 3 opciones:",
+      "table": {
+        "col1": "Opción", "col2": "Cuándo elegirla", "col3": "Limitaciones",
+        "r1": { "c1": "Explorar sin cuenta", "c2": "Quiere consultar los servicios, simular una tarifa, usar la calculadora o verificar un recibo — sin compromiso.", "c3": "No puede iniciar trámites, no puede subir documentos, no recibe notificaciones." },
+        "r2": { "c1": "Crear una cuenta", "c2": "Es la primera vez que utiliza Facil y quiere realizar un trámite real.", "c3": "Necesita una dirección de correo electrónico válida y un teléfono móvil para verificación." },
+        "r3": { "c1": "Iniciar sesión", "c2": "Ya tiene una cuenta Facil.", "c3": "Si olvidó su contraseña, use el enlace «¿Contraseña olvidada?» en la pantalla de inicio de sesión." }
+      },
+      "cta": "Las páginas dedicadas: <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Crear cuenta</a>, <a href=\"12-iniciar-sesion.html\" class=\"coming-soon\">Iniciar sesión</a>."
+    },
+    "s6": {
+      "title": "6. Diferencias Web vs Móvil en la bienvenida",
+      "intro": "Las dos versiones ofrecen acceso al mismo contenido pero presentan algunas diferencias en la pantalla de bienvenida:",
+      "table": {
+        "col1": "Elemento", "col2": "Web (navegador)", "col3": "Aplicación Móvil",
+        "r1": { "c1": "Pantalla de bienvenida con carrusel" },
+        "r2": { "c1": "4 tarjetas de acción" },
+        "r3": { "c1": "Selector ES / FR / EN" },
+        "r4": { "c1": "Onboarding 3 diapositivas (primera vez)" },
+        "r5": { "c1": "Notificaciones push", "c3": "✅ (después del inicio de sesión)" },
+        "r6": { "c1": "Identificación biométrica", "c3": "✅ (después del inicio de sesión)" },
+        "r7": { "c1": "Modo sin conexión", "c3": "✅ (caché de las últimas páginas vistas)" }
+      },
+      "success": "Ya conoce la pantalla de bienvenida. Para profundizar, consulte las páginas <a href=\"51-explorar-servicios.html\">Explorar servicios</a> o <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Crear cuenta</a> según lo que quiera hacer a continuación."
+    }
+  },
+
   // ---- page51 — Explorar servicios (Phase 1 pilote) ----
   "page51": {
     "html_title": "Explorar servicios — Manual Facil",

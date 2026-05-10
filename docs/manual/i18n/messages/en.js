@@ -226,6 +226,15 @@ window.__I18N__.en = {
     }
   },
 
+  // ---- page01 — Welcome + Onboarding (Phase 1 fix, minimal translation) ----
+  "page01": {
+    "html_title": "Welcome — Facil Manual",
+    "title": "Welcome to Facil",
+    "description": "The first screen you see when you open Facil — Web version or Mobile app. This page describes each element of the welcome screen, the onboarding steps (first mobile install), and the actions available without signing in.",
+    "next": "Next: Explore services →",
+    "prev": "← Previous: Manual home"
+  },
+
   "searchpage": {
     "html_title": "Search — Facil Manual",
     "title": "Search the manual",

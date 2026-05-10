@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page01.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="La primera pantalla que ve cuando abre Facil por primera vez — pantalla de bienvenida, onboarding móvil, acciones disponibles sin sesión.">
+  <meta name="author" content="Equipo Facil">
+  <title>Bienvenida — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.intro">Introducción</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.welcome">Bienvenida</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label">
+            <span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page01.title">Bienvenida a Facil</h1>
+        <p class="page-description" data-i18n="page01.description">
+          La primera pantalla que ve cuando abre Facil — versión Web o aplicación Móvil. Esta página describe cada elemento de la bienvenida, los pasos del onboarding (primera instalación móvil) y las acciones disponibles sin necesidad de iniciar sesión.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#pantalla-inicio" data-i18n="page01.toc.s1">1. La pantalla de inicio</a></li>
+            <li><a href="#carousel" data-i18n="page01.toc.s2">2. El carrusel de novedades</a></li>
+            <li><a href="#cuatro-acciones" data-i18n="page01.toc.s3">3. Las 4 acciones principales</a></li>
+            <li><a href="#onboarding" data-i18n="page01.toc.s4">4. Onboarding móvil (primera instalación)</a></li>
+            <li><a href="#sin-sesion" data-i18n="page01.toc.s5">5. Explorar sin cuenta o iniciar sesión</a></li>
+            <li><a href="#web-vs-movil" data-i18n="page01.toc.s6">6. Diferencias Web vs Móvil</a></li>
+          </ul>
+        </div>
+
+        <!-- ===== Sección 1 ===== -->
+        <section>
+          <h2 id="pantalla-inicio" data-i18n="page01.s1.title">1. La pantalla de inicio</h2>
+          <p data-i18n-html="page01.s1.intro">
+            Cuando abre <strong>Facil</strong> sin haber iniciado sesión — ya sea desde un navegador en <code>facil.gov.gq</code> o desde la aplicación móvil — accede a la pantalla de bienvenida pública. Esta pantalla está disponible <strong>en español, francés e inglés</strong>: el selector de idioma está en la cabecera (ES / FR / EN).
+          </p>
+
+          <p data-i18n="page01.s1.body">
+            La pantalla está estructurada en 4 zonas principales:
+          </p>
+
+          <ol class="step-list">
+            <li data-i18n-html="page01.s1.zone1"><strong>Banner principal (hero)</strong> — eslogan «Nada más fácil para servirle», con el logo Facil y el escudo de la República de Guinea Ecuatorial.</li>
+            <li data-i18n-html="page01.s1.zone2"><strong>4 tarjetas de acción</strong> — accesos rápidos a Servicios, Licencias, Empresas y Calculadora. Cada tarjeta lleva directamente a su sección.</li>
+            <li data-i18n-html="page01.s1.zone3"><strong>Cabecera con menú</strong> — selector de idioma, accesos rápidos (Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA).</li>
+            <li data-i18n-html="page01.s1.zone4"><strong>Botones de cuenta</strong> — «Crear cuenta» (rojo) e «Iniciar sesión» (azul) en la parte inferior, claramente visibles.</li>
+          </ol>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/home-carousel-es.jpg" alt="Pantalla de bienvenida en español" data-i18n-attr-alt="page01.s1.fig1.alt">
+            <figcaption data-i18n="page01.s1.fig1.caption">Pantalla de inicio en versión móvil (idioma español). Selector ES/FR/EN arriba, banner hero, 4 tarjetas de acceso rápido, botones Crear cuenta / Iniciar sesión abajo.</figcaption>
+          </figure>
+        </section>
+
+        <!-- ===== Sección 2 ===== -->
+        <section>
+          <h2 id="carousel" data-i18n="page01.s2.title">2. El carrusel de novedades</h2>
+          <p data-i18n-html="page01.s2.intro">
+            La pantalla de bienvenida incluye un <strong>carrusel</strong> de varias diapositivas que destaca las funcionalidades clave de Facil. Las diapositivas pasan automáticamente cada 5 segundos, o usted puede pasar manualmente con un deslizamiento.
+          </p>
+
+          <h3 data-i18n="page01.s2.slide1.title">Diapositiva 1 — Bienvenida general</h3>
+          <p data-i18n="page01.s2.slide1.body">
+            Presentación principal con eslogan «Nada más fácil para servirle» y las 4 tarjetas de acción.
+          </p>
+
+          <h3 data-i18n="page01.s2.slide2.title">Diapositiva 2 — Asistente IA</h3>
+          <p data-i18n-html="page01.s2.slide2.body">
+            Banner azul que destaca el <strong>Asistente IA fiscal</strong>: «Pregunte a nuestro asistente IA sobre los trámites en Guinea Ecuatorial — disponible 24/7». Las 4 tarjetas de acción siguen visibles debajo.
+          </p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/home-carousel-2.jpg" alt="Carrusel diapositiva 2 - Asistente IA" data-i18n-attr-alt="page01.s2.fig1.alt">
+            <figcaption data-i18n="page01.s2.fig1.caption">Diapositiva 2 del carrusel — banner del Asistente IA fiscal disponible 24/7 (capturada en versión francesa, comportamiento idéntico en español).</figcaption>
+          </figure>
+        </section>
+
+        <!-- ===== Sección 3 ===== -->
+        <section>
+          <h2 id="cuatro-acciones" data-i18n="page01.s3.title">3. Las 4 acciones principales</h2>
+          <p data-i18n="page01.s3.intro">
+            Desde la pantalla de bienvenida, 4 tarjetas le dan acceso directo a las funciones más utilizadas — sin necesidad de iniciar sesión:
+          </p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page01.s3.table.col1">Tarjeta</th>
+                  <th data-i18n="page01.s3.table.col2">Para qué sirve</th>
+                  <th data-i18n="page01.s3.table.col3">Página manual</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong data-i18n="page01.s3.table.r1.c1">Servicios</strong></td>
+                  <td data-i18n="page01.s3.table.r1.c2">Catálogo completo de los 873 servicios fiscales y administrativos disponibles, agrupados por entidad.</td>
+                  <td><a href="51-explorar-servicios.html" data-i18n="nav.link.explore_services">Explorar servicios</a></td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="page01.s3.table.r2.c1">Licencias</strong></td>
+                  <td data-i18n="page01.s3.table.r2.c2">Simulador de tarifas para licencias comerciales (3 etapas: tipo de comercio, zona, resultado).</td>
+                  <td><a href="54-licencias-comerciales.html" class="coming-soon" data-i18n="nav.link.license_simulator">Simulador de licencias</a></td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="page01.s3.table.r3.c1">Empresas</strong></td>
+                  <td data-i18n="page01.s3.table.r3.c2">Directorio público de empresas registradas con su clasificación tier (A1, B2, C1, D1...).</td>
+                  <td><a href="53-directorio.html" class="coming-soon" data-i18n="nav.link.directory">Directorio de empresas</a></td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="page01.s3.table.r4.c1">Calculadora</strong></td>
+                  <td data-i18n="page01.s3.table.r4.c2">Calculadora fiscal con 4 pestañas: IRPF (impuesto sobre la renta), IVA (impuesto sobre el valor añadido), IS (impuesto de sociedades), Servicios fiscales.</td>
+                  <td><a href="52-calculadora.html" class="coming-soon" data-i18n="nav.link.calculator">Calculadora fiscal</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page01.s3.tip">Pulse cualquier tarjeta para descubrir la sección. Puede regresar a la pantalla de bienvenida en cualquier momento desde el botón «Inicio» de la cabecera.</p>
+          </aside>
+        </section>
+
+        <!-- ===== Sección 4 — Onboarding móvil ===== -->
+        <section>
+          <h2 id="onboarding" data-i18n="page01.s4.title">4. Onboarding móvil (primera instalación)</h2>
+          <p data-i18n-html="page01.s4.intro">
+            La <strong>primera vez</strong> que abre la aplicación móvil Facil después de instalarla, accede a una pantalla de presentación en 3 diapositivas (onboarding) antes de ver la pantalla de bienvenida estándar. Estas diapositivas explican rápidamente las ventajas de Facil.
+          </p>
+
+          <h3 data-i18n="page01.s4.slide1.title">Diapositiva 1 — Bienvenida</h3>
+          <p data-i18n-html="page01.s4.slide1.body">
+            Ilustración de un robot conversacional, mensaje «Bienvenido a FACIL — La plataforma digital de los procedimientos administrativos». Botones <strong>«Saltar»</strong> y <strong>flecha siguiente»</strong> en la parte inferior.
+          </p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/onboarding/slide-1.jpg" alt="Onboarding diapositiva 1" data-i18n-attr-alt="page01.s4.fig1.alt">
+            <figcaption data-i18n="page01.s4.fig1.caption">Onboarding diapositiva 1/3 — Bienvenida con ilustración del asistente.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page01.s4.slide2.title">Diapositiva 2 — Inteligente y seguro</h3>
+          <p data-i18n-html="page01.s4.slide2.body">
+            Fondo rojo con ilustración de una mujer y un smartphone, mensaje «Inteligente y Seguro — Asistente IA + Seguridad reforzada». Mención de la <strong>autenticación 2FA</strong> y del <strong>cifrado de datos</strong>.
+          </p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/onboarding/slide-2.jpg" alt="Onboarding diapositiva 2" data-i18n-attr-alt="page01.s4.fig2.alt">
+            <figcaption data-i18n="page01.s4.fig2.caption">Onboarding diapositiva 2/3 — Mensaje sobre la inteligencia (IA) y la seguridad (2FA, cifrado).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page01.s4.slide3.title">Diapositiva 3 — Final con elección</h3>
+          <p data-i18n-html="page01.s4.slide3.body">
+            Fondo naranja con ilustración de un cohete, mensaje «Comience ahora — Todo en un solo lugar». 3 enlaces para elegir su próxima acción :
+          </p>
+          <ul>
+            <li data-i18n-html="page01.s4.slide3.option1"><strong>Explorar sin cuenta</strong> — accede directamente a la pantalla de bienvenida estándar (servicios, licencias, calculadora) sin iniciar sesión.</li>
+            <li data-i18n-html="page01.s4.slide3.option2"><strong>Crear una cuenta</strong> — si es la primera vez en Facil.</li>
+            <li data-i18n-html="page01.s4.slide3.option3"><strong>Iniciar sesión</strong> — si ya tiene una cuenta.</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/onboarding/slide-3.jpg" alt="Onboarding diapositiva 3" data-i18n-attr-alt="page01.s4.fig3.alt">
+            <figcaption data-i18n="page01.s4.fig3.caption">Onboarding diapositiva 3/3 — Pantalla final con 3 opciones de inicio.</figcaption>
+          </figure>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n-html="page01.s4.warning">
+              <strong>Limitación conocida</strong>: actualmente las 3 diapositivas de onboarding muestran el texto en francés incluso si su teléfono está configurado en español o inglés. Es un bug de internacionalización conocido (la pantalla cargaba siempre el archivo francés). El comportamiento de los botones es idéntico en todos los idiomas. Esto se corregirá en una versión futura.
+            </p>
+          </aside>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n="page01.s4.info">El onboarding solo se muestra en la primera apertura de la aplicación móvil. Después, la aplicación abre directamente la pantalla de bienvenida estándar (Sección 1). Para volver a ver el onboarding, hay que desinstalar y reinstalar la aplicación.</p>
+          </aside>
+        </section>
+
+        <!-- ===== Sección 5 ===== -->
+        <section>
+          <h2 id="sin-sesion" data-i18n="page01.s5.title">5. Explorar sin cuenta o iniciar sesión</h2>
+          <p data-i18n="page01.s5.intro">Desde la pantalla de bienvenida, tiene 3 opciones:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page01.s5.table.col1">Opción</th>
+                  <th data-i18n="page01.s5.table.col2">Cuándo elegirla</th>
+                  <th data-i18n="page01.s5.table.col3">Limitaciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong data-i18n="page01.s5.table.r1.c1">Explorar sin cuenta</strong></td>
+                  <td data-i18n="page01.s5.table.r1.c2">Quiere consultar los servicios, simular una tarifa, usar la calculadora o verificar un recibo — sin compromiso.</td>
+                  <td data-i18n="page01.s5.table.r1.c3">No puede iniciar trámites, no puede subir documentos, no recibe notificaciones.</td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="page01.s5.table.r2.c1">Crear una cuenta</strong></td>
+                  <td data-i18n="page01.s5.table.r2.c2">Es la primera vez que utiliza Facil y quiere realizar un trámite real.</td>
+                  <td data-i18n="page01.s5.table.r2.c3">Necesita una dirección de correo electrónico válida y un teléfono móvil para verificación.</td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="page01.s5.table.r3.c1">Iniciar sesión</strong></td>
+                  <td data-i18n="page01.s5.table.r3.c2">Ya tiene una cuenta Facil.</td>
+                  <td data-i18n="page01.s5.table.r3.c3">Si olvidó su contraseña, use el enlace «¿Contraseña olvidada?» en la pantalla de inicio de sesión.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p data-i18n-html="page01.s5.cta">
+            Las páginas dedicadas: <a href="11-crear-cuenta.html" class="coming-soon" data-i18n="nav.link.create_account">Crear cuenta</a>, <a href="12-iniciar-sesion.html" class="coming-soon" data-i18n="nav.link.sign_in">Iniciar sesión</a>.
+          </p>
+        </section>
+
+        <!-- ===== Sección 6 ===== -->
+        <section>
+          <h2 id="web-vs-movil" data-i18n="page01.s6.title">6. Diferencias Web vs Móvil en la bienvenida</h2>
+          <p data-i18n="page01.s6.intro">
+            Las dos versiones ofrecen acceso al mismo contenido pero presentan algunas diferencias en la pantalla de bienvenida:
+          </p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page01.s6.table.col1">Elemento</th>
+                  <th data-i18n="page01.s6.table.col2">Web (navegador)</th>
+                  <th data-i18n="page01.s6.table.col3">Aplicación Móvil</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page01.s6.table.r1.c1">Pantalla de bienvenida con carrusel</td><td>✅</td><td>✅</td></tr>
+                <tr><td data-i18n="page01.s6.table.r2.c1">4 tarjetas de acción</td><td>✅</td><td>✅</td></tr>
+                <tr><td data-i18n="page01.s6.table.r3.c1">Selector ES / FR / EN</td><td>✅</td><td>✅</td></tr>
+                <tr><td data-i18n="page01.s6.table.r4.c1">Onboarding 3 diapositivas (primera vez)</td><td>❌</td><td>✅ (solo primera apertura)</td></tr>
+                <tr><td data-i18n="page01.s6.table.r5.c1">Notificaciones push</td><td>❌</td><td data-i18n="page01.s6.table.r5.c3">✅ (después del inicio de sesión)</td></tr>
+                <tr><td data-i18n="page01.s6.table.r6.c1">Identificación biométrica</td><td>❌</td><td data-i18n="page01.s6.table.r6.c3">✅ (después del inicio de sesión)</td></tr>
+                <tr><td data-i18n="page01.s6.table.r7.c1">Modo sin conexión</td><td>❌</td><td data-i18n="page01.s6.table.r7.c3">✅ (caché de las últimas páginas vistas)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n-html="page01.s6.success">
+              Ya conoce la pantalla de bienvenida. Para profundizar, consulte las páginas <a href="51-explorar-servicios.html" data-i18n="nav.link.explore_services">Explorar servicios</a> o <a href="11-crear-cuenta.html" class="coming-soon" data-i18n="nav.link.create_account">Crear cuenta</a> según lo que quiera hacer a continuación.
+            </p>
+          </aside>
+        </section>
+
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="index.html" class="pagination-prev">
+            <span data-i18n="page01.prev">← Anterior: Inicio del manual</span>
+          </a>
+          <a href="51-explorar-servicios.html" class="pagination-next">
+            <span data-i18n="page01.next">Siguiente: Explorar servicios →</span>
+          </a>
+        </nav>
+        <div class="footer-meta">
+          <span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>
