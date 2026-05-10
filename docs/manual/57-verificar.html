@@ -185,7 +185,7 @@
           <p data-i18n-html="page57.s1.qr.body">Cada documento generado por Facil (recibo PDF, solicitud, certificado) lleva un <strong>QR código</strong> en una esquina. Escanee este QR con la cámara de su teléfono o con la aplicación Facil — abre directamente la página de verificación con todos los datos rellenados.</p>
 
           <h3 data-i18n="page57.s1.url.title">B. Introducir manualmente el número</h3>
-          <p data-i18n-html="page57.s1.url.body">Vaya a <code>https://facil.gov.gq/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente.</p>
+          <p data-i18n-html="page57.s1.url.body">Vaya a <code>https://taxasge.emacsah.com/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente.</p>
 
           <aside class="callout callout-warning">
             <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
@@ -389,7 +389,7 @@
           <h2 id="ejemplos" data-i18n="page57.s4.title">5. Ejemplos concretos (JSON)</h2>
 
           <h3 data-i18n="page57.s4.ex1.title">Ejemplo 1 — Verificación pública de un recibo</h3>
-          <pre><code data-i18n="page57.s4.ex1.code">URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...
+          <pre><code data-i18n="page57.s4.ex1.code">URL : https://taxasge.emacsah.com/verify/REC-2026-000013?t=eyJhbGc...
 GET → 200 OK
 Respuesta:
 {
@@ -405,7 +405,7 @@ Respuesta:
 }</code></pre>
 
           <h3 data-i18n="page57.s4.ex2.title">Ejemplo 2 — Verificación de una solicitud Conducir</h3>
-          <pre><code data-i18n="page57.s4.ex2.code">URL : https://facil.gov.gq/es/verify/CON-2026-00001?t=...
+          <pre><code data-i18n="page57.s4.ex2.code">URL : https://taxasge.emacsah.com/es/verify/CON-2026-00001?t=...
 GET → 200 OK
 Respuesta:
 {
@@ -424,7 +424,7 @@ Respuesta:
 }</code></pre>
 
           <h3 data-i18n="page57.s4.ex3.title">Ejemplo 3 — Token inválido</h3>
-          <pre><code data-i18n="page57.s4.ex3.code">URL : https://facil.gov.gq/verify/REC-2026-000013  ← sin token
+          <pre><code data-i18n="page57.s4.ex3.code">URL : https://taxasge.emacsah.com/verify/REC-2026-000013  ← sin token
 GET → 403 Forbidden
 Respuesta: { "error": "Token requerido para acceso público" }</code></pre>
         </section>

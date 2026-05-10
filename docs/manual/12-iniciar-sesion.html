@@ -164,13 +164,14 @@
             <li><a href="#2fa" data-i18n="page12.toc.s3">3. Código 2FA (si está activado)</a></li>
             <li><a href="#biometria" data-i18n="page12.toc.s4">4. Acceso biométrico (móvil)</a></li>
             <li><a href="#recordar" data-i18n="page12.toc.s5">5. Recordar la sesión</a></li>
-            <li><a href="#problemas" data-i18n="page12.toc.s6">6. Problemas frecuentes</a></li>
+            <li><a href="#validacion" data-i18n="page12.toc.s_valid">6. Validación de campos en tiempo real</a></li>
+            <li><a href="#problemas" data-i18n="page12.toc.s6">7. Problemas frecuentes</a></li>
           </ul>
         </div>
 
         <section>
           <h2 id="acceder" data-i18n="page12.s1.title">1. Acceder a la pantalla de inicio de sesión</h2>
-          <p data-i18n-html="page12.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://facil.gov.gq/login</code>.</p>
+          <p data-i18n-html="page12.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://taxasge.emacsah.com/login</code>.</p>
 
           <div class="figure-pair">
             <figure class="mobile-screenshot">
@@ -230,7 +231,33 @@
         </section>
 
         <section>
-          <h2 id="problemas" data-i18n="page12.s6.title">6. Problemas frecuentes</h2>
+          <h2 id="validacion" data-i18n="page12.s_valid.title">6. Validación de campos en tiempo real</h2>
+          <p data-i18n-html="page12.s_valid.intro">La aplicación valida sus entradas <strong>en tiempo real</strong> mientras escribe — sin necesidad de pulsar «Iniciar sesión» para ver los errores. Útil para detectar errores tipográficos antes de enviar el formulario.</p>
+
+          <h3 data-i18n="page12.s_valid.email.title">Validación del formato de email</h3>
+          <p data-i18n-html="page12.s_valid.email.body">Si introduce un email mal formado (ej. «yy» sin <code>@</code>, falta del dominio), el campo se enmarca en <strong>rojo</strong> y el mensaje «Invalid email address» / «Dirección de correo inválida» aparece debajo. La contraseña se enmarca en <strong>verde</strong> si está rellenada correctamente, lo que permite ver de un vistazo qué campo necesita corrección.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/auth/login-validation-error.png" alt="Validación email inválido" data-i18n-attr-alt="page12.s_valid.fig1.alt">
+            <figcaption data-i18n="page12.s_valid.fig1.caption">Pantalla móvil — campo email enmarcado en rojo con mensaje «Invalid email address» (ejemplo entrada «yy»). Campo password enmarcado en verde porque está correctamente rellenado. Teclado abierto. (Captura en versión inglesa, comportamiento idéntico en español)</figcaption>
+          </figure>
+
+          <h3 data-i18n="page12.s_valid.form.title">Formulario completo válido</h3>
+          <p data-i18n-html="page12.s_valid.form.body">Cuando los 2 campos son válidos, el formulario muestra el botón <strong>«Sign In» / «Iniciar sesión»</strong> activo (verde lleno). El enlace <strong>«Forgot your password?»</strong> es siempre visible debajo del campo password. La parte inferior contiene la pregunta <strong>«Don't have an account? Create Account»</strong> hacia la página <a href="11-crear-cuenta.html">Crear cuenta</a>.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/auth/login-form.png" alt="Formulario login completo" data-i18n-attr-alt="page12.s_valid.fig2.alt">
+            <figcaption data-i18n="page12.s_valid.fig2.caption">Pantalla móvil completa con los 2 campos rellenados, botón «Sign In» activo en verde, enlace «Forgot your password?» y CTA «Don't have an account? Create Account» abajo. (Captura en versión inglesa)</figcaption>
+          </figure>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page12.s_valid.tip">El icono de ojo en el campo password permite mostrar/ocultar la contraseña — útil si tiene dudas sobre lo que ha escrito antes de validar.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="problemas" data-i18n="page12.s6.title">7. Problemas frecuentes</h2>
           <div class="table-wrapper">
             <table>
               <thead><tr><th data-i18n="page12.s6.table.col1">Síntoma</th><th data-i18n="page12.s6.table.col2">Solución</th></tr></thead>

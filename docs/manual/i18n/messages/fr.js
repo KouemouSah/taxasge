@@ -201,7 +201,7 @@ window.__I18N__.fr = {
       "web": {
         "title": "Version Web",
         "description": "Accès complet : citoyens, entreprises, comptables, agents, superviseurs, administrateurs. Plein écran, tableaux de bord détaillés.",
-        "url": "https://facil.gov.gq"
+        "url": "https://taxasge.emacsah.com"
       },
       "mobile": {
         "title": "Application Mobile",
@@ -279,7 +279,7 @@ window.__I18N__.fr = {
     "s2": {
       "title": "2. Accéder au catalogue",
       "intro": "L'accès au catalogue est public et se fait en quelques étapes :",
-      "step1": "Ouvrez <strong>facil.gov.gq</strong> dans votre navigateur (version Web) ou l'application <strong>Facil</strong> sur votre téléphone (version Mobile).",
+      "step1": "Ouvrez <strong>taxasge.emacsah.com</strong> dans votre navigateur (version Web) ou l'application <strong>Facil</strong> sur votre téléphone (version Mobile).",
       "step2": "Sur l'écran d'accueil, appuyez sur la carte <strong>« Services »</strong>.",
       "step3": "La liste complète des 873 services disponibles s'affiche, regroupée par entité.",
       "fig1": {

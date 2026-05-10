@@ -157,7 +157,7 @@
 
         <aside class="callout callout-info">
           <div class="callout-title" data-i18n="common.callout.info">Información</div>
-          <p data-i18n-html="page13.no_capture"><strong>Esta página describe el flujo paso a paso</strong> sin capturas — la pantalla cambia poco entre versiones (Web/Móvil) y el flujo es lineal. Use el diagrama ASCII de la sección 2 para visualizar el conjunto.</p>
+          <p data-i18n-html="page13.captures_intro"><strong>Esta página combina el flujo textual con capturas reales</strong> de las pantallas Web y Móvil. El diagrama ASCII de la sección 2 sigue siendo útil para visualizar el conjunto del intercambio frontend ↔ backend.</p>
         </aside>
 
         <div class="toc">
@@ -181,6 +181,22 @@
             <li data-i18n-html="page13.s1.step4">Pulse <strong>«Enviar el enlace»</strong>.</li>
             <li data-i18n-html="page13.s1.step5">Aparece un mensaje de confirmación: «Si una cuenta existe con este email, recibirá un enlace en pocos minutos». Por seguridad, el sistema no revela si el email está realmente registrado o no.</li>
           </ol>
+
+          <h3 data-i18n="page13.s1.web.title">Versión Web — «¿Olvidó su contraseña?»</h3>
+          <p data-i18n-html="page13.s1.web.body">En la versión Web, la URL directa es <code>https://taxasge.emacsah.com/es/auth/forgot-password</code>. La pantalla muestra el título «¿Olvidó su contraseña?» con la tarjeta «Restablecer contraseña», un campo email + botón <strong>«Enviar enlace de restablecimiento»</strong>, y un enlace «← Volver al inicio de sesión».</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/auth/forgot-password-web.png" alt="Página web ¿Olvidó su contraseña?" data-i18n-attr-alt="page13.s1.web.fig.alt">
+            <figcaption data-i18n="page13.s1.web.fig.caption">Página web «¿Olvidó su contraseña?» (URL <code>taxasge.emacsah.com/es/auth/forgot-password</code>) — header con menú de navegación, tarjeta central con campo email + botón verde «Enviar enlace de restablecimiento» + enlace «Volver al inicio de sesión».</figcaption>
+          </figure>
+
+          <h3 data-i18n="page13.s1.mobile.title">Versión Móvil — «Reset password»</h3>
+          <p data-i18n-html="page13.s1.mobile.body">En la aplicación móvil, una pantalla simple presenta el icono de cadena con flecha de actualización, el título <strong>«Reset password»</strong>, una breve explicación, el campo email + botón verde <strong>«Send reset link»</strong>. Botón «← Back» arriba a la izquierda para regresar al login.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/auth/reset-password-request.png" alt="Pantalla móvil reset password" data-i18n-attr-alt="page13.s1.mobile.fig.alt">
+            <figcaption data-i18n="page13.s1.mobile.fig.caption">Pantalla móvil «Reset password» — icono cerradura+flecha verde, título centrado, instrucción «Enter your email address and we'll send you a link to reset your password», campo email pre-rellenado + botón verde «Send reset link» abajo. (Captura en versión inglesa)</figcaption>
+          </figure>
         </section>
 
         <section>
@@ -243,7 +259,7 @@
           <h2 id="email" data-i18n="page13.s3.title">3. Recibir y abrir el email</h2>
           <p data-i18n-html="page13.s3.intro">El email arriba en su buzón en menos de <strong>2 minutos</strong>. Características:</p>
           <ul>
-            <li data-i18n-html="page13.s3.f1"><strong>Remitente</strong> : <code>noreply@facil.gov.gq</code></li>
+            <li data-i18n-html="page13.s3.f1"><strong>Remitente</strong> : <code>noreply@taxasge.emacsah.com</code></li>
             <li data-i18n-html="page13.s3.f2"><strong>Asunto</strong> : «Recupere su contraseña Facil»</li>
             <li data-i18n-html="page13.s3.f3"><strong>Enlace de un solo uso</strong>, válido durante <strong>24 horas</strong></li>
             <li data-i18n-html="page13.s3.f4"><strong>Información de seguridad</strong> : IP del solicitante + navegador (para detectar abusos)</li>
@@ -253,6 +269,14 @@
             <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
             <p data-i18n-html="page13.s3.warning">Si el email no llega después de 5 minutos: (1) revise su carpeta de spam; (2) verifique que el email introducido es correcto; (3) puede solicitar un nuevo enlace 30 segundos después del anterior.</p>
           </aside>
+
+          <h3 data-i18n="page13.s3.confirm.title">Pantalla de confirmación móvil</h3>
+          <p data-i18n-html="page13.s3.confirm.body">Tras pulsar «Send reset link» en móvil, una pantalla de confirmación aparece con icono email validado, título <strong>«Reset password»</strong>, mensaje «If your email is registered, you'll receive a link to reset your password», un enlace <strong>«Resend code»</strong> (reutilizable después de 30 segundos) y un botón <strong>«Back to sign in»</strong>.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/auth/reset-password-sent.png" alt="Pantalla móvil confirmación envío" data-i18n-attr-alt="page13.s3.confirm.fig.alt">
+            <figcaption data-i18n="page13.s3.confirm.fig.caption">Pantalla móvil de confirmación — icono email verificado verde, título, mensaje informativo, enlace «Resend code» y botón verde «Back to sign in». (Captura en versión inglesa)</figcaption>
+          </figure>
         </section>
 
         <section>

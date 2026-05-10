@@ -218,7 +218,7 @@ window.__I18N__.es = {
       "web": {
         "title": "Versión Web",
         "description": "Acceso completo: ciudadanos, empresas, contables, agentes, supervisores, administradores. Pantalla completa, dashboards detallados.",
-        "url": "https://facil.gov.gq"
+        "url": "https://taxasge.emacsah.com"
       },
       "mobile": {
         "title": "Aplicación Móvil",
@@ -286,7 +286,7 @@ window.__I18N__.es = {
     },
     "s1": {
       "title": "2. La pantalla de inicio",
-      "intro": "Cuando abre <strong>Facil</strong> sin haber iniciado sesión — ya sea desde un navegador en <code>facil.gov.gq</code> o desde la aplicación móvil — accede a la pantalla de bienvenida pública. Esta pantalla está disponible <strong>en español, francés e inglés</strong>: el selector de idioma está en la cabecera (ES / FR / EN).",
+      "intro": "Cuando abre <strong>Facil</strong> sin haber iniciado sesión — ya sea desde un navegador en <code>taxasge.emacsah.com</code> o desde la aplicación móvil — accede a la pantalla de bienvenida pública. Esta pantalla está disponible <strong>en español, francés e inglés</strong>: el selector de idioma está en la cabecera (ES / FR / EN).",
       "body": "La pantalla está estructurada en 4 zonas principales:",
       "zone1": "<strong>Banner principal (hero)</strong> — eslogan «Nada más fácil para servirle», con el logo Facil y el escudo de la República de Guinea Ecuatorial.",
       "zone2": "<strong>4 tarjetas de acción</strong> — accesos rápidos a Servicios, Licencias, Empresas y Calculadora. Cada tarjeta lleva directamente a su sección.",
@@ -414,7 +414,7 @@ window.__I18N__.es = {
     "s2": {
       "title": "2. Acceder al catálogo",
       "intro": "El acceso al catálogo es público y se hace en pocos pasos:",
-      "step1": "Abra <strong>facil.gov.gq</strong> en su navegador (versión Web) o la aplicación <strong>Facil</strong> en su teléfono (versión Móvil).",
+      "step1": "Abra <strong>taxasge.emacsah.com</strong> en su navegador (versión Web) o la aplicación <strong>Facil</strong> en su teléfono (versión Móvil).",
       "step2": "En la pantalla de inicio, pulse la tarjeta <strong>«Servicios»</strong>.",
       "step3": "Se mostrará la lista completa de los 873 servicios disponibles, agrupados por entidad.",
       "fig1": {
@@ -508,7 +508,7 @@ window.__I18N__.es = {
     "s1": {
       "title": "1. Acceder al panel",
       "intro": "El panel principal se muestra automáticamente después de <a href=\"12-iniciar-sesion.html\" class=\"coming-soon\">iniciar sesión</a>. Si aún no tiene cuenta, consulte la página <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Crear cuenta</a>.",
-      "url": "URL directa: <code>https://facil.gov.gq/dashboard</code> (redirige al inicio de sesión si no está autenticado)."
+      "url": "URL directa: <code>https://taxasge.emacsah.com/dashboard</code> (redirige al inicio de sesión si no está autenticado)."
     },
     "s2": {
       "title": "2. Estructura general de la pantalla",
@@ -991,7 +991,7 @@ window.__I18N__.es = {
       },
       "url": {
         "title": "B. Introducir manualmente el número",
-        "body": "Vaya a <code>https://facil.gov.gq/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente."
+        "body": "Vaya a <code>https://taxasge.emacsah.com/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente."
       },
       "warning": "La URL de verificación incluye un <strong>token firmado</strong> (parámetro <code>?t=...</code>) que prueba la autenticidad. Sin este token, la verificación falla — incluso si conoce la referencia exacta. El token se genera automáticamente cuando Facil emite el documento."
     },
@@ -1118,15 +1118,15 @@ window.__I18N__.es = {
       "title": "5. Ejemplos concretos (JSON)",
       "ex1": {
         "title": "Ejemplo 1 — Verificación pública de un recibo",
-        "code": "URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"recibo\",\n  \"numero\": \"REC-2026-000013\",\n  \"fecha\": \"2026-04-19T15:07:00\",\n  \"importe_xaf\": 25000,\n  \"metodo\": \"Efectivo\",\n  \"pagador_parcial\": \"libre G***\",\n  \"tramite_ref\": \"CON-2026-00001\",\n  \"entidad\": \"Tesoro Público Malabo II\",\n  \"estado\": \"valido\"\n}"
+        "code": "URL : https://taxasge.emacsah.com/verify/REC-2026-000013?t=eyJhbGc...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"recibo\",\n  \"numero\": \"REC-2026-000013\",\n  \"fecha\": \"2026-04-19T15:07:00\",\n  \"importe_xaf\": 25000,\n  \"metodo\": \"Efectivo\",\n  \"pagador_parcial\": \"libre G***\",\n  \"tramite_ref\": \"CON-2026-00001\",\n  \"entidad\": \"Tesoro Público Malabo II\",\n  \"estado\": \"valido\"\n}"
       },
       "ex2": {
         "title": "Ejemplo 2 — Verificación de una solicitud Conducir",
-        "code": "URL : https://facil.gov.gq/es/verify/CON-2026-00001?t=...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"solicitud\",\n  \"subtipo\": \"conducir_renovacion\",\n  \"numero\": \"CON-2026-00001\",\n  \"estado\": \"Completada\",\n  \"entidad\": \"DGT\",\n  \"tipo_expedicion\": \"RENOVACION\",\n  \"cita\": {\n    \"fecha\": \"2026-04-28\",\n    \"hora\": \"09:00\",\n    \"oficina\": \"MALABO II\"\n  },\n  \"importe_pagado_xaf\": 25000\n}"
+        "code": "URL : https://taxasge.emacsah.com/es/verify/CON-2026-00001?t=...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"solicitud\",\n  \"subtipo\": \"conducir_renovacion\",\n  \"numero\": \"CON-2026-00001\",\n  \"estado\": \"Completada\",\n  \"entidad\": \"DGT\",\n  \"tipo_expedicion\": \"RENOVACION\",\n  \"cita\": {\n    \"fecha\": \"2026-04-28\",\n    \"hora\": \"09:00\",\n    \"oficina\": \"MALABO II\"\n  },\n  \"importe_pagado_xaf\": 25000\n}"
       },
       "ex3": {
         "title": "Ejemplo 3 — Token inválido",
-        "code": "URL : https://facil.gov.gq/verify/REC-2026-000013  ← sin token\nGET → 403 Forbidden\nRespuesta: { \"error\": \"Token requerido para acceso público\" }"
+        "code": "URL : https://taxasge.emacsah.com/verify/REC-2026-000013  ← sin token\nGET → 403 Forbidden\nRespuesta: { \"error\": \"Token requerido para acceso público\" }"
       }
     },
     "s5": {
@@ -1314,7 +1314,7 @@ window.__I18N__.es = {
         "title": "3. Verificar el correo electrónico",
         "intro": "Después de validar la etapa 1, Facil envía un <strong>código de verificación de 6 cifras</strong> a su correo electrónico. Este código tiene una validez de <strong>15 minutos</strong>.",
         "step1": "Abra su buzón de correo (incluya la carpeta de spam si no aparece).",
-        "step2": "Localice el email de <code>noreply@facil.gov.gq</code> con el asunto «Código de verificación Facil».",
+        "step2": "Localice el email de <code>noreply@taxasge.emacsah.com</code> con el asunto «Código de verificación Facil».",
         "step3": "Copie el código de 6 cifras y pegelo en el campo correspondiente en la pantalla.",
         "step4": "Pulse <strong>«Verificar»</strong>. Si el código es correcto, accede a la etapa siguiente.",
         "warning": "Si no recibe el email después de <strong>5 minutos</strong>: (1) verifique la ortografía de la dirección email introducida, (2) consulte el spam/correo no deseado, (3) pulse «Reenviar el código» (límite : 3 reenvíos en 15 minutos)."
@@ -1366,11 +1366,12 @@ window.__I18N__.es = {
         "s3": "3. Código 2FA (si está activado)",
         "s4": "4. Acceso biométrico (móvil)",
         "s5": "5. Recordar la sesión",
-        "s6": "6. Problemas frecuentes"
+        "s_valid": "6. Validación de campos en tiempo real",
+        "s6": "7. Problemas frecuentes"
       },
       "s1": {
         "title": "1. Acceder a la pantalla de inicio de sesión",
-        "intro": "Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://facil.gov.gq/login</code>.",
+        "intro": "Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://taxasge.emacsah.com/login</code>.",
         "fig1": {
           "alt": "Pantalla móvil login en español",
           "caption": "Pantalla móvil de inicio de sesión (versión española) — logo Facil, mensaje «Bienvenido de nuevo», campos email + contraseña, enlace «¿Contraseña olvidada?»."
@@ -1407,8 +1408,29 @@ window.__I18N__.es = {
         "intro": "La opción <strong>«Recordarme»</strong> (visible bajo el campo contraseña) le mantiene conectado durante <strong>30 días</strong> en este dispositivo, incluso después de cerrar el navegador o la aplicación. Útil en su teléfono personal — desaconsejado en un ordenador público o compartido.",
         "body": "Si no la marca, su sesión expira al cerrar el navegador (web) o al pasar 30 minutos de inactividad (móvil), por seguridad."
       },
+      "s_valid": {
+        "title": "6. Validación de campos en tiempo real",
+        "intro": "La aplicación valida sus entradas <strong>en tiempo real</strong> mientras escribe — sin necesidad de pulsar «Iniciar sesión» para ver los errores. Útil para detectar errores tipográficos antes de enviar el formulario.",
+        "email": {
+          "title": "Validación del formato de email",
+          "body": "Si introduce un email mal formado (ej. «yy» sin <code>@</code>, falta del dominio), el campo se enmarca en <strong>rojo</strong> y el mensaje «Invalid email address» / «Dirección de correo inválida» aparece debajo. La contraseña se enmarca en <strong>verde</strong> si está rellenada correctamente, lo que permite ver de un vistazo qué campo necesita corrección."
+        },
+        "fig1": {
+          "alt": "Validación email inválido",
+          "caption": "Pantalla móvil — campo email enmarcado en rojo con mensaje «Invalid email address» (ejemplo entrada «yy»). Campo password enmarcado en verde porque está correctamente rellenado. Teclado abierto. (Captura en versión inglesa, comportamiento idéntico en español)"
+        },
+        "form": {
+          "title": "Formulario completo válido",
+          "body": "Cuando los 2 campos son válidos, el formulario muestra el botón <strong>«Sign In» / «Iniciar sesión»</strong> activo (verde lleno). El enlace <strong>«Forgot your password?»</strong> es siempre visible debajo del campo password. La parte inferior contiene la pregunta <strong>«Don't have an account? Create Account»</strong> hacia la página <a href=\"11-crear-cuenta.html\">Crear cuenta</a>."
+        },
+        "fig2": {
+          "alt": "Formulario login completo",
+          "caption": "Pantalla móvil completa con los 2 campos rellenados, botón «Sign In» activo en verde, enlace «Forgot your password?» y CTA «Don't have an account? Create Account» abajo. (Captura en versión inglesa)"
+        },
+        "tip": "El icono de ojo en el campo password permite mostrar/ocultar la contraseña — útil si tiene dudas sobre lo que ha escrito antes de validar."
+      },
       "s6": {
-        "title": "6. Problemas frecuentes",
+        "title": "7. Problemas frecuentes",
         "table": {
           "col1": "Síntoma", "col2": "Solución"
         },
@@ -1427,7 +1449,7 @@ window.__I18N__.es = {
       "description": "Si ha olvidado su contraseña, no necesita crear una nueva cuenta. El procedimiento de recuperación restablece su acceso en menos de 5 minutos vía un enlace seguro enviado a su email.",
       "next": "Siguiente: Autenticación 2FA →",
       "prev": "← Anterior: Iniciar sesión",
-      "no_capture": "<strong>Esta página describe el flujo paso a paso</strong> sin capturas — la pantalla cambia poco entre versiones (Web/Móvil) y el flujo es lineal. Use el diagrama ASCII de la sección 2 para visualizar el conjunto.",
+      "captures_intro": "<strong>Esta página combina el flujo textual con capturas reales</strong> de las pantallas Web y Móvil. El diagrama ASCII de la sección 2 sigue siendo útil para visualizar el conjunto del intercambio frontend ↔ backend.",
       "toc": {
         "s1": "1. Solicitar el enlace de recuperación",
         "s2": "2. Flujo completo (diagrama)",
@@ -1442,7 +1464,23 @@ window.__I18N__.es = {
         "step2": "Pulse el enlace <strong>«¿Contraseña olvidada?»</strong> situado bajo el campo contraseña.",
         "step3": "Introduzca el <strong>email</strong> asociado a su cuenta. Use exactamente el mismo email con el que se registró (sensible a mayúsculas).",
         "step4": "Pulse <strong>«Enviar el enlace»</strong>.",
-        "step5": "Aparece un mensaje de confirmación: «Si una cuenta existe con este email, recibirá un enlace en pocos minutos». Por seguridad, el sistema no revela si el email está realmente registrado o no."
+        "step5": "Aparece un mensaje de confirmación: «Si una cuenta existe con este email, recibirá un enlace en pocos minutos». Por seguridad, el sistema no revela si el email está realmente registrado o no.",
+        "web": {
+          "title": "Versión Web — «¿Olvidó su contraseña?»",
+          "body": "En la versión Web, la URL directa es <code>https://taxasge.emacsah.com/es/auth/forgot-password</code>. La pantalla muestra el título «¿Olvidó su contraseña?» con la tarjeta «Restablecer contraseña», un campo email + botón <strong>«Enviar enlace de restablecimiento»</strong>, y un enlace «← Volver al inicio de sesión».",
+          "fig": {
+            "alt": "Página web ¿Olvidó su contraseña?",
+            "caption": "Página web «¿Olvidó su contraseña?» (URL <code>taxasge.emacsah.com/es/auth/forgot-password</code>) — header con menú de navegación, tarjeta central con campo email + botón verde «Enviar enlace de restablecimiento» + enlace «Volver al inicio de sesión»."
+          }
+        },
+        "mobile": {
+          "title": "Versión Móvil — «Reset password»",
+          "body": "En la aplicación móvil, una pantalla simple presenta el icono de cadena con flecha de actualización, el título <strong>«Reset password»</strong>, una breve explicación, el campo email + botón verde <strong>«Send reset link»</strong>. Botón «← Back» arriba a la izquierda para regresar al login.",
+          "fig": {
+            "alt": "Pantalla móvil reset password",
+            "caption": "Pantalla móvil «Reset password» — icono cerradura+flecha verde, título centrado, instrucción «Enter your email address and we'll send you a link to reset your password», campo email pre-rellenado + botón verde «Send reset link» abajo. (Captura en versión inglesa)"
+          }
+        }
       },
       "s2": {
         "title": "2. Flujo completo (diagrama)",
@@ -1451,11 +1489,19 @@ window.__I18N__.es = {
       "s3": {
         "title": "3. Recibir y abrir el email",
         "intro": "El email arriba en su buzón en menos de <strong>2 minutos</strong>. Características:",
-        "f1": "<strong>Remitente</strong> : <code>noreply@facil.gov.gq</code>",
+        "f1": "<strong>Remitente</strong> : <code>noreply@taxasge.emacsah.com</code>",
         "f2": "<strong>Asunto</strong> : «Recupere su contraseña Facil»",
         "f3": "<strong>Enlace de un solo uso</strong>, válido durante <strong>24 horas</strong>",
         "f4": "<strong>Información de seguridad</strong> : IP del solicitante + navegador (para detectar abusos)",
-        "warning": "Si el email no llega después de 5 minutos: (1) revise su carpeta de spam; (2) verifique que el email introducido es correcto; (3) puede solicitar un nuevo enlace 30 segundos después del anterior."
+        "warning": "Si el email no llega después de 5 minutos: (1) revise su carpeta de spam; (2) verifique que el email introducido es correcto; (3) puede solicitar un nuevo enlace 30 segundos después del anterior.",
+        "confirm": {
+          "title": "Pantalla de confirmación móvil",
+          "body": "Tras pulsar «Send reset link» en móvil, una pantalla de confirmación aparece con icono email validado, título <strong>«Reset password»</strong>, mensaje «If your email is registered, you'll receive a link to reset your password», un enlace <strong>«Resend code»</strong> (reutilizable después de 30 segundos) y un botón <strong>«Back to sign in»</strong>.",
+          "fig": {
+            "alt": "Pantalla móvil confirmación envío",
+            "caption": "Pantalla móvil de confirmación — icono email verificado verde, título, mensaje informativo, enlace «Resend code» y botón verde «Back to sign in». (Captura en versión inglesa)"
+          }
+        }
       },
       "s4": {
         "title": "4. Definir una nueva contraseña",
@@ -1761,7 +1807,7 @@ window.__I18N__.es = {
         "borrado": {
           "title": "✅ Borrado al día 30",
           "f1": "<strong>Datos personales</strong> : nombre, apellidos, fecha de nacimiento, DIP/NIE, dirección, teléfono",
-          "f2": "<strong>Email</strong> : reemplazado por <code>deleted-XXXXX@facil.gov.gq</code>",
+          "f2": "<strong>Email</strong> : reemplazado por <code>deleted-XXXXX@taxasge.emacsah.com</code>",
           "f3": "<strong>Contraseña</strong> : hash borrado",
           "f4": "<strong>Documentos subidos</strong> : copias DIP, fotos identidad, archivos personales",
           "f5": "<strong>Solicitudes en borrador</strong> (no enviadas) o canceladas",
@@ -2005,7 +2051,7 @@ window.__I18N__.es = {
       },
       "s1": {
         "title": "1. Acceder a la lista",
-        "intro": "Desde el menú lateral → <strong>«Solicitudes Servicios»</strong>. URL directa : <code>https://facil.gov.gq/dashboard/service-requests</code>. La página agrupa <strong>todas sus solicitudes</strong> activas e históricas (citoyen + empresas si tiene varios roles)."
+        "intro": "Desde el menú lateral → <strong>«Solicitudes Servicios»</strong>. URL directa : <code>https://taxasge.emacsah.com/dashboard/service-requests</code>. La página agrupa <strong>todas sus solicitudes</strong> activas e históricas (citoyen + empresas si tiene varios roles)."
       },
       "s2": {
         "title": "2. KPIs y filtros",
@@ -2419,7 +2465,7 @@ window.__I18N__.es = {
         "f2": "<span style=\"color:#0062A5\">🔵</span> <strong>Azul</strong> — Información (solicitud recibida, cita programada, cambio de estado)",
         "f3": "<span style=\"color:#009A44\">🟢</span> <strong>Verde</strong> — Validación / éxito (pago validado, trámite completado, documento listo)",
         "f4": "<span style=\"color:#D22630\">🔴</span> <strong>Rojo</strong> — Alerta de seguridad (cambio de contraseña, conexión sospechosa) o rechazo",
-        "body": "El remitente es siempre <code>noreply@facil.gov.gq</code>. Si recibe un email de Facil con otro remitente, es <strong>phishing</strong> — no pulse en los enlaces."
+        "body": "El remitente es siempre <code>noreply@taxasge.emacsah.com</code>. Si recibe un email de Facil con otro remitente, es <strong>phishing</strong> — no pulse en los enlaces."
       },
       "s2": {
         "title": "2. Email «Solicitud Recibida»",
@@ -2468,7 +2514,7 @@ window.__I18N__.es = {
         "f2": "<strong>Push notifications</strong> (móvil únicamente)",
         "f3": "<strong>SMS</strong> (opcional, coste para el operador)",
         "body": "El idioma de las notificaciones (ES/FR/EN) se basa en la preferencia configurada en su perfil. Si cambia su idioma preferido, las próximas notificaciones se enviarán en el nuevo idioma.",
-        "tip": "Si no recibe los emails, <strong>verifique siempre la carpeta de spam</strong> primero. Añada <code>noreply@facil.gov.gq</code> a sus contactos para evitar el filtrado. Para problemas persistentes, contacte al <a href=\"29-soporte-web.html\">soporte</a>.",
+        "tip": "Si no recibe los emails, <strong>verifique siempre la carpeta de spam</strong> primero. Añada <code>noreply@taxasge.emacsah.com</code> a sus contactos para evitar el filtrado. Para problemas persistentes, contacte al <a href=\"29-soporte-web.html\">soporte</a>.",
         "success": "Las notificaciones email son la columna vertebral de la comunicación con Facil — los datos están siempre disponibles también en el dashboard, los emails son una vía complementaria."
       }
     },

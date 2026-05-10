@@ -201,7 +201,7 @@ window.__I18N__.en = {
       "web": {
         "title": "Web version",
         "description": "Full access: citizens, businesses, accountants, agents, supervisors, administrators. Full-screen, detailed dashboards.",
-        "url": "https://facil.gov.gq"
+        "url": "https://taxasge.emacsah.com"
       },
       "mobile": {
         "title": "Mobile app",
@@ -279,7 +279,7 @@ window.__I18N__.en = {
     "s2": {
       "title": "2. Access the catalog",
       "intro": "Catalog access is public and takes only a few steps:",
-      "step1": "Open <strong>facil.gov.gq</strong> in your browser (Web version) or the <strong>Facil</strong> app on your phone (Mobile version).",
+      "step1": "Open <strong>taxasge.emacsah.com</strong> in your browser (Web version) or the <strong>Facil</strong> app on your phone (Mobile version).",
       "step2": "On the home screen, tap the <strong>“Services”</strong> card.",
       "step3": "The full list of 873 available services appears, grouped by entity.",
       "fig1": {
