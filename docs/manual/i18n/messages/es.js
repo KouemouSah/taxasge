@@ -581,6 +581,574 @@ window.__I18N__.es = {
       },
       "success": "Ya conoce su panel principal. La siguiente página explica cómo iniciar un nuevo trámite paso a paso."
     }
+  },
+
+  "page52": {
+    "html_title": "Calculadora fiscal — Manual Facil",
+    "title": "Calculadora fiscal",
+    "description": "Simule sus impuestos antes de declararlos. La calculadora cubre 4 categorías: IRPF (impuesto sobre la renta de personas físicas), IVA (impuesto sobre el valor añadido), IS (impuesto de sociedades) y servicios fiscales específicos. Sin necesidad de iniciar sesión.",
+    "toc": {
+      "s1": "1. Acceder a la calculadora",
+      "s2": "2. IRPF — Impuesto sobre la renta",
+      "s3": "3. IVA — Impuesto sobre el valor añadido",
+      "s4": "4. IS — Impuesto de sociedades",
+      "s5": "5. Servicios fiscales (formulas)",
+      "s6": "6. Limitaciones de la calculadora"
+    },
+    "s1": {
+      "title": "1. Acceder a la calculadora",
+      "intro": "Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Calculadora»</strong>. La calculadora se compone de 4 pestañas: IRPF, IVA, IS, Servicios. Cada pestaña le pide los datos necesarios y muestra el cálculo automáticamente.",
+      "fig1": {
+        "alt": "Calculadora fiscal con 4 pestañas",
+        "caption": "Calculadora en versión móvil (idioma español) — pestaña IRPF activa con ingreso ejemplo 200 000 XAF y desglose por tramos."
+      }
+    },
+    "s2": {
+      "title": "2. IRPF — Impuesto sobre la renta de personas físicas",
+      "intro": "El IRPF se calcula con <strong>6 tramos progresivos</strong>: cuanto mayor es su renta anual, mayor es el tipo aplicable a la parte que supera cada umbral. Solo las cantidades dentro de cada tramo soportan el tipo correspondiente.",
+      "brackets": {
+        "title": "Tabla oficial de tramos IRPF (Guinea Ecuatorial)",
+        "col1": "Tramo",
+        "col2": "Renta anual (XAF)",
+        "col3": "Tipo",
+        "r1": "0 – 1 000 000",
+        "r2": "1 000 001 – 3 000 000",
+        "r3": "3 000 001 – 5 000 000",
+        "r4": "5 000 001 – 10 000 000",
+        "r5": "10 000 001 – 15 000 000",
+        "r6": "> 15 000 000"
+      },
+      "example": {
+        "title": "Ejemplo de cálculo",
+        "intro": "Para una renta anual de <strong>4 000 000 XAF</strong>:",
+        "calc": "Tramo 1 (0–1M)         : 1 000 000 × 0%  =       0 XAF\nTramo 2 (1M–3M)        : 2 000 000 × 10% = 200 000 XAF\nTramo 3 (3M–4M parcial):  1 000 000 × 15% = 150 000 XAF\n                                           ─────────\nTOTAL IRPF anual                          = 350 000 XAF\nTipo efectivo                             = 8,75%"
+      },
+      "tip": "Indique su renta <strong>anual</strong> bruta (no mensual). La calculadora hace automáticamente el cálculo por tramos y le muestra el desglose detallado."
+    },
+    "s3": {
+      "title": "3. IVA — Impuesto sobre el valor añadido",
+      "intro": "El IVA es un impuesto <strong>flat al 15%</strong> sobre la mayoría de los bienes y servicios en Guinea Ecuatorial. La calculadora ofrece 2 modos:",
+      "mode1": "<strong>Añadir IVA</strong> (precio sin IVA → precio con IVA): <code>precio_con_iva = precio_sin_iva × 1,15</code>",
+      "mode2": "<strong>Extraer IVA</strong> (precio con IVA → precio sin IVA): <code>precio_sin_iva = precio_con_iva / 1,15</code>",
+      "example": {
+        "title": "Ejemplos",
+        "calc": "Añadir IVA :  1 000 000 XAF (sin IVA) → 1 150 000 XAF (con IVA), IVA = 150 000\nExtraer IVA : 1 150 000 XAF (con IVA) → 1 000 000 XAF (sin IVA), IVA = 150 000"
+      },
+      "info": "Algunos productos están <strong>exentos</strong> (productos básicos alimentarios, salud, educación). La calculadora aplica el 15% por defecto — verifique con su contable si su producto/servicio está exento."
+    },
+    "s4": {
+      "title": "4. IS — Impuesto de sociedades",
+      "intro": "El IS se aplica al <strong>beneficio neto</strong> de las sociedades a un tipo único de <strong>35%</strong>. Fórmula:",
+      "formula": "IS = (Ingresos − Gastos deducibles) × 35%",
+      "example": {
+        "title": "Ejemplo",
+        "calc": "Ingresos          : 50 000 000 XAF\nGastos deducibles : 35 000 000 XAF\n                    ─────────────\nBeneficio neto    : 15 000 000 XAF\nIS (35%)          :  5 250 000 XAF"
+      },
+      "warning": "La calculadora estima un IS aproximado. La declaración real requiere la contabilidad oficial certificada por un contable autorizado. Existe una <strong>cuota mínima</strong> aplicable incluso en caso de pérdida — consulte con un experto contable."
+    },
+    "s5": {
+      "title": "5. Servicios fiscales (formulas específicas)",
+      "intro": "Algunos trámites se calculan con fórmulas específicas, no con un tipo único. Categorías principales:",
+      "table": {
+        "col1": "Tipo de servicio",
+        "col2": "Fórmula",
+        "col3": "Ejemplo",
+        "r1": { "c1": "Expedición fija", "c3": "Pasaporte = 50 000 XAF" },
+        "r2": { "c1": "Renovación fija", "c3": "Renovación carnet = 25 000 XAF" },
+        "r3": { "c1": "Porcentaje sobre base", "c3": "Inspección 1% sobre el valor declarado" },
+        "r4": { "c1": "Por unidad", "c3": "U folios × 5 000 XAF/folio" },
+        "r5": { "c1": "Tarifas escalonadas", "c3": "Licencia comercial según tier (A/B/C/D)" },
+        "r6": { "c1": "Fórmula avanzada", "c3": "Canon = Royalty fijo + porcentaje sobre la cifra de negocio" },
+        "r7": { "c1": "Fijo + por unidad", "c3": "Tasa base + folios suplementarios" }
+      },
+      "body": "La calculadora le pregunta los datos según el tipo de servicio elegido. Los cálculos siguen la misma lógica que las facturas oficiales del Tesoro Público — el resultado es indicativo y se confirma cuando inicia la solicitud (ver <a href=\"22-iniciar-tramite-web.html\" class=\"coming-soon\">Iniciar trámite</a>)."
+    },
+    "s6": {
+      "title": "6. Limitaciones de la calculadora",
+      "limit1": "<strong>Indicativa</strong> — el resultado es una estimación basada en las tarifas oficiales vigentes. Las cantidades reales pueden incluir tasas suplementarias (timbres, servicios urgentes, suplementos por trámite a distancia).",
+      "limit2": "<strong>Sin descuentos personales</strong> — la calculadora no tiene en cuenta deducciones individuales (familia numerosa, primera vivienda, donaciones a entidades reconocidas).",
+      "limit3": "<strong>Sin garantía legal</strong> — los cálculos no constituyen un cálculo oficial. Para una declaración legal, consulte con un contable autorizado o utilice el formulario oficial.",
+      "success": "Ahora sabe estimar sus impuestos. Si necesita ayuda específica, consulte el <a href=\"55-asistente-ia-publica.html\">Asistente IA</a> o contacte con un contable autorizado."
+    },
+    "prev": "← Anterior: Explorar servicios",
+    "next": "Siguiente: Directorio de empresas →"
+  },
+  "page53": {
+    "html_title": "Directorio de empresas — Manual Facil",
+    "title": "Directorio de empresas",
+    "description": "Consulte el directorio público de las empresas registradas en Guinea Ecuatorial. Para cada empresa: nombre comercial, NIF, sector, tier (A/B/C/D), ciudad y representante legal. Acceso totalmente público — útil para verificar la existencia legal de un proveedor antes de firmar un contrato.",
+    "toc": {
+      "s1": "1. Acceder al directorio",
+      "s2": "2. Buscar y filtrar",
+      "s3": "3. Sistema de tier (A/B/C/D)",
+      "s4": "4. Detalle de una empresa",
+      "s5": "5. Usos prácticos"
+    },
+    "s1": {
+      "title": "1. Acceder al directorio",
+      "intro": "Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Empresas»</strong>. Se muestra el directorio con un contador del total de empresas registradas (ejemplo: «20/49 empresas» en pantalla, paginación abajo).",
+      "fig1": {
+        "alt": "Directorio de empresas",
+        "caption": "Directorio de empresas en versión móvil — listado con búsqueda, badge de tier por empresa (A1/C1/C2/D1), 20 resultados por página."
+      }
+    },
+    "s2": {
+      "title": "2. Buscar y filtrar",
+      "intro": "Tres herramientas para localizar una empresa:",
+      "search": "<strong>Búsqueda por nombre</strong> — escriba el nombre comercial total o parcial. La búsqueda funciona por mejor coincidencia (no necesita escritura exacta).",
+      "nif": "<strong>Búsqueda por NIF</strong> — el Número de Identificación Fiscal único de la empresa. Útil cuando ya tiene una factura.",
+      "filter": "<strong>Filtros</strong> — por tier (A/B/C/D), sector (comercio, servicios, industria...), ciudad (Malabo, Bata, Mongomo...)."
+    },
+    "s3": {
+      "title": "3. Sistema de tier (A / B / C / D)",
+      "intro": "Cada empresa tiene un <strong>tier</strong> (categoría de tamaño y zona) que determina el régimen fiscal aplicable y las tarifas de licencias. El tier se asigna a la creación y se revisa anualmente.",
+      "table": {
+        "col1": "Tier",
+        "col2": "Zona",
+        "col3": "Tipo de comercio típico",
+        "col4": "Ejemplo de licencia",
+        "r1": { "c2": "Capitales de región (Malabo, Bata)", "c3": "Grandes empresas, supermercados" },
+        "r2": { "c2": "Capitales de provincia", "c3": "Mediana empresa, restaurantes" },
+        "r3": { "c2": "Capitales de distrito", "c3": "Pequeña empresa, abacerías" },
+        "r4": { "c2": "Pueblos y zona rural", "c3": "Comercio local, talleres" }
+      }
+    },
+    "s4": {
+      "title": "4. Detalle de una empresa",
+      "intro": "Pulse una empresa para abrir su ficha pública. Información mostrada:",
+      "info1": "<strong>Identidad</strong>: nombre comercial, forma jurídica, NIF, fecha de registro",
+      "info2": "<strong>Localización</strong>: ciudad, dirección de la sede social",
+      "info3": "<strong>Clasificación</strong>: tier asignado, sector de actividad principal",
+      "info4": "<strong>Representante legal</strong>: nombre del director o gerente declarado oficialmente",
+      "info5": "<strong>Estado</strong>: activa, suspendida, en liquidación",
+      "info_callout": "Los datos sensibles (cifra de negocios, deudas fiscales, sanciones) NO son públicos. Solo el representante legal y los agentes autorizados pueden acceder a ellos tras autenticación."
+    },
+    "s5": {
+      "title": "5. Usos prácticos",
+      "use1": "<strong>Verificar un proveedor</strong> antes de firmar un contrato — consulte que la empresa esté activa y declarada en el sector adecuado.",
+      "use2": "<strong>Encontrar el NIF de una empresa</strong> a partir de su nombre comercial (útil para emitir una factura).",
+      "use3": "<strong>Verificar un cambio de representante</strong> — la fecha de actualización del representante legal indica si está correctamente identificado.",
+      "use4": "<strong>Estudiar el mercado</strong> — visualizar las empresas activas por sector y por ciudad antes de crear una nueva actividad.",
+      "success": "El directorio es accesible 24/7 sin necesidad de cuenta. Para registrar su propia empresa, consulte la página <a href=\"42-gestion-empresas.html\" class=\"coming-soon\">Gestionar empresas</a>."
+    },
+    "prev": "← Anterior: Calculadora fiscal",
+    "next": "Siguiente: Simulador de licencias →"
+  },
+  "page54": {
+    "html_title": "Simulador de licencias comerciales — Manual Facil",
+    "title": "Simulador de licencias comerciales",
+    "description": "Antes de abrir un comercio en Guinea Ecuatorial, conozca con precisión la tarifa de su licencia comercial. El simulador le guía en 3 etapas: tipo de comercio, zona geográfica, resultado detallado. Sin necesidad de cuenta.",
+    "toc": {
+      "s1": "1. Acceder al simulador",
+      "s2": "2. Etapa 1/3 — Tipo de comercio",
+      "s3": "3. Etapa 2/3 — Zona comercial",
+      "s4": "4. Etapa 3/3 — Resultado",
+      "s5": "5. Variantes según el tier",
+      "s6": "6. Después de la simulación"
+    },
+    "s1": {
+      "title": "1. Acceder al simulador",
+      "intro": "Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Licencias»</strong>. El simulador se abre en la etapa 1/3 con la lista de tipos de comercio disponibles."
+    },
+    "s2": {
+      "title": "2. Etapa 1/3 — Tipo de comercio",
+      "intro": "Elija su tipo de comercio entre las 10+ categorías disponibles:",
+      "cat1": "Abacerías (alimentación)",
+      "cat2": "Bares y restaurantes",
+      "cat3": "Cafeterías",
+      "cat4": "Carpinterías y talleres",
+      "cat5": "Clínicas y farmacias",
+      "cat6": "Hostelería (hoteles)",
+      "cat7": "Comercio textil y vestuario",
+      "cat8": "Servicios profesionales",
+      "cat9": "Y otras categorías específicas",
+      "fig1": {
+        "alt": "Etapa 1/3 selección tipo de comercio",
+        "caption": "Etapa 1/3 — Lista de tipos de comercio en versión española."
+      }
+    },
+    "s3": {
+      "title": "3. Etapa 2/3 — Zona comercial",
+      "intro": "Elija la zona geográfica donde estará situado su comercio. Las zonas se agrupan en 4 niveles (tier) con sub-zonas:",
+      "table": {
+        "col1": "Tier",
+        "col2": "Sub-zonas",
+        "col3": "Ejemplos",
+        "r1": { "c3": "Centro Malabo, Centro Bata" },
+        "r2": { "c3": "Periferia Malabo/Bata, ciudades de provincia" },
+        "r3": { "c3": "Capitales de distrito (Mongomo, Niefang...)" },
+        "r4": { "c3": "Pueblos y zona rural" }
+      },
+      "fig1": {
+        "alt": "Etapa 2/3 selección zona",
+        "caption": "Etapa 2/3 — Selector de zona con 3 niveles desplegables."
+      }
+    },
+    "s4": {
+      "title": "4. Etapa 3/3 — Resultado detallado",
+      "intro": "El simulador calcula automáticamente la tarifa según las dos selecciones y muestra:",
+      "r1": "<strong>Importe total</strong> a pagar (ejemplo: 204 000 XAF)",
+      "r2": "<strong>Desglose</strong>: tasa de Tesoro Público, suplementos eventuales (Cámara de Comercio para tier C+, etc.)",
+      "r3": "<strong>Documentos requeridos</strong>: lista de documentos a aportar para la solicitud real",
+      "r4": "<strong>Plazo</strong> de tratamiento estimado",
+      "r5": "<strong>Botones de acción</strong>: Copiar el resumen, Descargar PDF, Compartir (WhatsApp, SMS...)",
+      "fig1": {
+        "alt": "Etapa 3/3 resultado simulador",
+        "caption": "Etapa 3/3 — Resultado para una clínica/farmacia, tier D, total 114 000 XAF, documentos requeridos y CTAs Copiar / Descargar / Compartir."
+      }
+    },
+    "s5": {
+      "title": "5. Variantes según el tier",
+      "intro": "Según el tier, el desglose puede incluir <strong>cuotas adicionales</strong>. Ejemplo concreto con cafeterías:",
+      "fig1": {
+        "alt": "Resultado tier D simple",
+        "caption": "Cafetería tier D — Total 204 000 XAF (solo Tesoro Público). Captura en versión francesa."
+      },
+      "fig2": {
+        "alt": "Resultado tier C con Cámara",
+        "caption": "Cafetería tier C — Total 242 000 XAF (Tesoro Público + Cámara de Comercio). Captura en versión francesa."
+      },
+      "info": "A partir del tier C, la <strong>Cámara de Comercio</strong> añade una cuota anual obligatoria. Los tiers A y B requieren además un certificado de inspección sanitaria para algunas categorías (restaurantes, clínicas)."
+    },
+    "s6": {
+      "title": "6. Después de la simulación",
+      "intro": "El resultado del simulador es <strong>indicativo</strong>. Para presentar la solicitud real:",
+      "step1": "Pulse <strong>«Iniciar la solicitud»</strong> al final del simulador (necesita iniciar sesión).",
+      "step2": "Aporte los <strong>documentos requeridos</strong> indicados en la etapa 3/3.",
+      "step3": "Programe una <strong>cita</strong> en el ayuntamiento competente (paso integrado en el wizard).",
+      "step4": "Pague la tasa (Dinero Móvil, transferencia, efectivo en oficina del Tesoro).",
+      "step5": "Reciba la confirmación y el recibo. La licencia se emite en 5-15 días según el tier.",
+      "success": "Para más detalles sobre el proceso completo, consulte la página <a href=\"22-iniciar-tramite-web.html\" class=\"coming-soon\">Iniciar trámite (Web)</a> o <a href=\"32-iniciar-tramite-mobile.html\" class=\"coming-soon\">Iniciar trámite (Móvil)</a>."
+    },
+    "prev": "← Anterior: Directorio",
+    "next": "Siguiente: Asistente IA →"
+  },
+  "page55": {
+    "html_title": "Asistente IA público — Manual Facil",
+    "title": "Asistente IA público",
+    "description": "Facil incluye un asistente conversacional alimentado por IA (Gemini 2.5 Flash) que responde a sus preguntas sobre los trámites administrativos en Guinea Ecuatorial: documentos requeridos, costes estimados, plazos, procedimientos paso a paso. Disponible 24/7 sin necesidad de cuenta.",
+    "toc": {
+      "s1": "1. Acceder al asistente",
+      "s2": "2. Capacidades del asistente público",
+      "s3": "3. Sugerencias de preguntas",
+      "s4": "4. Limitaciones sin sesión",
+      "s5": "5. Privacidad y datos"
+    },
+    "s1": {
+      "title": "1. Acceder al asistente",
+      "intro": "Desde la pantalla de bienvenida, pulse el botón <strong>«Asistente IA»</strong> en la cabecera o el banner del carrusel. El asistente abre con un mensaje de bienvenida y 4 sugerencias de preguntas pulsables.",
+      "fig1": {
+        "alt": "Asistente IA estado vacío",
+        "caption": "Asistente IA en versión móvil — pantalla de inicio con título, mensaje de bienvenida y 4 sugerencias (servicios, documentos, pago, verificar demanda)."
+      }
+    },
+    "s2": {
+      "title": "2. Capacidades del asistente público",
+      "intro": "El asistente puede responder a preguntas sobre:",
+      "cap1": "<strong>Trámites administrativos</strong>: pasaporte, conducir, residencia, IRPF, IVA, IS, licencias comerciales, certificados, etc. (catálogo de 873 servicios)",
+      "cap2": "<strong>Documentos requeridos</strong>: lista detallada por trámite, originales y copias",
+      "cap3": "<strong>Costes</strong>: tarifas oficiales con desglose (impuestos, suplementos eventuales)",
+      "cap4": "<strong>Plazos</strong>: tiempo de tratamiento estimado por categoría",
+      "cap5": "<strong>Procedimientos paso a paso</strong>: secuencia de etapas a seguir, lugar de cada cita",
+      "cap6": "<strong>Comparaciones</strong>: ej. «¿Cuánto cuesta abrir un restaurante en Malabo vs Bata?»",
+      "tip": "El asistente entiende preguntas en español, francés e inglés — incluso si las mezcla en una misma frase. Use el lenguaje natural sin necesidad de palabras clave técnicas."
+    },
+    "s3": {
+      "title": "3. Sugerencias de preguntas (para empezar)",
+      "intro": "Si no sabe por dónde empezar, pulse una de las sugerencias proporcionadas:",
+      "q1": "<em>«¿Qué servicios están disponibles para mi DIP?»</em>",
+      "q2": "<em>«¿Cuáles son los documentos para el pasaporte?»</em>",
+      "q3": "<em>«¿Cuánto cuesta una licencia comercial en Bata?»</em>",
+      "q4": "<em>«¿Cómo verificar mi solicitud?»</em>",
+      "q5": "<em>«¿Cuál es el plazo para una renovación de carnet de conducir?»</em>",
+      "body": "El asistente responde con texto estructurado: subtítulos, listas numeradas, tablas si procede, enlaces directos al catálogo. Puede pulsar los enlaces para ir directamente al servicio mencionado."
+    },
+    "s4": {
+      "title": "4. Limitaciones sin sesión",
+      "intro": "Sin cuenta iniciada, el asistente <strong>no puede</strong>:",
+      "limit1": "<strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)",
+      "limit2": "<strong>Iniciar un trámite por usted</strong> — solo describe el procedimiento, no actúa",
+      "limit3": "<strong>Verificar el estado de su solicitud</strong> — para eso, inicie sesión o use la página <a href=\"57-verificar.html\">Verificar un recibo</a>",
+      "limit4": "<strong>Acceder a sus documentos</strong> guardados — solo en el modo conectado",
+      "body": "Para esas funciones avanzadas (asistente personalizado, gestión de su caja fuerte digital, sugerencias proactivas), <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">cree una cuenta</a> y consulte la página <a href=\"29-soporte-web.html\" class=\"coming-soon\">Asistente IA conectado</a>."
+    },
+    "s5": {
+      "title": "5. Privacidad y datos",
+      "priv1": "<strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)",
+      "priv2": "<strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio",
+      "priv3": "<strong>No proporcione datos sensibles</strong> — número DIP, teléfono, dirección no son necesarios para responder a una pregunta general. Si los proporciona, no se almacenan.",
+      "priv4": "<strong>Conformidad RGPD</strong> — ver <a href=\"58-legal.html\">página legal</a> para detalles sobre el tratamiento de datos",
+      "success": "El asistente está disponible 24/7 para responder a sus preguntas. Si necesita actuar (presentar una solicitud, pagar, descargar un documento), inicie sesión."
+    },
+    "prev": "← Anterior: Simulador de licencias",
+    "next": "Siguiente: Guía →"
+  },
+  "page56": {
+    "html_title": "Guía — Manual Facil",
+    "title": "Guía rápida de Facil",
+    "description": "La guía integrada en Facil le acompaña en sus primeros pasos. Tres pestañas: pasos a seguir para iniciar un trámite, preguntas frecuentes (FAQ), formularios oficiales descargables. Acceso público sin sesión.",
+    "toc": {
+      "s1": "1. Pestaña «Pasos»",
+      "s2": "2. Pestaña «Preguntas frecuentes»",
+      "s3": "3. Pestaña «Formularios»"
+    },
+    "s1": {
+      "title": "1. Pestaña «Pasos» — guía paso a paso",
+      "intro": "La pestaña «Pasos» enumera los 6 pasos genéricos para realizar cualquier trámite en Facil:",
+      "step1": "<strong>Crear su cuenta</strong> — verificación por email + opción de añadir 2FA",
+      "step2": "<strong>Iniciar sesión</strong> — con email y contraseña, opcionalmente con biometría en móvil",
+      "step3": "<strong>Elegir su trámite</strong> — desde el catálogo, las sugerencias del asistente IA o la búsqueda",
+      "step4": "<strong>Subir los documentos requeridos</strong> — foto desde el móvil o subida de archivos PDF/JPG. El OCR extrae automáticamente los datos.",
+      "step5": "<strong>Rellenar el formulario</strong> — la mayoría de los campos están prerellenados con los datos OCR. Verifique y complete.",
+      "step6": "<strong>Programar la cita</strong> — elija oficina, fecha y hora entre los disponibles, luego pague.",
+      "fig1": {
+        "alt": "Pestaña Pasos en versión española",
+        "caption": "Pestaña «Pasos» en la versión española — los 6 pasos numerados con iconos."
+      }
+    },
+    "s2": {
+      "title": "2. Pestaña «Preguntas frecuentes»",
+      "intro": "La FAQ contiene 6 preguntas cuya respuesta se despliega al pulsarlas. Las preguntas tratan los temas más frecuentes:",
+      "q1": "<strong>¿Necesito una cuenta para todo?</strong> — No, los servicios públicos (catálogo, calculadora, simulador, asistente IA, verificación) son accesibles sin sesión.",
+      "q2": "<strong>¿Cómo cambio de idioma?</strong> — Selector ES/FR/EN en la cabecera, en cualquier momento.",
+      "q3": "<strong>¿Puedo pagar en efectivo?</strong> — Sí, en la oficina del Tesoro Público. La solicitud genera una referencia que presenta en caja.",
+      "q4": "<strong>¿Cuánto tiempo dura el tratamiento?</strong> — Variable según el trámite (de 24h para una verificación a 15 días para una licencia compleja). El plazo está indicado en la ficha de cada servicio.",
+      "q5": "<strong>¿Mis datos están seguros?</strong> — Sí, conforme RGPD. Cifrado en tránsito (HTTPS) y en reposo. Ver <a href=\"58-legal.html\">página legal</a> y <a href=\"16-seguridad.html\" class=\"coming-soon\">página seguridad</a>.",
+      "q6": "<strong>¿Qué pasa si pierdo mi cuenta?</strong> — Use «Contraseña olvidada» en la pantalla de inicio de sesión. Si pierde acceso al email también, contacte con soporte."
+    },
+    "s3": {
+      "title": "3. Pestaña «Formularios» — descargas oficiales",
+      "intro": "La pestaña Formularios da acceso a los <strong>formularios fiscales oficiales en PDF</strong> que puede descargar, rellenar y luego subir en su solicitud. Lista de formularios disponibles:",
+      "f1": "<strong>Retención 3%, 5%, 10%</strong> — formularios de retención fiscal para empleadores",
+      "f2": "<strong>Cuota mínima</strong> — declaración de la cuota mínima IS",
+      "f3": "<strong>IVA Forfaitaire / IVA Real</strong> — declaraciones IVA según el régimen",
+      "f4": "<strong>IRPF</strong> — declaración anual del impuesto sobre la renta",
+      "f5": "<strong>Otros formularios sectoriales</strong> — petrolero, mineros, agrícolas",
+      "fig1": {
+        "alt": "Pestaña Formularios",
+        "caption": "Pestaña «Formularios» en versión española — lista de PDF descargables agrupados por tipo de declaración."
+      },
+      "info": "Los formularios son los <strong>oficiales del Ministerio de Hacienda</strong>. Si los rellena en papel, escanéelos en buena calidad antes de subirlos. La calculadora <a href=\"52-calculadora.html\">Calculadora fiscal</a> le ayuda a calcular las cantidades antes de rellenar el formulario.",
+      "success": "Ahora conoce los recursos públicos disponibles. Si tiene una pregunta no cubierta por la FAQ, use el asistente IA o contacte con soporte una vez iniciada la sesión."
+    },
+    "prev": "← Anterior: Asistente IA",
+    "next": "Siguiente: Verificar un recibo →"
+  },
+  "page57": {
+    "html_title": "Verificar un recibo — Manual Facil",
+    "title": "Verificar la autenticidad de un recibo",
+    "description": "Cualquiera puede verificar la autenticidad de un recibo, una solicitud o una licencia comercial emitidos por Facil — sin necesidad de cuenta. La verificación funciona mediante código QR (escaneado desde la app móvil o desde un PDF) o por número de referencia. Útil para los agentes de campo, los proveedores y los ciudadanos que reciben un documento.",
+    "no_capture": "<strong>Esta página no incluye capturas</strong>: la verificación es una función de backend que devuelve datos estructurados según el tipo de identificador. La descripción es por lo tanto textual con diagramas en ASCII y tablas detalladas para cada variante.",
+    "toc": {
+      "s1": "1. Cómo acceder a la verificación",
+      "s2": "2. Flujo de la verificación (diagrama)",
+      "s3": "3. Las 3 variantes de verificación",
+      "s4": "4. Ejemplos concretos",
+      "s5": "5. Seguridad y firma",
+      "s6": "6. Mensajes de error posibles"
+    },
+    "s1": {
+      "title": "1. Cómo acceder a la verificación",
+      "intro": "Hay dos formas de iniciar una verificación:",
+      "qr": {
+        "title": "A. Escanear el QR código",
+        "body": "Cada documento generado por Facil (recibo PDF, solicitud, certificado) lleva un <strong>QR código</strong> en una esquina. Escanee este QR con la cámara de su teléfono o con la aplicación Facil — abre directamente la página de verificación con todos los datos rellenados."
+      },
+      "url": {
+        "title": "B. Introducir manualmente el número",
+        "body": "Vaya a <code>https://facil.gov.gq/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente."
+      },
+      "warning": "La URL de verificación incluye un <strong>token firmado</strong> (parámetro <code>?t=...</code>) que prueba la autenticidad. Sin este token, la verificación falla — incluso si conoce la referencia exacta. El token se genera automáticamente cuando Facil emite el documento."
+    },
+    "s2": {
+      "title": "2. Flujo de la verificación",
+      "intro": "Diagrama del flujo desde el escaneo hasta la respuesta del servidor:",
+      "diagram": "┌────────────────┐    Escanea QR /                ┌──────────────────┐\n│   USUARIO      │   abre URL                     │  FRONTEND FACIL  │\n│ (Agente / pub.)├──────────────────────────────► │  /verify/{ref}    │\n└────────────────┘                                └────────┬─────────┘\n                                                           │\n                                                           ▼\n                                              ┌────────────────────────┐\n                                              │  GET /api/v1/verify/   │\n                                              │  {ref}?t={token}       │\n                                              └────────┬───────────────┘\n                                                       │\n                                                       ▼\n                                            ┌─────────────────────────┐\n                                            │   BACKEND VERIFICACIÓN  │\n                                            │                         │\n                                            │  1. Detecta tipo según  │\n                                            │     prefijo ref:        │\n                                            │       REC- → recibo     │\n                                            │       CON-/PAS-/LIC- →  │\n                                            │           solicitud     │\n                                            │       LIC- (sólo) →     │\n                                            │           licencia      │\n                                            │  2. Verifica el token   │\n                                            │     firmado (HMAC)      │\n                                            │  3. Carga el documento  │\n                                            │     desde la BD         │\n                                            │  4. Devuelve datos      │\n                                            │     públicos (sin info  │\n                                            │     personal sensible)  │\n                                            └────────┬────────────────┘\n                                                     │\n                                                     ▼\n                                          ┌──────────────────────────┐\n                                          │   RESULTADO MOSTRADO     │\n                                          │                          │\n                                          │   ✅ Documento válido    │\n                                          │   - Número                │\n                                          │   - Fecha de emisión      │\n                                          │   - Importe (si aplica)   │\n                                          │   - Entidad emisora       │\n                                          │   - Estado actual         │\n                                          │                          │\n                                          │   ❌ Documento inválido  │\n                                          │   - Token incorrecto     │\n                                          │   - Documento revocado   │\n                                          │   - Referencia inexistente│\n                                          └──────────────────────────┘",
+      "body": "Toda la operación dura <strong>menos de 200 ms</strong> en condiciones normales. La página de verificación está optimizada para los móviles con conexión lenta (cache CDN, payload comprimido)."
+    },
+    "s3": {
+      "title": "3. Las 3 variantes de verificación",
+      "intro": "Facil distingue 3 tipos de documentos verificables. El sistema detecta automáticamente la variante a partir del prefijo de la referencia:",
+      "table": {
+        "col1": "Campo",
+        "col2": "Detalle"
+      },
+      "v1": {
+        "title": "Variante 1 — Recibo de pago (prefijo REC-)",
+        "field1": "Identificador",
+        "field2": "Datos mostrados",
+        "detail2": "Número, fecha, hora, importe XAF, método de pago, entidad emisora (Tesoro), nombre del pagador (parcial), código del trámite asociado, estado del recibo (válido / revocado).",
+        "field3": "Permisos",
+        "detail3": "Acceso público total con token. Sin token: error 403.",
+        "field4": "Caso de uso",
+        "detail4": "Un agente comprueba que un ciudadano ha pagado bien antes de procesar la siguiente etapa de su expediente."
+      },
+      "v2": {
+        "title": "Variante 2 — Solicitud (prefijos CON-, PAS-, LIC-, etc.)",
+        "field1": "Identificador",
+        "field2": "Datos mostrados",
+        "detail2": "Tipo de trámite, estado de la solicitud (Borrador, Enviada, En proceso, Completada, Rechazada), entidad gestora (DGT, CNEDOGE, Ayuntamiento...), fecha de creación, fecha y lugar de la cita programada (si aplica), importe pagado (si aplica).",
+        "field3": "Permisos",
+        "detail3": "Público con token. Los datos personales sensibles (DIP completo, número permiso) se muestran parcialmente.",
+        "field4": "Caso de uso",
+        "detail4": "Un ciudadano comparte el QR de su solicitud con su empleador, su banco o un tercero que necesita probar la existencia del trámite oficial."
+      },
+      "v3": {
+        "title": "Variante 3 — Licencia comercial activa (prefijo LIC- después validación final)",
+        "field1": "Identificador",
+        "field2": "Datos mostrados",
+        "detail2": "Nombre comercial titular, NIF de la empresa, sector, tier (A1/B2/C1/D), validez (fecha de inicio + caducidad), obligaciones pendientes (cantidades pendientes), última inspección registrada.",
+        "field3": "Permisos",
+        "detail3": "Acceso público total. Útil para los agentes de inspección de campo (OMS) que verifican la conformidad de un comercio antes de la inspección.",
+        "field4": "Caso de uso",
+        "detail4": "Un agente OMS escanea el QR pegado en la fachada del comercio durante una inspección de campo — comprueba inmediatamente la validez de la licencia y las eventuales obligaciones pendientes."
+      }
+    },
+    "s4": {
+      "title": "4. Ejemplos concretos",
+      "ex1": {
+        "title": "Ejemplo 1 — Verificación pública de un recibo",
+        "code": "URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"recibo\",\n  \"numero\": \"REC-2026-000013\",\n  \"fecha\": \"2026-04-19T15:07:00\",\n  \"importe_xaf\": 25000,\n  \"metodo\": \"Efectivo\",\n  \"pagador_parcial\": \"libre G***\",\n  \"tramite_ref\": \"CON-2026-00001\",\n  \"entidad\": \"Tesoro Público Malabo II\",\n  \"estado\": \"valido\"\n}"
+      },
+      "ex2": {
+        "title": "Ejemplo 2 — Verificación de una solicitud Conducir",
+        "code": "URL : https://facil.gov.gq/es/verify/CON-2026-00001?t=...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"solicitud\",\n  \"subtipo\": \"conducir_renovacion\",\n  \"numero\": \"CON-2026-00001\",\n  \"estado\": \"Completada\",\n  \"entidad\": \"DGT\",\n  \"tipo_expedicion\": \"RENOVACION\",\n  \"cita\": {\n    \"fecha\": \"2026-04-28\",\n    \"hora\": \"09:00\",\n    \"oficina\": \"MALABO II\"\n  },\n  \"importe_pagado_xaf\": 25000\n}"
+      },
+      "ex3": {
+        "title": "Ejemplo 3 — Token inválido",
+        "code": "URL : https://facil.gov.gq/verify/REC-2026-000013  ← sin token\nGET → 403 Forbidden\nRespuesta: { \"error\": \"Token requerido para acceso público\" }"
+      }
+    },
+    "s5": {
+      "title": "5. Seguridad y firma",
+      "sec1": "<strong>Token HMAC-SHA256</strong> — el parámetro <code>?t=...</code> es una firma HMAC del identificador. Sin la clave del Tesoro Público, es imposible falsificar.",
+      "sec2": "<strong>Sin caducidad por defecto</strong> — los tokens son válidos mientras el documento existe. Para los documentos sensibles (recibos), un token puede ser revocado por un agente.",
+      "sec3": "<strong>Datos sensibles protegidos</strong> — el DIP completo, el teléfono, la dirección postal NUNCA se devuelven en la verificación pública. Solo los datos visibles en el documento PDF original se muestran.",
+      "sec4": "<strong>Audit log</strong> — todas las verificaciones se registran (IP, fecha, referencia). Útil para detectar fraudes (escaneo masivo).",
+      "sec5": "<strong>Rate limiting</strong> — máximo 60 verificaciones / minuto / IP para evitar abusos."
+    },
+    "s6": {
+      "title": "6. Mensajes de error posibles",
+      "table": {
+        "col1": "Mensaje",
+        "col2": "Causa",
+        "col3": "Acción"
+      },
+      "err1": {
+        "cause": "Falta el parámetro ?t=...",
+        "action": "Re-escanee el QR original o solicite un nuevo enlace al emisor."
+      },
+      "err2": {
+        "cause": "Token modificado o caducado",
+        "action": "El documento ha sido alterado. No fíarse, contactar al emisor."
+      },
+      "err3": {
+        "cause": "Referencia inexistente",
+        "action": "Verifique la ortografía. Los identificadores son case-sensitive (REC, CON, LIC, PAS)."
+      },
+      "err4": {
+        "cause": "El documento ha sido invalidado por un agente (fraude, error de tratamiento)",
+        "action": "El documento ya no es válido. Contactar al emisor."
+      },
+      "err5": {
+        "cause": "Rate limit (60/min/IP) superado",
+        "action": "Espere 1 minuto y vuelva a intentarlo. Si persiste, contactar soporte."
+      },
+      "success": "La verificación pública es una de las funciones más críticas de Facil — permite a la administración garantizar la autenticidad de los documentos sin necesidad de cuenta. Los agentes públicos disponen de funciones avanzadas de verificación documentadas en la página <a href=\"68-funciones-verify-agente.html\" class=\"coming-soon\">Funciones de verificación (agentes)</a>."
+    },
+    "prev": "← Anterior: Guía",
+    "next": "Siguiente: Información legal →"
+  },
+  "page58": {
+    "html_title": "Información legal — Manual Facil",
+    "title": "Información legal",
+    "description": "Resumen de los términos de uso, la política de privacidad RGPD, la gestión de cookies y el procedimiento de eliminación de cuenta para Facil. Esta página remite a los textos oficiales completos disponibles en la aplicación.",
+    "disclaimer": "<strong>Esta página es un resumen del manual</strong>. Los textos legales oficiales están disponibles en la aplicación bajo «Configuración → Información legal» (Términos, Privacidad, Cookies, Eliminación cuenta) y prevalecen en caso de divergencia.",
+    "toc": {
+      "s1": "1. Términos de uso",
+      "s2": "2. Política de privacidad (RGPD)",
+      "s3": "3. Gestión de cookies",
+      "s4": "4. Eliminación de cuenta",
+      "s5": "5. Contacto y reclamaciones"
+    },
+    "s1": {
+      "title": "1. Términos de uso",
+      "intro": "Al utilizar Facil, usted acepta los términos siguientes:",
+      "t1": "<strong>Servicio independiente</strong>: Facil es una herramienta de asistencia digital que facilita el acceso a los procedimientos administrativos. Las decisiones administrativas finales corresponden a las entidades competentes (DGI, CNEDOGE, DGT, etc.).",
+      "t2": "<strong>Veracidad de los datos</strong>: usted se compromete a proporcionar información exacta y veraz. Las falsas declaraciones pueden llevar a sanciones legales.",
+      "t3": "<strong>Uso personal</strong>: su cuenta es personal e intransmisible. No comparta sus credenciales.",
+      "t4": "<strong>Comportamiento aceptable</strong>: no use Facil para actividades ilegales, intentar comprometer la seguridad del sistema o sobrecargar los servidores.",
+      "t5": "<strong>Disponibilidad</strong>: Facil se esfuerza por garantizar una disponibilidad de 99,5% pero no puede garantizar un acceso ininterrumpido (mantenimiento, incidentes).",
+      "t6": "<strong>Modificaciones</strong>: los términos pueden evolucionar. Le notificaremos los cambios sustanciales por email."
+    },
+    "s2": {
+      "title": "2. Política de privacidad (RGPD)",
+      "collected": {
+        "title": "Datos recopilados",
+        "d1": "<strong>Identidad</strong>: nombre, apellidos, fecha de nacimiento, DIP/NIE, nacionalidad",
+        "d2": "<strong>Contacto</strong>: email, teléfono, dirección postal",
+        "d3": "<strong>Documentos subidos</strong>: fotografías, copias de identidad, formularios fiscales",
+        "d4": "<strong>Datos de uso</strong>: solicitudes presentadas, pagos efectuados, sesiones",
+        "d5": "<strong>Datos técnicos</strong>: dirección IP, tipo de navegador/dispositivo, idioma preferido"
+      },
+      "use": {
+        "title": "Finalidades del tratamiento",
+        "u1": "Prestar el servicio (gestión de su cuenta, tratamiento de las solicitudes, generación de recibos)",
+        "u2": "Cumplir con las obligaciones legales (audit log, conservación legal)",
+        "u3": "Mejorar el servicio (estadísticas anónimas, detección de fraude)",
+        "u4": "Comunicación con el usuario (notificaciones de estado, alertas de plazo, soporte)"
+      },
+      "rights": {
+        "title": "Sus derechos RGPD",
+        "r1": "<strong>Acceso</strong>: ver todos sus datos personales en cualquier momento (sección «Mi perfil»)",
+        "r2": "<strong>Rectificación</strong>: corregir las informaciones incorrectas (sección «Mi perfil»)",
+        "r3": "<strong>Portabilidad</strong>: exportar sus datos en formato JSON o PDF (sección «Configuración → Exportar datos»)",
+        "r4": "<strong>Supresión</strong>: solicitar la eliminación completa de su cuenta y de sus datos (ver Sección 4)",
+        "r5": "<strong>Oposición</strong>: oponerse a un tratamiento específico (notificaciones marketing, etc.)",
+        "r6": "<strong>Limitación</strong>: limitar el tratamiento en caso de litigio"
+      },
+      "retention": {
+        "title": "Duración de conservación",
+        "body": "Los datos se conservan según las obligaciones legales :",
+        "r1": "<strong>Cuenta activa</strong>: datos conservados mientras la cuenta esté activa",
+        "r2": "<strong>Solicitudes y recibos</strong>: 10 años (obligación fiscal y administrativa)",
+        "r3": "<strong>Audit log</strong>: 10 años (obligación legal de trazabilidad)",
+        "r4": "<strong>Datos técnicos (logs)</strong>: 12 meses"
+      }
+    },
+    "s3": {
+      "title": "3. Gestión de cookies",
+      "intro": "Facil utiliza cookies para asegurar el funcionamiento de la aplicación y mejorar su experiencia. Tres categorías:",
+      "table": {
+        "col1": "Categoría",
+        "col2": "Uso",
+        "col3": "Consentimiento",
+        "r1": { "c1": "Esenciales", "c2": "Sesión, autenticación, idioma preferido", "c3": "Obligatorias (sin consentimiento)" },
+        "r2": { "c1": "Funcionales", "c2": "Recordar últimas búsquedas, dimensiones de pantalla", "c3": "Opt-in" },
+        "r3": { "c1": "Análisis", "c2": "Estadísticas de uso anónimas", "c3": "Opt-in" }
+      },
+      "body": "Puede gestionar sus preferencias en cualquier momento desde el banner de cookies (al primer acceso) o desde «Configuración → Cookies». No utilizamos cookies de seguimiento publicitario."
+    },
+    "s4": {
+      "title": "4. Eliminación de cuenta",
+      "intro": "Puede solicitar la eliminación completa de su cuenta en cualquier momento. El procedimiento incluye un período de gracia para evitar las eliminaciones accidentales:",
+      "step1": "<strong>Solicitar la eliminación</strong> desde «Configuración → Cuenta → Eliminar mi cuenta». Una confirmación por email es necesaria.",
+      "step2": "<strong>Período de gracia de 30 días</strong>: durante este tiempo, su cuenta es <em>desactivada</em> pero no eliminada. Puede revertir la solicitud iniciando sesión.",
+      "step3": "<strong>Eliminación efectiva</strong> después de 30 días: sus datos personales se borran salvo las informaciones legales obligatorias (recibos, audit logs).",
+      "danger": "<strong>La eliminación es irreversible</strong> después del período de gracia. Sus solicitudes en curso, sus documentos y su histórico se borran. Algunos datos legalmente conservados (recibos, audit logs) se mantienen durante 10 años pero se anonimizan.",
+      "body": "Detalles completos en la página dedicada <a href=\"17-eliminar-cuenta.html\" class=\"coming-soon\">Eliminar cuenta</a>."
+    },
+    "s5": {
+      "title": "5. Contacto y reclamaciones",
+      "intro": "Para toda pregunta o reclamación relativa a sus datos personales o al uso de Facil:",
+      "c1": "<strong>Soporte general</strong>: tickets en la sección «Soporte» (después de iniciar sesión)",
+      "c2": "<strong>Email contacto</strong>: <code>facilege26@gmail.com</code>",
+      "c3": "<strong>Reclamaciones RGPD</strong>: especifique «RGPD» en el asunto del email",
+      "c4": "<strong>Autoridad de control</strong>: si su reclamación no ha recibido respuesta satisfactoria, puede contactar con la autoridad nacional de protección de datos.",
+      "success": "Si tiene una pregunta no cubierta aquí, el asistente IA público puede ayudarle a navegar entre los textos legales o redirigirle al canal apropiado."
+    },
+    "prev": "← Anterior: Verificar un recibo",
+    "next": "Siguiente: Crear cuenta →"
   }
 
   // page01, page11-17, page22-29, page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
