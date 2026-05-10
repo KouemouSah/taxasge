@@ -463,6 +463,64 @@ window.__I18N__.fr = {
     "description": "Si vous ne souhaitez plus utiliser Facil, vous pouvez demander la suppression de votre compte. La procédure inclut une période de grâce de 30 jours pour vous protéger contre les suppressions accidentelles. Certaines données sont conservées légalement (10 ans) par obligation fiscale.",
     "prev": "← Précédent : Sécurité",
     "next": "Suivant : Tableau de bord Web →"
+  },
+
+  // ---- pages 22-29 (Phase 4 citoyen Web, traduction minimale) ----
+  "page22": {
+    "html_title": "Démarrer une démarche (Web) — Manuel Facil",
+    "title": "Démarrer une démarche (Web) — wizard 10 étapes",
+    "description": "L'assistant de création de demande (wizard) vous guide pas-à-pas de la sélection du service au paiement final, en 10 étapes structurées.",
+    "prev": "← Précédent : Tableau de bord",
+    "next": "Suivant : Mes demandes →"
+  },
+  "page23": {
+    "html_title": "Mes demandes (Web) — Manuel Facil",
+    "title": "Mes demandes de service",
+    "description": "Centralisez toutes vos demandes sur un seul écran avec filtres, KPIs et accès au détail. Consultez la progression via un stepper visuel, téléchargez les PDF.",
+    "prev": "← Précédent : Démarrer une démarche",
+    "next": "Suivant : Mes paiements →"
+  },
+  "page24": {
+    "html_title": "Mes paiements (Web) — Manuel Facil",
+    "title": "Mes paiements",
+    "description": "Vue centralisée de tous vos paiements effectués sur Facil — méthode utilisée, état de validation, téléchargement du reçu PDF avec QR de vérification publique.",
+    "prev": "← Précédent : Mes demandes",
+    "next": "Suivant : Mes documents →"
+  },
+  "page25": {
+    "html_title": "Mes documents (Web) — Manuel Facil",
+    "title": "Mes documents — coffre-fort numérique",
+    "description": "Votre coffre-fort numérique centralise tous les documents liés à vos démarches Facil — documents personnels, documents générés, préparation pré-démarche assistée par IA.",
+    "prev": "← Précédent : Mes paiements",
+    "next": "Suivant : Paiement groupé →"
+  },
+  "page26": {
+    "html_title": "Paiement groupé (Web) — Manuel Facil",
+    "title": "Paiement groupé d'obligations fiscales",
+    "description": "Le paiement groupé (bundle) permet de payer plusieurs obligations fiscales d'entreprise en une seule transaction, répartie automatiquement entre les entités émettrices (Trésor, Mairie, Chambre de Commerce).",
+    "prev": "← Précédent : Mes documents",
+    "next": "Suivant : Mes entreprises →"
+  },
+  "page27": {
+    "html_title": "Mes entreprises (Web) — Manuel Facil",
+    "title": "Mes entreprises",
+    "description": "Si vous représentez une ou plusieurs entreprises, cette page vous permet de gérer leurs informations, voir les obligations fiscales, l'historique des paiements, les inspections, et télécharger la licence commerciale.",
+    "prev": "← Précédent : Paiement groupé",
+    "next": "Suivant : Notifications →"
+  },
+  "page28": {
+    "html_title": "Notifications (Web) — Manuel Facil",
+    "title": "Notifications — recevoir les mises à jour",
+    "description": "Facil vous tient informé par email à chaque changement d'état de vos demandes : réception, paiement en attente, validation, finalisation. Les reçus PDF sont en pièce jointe.",
+    "prev": "← Précédent : Mes entreprises",
+    "next": "Suivant : Assistant IA et Support →"
+  },
+  "page29": {
+    "html_title": "Assistant IA et Support (Web) — Manuel Facil",
+    "title": "Assistant IA connecté et Support",
+    "description": "Cette page combine 2 fonctions complémentaires pour utilisateurs connectés : l'assistant IA connecté (accès au contexte personnel — coffre numérique, entreprises, demandes) et le système de tickets de support.",
+    "prev": "← Précédent : Notifications",
+    "next": "Suivant : Tableau de bord Mobile →"
   }
 
 };

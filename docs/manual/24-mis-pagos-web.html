@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page24.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Histórico de sus pagos en Facil Web — métodos, estados, validación por agente, descarga de recibos PDF con QR de verificación.">
+  <title>Mis pagos (Web) — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.my_payments_web">Mis pagos</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page24.title">Mis pagos</h1>
+        <p class="page-description" data-i18n="page24.description">Vista centralizada de todos sus pagos efectuados en Facil — independiente del trámite asociado. Consulte el método utilizado, el estado de validación, descargue el recibo PDF con su QR de verificación pública.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#metodos" data-i18n="page24.toc.s1">1. Los 5 métodos de pago</a></li>
+            <li><a href="#estados" data-i18n="page24.toc.s2">2. Estados de un pago</a></li>
+            <li><a href="#post-validacion" data-i18n="page24.toc.s3">3. Después de la validación por agente</a></li>
+            <li><a href="#recibo" data-i18n="page24.toc.s4">4. Recibo PDF y verificación pública</a></li>
+            <li><a href="#problemas" data-i18n="page24.toc.s5">5. Problemas frecuentes</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="metodos" data-i18n="page24.s1.title">1. Los 5 métodos de pago</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page24.s1.table.col1">Método</th><th data-i18n="page24.s1.table.col2">Validación</th><th data-i18n="page24.s1.table.col3">Plazo</th><th data-i18n="page24.s1.table.col4">Recibo</th></tr></thead>
+              <tbody>
+                <tr><td><strong data-i18n="page24.s1.r1.c1">Dinero Móvil</strong> (BANGE)</td><td data-i18n="page24.s1.r1.c2">Automática vía webhook BANGE</td><td data-i18n="page24.s1.r1.c3">< 1 minuto</td><td data-i18n="page24.s1.r1.c4">Inmediato</td></tr>
+                <tr><td><strong data-i18n="page24.s1.r2.c1">Tarjeta</strong> (Visa/Mastercard)</td><td data-i18n="page24.s1.r2.c2">Pasarela bancaria segura</td><td data-i18n="page24.s1.r2.c3">< 1 minuto</td><td data-i18n="page24.s1.r2.c4">Inmediato</td></tr>
+                <tr><td><strong data-i18n="page24.s1.r3.c1">Transferencia bancaria</strong></td><td data-i18n="page24.s1.r3.c2">Manual (verificación cuenta Tesoro)</td><td data-i18n="page24.s1.r3.c3">1-2 días hábiles</td><td data-i18n="page24.s1.r3.c4">Tras validación</td></tr>
+                <tr><td><strong data-i18n="page24.s1.r4.c1">Efectivo</strong> (oficina Tesoro)</td><td data-i18n="page24.s1.r4.c2">Manual por agente Tesoro presencial</td><td data-i18n="page24.s1.r4.c3">Mismo día (oficina abierta)</td><td data-i18n="page24.s1.r4.c4">Tras validación</td></tr>
+                <tr><td><strong data-i18n="page24.s1.r5.c1">Cheque</strong></td><td data-i18n="page24.s1.r5.c2">Manual por agente + verificación bancaria</td><td data-i18n="page24.s1.r5.c3">3-7 días hábiles</td><td data-i18n="page24.s1.r5.c4">Tras compensación</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="estados" data-i18n="page24.s2.title">2. Estados de un pago</h2>
+          <ul>
+            <li data-i18n-html="page24.s2.f1"><strong>Pendiente</strong> — pago iniciado pero no recibido (DM, tarjeta) o no validado (efectivo, cheque)</li>
+            <li data-i18n-html="page24.s2.f2"><strong>Procesando</strong> — pago recibido en curso de validación por sistema o agente</li>
+            <li data-i18n-html="page24.s2.f3"><strong>Validado</strong> — pago confirmado, recibo generado y disponible</li>
+            <li data-i18n-html="page24.s2.f4"><strong>Rechazado</strong> — pago no aceptado (cheque sin fondo, transferencia errónea, etc.)</li>
+            <li data-i18n-html="page24.s2.f5"><strong>Reembolsado</strong> — pago previamente validado y luego cancelado/devuelto</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="post-validacion" data-i18n="page24.s3.title">3. Después de la validación por agente</h2>
+          <p data-i18n-html="page24.s3.intro">Para los pagos en efectivo o cheque, un <strong>agente del Tesoro</strong> debe validar el pago manualmente. Los efectos en su cuenta son inmediatos tras esta validación:</p>
+
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/citizen/post-validation/12.png" alt="Solicitud Enviada post-pago" data-i18n-attr-alt="page24.s3.fig1.alt">
+              <figcaption data-i18n="page24.s3.fig1.caption">Estado «Enviada» (post-pago, pre-validación) — Banner azul «Tu solicitud ha sido enviada y está en espera de revisión». Recibo generado REC-2026-000013, cita programada.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/citizen/post-validation/1.png" alt="Solicitud Completada" data-i18n-attr-alt="page24.s3.fig2.alt">
+              <figcaption data-i18n="page24.s3.fig2.caption">Estado «Completada» (tras validación final) — Stepper 100% verde. Banner verde «¡Completado! Tu documento está listo para recoger.» Pago=Completado con Recibo REC-2026-000002.</figcaption>
+            </figure>
+          </div>
+
+          <h3 data-i18n="page24.s3.notif.title">Notificaciones automáticas</h3>
+          <p data-i18n-html="page24.s3.notif.body">A cada cambio de estado, recibirá una notificación por email (y push si está activado) con el detalle del cambio + un enlace directo a la solicitud. Para más detalles, consulte la página <a href="28-notificaciones-web.html">Notificaciones</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="recibo" data-i18n="page24.s4.title">4. Recibo PDF y verificación pública</h2>
+          <p data-i18n-html="page24.s4.intro">Tras validación, un <strong>recibo PDF</strong> se genera automáticamente con número único <code>REC-2026-XXXXXX</code>. Contiene:</p>
+          <ul>
+            <li data-i18n-html="page24.s4.f1">Número de recibo + fecha + hora del pago</li>
+            <li data-i18n-html="page24.s4.f2">Importe + método utilizado</li>
+            <li data-i18n-html="page24.s4.f3">Pagador (su nombre parcial por privacidad)</li>
+            <li data-i18n-html="page24.s4.f4">Código del trámite asociado + entidad emisora</li>
+            <li data-i18n-html="page24.s4.f5"><strong>QR código</strong> que enlaza a la <a href="57-verificar.html">página de verificación pública</a></li>
+            <li data-i18n-html="page24.s4.f6">Sello «VALIDADO» del Tesoro Público</li>
+          </ul>
+
+          <p data-i18n-html="page24.s4.body">El recibo se almacena automáticamente en su <a href="25-mis-documentos-web.html">caja fuerte digital</a> bajo «Generados → Recibos». Es válido como prueba ante cualquier administración. Su QR es escaneable por cualquier persona para verificar la autenticidad sin necesidad de cuenta.</p>
+        </section>
+
+        <section>
+          <h2 id="problemas" data-i18n="page24.s5.title">5. Problemas frecuentes</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page24.s5.table.col1">Síntoma</th><th data-i18n="page24.s5.table.col2">Solución</th></tr></thead>
+              <tbody>
+                <tr><td data-i18n="page24.s5.r1.c1">Pago Dinero Móvil falla</td><td data-i18n="page24.s5.r1.c2">Verifique el saldo de su cuenta BANGE Mobile Money. Reintente o use otro método.</td></tr>
+                <tr><td data-i18n="page24.s5.r2.c1">Pago efectivo «Pendiente» después de varios días</td><td data-i18n="page24.s5.r2.c2">Pase por la oficina Tesoro elegida con el código <code>CSH-...</code> recibido por email. Un agente lo validará.</td></tr>
+                <tr><td data-i18n="page24.s5.r3.c1">Recibo no descargable</td><td data-i18n="page24.s5.r3.c2">El recibo se genera tras la validación. Si está «Procesando» todavía, espere algunas horas/días según el método.</td></tr>
+                <tr><td data-i18n="page24.s5.r4.c1">Importe incorrecto facturado</td><td data-i18n="page24.s5.r4.c2">Contacte al <a href="29-soporte-web.html">soporte</a> con la referencia del pago. La diferencia se reembolsa o se imputa al próximo pago.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page24.s5.success">Para los pagos consolidados de varias obligaciones de empresa, consulte la página dedicada Pago agrupado (siguiente).</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="23-mis-solicitudes-web.html" class="pagination-prev"><span data-i18n="page24.prev">← Anterior: Mis solicitudes</span></a>
+          <a href="25-mis-documentos-web.html" class="pagination-next"><span data-i18n="page24.next">Siguiente: Mis documentos →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

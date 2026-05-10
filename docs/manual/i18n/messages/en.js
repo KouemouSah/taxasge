@@ -463,6 +463,64 @@ window.__I18N__.en = {
     "description": "If you no longer wish to use Facil, you can request account deletion. The procedure includes a 30-day grace period to protect you from accidental deletions. Some data is retained legally (10 years) for fiscal and administrative obligations.",
     "prev": "← Previous: Security",
     "next": "Next: Web dashboard →"
+  },
+
+  // ---- pages 22-29 (Phase 4 citizen Web, minimal translation) ----
+  "page22": {
+    "html_title": "Start a procedure (Web) — Facil Manual",
+    "title": "Start a procedure (Web) — 10-step wizard",
+    "description": "The request creation wizard guides you step by step from service selection to final payment, in 10 structured steps.",
+    "prev": "← Previous: Dashboard",
+    "next": "Next: My requests →"
+  },
+  "page23": {
+    "html_title": "My requests (Web) — Facil Manual",
+    "title": "My service requests",
+    "description": "Centralize all your requests on a single screen with filters, KPIs and detail access. Track progress via a visual stepper, download PDFs.",
+    "prev": "← Previous: Start a procedure",
+    "next": "Next: My payments →"
+  },
+  "page24": {
+    "html_title": "My payments (Web) — Facil Manual",
+    "title": "My payments",
+    "description": "Centralized view of all your Facil payments — method used, validation status, receipt PDF download with public verification QR.",
+    "prev": "← Previous: My requests",
+    "next": "Next: My documents →"
+  },
+  "page25": {
+    "html_title": "My documents (Web) — Facil Manual",
+    "title": "My documents — digital vault",
+    "description": "Your digital vault centralizes all documents linked to your Facil procedures — personal documents, generated documents, AI-assisted pre-procedure preparation.",
+    "prev": "← Previous: My payments",
+    "next": "Next: Bundle payment →"
+  },
+  "page26": {
+    "html_title": "Bundle payment (Web) — Facil Manual",
+    "title": "Bundle payment of fiscal obligations",
+    "description": "Bundle payment lets you pay multiple business fiscal obligations in a single transaction, automatically distributed across issuing entities (Treasury, Town Hall, Chamber of Commerce).",
+    "prev": "← Previous: My documents",
+    "next": "Next: My companies →"
+  },
+  "page27": {
+    "html_title": "My companies (Web) — Facil Manual",
+    "title": "My companies",
+    "description": "If you represent one or more companies, this page lets you manage their information, view fiscal obligations, payment history, inspections, and download the commercial license.",
+    "prev": "← Previous: Bundle payment",
+    "next": "Next: Notifications →"
+  },
+  "page28": {
+    "html_title": "Notifications (Web) — Facil Manual",
+    "title": "Notifications — get updates",
+    "description": "Facil keeps you informed by email at every status change of your requests: receipt, pending payment, validation, completion. PDF receipts are attached.",
+    "prev": "← Previous: My companies",
+    "next": "Next: AI assistant and Support →"
+  },
+  "page29": {
+    "html_title": "AI assistant and Support (Web) — Facil Manual",
+    "title": "Connected AI assistant and Support",
+    "description": "This page combines 2 complementary features for signed-in users: the connected AI assistant (access to personal context — digital vault, companies, requests) and the support ticket system.",
+    "prev": "← Previous: Notifications",
+    "next": "Next: Mobile dashboard →"
   }
 
 };

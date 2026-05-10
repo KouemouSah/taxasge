@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page25.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Caja fuerte digital de sus documentos personales y generados en Facil — 4 pestañas, IA classification, alertas vencimiento.">
+  <title>Mis documentos (Web) — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.my_documents_web">Mis documentos</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page25.title">Mis documentos — caja fuerte digital</h1>
+        <p class="page-description" data-i18n="page25.description">Su caja fuerte digital centraliza todos los documentos vinculados a sus trámites Facil — documentos personales subidos por usted, documentos generados automáticamente (recibos, certificados), preparación pre-trámite asistida por IA. 4 pestañas dedicadas + un asistente IA configurable.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#onboarding" data-i18n="page25.toc.s1">1. Primer acceso (onboarding)</a></li>
+            <li><a href="#tab-personales" data-i18n="page25.toc.s2">2. Pestaña «Personales»</a></li>
+            <li><a href="#tab-generados" data-i18n="page25.toc.s3">3. Pestaña «Generados»</a></li>
+            <li><a href="#tab-preparacion" data-i18n="page25.toc.s4">4. Pestaña «Preparación»</a></li>
+            <li><a href="#asistente" data-i18n="page25.toc.s5">5. Asistente IA configurable</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="onboarding" data-i18n="page25.s1.title">1. Primer acceso — modal de bienvenida</h2>
+          <p data-i18n-html="page25.s1.intro">La primera vez que abre «Mis Documentos», un <strong>modal de onboarding</strong> presenta las 4 promesas del módulo: almacenamiento seguro, clasificación IA automática, alertas de vencimiento, verificación pública vía QR.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/documents/0.png" alt="Modal onboarding documentos" data-i18n-attr-alt="page25.s1.fig1.alt">
+            <figcaption data-i18n="page25.s1.fig1.caption">Modal «Bienvenido a Mis Documentos» con 4 bullets explicativos + CTA «Comenzar». Stats de fondo: 36 documentos totales, 0 personales, 0 generados, 0 por vencer, 11.3 MB / 100 MB cuota.</figcaption>
+          </figure>
+
+          <p data-i18n-html="page25.s1.body">La <strong>cuota</strong> de almacenamiento es de <strong>100 MB</strong> por cuenta. Los archivos pueden estar en formato PDF, JPG, PNG (máx. 10 MB por archivo). El modal solo se muestra una vez — pulse «Comenzar» para acceder a las pestañas.</p>
+        </section>
+
+        <section>
+          <h2 id="tab-personales" data-i18n="page25.s2.title">2. Pestaña «Personales»</h2>
+          <p data-i18n-html="page25.s2.intro">Sus documentos subidos manualmente : DIP/NIE, certificados de residencia, fotos tipo carnet, documentos de identidad, etc. Visualización en grid de tarjetas con el icono de tipo de archivo y el nombre.</p>
+
+          <h3 data-i18n="page25.s2.actions.title">Acciones por documento (menú contextual)</h3>
+          <ul>
+            <li data-i18n-html="page25.s2.actions.f1"><strong>Ver</strong> — abrir el documento en una pestaña nueva</li>
+            <li data-i18n-html="page25.s2.actions.f2"><strong>Descargar</strong> — guardar en su computadora</li>
+            <li data-i18n-html="page25.s2.actions.f3"><strong>Reclasificar</strong> — corregir la categoría asignada por la IA si es errónea</li>
+            <li data-i18n-html="page25.s2.actions.f4"><strong>Archivar</strong> — ocultar de la vista activa (puede recuperarse)</li>
+            <li data-i18n-html="page25.s2.actions.f5"><strong>Eliminar</strong> — borrado definitivo (con confirmación)</li>
+          </ul>
+
+          <h3 data-i18n="page25.s2.cat.title">Categorías IA</h3>
+          <p data-i18n-html="page25.s2.cat.body">Filtros disponibles : <strong>Identidad</strong>, <strong>Vehículo</strong>, <strong>Legal</strong>, <strong>Financiero</strong>, <strong>Administrativo</strong>, <strong>Médico</strong>, <strong>Educación</strong>, <strong>Foto</strong>, <strong>Empresa</strong>, <strong>Empleo</strong>, <strong>Otro</strong>. La IA clasifica automáticamente cada documento subido, con posibilidad de corregir.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/documents/1.png" alt="Pestaña Personales con menú" data-i18n-attr-alt="page25.s2.fig1.alt">
+            <figcaption data-i18n="page25.s2.fig1.caption">Pestaña «Personales» con 16 documentos en grid. Filtros de categoría visibles. Menú contextual abierto sobre un documento (Ver/Descargar/Reclasificar/Archivar/Eliminar). CTA «Agregar un documento» en la parte superior derecha.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="tab-generados" data-i18n="page25.s3.title">3. Pestaña «Generados»</h2>
+          <p data-i18n-html="page25.s3.intro">Los documentos generados automáticamente por Facil al validar sus trámites. Sub-categorías filtradas:</p>
+          <ul>
+            <li data-i18n-html="page25.s3.f1"><strong>Recibos</strong> — pruebas de pago (REC-2026-XXXXXX)</li>
+            <li data-i18n-html="page25.s3.f2"><strong>Resúmenes de solicitud</strong> — documento PDF que lista los datos de cada solicitud (CON-, PAS-, LIC-)</li>
+            <li data-i18n-html="page25.s3.f3"><strong>Certificaciones</strong> — documentos oficiales finales (carnet de conducir, certificado de residencia, etc.)</li>
+            <li data-i18n-html="page25.s3.f4"><strong>Resúmenes de bundle</strong> — pago consolidado multi-entidad</li>
+          </ul>
+
+          <p data-i18n-html="page25.s3.body">Todos estos documentos llevan el <strong>QR de verificación pública</strong> y pueden ser presentados como prueba ante cualquier administración o tercero. Vea la página <a href="57-verificar.html">Verificar un recibo</a>.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/documents/2.png" alt="Pestaña Generados" data-i18n-attr-alt="page25.s3.fig1.alt">
+            <figcaption data-i18n="page25.s3.fig1.caption">Pestaña «Generados» con sub-pestañas (Todos / Certificados / Recibos / Resúmenes / Certificaciones). Grid de tarjetas «Recibo de pago» y «Resumen de solicitud» con fechas (23 abr 2026) y referencias (#REC-2026-..., #PAS-2026-...).</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="tab-preparacion" data-i18n="page25.s4.title">4. Pestaña «Preparación»</h2>
+          <p data-i18n-html="page25.s4.intro">Funcionalidad <strong>asistida por IA</strong>: prepare documentos antes de iniciar un trámite. La IA analiza sus documentos personales existentes, identifica los que cumplen con los requisitos de los trámites más comunes, y muestra el porcentaje de preparación.</p>
+
+          <h3 data-i18n="page25.s4.cards.title">Tarjetas «Iniciar un trámite»</h3>
+          <p data-i18n-html="page25.s4.cards.body">Tarjetas de los trámites populares (Pasaporte, Residencia, Carnet Funcionario) con el % de preparación y la lista de documentos faltantes. Pulse para iniciar el trámite directamente.</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/documents/3.png" alt="Pestaña Preparación" data-i18n-attr-alt="page25.s4.fig1.alt">
+            <figcaption data-i18n="page25.s4.fig1.caption">Pestaña «Preparación» — tarjetas Pasaporte/Residencia/Carnet Funcionario, sección «Preparación para X» con checklist documentos requeridos + barras de progreso (100%, 75%).</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="asistente" data-i18n="page25.s5.title">5. Asistente IA configurable (drawer)</h2>
+          <p data-i18n-html="page25.s5.intro">Un drawer (panel lateral derecho) permite configurar el comportamiento del asistente IA en relación con sus documentos. 3 secciones:</p>
+          <ul>
+            <li data-i18n-html="page25.s5.f1"><strong>PERMISOS</strong> — 5 conmutadores : preparar solicitudes, preparar renovaciones, clasificar documentos, sugerir citas, alertas proactivas. Cada uno con modo Proactivo (la IA actúa sin pedir) o Preparatorio (la IA propone)</li>
+            <li data-i18n-html="page25.s5.f2"><strong>MEMORIAS APRENDIDAS</strong> — lista de las preferencias aprendidas (con porcentaje de confianza, ej. 100% «prefiere ciudad X»)</li>
+            <li data-i18n-html="page25.s5.f3"><strong>STATS</strong> — número de conversaciones, permisos activos, memorias guardadas</li>
+          </ul>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/documents/4.png" alt="Drawer Configuración asistente" data-i18n-attr-alt="page25.s5.fig1.alt">
+            <figcaption data-i18n="page25.s5.fig1.caption">Drawer «Configuración del asistente» — 5 toggles ON (preparar/clasificar/sugerir/alertas), 2 memorias aprendidas (100% confianza), stats (4 conversaciones, 5 permisos, 2 memorias).</figcaption>
+          </figure>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page25.s5.success">El asistente IA mejora cada vez que rectifica una clasificación o confirma una sugerencia. Más lo usa, más relevante se vuelve.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="24-mis-pagos-web.html" class="pagination-prev"><span data-i18n="page25.prev">← Anterior: Mis pagos</span></a>
+          <a href="26-bundle-payment.html" class="pagination-next"><span data-i18n="page25.next">Siguiente: Pago agrupado →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

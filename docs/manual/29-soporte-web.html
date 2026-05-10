@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page29.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Asistente IA conectado y tickets de soporte en Facil Web — chat enriquecido con contexto personal, paquetes fiscales calculados, gestión de tickets.">
+  <title>Asistente IA y Soporte (Web) — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.support_web">Asistente IA y Soporte</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page29.title">Asistente IA conectado y Soporte</h1>
+        <p class="page-description" data-i18n="page29.description">Esta página combina 2 funciones complementarias para usuarios conectados : el asistente IA conectado (acceso a su contexto personal — coffre digital, empresas, solicitudes) y el sistema de tickets de soporte (problemas técnicos o administrativos).</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#asistente-vacio" data-i18n="page29.toc.s1">1. Asistente IA — pantalla inicial</a></li>
+            <li><a href="#asistente-acciones" data-i18n="page29.toc.s2">2. Acciones rápidas (sugerencias y trámites)</a></li>
+            <li><a href="#asistente-conv" data-i18n="page29.toc.s3">3. Conversaciones — ejemplos reales</a></li>
+            <li><a href="#tickets" data-i18n="page29.toc.s4">4. Sistema de tickets de soporte</a></li>
+            <li><a href="#nuevo-ticket" data-i18n="page29.toc.s5">5. Crear un ticket</a></li>
+            <li><a href="#detalle-ticket" data-i18n="page29.toc.s6">6. Conversación en un ticket</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="asistente-vacio" data-i18n="page29.s1.title">1. Asistente IA — pantalla inicial</h2>
+          <p data-i18n-html="page29.s1.intro">Acceso : menú lateral → <strong>«Chat Asistente»</strong>. Al abrir, ve un mensaje de bienvenida personalizado y <strong>4 sugerencias contextuales</strong> + una sección <strong>«Mi Cofre Digital»</strong> con 5 quick actions:</p>
+          <ul>
+            <li data-i18n-html="page29.s1.f1"><strong>Documentos</strong> — análisis automático de documentos faltantes</li>
+            <li data-i18n-html="page29.s1.f2"><strong>¿Cuánto cuesta?</strong> — simulación de costes</li>
+            <li data-i18n-html="page29.s1.f3"><strong>Pasos</strong> — guía paso a paso de un trámite</li>
+            <li data-i18n-html="page29.s1.f4"><strong>Servicios fiscales</strong> — info detallada por servicio</li>
+            <li data-i18n-html="page29.s1.f5"><strong>Cofre digital</strong> — vencimientos, preparados, estadísticas, faltan, pagar obligaciones</li>
+          </ul>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/chat/1.png" alt="Asistente IA estado inicial" data-i18n-attr-alt="page29.s1.fig1.alt">
+            <figcaption data-i18n="page29.s1.fig1.caption">Pantalla «Chat Asistente» con welcome «¿En qué puedo ayudarle?», 4 sugerencias contextuales y la sección «Mi Cofre Digital» con 5 quick actions.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="asistente-acciones" data-i18n="page29.s2.title">2. Acciones rápidas (popovers)</h2>
+          <p data-i18n-html="page29.s2.intro">Dos popovers ofrecen acceso rápido a las acciones populares:</p>
+
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/citizen/chat/2.png" alt="Popover Sugerencias" data-i18n-attr-alt="page29.s2.fig1.alt">
+              <figcaption data-i18n="page29.s2.fig1.caption">Popover «Sugerencias» (icono +) — lista 9 sugerencias clasificadas (documentos, ¿cuánto cuesta?, pasos, servicios, vencer, preparado, estadísticas, faltan, pagar obligaciones).</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/citizen/chat/3.png" alt="Popover Iniciar trámite" data-i18n-attr-alt="page29.s2.fig2.alt">
+              <figcaption data-i18n="page29.s2.fig2.caption">Popover «Iniciar un trámite» (icono cohete) — 6 quick-start : Pasaporte Nueva expedición, Pasaporte Renovación, Residencia Primera vez, Licencia Conducir, Carnet Funcionario, Contrato ONRC.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="asistente-conv" data-i18n="page29.s3.title">3. Conversaciones — ejemplos reales</h2>
+          <p data-i18n-html="page29.s3.intro">El asistente conectado responde con <strong>contexto personal</strong> : conoce sus empresas, sus solicitudes, sus documentos, y puede hacer cálculos personalizados (paquetes fiscales para una empresa específica).</p>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/chat/4.png" alt="Drawer Historial" data-i18n-attr-alt="page29.s3.fig1.alt">
+            <figcaption data-i18n="page29.s3.fig1.caption">Drawer «Historial» (sidebar izquierda) — lista «Conversación actual (Activa)», mensaje «El historial estará disponible próximamente» (función futura).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page29.s3.ex1.title">Ejemplo 1 — Estadísticas del cofre digital</h3>
+          <figure>
+            <img src="_assets/screenshots/web/citizen/chat/5.png" alt="Stats coffre digital" data-i18n-attr-alt="page29.s3.fig2.alt">
+            <figcaption data-i18n="page29.s3.fig2.caption">Conversación 1 — pregunta «Estadísticas de mi cofre digital» → respuesta bot estructurada (14 docs activos, 0 personales, 6 asistente, 8 generados...).</figcaption>
+          </figure>
+
+          <h3 data-i18n="page29.s3.ex2.title">Ejemplo 2 — Pago de obligación de empresa</h3>
+          <figure>
+            <img src="_assets/screenshots/web/citizen/chat/6.png" alt="Pago obligación loading" data-i18n-attr-alt="page29.s3.fig3.alt">
+            <figcaption data-i18n="page29.s3.fig3.caption">Conversación 2 — pregunta «¿Cómo puedo pagar una obligación de mi empresa?» + indicador «Preparando respuesta...» mientras la IA prepara una respuesta personalizada.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page29.s3.ex3.title">Ejemplo 3 — Paquete fiscal personalizado</h3>
+          <figure>
+            <img src="_assets/screenshots/web/citizen/chat/7.png" alt="Paquete fiscal restaurante" data-i18n-attr-alt="page29.s3.fig4.alt">
+            <figcaption data-i18n="page29.s3.fig4.caption">Conversación 3 — respuesta «Apertura de Restaurante en Malabo — Paquete Fiscal» con desglose detallado (Tasa Municipal 163 350, Cámara Comercio 50 000, CMF 480 000...) TOTAL 855 350 XAF + chips sugerencias (documentos restaurante, cuánto cuesta restaurante).</figcaption>
+          </figure>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n-html="page29.s3.tip">El asistente puede <strong>iniciar trámites</strong> desde la conversación. Pulse cualquier respuesta con un CTA «Iniciar este trámite» para abrir directamente el wizard sin volver al menú.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="tickets" data-i18n="page29.s4.title">4. Sistema de tickets de soporte</h2>
+          <p data-i18n-html="page29.s4.intro">Para problemas técnicos o administrativos no resolubles por el asistente IA, use el sistema de tickets. Acceso : menú lateral → <strong>«Ayuda / Soporte»</strong>. Lista de sus tickets con :</p>
+          <ul>
+            <li data-i18n-html="page29.s4.f1"><strong>Identificador</strong> SUP-YYYYMMDD-XXXX</li>
+            <li data-i18n-html="page29.s4.f2"><strong>Asunto</strong> + estado (Abierto / En proceso / Resuelto / Cerrado)</li>
+            <li data-i18n-html="page29.s4.f3"><strong>Prioridad</strong> (Baja / Normal / Alta / Urgente)</li>
+            <li data-i18n-html="page29.s4.f4"><strong>Categoría</strong> (Cuenta / Pago / Trámite / Documentos / Técnico)</li>
+          </ul>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/support/1.png" alt="Lista tickets soporte" data-i18n-attr-alt="page29.s4.fig1.alt">
+            <figcaption data-i18n="page29.s4.fig1.caption">Página «Soporte y Asistencia» — lista de 3 tickets (SUP-20251218-0002, SUP-20251218-0001, SUP-20251217-0001) con asuntos, estados Cerrado/Abierto, prioridad Normal. CTA «+ Nuevo Ticket». Sección «Preguntas Frecuentes» en la parte inferior.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="nuevo-ticket" data-i18n="page29.s5.title">5. Crear un ticket</h2>
+          <p data-i18n-html="page29.s5.intro">Pulse <strong>«+ Nuevo Ticket»</strong>. Formulario sencillo:</p>
+          <ul>
+            <li data-i18n-html="page29.s5.f1"><strong>Categoría</strong> — selector entre las 5 categorías disponibles</li>
+            <li data-i18n-html="page29.s5.f2"><strong>Asunto</strong> — descripción corta (máx 100 caracteres)</li>
+            <li data-i18n-html="page29.s5.f3"><strong>Descripción</strong> — texto detallado del problema (con posibilidad de adjuntar archivos)</li>
+            <li data-i18n-html="page29.s5.f4"><strong>Prioridad</strong> — selector entre 4 niveles (Normal por defecto)</li>
+          </ul>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/support/2.png" alt="Formulario nuevo ticket" data-i18n-attr-alt="page29.s5.fig1.alt">
+            <figcaption data-i18n="page29.s5.fig1.caption">Página «Crear ticket» con campos Categoría (select), Asunto, Descripción (textarea), Prioridad (select Normal por defecto). CTAs Cancelar / Enviar ticket.</figcaption>
+          </figure>
+
+          <p data-i18n-html="page29.s5.body">Tras enviar, el ticket recibe un identificador SUP-YYYYMMDD-XXXX y aparece en su lista. El equipo de soporte responde en <strong>24-72 horas hábiles</strong> según la prioridad.</p>
+        </section>
+
+        <section>
+          <h2 id="detalle-ticket" data-i18n="page29.s6.title">6. Conversación en un ticket</h2>
+          <p data-i18n-html="page29.s6.intro">Pulse un ticket en la lista para abrir su detalle. La página muestra:</p>
+          <ul>
+            <li data-i18n-html="page29.s6.f1"><strong>Cabecera</strong> con asunto + identificador + badges (estado + prioridad)</li>
+            <li data-i18n-html="page29.s6.f2"><strong>Detalles</strong> : descripción, fecha de creación, creador, categoría</li>
+            <li data-i18n-html="page29.s6.f3"><strong>Conversación</strong> : intercambio de mensajes con el agente de soporte</li>
+            <li data-i18n-html="page29.s6.f4"><strong>Adjuntos</strong> : capturas, documentos compartidos en la conversación</li>
+            <li data-i18n-html="page29.s6.f5"><strong>Botones</strong> : responder, marcar como resuelto, cerrar (definitivo)</li>
+          </ul>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/support/3.png" alt="Detalle ticket conversación" data-i18n-attr-alt="page29.s6.fig1.alt">
+            <figcaption data-i18n="page29.s6.fig1.caption">Detalle ticket «Second test / SUP-20251218-0001» con badge Abierto + Normal. Bloc Detalles (Descripción «Verifier la vue du ticket par l'administrateur», Creado 18/12/2025 10:40, Categoría Mi Cuenta). Sección «Ver conversación» con 1 mensaje.</figcaption>
+          </figure>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n-html="page29.s6.warning">Una vez cerrado, un ticket NO puede ser reabierto. Si su problema no está resuelto, mejor responda al ticket existente en lugar de cerrarlo. Si necesita escalar al supervisor, indíquelo en el mensaje.</p>
+          </aside>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n-html="page29.s6.success">Para problemas urgentes (cuenta comprometida, pago erróneo crítico), use prioridad Urgente y mencione la urgencia en el asunto. El plazo de respuesta es entonces de <strong>4-12 horas hábiles</strong>.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="28-notificaciones-web.html" class="pagination-prev"><span data-i18n="page29.prev">← Anterior: Notificaciones</span></a>
+          <a href="31-dashboard-mobile.html" class="pagination-next coming-soon"><span data-i18n="page29.next">Siguiente: Panel principal Móvil →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

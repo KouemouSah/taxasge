@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page26.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pago agrupado (bundle) — pague múltiples obligaciones fiscales de su empresa en una sola transacción multi-entidad (Tesoro, Ayuntamiento, Cámara).">
+  <title>Pago agrupado (Web) — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.bundle_payment">Pago agrupado</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page26.title">Pago agrupado de obligaciones fiscales</h1>
+        <p class="page-description" data-i18n="page26.description">El pago agrupado (bundle) le permite pagar múltiples obligaciones fiscales de su empresa en una sola transacción, repartida automáticamente entre las entidades emisoras (Tesoro Público, Ayuntamiento, Cámara de Comercio). Optimiza el tiempo administrativo y reduce las comisiones bancarias.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#concepto" data-i18n="page26.toc.s1">1. Concepto y ventajas</a></li>
+            <li><a href="#wizard" data-i18n="page26.toc.s2">2. Wizard 4 etapas</a></li>
+            <li><a href="#modos" data-i18n="page26.toc.s3">3. Modo A vs Modo B</a></li>
+            <li><a href="#confirmacion" data-i18n="page26.toc.s4">4. Confirmación y seguimiento</a></li>
+            <li><a href="#tecnico" data-i18n="page26.toc.s5">5. Lock ordering técnico (diagrama)</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="concepto" data-i18n="page26.s1.title">1. Concepto y ventajas</h2>
+          <p data-i18n-html="page26.s1.intro">Una empresa típica tiene varias obligaciones fiscales anuales : <strong>CMF</strong> (Tesoro), <strong>Tasa Municipal</strong> (Ayuntamiento), <strong>Cuota Cámara</strong> (Cámara de Comercio), <strong>Licencia comercial</strong>, <strong>Certificados de Comercio</strong>, etc. En lugar de pagar cada una por separado (varias visitas, múltiples comisiones), el bundle permite agruparlas.</p>
+
+          <h3 data-i18n="page26.s1.benefits.title">Ventajas</h3>
+          <ul>
+            <li data-i18n-html="page26.s1.benefits.f1"><strong>Una sola transacción</strong> bancaria — reducción de comisiones</li>
+            <li data-i18n-html="page26.s1.benefits.f2"><strong>Reparto automático</strong> entre las 3 entidades emisoras (sin manipulación de su parte)</li>
+            <li data-i18n-html="page26.s1.benefits.f3"><strong>Solicitud única LIC-2026-XXXXX</strong> con seguimiento centralizado</li>
+            <li data-i18n-html="page26.s1.benefits.f4"><strong>3 recibos automáticos</strong> generados (uno por entidad: REC para Tesoro, REC para Ayuntamiento, REC para Cámara)</li>
+            <li data-i18n-html="page26.s1.benefits.f5"><strong>Selección flexible</strong> — pague solo las obligaciones que desea, las demás quedan pendientes</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="wizard" data-i18n="page26.s2.title">2. Wizard 4 etapas</h2>
+          <p data-i18n-html="page26.s2.intro">El wizard del bundle se accede desde <a href="27-mis-empresas-web.html">Mis empresas</a> → botón <strong>«Pagar Obligaciones»</strong> en una empresa. Comprende 4 etapas:</p>
+
+          <h3 data-i18n="page26.s2.s1.title">Etapa 1/4 — Identificación de la empresa</h3>
+          <p data-i18n-html="page26.s2.s1.body">Buscar o seleccionar la empresa concernida. Si tiene varias empresas, se muestran como cards con búsqueda por NIF, PE-XXXX o nombre.</p>
+
+          <div class="figure-pair">
+            <figure><img src="_assets/screenshots/web/business/5.png" alt="Wizard etapa 1 selección" data-i18n-attr-alt="page26.s2.s1.fig1.alt"><figcaption data-i18n="page26.s2.s1.fig1.caption">Etapa 1/4 — Pantalla «Identificación de la Empresa» con search NIF/PE-XXXX/nombre + lista de las 5 empresas con CTA «Pagar →».</figcaption></figure>
+            <figure><img src="_assets/screenshots/web/business/6.png" alt="Wizard etapa 1 sélectionnée" data-i18n-attr-alt="page26.s2.s1.fig2.alt"><figcaption data-i18n="page26.s2.s1.fig2.caption">Etapa 1/4 con empresa seleccionada (Gas Natural Ecuatorial PE-1022, Bar Restaurante, Zona A1, Verificada). CTA Anterior / Siguiente.</figcaption></figure>
+          </div>
+
+          <h3 data-i18n="page26.s2.s2.title">Etapa 2/4 — Selección de obligaciones (Modo A vs B)</h3>
+          <p data-i18n-html="page26.s2.s2.body">La pantalla muestra todas las obligaciones fiscales 2026 de la empresa, agrupadas por entidad. Antes de seleccionar, escoja el modo:</p>
+          <ul>
+            <li data-i18n-html="page26.s2.s2.f1"><strong>Modo A — Por línea</strong> : seleccione individualmente cada obligación que quiere pagar (con checkbox)</li>
+            <li data-i18n-html="page26.s2.s2.f2"><strong>Modo B — Pago consolidado</strong> : pago único de TODAS las obligaciones en una sola transacción</li>
+          </ul>
+
+          <h3 data-i18n="page26.s2.s3.title">Etapa 3/4 — Pago</h3>
+          <p data-i18n-html="page26.s2.s3.body">Pantalla de pago con resumen de las obligaciones seleccionadas, total a pagar, y selector del método de pago (Mobile Money, efectivo en agencia, transferencia, tarjeta, cheque). Mismo flujo que el <a href="22-iniciar-tramite-web.html">wizard estándar</a>.</p>
+
+          <figure><img src="_assets/screenshots/web/business/11.png" alt="Wizard etapa 3 pago" data-i18n-attr-alt="page26.s2.s3.fig.alt"><figcaption data-i18n="page26.s2.s3.fig.caption">Etapa 3/4 — Resumen «Por línea · 7 obligaciones seleccionadas» + tabla recap + Total 723 350 XAF + métodos de pago (Mobile Money, efectivo en agencia seleccionado).</figcaption></figure>
+
+          <h3 data-i18n="page26.s2.s4.title">Etapa 4/4 — Confirmación</h3>
+          <p data-i18n-html="page26.s2.s4.body">Pantalla final con check verde, número de referencia LIC-2026-XXXXX, monto total, número de obligaciones cubiertas, modo elegido, y los próximos pasos (validación 1-3 días, procesamiento, recepción licencia por email).</p>
+
+          <figure><img src="_assets/screenshots/web/business/12.png" alt="Wizard etapa 4 confirmación" data-i18n-attr-alt="page26.s2.s4.fig.alt"><figcaption data-i18n="page26.s2.s4.fig.caption">Etapa 4/4 — Confirmación con icono verde, ref 39ca9893-..., 723 350 XAF, 7 obligaciones, modo «Por línea». Box «Próximos pasos» 3 etapas. CTAs «Ver mis solicitudes» y «Volver al Dashboard».</figcaption></figure>
+        </section>
+
+        <section>
+          <h2 id="modos" data-i18n="page26.s3.title">3. Modo A vs Modo B — comparación detallada</h2>
+
+          <div class="figure-pair">
+            <figure><img src="_assets/screenshots/web/business/7.png" alt="Modo A — sélection par ligne" data-i18n-attr-alt="page26.s3.fig1.alt"><figcaption data-i18n="page26.s3.fig1.caption">Modo A — Cada obligación tiene un checkbox individual. Botón «Seleccionar todo / Deseleccionar todo». Lista agrupada por entidad (TESORO, AYUNTAMIENTO, CAMARA).</figcaption></figure>
+            <figure><img src="_assets/screenshots/web/business/8.png" alt="Modo B — consolidado" data-i18n-attr-alt="page26.s3.fig2.alt"><figcaption data-i18n="page26.s3.fig2.caption">Modo B — Sin checkboxes. Todas las obligaciones se incluyen automáticamente. La lista detalla los items que serán pagados consolidados.</figcaption></figure>
+          </div>
+
+          <div class="figure-pair">
+            <figure><img src="_assets/screenshots/web/business/9.png" alt="Total con todo seleccionado" data-i18n-attr-alt="page26.s3.fig3.alt"><figcaption data-i18n="page26.s3.fig3.caption">Modo A con todo seleccionado (10 obligaciones) — Total 855 350 XAF (TESORO + AYUNTAMIENTO + CAMARA).</figcaption></figure>
+            <figure><img src="_assets/screenshots/web/business/10.png" alt="Selección parcial con warning" data-i18n-attr-alt="page26.s3.fig4.alt"><figcaption data-i18n="page26.s3.fig4.caption">Modo A sélection parcial (7 sur 10) — Total 723 350 XAF + alerta amarilla «Las obligaciones no seleccionadas quedarán pendientes. Podrá pagarlas en otro momento.»</figcaption></figure>
+          </div>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n-html="page26.s3.tip">Use el <strong>Modo A</strong> si quiere pagar prioritariamente las obligaciones más urgentes (próxima a vencer) o si su flujo de caja no permite pagar todo. Use el <strong>Modo B</strong> si tiene fondos disponibles para finalizar todas las obligaciones de un golpe (más rápido, menos comisiones).</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="confirmacion" data-i18n="page26.s4.title">4. Confirmación y seguimiento</h2>
+          <p data-i18n-html="page26.s4.intro">Después del pago, su solicitud LIC-2026-XXXXX aparece en <a href="23-mis-solicitudes-web.html">Mis solicitudes</a> con un stepper visual y 3 sub-tarjetas (una por entidad emisora) mostrando el estado individual de cada validación.</p>
+
+          <p data-i18n-html="page26.s4.body">Cada entidad valida su parte por separado : Ayuntamiento puede validar antes que la Cámara, etc. Por lo tanto, recibirá <strong>3 emails progresivos</strong> con el recibo correspondiente cada vez que una entidad valida.</p>
+
+          <figure><img src="_assets/screenshots/web/business/16.png" alt="PDF récapitulatif bundle" data-i18n-attr-alt="page26.s4.fig.alt"><figcaption data-i18n="page26.s4.fig.caption">PDF generado del bundle (LIC-2026-00001) con tabla de obligaciones, status por entidad (2 «Pagada», 5 «Pago pendiente»), desglose por entidad (Ayuntamiento 163 350 Pagada, Cámara 50 000 Pagada, Tesoro 510 000 escalated_supervisor), QR de verificación.</figcaption></figure>
+        </section>
+
+        <section>
+          <h2 id="tecnico" data-i18n="page26.s5.title">5. Lock ordering técnico (info técnica)</h2>
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información técnica (avanzado)</div>
+            <p data-i18n-html="page26.s5.note">Esta sección es informativa para los curiosos. No necesita comprenderla para usar la función.</p>
+          </aside>
+
+          <p data-i18n-html="page26.s5.intro">El bundle implementa una lógica transaccional <strong>multi-tabla con lock ordering canónico</strong> para evitar deadlocks cuando 100+ agentes simultáneos validan operaciones similares. El orden estricto:</p>
+
+          <pre><code data-i18n="page26.s5.diagram">┌─────────────────────────────────────────────────────────────────┐
+│  ORDEN DE LOCK CANÓNICO PARA BUNDLE PAYMENT                     │
+│  (a respetar siempre para evitar deadlocks)                     │
+└─────────────────────────────────────────────────────────────────┘
+
+   1. commercial_licenses        ← SELECT FOR UPDATE (lock racine)
+              │
+              │  Lock obtenido — la licencia comercial se reserva
+              ▼
+   2. service_requests           ← INSERT (sin FOR UPDATE)
+              │                    Concurrencia gestionada por
+              │                    índice único partial idx_sr_commercial_license_unique
+              │
+              ▼
+   3. license_obligations        ← UPDATE batch (locks auto)
+              │                    Las obligaciones se marcan
+              │                    pagadas o pendientes
+              │
+              ▼
+   4. service_payments           ← INSERT final
+              │                    Registra el pago efectivo
+              │
+              ▼
+   ✅ Commit transaction         (todo o nada — atómico)
+
+   Configuración de la transacción:
+       SET LOCAL lock_timeout = '3s';
+       SET LOCAL statement_timeout = '5s';
+
+   En caso de UniqueViolationError sobre service_requests:
+       deterministic SELECT por commercial_license_id (no retry)</code></pre>
+
+          <p data-i18n-html="page26.s5.body">Este diseño asegura que <strong>1000+ pagos simultáneos</strong> sobre la misma empresa nunca terminen en deadlock. La latencia de bloqueo está limitada a 3 segundos máximo para no penalizar la experiencia usuario.</p>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page26.s5.success">El bundle es la opción recomendada para empresas con varias obligaciones. Centraliza el seguimiento y reduce el tiempo administrativo.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="25-mis-documentos-web.html" class="pagination-prev"><span data-i18n="page26.prev">← Anterior: Mis documentos</span></a>
+          <a href="27-mis-empresas-web.html" class="pagination-next"><span data-i18n="page26.next">Siguiente: Mis empresas →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>
