@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page11.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cree su cuenta Facil en pocos minutos: tipo de cuenta (ciudadano o empresa), datos personales, verificación email y teléfono.">
+  <title>Crear cuenta — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.account">Su cuenta</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.create_account">Crear cuenta</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page11.title">Crear su cuenta Facil</h1>
+        <p class="page-description" data-i18n="page11.description">Para realizar trámites administrativos en Facil (presentar una solicitud, pagar una tasa, descargar un recibo) necesita una cuenta personal. La creación es gratuita, en línea, y le toma 3-5 minutos.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Visitante (sin cuenta)</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#tipo" data-i18n="page11.toc.s1">1. Elegir el tipo de cuenta</a></li>
+            <li><a href="#datos" data-i18n="page11.toc.s2">2. Rellenar los datos personales</a></li>
+            <li><a href="#verif-email" data-i18n="page11.toc.s3">3. Verificar el correo electrónico</a></li>
+            <li><a href="#contrasena" data-i18n="page11.toc.s4">4. Crear la contraseña</a></li>
+            <li><a href="#diff-mobile" data-i18n="page11.toc.s5">5. Diferencias Web vs Móvil</a></li>
+            <li><a href="#errores" data-i18n="page11.toc.s6">6. Errores frecuentes</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="tipo" data-i18n="page11.s1.title">1. Elegir el tipo de cuenta</h2>
+          <p data-i18n-html="page11.s1.intro">Al iniciar la creación, debe elegir entre 2 tipos de cuenta — la elección determina los campos a rellenar y los servicios disponibles después de la conexión:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page11.s1.table.col1">Tipo</th><th data-i18n="page11.s1.table.col2">Para quién</th><th data-i18n="page11.s1.table.col3">Documentos requeridos</th></tr></thead>
+              <tbody>
+                <tr><td><strong data-i18n="page11.s1.table.r1.c1">Ciudadano</strong></td><td data-i18n="page11.s1.table.r1.c2">Particular que realiza trámites para sí mismo o su familia</td><td data-i18n="page11.s1.table.r1.c3">DIP (nacionales) o NIE (residentes extranjeros)</td></tr>
+                <tr><td><strong data-i18n="page11.s1.table.r2.c1">Empresa</strong></td><td data-i18n="page11.s1.table.r2.c2">Representante legal de una empresa registrada en Guinea Ecuatorial</td><td data-i18n="page11.s1.table.r2.c3">NIF de la empresa + DIP/NIE del representante</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/2.png" alt="Pantalla de registro con selector tipo de cuenta" data-i18n-attr-alt="page11.s1.fig1.alt">
+            <figcaption data-i18n="page11.s1.fig1.caption">Pantalla de registro Web — selector «Tipo de cuenta» (Ciudadano seleccionado por defecto / Empresa) seguido de los campos Nombre, Apellido, Correo, Teléfono, Contraseña, y CTA «Crear una cuenta».</figcaption>
+          </figure>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page11.s1.info">Si gestiona varias empresas, comience por crear su cuenta personal (tipo Ciudadano) y luego añada las empresas mediante <a href="42-gestion-empresas.html" class="coming-soon">Gestionar empresas</a>. Esto le permite cambiar entre sus diferentes roles desde el mismo inicio de sesión.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="datos" data-i18n="page11.s2.title">2. Rellenar los datos personales</h2>
+          <p data-i18n="page11.s2.intro">Los campos varían según el tipo de cuenta elegido:</p>
+
+          <h3 data-i18n="page11.s2.citizen.title">Cuenta Ciudadano</h3>
+          <ul>
+            <li data-i18n-html="page11.s2.citizen.f1"><strong>Nombre y apellidos</strong> — exactamente como aparecen en su DIP/NIE (acentos, mayúsculas)</li>
+            <li data-i18n-html="page11.s2.citizen.f2"><strong>Correo electrónico</strong> — un email personal al que tenga acceso (no uno desactivado, no un email temporal)</li>
+            <li data-i18n-html="page11.s2.citizen.f3"><strong>Teléfono</strong> — número móvil con prefijo internacional (+240 para Guinea Ecuatorial)</li>
+          </ul>
+
+          <h3 data-i18n="page11.s2.business.title">Cuenta Empresa</h3>
+          <ul>
+            <li data-i18n-html="page11.s2.business.f1"><strong>NIF de la empresa</strong> — Número de Identificación Fiscal único, exactamente como aparece en el certificado de registro</li>
+            <li data-i18n-html="page11.s2.business.f2"><strong>Nombre comercial</strong> — denominación oficial registrada</li>
+            <li data-i18n-html="page11.s2.business.f3"><strong>Datos del representante legal</strong> — nombre, DIP/NIE, email profesional, teléfono</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/auth/signup-step1-es.jpg" alt="Pantalla móvil registro etapa 1/2" data-i18n-attr-alt="page11.s2.fig1.alt">
+            <figcaption data-i18n="page11.s2.fig1.caption">Pantalla móvil — etapa 1/2 «Crea tu cuenta Facil» con el campo email y el botón «Enviar código» de verificación.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="verif-email" data-i18n="page11.s3.title">3. Verificar el correo electrónico</h2>
+          <p data-i18n-html="page11.s3.intro">Después de validar la etapa 1, Facil envía un <strong>código de verificación de 6 cifras</strong> a su correo electrónico. Este código tiene una validez de <strong>15 minutos</strong>.</p>
+
+          <ol class="step-list">
+            <li data-i18n-html="page11.s3.step1">Abra su buzón de correo (incluya la carpeta de spam si no aparece).</li>
+            <li data-i18n-html="page11.s3.step2">Localice el email de <code>noreply@facil.gov.gq</code> con el asunto «Código de verificación Facil».</li>
+            <li data-i18n-html="page11.s3.step3">Copie el código de 6 cifras y pegelo en el campo correspondiente en la pantalla.</li>
+            <li data-i18n-html="page11.s3.step4">Pulse <strong>«Verificar»</strong>. Si el código es correcto, accede a la etapa siguiente.</li>
+          </ol>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n-html="page11.s3.warning">Si no recibe el email después de <strong>5 minutos</strong>: (1) verifique la ortografía de la dirección email introducida, (2) consulte el spam/correo no deseado, (3) pulse «Reenviar el código» (límite : 3 reenvíos en 15 minutos).</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="contrasena" data-i18n="page11.s4.title">4. Crear la contraseña</h2>
+          <p data-i18n-html="page11.s4.intro">La contraseña debe respetar las siguientes reglas de seguridad:</p>
+
+          <ul>
+            <li data-i18n-html="page11.s4.r1"><strong>Mínimo 8 caracteres</strong></li>
+            <li data-i18n-html="page11.s4.r2"><strong>Al menos 1 mayúscula</strong> (A-Z)</li>
+            <li data-i18n-html="page11.s4.r3"><strong>Al menos 1 minúscula</strong> (a-z)</li>
+            <li data-i18n-html="page11.s4.r4"><strong>Al menos 1 cifra</strong> (0-9)</li>
+            <li data-i18n-html="page11.s4.r5"><strong>Recomendado: 1 carácter especial</strong> (!@#$%^&* etc.)</li>
+            <li data-i18n-html="page11.s4.r6">No debe contener su nombre, apellido o fecha de nacimiento</li>
+          </ul>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n-html="page11.s4.tip">Use un <strong>gestor de contraseñas</strong> (Bitwarden, 1Password, o el integrado en su navegador) para generar una contraseña fuerte y guardarla. Active la <a href="14-2fa.html">autenticación 2FA</a> después de crear su cuenta para una seguridad reforzada.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="diff-mobile" data-i18n="page11.s5.title">5. Diferencias Web vs Móvil</h2>
+          <p data-i18n="page11.s5.intro">El proceso es idéntico en sustancia pero presenta algunas diferencias visuales:</p>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page11.s5.table.col1">Aspecto</th><th data-i18n="page11.s5.table.col2">Web</th><th data-i18n="page11.s5.table.col3">Móvil</th></tr></thead>
+              <tbody>
+                <tr><td data-i18n="page11.s5.table.r1.c1">Pantalla todo-en-uno</td><td>✅</td><td data-i18n="page11.s5.table.r1.c3">2 etapas separadas (email → datos)</td></tr>
+                <tr><td data-i18n="page11.s5.table.r2.c1">Selector tipo cuenta</td><td data-i18n="page11.s5.table.r2.c2">Botones grandes lado a lado</td><td data-i18n="page11.s5.table.r2.c3">Lista vertical</td></tr>
+                <tr><td data-i18n="page11.s5.table.r3.c1">Permisos cámara/contactos</td><td>❌</td><td data-i18n="page11.s5.table.r3.c3">✅ (opcional, para foto perfil)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="errores" data-i18n="page11.s6.title">6. Errores frecuentes</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page11.s6.table.col1">Mensaje</th><th data-i18n="page11.s6.table.col2">Causa</th><th data-i18n="page11.s6.table.col3">Solución</th></tr></thead>
+              <tbody>
+                <tr><td data-i18n="page11.s6.r1.c1">«Email ya registrado»</td><td data-i18n="page11.s6.r1.c2">Una cuenta existe con este email</td><td data-i18n="page11.s6.r1.c3">Inicie sesión o use «Contraseña olvidada»</td></tr>
+                <tr><td data-i18n="page11.s6.r2.c1">«DIP/NIF ya registrado»</td><td data-i18n="page11.s6.r2.c2">Su identidad ya está vinculada a una cuenta</td><td data-i18n="page11.s6.r2.c3">Recupere la cuenta original o contacte al soporte</td></tr>
+                <tr><td data-i18n="page11.s6.r3.c1">«Código incorrecto»</td><td data-i18n="page11.s6.r3.c2">Código mal copiado o caducado (>15 min)</td><td data-i18n="page11.s6.r3.c3">Solicite un nuevo código mediante «Reenviar»</td></tr>
+                <tr><td data-i18n="page11.s6.r4.c1">«Contraseña demasiado débil»</td><td data-i18n="page11.s6.r4.c2">No cumple las reglas de la sección 4</td><td data-i18n="page11.s6.r4.c3">Añada mayúscula + cifra + carácter especial</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n-html="page11.s6.success">Su cuenta está creada. Ya puede <a href="12-iniciar-sesion.html">iniciar sesión</a> y comenzar sus trámites. Le recomendamos activar la <a href="14-2fa.html">autenticación 2FA</a> de inmediato para proteger su cuenta.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="58-legal.html" class="pagination-prev"><span data-i18n="page11.prev">← Anterior: Información legal</span></a>
+          <a href="12-iniciar-sesion.html" class="pagination-next"><span data-i18n="page11.next">Siguiente: Iniciar sesión →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

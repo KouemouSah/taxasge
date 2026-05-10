@@ -412,6 +412,57 @@ window.__I18N__.fr = {
     "description": "Résumé des conditions d'utilisation, de la politique de confidentialité RGPD, de la gestion des cookies et de la procédure de suppression de compte de Facil. Cette page renvoie aux textes officiels complets disponibles dans l'application.",
     "next": "Suivant : Créer un compte →",
     "prev": "← Précédent : Vérifier un reçu"
+  },
+
+  // ---- pages 11-17 (Phase 3 compte utilisateur, traduction minimale) ----
+  "page11": {
+    "html_title": "Créer un compte — Manuel Facil",
+    "title": "Créer votre compte Facil",
+    "description": "Pour effectuer des démarches administratives sur Facil, vous avez besoin d'un compte personnel. La création est gratuite, en ligne, et prend 3-5 minutes.",
+    "prev": "← Précédent : Mentions légales",
+    "next": "Suivant : Se connecter →"
+  },
+  "page12": {
+    "html_title": "Se connecter — Manuel Facil",
+    "title": "Se connecter à Facil",
+    "description": "Accédez à votre compte personnel avec votre email et votre mot de passe. Si vous avez activé la 2FA, vous devrez également saisir un code TOTP. L'application mobile propose en plus la connexion biométrique.",
+    "prev": "← Précédent : Créer un compte",
+    "next": "Suivant : Mot de passe oublié →"
+  },
+  "page13": {
+    "html_title": "Mot de passe oublié — Manuel Facil",
+    "title": "Récupérer votre mot de passe",
+    "description": "Si vous avez oublié votre mot de passe, vous n'avez pas besoin de créer un nouveau compte. La procédure de récupération restaure votre accès en moins de 5 minutes via un lien sécurisé envoyé à votre email.",
+    "prev": "← Précédent : Se connecter",
+    "next": "Suivant : Authentification 2FA →"
+  },
+  "page14": {
+    "html_title": "Authentification 2FA — Manuel Facil",
+    "title": "Authentification à deux facteurs (2FA)",
+    "description": "L'authentification à deux facteurs (2FA) basée sur TOTP est la protection la plus forte contre le vol de votre compte. L'activer ajoute un code à 6 chiffres généré par une application d'authentification à chaque connexion.",
+    "prev": "← Précédent : Mot de passe oublié",
+    "next": "Suivant : Votre profil →"
+  },
+  "page15": {
+    "html_title": "Votre profil — Manuel Facil",
+    "title": "Votre profil personnel",
+    "description": "Le profil regroupe toutes vos données personnelles sur Facil, organisées en 4 onglets : informations personnelles, informations de compte, préférences de notifications, et vérification fonctionnaire (si applicable).",
+    "prev": "← Précédent : Authentification 2FA",
+    "next": "Suivant : Sécurité →"
+  },
+  "page16": {
+    "html_title": "Sécurité — Manuel Facil",
+    "title": "Configurer la sécurité de votre compte",
+    "description": "La page Sécurité regroupe toutes les options qui protègent votre compte : mot de passe, 2FA, sessions actives, export RGPD. La version mobile ajoute biométrie et verrouillage local de l'application.",
+    "prev": "← Précédent : Votre profil",
+    "next": "Suivant : Supprimer le compte →"
+  },
+  "page17": {
+    "html_title": "Supprimer le compte — Manuel Facil",
+    "title": "Supprimer votre compte Facil",
+    "description": "Si vous ne souhaitez plus utiliser Facil, vous pouvez demander la suppression de votre compte. La procédure inclut une période de grâce de 30 jours pour vous protéger contre les suppressions accidentelles. Certaines données sont conservées légalement (10 ans) par obligation fiscale.",
+    "prev": "← Précédent : Sécurité",
+    "next": "Suivant : Tableau de bord Web →"
   }
 
 };

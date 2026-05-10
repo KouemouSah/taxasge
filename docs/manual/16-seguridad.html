@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page16.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Configure la seguridad de su cuenta Facil: contraseña, 2FA, biometría móvil, sesiones activas, app lock, exportación RGPD.">
+  <title>Seguridad — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.account">Su cuenta</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.security">Seguridad</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page16.title">Configurar la seguridad de su cuenta</h1>
+        <p class="page-description" data-i18n="page16.description">La página Seguridad agrupa todas las opciones que protegen su cuenta: contraseña, 2FA, sesiones activas, exportación RGPD. En la versión móvil añade biometría y bloqueo local de la aplicación. Acceso : Configuración → Seguridad.</p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+          <span class="persona-tag" data-i18n="common.persona.agent">Agente</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#contrasena" data-i18n="page16.toc.s1">1. Cambiar la contraseña</a></li>
+            <li><a href="#2fa" data-i18n="page16.toc.s2">2. Autenticación 2FA</a></li>
+            <li><a href="#biometria" data-i18n="page16.toc.s3">3. Biometría (solo móvil)</a></li>
+            <li><a href="#applock" data-i18n="page16.toc.s4">4. App lock — bloqueo local (solo móvil)</a></li>
+            <li><a href="#sesiones" data-i18n="page16.toc.s5">5. Sesiones activas</a></li>
+            <li><a href="#export" data-i18n="page16.toc.s6">6. Exportar mis datos (RGPD)</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="contrasena" data-i18n="page16.s1.title">1. Cambiar la contraseña</h2>
+          <p data-i18n-html="page16.s1.intro">Recomendado cada <strong>6-12 meses</strong> o tras cualquier sospecha de filtración. El formulario contiene 3 campos:</p>
+          <ol class="step-list">
+            <li data-i18n-html="page16.s1.step1"><strong>Contraseña actual</strong> (requisito de seguridad)</li>
+            <li data-i18n-html="page16.s1.step2"><strong>Nueva contraseña</strong> (mismas reglas que en creación: 8+ chars, mayúscula, cifra)</li>
+            <li data-i18n-html="page16.s1.step3"><strong>Confirmación de la nueva contraseña</strong></li>
+            <li data-i18n-html="page16.s1.step4">Pulse <strong>«Cambiar la contraseña»</strong>. Todas sus sesiones activas (web + móvil) se cierran automáticamente — deberá conectarse de nuevo en cada dispositivo.</li>
+          </ol>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/4.png" alt="Página Configuración Seguridad" data-i18n-attr-alt="page16.s1.fig1.alt">
+            <figcaption data-i18n="page16.s1.fig1.caption">Página «Configuración Seguridad» — 2 tarjetas principales: Contraseña (3 campos + botón «Cambiar la contraseña») y Autenticación 2FA (conmutador OFF/ON).</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="2fa" data-i18n="page16.s2.title">2. Autenticación 2FA</h2>
+          <p data-i18n-html="page16.s2.intro">El conmutador 2FA en esta página activa o desactiva la autenticación de dos factores. Detalle completo del setup, códigos de respaldo y uso diario en la <a href="14-2fa.html">página dedicada 2FA</a>.</p>
+
+          <p data-i18n-html="page16.s2.body">Tras activación, podrá:</p>
+          <ul>
+            <li data-i18n-html="page16.s2.f1"><strong>Regenerar nuevos códigos de respaldo</strong> (si ha gastado los 10 originales)</li>
+            <li data-i18n-html="page16.s2.f2"><strong>Cambiar de aplicación de autenticación</strong> (re-escanear un nuevo QR código)</li>
+            <li data-i18n-html="page16.s2.f3"><strong>Desactivar el 2FA</strong> (no recomendado, requiere contraseña + código TOTP válido)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="biometria" data-i18n="page16.s3.title">3. Biometría (solo móvil)</h2>
+          <p data-i18n-html="page16.s3.intro">En la aplicación móvil, puede activar el desbloqueo por <strong>huella digital</strong> (Touch ID, fingerprint Android) o <strong>reconocimiento facial</strong> (Face ID, reconocimiento Android). Tras la activación:</p>
+          <ul>
+            <li data-i18n-html="page16.s3.f1">Las próximas conexiones se hacen con un simple gesto biométrico (sin email + contraseña + 2FA)</li>
+            <li data-i18n-html="page16.s3.f2">Los datos biométricos <strong>nunca salen de su teléfono</strong> — usan los chips seguros iOS Secure Enclave / Android StrongBox</li>
+            <li data-i18n-html="page16.s3.f3">En caso de fallo (huella sucia, gafas que perturban Face ID), siempre puede volver al inicio de sesión clásico</li>
+            <li data-i18n-html="page16.s3.f4">Después de <strong>5 fallos consecutivos</strong>, la biometría se desactiva temporalmente y se pide la contraseña</li>
+          </ul>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page16.s3.info">Si presta su teléfono a alguien que tiene su huella digital o cara registrada en el aparato, esa persona podrá conectarse a su cuenta Facil. Tenga cuidado con los teléfonos compartidos — desactive la biometría en este caso.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="applock" data-i18n="page16.s4.title">4. App lock — bloqueo local (solo móvil)</h2>
+          <p data-i18n-html="page16.s4.intro">El App Lock añade una capa adicional <strong>al abrir la aplicación móvil</strong> (incluso sin cerrar sesión). Útil si presta su teléfono o lo deja desbloqueado.</p>
+          <ul>
+            <li data-i18n-html="page16.s4.f1"><strong>PIN local de 4-6 cifras</strong> a introducir al abrir la aplicación</li>
+            <li data-i18n-html="page16.s4.f2"><strong>O biometría</strong> si está activa (más rápido)</li>
+            <li data-i18n-html="page16.s4.f3"><strong>Tiempo de espera configurable</strong> : aplicar el bloqueo después de 0 segundos / 30 segundos / 1 minuto / 5 minutos / al apagar la pantalla</li>
+            <li data-i18n-html="page16.s4.f4">El App Lock <strong>no reemplaza el login Facil</strong> — es solamente local al teléfono</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="sesiones" data-i18n="page16.s5.title">5. Sesiones activas</h2>
+          <p data-i18n-html="page16.s5.intro">Lista de todos los dispositivos donde está conectado actualmente. Para cada sesión:</p>
+          <ul>
+            <li data-i18n-html="page16.s5.f1"><strong>Tipo de dispositivo</strong> (Android, iOS, Web Chrome/Firefox/Safari)</li>
+            <li data-i18n-html="page16.s5.f2"><strong>Localización aproximada</strong> (ciudad, basada en la IP)</li>
+            <li data-i18n-html="page16.s5.f3"><strong>Última actividad</strong> (hace 5 min, hace 2 horas, hace 3 días, etc.)</li>
+            <li data-i18n-html="page16.s5.f4"><strong>Botón «Cerrar esta sesión»</strong> para desconectar este dispositivo a distancia</li>
+            <li data-i18n-html="page16.s5.f5"><strong>Botón «Cerrar todas las sesiones»</strong> útil si pierde su teléfono — desconecta todo, incluida su sesión actual</li>
+          </ul>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n-html="page16.s5.warning">Si ve una sesión <strong>desconocida</strong> (tipo de dispositivo extraño, ciudad lejana, fecha sospechosa) — su cuenta está comprometida. Cierre esta sesión inmediatamente, cambie su contraseña, y active el 2FA si aún no está hecho.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="export" data-i18n="page16.s6.title">6. Exportar mis datos (RGPD)</h2>
+          <p data-i18n-html="page16.s6.intro">Conforme al RGPD, puede exportar todos sus datos personales en cualquier momento. Pulse <strong>«Exportar mis datos»</strong> y elija el formato:</p>
+          <ul>
+            <li data-i18n-html="page16.s6.f1"><strong>JSON</strong> — formato técnico, completo, importable en otras herramientas</li>
+            <li data-i18n-html="page16.s6.f2"><strong>PDF</strong> — formato legible por humanos, presentable como prueba</li>
+          </ul>
+
+          <p data-i18n-html="page16.s6.body">El archivo se genera en algunos minutos y se descarga directamente. Contiene: datos personales, lista de solicitudes, lista de pagos, documentos subidos, audit log de las acciones, preferencias.</p>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page16.s6.info">La exportación es <strong>gratuita</strong> y posible <strong>sin límite</strong> de frecuencia. Sus datos no salen de la plataforma — la exportación es para usted solamente. Para más detalles RGPD, consulte la página <a href="58-legal.html">Legal</a>.</p>
+          </aside>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n-html="page16.s6.success">Su cuenta es ahora segura. Si quiere ir más lejos, considere usar un gestor de contraseñas y verificar regularmente sus sesiones activas.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="15-perfil.html" class="pagination-prev"><span data-i18n="page16.prev">← Anterior: Su perfil</span></a>
+          <a href="17-eliminar-cuenta.html" class="pagination-next"><span data-i18n="page16.next">Siguiente: Eliminar cuenta →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>
