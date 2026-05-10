@@ -268,3 +268,115 @@ class TestEndToEndNonInteractive:
         cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
         assert cfg["meta"]["project_name"] == "myproject"
         assert cfg["meta"]["environment"] == "production"
+
+
+# ---------------------------------------------------------------------------
+# Docker DB mode collection (Supabase / external)
+# ---------------------------------------------------------------------------
+
+class TestCollectDockerDbMode:
+    def test_returns_local_for_non_docker_provider(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        secrets: dict = {}
+        p = wiz.Prompter(non_interactive=True)
+        # gcp / aws → always 'local' (irrelevant field for those providers)
+        assert wiz.collect_docker_db_mode(p, secrets, "gcp") == "local"
+        assert wiz.collect_docker_db_mode(p, secrets, "aws") == "local"
+
+    def test_external_mode_stores_database_url_in_secrets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        monkeypatch.setenv("WIZ_DOCKER_DB_MODE", "external")
+        monkeypatch.setenv(
+            "WIZ_EXTERNAL_DATABASE_URL",
+            "postgresql://u:p@db.supabase.co:5432/postgres",
+        )
+        secrets: dict = {}
+        p = wiz.Prompter(non_interactive=True)
+        result = wiz.collect_docker_db_mode(p, secrets, "docker-local")
+        assert result == "external"
+        assert secrets.get("DATABASE_URL") == "postgresql://u:p@db.supabase.co:5432/postgres"
+
+    def test_external_mode_without_url_in_non_interactive_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In non-interactive mode, ask_secret() requires the env var to be
+        set with a non-empty value. Otherwise it raises SystemExit so CI
+        fails loudly instead of silently producing a half-configured stack."""
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        monkeypatch.setenv("WIZ_DOCKER_DB_MODE", "external")
+        # WIZ_EXTERNAL_DATABASE_URL deliberately NOT set.
+        secrets: dict = {}
+        p = wiz.Prompter(non_interactive=True)
+        with pytest.raises(SystemExit):
+            wiz.collect_docker_db_mode(p, secrets, "docker-local")
+
+    def test_local_mode_default_for_docker_provider(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        secrets: dict = {}
+        p = wiz.Prompter(non_interactive=True)
+        # No WIZ_DOCKER_DB_MODE set + non_interactive → default 'local'
+        result = wiz.collect_docker_db_mode(p, secrets, "docker-local")
+        assert result == "local"
+        assert "DATABASE_URL" not in secrets
+
+
+class TestEndToEndDatabaseMode:
+    def test_default_run_is_local_mode(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        monkeypatch.setenv("WIZ_GEMINI_API_KEY", "fake")
+        cfg_path = tmp_path / "cfg.yaml"
+        sec_path = tmp_path / ".env.secrets"
+        rc = wiz.main([
+            "--non-interactive", "--force",
+            f"--config-out={cfg_path}",
+            f"--secrets-out={sec_path}",
+        ])
+        assert rc == 0
+        import yaml
+        cfg_data = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        assert cfg_data["docker_local"]["database_mode"] == "local"
+
+    def test_external_mode_run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for key in list(os.environ.keys()):
+            if key.startswith("WIZ_"):
+                monkeypatch.delenv(key)
+        monkeypatch.setenv("WIZ_GEMINI_API_KEY", "fake")
+        monkeypatch.setenv("WIZ_PROVIDER", "docker-local")
+        monkeypatch.setenv("WIZ_DOCKER_DB_MODE", "external")
+        monkeypatch.setenv(
+            "WIZ_EXTERNAL_DATABASE_URL",
+            "postgresql://u:p@db.example.com:5432/mydb",
+        )
+        cfg_path = tmp_path / "cfg.yaml"
+        sec_path = tmp_path / ".env.secrets"
+        rc = wiz.main([
+            "--non-interactive", "--force",
+            f"--config-out={cfg_path}",
+            f"--secrets-out={sec_path}",
+        ])
+        assert rc == 0
+        import yaml
+        cfg_data = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        assert cfg_data["docker_local"]["database_mode"] == "external"
+        secrets_content = sec_path.read_text(encoding="utf-8")
+        assert "DATABASE_URL=postgresql://u:p@db.example.com" in secrets_content

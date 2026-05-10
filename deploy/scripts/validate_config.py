@@ -248,6 +248,15 @@ class AwsConfig(BaseModel):
 
 
 class DockerLocalConfig(BaseModel):
+    # Where the Postgres database lives.
+    #   - "local"    : compose generates a postgres container (default,
+    #                  zero external dependencies, good for first-time
+    #                  install / demo / offline dev).
+    #   - "external" : compose does NOT generate postgres; backend +
+    #                  db-init connect to DATABASE_URL from .env.secrets
+    #                  (works for Supabase, AWS RDS, Cloud SQL via SQL
+    #                  proxy, Neon, Railway, any external Postgres).
+    database_mode: Literal["local", "external"] = "local"
     backend_port: int = Field(default=8080, ge=1, le=65535)
     frontend_port: int = Field(default=3000, ge=1, le=65535)
     postgres_image: str = "postgres:16-alpine"

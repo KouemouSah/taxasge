@@ -142,6 +142,108 @@ class TestGenerateCompose:
 
 
 # ---------------------------------------------------------------------------
+# database_mode: local vs external (Supabase / RDS / etc.)
+# ---------------------------------------------------------------------------
+
+class TestDatabaseModeExternal:
+    @pytest.fixture
+    def cfg_external(self, minimal_config_dict: dict) -> vc.DeployConfig:
+        # deepcopy to avoid mutating the shared minimal_config_dict fixture
+        # — otherwise other tests requesting `cfg` in the same test function
+        # would see the docker_local override.
+        import copy
+        config = copy.deepcopy(minimal_config_dict)
+        config["docker_local"] = {
+            "database_mode": "external",
+            "backend_port": 8080,
+            "frontend_port": 3000,
+        }
+        return vc.DeployConfig.model_validate(config)
+
+    def test_external_mode_skips_postgres_service(
+        self, cfg_external: vc.DeployConfig
+    ) -> None:
+        out = dl.generate_compose(cfg_external)
+        parsed = yaml.safe_load(out)
+        assert "postgres" not in parsed["services"], \
+            "external mode must NOT generate a postgres service"
+        assert "SKIPPED — database_mode=external" in out
+
+    def test_external_mode_no_postgres_volume(
+        self, cfg_external: vc.DeployConfig
+    ) -> None:
+        out = dl.generate_compose(cfg_external)
+        parsed = yaml.safe_load(out)
+        # `volumes:` key may be absent or empty/None, but must NOT contain pgdata.
+        volumes = parsed.get("volumes") or {}
+        assert "facil_pgdata" not in volumes
+        assert "pgdata" not in str(volumes).lower()
+
+    def test_external_mode_db_init_no_postgres_dependency(
+        self, cfg_external: vc.DeployConfig
+    ) -> None:
+        out = dl.generate_compose(cfg_external)
+        parsed = yaml.safe_load(out)
+        db_init = parsed["services"]["db-init"]
+        # In external mode db-init has no depends_on (or doesn't list postgres).
+        deps = db_init.get("depends_on") or {}
+        assert "postgres" not in deps
+
+    def test_external_mode_backend_no_postgres_dependency(
+        self, cfg_external: vc.DeployConfig
+    ) -> None:
+        out = dl.generate_compose(cfg_external)
+        parsed = yaml.safe_load(out)
+        backend_deps = parsed["services"]["backend"]["depends_on"]
+        assert "postgres" not in backend_deps
+        # But db-init dependency must still be enforced.
+        assert "db-init" in backend_deps
+        assert backend_deps["db-init"]["condition"] == "service_completed_successfully"
+
+    def test_external_mode_does_not_inline_database_url(
+        self, cfg_external: vc.DeployConfig
+    ) -> None:
+        """In external mode, DATABASE_URL must come from .env.secrets, NOT
+        be inlined in the compose `environment:` block (otherwise the inline
+        value would override .env.secrets and break the operator's intent)."""
+        out = dl.generate_compose(cfg_external)
+        parsed = yaml.safe_load(out)
+        backend_env = parsed["services"]["backend"]["environment"]
+        # The key may be absent, OR present but the in-file content must be
+        # a comment line (not a real key-value).
+        assert "DATABASE_URL" not in backend_env or backend_env.get("DATABASE_URL") is None
+        # Same for db-init.
+        db_init_env = parsed["services"]["db-init"]["environment"]
+        assert "DATABASE_URL" not in db_init_env or db_init_env.get("DATABASE_URL") is None
+
+    def test_local_mode_inlines_database_url(
+        self, cfg: vc.DeployConfig
+    ) -> None:
+        """In local mode, DATABASE_URL must be inlined pointing at the in-stack
+        postgres service hostname."""
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        backend_env = parsed["services"]["backend"]["environment"]
+        assert "DATABASE_URL" in backend_env
+        assert "@postgres:5432" in backend_env["DATABASE_URL"]
+
+    def test_local_mode_keeps_postgres_service(
+        self, cfg: vc.DeployConfig
+    ) -> None:
+        """Default (local) mode must still generate the postgres service."""
+        out = dl.generate_compose(cfg)
+        parsed = yaml.safe_load(out)
+        assert "postgres" in parsed["services"]
+
+    def test_database_mode_in_header_comment(
+        self, cfg_external: vc.DeployConfig, cfg: vc.DeployConfig
+    ) -> None:
+        """The header comment must state the chosen mode for clarity."""
+        assert "database_mode: external" in dl.generate_compose(cfg_external)
+        assert "database_mode: local" in dl.generate_compose(cfg)
+
+
+# ---------------------------------------------------------------------------
 # Prereq detection
 # ---------------------------------------------------------------------------
 

@@ -145,9 +145,24 @@ Exit codes: `0` success, `1` validation/render error, `2` provider failed, `3` f
 
 ### Docker Compose local
 
+> **Step-by-step tutorial available**:
+> [`docs/local-deployment-tutorial.md`](docs/local-deployment-tutorial.md)
+> walks through prereqs, wizard, both database modes, and troubleshooting.
+
 **Prerequisites**
 - `docker` installed (Docker Desktop or Engine)
 - `docker compose` v2 plugin available (legacy `docker-compose` v1 is NOT supported)
+
+**Two database topologies**
+
+The wizard asks you which mode to use:
+
+  - **`local`** (default): compose generates a postgres container with a
+    persistent volume. Zero external dependencies.
+  - **`external`**: compose does NOT generate postgres. Backend + db-init
+    use the `DATABASE_URL` from `.env.secrets` to connect to Supabase /
+    AWS RDS / Cloud SQL via proxy / Neon / Railway / etc. Useful when
+    you want a managed DB or to share data across a team.
 
 **Setup**
 

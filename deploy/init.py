@@ -423,6 +423,48 @@ def collect_provider(p: Prompter, env_label: str) -> str:
     )
 
 
+def collect_docker_db_mode(
+    p: Prompter, secrets_out: dict, provider: str,
+) -> str:
+    """Ask whether the docker-local stack should run its own postgres
+    container, or connect to an external Postgres (Supabase, RDS, etc.).
+
+    Only relevant if provider == 'docker-local'. For gcp/aws, the field
+    is stored but unused.
+    """
+    if provider != "docker-local":
+        return "local"
+
+    p.section("9b/9 — Docker local: database location")
+    if not p.non_interactive:
+        print("  - 'local'    : compose generates a postgres container "
+              "(zero external dependencies, good first install).")
+        print("  - 'external' : connect to Supabase / RDS / Cloud SQL via the "
+              "DATABASE_URL you provide in .env.secrets.")
+    mode = p.ask_choice(
+        "Database location",
+        ["local", "external"],
+        default="local",
+        env="WIZ_DOCKER_DB_MODE",
+    )
+
+    if mode == "external":
+        # Prompt for the DATABASE_URL value (will be stored in .env.secrets).
+        url = p.ask_secret(
+            "Full DATABASE_URL (postgresql://user:pwd@host:port/dbname)",
+            env="WIZ_EXTERNAL_DATABASE_URL",
+        )
+        if url:
+            secrets_out["DATABASE_URL"] = url
+            if not p.non_interactive:
+                print("  ✓ DATABASE_URL stored in .env.secrets")
+        else:
+            if not p.non_interactive:
+                print("  ! No URL provided. You MUST add DATABASE_URL to "
+                      ".env.secrets manually before --apply.")
+    return mode
+
+
 def collect_gcp(p: Prompter) -> dict[str, Any]:
     project = p.ask(
         "GCP project_id",
@@ -554,6 +596,7 @@ def run_wizard(p: Prompter) -> tuple[dict[str, Any], dict[str, str]]:
         "rds_instance": "",
     }
     cfg["docker_local"] = {
+        "database_mode": collect_docker_db_mode(p, secrets_out, provider),
         "backend_port": 8080, "frontend_port": 3000,
         "postgres_image": "postgres:16-alpine",
         "postgres_volume": f"{cfg['meta']['project_name']}_pgdata",
