@@ -130,8 +130,8 @@
       </nav>
     </aside>
 
-    <main class="page-main">
-      <header class="page-header">
+    <main class="main-content">
+      <header class="content-header">
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
@@ -139,13 +139,13 @@
           <span class="breadcrumb-sep">/</span>
           <span data-i18n="page44.title">Rol Contable</span>
         </div>
-        <h1 data-i18n="page44.title">Rol Contable: gestionar varios clientes desde una sola cuenta</h1>
-        <p class="page-subtitle" data-i18n="page44.subtitle">Los contables (internos o gabinetes) tienen necesidades distintas a las de un simple miembro: hay que pasar rápidamente de una empresa a otra, preparar declaraciones por cuenta del cliente, ver consolidados multi-cliente, justificar los movimientos en caso de control. El rol Contable de Facil cubre estos casos sin necesidad de varias sesiones ni de cuentas técnicas, gracias al mandato DGI y a una vista contable dedicada.</p>
       </header>
 
-      <div class="page-content">
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page44.title">Rol Contable: gestionar varios clientes desde una sola cuenta</h1>
+        <p class="page-description" data-i18n="page44.subtitle">Los contables (internos o gabinetes) tienen necesidades distintas a las de un simple miembro: hay que pasar rápidamente de una empresa a otra, preparar declaraciones por cuenta del cliente, ver consolidados multi-cliente, justificar los movimientos en caso de control. El rol Contable de Facil cubre estos casos sin necesidad de varias sesiones ni de cuentas técnicas, gracias al mandato DGI y a una vista contable dedicada.</p>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s1.title">1. Quién puede ser contable en Facil</h2>
           <p data-i18n="page44.s1.body">Cualquier titular de una cuenta personal Facil puede ser invitado al rol Contable de una empresa. La invitación se envía desde la página <a href="42-gestion-empresas.html" data-i18n="page44.s1.link">Gestionar empresas</a> por el propietario o un administrador. Una sola persona física puede ser contable de tantas empresas como quiera; cada una aparecerá en su selector de empresa con la mención <em>«rol contable»</em>.</p>
 
@@ -155,11 +155,11 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s2.title">2. Permisos del rol Contable</h2>
           <p data-i18n="page44.s2.intro">El rol Contable está diseñado para preparar el trabajo, no para autorizar pagos ni cambiar la estructura del equipo. La matriz completa está en la página <a href="42-gestion-empresas.html#sec-2" data-i18n="page44.s2.link">Gestionar empresas — sección 2</a>; aquí están las acciones clave:</p>
 
-          <ul class="feature-list">
+          <ul>
             <li data-i18n-html="page44.s2.l1"><strong>Puede</strong> — crear borradores de declaración (IVA, retenciones, IS), subir libros contables, calcular importes, preparar pagos, generar documentos justificativos, descargar el histórico fiscal completo.</li>
               <li data-i18n-html="page44.s2.l2"><strong>No puede</strong> — autorizar el pago BANGE Mobile Money (es siempre el propietario o un administrador), invitar/retirar miembros, cambiar el régimen fiscal, cerrar la cuenta empresa.</li>
             </ul>
@@ -167,11 +167,11 @@
           <p data-i18n="page44.s2.body">Esta separación entre <em>preparación</em> (contable) y <em>autorización</em> (administrador/propietario) corresponde a un principio contable básico: la persona que prepara la declaración no es la que la firma. En Facil, esa firma es el clic en <em>«Validar y pagar»</em>, reservado a los administradores.</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s3.title">3. Vista consolidada multi-cliente</h2>
           <p data-i18n="page44.s3.intro">Cuando el contable inicia la sesión, además del selector clásico de empresa, dispone de una vista <em>«Mis clientes»</em> que cruza todas las empresas donde tiene rol contable. Esta vista presenta:</p>
 
-          <pre class="ascii-diagram" data-i18n-html="page44.s3.diagram">
+          <pre data-i18n-html="page44.s3.diagram">
 ┌──────────────────────────────────────────────────────────────────────┐
 │ Mis clientes (vista contable consolidada)                            │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -196,11 +196,11 @@
           <p data-i18n="page44.s3.body">Hacer clic en una línea entra en la empresa correspondiente con el contexto activado (selector posicionado, KPIs filtrados). El botón <em>«Atrasados»</em> arriba permite ver de un vistazo qué clientes tienen una declaración fuera de plazo o un pago pendiente, lo que se vuelve crítico el día 15 o 30 del mes (vencimientos típicos).</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s4.title">4. Preparar una declaración por cuenta del cliente</h2>
           <p data-i18n="page44.s4.intro">El proceso es idéntico a una declaración hecha por la propia empresa, salvo que el contable no puede pagar. El flujo típico:</p>
 
-          <ol class="numbered-list">
+          <ol>
             <li data-i18n="page44.s4.l1">Desde <em>«Mis clientes»</em>, el contable entra en el cliente concernido.</li>
               <li data-i18n="page44.s4.l2">Selector de empresa correctamente posicionado, abre <em>«Iniciar trámite»</em> → tipo de declaración.</li>
               <li data-i18n="page44.s4.l3">Rellena los campos, importa libros contables (CSV/Excel), revisa los importes calculados.</li>
@@ -211,7 +211,7 @@
             </ol>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s5.title">5. Mandato DGI y trazabilidad</h2>
           <p data-i18n="page44.s5.body">Aunque la cuenta del contable no es una cuenta técnica, sus acciones se registran como las de un mandatario reconocido. El log de auditoría de la empresa muestra para cada operación: <em>«preparado por [email del contable]»</em> y <em>«autorizado por [email del propietario]»</em>. En caso de control fiscal por parte de la DGI, esta trazabilidad permite acreditar quién ha preparado y firmado cada declaración. La DGI puede contactar directamente al contable para preguntas técnicas, sin necesidad de pasar por el cliente, gracias a un mandato implícito vinculado al rol.</p>
 
@@ -221,11 +221,11 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s6.title">6. Funciones específicas del contable</h2>
           <p data-i18n="page44.s6.intro">Además de la vista <em>«Mis clientes»</em>, el rol Contable habilita estas funciones que no aparecen para los demás roles:</p>
 
-          <ul class="feature-list">
+          <ul>
             <li data-i18n-html="page44.s6.l1"><strong>Calendario fiscal multi-cliente</strong> — un calendario único que cruza los plazos de todas las empresas gestionadas; útil para planificar la carga de trabajo del mes.</li>
               <li data-i18n-html="page44.s6.l2"><strong>Notificaciones globales</strong> — el contable recibe los recordatorios de plazos de todos sus clientes en una única bandeja, con filtros (atrasados, este mes, etiquetadas urgentes).</li>
               <li data-i18n-html="page44.s6.l3"><strong>Exportación Excel consolidada</strong> — exportar en una sola hoja todas las declaraciones presentadas en un período para todos sus clientes (útil para informes anuales del gabinete).</li>
@@ -234,16 +234,16 @@
             </ul>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page44.s7.title">7. Honorarios y facturación</h2>
           <p data-i18n="page44.s7.body">Facil no factura al contable por el uso de la plataforma; las tasas fiscales se cobran a la empresa cliente directamente (BANGE Mobile Money del propietario o administrador). Los honorarios del contable hacia su cliente están fuera del ámbito de Facil: se gestionan por el contrato comercial entre el gabinete y la empresa. La plataforma sí provee informes mensuales de actividad (número de declaraciones preparadas, tipos, fechas) que el contable puede usar para justificar su facturación al cliente.</p>
         </section>
 
       </div>
 
-      <nav class="page-nav">
-        <a class="nav-prev" href="43-batch-requests.html" data-i18n="page44.prev">← Anterior: Solicitudes en lote</a>
-        <a class="nav-next" href="61-rol-agente.html" data-i18n="page44.next">Siguiente: Rol Agente →</a>
+      <nav class="pagination">
+        <a class="pagination-prev" href="43-batch-requests.html" data-i18n="page44.prev">← Anterior: Solicitudes en lote</a>
+        <a class="pagination-next" href="61-rol-agente.html" data-i18n="page44.next">Siguiente: Rol Agente →</a>
       </nav>
     </main>
   </div>

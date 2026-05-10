@@ -130,8 +130,8 @@
       </nav>
     </aside>
 
-    <main class="page-main">
-      <header class="page-header">
+    <main class="main-content">
+      <header class="content-header">
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
@@ -139,18 +139,18 @@
           <span class="breadcrumb-sep">/</span>
           <span data-i18n="page42.title">Gestionar empresas</span>
         </div>
-        <h1 data-i18n="page42.title">Gestionar miembros, roles y permisos</h1>
-        <p class="page-subtitle" data-i18n="page42.subtitle">En Facil, una empresa puede tener varios miembros con distintos niveles de responsabilidad. Hay cuatro roles predefinidos (propietario, administrador, contable, miembro), una matriz de permisos clara y un sistema de invitación por email. Esta página explica cómo invitar a un colaborador, qué puede hacer cada rol, cómo retirar un acceso y cómo transferir la titularidad cuando un propietario se va.</p>
       </header>
 
-      <div class="page-content">
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page42.title">Gestionar miembros, roles y permisos</h1>
+        <p class="page-description" data-i18n="page42.subtitle">En Facil, una empresa puede tener varios miembros con distintos niveles de responsabilidad. Hay cuatro roles predefinidos (propietario, administrador, contable, miembro), una matriz de permisos clara y un sistema de invitación por email. Esta página explica cómo invitar a un colaborador, qué puede hacer cada rol, cómo retirar un acceso y cómo transferir la titularidad cuando un propietario se va.</p>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s1.title">1. Los cuatro roles de empresa</h2>
           <p data-i18n="page42.s1.intro">Cada miembro tiene exactamente un rol en una empresa dada. Una persona puede ser propietaria de la empresa A y simple miembro de la empresa B sin conflicto. Los roles son acumulables a través de varias empresas, no dentro de una misma empresa.</p>
 
-          <div class="table-wrap">
-            <table class="comparison-table">
+          <div class="table-wrapper">
+            <table>
               <thead>
                 <tr>
                   <th data-i18n="page42.s1.t.h1">Rol</th>
@@ -160,22 +160,22 @@
               </thead>
               <tbody>
                 <tr>
-                  <td data-i18n="page42.s1.t.r1.c1"><strong>Propietario</strong> <span class="badge-role">owner</span></td>
+                  <td data-i18n="page42.s1.t.r1.c1"><strong>Propietario</strong> <span class="badge badge-blue">owner</span></td>
                   <td data-i18n="page42.s1.t.r1.c2">Representante legal de la empresa, único e intransferible salvo procedimiento explícito</td>
                   <td data-i18n="page42.s1.t.r1.c3">Todo: invitar/retirar miembros, cambiar roles, autorizar pagos, cerrar la cuenta empresa, transferir la titularidad</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page42.s1.t.r2.c1"><strong>Administrador</strong> <span class="badge-role">admin</span></td>
+                  <td data-i18n="page42.s1.t.r2.c1"><strong>Administrador</strong> <span class="badge badge-green">admin</span></td>
                   <td data-i18n="page42.s1.t.r2.c2">Director, responsable administrativo de confianza</td>
                   <td data-i18n="page42.s1.t.r2.c3">Iniciar y validar trámites, autorizar pagos, invitar/retirar miembros (excepto al propietario), gestionar licencias</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page42.s1.t.r3.c1"><strong>Contable</strong> <span class="badge-role">accountant</span></td>
+                  <td data-i18n="page42.s1.t.r3.c1"><strong>Contable</strong> <span class="badge badge-yellow">accountant</span></td>
                   <td data-i18n="page42.s1.t.r3.c2">Contable interno o externo (gabinete contable)</td>
                   <td data-i18n="page42.s1.t.r3.c3">Iniciar declaraciones (IVA, retenciones, IS), preparar pagos, descargar histórico fiscal, NO puede invitar a otros miembros</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page42.s1.t.r4.c1"><strong>Miembro</strong> <span class="badge-role">member</span></td>
+                  <td data-i18n="page42.s1.t.r4.c1"><strong>Miembro</strong> <span class="badge badge-gray">member</span></td>
                   <td data-i18n="page42.s1.t.r4.c2">Empleado autorizado a iniciar trámites operativos puntuales</td>
                   <td data-i18n="page42.s1.t.r4.c3">Crear borrador de solicitud, subir documentos, ver el estado del expediente. NO puede pagar ni firmar declaraciones</td>
                 </tr>
@@ -184,12 +184,12 @@
           </div>
         </section>
 
-        <section class="section" id="sec-2">
+        <section id="">
           <h2 data-i18n="page42.s2.title">2. Matriz detallada de permisos</h2>
           <p data-i18n="page42.s2.intro">El siguiente cuadro lista las acciones más sensibles y qué rol puede ejecutarlas. Una marca <code>✓</code> indica acceso, <code>—</code> indica que la acción está bloqueada (botón gris o ausente).</p>
 
-          <div class="table-wrap">
-            <table class="comparison-table compact">
+          <div class="table-wrapper">
+            <table>
               <thead>
                 <tr>
                   <th data-i18n="page42.s2.t.h1">Acción</th>
@@ -217,12 +217,12 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s3.title">3. Invitar a un nuevo miembro</h2>
           <p data-i18n="page42.s3.intro">El propietario o un administrador pueden invitar a otra persona a la empresa. La invitación se hace por email; el destinatario no necesita tener una cuenta Facil previa: el flujo le propondrá crearla durante la aceptación.</p>
 
           <h3 data-i18n="page42.s3.steps.title">Pasos</h3>
-          <ol class="numbered-list">
+          <ol>
             <li data-i18n-html="page42.s3.steps.l1">Vaya a <a href="27-mis-empresas-web.html">Mis empresas</a> y abra la ficha de la empresa concernida.</li>
               <li data-i18n="page42.s3.steps.l2">Pestaña <em>«Miembros»</em>, botón <em>«Invitar miembro»</em>.</li>
               <li data-i18n="page42.s3.steps.l3">Introduzca el email del invitado y elija el rol (administrador, contable o miembro). Solo el propietario puede transferir su rol; no es invitable directamente.</li>
@@ -237,24 +237,24 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s4.title">4. Cambiar el rol de un miembro</h2>
           <p data-i18n="page42.s4.body">Desde la lista de miembros, junto a cada nombre, hay un menú desplegable con el rol actual. Cambiar el valor aplica el nuevo rol inmediatamente; el miembro afectado recibe una notificación y un email. Las acciones en curso no se interrumpen, pero las próximas se rigen por el nuevo nivel de permiso.</p>
           <p data-i18n="page42.s4.body2">Limitación importante: un administrador no puede ascender a un miembro al rol de propietario, ni degradar al propietario actual. Estas dos operaciones requieren un procedimiento de transferencia de titularidad descrito en la sección 6.</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s5.title">5. Retirar a un miembro</h2>
           <p data-i18n="page42.s5.body">Junto al menú de rol hay un botón <em>«Retirar acceso»</em>. La operación es inmediata: el miembro pierde el acceso a la empresa en el siguiente intento de carga (la sesión activa caduca en menos de 60 segundos). Las solicitudes que él haya iniciado y que estén en curso continúan su flujo, pero ya no podrá verlas ni intervenir. El historial de sus acciones (creación, modificación) permanece en el log de auditoría con su nombre, no se borra.</p>
 
           <p data-i18n="page42.s5.body2">Caso particular: si retira a un contable que firmó declaraciones recientes, le recomendamos verificar antes que las próximas declaraciones tengan otro firmante autorizado para evitar bloqueos en cierre de mes.</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s6.title">6. Transferir la titularidad (cambio de propietario)</h2>
           <p data-i18n="page42.s6.body">El propietario es único en una empresa. Para transferir su rol a otra persona (por jubilación, salida, sucesión), el propietario actual debe iniciar un procedimiento explícito:</p>
 
-          <pre class="ascii-diagram" data-i18n-html="page42.s6.diagram">
+          <pre data-i18n-html="page42.s6.diagram">
 ┌─────────────────────────────────────────────────────────────┐
 │ Procedimiento de transferencia de titularidad               │
 ├─────────────────────────────────────────────────────────────┤
@@ -288,16 +288,16 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page42.s7.title">7. Audit log de las acciones del equipo</h2>
           <p data-i18n="page42.s7.body">Todas las acciones sensibles (invitación, cambio de rol, retiro, pago autorizado, transferencia) se registran en un log de auditoría visible al propietario y a los administradores. Para cada entrada se conserva: <em>quién</em> (email del autor), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>resultado</em> (éxito/error), <em>IP</em> y <em>user-agent</em>. Este log está disponible durante 7 años (obligación contable) y es exportable en CSV desde la pestaña <em>«Auditoría»</em> de la ficha empresa.</p>
         </section>
 
       </div>
 
-      <nav class="page-nav">
-        <a class="nav-prev" href="41-rol-empresa.html" data-i18n="page42.prev">← Anterior: Rol Empresa</a>
-        <a class="nav-next" href="43-batch-requests.html" data-i18n="page42.next">Siguiente: Solicitudes en lote →</a>
+      <nav class="pagination">
+        <a class="pagination-prev" href="41-rol-empresa.html" data-i18n="page42.prev">← Anterior: Rol Empresa</a>
+        <a class="pagination-next" href="43-batch-requests.html" data-i18n="page42.next">Siguiente: Solicitudes en lote →</a>
       </nav>
     </main>
   </div>

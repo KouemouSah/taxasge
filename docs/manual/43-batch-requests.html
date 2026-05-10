@@ -130,8 +130,8 @@
       </nav>
     </aside>
 
-    <main class="page-main">
-      <header class="page-header">
+    <main class="main-content">
+      <header class="content-header">
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
@@ -139,18 +139,18 @@
           <span class="breadcrumb-sep">/</span>
           <span data-i18n="page43.title">Solicitudes en lote</span>
         </div>
-        <h1 data-i18n="page43.title">Depositar varias solicitudes del mismo tipo en una sola operación</h1>
-        <p class="page-subtitle" data-i18n="page43.subtitle">El módulo de <em>solicitudes en lote</em> está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.</p>
       </header>
 
-      <div class="page-content">
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page43.title">Depositar varias solicitudes del mismo tipo en una sola operación</h1>
+        <p class="page-description" data-i18n="page43.subtitle">El módulo de <em>solicitudes en lote</em> está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.</p>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page43.s1.title">1. Diferencia con el pago agrupado (página 26)</h2>
           <p data-i18n="page43.s1.body">Estos dos flujos son complementarios y a menudo confundidos. El siguiente cuadro aclara cuándo usar cada uno.</p>
 
-          <div class="table-wrap">
-            <table class="comparison-table">
+          <div class="table-wrapper">
+            <table>
               <thead>
                 <tr>
                   <th data-i18n="page43.s1.t.h1">Aspecto</th>
@@ -168,11 +168,11 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page43.s2.title">2. Workflow del lote: 8 estados</h2>
           <p data-i18n="page43.s2.intro">Una solicitud en lote pasa por una secuencia de estados claramente definidos. Conocerlos ayuda a saber dónde se está bloqueado y qué falta.</p>
 
-          <pre class="ascii-diagram" data-i18n-html="page43.s2.diagram">
+          <pre data-i18n-html="page43.s2.diagram">
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                         │
 │   DRAFT  ──▶  UPLOADING  ──▶  CLASSIFYING  ──▶  REVIEW                  │
@@ -192,8 +192,8 @@
 └─────────────────────────────────────────────────────────────────────────┘
 </pre>
 
-          <div class="table-wrap">
-            <table class="comparison-table compact">
+          <div class="table-wrapper">
+            <table>
               <thead>
                 <tr>
                   <th data-i18n="page43.s2.t.h1">Estado</th>
@@ -215,7 +215,7 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page43.s3.title">3. Crear un lote: paso a paso</h2>
 
           <h3 data-i18n="page43.s3.step1.title">Paso 1 — Iniciar</h3>
@@ -224,14 +224,14 @@
           <h3 data-i18n="page43.s3.step2.title">Paso 2 — Añadir los beneficiarios</h3>
           <p data-i18n="page43.s3.step2.body">Hay dos vías: añadir uno por uno con el formulario integrado, o importar una lista CSV. Para cada beneficiario se necesita como mínimo:</p>
 
-          <ul class="feature-list">
+          <ul>
             <li data-i18n-html="page43.s3.step2.l1"><strong>Nombre completo</strong> — tal como aparecerá en el documento oficial.</li>
               <li data-i18n-html="page43.s3.step2.l2"><strong>Identificador</strong> (opcional pero recomendado) — DIP, NIF, número de empleado interno, según el tipo de trámite.</li>
               <li data-i18n-html="page43.s3.step2.l3"><strong>Email</strong> (opcional) — si lo facilita, el beneficiario recibirá una notificación cuando su documento esté disponible.</li>
             </ul>
 
           <h4 data-i18n="page43.s3.step2.csv.title">Formato CSV de importación</h4>
-          <pre class="ascii-diagram" data-i18n-html="page43.s3.step2.csv.body">
+          <pre data-i18n-html="page43.s3.step2.csv.body">
 beneficiary_name,beneficiary_identifier,beneficiary_identifier_type,beneficiary_email
 Juan Pérez Esono,12345678,DIP,juan.perez@example.gq
 María Ndong Obama,87654321,DIP,maria.ndong@example.gq
@@ -262,10 +262,10 @@ Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
           <p data-i18n="page43.s3.step6.body">Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos.</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page43.s4.title">4. Limitaciones y buenas prácticas</h2>
 
-          <ul class="feature-list">
+          <ul>
             <li data-i18n-html="page43.s4.l1"><strong>Tamaño máximo</strong> — 200 beneficiarios por lote. Más allá, divida en varios lotes (la plataforma admite varios lotes simultáneos para la misma empresa).</li>
               <li data-i18n-html="page43.s4.l2"><strong>Mismo workflow</strong> — un lote = un único tipo de trámite. Para mezclar pasaportes y residencia para los mismos empleados, créelos en dos lotes separados.</li>
               <li data-i18n-html="page43.s4.l3"><strong>Pago todo o nada</strong> — el pago consolidado cubre todos los beneficiarios incluidos. Si quiere pagar a algunos más tarde, excluya antes y créelos en otro lote.</li>
@@ -276,9 +276,9 @@ Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
 
       </div>
 
-      <nav class="page-nav">
-        <a class="nav-prev" href="42-gestion-empresas.html" data-i18n="page43.prev">← Anterior: Gestionar empresas</a>
-        <a class="nav-next" href="44-rol-contable.html" data-i18n="page43.next">Siguiente: Rol Contable →</a>
+      <nav class="pagination">
+        <a class="pagination-prev" href="42-gestion-empresas.html" data-i18n="page43.prev">← Anterior: Gestionar empresas</a>
+        <a class="pagination-next" href="44-rol-contable.html" data-i18n="page43.next">Siguiente: Rol Contable →</a>
       </nav>
     </main>
   </div>

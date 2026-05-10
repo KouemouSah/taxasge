@@ -130,8 +130,8 @@
       </nav>
     </aside>
 
-    <main class="page-main">
-      <header class="page-header">
+    <main class="main-content">
+      <header class="content-header">
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
@@ -139,13 +139,13 @@
           <span class="breadcrumb-sep">/</span>
           <span data-i18n="page41.title">Rol Empresa</span>
         </div>
-        <h1 data-i18n="page41.title">Rol Empresa: trabajar a nombre de una entidad jurídica</h1>
-        <p class="page-subtitle" data-i18n="page41.subtitle">Las empresas (sociedades, asociaciones, fundaciones, sucursales) operan en Facil con un identificador propio (NIF de entidad), una ficha en el Registro Nacional Tributario (RNT) y la posibilidad de tener varios miembros con distintos roles. Esta página recorre las diferencias clave frente al rol Ciudadano y los puntos de entrada a las funciones específicas.</p>
       </header>
 
-      <div class="page-content">
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page41.title">Rol Empresa: trabajar a nombre de una entidad jurídica</h1>
+        <p class="page-description" data-i18n="page41.subtitle">Las empresas (sociedades, asociaciones, fundaciones, sucursales) operan en Facil con un identificador propio (NIF de entidad), una ficha en el Registro Nacional Tributario (RNT) y la posibilidad de tener varios miembros con distintos roles. Esta página recorre las diferencias clave frente al rol Ciudadano y los puntos de entrada a las funciones específicas.</p>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s1.title">1. ¿Cuándo se utiliza el rol Empresa?</h2>
           <p data-i18n="page41.s1.body">El rol Empresa es para personas que actúan en nombre de una entidad jurídica registrada en Guinea Ecuatorial: una sociedad anónima, una sucursal, una asociación, una fundación o cualquier forma jurídica reconocida por el RNT. La diferencia con el rol Ciudadano no es el tipo de servicios disponibles —ambos pueden iniciar trámites, pagar y descargar documentos— sino el propietario del expediente fiscal y los flujos de obligaciones específicas (IVA, retenciones, declaraciones consolidadas, licencias comerciales).</p>
 
@@ -160,12 +160,12 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s2.title">2. Diferencias con el rol Ciudadano</h2>
           <p data-i18n="page41.s2.intro">La tabla siguiente resume las cinco diferencias estructurales entre los dos roles. Todo el resto (Asistente IA, soporte, notificaciones, validación de recibos) funciona igual.</p>
 
-          <div class="table-wrap">
-            <table class="comparison-table">
+          <div class="table-wrapper">
+            <table>
               <thead>
                 <tr>
                   <th data-i18n="page41.s2.table.h1">Aspecto</th>
@@ -204,7 +204,7 @@
           </div>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s3.title">3. El selector de empresa (sticky)</h2>
           <p data-i18n="page41.s3.body">Si su cuenta tiene acceso a varias empresas (caso del contable o del propietario de un grupo), el panel principal muestra un selector de empresa siempre visible en la parte superior. El selector indica qué entidad está activa en el contexto: todos los KPI, listas y acciones rápidas se filtran por la empresa seleccionada. Cambiar de empresa se hace en un clic; las pantallas se recargan automáticamente con los datos de la nueva entidad.</p>
 
@@ -216,11 +216,11 @@
           <p data-i18n="page41.s3.body2">Para añadir una empresa al selector (porque es nueva en Facil o porque se le ha invitado a un equipo existente), consulte la página <a href="42-gestion-empresas.html" data-i18n="page41.s3.link.42">Gestionar empresas</a>. Para ver la lista completa de las empresas de su cuenta con sus licencias y obligaciones, vaya a <a href="27-mis-empresas-web.html" data-i18n="page41.s3.link.27">Mis empresas (Web)</a> o <a href="36-mis-empresas-mobile.html" data-i18n="page41.s3.link.36">Mis empresas (Móvil)</a>.</p>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s4.title">4. Puntos de entrada específicos del rol Empresa</h2>
           <p data-i18n="page41.s4.intro">Una vez seleccionada una empresa, encontrará estas funciones que no aparecen en el rol Ciudadano:</p>
 
-          <ul class="feature-list">
+          <ul>
             <li data-i18n-html="page41.s4.l1"><strong>Pago agrupado</strong> — saldar de una vez varias obligaciones (Tesoro Público, Ayuntamiento, Cámara de Comercio) con un solo recibo. Detallado en <a href="26-bundle-payment.html">Pago agrupado</a>.</li>
               <li data-i18n-html="page41.s4.l2"><strong>Solicitudes en lote</strong> — crear varias solicitudes del mismo tipo en una operación (por ejemplo, 50 pasaportes para empleados). Detallado en <a href="43-batch-requests.html">Solicitudes en lote</a>.</li>
               <li data-i18n-html="page41.s4.l3"><strong>Gestión de miembros y roles</strong> — invitar a un colaborador, atribuirle un rol, retirar un acceso. Detallado en <a href="42-gestion-empresas.html">Gestionar empresas</a>.</li>
@@ -228,26 +228,26 @@
             </ul>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s5.title">5. Cómo añadir una empresa a su cuenta</h2>
           <p data-i18n="page41.s5.body">Hay dos vías para que una empresa aparezca en su cuenta Facil:</p>
 
-          <ol class="numbered-list">
+          <ol>
             <li data-i18n-html="page41.s5.l1"><strong>Crear la empresa</strong> — desde <a href="27-mis-empresas-web.html">Mis empresas</a>, botón <em>«Añadir empresa»</em>. Necesita el NIF de la entidad y prueba de su rol (acta de nombramiento, poder, certificado registral). La empresa entra en estado <em>«verificación pendiente»</em> hasta que la DGI valida los justificantes (24-72 h hábiles).</li>
               <li data-i18n-html="page41.s5.l2"><strong>Aceptar una invitación</strong> — si otro miembro le ha enviado una invitación por email, recibirá un enlace para unirse al equipo en un rol específico (administrador, contable o miembro). El acceso es inmediato tras aceptar; no necesita aportar justificantes adicionales.</li>
             </ol>
         </section>
 
-        <section class="section">
+        <section>
           <h2 data-i18n="page41.s6.title">6. Mismos servicios, mismo asistente IA</h2>
           <p data-i18n="page41.s6.body">Aparte de las funciones propias mencionadas arriba, todo lo demás es idéntico al rol Ciudadano: el catálogo de los 850+ servicios fiscales (página 51), la calculadora (página 52), el directorio (página 53), el asistente IA (página 55), la verificación de recibos (página 57). El asistente IA conectado (página 29) tiene además acceso al contexto de la empresa activa: si pregunta «¿cuál es mi obligación de IVA del próximo mes?», responde con los datos reales de la empresa seleccionada en el selector.</p>
         </section>
 
       </div>
 
-      <nav class="page-nav">
-        <a class="nav-prev" href="39-mobile-exclusivos.html" data-i18n="page41.prev">← Anterior: Funciones exclusivas Móvil</a>
-        <a class="nav-next" href="42-gestion-empresas.html" data-i18n="page41.next">Siguiente: Gestionar empresas →</a>
+      <nav class="pagination">
+        <a class="pagination-prev" href="39-mobile-exclusivos.html" data-i18n="page41.prev">← Anterior: Funciones exclusivas Móvil</a>
+        <a class="pagination-next" href="42-gestion-empresas.html" data-i18n="page41.next">Siguiente: Gestionar empresas →</a>
       </nav>
     </main>
   </div>
