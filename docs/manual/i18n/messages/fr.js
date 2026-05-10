@@ -220,7 +220,138 @@ window.__I18N__.fr = {
         "verify": "Vérifier l'authenticité d'un reçu"
       }
     },
-    "footer": "Plateforme Facil · Manuel utilisateur v1.1.8 · © 2026 République de Guinée équatoriale"
+    "footer": "Plateforme Facil · Manuel utilisateur v1.1.8 · © 2026 République de Guinée équatoriale",
+    "footer_links": {
+      "tech_docs": "Documentation technique"
+    }
+  },
+
+  "searchpage": {
+    "html_title": "Rechercher — Manuel Facil",
+    "title": "Rechercher dans le manuel",
+    "description": "Trouvez rapidement l'information dont vous avez besoin dans les 62 pages du manuel.",
+    "breadcrumb": "Rechercher",
+    "info": "La recherche fonctionne dans les 3 langues. Si vous ne trouvez pas une page, essayez de naviguer via le menu latéral ou le sommaire de la page d'accueil."
+  },
+
+  "errorpage": {
+    "html_title": "404 — Manuel Facil",
+    "message": "Page introuvable",
+    "description": "La page que vous cherchez n'existe pas ou a été déplacée. Retournez à l'accueil ou utilisez la recherche.",
+    "back_home": "Retour à l'accueil",
+    "search": "Rechercher"
+  },
+
+  // ---- page51 — Explorer les services (Phase 1 pilote, traduction minimale) ----
+  "page51": {
+    "html_title": "Explorer les services — Manuel Facil",
+    "title": "Explorer le catalogue des services",
+    "description": "Découvrez les 873 services fiscaux et administratifs disponibles dans Facil — sans avoir besoin de vous connecter. Filtrez par ministère, recherchez par mot-clé et consultez les détails de chaque démarche.",
+    "next": "Suivant : Calculatrice fiscale →",
+    "toc": {
+      "s1": "1. Qu'est-ce que le catalogue de services ?",
+      "s2": "2. Accéder au catalogue",
+      "s3": "3. Rechercher et filtrer",
+      "s4": "4. Détail d'un service",
+      "s5": "5. Démarrer la démarche",
+      "s6": "6. Différences Web et Mobile"
+    },
+    "s1": {
+      "title": "1. Qu'est-ce que le catalogue de services ?",
+      "intro": "Facil rassemble en un seul endroit <strong>873 services fiscaux et administratifs</strong> proposés par <strong>20 entités gouvernementales</strong> de la République de Guinée équatoriale. Chaque service inclut les informations complètes nécessaires : documents requis, procédures, tarifs officiels, délais et entité émettrice.",
+      "callout": "Il n'est pas nécessaire de créer un compte pour explorer le catalogue. Vous devrez vous connecter uniquement lorsque vous voudrez effectuer une démarche réelle.",
+      "stats": {
+        "services": "Services",
+        "entities": "Entités",
+        "ministries": "Ministères",
+        "languages": "Langues"
+      }
+    },
+    "s2": {
+      "title": "2. Accéder au catalogue",
+      "intro": "L'accès au catalogue est public et se fait en quelques étapes :",
+      "step1": "Ouvrez <strong>facil.gov.gq</strong> dans votre navigateur (version Web) ou l'application <strong>Facil</strong> sur votre téléphone (version Mobile).",
+      "step2": "Sur l'écran d'accueil, appuyez sur la carte <strong>« Services »</strong>.",
+      "step3": "La liste complète des 873 services disponibles s'affiche, regroupée par entité.",
+      "fig1": {
+        "alt": "Catalogue des services en vue grille",
+        "caption": "Catalogue en vue grille — écran d'accueil avec les 20 entités disponibles."
+      }
+    },
+    "s3": {
+      "title": "3. Rechercher et filtrer",
+      "intro": "Pour trouver rapidement un service parmi les 873 disponibles, vous disposez de trois outils combinables :",
+      "search": {
+        "title": "Recherche par mot-clé",
+        "body": "Dans la barre supérieure, saisissez le nom de la démarche recherchée (exemple : <em>« passeport »</em>, <em>« licence commerciale »</em>, <em>« IRPP »</em>). La recherche fonctionne par synonymes : <em>« conduire »</em> trouvera aussi <em>« permis de conduire »</em>."
+      },
+      "org": {
+        "title": "Filtre par entité",
+        "body": "Appuyez sur le nom d'une entité (CNEDOGE, DGT, Trésor, Extranjería, Mairie, Chambre, etc.) pour n'afficher que ses services."
+      },
+      "view": {
+        "title": "Vue en grille ou en liste",
+        "body": "Vous pouvez basculer entre la vue en grille (plus visuelle) et la vue en liste (plus compacte) via les boutons en haut à droite."
+      },
+      "fig1": {
+        "alt": "Filtre par ministère actif",
+        "caption": "Filtre « Ministère des Affaires étrangères » actif — seuls les 14 services de cette entité s'affichent."
+      },
+      "fig2": {
+        "alt": "Vue en liste compacte",
+        "caption": "Vue en liste — plus de services visibles par écran, idéal lorsque vous connaissez déjà le nom de la démarche."
+      }
+    },
+    "s4": {
+      "title": "4. Détail d'un service",
+      "intro": "Appuyez sur n'importe quel service de la liste pour ouvrir sa fiche détaillée. Chaque fiche contient 5 sections :",
+      "table": {
+        "col1": "Section",
+        "col2": "Contenu",
+        "r1": { "c1": "Titre et entité", "c2": "Nom officiel du service + ministère ou entité émettrice" },
+        "r2": { "c1": "Description", "c2": "À quoi sert la démarche, dans quels cas la demander" },
+        "r3": { "c1": "Documents requis", "c2": "Liste exhaustive des documents à fournir (originaux et copies)" },
+        "r4": { "c1": "Procédures", "c2": "Étapes à suivre, dans l'ordre, avec indication du lieu et du délai de chacune" },
+        "r5": { "c1": "Tarif", "c2": "Coût officiel en XAF (Franc CFA), avec ventilation si applicable" },
+        "r6": { "c1": "Services connexes", "c2": "Autres démarches complémentaires dont vous pourriez avoir besoin en même temps" }
+      },
+      "fig1": {
+        "alt": "Détail du service Passeport",
+        "caption": "Exemple : fiche « Acquisition formulaire passeport » — documents, procédure en 4 étapes, services associés, bouton « Lancer la demande »."
+      },
+      "tip": "Avant de démarrer une démarche, lisez attentivement la section <strong>« Documents requis »</strong> : avoir tous les documents préparés dès le départ vous évitera des allers-retours et des retards."
+    },
+    "s5": {
+      "title": "5. Démarrer la démarche",
+      "intro": "Une fois la fiche consultée, vous pouvez démarrer la démarche en appuyant sur le bouton <strong>« Lancer la demande »</strong>. Ce bouton nécessite d'être connecté : si vous n'avez pas encore de compte, consultez la page <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Créer un compte</a>.",
+      "body": "Le processus complet de création d'une demande (assistant pas-à-pas, téléversement de documents, paiement) est décrit en détail dans les pages <a href=\"22-iniciar-tramite-web.html\" class=\"coming-soon\">Démarrer une démarche (Web)</a> et <a href=\"32-iniciar-tramite-mobile.html\" class=\"coming-soon\">Démarrer une démarche (Mobile)</a>."
+    },
+    "s6": {
+      "title": "6. Différences Web et Mobile",
+      "intro": "La version Web et l'application Mobile offrent toutes deux un accès complet au catalogue. Les nuances :",
+      "table": {
+        "col1": "Fonction",
+        "col2": "Version Web",
+        "col3": "Version Mobile",
+        "r1": { "c1": "Vue grille" },
+        "r2": { "c1": "Vue liste" },
+        "r3": { "c1": "Filtre par entité" },
+        "r4": { "c1": "Recherche par mot-clé" },
+        "r5": { "c1": "Tableau comparatif de plusieurs services" },
+        "r6": { "c1": "Partager un service", "c2": "URL copiable", "c3": "Partage natif (WhatsApp, SMS...)" },
+        "r7": { "c1": "Fonctionnement hors-ligne", "c3": "Cache des derniers services consultés" }
+      },
+      "success": "Vous connaissez maintenant les bases pour explorer le catalogue. Les pages suivantes présentent les fonctions spécifiques : calculatrice, simulateur de licences, assistant IA."
+    }
+  },
+
+  // ---- page21 — Dashboard citoyen Web (Phase 1 pilote, traduction minimale) ----
+  "page21": {
+    "html_title": "Tableau de bord Web — Manuel Facil",
+    "title": "Votre tableau de bord sur Facil Web",
+    "description": "Après vous être connecté, vous arrivez sur votre tableau de bord : le centre névralgique d'où vous suivez toutes vos demandes, gérez vos documents et accédez aux services. Cette page décrit chaque élément de l'écran.",
+    "next": "Suivant : Démarrer une démarche (Web) →",
+    "prev": "← Précédent : Supprimer le compte"
   }
 
 };

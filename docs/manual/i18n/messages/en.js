@@ -220,7 +220,138 @@ window.__I18N__.en = {
         "verify": "Verify a receipt's authenticity"
       }
     },
-    "footer": "Facil platform · User manual v1.1.8 · © 2026 Republic of Equatorial Guinea"
+    "footer": "Facil platform · User manual v1.1.8 · © 2026 Republic of Equatorial Guinea",
+    "footer_links": {
+      "tech_docs": "Technical documentation"
+    }
+  },
+
+  "searchpage": {
+    "html_title": "Search — Facil Manual",
+    "title": "Search the manual",
+    "description": "Quickly find the information you need across the 62 pages of the manual.",
+    "breadcrumb": "Search",
+    "info": "Search works in all 3 languages. If you can't find a page, try navigating via the side menu or the home page summary."
+  },
+
+  "errorpage": {
+    "html_title": "404 — Facil Manual",
+    "message": "Page not found",
+    "description": "The page you are looking for does not exist or has been moved. Go back home or use search.",
+    "back_home": "Back to home",
+    "search": "Search"
+  },
+
+  // ---- page51 — Explore services (Phase 1 pilot, minimal translation) ----
+  "page51": {
+    "html_title": "Explore services — Facil Manual",
+    "title": "Explore the service catalog",
+    "description": "Discover the 873 fiscal and administrative services available in Facil — without needing to sign in. Filter by ministry, search by keyword, and see the details of each procedure.",
+    "next": "Next: Tax calculator →",
+    "toc": {
+      "s1": "1. What is the service catalog?",
+      "s2": "2. Access the catalog",
+      "s3": "3. Search and filter",
+      "s4": "4. Service details",
+      "s5": "5. Start the procedure",
+      "s6": "6. Web vs Mobile differences"
+    },
+    "s1": {
+      "title": "1. What is the service catalog?",
+      "intro": "Facil brings together in one place <strong>873 fiscal and administrative services</strong> offered by <strong>20 government entities</strong> in the Republic of Equatorial Guinea. Each service includes the complete information you need: required documents, procedures, official fees, deadlines, and issuing entity.",
+      "callout": "You do not need an account to browse the catalog. You only need to sign in when you want to actually start a procedure.",
+      "stats": {
+        "services": "Services",
+        "entities": "Entities",
+        "ministries": "Ministries",
+        "languages": "Languages"
+      }
+    },
+    "s2": {
+      "title": "2. Access the catalog",
+      "intro": "Catalog access is public and takes only a few steps:",
+      "step1": "Open <strong>facil.gov.gq</strong> in your browser (Web version) or the <strong>Facil</strong> app on your phone (Mobile version).",
+      "step2": "On the home screen, tap the <strong>“Services”</strong> card.",
+      "step3": "The full list of 873 available services appears, grouped by entity.",
+      "fig1": {
+        "alt": "Service catalog in grid view",
+        "caption": "Catalog in grid view — welcome screen showing the 20 available entities."
+      }
+    },
+    "s3": {
+      "title": "3. Search and filter",
+      "intro": "To quickly find a service among the 873 available, you have three combinable tools:",
+      "search": {
+        "title": "Keyword search",
+        "body": "In the top bar, type the name of the procedure you are looking for (example: <em>“passport”</em>, <em>“commercial license”</em>, <em>“income tax”</em>). The search works on synonyms: <em>“drive”</em> will also find <em>“driving license”</em>."
+      },
+      "org": {
+        "title": "Filter by entity",
+        "body": "Tap an entity name (CNEDOGE, DGT, Treasury, Extranjería, Town Hall, Chamber, etc.) to show only the services it offers."
+      },
+      "view": {
+        "title": "Grid or list view",
+        "body": "You can switch between grid view (more visual) and list view (more compact) using the buttons in the top right corner."
+      },
+      "fig1": {
+        "alt": "Active ministry filter",
+        "caption": "“Ministry of Foreign Affairs” filter active — only the 14 services from this entity are shown."
+      },
+      "fig2": {
+        "alt": "Compact list view",
+        "caption": "List view — more services visible per screen, ideal when you already know the procedure name."
+      }
+    },
+    "s4": {
+      "title": "4. Service details",
+      "intro": "Tap any service in the list to open its detailed sheet. Each sheet contains 5 sections:",
+      "table": {
+        "col1": "Section",
+        "col2": "Content",
+        "r1": { "c1": "Title and entity", "c2": "Official service name + issuing ministry or entity" },
+        "r2": { "c1": "Description", "c2": "What the procedure is for, in which cases to request it" },
+        "r3": { "c1": "Required documents", "c2": "Exhaustive list of documents to provide (originals and copies)" },
+        "r4": { "c1": "Procedures", "c2": "Steps to follow, in order, with location and deadline for each" },
+        "r5": { "c1": "Fee", "c2": "Official cost in XAF (CFA Franc), with breakdown if applicable" },
+        "r6": { "c1": "Related services", "c2": "Other complementary procedures you may need at the same time" }
+      },
+      "fig1": {
+        "alt": "Passport service detail",
+        "caption": "Example: “Passport application form” sheet — documents, 4-step procedure, related services, “Start request” button."
+      },
+      "tip": "Before starting a procedure, carefully read the <strong>“Required documents”</strong> section: having all documents ready from the start will save you trips and delays."
+    },
+    "s5": {
+      "title": "5. Start the procedure",
+      "intro": "Once you have read the sheet, you can start the procedure by tapping the <strong>“Start request”</strong> button. This button requires you to be signed in: if you don't have an account yet, see the <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Create account</a> page.",
+      "body": "The complete request creation process (step-by-step wizard, document upload, payment) is described in detail on the <a href=\"22-iniciar-tramite-web.html\" class=\"coming-soon\">Start a procedure (Web)</a> and <a href=\"32-iniciar-tramite-mobile.html\" class=\"coming-soon\">Start a procedure (Mobile)</a> pages."
+    },
+    "s6": {
+      "title": "6. Web vs Mobile differences",
+      "intro": "Both the Web version and the Mobile app offer full access to the catalog. The differences:",
+      "table": {
+        "col1": "Feature",
+        "col2": "Web version",
+        "col3": "Mobile version",
+        "r1": { "c1": "Grid view" },
+        "r2": { "c1": "List view" },
+        "r3": { "c1": "Filter by entity" },
+        "r4": { "c1": "Keyword search" },
+        "r5": { "c1": "Comparison table of multiple services" },
+        "r6": { "c1": "Share a service", "c2": "Copyable URL", "c3": "Native sharing (WhatsApp, SMS...)" },
+        "r7": { "c1": "Offline operation", "c3": "Cache of last viewed services" }
+      },
+      "success": "You now know the basics for browsing the catalog. The next pages cover specific functions: calculator, license simulator, AI assistant."
+    }
+  },
+
+  // ---- page21 — Citizen Web Dashboard (Phase 1 pilot, minimal translation) ----
+  "page21": {
+    "html_title": "Web Dashboard — Facil Manual",
+    "title": "Your dashboard on Facil Web",
+    "description": "After signing in, you arrive at your main dashboard: the nerve center from which you track all your requests, manage your documents, and access services. This page describes each element of the screen.",
+    "next": "Next: Start a procedure (Web) →",
+    "prev": "← Previous: Delete account"
   }
 
 };

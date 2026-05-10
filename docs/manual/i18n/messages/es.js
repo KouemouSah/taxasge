@@ -237,21 +237,235 @@ window.__I18N__.es = {
         "verify": "Verificar la autenticidad de un recibo"
       }
     },
-    "footer": "Plataforma Facil · Manual de usuario v1.1.8 · © 2026 República de Guinea Ecuatorial"
+    "footer": "Plataforma Facil · Manual de usuario v1.1.8 · © 2026 República de Guinea Ecuatorial",
+    "footer_links": {
+      "tech_docs": "Documentación técnica"
+    }
   },
 
   // ====================================================================
-  // PÁGINAS DE SECCIONES — añadidas en cada Phase. Espacio reservado:
+  // SEARCH PAGE
   // ====================================================================
-  // page01: Welcome (Phase 1)
-  // page11-17: Account & auth (Phase 3)
-  // page21-29: Citizen Web (Phase 4)
-  // page31-39: Citizen Mobile (Phase 5)
-  // page41-44: Business & Accountant (Phase 6)
-  // page51-58: Public pages (Phase 2)
-  // page61-69: Agents (Phase 7)
-  // page71-74: Supervisors (Phase 8)
-  // page81-89: Admin (Phase 8)
-  // page91-95: Annexes (Phase 10)
+  "searchpage": {
+    "html_title": "Buscar — Manual Facil",
+    "title": "Buscar en el manual",
+    "description": "Encuentre rápidamente la información que necesita en las 62 páginas del manual.",
+    "breadcrumb": "Buscar",
+    "info": "La búsqueda funciona en las 3 idiomas. Si no encuentra una página, intente navegar mediante el menú lateral o el sumario de la página de inicio."
+  },
+
+  // ====================================================================
+  // 404 PAGE
+  // ====================================================================
+  "errorpage": {
+    "html_title": "404 — Manual Facil",
+    "message": "Página no encontrada",
+    "description": "La página que busca no existe o ha sido movida. Vuelva al inicio o utilice la búsqueda.",
+    "back_home": "Volver al inicio",
+    "search": "Buscar"
+  },
+
+  // ====================================================================
+  // PÁGINAS DE SECCIONES
+  // ====================================================================
+
+  // ---- page51 — Explorar servicios (Phase 1 pilote) ----
+  "page51": {
+    "html_title": "Explorar servicios — Manual Facil",
+    "title": "Explorar el catálogo de servicios",
+    "description": "Descubra los 873 servicios fiscales y administrativos disponibles en Facil — sin necesidad de iniciar sesión. Filtre por ministerio, busque por palabra clave y consulte los detalles de cada trámite.",
+    "next": "Siguiente: Calculadora fiscal →",
+    "toc": {
+      "s1": "1. ¿Qué es el catálogo de servicios?",
+      "s2": "2. Acceder al catálogo",
+      "s3": "3. Buscar y filtrar",
+      "s4": "4. Detalle de un servicio",
+      "s5": "5. Iniciar el trámite",
+      "s6": "6. Diferencias Web y Móvil"
+    },
+    "s1": {
+      "title": "1. ¿Qué es el catálogo de servicios?",
+      "intro": "Facil reúne en un solo lugar <strong>873 servicios fiscales y administrativos</strong> ofrecidos por <strong>20 entidades gubernamentales</strong> de la República de Guinea Ecuatorial. Cada servicio incluye la información completa que necesita: documentos requeridos, procedimientos, tarifas oficiales, plazos y entidad emisora.",
+      "callout": "No es necesario crear una cuenta para explorar el catálogo. Solo deberá iniciar sesión cuando quiera realizar un trámite real.",
+      "stats": {
+        "services": "Servicios",
+        "entities": "Entidades",
+        "ministries": "Ministerios",
+        "languages": "Idiomas"
+      }
+    },
+    "s2": {
+      "title": "2. Acceder al catálogo",
+      "intro": "El acceso al catálogo es público y se hace en pocos pasos:",
+      "step1": "Abra <strong>facil.gov.gq</strong> en su navegador (versión Web) o la aplicación <strong>Facil</strong> en su teléfono (versión Móvil).",
+      "step2": "En la pantalla de inicio, pulse la tarjeta <strong>«Servicios»</strong>.",
+      "step3": "Se mostrará la lista completa de los 873 servicios disponibles, agrupados por entidad.",
+      "fig1": {
+        "alt": "Catálogo de servicios en vista cuadrícula",
+        "caption": "Catálogo en vista cuadrícula — pantalla de bienvenida con las 20 entidades disponibles."
+      }
+    },
+    "s3": {
+      "title": "3. Buscar y filtrar",
+      "intro": "Para encontrar rápidamente un servicio entre los 873 disponibles, dispone de tres herramientas combinables:",
+      "search": {
+        "title": "Búsqueda por palabra clave",
+        "body": "En la barra superior, escriba el nombre del trámite que busca (ejemplo: <em>«pasaporte»</em>, <em>«licencia comercial»</em>, <em>«IRPF»</em>). La búsqueda funciona por sinónimos: <em>«conducir»</em> también encontrará <em>«permis de conduire»</em>."
+      },
+      "org": {
+        "title": "Filtro por entidad",
+        "body": "Pulse el nombre de una entidad (CNEDOGE, DGT, Tesoro, Extranjería, Ayuntamiento, Cámara, etc.) para mostrar únicamente los servicios que ofrece."
+      },
+      "view": {
+        "title": "Vista en cuadrícula o en lista",
+        "body": "Puede alternar entre vista en cuadrícula (más visual) y vista en lista (más compacta) mediante los botones de la esquina superior derecha."
+      },
+      "fig1": {
+        "alt": "Filtro por ministerio activo",
+        "caption": "Filtro «Ministerio de Asuntos Exteriores» activo — solo se muestran los 14 servicios de esta entidad."
+      },
+      "fig2": {
+        "alt": "Vista en lista compacta",
+        "caption": "Vista en lista — más servicios visibles por pantalla, ideal cuando ya conoce el nombre del trámite."
+      }
+    },
+    "s4": {
+      "title": "4. Detalle de un servicio",
+      "intro": "Pulse cualquier servicio en la lista para abrir su ficha detallada. Cada ficha contiene 5 secciones:",
+      "table": {
+        "col1": "Sección",
+        "col2": "Contenido",
+        "r1": { "c1": "Título y entidad", "c2": "Nombre oficial del servicio + ministerio o entidad emisora" },
+        "r2": { "c1": "Descripción", "c2": "Para qué sirve el trámite, en qué casos solicitarlo" },
+        "r3": { "c1": "Documentos requeridos", "c2": "Lista exhaustiva de los documentos a aportar (originales y copias)" },
+        "r4": { "c1": "Procedimientos", "c2": "Pasos a seguir, en orden, con indicación del lugar y plazo de cada uno" },
+        "r5": { "c1": "Tarifa", "c2": "Coste oficial en XAF (Franco CFA), incluyendo desglose si procede" },
+        "r6": { "c1": "Servicios relacionados", "c2": "Otros trámites complementarios que podría necesitar al mismo tiempo" }
+      },
+      "fig1": {
+        "alt": "Detalle del servicio Pasaporte",
+        "caption": "Ejemplo: ficha de «Adquisición formulario pasaporte» — documentos, procedimiento en 4 pasos, servicios asociados, botón «Iniciar la demanda»."
+      },
+      "tip": "Antes de iniciar un trámite, lea cuidadosamente la sección <strong>«Documentos requeridos»</strong>: tener todos los documentos preparados desde el principio le ahorrará viajes y demoras."
+    },
+    "s5": {
+      "title": "5. Iniciar el trámite",
+      "intro": "Una vez consultada la ficha, puede iniciar el trámite pulsando el botón <strong>«Iniciar la demanda»</strong>. Este botón requiere haber iniciado sesión: si aún no tiene cuenta, consulte la página <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Crear cuenta</a>.",
+      "body": "El proceso completo de creación de una solicitud (asistente paso a paso, subida de documentos, pago) se describe detalladamente en las páginas <a href=\"22-iniciar-tramite-web.html\" class=\"coming-soon\">Iniciar trámite (Web)</a> y <a href=\"32-iniciar-tramite-mobile.html\" class=\"coming-soon\">Iniciar trámite (Móvil)</a>."
+    },
+    "s6": {
+      "title": "6. Diferencias Web y Móvil",
+      "intro": "Tanto la versión Web como la aplicación Móvil ofrecen acceso completo al catálogo. Los matices:",
+      "table": {
+        "col1": "Función",
+        "col2": "Versión Web",
+        "col3": "Versión Móvil",
+        "r1": { "c1": "Vista cuadrícula" },
+        "r2": { "c1": "Vista lista" },
+        "r3": { "c1": "Filtro por entidad" },
+        "r4": { "c1": "Búsqueda por palabra clave" },
+        "r5": { "c1": "Tabla comparativa de varios servicios" },
+        "r6": { "c1": "Compartir un servicio", "c2": "URL copiable", "c3": "Compartir nativo (WhatsApp, SMS...)" },
+        "r7": { "c1": "Funcionamiento sin conexión", "c3": "Caché últimos servicios consultados" }
+      },
+      "success": "Ya conoce las bases para explorar el catálogo. Las páginas siguientes muestran las funciones específicas: calculadora, simulador de licencias, asistente IA."
+    }
+  },
+
+  // ---- page21 — Dashboard ciudadano Web (Phase 1 pilote) ----
+  "page21": {
+    "html_title": "Panel principal Web — Manual Facil",
+    "title": "Su panel principal en Facil Web",
+    "description": "Después de iniciar sesión, llega a su panel principal: el centro neurálgico desde el cual sigue todas sus solicitudes, gestiona sus documentos y accede a los servicios. Esta página describe cada elemento de la pantalla.",
+    "next": "Siguiente: Iniciar trámite (Web) →",
+    "prev": "← Anterior: Eliminar cuenta",
+    "toc": {
+      "s1": "1. Acceder al panel",
+      "s2": "2. Estructura general",
+      "s3": "3. Cartas de estadísticas",
+      "s4": "4. Acciones requeridas",
+      "s5": "5. Pestañas (Solicitudes, Pagos, Alertas)",
+      "s6": "6. Acciones rápidas (sidebar)",
+      "s7": "7. Versión móvil equivalente"
+    },
+    "s1": {
+      "title": "1. Acceder al panel",
+      "intro": "El panel principal se muestra automáticamente después de <a href=\"12-iniciar-sesion.html\" class=\"coming-soon\">iniciar sesión</a>. Si aún no tiene cuenta, consulte la página <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">Crear cuenta</a>.",
+      "url": "URL directa: <code>https://facil.gov.gq/dashboard</code> (redirige al inicio de sesión si no está autenticado)."
+    },
+    "s2": {
+      "title": "2. Estructura general de la pantalla",
+      "intro": "El panel se divide en 3 zonas principales:",
+      "zone1": "<strong>Menú lateral izquierdo</strong> — todas las secciones disponibles para usted (Resumen, Solicitudes, Documentos, Chat, Soporte, Perfil, Configuración). Se mantiene visible en todas las páginas.",
+      "zone2": "<strong>Cabecera superior</strong> — contiene el ícono de notificaciones (con un punto rojo si tiene mensajes no leídos), el selector de idioma, y el menú de su perfil.",
+      "zone3": "<strong>Zona principal</strong> — muestra el contenido de la sección actual (por defecto: el «Resumen» con sus estadísticas y solicitudes recientes).",
+      "fig1": {
+        "alt": "Panel principal del ciudadano",
+        "caption": "Panel principal — vista «Resumen». Menú lateral a la izquierda, cabecera con notificación arriba, zona central con cartas de estadísticas, banner de acciones requeridas, y pestañas (Solicitudes Recientes / Pagos / Alertas)."
+      }
+    },
+    "s3": {
+      "title": "3. Cartas de estadísticas",
+      "intro": "En la parte superior de la zona principal, cuatro cartas resumen el estado de su cuenta:",
+      "table": {
+        "col1": "Carta", "col2": "Significado", "col3": "Acción al pulsarla",
+        "r1": { "c1": "Solicitudes activas", "c2": "Trámites iniciados, aún no finalizados (en cualquier estado : borrador, enviada, en proceso, en revisión, en pago, esperando cita).", "c3": "Va a la pestaña «Mis Solicitudes» filtrada en activas." },
+        "r2": { "c1": "Solicitudes completadas", "c2": "Trámites finalizados con éxito.", "c3": "Va a «Mis Solicitudes» filtrada en completadas." },
+        "r3": { "c1": "Pendientes de acción", "c2": "Solicitudes que esperan algo de usted (pago, documento, confirmación de cita, respuesta a una pregunta del agente).", "c3": "Va a «Mis Solicitudes» filtrada en pendientes — corresponde al banner naranja de «Acciones requeridas»." },
+        "r4": { "c1": "Total pagado (XAF)", "c2": "Suma de todos los pagos validados durante el año en curso.", "c3": "Va a «Mis Pagos» con el desglose detallado." }
+      },
+      "tip": "Las cartas se actualizan en tiempo real. Si paga una solicitud o un agente valida un trámite, el contador se incrementa al instante (puede que necesite recargar la página después de una validación de agente lenta)."
+    },
+    "s4": {
+      "title": "4. Banner «Acciones requeridas»",
+      "intro": "Si tiene solicitudes esperando una acción de su parte, un <strong>banner naranja</strong> aparece arriba del panel. Lista cada solicitud bloqueada con su número de referencia (ej : <code>SRV-2026-00001</code>) y el motivo del bloqueo.",
+      "types": {
+        "title": "Tipos de acciones requeridas",
+        "payment": "<strong>Pago pendiente</strong> — debe pagar la tasa antes de que la solicitud pueda procesarse.",
+        "docs": "<strong>Documentos faltantes</strong> — el agente le pidió aportar un documento adicional.",
+        "appointment": "<strong>Cita por confirmar</strong> — debe seleccionar una fecha de cita.",
+        "question": "<strong>Pregunta del agente</strong> — el agente le pidió una aclaración o documento."
+      },
+      "warning": "Las solicitudes con acciones requeridas pueden tener un plazo. Si no responde en el tiempo establecido, la solicitud puede ser rechazada automáticamente y deberá iniciarla de nuevo (con pérdida del pago si ya estaba realizado en algunos casos)."
+    },
+    "s5": {
+      "title": "5. Pestañas (Solicitudes, Pagos, Alertas)",
+      "intro": "Debajo de las cartas de estadísticas, tres pestañas le permiten alternar entre vistas:",
+      "req": { "title": "Pestaña «Solicitudes Recientes»", "body": "Muestra sus 10 solicitudes más recientes con: referencia, tipo, estado, fecha de creación, progreso (barra de %). Pulsando una línea, accede al detalle. Para ver todas, vaya a <a href=\"23-mis-solicitudes-web.html\" class=\"coming-soon\">Mis Solicitudes</a>." },
+      "pay": { "title": "Pestaña «Pagos»", "body": "Lista los pagos realizados o pendientes, con estado, importe en XAF, método (Dinero Móvil, Tarjeta, Transferencia, Efectivo, Cheque) y referencia. Detalle completo en <a href=\"24-mis-pagos-web.html\" class=\"coming-soon\">Mis Pagos</a>." },
+      "alerts": { "title": "Pestaña «Alertas»", "body": "Notificaciones recientes (cambios de estado, mensajes de agentes, alertas de vencimiento de documentos). Pulsando una alerta, accede al elemento concernido." }
+    },
+    "s6": {
+      "title": "6. Acciones rápidas (sidebar)",
+      "intro": "El menú lateral izquierdo contiene 8 entradas principales:",
+      "table": {
+        "col1": "Entrada", "col2": "Función", "col3": "Página manual",
+        "r1": { "c1": "Resumen", "c2": "Vista actual (este panel)" },
+        "r2": { "c1": "Solicitudes Servicios", "c2": "Lista completa de sus solicitudes" },
+        "r3": { "c1": "Solicitudes en Lote", "c2": "Crear varias solicitudes a la vez (Excel)" },
+        "r4": { "c1": "Mis Documentos", "c2": "Caja fuerte digital de sus documentos" },
+        "r5": { "c1": "Chat Asistente", "c2": "Asistente IA conversacional" },
+        "r6": { "c1": "Ayuda / Soporte", "c2": "Crear y consultar tickets de soporte" },
+        "r7": { "c1": "Perfil", "c2": "Sus informaciones personales" },
+        "r8": { "c1": "Configuración", "c2": "Seguridad (contraseña, 2FA), notificaciones" }
+      }
+    },
+    "s7": {
+      "title": "7. Versión móvil equivalente",
+      "intro": "La aplicación móvil ofrece un panel similar pero adaptado a la pantalla pequeña. Detalle completo en la página <a href=\"31-dashboard-mobile.html\" class=\"coming-soon\">Panel principal Móvil</a>.",
+      "table": {
+        "col1": "Función", "col2": "Web", "col3": "Móvil",
+        "r1": { "c1": "Cartas de estadísticas (4)" },
+        "r2": { "c1": "Banner acciones requeridas" },
+        "r3": { "c1": "Pestañas (Solicitudes/Pagos/Alertas)" },
+        "r4": { "c1": "Menú lateral persistente", "c3": "❌ (menú hamburguesa)" },
+        "r5": { "c1": "Notificaciones push", "c2": "❌ (web push solo)" },
+        "r6": { "c1": "Acceso biométrico (huella/cara)" }
+      },
+      "success": "Ya conoce su panel principal. La siguiente página explica cómo iniciar un nuevo trámite paso a paso."
+    }
+  }
+
+  // page01, page11-17, page22-29, page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
 
 };

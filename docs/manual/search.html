@@ -11,10 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="i18n/i18n.js" defer></script>
-  <!-- Pagefind UI: activado en Phase 10 después de generar el índice
+  <!-- Pagefind UI: activado tras generar índice via `npx pagefind --site docs/manual --output-path docs/manual/pagefind` -->
   <link rel="stylesheet" href="pagefind/pagefind-ui.css">
   <script src="pagefind/pagefind-ui.js" defer></script>
-  -->
 </head>
 <body>
   <div class="page-wrapper">
@@ -50,13 +49,13 @@
         </p>
 
         <div class="search-wrapper">
-          <!-- Pagefind UI montará aquí su input + resultados después de Phase 10 -->
+          <!-- Pagefind UI inyecta input + resultados aquí -->
           <div id="search"></div>
 
           <aside class="callout callout-info">
             <div class="callout-title" data-i18n="common.callout.info">Información</div>
             <p data-i18n="searchpage.info">
-              La búsqueda completa se activa después de la fase 10 del proyecto (generación del índice Pagefind). Mientras tanto, navegue mediante el menú lateral o el sumario de la página de inicio.
+              La búsqueda funciona en las 3 idiomas. Si no encuentra una página, intente navegar mediante el menú lateral o el sumario de la página de inicio.
             </p>
           </aside>
         </div>
@@ -67,13 +66,26 @@
     </main>
   </div>
 
-  <!-- Pagefind UI init: activado en Phase 10
   <script>
     window.addEventListener('DOMContentLoaded', () => {
-      new PagefindUI({ element: '#search', showSubResults: true });
+      if (typeof PagefindUI !== 'undefined') {
+        new PagefindUI({
+          element: '#search',
+          showSubResults: true,
+          showImages: false,
+          translations: {
+            placeholder: 'Buscar en el manual...',
+            zero_results: 'No se encontraron resultados para [SEARCH_TERM]',
+            many_results: '[COUNT] resultados para [SEARCH_TERM]',
+            one_result: '[COUNT] resultado para [SEARCH_TERM]',
+            alt_search: 'Sin resultados para [SEARCH_TERM]. Mostrando resultados para [DIFFERENT_TERM] en su lugar',
+            search_suggestion: 'Sin resultados para [SEARCH_TERM]. Pruebe otra búsqueda',
+            searching: 'Buscando [SEARCH_TERM]...'
+          }
+        });
+      }
     });
   </script>
-  -->
   <script>
     const toggle = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('sidebar');

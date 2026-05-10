@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page21.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Su panel de control principal en Facil Web — descripción de las cartas de estadísticas, acciones requeridas, pestañas y acciones rápidas.">
+  <meta name="author" content="Equipo Facil">
+  <title>Panel principal Web — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.dashboard_web">Panel principal</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label">
+            <span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page21.title">Su panel principal en Facil Web</h1>
+        <p class="page-description" data-i18n="page21.description">
+          Después de iniciar sesión, llega a su panel principal: el centro neurálgico desde el cual sigue todas sus solicitudes, gestiona sus documentos y accede a los servicios. Esta página describe cada elemento de la pantalla.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page21.toc.s1">1. Acceder al panel</a></li>
+            <li><a href="#estructura" data-i18n="page21.toc.s2">2. Estructura general</a></li>
+            <li><a href="#estadisticas" data-i18n="page21.toc.s3">3. Cartas de estadísticas</a></li>
+            <li><a href="#acciones" data-i18n="page21.toc.s4">4. Acciones requeridas</a></li>
+            <li><a href="#pestanas" data-i18n="page21.toc.s5">5. Pestañas (Solicitudes, Pagos, Alertas)</a></li>
+            <li><a href="#sidebar" data-i18n="page21.toc.s6">6. Acciones rápidas (sidebar)</a></li>
+            <li><a href="#movil" data-i18n="page21.toc.s7">7. Versión móvil equivalente</a></li>
+          </ul>
+        </div>
+
+        <!-- ===== Sección 1 ===== -->
+        <section>
+          <h2 id="acceso" data-i18n="page21.s1.title">1. Acceder al panel</h2>
+          <p data-i18n-html="page21.s1.intro">
+            El panel principal se muestra automáticamente después de <a href="12-iniciar-sesion.html" class="coming-soon">iniciar sesión</a>. Si aún no tiene cuenta, consulte la página <a href="11-crear-cuenta.html" class="coming-soon">Crear cuenta</a>.
+          </p>
+          <p data-i18n="page21.s1.url">URL directa: <code>https://facil.gov.gq/dashboard</code> (redirige al inicio de sesión si no está autenticado).</p>
+        </section>
+
+        <!-- ===== Sección 2 ===== -->
+        <section>
+          <h2 id="estructura" data-i18n="page21.s2.title">2. Estructura general de la pantalla</h2>
+          <p data-i18n="page21.s2.intro">El panel se divide en 3 zonas principales:</p>
+
+          <ol class="step-list">
+            <li data-i18n-html="page21.s2.zone1"><strong>Menú lateral izquierdo</strong> — todas las secciones disponibles para usted (Resumen, Solicitudes, Documentos, Chat, Soporte, Perfil, Configuración). Se mantiene visible en todas las páginas.</li>
+            <li data-i18n-html="page21.s2.zone2"><strong>Cabecera superior</strong> — contiene el ícono de notificaciones (con un punto rojo si tiene mensajes no leídos), el selector de idioma, y el menú de su perfil.</li>
+            <li data-i18n-html="page21.s2.zone3"><strong>Zona principal</strong> — muestra el contenido de la sección actual (por defecto: el «Resumen» con sus estadísticas y solicitudes recientes).</li>
+          </ol>
+
+          <figure>
+            <img src="_assets/screenshots/web/citizen/3.png" alt="Panel principal del ciudadano" data-i18n-attr-alt="page21.s2.fig1.alt">
+            <figcaption data-i18n="page21.s2.fig1.caption">Panel principal — vista «Resumen». Menú lateral a la izquierda, cabecera con notificación arriba, zona central con cartas de estadísticas, banner de acciones requeridas, y pestañas (Solicitudes Recientes / Pagos / Alertas).</figcaption>
+          </figure>
+        </section>
+
+        <!-- ===== Sección 3 ===== -->
+        <section>
+          <h2 id="estadisticas" data-i18n="page21.s3.title">3. Cartas de estadísticas</h2>
+          <p data-i18n="page21.s3.intro">En la parte superior de la zona principal, cuatro cartas resumen el estado de su cuenta:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page21.s3.table.col1">Carta</th>
+                  <th data-i18n="page21.s3.table.col2">Significado</th>
+                  <th data-i18n="page21.s3.table.col3">Acción al pulsarla</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page21.s3.table.r1.c1">Solicitudes activas</td>
+                  <td data-i18n="page21.s3.table.r1.c2">Trámites iniciados, aún no finalizados (en cualquier estado : borrador, enviada, en proceso, en revisión, en pago, esperando cita).</td>
+                  <td data-i18n="page21.s3.table.r1.c3">Va a la pestaña «Mis Solicitudes» filtrada en activas.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page21.s3.table.r2.c1">Solicitudes completadas</td>
+                  <td data-i18n="page21.s3.table.r2.c2">Trámites finalizados con éxito.</td>
+                  <td data-i18n="page21.s3.table.r2.c3">Va a «Mis Solicitudes» filtrada en completadas.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page21.s3.table.r3.c1">Pendientes de acción</td>
+                  <td data-i18n="page21.s3.table.r3.c2">Solicitudes que esperan algo de usted (pago, documento, confirmación de cita, respuesta a una pregunta del agente).</td>
+                  <td data-i18n="page21.s3.table.r3.c3">Va a «Mis Solicitudes» filtrada en pendientes — corresponde al banner naranja de «Acciones requeridas».</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page21.s3.table.r4.c1">Total pagado (XAF)</td>
+                  <td data-i18n="page21.s3.table.r4.c2">Suma de todos los pagos validados durante el año en curso.</td>
+                  <td data-i18n="page21.s3.table.r4.c3">Va a «Mis Pagos» con el desglose detallado.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page21.s3.tip">Las cartas se actualizan en tiempo real. Si paga una solicitud o un agente valida un trámite, el contador se incrementa al instante (puede que necesite recargar la página después de una validación de agente lenta).</p>
+          </aside>
+        </section>
+
+        <!-- ===== Sección 4 ===== -->
+        <section>
+          <h2 id="acciones" data-i18n="page21.s4.title">4. Banner «Acciones requeridas»</h2>
+          <p data-i18n-html="page21.s4.intro">
+            Si tiene solicitudes esperando una acción de su parte, un <strong>banner naranja</strong> aparece arriba del panel. Lista cada solicitud bloqueada con su número de referencia (ej : <code>SRV-2026-00001</code>) y el motivo del bloqueo.
+          </p>
+
+          <h3 data-i18n="page21.s4.types.title">Tipos de acciones requeridas</h3>
+          <ul>
+            <li data-i18n-html="page21.s4.types.payment"><strong>Pago pendiente</strong> — debe pagar la tasa antes de que la solicitud pueda procesarse.</li>
+            <li data-i18n-html="page21.s4.types.docs"><strong>Documentos faltantes</strong> — el agente le pidió aportar un documento adicional.</li>
+            <li data-i18n-html="page21.s4.types.appointment"><strong>Cita por confirmar</strong> — debe seleccionar una fecha de cita.</li>
+            <li data-i18n-html="page21.s4.types.question"><strong>Pregunta del agente</strong> — el agente le pidió una aclaración o documento.</li>
+          </ul>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n="page21.s4.warning">Las solicitudes con acciones requeridas pueden tener un plazo. Si no responde en el tiempo establecido, la solicitud puede ser rechazada automáticamente y deberá iniciarla de nuevo (con pérdida del pago si ya estaba realizado en algunos casos).</p>
+          </aside>
+        </section>
+
+        <!-- ===== Sección 5 ===== -->
+        <section>
+          <h2 id="pestanas" data-i18n="page21.s5.title">5. Pestañas (Solicitudes, Pagos, Alertas)</h2>
+          <p data-i18n="page21.s5.intro">
+            Debajo de las cartas de estadísticas, tres pestañas le permiten alternar entre vistas:
+          </p>
+
+          <h3 data-i18n="page21.s5.req.title">Pestaña «Solicitudes Recientes»</h3>
+          <p data-i18n-html="page21.s5.req.body">Muestra sus 10 solicitudes más recientes con: referencia, tipo, estado, fecha de creación, progreso (barra de %). Pulsando una línea, accede al detalle. Para ver todas, vaya a <a href="23-mis-solicitudes-web.html" class="coming-soon">Mis Solicitudes</a>.</p>
+
+          <h3 data-i18n="page21.s5.pay.title">Pestaña «Pagos»</h3>
+          <p data-i18n-html="page21.s5.pay.body">Lista los pagos realizados o pendientes, con estado, importe en XAF, método (Dinero Móvil, Tarjeta, Transferencia, Efectivo, Cheque) y referencia. Detalle completo en <a href="24-mis-pagos-web.html" class="coming-soon">Mis Pagos</a>.</p>
+
+          <h3 data-i18n="page21.s5.alerts.title">Pestaña «Alertas»</h3>
+          <p data-i18n-html="page21.s5.alerts.body">Notificaciones recientes (cambios de estado, mensajes de agentes, alertas de vencimiento de documentos). Pulsando una alerta, accede al elemento concernido.</p>
+        </section>
+
+        <!-- ===== Sección 6 ===== -->
+        <section>
+          <h2 id="sidebar" data-i18n="page21.s6.title">6. Acciones rápidas (sidebar)</h2>
+          <p data-i18n="page21.s6.intro">El menú lateral izquierdo contiene 8 entradas principales:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page21.s6.table.col1">Entrada</th>
+                  <th data-i18n="page21.s6.table.col2">Función</th>
+                  <th data-i18n="page21.s6.table.col3">Página manual</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page21.s6.table.r1.c1">Resumen</td><td data-i18n="page21.s6.table.r1.c2">Vista actual (este panel)</td><td>—</td></tr>
+                <tr><td data-i18n="page21.s6.table.r2.c1">Solicitudes Servicios</td><td data-i18n="page21.s6.table.r2.c2">Lista completa de sus solicitudes</td><td><a href="23-mis-solicitudes-web.html" class="coming-soon" data-i18n="nav.link.my_requests_web">Mis solicitudes</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r3.c1">Solicitudes en Lote</td><td data-i18n="page21.s6.table.r3.c2">Crear varias solicitudes a la vez (Excel)</td><td><a href="43-batch-requests.html" class="coming-soon" data-i18n="nav.link.batch_requests">Solicitudes en lote</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r4.c1">Mis Documentos</td><td data-i18n="page21.s6.table.r4.c2">Caja fuerte digital de sus documentos</td><td><a href="25-mis-documentos-web.html" class="coming-soon" data-i18n="nav.link.my_documents_web">Mis documentos</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r5.c1">Chat Asistente</td><td data-i18n="page21.s6.table.r5.c2">Asistente IA conversacional</td><td><a href="29-soporte-web.html" class="coming-soon" data-i18n="nav.link.support_web">Asistente IA</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r6.c1">Ayuda / Soporte</td><td data-i18n="page21.s6.table.r6.c2">Crear y consultar tickets de soporte</td><td><a href="29-soporte-web.html" class="coming-soon" data-i18n="nav.link.support_web">Soporte</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r7.c1">Perfil</td><td data-i18n="page21.s6.table.r7.c2">Sus informaciones personales</td><td><a href="15-perfil.html" class="coming-soon" data-i18n="nav.link.profile">Su perfil</a></td></tr>
+                <tr><td data-i18n="page21.s6.table.r8.c1">Configuración</td><td data-i18n="page21.s6.table.r8.c2">Seguridad (contraseña, 2FA), notificaciones</td><td><a href="16-seguridad.html" class="coming-soon" data-i18n="nav.link.security">Seguridad</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ===== Sección 7 ===== -->
+        <section>
+          <h2 id="movil" data-i18n="page21.s7.title">7. Versión móvil equivalente</h2>
+          <p data-i18n-html="page21.s7.intro">
+            La aplicación móvil ofrece un panel similar pero adaptado a la pantalla pequeña. Detalle completo en la página <a href="31-dashboard-mobile.html" class="coming-soon">Panel principal Móvil</a>.
+          </p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page21.s7.table.col1">Función</th>
+                  <th data-i18n="page21.s7.table.col2">Web</th>
+                  <th data-i18n="page21.s7.table.col3">Móvil</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page21.s7.table.r1.c1">Cartas de estadísticas (4)</td><td>✅</td><td>✅ (compactadas)</td></tr>
+                <tr><td data-i18n="page21.s7.table.r2.c1">Banner acciones requeridas</td><td>✅</td><td>✅</td></tr>
+                <tr><td data-i18n="page21.s7.table.r3.c1">Pestañas (Solicitudes/Pagos/Alertas)</td><td>✅</td><td>✅</td></tr>
+                <tr><td data-i18n="page21.s7.table.r4.c1">Menú lateral persistente</td><td>✅</td><td data-i18n="page21.s7.table.r4.c3">❌ (menú hamburguesa)</td></tr>
+                <tr><td data-i18n="page21.s7.table.r5.c1">Notificaciones push</td><td data-i18n="page21.s7.table.r5.c2">❌ (web push solo)</td><td>✅ (FCM/APNs)</td></tr>
+                <tr><td data-i18n="page21.s7.table.r6.c1">Acceso biométrico (huella/cara)</td><td>❌</td><td>✅</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page21.s7.success">Ya conoce su panel principal. La siguiente página explica cómo iniciar un nuevo trámite paso a paso.</p>
+          </aside>
+        </section>
+
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="17-eliminar-cuenta.html" class="pagination-prev coming-soon">
+            <span data-i18n="page21.prev">← Anterior: Eliminar cuenta</span>
+          </a>
+          <a href="22-iniciar-tramite-web.html" class="pagination-next coming-soon">
+            <span data-i18n="page21.next">Siguiente: Iniciar trámite (Web) →</span>
+          </a>
+        </nav>
+        <div class="footer-meta">
+          <span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

@@ -127,17 +127,99 @@ Páginas públicas (homepage, services, calc, directory, license sim, verify) �
 - `ayu-camara/` (10 fichiers) → page73
 - `tesoro/` (27 fichiers : 0-26) → page72
 
-### 4.5 `web/workflow_user/` (75 capturas → `screenshots/web/citizen/` o `business/`)
-- `Chat/` (7 fichiers : 1-7) → page29 (chat web)
-- `Documents/` (5 fichiers : 0-4) → page25 (mis documentos web)
-- `Empresas/` (16 fichiers : 1-16) → page27 (mis empresas web)
-- `Notification_user/` (6 JPG : N0-N6) → page28 (notificaciones web)
-- `Soporte/` (3 fichiers) → page29 (soporte web)
-- `user/` (10 fichiers : 01, 1-9) → page21 (dashboard web)
-- `solicitud/` (22 fichiers : 1-22) → page22 (iniciar trámite + wizard)
-- `después validación pago/` (4 fichiers) → page24 (mis pagos web)
+### 4.5 `web/workflow_user/` (75 capturas) — IDENTIFIÉ Phase 1 par agent multimodal
 
-⚠️ **Web `workflow_user/` también requiere identificación multimodal** (similar al mobile) en Phase 4 antes de redactar las páginas 21-29 — agendado para sub-plan Phase 4.
+**Mapping détaillé** ci-dessous (issu d'agent multimodal lancé en Phase 1 pour préparer Phase 4) :
+
+#### web/citizen/ (racine, 10 PNG) → pages 11-12 (auth) + 21 (dashboard) + 15-16 (perfil)
+| Fichier | Écran | Page cible |
+|---|---|---|
+| `01.png` | Login (email pré-rempli) | page12 (sign in) |
+| `1.png` | Login (état vide) | page12 |
+| `2.png` | Registro (sélecteur Citoyen/Empresa) | page11 (create account) |
+| `3.png` | **Dashboard citoyen Resumen** (stats + acciones req + recientes) | page21 |
+| `4.png` | Configuración Seguridad (password + 2FA toggle) | page16 |
+| `5.png` | Modal activation 2FA (QR + code manuel) | page14 (2FA) |
+| `6.png` | Mi Perfil tab "Informaciones personales" | page15 |
+| `7.png` | Mi Perfil tab "Informaciones de la cuenta" | page15 |
+| `8.png` | Mi Perfil tab "Notificaciones" (préférences langue + toggles) | page15 ou page28 |
+| `9.png` | Mi Perfil tab "Verificación Funcionario" | page15 (avancée) |
+
+#### web/citizen/chat/ (7 PNG) → page 29 (chat asistente)
+| Fichier | Écran | Détail |
+|---|---|---|
+| `1.png` | Chat état initial (4 sugerencias + Mi Cofre Digital) | Welcome |
+| `2.png` | Popover "Sugerencias" (icône +) | 9 sugerencias classées |
+| `3.png` | Popover "Iniciar un trámite" (fusée) | 6 quick-start workflows |
+| `4.png` | Drawer "Historial" (sidebar gauche) | Liste conversations |
+| `5.png` | Conversation : statistiques cofre digital | Réponse bot riche |
+| `6.png` | Conversation : pagar obligación + loading | Indicateur "Preparando..." |
+| `7.png` | Conversation : Apertura Restaurante (paquete fiscal 855k XAF) | Breakdown détaillé |
+
+#### web/citizen/solicitud/ (22 PNG) — **WIZARD COMPLET 10 ÉTAPES** → page 22 (iniciar-tramite-web)
+| Fichier | Écran | Étape | Détail clé |
+|---|---|---|---|
+| `1.png` | Dashboard contexte | (avant wizard) | État vide |
+| `2.png` | Sélection servicio | `/service-requests/new` | 6 catégories repliables |
+| `3.png` | **Step 1/10** | Tipo de Solicitud | Renovación 25 000 XAF sélectionné |
+| `4.png` | **Step 2/10** | Tipo de Solicitante | Residente Extranjero (NIE) |
+| `5.png` | **Step 3/10** | Clase(s) de Permiso | Class E sélectionnée |
+| `6.png` | **Step 4/10** initial | Documentos Requeridos | 3 zones drag-drop vides |
+| `7.png` | **Step 4/10** complet | Documentos OCR extraits | 77/87/100% conf |
+| `8.png` | **Step 5/10** | Verificar Datos 1/3 | Datos personales OCR readonly |
+| `9.png` | **Step 6/10** | Verificar Datos 2/3 | Datos solicitud (Tipo + Clase) |
+| `10.png` | **Step 7/10** | Verificar Datos 3/3 | Certificado actual |
+| `11.png` | **Step 8/10** | Cita - Selecciona Ubicación | MALABO II Oficina Principal |
+| `12.png` | **Step 8/10** | Cita - Calendario Avril 2026 | Jours surbrillance |
+| `13.png` | **Step 8/10** | Cita - Horarios | 28 avril sélectionné |
+| `14.png` | **Step 9/10** | Pago - Dinero Móvil | 5 méthodes, +240 input |
+| `15.png` | **Step 9/10** | Pago - Efectivo | Select oficina Tesoro |
+| `16.png` | **Step 10/10** | Confirmación | Ref CON-2026-00001 + CTAs PDF/Imprimir |
+| `17.png` | Détail solicitud post-création | `/service-requests/{id}` | Stepper 88%, Pago=Pendiente |
+| `18.png` | Détail solicitud (scroll) | même page | Datos personales avec photo |
+| `19.png` | **PDF généré** | `solicitud_CON-2026-00001.pdf` | Photo + datos + cita + pago + QR |
+| `20.png` | Page **Verify publique ES** | `/es/verify/CON-2026-00001?t=...` | Page 57 (verify) |
+| `21.png` | PDF (zoom) | même PDF | Détail desglose pago |
+| `22.png` | Page **Verify publique FR** | `/fr/verify/...` | Page 57 multilangue |
+
+#### web/citizen/documents/ (5 PNG) → page 25 (mis documentos web)
+| Fichier | Écran |
+|---|---|
+| `0.png` | Modal onboarding "Bienvenido a Mis Documentos" |
+| `1.png` | Tab "Personales" (16 docs grille + menu contextuel) |
+| `2.png` | Tab "Generados" (Recibos, Resúmenes) |
+| `3.png` | Tab "Preparación" (checklist préparation trámite) |
+| `4.png` | Drawer "Configuración del asistente" IA |
+
+#### web/citizen/notifications/ (6 JPG) → page 28 (notificaciones — emails reçus)
+**NB**: ce sont des screenshots Gmail mobile, pas des écrans Facil. Illustrent les emails reçus par le citoyen.
+| Fichier | Email | Détail |
+|---|---|---|
+| `N0.jpg` | Inbox Gmail mobile | 3 emails TaxasGE Platform listés |
+| `N1.jpg` | Email "Pago en Efectivo Pendiente" | 4 étapes prochaines |
+| `N2.jpg` | Email "Pago en Efectivo Validado" (header vert) | Datos paiement complets |
+| `N3.jpg` | Email "Pago Validado" scroll | Lien verify + PJ recibo PDF |
+| `N5.jpg` | Email "Solicitud Recibida" | Référence CON-2026-00001 |
+| `N6.jpg` | Page web verify recibo (REC-...) | Navigateur tablette mobile |
+
+#### web/citizen/post-validation/ (4 PNG) → page 24 (mis pagos web)
+**NB**: état solicitud après validation paiement Efectivo par agent
+| Fichier | Écran |
+|---|---|
+| `1.png` | Détail solicitud Completada (stepper 100% vert) |
+| `2.png` | Détail solicitud Completada (scroll) |
+| `11.png` | Liste solicitudes (17 lignes) |
+| `12.png` | Détail solicitud Enviada (post-pago, pre-validation agent) |
+
+#### web/citizen/support/ (3 PNG) → page 29 (soporte web)
+| Fichier | Écran |
+|---|---|
+| `1.png` | Liste tickets (3 SUP-* + FAQ) |
+| `2.png` | Formulaire "Nuevo Ticket" |
+| `3.png` | Détail Ticket "Second test" + conversation |
+
+#### web/business/ (16 PNG) → page 27 (mis empresas web) — **À identifier en Phase 4**
+Aucune analyse multimodale faite. À déléguer début Phase 4 si nécessaire.
 
 ---
 

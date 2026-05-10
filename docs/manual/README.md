@@ -178,10 +178,39 @@ El manual está bajo `docs/manual/`. Servido vía Firebase Hosting (mismo bucket
 
 **No hay build**: simplemente push a `develop` y los archivos estáticos se sincronizan.
 
-Para regenerar el índice Pagefind (en Phase 10 o tras edición masiva):
+### Regenerar el índice de búsqueda Pagefind
+
+Tras añadir o modificar páginas, regenerar el índice:
 ```bash
-npx pagefind --site docs/manual
+cd C:/taxasge
+rm -rf docs/manual/pagefind && npx pagefind --site docs/manual --output-path docs/manual/pagefind
 ```
+
+Tiempo: ~50ms para 5 páginas, escalable. La primera ejecución descarga `pagefind@1.5.2`.
+
+El dossier `pagefind/` está gitignored : se regenera automáticamente. En CI/CD, añadir un step antes del despliegue Firebase.
+
+### Validar las claves i18n
+
+Después de añadir o modificar una página, verificar la coherencia ES/FR/EN :
+```bash
+bash docs/manual/tools/check-i18n-keys.sh
+```
+
+El script muestra :
+- Claves usadas en HTML pero no traducidas en `es.js` (a corregir)
+- Claves en `es.js` no usadas en HTML (warnings, generalmente aceptable)
+- Cobertura FR/EN como porcentaje de ES
+
+### Sidebar (menú lateral)
+
+⚠ **El sidebar está duplicado en cada página HTML** — copia idéntica desde `index.html` (modificar `class="active"` solo del enlace de la página actual).
+
+Cuando modifique el sidebar (añadir/quitar/reorganizar entradas) :
+1. Modifique primero `index.html`
+2. Propague la modificación a CADA página HTML (`grep -l 'sidebar-nav' docs/manual/*.html`)
+
+En Phase 10 se podrá generar un script `tools/propagate-sidebar.sh` si la cantidad de páginas lo justifica.
 
 ---
 

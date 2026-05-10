@@ -1,0 +1,14 @@
+# Pagefind index — generated automatically, regenerated on each build
+pagefind/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor temp files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
