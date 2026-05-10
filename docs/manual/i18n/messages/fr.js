@@ -524,6 +524,70 @@ window.__I18N__.fr = {
     "next": "Suivant : Tableau de bord Mobile →"
   },
 
+  "page31": {
+    "html_title": "Tableau de bord Mobile — Manuel Facil",
+    "title": "Tableau de bord dans l'app mobile",
+    "description": "Tableau de bord Citoyen pensé pour mobile : 4 KPI (en cours, payés, certificats, notifications) en grille 2×2, 5 actions rapides, navigation tactile sans scroll.",
+    "prev": "← Précédent : Assistant IA et Support",
+    "next": "Suivant : Démarrer une démarche (Mobile) →"
+  },
+  "page32": {
+    "html_title": "Démarrer une démarche (Mobile) — Manuel Facil",
+    "title": "Démarrer une démarche depuis le mobile",
+    "description": "Wizard adapté au mobile : catégories collapsables, recherche tactile, ouverture caméra directe pour pièces justificatives, OCR automatique côté serveur.",
+    "prev": "← Précédent : Tableau de bord (Mobile)",
+    "next": "Suivant : Mes demandes (Mobile) →"
+  },
+  "page33": {
+    "html_title": "Mes demandes (Mobile) — Manuel Facil",
+    "title": "Suivre ses demandes depuis le mobile",
+    "description": "Liste des demandes avec filtres tactiles (chips), pull-to-refresh, FAB pour nouvelle demande, swipe pour actions rapides.",
+    "prev": "← Précédent : Démarrer une démarche (Mobile)",
+    "next": "Suivant : Mes paiements (Mobile) →"
+  },
+  "page34": {
+    "html_title": "Mes paiements (Mobile) — Manuel Facil",
+    "title": "Payer depuis l'app mobile",
+    "description": "Paiements BANGE Mobile Money avec auto-détection de la carte SIM, partage natif du reçu PDF, historique trié par date.",
+    "prev": "← Précédent : Mes demandes (Mobile)",
+    "next": "Suivant : Mes documents (Mobile) →"
+  },
+  "page35": {
+    "html_title": "Mes documents (Mobile) — Manuel Facil",
+    "title": "Coffre numérique sur mobile",
+    "description": "3 onglets (Tous, Officiels, Téléversés), scan QR de document pour vérification instantanée, partage natif et téléchargement local sécurisé.",
+    "prev": "← Précédent : Mes paiements (Mobile)",
+    "next": "Suivant : Mes entreprises (Mobile) →"
+  },
+  "page36": {
+    "html_title": "Mes entreprises (Mobile) — Manuel Facil",
+    "title": "Gérer ses entreprises depuis le mobile",
+    "description": "Liste verticale des entreprises avec FAB pour ajouter, accès rapide aux licences commerciales et obligations fiscales liées.",
+    "prev": "← Précédent : Mes documents (Mobile)",
+    "next": "Suivant : Assistant IA (Mobile) →"
+  },
+  "page37": {
+    "html_title": "Assistant IA (Mobile) — Manuel Facil",
+    "title": "Assistant IA sur mobile",
+    "description": "Voix-à-texte intégré, contexte SIM (numéro pré-rempli), historique conversationnel synchronisé avec la version Web.",
+    "prev": "← Précédent : Mes entreprises (Mobile)",
+    "next": "Suivant : Support (Mobile) →"
+  },
+  "page38": {
+    "html_title": "Support (Mobile) — Manuel Facil",
+    "title": "Support et tickets sur mobile",
+    "description": "Création de tickets avec photos via caméra, push notifications FCM/APNs sur réponses, accusé de réception sous 24h.",
+    "prev": "← Précédent : Assistant IA (Mobile)",
+    "next": "Suivant : Fonctions exclusives Mobile →"
+  },
+  "page39": {
+    "html_title": "Fonctions exclusives Mobile — Manuel Facil",
+    "title": "9 fonctions exclusives à la version mobile",
+    "description": "Biométrie, app lock, mode hors-ligne (MMKV), push FCM/APNs, scan QR, partage natif, voix-à-texte, auto-détection SIM, caméra directe — toutes les fonctions impossibles ou dégradées sur Web.",
+    "prev": "← Précédent : Support (Mobile)",
+    "next": "Suivant : Vue Web du site public →"
+  },
+
   "page59": {
     "html_title": "Vue Web du site public — Manuel Facil",
     "title": "Vue Web du site public (desktop)",

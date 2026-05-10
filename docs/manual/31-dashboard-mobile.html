@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page25.html_title">
+<html lang="es" data-i18n-title="page31.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Caja fuerte digital de sus documentos personales y generados en Facil — 4 pestañas, IA classification, alertas vencimiento.">
-  <title>Mis documentos (Web) — Manual Facil</title>
+  <meta name="description" content="Panel principal del citoyen en la app móvil Facil — KPIs, acciones rápidas, pestañas Solicitudes/Pagos/Alertas.">
+  <title>Panel principal Móvil — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -57,7 +57,7 @@
           <a href="22-iniciar-tramite-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
           <a href="23-mis-solicitudes-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
           <a href="24-mis-pagos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
-          <a href="25-mis-documentos-web.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
           <a href="26-bundle-payment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
           <a href="27-mis-empresas-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
           <a href="28-notificaciones-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
@@ -66,7 +66,7 @@
 
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
-          <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="31-dashboard-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
           <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
@@ -137,8 +137,8 @@
       <header class="content-header">
         <nav class="breadcrumb">
           <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_web">Ciudadano · Web</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_documents_web">Mis documentos</span>
+          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.dashboard_mobile">Panel principal</span>
         </nav>
         <div class="header-actions">
           <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
@@ -146,8 +146,8 @@
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page25.title">Mis documentos — caja fuerte digital</h1>
-        <p class="page-description" data-i18n="page25.description">Su caja fuerte digital centraliza todos los documentos vinculados a sus trámites Facil — documentos personales subidos por usted, documentos generados automáticamente (recibos, certificados), preparación pre-trámite asistida por IA. 4 pestañas dedicadas + un asistente IA configurable.</p>
+        <h1 class="page-title" data-i18n="page31.title">Panel principal en la aplicación móvil</h1>
+        <p class="page-description" data-i18n="page31.description">Tras iniciar sesión en la app móvil Facil, accede a su panel principal — versión compacta y optimizada del dashboard Web. Ofrece las mismas funcionalidades clave (KPIs, acciones rápidas, solicitudes recientes, pagos, alertas) pero adaptadas a una pantalla pequeña con menú hamburguesa.</p>
 
         <div class="persona-bar">
           <span class="persona-label" data-i18n="common.persona.label">Para:</span>
@@ -158,104 +158,108 @@
         <div class="toc">
           <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
           <ul class="toc-list">
-            <li><a href="#onboarding" data-i18n="page25.toc.s1">1. Primer acceso (onboarding)</a></li>
-            <li><a href="#tab-personales" data-i18n="page25.toc.s2">2. Pestaña «Personales»</a></li>
-            <li><a href="#tab-generados" data-i18n="page25.toc.s3">3. Pestaña «Generados»</a></li>
-            <li><a href="#tab-preparacion" data-i18n="page25.toc.s4">4. Pestaña «Preparación»</a></li>
-            <li><a href="#asistente" data-i18n="page25.toc.s5">5. Asistente IA configurable</a></li>
+            <li><a href="#acceso" data-i18n="page31.toc.s1">1. Acceso al panel móvil</a></li>
+            <li><a href="#estructura" data-i18n="page31.toc.s2">2. Estructura general</a></li>
+            <li><a href="#acciones" data-i18n="page31.toc.s3">3. 5 acciones rápidas</a></li>
+            <li><a href="#stats" data-i18n="page31.toc.s4">4. Stats KPIs</a></li>
+            <li><a href="#tabs" data-i18n="page31.toc.s5">5. Pestañas (Solicitudes / Pagos / Alertas)</a></li>
+            <li><a href="#diff" data-i18n="page31.toc.s6">6. Diferencias con la versión Web</a></li>
           </ul>
         </div>
 
         <section>
-          <h2 id="onboarding" data-i18n="page25.s1.title">1. Primer acceso — modal de bienvenida</h2>
-          <p data-i18n-html="page25.s1.intro">La primera vez que abre «Mis Documentos», un <strong>modal de onboarding</strong> presenta las 4 promesas del módulo: almacenamiento seguro, clasificación IA automática, alertas de vencimiento, verificación pública vía QR.</p>
-
-          <figure>
-            <img src="_assets/screenshots/web/citizen/documents/0.png" alt="Modal onboarding documentos" data-i18n-attr-alt="page25.s1.fig1.alt">
-            <figcaption data-i18n="page25.s1.fig1.caption">Modal «Bienvenido a Mis Documentos» con 4 bullets explicativos + CTA «Comenzar». Stats de fondo: 36 documentos totales, 0 personales, 0 generados, 0 por vencer, 11.3 MB / 100 MB cuota.</figcaption>
-          </figure>
-
-          <p data-i18n-html="page25.s1.body">La <strong>cuota</strong> de almacenamiento es de <strong>100 MB</strong> por cuenta. Los archivos pueden estar en formato PDF, JPG, PNG (máx. 10 MB por archivo). El modal solo se muestra una vez — pulse «Comenzar» para acceder a las pestañas.</p>
+          <h2 id="acceso" data-i18n="page31.s1.title">1. Acceso al panel móvil</h2>
+          <p data-i18n-html="page31.s1.intro">Después de <a href="12-iniciar-sesion.html">iniciar sesión</a> en la app, el panel principal aparece automáticamente. Si la biometría está activada (cf. <a href="16-seguridad.html">Seguridad</a>), el desbloqueo es instantáneo.</p>
         </section>
 
         <section>
-          <h2 id="tab-personales" data-i18n="page25.s2.title">2. Pestaña «Personales»</h2>
-          <p data-i18n-html="page25.s2.intro">Sus documentos subidos manualmente : DIP/NIE, certificados de residencia, fotos tipo carnet, documentos de identidad, etc. Visualización en grid de tarjetas con el icono de tipo de archivo y el nombre.</p>
+          <h2 id="estructura" data-i18n="page31.s2.title">2. Estructura general de la pantalla</h2>
+          <p data-i18n="page31.s2.intro">3 zonas verticales:</p>
+          <ol class="step-list">
+            <li data-i18n-html="page31.s2.zone1"><strong>Cabecera (top)</strong> — saludo personalizado «Hola, [su nombre]», icono notificaciones (campanita con badge rojo si tiene mensajes no leídos), avatar/inicial.</li>
+            <li data-i18n-html="page31.s2.zone2"><strong>4 KPIs en cards</strong> — Solicitudes activas, Solicitudes completadas, Pendientes de acción, Total pagado XAF.</li>
+            <li data-i18n-html="page31.s2.zone3"><strong>5 acciones rápidas</strong> — Nueva Solicitud, Mis Solicitudes, Mis Documentos, Mis Empresas, Soporte. Iconos grandes en grid 2x3.</li>
+            <li data-i18n-html="page31.s2.zone4"><strong>Pestañas inferiores</strong> — Solicitudes recientes / Pagos / Alertas. Lista paginada de los 10 elementos más recientes.</li>
+          </ol>
 
-          <h3 data-i18n="page25.s2.actions.title">Acciones por documento (menú contextual)</h3>
-          <ul>
-            <li data-i18n-html="page25.s2.actions.f1"><strong>Ver</strong> — abrir el documento en una pestaña nueva</li>
-            <li data-i18n-html="page25.s2.actions.f2"><strong>Descargar</strong> — guardar en su computadora</li>
-            <li data-i18n-html="page25.s2.actions.f3"><strong>Reclasificar</strong> — corregir la categoría asignada por la IA si es errónea</li>
-            <li data-i18n-html="page25.s2.actions.f4"><strong>Archivar</strong> — ocultar de la vista activa (puede recuperarse)</li>
-            <li data-i18n-html="page25.s2.actions.f5"><strong>Eliminar</strong> — borrado definitivo (con confirmación)</li>
-          </ul>
-
-          <h3 data-i18n="page25.s2.cat.title">Categorías IA</h3>
-          <p data-i18n-html="page25.s2.cat.body">Filtros disponibles : <strong>Identidad</strong>, <strong>Vehículo</strong>, <strong>Legal</strong>, <strong>Financiero</strong>, <strong>Administrativo</strong>, <strong>Médico</strong>, <strong>Educación</strong>, <strong>Foto</strong>, <strong>Empresa</strong>, <strong>Empleo</strong>, <strong>Otro</strong>. La IA clasifica automáticamente cada documento subido, con posibilidad de corregir.</p>
-
-          <figure>
-            <img src="_assets/screenshots/web/citizen/documents/1.png" alt="Pestaña Personales con menú" data-i18n-attr-alt="page25.s2.fig1.alt">
-            <figcaption data-i18n="page25.s2.fig1.caption">Pestaña «Personales» con 16 documentos en grid. Filtros de categoría visibles. Menú contextual abierto sobre un documento (Ver/Descargar/Reclasificar/Archivar/Eliminar). CTA «Agregar un documento» en la parte superior derecha.</figcaption>
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/citizen/dashboard-home-es.jpg" alt="Panel principal móvil ES" data-i18n-attr-alt="page31.s2.fig1.alt">
+            <figcaption data-i18n="page31.s2.fig1.caption">Pantalla del panel principal en versión española — saludo «Hola, libre», campanita notificaciones, 4 KPIs (Solicitudes activas, Completadas, Pendientes, Total pagado), 5 acciones rápidas (Nueva Solicitud, Mis Solicitudes, Mis Documentos, Mis Empresas, Soporte), pestañas inferiores Solicitudes/Pagos/Alertas.</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 id="tab-generados" data-i18n="page25.s3.title">3. Pestaña «Generados»</h2>
-          <p data-i18n-html="page25.s3.intro">Los documentos generados automáticamente por Facil al validar sus trámites. Sub-categorías filtradas:</p>
-          <ul>
-            <li data-i18n-html="page25.s3.f1"><strong>Recibos</strong> — pruebas de pago (REC-2026-XXXXXX)</li>
-            <li data-i18n-html="page25.s3.f2"><strong>Resúmenes de solicitud</strong> — documento PDF que lista los datos de cada solicitud (CON-, PAS-, LIC-)</li>
-            <li data-i18n-html="page25.s3.f3"><strong>Certificaciones</strong> — documentos oficiales finales (carnet de conducir, certificado de residencia, etc.)</li>
-            <li data-i18n-html="page25.s3.f4"><strong>Resúmenes de bundle</strong> — pago consolidado multi-entidad</li>
-          </ul>
+          <h2 id="acciones" data-i18n="page31.s3.title">3. Las 5 acciones rápidas</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page31.s3.table.col1">Acción</th><th data-i18n="page31.s3.table.col2">Función</th><th data-i18n="page31.s3.table.col3">Página manual</th></tr></thead>
+              <tbody>
+                <tr><td><strong data-i18n="page31.s3.r1.c1">Nueva Solicitud</strong></td><td data-i18n="page31.s3.r1.c2">Lanza el wizard de creación de solicitud</td><td><a href="32-iniciar-tramite-mobile.html" data-i18n="nav.link.start_request_mobile">Iniciar trámite (Móvil)</a></td></tr>
+                <tr><td><strong data-i18n="page31.s3.r2.c1">Mis Solicitudes</strong></td><td data-i18n="page31.s3.r2.c2">Lista completa de sus solicitudes</td><td><a href="33-mis-solicitudes-mobile.html" data-i18n="nav.link.my_requests_mobile">Mis solicitudes (Móvil)</a></td></tr>
+                <tr><td><strong data-i18n="page31.s3.r3.c1">Mis Documentos</strong></td><td data-i18n="page31.s3.r3.c2">Caja fuerte digital</td><td><a href="35-mis-documentos-mobile.html" data-i18n="nav.link.my_documents_mobile">Mis documentos (Móvil)</a></td></tr>
+                <tr><td><strong data-i18n="page31.s3.r4.c1">Mis Empresas</strong></td><td data-i18n="page31.s3.r4.c2">Sólo si tiene un rol Empresa</td><td><a href="36-mis-empresas-mobile.html" data-i18n="nav.link.my_companies_mobile">Mis empresas (Móvil)</a></td></tr>
+                <tr><td><strong data-i18n="page31.s3.r5.c1">Soporte</strong></td><td data-i18n="page31.s3.r5.c2">Tickets + asistente IA</td><td><a href="38-soporte-mobile.html" data-i18n="nav.link.support_mobile">Soporte (Móvil)</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <p data-i18n-html="page25.s3.body">Todos estos documentos llevan el <strong>QR de verificación pública</strong> y pueden ser presentados como prueba ante cualquier administración o tercero. Vea la página <a href="57-verificar.html">Verificar un recibo</a>.</p>
+        <section>
+          <h2 id="stats" data-i18n="page31.s4.title">4. Stats KPIs en cabecera</h2>
+          <p data-i18n-html="page31.s4.intro">Las 4 cards en cabecera dan una visión instantánea del estado de su cuenta. Idéntico a la versión Web (cf. <a href="21-dashboard-web.html">Panel principal Web</a> §3) salvo que están dispuestas en grid 2x2 en lugar de 1x4 horizontal.</p>
 
-          <figure>
-            <img src="_assets/screenshots/web/citizen/documents/2.png" alt="Pestaña Generados" data-i18n-attr-alt="page25.s3.fig1.alt">
-            <figcaption data-i18n="page25.s3.fig1.caption">Pestaña «Generados» con sub-pestañas (Todos / Certificados / Recibos / Resúmenes / Certificaciones). Grid de tarjetas «Recibo de pago» y «Resumen de solicitud» con fechas (23 abr 2026) y referencias (#REC-2026-..., #PAS-2026-...).</figcaption>
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/citizen/dashboard-home.jpg" alt="Dashboard mobile FR" data-i18n-attr-alt="page31.s4.fig1.alt">
+            <figcaption data-i18n="page31.s4.fig1.caption">Versión francesa del dashboard móvil — mismas KPIs (1 active, 2 terminées, 0 action, 245 850 XAF), grid 2x3 de 5 acciones rápidas. (Captura en versión francesa)</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 id="tab-preparacion" data-i18n="page25.s4.title">4. Pestaña «Preparación»</h2>
-          <p data-i18n-html="page25.s4.intro">Funcionalidad <strong>asistida por IA</strong>: prepare documentos antes de iniciar un trámite. La IA analiza sus documentos personales existentes, identifica los que cumplen con los requisitos de los trámites más comunes, y muestra el porcentaje de preparación.</p>
+          <h2 id="tabs" data-i18n="page31.s5.title">5. Pestañas en la parte inferior</h2>
+          <p data-i18n-html="page31.s5.intro">3 pestañas conmutables, cada una mostrando los <strong>10 elementos más recientes</strong> con scroll infinito al deslizarse hacia abajo:</p>
 
-          <h3 data-i18n="page25.s4.cards.title">Tarjetas «Iniciar un trámite»</h3>
-          <p data-i18n-html="page25.s4.cards.body">Tarjetas de los trámites populares (Pasaporte, Residencia, Carnet Funcionario) con el % de preparación y la lista de documentos faltantes. Pulse para iniciar el trámite directamente.</p>
+          <h3 data-i18n="page31.s5.req.title">Pestaña «Solicitudes»</h3>
+          <p data-i18n-html="page31.s5.req.body">Sus solicitudes recientes con badge de estado (Borrador, Enviada, Procesando, Completada, Rechazada) y barra de progreso. Pulse una línea para abrir el detalle.</p>
 
-          <figure>
-            <img src="_assets/screenshots/web/citizen/documents/3.png" alt="Pestaña Preparación" data-i18n-attr-alt="page25.s4.fig1.alt">
-            <figcaption data-i18n="page25.s4.fig1.caption">Pestaña «Preparación» — tarjetas Pasaporte/Residencia/Carnet Funcionario, sección «Preparación para X» con checklist documentos requeridos + barras de progreso (100%, 75%).</figcaption>
+          <h3 data-i18n="page31.s5.pay.title">Pestaña «Pagos»</h3>
+          <p data-i18n-html="page31.s5.pay.body">Lista de pagos con método (badge «Efectivo», «Mobile Money», etc.), monto, estado validación. Pulse para descargar el recibo PDF.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/citizen/dashboard-payments-tab.jpg" alt="Pestaña Pagos móvil" data-i18n-attr-alt="page31.s5.fig1.alt">
+            <figcaption data-i18n="page31.s5.fig1.caption">Pestaña «Pagos» activa con 5 pagos visibles, cada uno con badge «Efectivo», monto en XAF, fecha.</figcaption>
           </figure>
+
+          <h3 data-i18n="page31.s5.alerts.title">Pestaña «Alertas»</h3>
+          <p data-i18n-html="page31.s5.alerts.body">Notificaciones recientes (cambios de estado, mensajes de agentes, alertas de vencimiento). Las alertas críticas tienen un punto rojo. Toca una alerta para abrir el elemento concernido.</p>
         </section>
 
         <section>
-          <h2 id="asistente" data-i18n="page25.s5.title">5. Asistente IA configurable (drawer)</h2>
-          <p data-i18n-html="page25.s5.intro">Un drawer (panel lateral derecho) permite configurar el comportamiento del asistente IA en relación con sus documentos. 3 secciones:</p>
-          <ul>
-            <li data-i18n-html="page25.s5.f1"><strong>PERMISOS</strong> — 5 conmutadores : preparar solicitudes, preparar renovaciones, clasificar documentos, sugerir citas, alertas proactivas. Cada uno con modo Proactivo (la IA actúa sin pedir) o Preparatorio (la IA propone)</li>
-            <li data-i18n-html="page25.s5.f2"><strong>MEMORIAS APRENDIDAS</strong> — lista de las preferencias aprendidas (con porcentaje de confianza, ej. 100% «prefiere ciudad X»)</li>
-            <li data-i18n-html="page25.s5.f3"><strong>STATS</strong> — número de conversaciones, permisos activos, memorias guardadas</li>
-          </ul>
-
-          <figure>
-            <img src="_assets/screenshots/web/citizen/documents/4.png" alt="Drawer Configuración asistente" data-i18n-attr-alt="page25.s5.fig1.alt">
-            <figcaption data-i18n="page25.s5.fig1.caption">Drawer «Configuración del asistente» — 5 toggles ON (preparar/clasificar/sugerir/alertas), 2 memorias aprendidas (100% confianza), stats (4 conversaciones, 5 permisos, 2 memorias).</figcaption>
-          </figure>
+          <h2 id="diff" data-i18n="page31.s6.title">6. Diferencias con la versión Web</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th data-i18n="page31.s6.table.col1">Función</th><th data-i18n="page31.s6.table.col2">Web</th><th data-i18n="page31.s6.table.col3">Móvil</th></tr></thead>
+              <tbody>
+                <tr><td data-i18n="page31.s6.r1.c1">Menú lateral</td><td data-i18n="page31.s6.r1.c2">Persistente a la izquierda</td><td data-i18n="page31.s6.r1.c3">Hamburguesa (icono ☰)</td></tr>
+                <tr><td data-i18n="page31.s6.r2.c1">KPIs disposición</td><td>1x4 horizontal</td><td>2x2 grid</td></tr>
+                <tr><td data-i18n="page31.s6.r3.c1">Acciones rápidas</td><td data-i18n="page31.s6.r3.c2">3 cards superiores</td><td data-i18n="page31.s6.r3.c3">Grid 2x3 con iconos grandes</td></tr>
+                <tr><td data-i18n="page31.s6.r4.c1">Notificaciones push</td><td>❌ (web push limitado)</td><td>✅ (FCM/APNs)</td></tr>
+                <tr><td data-i18n="page31.s6.r5.c1">Biometría desbloqueo</td><td>❌</td><td>✅ Touch ID / Face ID</td></tr>
+                <tr><td data-i18n="page31.s6.r6.c1">Modo offline</td><td>❌</td><td>✅ caché local MMKV</td></tr>
+              </tbody>
+            </table>
+          </div>
 
           <aside class="callout callout-success">
             <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page25.s5.success">El asistente IA mejora cada vez que rectifica una clasificación o confirma una sugerencia. Más lo usa, más relevante se vuelve.</p>
+            <p data-i18n-html="page31.s6.success">Para las funcionalidades exclusivas mobile (biometría, app lock, scan QR, partage natif), consulte la página <a href="39-mobile-exclusivos.html">Funciones exclusivas móvil</a>.</p>
           </aside>
         </section>
       </div>
 
       <footer class="page-footer">
         <nav class="pagination">
-          <a href="24-mis-pagos-web.html" class="pagination-prev"><span data-i18n="page25.prev">← Anterior: Mis pagos</span></a>
-          <a href="26-bundle-payment.html" class="pagination-next"><span data-i18n="page25.next">Siguiente: Pago agrupado →</span></a>
+          <a href="29-soporte-web.html" class="pagination-prev"><span data-i18n="page31.prev">← Anterior: Soporte (Web)</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="pagination-next"><span data-i18n="page31.next">Siguiente: Iniciar trámite (Móvil) →</span></a>
         </nav>
         <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
       </footer>

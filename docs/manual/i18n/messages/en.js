@@ -524,6 +524,70 @@ window.__I18N__.en = {
     "next": "Next: Mobile dashboard →"
   },
 
+  "page31": {
+    "html_title": "Mobile dashboard — Facil Manual",
+    "title": "Dashboard in the mobile app",
+    "description": "Citizen dashboard tuned for mobile: 4 KPIs (in progress, paid, certificates, notifications) in a 2×2 grid, 5 quick actions, scroll-free touch navigation.",
+    "prev": "← Previous: AI assistant and Support",
+    "next": "Next: Start a request (Mobile) →"
+  },
+  "page32": {
+    "html_title": "Start a request (Mobile) — Facil Manual",
+    "title": "Start a request from mobile",
+    "description": "Wizard adapted to mobile: collapsible categories, touch search, direct camera open for supporting documents, automatic server-side OCR.",
+    "prev": "← Previous: Mobile dashboard",
+    "next": "Next: My requests (Mobile) →"
+  },
+  "page33": {
+    "html_title": "My requests (Mobile) — Facil Manual",
+    "title": "Track requests from mobile",
+    "description": "Requests list with touch filters (chips), pull-to-refresh, FAB for new request, swipe for quick actions.",
+    "prev": "← Previous: Start a request (Mobile)",
+    "next": "Next: My payments (Mobile) →"
+  },
+  "page34": {
+    "html_title": "My payments (Mobile) — Facil Manual",
+    "title": "Pay from the mobile app",
+    "description": "BANGE Mobile Money payments with SIM card auto-detection, native sharing of PDF receipt, history sorted by date.",
+    "prev": "← Previous: My requests (Mobile)",
+    "next": "Next: My documents (Mobile) →"
+  },
+  "page35": {
+    "html_title": "My documents (Mobile) — Facil Manual",
+    "title": "Digital vault on mobile",
+    "description": "3 tabs (All, Official, Uploaded), document QR scan for instant verification, native sharing and secure local download.",
+    "prev": "← Previous: My payments (Mobile)",
+    "next": "Next: My companies (Mobile) →"
+  },
+  "page36": {
+    "html_title": "My companies (Mobile) — Facil Manual",
+    "title": "Manage companies from mobile",
+    "description": "Vertical list of companies with FAB to add, quick access to commercial licenses and linked tax obligations.",
+    "prev": "← Previous: My documents (Mobile)",
+    "next": "Next: AI assistant (Mobile) →"
+  },
+  "page37": {
+    "html_title": "AI assistant (Mobile) — Facil Manual",
+    "title": "AI assistant on mobile",
+    "description": "Built-in voice-to-text, SIM context (number pre-filled), conversation history synced with the Web version.",
+    "prev": "← Previous: My companies (Mobile)",
+    "next": "Next: Support (Mobile) →"
+  },
+  "page38": {
+    "html_title": "Support (Mobile) — Facil Manual",
+    "title": "Support and tickets on mobile",
+    "description": "Ticket creation with photos via camera, FCM/APNs push notifications on replies, acknowledgement within 24h.",
+    "prev": "← Previous: AI assistant (Mobile)",
+    "next": "Next: Mobile-exclusive features →"
+  },
+  "page39": {
+    "html_title": "Mobile-exclusive features — Facil Manual",
+    "title": "9 features exclusive to the mobile version",
+    "description": "Biometrics, app lock, offline mode (MMKV), FCM/APNs push, QR scan, native sharing, voice-to-text, SIM auto-detection, direct camera — all features impossible or degraded on Web.",
+    "prev": "← Previous: Support (Mobile)",
+    "next": "Next: Web view of public site →"
+  },
+
   "page59": {
     "html_title": "Web view of public site — Facil Manual",
     "title": "Web view of the public site (desktop)",

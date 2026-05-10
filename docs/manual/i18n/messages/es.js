@@ -2629,8 +2629,879 @@ window.__I18N__.es = {
         "warning": "Una vez cerrado, un ticket NO puede ser reabierto. Si su problema no está resuelto, mejor responda al ticket existente en lugar de cerrarlo. Si necesita escalar al supervisor, indíquelo en el mensaje.",
         "success": "Para problemas urgentes (cuenta comprometida, pago erróneo crítico), use prioridad Urgente y mencione la urgencia en el asunto. El plazo de respuesta es entonces de <strong>4-12 horas hábiles</strong>."
       }
-    }
+    },
 
-  // page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
+  "page59": {
+    "html_title": "Vista Web del sitio público — Manual Facil",
+    "title": "Vista Web del sitio público (desktop)",
+    "description": "Panorama completo de la versión Web (desktop) del sitio público Facil. Las páginas dedicadas (51-58) cubren cada función en detalle con un enfoque mobile-first ; esta página agrupa las capturas Web desktop para tener una visión global del recorrido del visitante en navegador.",
+    "toc": {
+      "s1": "1. Acceder al sitio web",
+      "s2": "2. Homepage (página de inicio)",
+      "s3": "3. Catálogo de Servicios Fiscales",
+      "s4": "4. Calculadora de Impuestos",
+      "s5": "5. Directorio de Empresas",
+      "s6": "6. Simulador de Licencias Comerciales",
+      "s7": "7. Asistente IA (modo chat completo + widget)",
+      "s8": "8. Guía Fiscal",
+      "s9": "9. Catálogo de Ministerios",
+      "s10": "10. Diferencias Web vs Móvil"
+    },
+    "s1": {
+      "title": "1. Acceder al sitio web",
+      "intro": "Abra <code>https://taxasge.emacsah.com/</code> en cualquier navegador moderno (Chrome, Firefox, Safari, Edge). El sitio se redirige automáticamente al idioma de su navegador (ES por defecto). El header global con menú de navegación es presente en todas las páginas: <strong>Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA</strong>, además del selector de idioma y el botón <strong>«Iniciar sesión»</strong>."
+    },
+    "s2": {
+      "title": "2. Homepage (página de inicio)",
+      "intro": "La homepage acoge al visitante con un hero verde «Simplifica tus trámites», un badge «Trámites Digitales AI de Guinea Ecuatorial» y una <strong>barra de búsqueda principal</strong>. Debajo, 3 cards clave (Calculadora, Documentos, Guía).",
+      "fig1": {
+        "alt": "Homepage Facil hero",
+        "caption": "Homepage <code>taxasge.emacsah.com/es</code> — header con nav (Servicios, Licencias, Directorio, Ministerios, Calculadora, Guía, Asistente IA), hero verde con eslogan + barra de búsqueda + 3 cards de acceso rápido."
+      },
+      "footer": {
+        "title": "Footer + widget chat flotante",
+        "body": "Al desplazarse hacia abajo, encuentra una <strong>grilla de servicios tarifados</strong> (legalización 1/8 página, tarifas variables) y el footer con enlaces rápidos (Servicios / Legal). Un widget flotante <strong>«Asistente Facil – En línea»</strong> (esquina inferior derecha) se abre permanentemente para preguntas rápidas."
+      },
+      "fig2": {
+        "alt": "Footer + widget chat flotante",
+        "caption": "Parte inferior de la homepage — grilla de servicios tarifados arriba (legalización, formato A3/A4...) + widget chat flotante «Asistente Facil – En línea» abierto a la derecha."
+      }
+    },
+    "s3": {
+      "title": "3. Catálogo de Servicios Fiscales",
+      "intro": "URL <code>/es/services</code>. Título «Servicios Fiscales – 869 servicios encontrados». Toggle <strong>Cuadrícula / Lista</strong>, 4 dropdowns de filtros (sector, ministerio, tipo, orden) + barra de búsqueda. Cada card muestra el título del servicio, su tarifa en XAF, y la entidad gestora.",
+      "fig1": {
+        "alt": "Catálogo servicios fiscales cuadrícula",
+        "caption": "Catálogo en vista cuadrícula — Legalización Documentos 2 000 XAF, Certificado matrícula 60 000 XAF, etc. Filtros activos visibles arriba."
+      },
+      "detail": {
+        "title": "Detalle de un servicio"
+      },
+      "fig2": {
+        "alt": "Detalle servicio Legalización",
+        "caption": "Detalle servicio (URL <code>/es/services/8</code>) — «Legalización de Documentos», tarifa 2 000 XAF, plazo 1 día, ministerio MAE/Diáspora. Cards «Documentos requeridos» (2) + «Procedimientos» (3 etapas)."
+      },
+      "body": "Para más detalles funcionales (filtros, búsqueda por palabra clave, comparación de servicios), consulte la <a href=\"51-explorar-servicios.html\">página dedicada Explorar servicios</a>."
+    },
+    "s4": {
+      "title": "4. Calculadora de Impuestos",
+      "intro": "URL <code>/es/calculateur</code>. 4 pestañas: <strong>IRPF, IVA, Sociedades, Servicios Fiscales</strong>. Introducción del monto en XAF + visualización de los tramos progresivos + resultado calculado en tiempo real.",
+      "fig1": {
+        "alt": "Calculadora de impuestos web",
+        "caption": "Calculadora de Impuestos en versión Web — IRPF activa con ingreso 5 000 000 XAF, tramos 0/10/15/20/25/35% mostrados, panel resultado vacío en espera del cálculo. Disclaimer «cálculos solo indicativos» abajo."
+      },
+      "body": "Detalles de las fórmulas y reglas en la <a href=\"52-calculadora.html\">página Calculadora fiscal</a>."
+    },
+    "s5": {
+      "title": "5. Directorio de Empresas",
+      "intro": "URL <code>/es/annuaire</code>. Listado público de empresas registradas con búsqueda + filtros por sector y forma jurídica (S.L., Autónomo, S.A., ONG). Cada card muestra NIF, sector, ciudad, badge tier.",
+      "fig1": {
+        "alt": "Directorio empresas web",
+        "caption": "Directorio de Empresas — barra de búsqueda + filtros (Todos los sectores, Forma jurídica, S.L. 23, Autónomo 14, S.A. 8, ONG 3) + 48 resultados. Cards Aceite Palma SA, Agroexport SA, Bar Tropical, etc."
+      },
+      "body": "Más detalles en la <a href=\"53-directorio.html\">página Directorio de empresas</a>."
+    },
+    "s6": {
+      "title": "6. Simulador de Licencias Comerciales",
+      "intro": "URL <code>/es/licencias-comerciales</code>. Wizard de 3 etapas con stepper visible siempre. La versión web muestra una <strong>grilla iconada</strong> de los tipos de comercio (más visual que móvil).",
+      "s1": {
+        "title": "Etapa 1 — Tipo de Comercio"
+      },
+      "fig1": {
+        "alt": "Licencias etapa 1",
+        "caption": "Stepper «1 Tipo de Comercio» activa. Grilla de 10 cards iconadas (Abacerías, Bares y Restaurantes, Cafeterías-Pastelerías, Carpinterías, Clínicas/Farmacias, Discotecas, Ferreterías, Talleres, Video Clubs...)."
+      },
+      "s2": {
+        "title": "Etapa 2 — Zona Geográfica"
+      },
+      "fig2": {
+        "alt": "Licencias etapa 2 zona",
+        "caption": "Stepper etapa 2. Pills «Cambiar tipo» + tipo seleccionado. 3 secciones color-codadas: Capitales de Regiones (A1/A2/A3 rojas), Capitales de Provincias (B1/B2/B3 naranjas), Capitales Distritales y Municipales (C1/C2/C3 azules)."
+      },
+      "s3": {
+        "title": "Etapa 3 — Ficha Tarifaria",
+        "body": "Resultado completo con desglose detallado por entidad emisora, total general, documentos requeridos y botón <strong>«Imprimir»</strong> para generar un PDF oficial."
+      },
+      "fig3": {
+        "alt": "Ficha tarifaria parte superior",
+        "caption": "Ficha tarifaria parte superior — pills selección + referencia legal «Decreto Presidencial» + tabla Tesoro Público (MinHacienda CMF 45 000, MinComercio Cuota Anual 30 000, etc.)."
+      },
+      "fig4": {
+        "alt": "Ficha tarifaria total",
+        "caption": "Ficha tarifaria parte inferior — Sub-Total Tesoro 144 000, Cámara de Comercio 20 000, <strong>TOTAL GENERAL 164 000 XAF</strong> + Documentos Requeridos (2 obligatorios) + botón «Imprimir»."
+      },
+      "print": {
+        "title": "Generación e impresión del PDF",
+        "body": "El botón «Imprimir» abre el diálogo nativo del navegador (Chrome aquí). Puede elegir <strong>«Guardar como PDF»</strong> para guardar el documento en su computadora antes de presentarlo a la administración."
+      },
+      "fig5": {
+        "alt": "Diálogo impresión Chrome",
+        "caption": "Diálogo de impresión Chrome con vista previa PDF — Destino «Guardar como PDF», Páginas Todas, Color. Vista previa del documento Ficha Tarifaria a la derecha."
+      },
+      "fig6": {
+        "alt": "PDF Ficha Tarifaria final",
+        "caption": "PDF Ficha Tarifaria generado — header logo Facil + título, tabla completa Tesoro+Cámara, TOTAL 164 000 XAF, Documentos Requeridos, footer «FACIL — Plataforma de Servicios Fiscales / República de Guinea Ecuatorial / 19 de abril de 2026» + QR «Verificar en línea»."
+      },
+      "body": "Para los detalles del cálculo y los tipos de comercio, consulte la <a href=\"54-licencias-comerciales.html\">página Simulador de licencias</a>."
+    },
+    "s7": {
+      "title": "7. Asistente IA — modo chat completo + widget flotante",
+      "intro": "El asistente IA está accesible de 2 maneras en la versión Web:",
+      "full": {
+        "title": "Modo full-page (URL dedicada)"
+      },
+      "fig1": {
+        "alt": "Asistente IA full page",
+        "caption": "URL <code>/es/chat</code> — sidebar izquierda (Página Web, Licencias Comerciales, Directorio Empresas, Ministerios, Guía, Iniciar sesión), título «¡Hola! Soy tu asistente Facil», input chat 0/2000 chars, 5 quick-prompts (pasaporte, licencia comercial, residencia, empresas registradas, ministerios, ¿Qué es Facil?)."
+      },
+      "widget": {
+        "title": "Modo widget flotante (en cualquier página)",
+        "body": "En cualquier página del sitio (homepage, catálogo, etc.), un <strong>widget flotante</strong> en la esquina inferior derecha permite abrir el asistente sin abandonar la navegación actual. Útil para preguntas contextuales mientras explora un servicio."
+      },
+      "body": "Consulte la imagen <code>2.png</code> de la sección 2 «Homepage» para ver el widget flotante en acción.",
+      "more": "Más detalles funcionales en la <a href=\"55-asistente-ia-publica.html\">página Asistente IA público</a>."
+    },
+    "s8": {
+      "title": "8. Guía Fiscal — recursos y formularios",
+      "intro": "URL <code>/es/guide</code>. 4 pestañas: <strong>Declaración, Legislación, Descargas, FAQ</strong>. La versión Web ofrece una experiencia más rica que la móvil con vista previa integrada de los PDFs.",
+      "declaracion": {
+        "title": "Pestaña Declaración"
+      },
+      "fig1": {
+        "alt": "Guía Declaración",
+        "caption": "Pestaña «Declaración» activa — sección «Cómo Hacer una Declaración» con 2 etapas detalladas (Reúne tus documentos, Calcula tus impuestos) + consejos prácticos + acciones plataforma."
+      },
+      "descargas": {
+        "title": "Pestaña Descargas (con vista previa PDF)"
+      },
+      "fig2": {
+        "alt": "Guía Descargas con vista previa",
+        "caption": "Pestaña «Descargas» — columna izquierda «Formularios Descargables» (Retención 3% Sector Petrolero seleccionado, 5%, 10% No Residentes, Cuota Mínima Petrolero) + columna derecha «Vista Previa PDF» con vista previa inline del formulario «AUTOLIQUIDACION RETENCIÓN A LA FUENTE DEL 3%» (Cod. Impuesto 0320)."
+      },
+      "body": "Detalles de cada pestaña en la <a href=\"56-guia.html\">página Guía rápida</a>."
+    },
+    "s9": {
+      "title": "9. Catálogo de Ministerios",
+      "intro": "URL <code>/es/ministere</code>. Vista panorámica de los 21 ministerios de Guinea Ecuatorial con sus servicios fiscales asociados. Toggle Kanban / Lista. Cada card ministerio muestra el número de servicios disponibles.",
+      "list": {
+        "title": "Vista catálogo"
+      },
+      "fig1": {
+        "alt": "Catálogo Ministerios",
+        "caption": "Catálogo Ministerios en vista Kanban — MIN. TRANSPORTE/TIC 292 servicios, AVIACIÓN CIVIL 155, COMERCIO/PYMES 80, IGUALDAD 76, INFORMACIÓN 52, INTERIOR 39, etc."
+      },
+      "detail": {
+        "title": "Detalle de un ministerio"
+      },
+      "fig2": {
+        "alt": "Detalle Ministerio Transporte",
+        "caption": "Detalle ministerio (URL <code>/es/ministere/97</code>) — «MINISTERIO DE TRANSPORTE, TELECOMUNICACIONES Y SISTEMAS DE INTELIGENCIA ARTIFICIAL», descripción institucional, 3 stats (292 servicios, 8 categorías, 1 sectores)."
+      }
+    },
+    "s10": {
+      "title": "10. Diferencias Web vs Móvil",
+      "table": {
+        "col1": "Característica",
+        "col2": "Web (desktop)",
+        "col3": "Móvil",
+        "r1": {
+          "c1": "Header con menú permanente",
+          "c3": "Menú hamburguesa"
+        },
+        "r2": {
+          "c1": "Asistente IA",
+          "c2": "Modo full-page + widget flotante",
+          "c3": "Pantalla dedicada solamente"
+        },
+        "r3": {
+          "c1": "Catálogo de Ministerios",
+          "c3": "Lista solamente"
+        },
+        "r4": {
+          "c1": "Vista previa PDF de formularios"
+        },
+        "r5": {
+          "c1": "Generación PDF Ficha Tarifaria",
+          "c2": "Diálogo Chrome nativo",
+          "c3": "Compartir nativo (WhatsApp...)"
+        },
+        "r6": {
+          "c1": "Vista cuadrícula vs lista",
+          "c3": "Auto-adapta según tamaño"
+        }
+      },
+      "info": "La versión Web es la <strong>más completa</strong> en términos de funcionalidades visuales (vista previa PDF, kanban, diálogo de impresión nativo). La versión Móvil compensa con funcionalidades exclusivas (compartir nativo, modo offline, biometría tras login).",
+      "success": "Ya conoce la vista panorámica del sitio web público. Para los detalles funcionales de cada función, consulte las páginas dedicadas (51-58)."
+    },
+    "prev": "← Anterior: Información legal",
+    "next": "Siguiente: Crear cuenta →"
+  },
+
+  "page31": {
+    "html_title": "Panel principal Móvil — Manual Facil",
+    "title": "Panel principal en la aplicación móvil",
+    "description": "Tras iniciar sesión en la app móvil Facil, accede a su panel principal — versión compacta y optimizada del dashboard Web. Ofrece las mismas funcionalidades clave (KPIs, acciones rápidas, solicitudes recientes, pagos, alertas) pero adaptadas a una pantalla pequeña con menú hamburguesa.",
+    "toc": {
+      "s1": "1. Acceso al panel móvil",
+      "s2": "2. Estructura general",
+      "s3": "3. 5 acciones rápidas",
+      "s4": "4. Stats KPIs",
+      "s5": "5. Pestañas (Solicitudes / Pagos / Alertas)",
+      "s6": "6. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Acceso al panel móvil",
+      "intro": "Después de <a href=\"12-iniciar-sesion.html\">iniciar sesión</a> en la app, el panel principal aparece automáticamente. Si la biometría está activada (cf. <a href=\"16-seguridad.html\">Seguridad</a>), el desbloqueo es instantáneo."
+    },
+    "s2": {
+      "title": "2. Estructura general de la pantalla",
+      "intro": "3 zonas verticales:",
+      "zone1": "<strong>Cabecera (top)</strong> — saludo personalizado «Hola, [su nombre]», icono notificaciones (campanita con badge rojo si tiene mensajes no leídos), avatar/inicial.",
+      "zone2": "<strong>4 KPIs en cards</strong> — Solicitudes activas, Solicitudes completadas, Pendientes de acción, Total pagado XAF.",
+      "zone3": "<strong>5 acciones rápidas</strong> — Nueva Solicitud, Mis Solicitudes, Mis Documentos, Mis Empresas, Soporte. Iconos grandes en grid 2x3.",
+      "zone4": "<strong>Pestañas inferiores</strong> — Solicitudes recientes / Pagos / Alertas. Lista paginada de los 10 elementos más recientes.",
+      "fig1": {
+        "alt": "Panel principal móvil ES",
+        "caption": "Pantalla del panel principal en versión española — saludo «Hola, libre», campanita notificaciones, 4 KPIs (Solicitudes activas, Completadas, Pendientes, Total pagado), 5 acciones rápidas (Nueva Solicitud, Mis Solicitudes, Mis Documentos, Mis Empresas, Soporte), pestañas inferiores Solicitudes/Pagos/Alertas."
+      }
+    },
+    "s3": {
+      "title": "3. Las 5 acciones rápidas",
+      "table": {
+        "col1": "Acción",
+        "col2": "Función",
+        "col3": "Página manual"
+      },
+      "r1": {
+        "c1": "Nueva Solicitud",
+        "c2": "Lanza el wizard de creación de solicitud"
+      },
+      "r2": {
+        "c1": "Mis Solicitudes",
+        "c2": "Lista completa de sus solicitudes"
+      },
+      "r3": {
+        "c1": "Mis Documentos",
+        "c2": "Caja fuerte digital"
+      },
+      "r4": {
+        "c1": "Mis Empresas",
+        "c2": "Sólo si tiene un rol Empresa"
+      },
+      "r5": {
+        "c1": "Soporte",
+        "c2": "Tickets + asistente IA"
+      }
+    },
+    "s4": {
+      "title": "4. Stats KPIs en cabecera",
+      "intro": "Las 4 cards en cabecera dan una visión instantánea del estado de su cuenta. Idéntico a la versión Web (cf. <a href=\"21-dashboard-web.html\">Panel principal Web</a> §3) salvo que están dispuestas en grid 2x2 en lugar de 1x4 horizontal.",
+      "fig1": {
+        "alt": "Dashboard mobile FR",
+        "caption": "Versión francesa del dashboard móvil — mismas KPIs (1 active, 2 terminées, 0 action, 245 850 XAF), grid 2x3 de 5 acciones rápidas. (Captura en versión francesa)"
+      }
+    },
+    "s5": {
+      "title": "5. Pestañas en la parte inferior",
+      "intro": "3 pestañas conmutables, cada una mostrando los <strong>10 elementos más recientes</strong> con scroll infinito al deslizarse hacia abajo:",
+      "req": {
+        "title": "Pestaña «Solicitudes»",
+        "body": "Sus solicitudes recientes con badge de estado (Borrador, Enviada, Procesando, Completada, Rechazada) y barra de progreso. Pulse una línea para abrir el detalle."
+      },
+      "pay": {
+        "title": "Pestaña «Pagos»",
+        "body": "Lista de pagos con método (badge «Efectivo», «Mobile Money», etc.), monto, estado validación. Pulse para descargar el recibo PDF."
+      },
+      "fig1": {
+        "alt": "Pestaña Pagos móvil",
+        "caption": "Pestaña «Pagos» activa con 5 pagos visibles, cada uno con badge «Efectivo», monto en XAF, fecha."
+      },
+      "alerts": {
+        "title": "Pestaña «Alertas»",
+        "body": "Notificaciones recientes (cambios de estado, mensajes de agentes, alertas de vencimiento). Las alertas críticas tienen un punto rojo. Toca una alerta para abrir el elemento concernido."
+      }
+    },
+    "s6": {
+      "title": "6. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Menú lateral",
+        "c2": "Persistente a la izquierda",
+        "c3": "Hamburguesa (icono ☰)"
+      },
+      "r2": {
+        "c1": "KPIs disposición"
+      },
+      "r3": {
+        "c1": "Acciones rápidas",
+        "c2": "3 cards superiores",
+        "c3": "Grid 2x3 con iconos grandes"
+      },
+      "r4": {
+        "c1": "Notificaciones push"
+      },
+      "r5": {
+        "c1": "Biometría desbloqueo"
+      },
+      "r6": {
+        "c1": "Modo offline"
+      },
+      "success": "Para las funcionalidades exclusivas mobile (biometría, app lock, scan QR, partage natif), consulte la página <a href=\"39-mobile-exclusivos.html\">Funciones exclusivas móvil</a>."
+    },
+    "prev": "← Anterior: Soporte (Web)",
+    "next": "Siguiente: Iniciar trámite (Móvil) →"
+  },
+  "page32": {
+    "html_title": "Iniciar trámite (Móvil) — Manual Facil",
+    "title": "Iniciar un trámite (Móvil)",
+    "description": "El wizard móvil sigue las mismas 10 etapas que la versión Web (cf. <a href=\"22-iniciar-tramite-web.html\">page 22</a>) pero adaptadas al formato móvil : categorías colapsables, cámara directa para subir documentos, claviers numériques específicos para los campos numéricos, validación tactile.",
+    "toc": {
+      "s1": "1. Acceder al wizard",
+      "s2": "2. Selección por categorías colapsables",
+      "s3": "3. Detalle del servicio antes del wizard",
+      "s4": "4. Wizard 10 etapas (visto en versión móvil)",
+      "s5": "5. Subida con cámara directa",
+      "s6": "6. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Acceder al wizard",
+      "intro": "3 puntos de entrada en la app móvil:",
+      "f1": "Desde el <a href=\"31-dashboard-mobile.html\">panel principal</a> → tarjeta «Nueva Solicitud»",
+      "f2": "Desde el menú hamburguesa → «Iniciar trámite»",
+      "f3": "Desde el <a href=\"37-asistente-ia-mobile.html\">asistente IA</a> → quick-start «Iniciar un trámite»"
+    },
+    "s2": {
+      "title": "2. Selección por categorías colapsables",
+      "intro": "Para optimizar el espacio en pantalla pequeña, los servicios se agrupan en <strong>6 categorías colapsables</strong> en lugar del tableau étendu de la versión Web :",
+      "c1": "Identidad (DIP, NIE)",
+      "c2": "Extranjería (residencia, visados)",
+      "c3": "Vehículos (matriculación, ITV)",
+      "c4": "Conducción (carnet)",
+      "c5": "Contratos (contratos comerciales, ONRC)",
+      "c6": "Comercio (licencias)",
+      "body": "Pulse una categoría para desplegar los servicios disponibles. Pulse de nuevo para colapsar.",
+      "fig1": {
+        "alt": "Iniciar trámite categorías colapsables",
+        "caption": "Pantalla «Iniciar un trámite» — 6 categorías colapsables. Categoría «Vehículos» desplegada (3 sub-opciones visibles), las otras 5 categorías cerradas."
+      }
+    },
+    "s3": {
+      "title": "3. Detalle del servicio antes de iniciar el wizard",
+      "intro": "Antes de pulsar «Iniciar», la pantalla de detalle del servicio muestra todos los datos clave : ministerio emisor, tarifa en XAF, lista de documentos requeridos, procedimiento en pasos, servicios relacionados.",
+      "fig1": {
+        "alt": "Detalle servicio Duplicados",
+        "caption": "Detalle servicio «Duplicados» — MINISTERIO DE INTERIOR Y ADMIN LOCAL, expedición 15 000 XAF, 5 documentos requeridos, procedimiento 5 pasos, servicios relacionados."
+      }
+    },
+    "s4": {
+      "title": "4. Wizard de 10 etapas — versión móvil",
+      "intro": "Las mismas 10 etapas que en versión Web, pero adaptadas:",
+      "f1": "<strong>Stepper compacto</strong> (icono rond) en lugar del horizontal completo",
+      "f2": "<strong>Una pantalla por etapa</strong> (no scroll continu) — más fácil de seguir",
+      "f3": "<strong>Botones grandes táctiles</strong> en la parte inferior (Anterior / Siguiente)",
+      "f4": "<strong>Validación táctil</strong> — chips, switches, radio cards adaptados al touch",
+      "body": "El detalle completo de las 10 etapas (Tipo Solicitud, Tipo Solicitante, Clases, Documentos OCR, Verificar Datos 1/2/3, Programar Cita, Pago Tasas, Confirmación) está en la <a href=\"22-iniciar-tramite-web.html\">página versión Web</a>.",
+      "fig1": {
+        "alt": "Wizard step 2/6 upload",
+        "caption": "Etapa de subida de documento (Step 2/6 visible aquí — el wizard puede tener menos etapas para algunos servicios) — «Pago Obligaciones - Documentos (2/6)», sube «Certificado Actualización Padrón Empresarial», botones <strong>«Tomar foto»</strong> y <strong>«Elegir archivo»</strong>."
+      }
+    },
+    "s5": {
+      "title": "5. Subida con cámara directa",
+      "intro": "Funcionalidad <strong>exclusivamente móvil</strong> : el botón «Tomar foto» abre directamente la cámara del teléfono sin pasar por la galería. Útil para los documentos físicos (DIP, factura papel, certificado en mano).",
+      "step1": "Pulse <strong>«Tomar foto»</strong> en la zona de subida",
+      "step2": "El sistema solicita el permiso cámara la primera vez (autorize una sola vez)",
+      "step3": "Encuadre el documento con la cámara, pulse el obturador",
+      "step4": "La foto se previsualiza con opción «Reutilizar» o «Reanudar» antes de validar",
+      "step5": "Pulse <strong>«Aceptar»</strong> — el OCR comienza inmediatamente y los datos extraídos se muestran con su porcentaje de confianza",
+      "tip": "Para una OCR óptima : luz uniforme, documento plat (sin pliegues), enmarcar todo el documento con un margen de ~5 mm, evite las sombras de su cuerpo."
+    },
+    "s6": {
+      "title": "6. Diferencias con la versión Web",
+      "table": {
+        "col1": "Aspecto",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Selección servicio"
+      },
+      "r2": {
+        "c1": "Stepper"
+      },
+      "r3": {
+        "c1": "Subida documentos"
+      },
+      "r4": {
+        "c1": "Pago Mobile Money"
+      },
+      "r5": {
+        "c1": "Tiempo de sesión"
+      },
+      "r6": {
+        "c1": "Compartir resultado"
+      },
+      "success": "Tras la creación, su solicitud aparece en «Mis solicitudes» — ver siguiente página."
+    },
+    "prev": "← Anterior: Panel principal",
+    "next": "Siguiente: Mis solicitudes (Móvil) →"
+  },
+  "page33": {
+    "html_title": "Mis solicitudes (Móvil) — Manual Facil",
+    "title": "Mis solicitudes (Móvil)",
+    "description": "Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.",
+    "toc": {
+      "s1": "1. Acceder a la lista",
+      "s2": "2. Filtros y FAB",
+      "s3": "3. Lista de solicitudes",
+      "s4": "4. Detalle de una solicitud",
+      "s5": "5. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Acceder a la lista",
+      "intro": "2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>."
+    },
+    "s2": {
+      "title": "2. Filtros y FAB",
+      "intro": "En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:",
+      "f1": "<strong>Ver todo</strong> — muestra todas las solicitudes",
+      "f2": "<strong>Enviada</strong> — esperando validación",
+      "f3": "<strong>En proceso</strong> — agente revisando",
+      "f4": "<strong>En revisión</strong> — agente solicita info adicional",
+      "body": "En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.",
+      "fig1": {
+        "alt": "Mis solicitudes lista",
+        "caption": "Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha."
+      }
+    },
+    "s3": {
+      "title": "3. Lista de solicitudes",
+      "intro": "Cada línea muestra:",
+      "f1": "<strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)",
+      "f2": "<strong>Título corto</strong> + referencia (ex. CON-2026-00001)",
+      "f3": "<strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)",
+      "f4": "<strong>Fecha</strong> de última actualización",
+      "f5": "Pulse la línea para abrir el detalle"
+    },
+    "s4": {
+      "title": "4. Detalle de una solicitud (vista móvil)",
+      "intro": "La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href=\"23-mis-solicitudes-web.html\">page 23</a>) con adaptaciones móviles:",
+      "f1": "<strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña",
+      "f2": "<strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos",
+      "f3": "<strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)",
+      "f4": "<strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono",
+      "f5": "<strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado"
+    },
+    "s5": {
+      "title": "5. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "KPIs cabecera"
+      },
+      "r2": {
+        "c1": "Filtros"
+      },
+      "r3": {
+        "c1": "Stepper detalle"
+      },
+      "r4": {
+        "c1": "Acciones rápidas"
+      },
+      "r5": {
+        "c1": "Pull-to-refresh"
+      },
+      "r6": {
+        "c1": "Compartir"
+      },
+      "success": "Para los pagos asociados a las solicitudes, ver siguiente página."
+    },
+    "prev": "← Anterior: Iniciar trámite",
+    "next": "Siguiente: Mis pagos (Móvil) →"
+  },
+  "page34": {
+    "html_title": "Mis pagos (Móvil) — Manual Facil",
+    "title": "Mis pagos (Móvil)",
+    "description": "Vista rápida de todos sus pagos efectuados en la app móvil — los métodos, los estados de validación, los recibos PDF descargables o compartibles vía partage nativo (WhatsApp, SMS, email).",
+    "toc": {
+      "s1": "1. Pestaña «Pagos» en el dashboard",
+      "s2": "2. BANGE Mobile Money auto-detect (móvil)",
+      "s3": "3. Recibo PDF — descarga y partage",
+      "s4": "4. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Pestaña «Pagos» en el dashboard",
+      "intro": "Acceso : Panel principal → pestaña <strong>«Pagos»</strong> en la parte inferior. Lista de pagos con badge método (Efectivo, Mobile Money, Tarjeta, Transferencia, Cheque), monto, fecha, estado.",
+      "fig1": {
+        "alt": "Pestaña Pagos móvil",
+        "caption": "Pestaña «Pagos» activa en el panel principal — 5 pagos visibles con badge «Efectivo», montos en XAF, fechas. Pulse un pago para ver el recibo."
+      }
+    },
+    "s2": {
+      "title": "2. BANGE Mobile Money — auto-detección del SIM",
+      "intro": "Funcionalidad <strong>exclusivamente móvil</strong>: la app detecta automáticamente el número de teléfono asociado al SIM activo y pre-rellena el campo «Número de teléfono» en el formulario de pago Mobile Money. No es necesario re-introducirlo cada vez.",
+      "body": "El permiso «Lecture du téléphone» es solicitado la primera vez (puede rechazarlo y rellenar manualmente el número).",
+      "tip": "El pago Mobile Money es el más rápido (validación automática vía webhook BANGE en menos de 1 minuto). Recomendado para los pagos urgentes."
+    },
+    "s3": {
+      "title": "3. Recibo PDF — descarga y partage nativo",
+      "intro": "Tras la validación del pago, el recibo PDF se genera automáticamente. En la app móvil :",
+      "f1": "<strong>Descargar</strong> — guarda el PDF en la galería del teléfono (carpeta «Documentos» o «Imágenes»)",
+      "f2": "<strong>Compartir nativo</strong> — abre el sheet de partage de iOS/Android (WhatsApp, SMS, email, AirDrop, etc.)",
+      "f3": "<strong>Imprimir</strong> — vía AirPrint (iOS) o Cloud Print (Android) en una impresora compatible Wi-Fi",
+      "fig1": {
+        "alt": "Recibo PDF generado",
+        "caption": "Ejemplo de recibo PDF generado «Recibo de Pago» REC-2026-000011 — Tesoro Público Malabo II, desglose 5 líneas 99 000 XAF, QR code de verificación + sello «VALIDADO»."
+      }
+    },
+    "s4": {
+      "title": "4. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "BANGE Mobile Money",
+        "c2": "Manual (introducir tel)",
+        "c3": "Auto-detección SIM"
+      },
+      "r2": {
+        "c1": "Compartir recibo"
+      },
+      "r3": {
+        "c1": "Impresión",
+        "c2": "Diálogo Chrome",
+        "c3": "AirPrint / Cloud Print"
+      },
+      "success": "Detalles completos sobre los métodos, validación y verificación pública en la <a href=\"24-mis-pagos-web.html\">página versión Web</a>."
+    },
+    "prev": "← Anterior: Mis solicitudes",
+    "next": "Siguiente: Mis documentos →"
+  },
+  "page35": {
+    "html_title": "Mis documentos (Móvil) — Manual Facil",
+    "title": "Mis documentos (Móvil)",
+    "description": "Su caja fuerte digital en la app móvil — gestión de archivos personales subidos y documentos generados (recibos, certificados). Quota 100 MB, filtros tactiles, partage natif, scan QR para verificar la autenticidad.",
+    "toc": {
+      "s1": "1. Acceso a la caja fuerte",
+      "s2": "2. Las 3 pestañas + filtros",
+      "s3": "3. Scan QR de un documento (verificación)",
+      "s4": "4. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Acceso a la caja fuerte",
+      "intro": "Acceso vía dashboard → tarjeta «Mis Documentos» o menú hamburguesa. La pantalla muestra el <strong>contador de cuota usada</strong> en la cabecera (ejemplo: «2 / 100 Mo»).",
+      "fig1": {
+        "alt": "Mis documentos móvil",
+        "caption": "Pantalla «Mis Documentos» — quota 2/100 Mo en cabecera, 3 pestañas (Mes fichiers / Generados / Alertas), filtros (Tous/Recibos/Certificados/Atestaciones), lista de PDFs (Recibo Pago, Solicitud Trámite)."
+      }
+    },
+    "s2": {
+      "title": "2. Las 3 pestañas + filtros",
+      "f1": "<strong>Mes fichiers</strong> — sus documentos personales subidos manualmente (DIP, foto carnet, certificados, etc.)",
+      "f2": "<strong>Generados</strong> — recibos, resúmenes de solicitud, certificaciones generadas automáticamente por Facil tras validación",
+      "f3": "<strong>Alertas</strong> — notificaciones de vencimiento de documentos (DIP cerca a expirar, etc.)",
+      "body": "Filtros disponibles en cada pestaña: Todos, Recibos, Certificados, Atestaciones. Toque un documento para abrir el preview (PDF/imagen)."
+    },
+    "s3": {
+      "title": "3. Scan QR de un documento (verificación)",
+      "intro": "Funcionalidad <strong>exclusivamente móvil</strong> : un botón de <strong>scan QR</strong> permite verificar la autenticidad de un documento que ha recibido (papel o capturado en otra pantalla). El sistema escanea el QR, abre la <a href=\"57-verificar.html\">página de verificación pública</a> y muestra el estado (válido / inválido).",
+      "body": "Útil para los agentes terreno o los citoyens que reciben un recibo PDF y quieren verificarlo sin escribir manualmente la URL."
+    },
+    "s4": {
+      "title": "4. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Subida documento",
+        "c3": "Cámara directa / galería / fichero"
+      },
+      "r2": {
+        "c1": "Tabs",
+        "c2": "4 (Personales/Generados/Preparación/Asistente)",
+        "c3": "3 (simplificado)"
+      },
+      "r3": {
+        "c1": "Scan QR"
+      },
+      "r4": {
+        "c1": "Compartir documento"
+      },
+      "success": "Detalles del asistente IA (modo proactivo, memorias aprendidas) en la <a href=\"25-mis-documentos-web.html\">página versión Web</a>."
+    },
+    "prev": "← Anterior: Mis pagos",
+    "next": "Siguiente: Mis empresas →"
+  },
+  "page36": {
+    "html_title": "Mis empresas (Móvil) — Manual Facil",
+    "title": "Mis empresas (Móvil)",
+    "description": "Gestione sus empresas desde la app móvil — vista compacta de las obligaciones fiscales, botón directo «Pagar» en cada empresa, FAB para añadir una nueva, detalle vertical optimizado para pantalla pequeña.",
+    "toc": {
+      "s1": "1. Lista de empresas",
+      "s2": "2. Detalle de una empresa",
+      "s3": "3. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Lista de empresas",
+      "intro": "Acceso vía menú hamburguesa → «Mis Empresas». Lista vertical de cards compactas, una por empresa. Cada card muestra:",
+      "f1": "Nombre comercial + tag sector (Carpintería, Bar/Restaurante, Cafetería, etc.)",
+      "f2": "Zona (A1/B2/C1/D) + ciudad",
+      "f3": "Indicador <strong>«N obligaciones pendientes»</strong> (con punto rojo si hay alguna)",
+      "f4": "Botón <strong>«Pagar»</strong> directo (atajo al wizard bundle)",
+      "body": "Un <strong>FAB (+)</strong> en la parte inferior derecha permite añadir una nueva empresa (require documents legales).",
+      "fig1": {
+        "alt": "Mis empresas ES",
+        "caption": "Versión española «Mis Empresas» — 5 empresas (Carpinteria, Libreria Nacional, Tienda El Sol, Supermercado, Gas Natural) con obligaciones pendientes + botón «Pagar» + FAB añadir."
+      },
+      "fig2": {
+        "alt": "Mes entreprises FR",
+        "caption": "Versión francesa «Mes Entreprises» — mismas 5 empresas, traducción «Payer les obligations», icono FAB ajouter en la parte inferior. (Captura en versión francesa)"
+      }
+    },
+    "s2": {
+      "title": "2. Detalle de una empresa",
+      "intro": "Toque una empresa para abrir su pantalla detallada. Versión móvil simplificada con scroll vertical:",
+      "f1": "Lista de obligaciones (Cuota Anual, Certificado Comercio, etc.) con monto y vencimiento",
+      "f2": "Botón principal <strong>«Pagar las obligaciones»</strong> (verde, ancho completo)",
+      "f3": "Sección Historial pagos (los últimos 5)",
+      "f4": "Sección Informaciones (NIF, representante, forma jurídica, ciudad)",
+      "fig1": {
+        "alt": "Detalle empresa móvil",
+        "caption": "Detalle empresa «Tienda El Sol» — lista de obligaciones (Cuota Anual, Certificado Comercio, etc.), botón «Payer les obligations», sección Historial paiements + Informaciones (NIF, representante, forma jurídica, ciudad). (Captura en versión francesa)"
+      }
+    },
+    "s3": {
+      "title": "3. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Vista lista"
+      },
+      "r2": {
+        "c1": "KPIs detalle",
+        "c3": "Compactados en 1 línea"
+      },
+      "r3": {
+        "c1": "Tabs detalle",
+        "c3": "Scroll vertical único"
+      },
+      "r4": {
+        "c1": "Add empresa"
+      },
+      "success": "Detalles complete sobre las 3 pestañas (Obligaciones/Historial/Inspecciones), KPIs y Bundle Payment en la <a href=\"27-mis-empresas-web.html\">página versión Web</a> + <a href=\"26-bundle-payment.html\">Pago agrupado</a>."
+    },
+    "prev": "← Anterior: Mis documentos",
+    "next": "Siguiente: Asistente IA →"
+  },
+  "page37": {
+    "html_title": "Asistente IA (Móvil) — Manual Facil",
+    "title": "Asistente IA (Móvil)",
+    "description": "El asistente IA en la app móvil ofrece la misma potencia que la versión Web (cf. <a href=\"29-soporte-web.html\">page 29</a>) pero adaptada al touch + funcionalidades exclusivas móvil : voz-a-texto, contexto SIM auto-detect, integración con cofre digital local.",
+    "toc": {
+      "s1": "1. Acceder al asistente",
+      "s2": "2. Voz-a-texto (exclusivo móvil)",
+      "s3": "3. Contexto personal automático",
+      "s4": "4. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Acceder al asistente",
+      "intro": "Acceso : Panel principal → tarjeta «Asistente IA» o menú hamburguesa. La pantalla de chat ocupa toda la pantalla (modo full-screen, único en móvil — el widget flotante es solo Web).",
+      "body": "Pantalla de inicio idéntica a la versión Web : 4 sugerencias contextuales + sección «Mi Cofre Digital» con 5 quick actions. Detalles en la <a href=\"29-soporte-web.html\">página versión Web</a>."
+    },
+    "s2": {
+      "title": "2. Voz-a-texto (exclusivo móvil)",
+      "intro": "Funcionalidad <strong>exclusivamente móvil</strong> : un icono de <strong>micrófono</strong> en el campo de entrada permite dictar su pregunta en lugar de escribir. Útil cuando se desplaza o quiere ahorrar tiempo.",
+      "step1": "Pulse el icono micrófono en el campo de entrada",
+      "step2": "El sistema solicita el permiso micrófono la primera vez",
+      "step3": "Dicte su pregunta en el idioma seleccionado (ES/FR/EN)",
+      "step4": "El texto se rellena automáticamente — verifique antes de validar",
+      "step5": "Pulse «Enviar»",
+      "tip": "El reconocimiento vocal funciona offline en los teléfonos modernos (iOS 13+/Android 11+). Use un entorno silencioso para mejorar la precisión."
+    },
+    "s3": {
+      "title": "3. Contexto personal automático",
+      "intro": "El asistente conectado dispone del mismo contexto personal que la versión Web (sus empresas, solicitudes, documentos). En móvil además :",
+      "f1": "<strong>SIM auto-detect</strong> — el número de teléfono asociado al SIM activo es conocido automáticamente para los pagos Mobile Money",
+      "f2": "<strong>Localización GPS</strong> (opt-in) — el asistente puede sugerir la oficina más próxima si está activado",
+      "f3": "<strong>Cofre digital local</strong> — los documentos descargados están disponibles offline, el asistente los conoce"
+    },
+    "s4": {
+      "title": "4. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Modo full-screen"
+      },
+      "r2": {
+        "c1": "Widget flotante"
+      },
+      "r3": {
+        "c1": "Voz-a-texto"
+      },
+      "r4": {
+        "c1": "SIM auto-detect"
+      },
+      "r5": {
+        "c1": "Localización GPS"
+      },
+      "r6": {
+        "c1": "Funcionamiento offline"
+      },
+      "success": "La aplicación móvil enriquece el asistente IA con funcionalidades exclusivas. Para los detalles del prompt + sugerencias + paquetes fiscales, consulte la versión Web."
+    },
+    "prev": "← Anterior: Mis empresas",
+    "next": "Siguiente: Soporte (Móvil) →"
+  },
+  "page38": {
+    "html_title": "Soporte (Móvil) — Manual Facil",
+    "title": "Soporte (Móvil)",
+    "description": "Sistema de tickets de soporte en la app móvil — lista compacta de sus tickets con badge estado/prioridad, FAB para crear un nuevo, notifications push automáticas a cada respuesta del agente de soporte.",
+    "toc": {
+      "s1": "1. Lista de tickets",
+      "s2": "2. Filtros + FAB nuevo ticket",
+      "s3": "3. Detalle del ticket + push notifications",
+      "s4": "4. Diferencias con la versión Web"
+    },
+    "s1": {
+      "title": "1. Lista de tickets",
+      "intro": "Acceso : Panel principal → tarjeta «Soporte» o menú hamburguesa → «Soporte». La pantalla muestra una lista vertical de cards con vos tickets.",
+      "fig1": {
+        "alt": "Mis tickets soporte móvil",
+        "caption": "Pantalla «Mis Tickets» — chips de filtros (Todos/Abiertos/Resueltos/Cerrados), 4 tickets visibles (Vérification test mobile, 3eme test, Second test, Tests) con badge estado + FAB «Nuevo ticket» en la parte inferior derecha."
+      }
+    },
+    "s2": {
+      "title": "2. Filtros + FAB nuevo ticket",
+      "intro": "Chips horizontales en la parte superior:",
+      "f1": "<strong>Todos</strong> — todos sus tickets",
+      "f2": "<strong>Abiertos</strong> — tickets esperando respuesta",
+      "f3": "<strong>Resueltos</strong> — agente respondió, espera confirmación",
+      "f4": "<strong>Cerrados</strong> — definitivos, no reabribles",
+      "body": "El <strong>FAB (+ Nuevo ticket)</strong> abre el formulario simplificado para crear un ticket: categoría, asunto, descripción, prioridad. Posibilidad de adjuntar capturas de pantalla directamente desde la galería."
+    },
+    "s3": {
+      "title": "3. Detalle del ticket + push notifications",
+      "intro": "Toque un ticket para abrir su detalle. Vista de tipo «conversación» (similar à WhatsApp) con sus mensajes y los del agente alternándose. Posibilidad de adjuntar nuevas capturas en cada respuesta.",
+      "body": "A cada respuesta del agente, recibe una <strong>push notification</strong> en su teléfono (icono Facil + extracto del mensaje). Toque la notificación para abrir directamente el ticket concernido.",
+      "warning": "Los tickets cerrados <strong>no son reabribles</strong>. Si su problema persiste, cree un nuevo ticket haciendo referencia al SUP- anterior en la descripción para conservar el contexto."
+    },
+    "s4": {
+      "title": "4. Diferencias con la versión Web",
+      "table": {
+        "col1": "Función",
+        "col2": "Web",
+        "col3": "Móvil"
+      },
+      "r1": {
+        "c1": "Vista detalle",
+        "c2": "2 colonnes (info + conversación)",
+        "c3": "Conversación pleine page"
+      },
+      "r2": {
+        "c1": "Crear ticket"
+      },
+      "r3": {
+        "c1": "Adjuntar archivos",
+        "c3": "Cámara directa o galería"
+      },
+      "r4": {
+        "c1": "Notificaciones"
+      },
+      "success": "Detalles complete sobre el sistema de tickets (estados, prioridad, plazos respuesta) en la <a href=\"29-soporte-web.html\">página versión Web</a>."
+    },
+    "prev": "← Anterior: Asistente IA",
+    "next": "Siguiente: Funciones exclusivas móvil →"
+  },
+  "page39": {
+    "html_title": "Funciones exclusivas móvil — Manual Facil",
+    "title": "Funciones exclusivamente móvil",
+    "description": "Esta página agrupa las 7 funcionalidades exclusivas de la aplicación móvil Facil que la versión Web no puede ofrecer. Estas funcionalidades son una de las razones principales para usar la app móvil además del navegador, especialmente para los citoyens en movilidad.",
+    "no_capture": "<strong>Esta página no incluye capturas</strong> — las funcionalidades descritas están integradas dentro de las otras pantallas (capturas en sus páginas dedicadas). Use los enlaces para acceder a las capturas y ejemplos contextuales.",
+    "toc": {
+      "s1": "1. Biometría (Touch ID / Face ID)",
+      "s2": "2. App Lock (PIN local)",
+      "s3": "3. Modo offline (caché MMKV)",
+      "s4": "4. Push notifications (FCM/APNs)",
+      "s5": "5. Scan QR de documentos",
+      "s6": "6. Partage natif (WhatsApp, SMS, etc.)",
+      "s7": "7. Voz-a-texto (asistente IA)",
+      "s8": "8. SIM auto-detect (BANGE Mobile Money)",
+      "s9": "9. Cámara directa (subida documentos)"
+    },
+    "s1": {
+      "title": "1. Biometría — Touch ID / Face ID",
+      "intro": "Desbloqueo por <strong>huella digital</strong> o <strong>reconocimiento facial</strong> en lugar de email + contraseña + 2FA. Activación desde <a href=\"16-seguridad.html\">Seguridad → Biometría</a>. Datos biométricos nunca salen del teléfono (chips iOS Secure Enclave / Android StrongBox)."
+    },
+    "s2": {
+      "title": "2. App Lock — bloqueo local con PIN",
+      "intro": "Capa adicional <strong>al abrir la app</strong> incluso sin cerrar sesión. PIN local de 4-6 cifras o biometría. Útil si presta su teléfono o lo deja desbloqueado. Tiempo de espera configurable (0s / 30s / 1min / 5min / al apagar la pantalla). Detalles en <a href=\"16-seguridad.html#applock\">Seguridad §4</a>."
+    },
+    "s3": {
+      "title": "3. Modo offline — caché MMKV",
+      "intro": "La app móvil utiliza <strong>MMKV</strong> (caché local key-value ultra-rápida, ~50KB de overhead) para almacenar:",
+      "f1": "<strong>Lista de sus solicitudes</strong> recientes (últimas 30)",
+      "f2": "<strong>Documentos descargados</strong> (recibos, certificados)",
+      "f3": "<strong>Conversación asistente IA</strong> en curso",
+      "f4": "<strong>Catálogo servicios</strong> (los 873 servicios cacheados localmente)",
+      "body": "Sin conexión, puede consultar estos datos. Las acciones (crear, pagar, validar) requieren conexión. La sincronización se hace automáticamente al recobrar la red."
+    },
+    "s4": {
+      "title": "4. Push notifications — FCM (Android) / APNs (iOS)",
+      "intro": "Notificaciones temps réel sobre los eventos importantes:",
+      "f1": "Validación de pago (icono verde + extracto)",
+      "f2": "Estado de solicitud que cambia (En proceso → Completada)",
+      "f3": "Mensaje de un agente (soporte, validador)",
+      "f4": "Alerta de vencimiento de documento (DIP cerca a expirar)",
+      "body": "Las notifications llaman directamente al backend FCM/APNs, sin proxy externe (Expo Push). Latencia &lt; 5 segundos."
+    },
+    "s5": {
+      "title": "5. Scan QR de documentos (verificación)",
+      "intro": "Botón <strong>«Scan QR»</strong> en la app móvil para verificar la autenticidad de un recibo, una solicitud o una licencia comercial. Apunte la cámara al QR del documento, el sistema abre automáticamente la <a href=\"57-verificar.html\">página verificación pública</a>. Detalles : <a href=\"57-verificar.html\">page Verify</a>."
+    },
+    "s6": {
+      "title": "6. Partage natif (sheet de partage iOS/Android)",
+      "intro": "Botón <strong>«Compartir»</strong> en cada solicitud, recibo, documento generado : abre el sheet de partage natif del sistema:",
+      "f1": "WhatsApp / WhatsApp Business",
+      "f2": "SMS / iMessage",
+      "f3": "Email (Gmail, Outlook, otros)",
+      "f4": "AirDrop (iOS) / Nearby Share (Android)",
+      "f5": "Bluetooth, Drive, Notes, otras apps instaladas",
+      "body": "Útil para compartir un recibo con su contable, un certificado con un empleador, etc."
+    },
+    "s7": {
+      "title": "7. Voz-a-texto en el asistente IA",
+      "intro": "Icono <strong>micrófono</strong> en el campo de entrada del asistente IA. Dicte su pregunta en lugar de escribir. Detalles en <a href=\"37-asistente-ia-mobile.html#voz\">page Asistente IA Móvil §2</a>."
+    },
+    "s8": {
+      "title": "8. SIM auto-detect (BANGE Mobile Money)",
+      "intro": "Detección automática del número asociado al SIM activo para los pagos Mobile Money. Pre-rellena el formulario de pago. Detalles en <a href=\"34-mis-pagos-mobile.html#bange\">page Mis pagos Móvil §2</a>."
+    },
+    "s9": {
+      "title": "9. Cámara directa (subida de documentos)",
+      "intro": "Botón <strong>«Tomar foto»</strong> en cada zona de subida de documento — abre directamente la cámara sin pasar por la galería. Útil para los documentos físicos (DIP, factura papel). Detalles en <a href=\"32-iniciar-tramite-mobile.html#camara\">page Iniciar trámite Móvil §5</a>.",
+      "success": "Estas 9 funcionalidades hacen de la app móvil la opción privilegiada para los usuarios en movilidad. La aplicación Web sigue siendo recomendada para las tareas administrativas profundas (multi-empresa, lots de documentos, dashboards detallados)."
+    },
+    "prev": "← Anterior: Soporte (Móvil)",
+    "next": "Siguiente: Rol Empresa →"
+  }
+
+  // page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
 
 };
