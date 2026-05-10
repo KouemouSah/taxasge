@@ -3500,8 +3500,381 @@ window.__I18N__.es = {
     },
     "prev": "← Anterior: Soporte (Móvil)",
     "next": "Siguiente: Rol Empresa →"
+  },
+
+  "page41": {
+    "html_title": "Rol Empresa — Manual Facil",
+    "title": "Rol Empresa: trabajar a nombre de una entidad jurídica",
+    "subtitle": "Las empresas (sociedades, asociaciones, fundaciones, sucursales) operan en Facil con un identificador propio (NIF de entidad), una ficha en el Registro Nacional Tributario (RNT) y la posibilidad de tener varios miembros con distintos roles. Esta página recorre las diferencias clave frente al rol Ciudadano y los puntos de entrada a las funciones específicas.",
+    "prev": "← Anterior: Funciones exclusivas Móvil",
+    "next": "Siguiente: Gestionar empresas →",
+    "s1": {
+      "title": "1. ¿Cuándo se utiliza el rol Empresa?",
+      "body": "El rol Empresa es para personas que actúan en nombre de una entidad jurídica registrada en Guinea Ecuatorial: una sociedad anónima, una sucursal, una asociación, una fundación o cualquier forma jurídica reconocida por el RNT. La diferencia con el rol Ciudadano no es el tipo de servicios disponibles —ambos pueden iniciar trámites, pagar y descargar documentos— sino el propietario del expediente fiscal y los flujos de obligaciones específicas (IVA, retenciones, declaraciones consolidadas, licencias comerciales).",
+      "callout": {
+        "title": "Casos típicos del rol Empresa",
+        "l1": "Una empresa renueva su licencia comercial anual para uno o varios establecimientos.",
+        "l2": "Una sociedad declara el IVA mensual o trimestral.",
+        "l3": "Una sucursal solicita pasaportes o autorizaciones de trabajo para varios empleados a la vez (solicitudes en lote — página 43).",
+        "l4": "Un grupo paga de forma consolidada todas sus obligaciones del trimestre con un único recibo (pago agrupado — página 26)."
+      }
+    },
+    "s2": {
+      "title": "2. Diferencias con el rol Ciudadano",
+      "intro": "La tabla siguiente resume las cinco diferencias estructurales entre los dos roles. Todo el resto (Asistente IA, soporte, notificaciones, validación de recibos) funciona igual.",
+      "table": {
+        "h1": "Aspecto",
+        "h2": "Rol Ciudadano",
+        "h3": "Rol Empresa",
+        "r1": {
+          "c1": "<strong>Identificador fiscal</strong>",
+          "c2": "DIP del titular (persona física)",
+          "c3": "NIF de la entidad jurídica (asignado por la DGI al registrar la empresa)"
+        },
+        "r2": {
+          "c1": "<strong>Propietario de los trámites</strong>",
+          "c2": "El usuario conectado",
+          "c3": "La empresa (cualquier miembro autorizado puede acceder al expediente)"
+        },
+        "r3": {
+          "c1": "<strong>Equipo</strong>",
+          "c2": "Una sola persona",
+          "c3": "Hasta varios miembros con roles (propietario, administrador, contable, miembro)"
+        },
+        "r4": {
+          "c1": "<strong>Obligaciones específicas</strong>",
+          "c2": "IRPF, pasaportes, residencia, conducir",
+          "c3": "IVA, retenciones, IS, licencias comerciales, declaraciones consolidadas"
+        },
+        "r5": {
+          "c1": "<strong>Flujos típicos</strong>",
+          "c2": "Trámites individuales",
+          "c3": "Solicitudes en lote (página 43) y pago agrupado multi-obligación (página 26)"
+        }
+      }
+    },
+    "s3": {
+      "title": "3. El selector de empresa (sticky)",
+      "body": "Si su cuenta tiene acceso a varias empresas (caso del contable o del propietario de un grupo), el panel principal muestra un selector de empresa siempre visible en la parte superior. El selector indica qué entidad está activa en el contexto: todos los KPI, listas y acciones rápidas se filtran por la empresa seleccionada. Cambiar de empresa se hace en un clic; las pantallas se recargan automáticamente con los datos de la nueva entidad.",
+      "tip": {
+        "title": "Buena práctica",
+        "body": "Verifique siempre el nombre de la empresa activa en el selector antes de iniciar un trámite o realizar un pago. Una solicitud creada en la empresa equivocada se queda asociada a esa empresa y, aunque corregible (transferencia administrativa por la DGI), genera trabajo de soporte adicional."
+      },
+      "body2": "Para añadir una empresa al selector (porque es nueva en Facil o porque se le ha invitado a un equipo existente), consulte la página <a href=\"42-gestion-empresas.html\" data-i18n=\"page41.s3.link.42\">Gestionar empresas</a>. Para ver la lista completa de las empresas de su cuenta con sus licencias y obligaciones, vaya a <a href=\"27-mis-empresas-web.html\" data-i18n=\"page41.s3.link.27\">Mis empresas (Web)</a> o <a href=\"36-mis-empresas-mobile.html\" data-i18n=\"page41.s3.link.36\">Mis empresas (Móvil)</a>.",
+      "link": {
+        "42": "Gestionar empresas",
+        "27": "Mis empresas (Web)",
+        "36": "Mis empresas (Móvil)"
+      }
+    },
+    "s4": {
+      "title": "4. Puntos de entrada específicos del rol Empresa",
+      "intro": "Una vez seleccionada una empresa, encontrará estas funciones que no aparecen en el rol Ciudadano:",
+      "l1": "<strong>Pago agrupado</strong> — saldar de una vez varias obligaciones (Tesoro Público, Ayuntamiento, Cámara de Comercio) con un solo recibo. Detallado en <a href=\"26-bundle-payment.html\">Pago agrupado</a>.",
+      "l2": "<strong>Solicitudes en lote</strong> — crear varias solicitudes del mismo tipo en una operación (por ejemplo, 50 pasaportes para empleados). Detallado en <a href=\"43-batch-requests.html\">Solicitudes en lote</a>.",
+      "l3": "<strong>Gestión de miembros y roles</strong> — invitar a un colaborador, atribuirle un rol, retirar un acceso. Detallado en <a href=\"42-gestion-empresas.html\">Gestionar empresas</a>.",
+      "l4": "<strong>Vista contable consolidada</strong> — para los contables que gestionan varias empresas a la vez, ver <a href=\"44-rol-contable.html\">Rol Contable</a>."
+    },
+    "s5": {
+      "title": "5. Cómo añadir una empresa a su cuenta",
+      "body": "Hay dos vías para que una empresa aparezca en su cuenta Facil:",
+      "l1": "<strong>Crear la empresa</strong> — desde <a href=\"27-mis-empresas-web.html\">Mis empresas</a>, botón <em>«Añadir empresa»</em>. Necesita el NIF de la entidad y prueba de su rol (acta de nombramiento, poder, certificado registral). La empresa entra en estado <em>«verificación pendiente»</em> hasta que la DGI valida los justificantes (24-72 h hábiles).",
+      "l2": "<strong>Aceptar una invitación</strong> — si otro miembro le ha enviado una invitación por email, recibirá un enlace para unirse al equipo en un rol específico (administrador, contable o miembro). El acceso es inmediato tras aceptar; no necesita aportar justificantes adicionales."
+    },
+    "s6": {
+      "title": "6. Mismos servicios, mismo asistente IA",
+      "body": "Aparte de las funciones propias mencionadas arriba, todo lo demás es idéntico al rol Ciudadano: el catálogo de los 850+ servicios fiscales (página 51), la calculadora (página 52), el directorio (página 53), el asistente IA (página 55), la verificación de recibos (página 57). El asistente IA conectado (página 29) tiene además acceso al contexto de la empresa activa: si pregunta «¿cuál es mi obligación de IVA del próximo mes?», responde con los datos reales de la empresa seleccionada en el selector."
+    }
+  },
+  "page42": {
+    "html_title": "Gestionar empresas — Manual Facil",
+    "title": "Gestionar miembros, roles y permisos",
+    "subtitle": "En Facil, una empresa puede tener varios miembros con distintos niveles de responsabilidad. Hay cuatro roles predefinidos (propietario, administrador, contable, miembro), una matriz de permisos clara y un sistema de invitación por email. Esta página explica cómo invitar a un colaborador, qué puede hacer cada rol, cómo retirar un acceso y cómo transferir la titularidad cuando un propietario se va.",
+    "prev": "← Anterior: Rol Empresa",
+    "next": "Siguiente: Solicitudes en lote →",
+    "s1": {
+      "title": "1. Los cuatro roles de empresa",
+      "intro": "Cada miembro tiene exactamente un rol en una empresa dada. Una persona puede ser propietaria de la empresa A y simple miembro de la empresa B sin conflicto. Los roles son acumulables a través de varias empresas, no dentro de una misma empresa.",
+      "t": {
+        "h1": "Rol",
+        "h2": "Para quién",
+        "h3": "Acciones clave",
+        "r1": {
+          "c1": "<strong>Propietario</strong> <span class=\"badge-role\">owner</span>",
+          "c2": "Representante legal de la empresa, único e intransferible salvo procedimiento explícito",
+          "c3": "Todo: invitar/retirar miembros, cambiar roles, autorizar pagos, cerrar la cuenta empresa, transferir la titularidad"
+        },
+        "r2": {
+          "c1": "<strong>Administrador</strong> <span class=\"badge-role\">admin</span>",
+          "c2": "Director, responsable administrativo de confianza",
+          "c3": "Iniciar y validar trámites, autorizar pagos, invitar/retirar miembros (excepto al propietario), gestionar licencias"
+        },
+        "r3": {
+          "c1": "<strong>Contable</strong> <span class=\"badge-role\">accountant</span>",
+          "c2": "Contable interno o externo (gabinete contable)",
+          "c3": "Iniciar declaraciones (IVA, retenciones, IS), preparar pagos, descargar histórico fiscal, NO puede invitar a otros miembros"
+        },
+        "r4": {
+          "c1": "<strong>Miembro</strong> <span class=\"badge-role\">member</span>",
+          "c2": "Empleado autorizado a iniciar trámites operativos puntuales",
+          "c3": "Crear borrador de solicitud, subir documentos, ver el estado del expediente. NO puede pagar ni firmar declaraciones"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Matriz detallada de permisos",
+      "intro": "El siguiente cuadro lista las acciones más sensibles y qué rol puede ejecutarlas. Una marca <code>✓</code> indica acceso, <code>—</code> indica que la acción está bloqueada (botón gris o ausente).",
+      "t": {
+        "h1": "Acción",
+        "h2": "Owner",
+        "h3": "Admin",
+        "h4": "Accountant",
+        "h5": "Member",
+        "r1": "Crear borrador de solicitud",
+        "r2": "Subir documentos",
+        "r3": "Validar y enviar la solicitud",
+        "r4": "Iniciar declaración fiscal (IVA, IS, retenciones)",
+        "r5": "Autorizar pago BANGE Mobile Money",
+        "r6": "Iniciar pago agrupado (multi-obligación)",
+        "r7": "Iniciar solicitudes en lote (Excel)",
+        "r8": "Invitar a un nuevo miembro",
+        "r9": "Cambiar el rol de un miembro",
+        "r10": "Retirar a un miembro",
+        "r11": "Transferir la titularidad (cambiar de owner)",
+        "r12": "Cerrar la cuenta empresa"
+      }
+    },
+    "s3": {
+      "title": "3. Invitar a un nuevo miembro",
+      "intro": "El propietario o un administrador pueden invitar a otra persona a la empresa. La invitación se hace por email; el destinatario no necesita tener una cuenta Facil previa: el flujo le propondrá crearla durante la aceptación.",
+      "steps": {
+        "title": "Pasos",
+        "l1": "Vaya a <a href=\"27-mis-empresas-web.html\">Mis empresas</a> y abra la ficha de la empresa concernida.",
+        "l2": "Pestaña «Miembros», botón «Invitar miembro».",
+        "l3": "Introduzca el email del invitado y elija el rol (administrador, contable o miembro). Solo el propietario puede transferir su rol; no es invitable directamente.",
+        "l4": "Opcional: añada un mensaje personal (recomendable, mejora la tasa de aceptación).",
+        "l5": "Confirme. El invitado recibe un email con un enlace válido durante 7 días.",
+        "l6": "Mientras espera, el invitado aparece en la lista con la mención «invitación pendiente». Puede reenviar el email o cancelar la invitación si fue un error."
+      },
+      "warn": {
+        "title": "Email correcto, persona correcta",
+        "body": "Verifique el email antes de enviar. Una invitación con dominio incorrecto (typo) se quedará pendiente sin alerta hasta que expire (7 días). Si el destinatario tiene varios emails, prefiera el profesional vinculado a la empresa."
+      }
+    },
+    "s4": {
+      "title": "4. Cambiar el rol de un miembro",
+      "body": "Desde la lista de miembros, junto a cada nombre, hay un menú desplegable con el rol actual. Cambiar el valor aplica el nuevo rol inmediatamente; el miembro afectado recibe una notificación y un email. Las acciones en curso no se interrumpen, pero las próximas se rigen por el nuevo nivel de permiso.",
+      "body2": "Limitación importante: un administrador no puede ascender a un miembro al rol de propietario, ni degradar al propietario actual. Estas dos operaciones requieren un procedimiento de transferencia de titularidad descrito en la sección 6."
+    },
+    "s5": {
+      "title": "5. Retirar a un miembro",
+      "body": "Junto al menú de rol hay un botón «Retirar acceso». La operación es inmediata: el miembro pierde el acceso a la empresa en el siguiente intento de carga (la sesión activa caduca en menos de 60 segundos). Las solicitudes que él haya iniciado y que estén en curso continúan su flujo, pero ya no podrá verlas ni intervenir. El historial de sus acciones (creación, modificación) permanece en el log de auditoría con su nombre, no se borra.",
+      "body2": "Caso particular: si retira a un contable que firmó declaraciones recientes, le recomendamos verificar antes que las próximas declaraciones tengan otro firmante autorizado para evitar bloqueos en cierre de mes."
+    },
+    "s6": {
+      "title": "6. Transferir la titularidad (cambio de propietario)",
+      "body": "El propietario es único en una empresa. Para transferir su rol a otra persona (por jubilación, salida, sucesión), el propietario actual debe iniciar un procedimiento explícito:",
+      "diagram": "┌─────────────────────────────────────────────────────────────┐\n│ Procedimiento de transferencia de titularidad               │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  1. Owner actual → menú empresa → \"Transferir titularidad\"  │\n│         │                                                   │\n│         ▼                                                   │\n│  2. Selección del nuevo owner entre los administradores     │\n│     (sólo un admin existente puede convertirse en owner)    │\n│         │                                                   │\n│         ▼                                                   │\n│  3. Subir acta/poder/certificado registral justificando     │\n│     el cambio (PDF, máx. 10 MB)                             │\n│         │                                                   │\n│         ▼                                                   │\n│  4. Confirmación 2FA del owner actual                       │\n│         │                                                   │\n│         ▼                                                   │\n│  5. Validación DGI (24-72 h hábiles)                        │\n│         │                                                   │\n│         ▼                                                   │\n│  6. Email + notificación al nuevo owner; el antiguo         │\n│     queda como administrador (no se le retira solo)         │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘",
+      "info": {
+        "title": "¿Por qué tan formal?",
+        "body": "Cambiar el propietario es equivalente, en derecho, a un cambio de representante legal. La DGI verifica los justificantes para evitar tomas de control fraudulentas de cuentas empresa. La duración (24-72 h) corresponde al tiempo de instrucción del expediente, no a un lapso técnico."
+      }
+    },
+    "s7": {
+      "title": "7. Audit log de las acciones del equipo",
+      "body": "Todas las acciones sensibles (invitación, cambio de rol, retiro, pago autorizado, transferencia) se registran en un log de auditoría visible al propietario y a los administradores. Para cada entrada se conserva: <em>quién</em> (email del autor), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>resultado</em> (éxito/error), <em>IP</em> y <em>user-agent</em>. Este log está disponible durante 7 años (obligación contable) y es exportable en CSV desde la pestaña «Auditoría» de la ficha empresa."
+    }
+  },
+  "page43": {
+    "html_title": "Solicitudes en lote — Manual Facil",
+    "title": "Depositar varias solicitudes del mismo tipo en una sola operación",
+    "subtitle": "El módulo de solicitudes en lote está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.",
+    "prev": "← Anterior: Gestionar empresas",
+    "next": "Siguiente: Rol Contable →",
+    "s1": {
+      "title": "1. Diferencia con el pago agrupado (página 26)",
+      "body": "Estos dos flujos son complementarios y a menudo confundidos. El siguiente cuadro aclara cuándo usar cada uno.",
+      "t": {
+        "h1": "Aspecto",
+        "h2": "Solicitudes en lote (esta página)",
+        "h3": "Pago agrupado (página 26)",
+        "r1": {
+          "c1": "<strong>Objetivo</strong>",
+          "c2": "Crear varias <em>nuevas</em> solicitudes del mismo tipo",
+          "c3": "Pagar varias obligaciones <em>existentes</em> de la empresa"
+        },
+        "r2": {
+          "c1": "<strong>Tipo</strong>",
+          "c2": "Mismo workflow para todos (ej. todos pasaportes)",
+          "c3": "Cualquier mezcla (licencia + IVA + Cámara)"
+        },
+        "r3": {
+          "c1": "<strong>Beneficiarios</strong>",
+          "c2": "Varias personas o establecimientos",
+          "c3": "Una sola entidad (la empresa activa)"
+        },
+        "r4": {
+          "c1": "<strong>Ejemplo</strong>",
+          "c2": "50 pasaportes para empleados",
+          "c3": "Saldar todas las obligaciones del 2T 2026"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Workflow del lote: 8 estados",
+      "intro": "Una solicitud en lote pasa por una secuencia de estados claramente definidos. Conocerlos ayuda a saber dónde se está bloqueado y qué falta.",
+      "diagram": "┌─────────────────────────────────────────────────────────────────────────┐\n│                                                                         │\n│   DRAFT  ──▶  UPLOADING  ──▶  CLASSIFYING  ──▶  REVIEW                  │\n│     │           ▲                  │              │                     │\n│     │           └──────────────────┘              ▼                     │\n│     │       (volver a UPLOADING                PAYMENT_PENDING          │\n│     │        para añadir docs)                    │                     │\n│     │                                              ▼                    │\n│     │                                            PAID                   │\n│     │                                              │                    │\n│     │                                              ▼                    │\n│     │                                          IN_PROGRESS              │\n│     │                                              │                    │\n│     ▼                                              ▼                    │\n│   (eliminable)                                  COMPLETED               │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘",
+      "t": {
+        "h1": "Estado",
+        "h2": "Significado",
+        "h3": "Qué puede hacer",
+        "r1": {
+          "c2": "Lote creado, nada aún cargado",
+          "c3": "Añadir beneficiarios, modificar metadatos, eliminar el lote"
+        },
+        "r2": {
+          "c2": "Subiendo documentos (uno por beneficiario)",
+          "c3": "Subir más documentos, sustituir, retirar uno"
+        },
+        "r3": {
+          "c2": "El IA está identificando cada documento (DIP, foto, antecedentes…)",
+          "c3": "Esperar (1-3 minutos típicos)"
+        },
+        "r4": {
+          "c2": "Documentos clasificados, lista listo a verificar",
+          "c3": "Validar las atribuciones IA, corregir si necesario, excluir un beneficiario incompleto, volver a UPLOADING para añadir docs"
+        },
+        "r5": {
+          "c2": "Lote validado, esperando pago consolidado",
+          "c3": "Iniciar el pago BANGE Mobile Money con el importe total del lote"
+        },
+        "r6": {
+          "c2": "Pago confirmado, lote enviado a tratamiento",
+          "c3": "Descargar el recibo consolidado, esperar instrucción"
+        },
+        "r7": {
+          "c2": "Los agentes públicos están tratando los expedientes individuales",
+          "c3": "Seguir el estado por beneficiario, recibir notificaciones por cada uno"
+        },
+        "r8": {
+          "c2": "Todos los expedientes individuales están finalizados",
+          "c3": "Descargar los documentos oficiales (uno por beneficiario)"
+        }
+      }
+    },
+    "s3": {
+      "title": "3. Crear un lote: paso a paso",
+      "step1": {
+        "title": "Paso 1 — Iniciar",
+        "body": "Desde el panel principal de su empresa, abra «Iniciar trámite» y elija el tipo de servicio (ej. «Pasaporte ordinario - Expedición»). En la primera pantalla, en lugar de elegir «Una solicitud», marque «Solicitud en lote». Esta opción aparece sólo si su rol lo permite (administrador o contable, no miembro simple) y si el tipo de servicio admite el modo lote (la mayoría sí)."
+      },
+      "step2": {
+        "title": "Paso 2 — Añadir los beneficiarios",
+        "body": "Hay dos vías: añadir uno por uno con el formulario integrado, o importar una lista CSV. Para cada beneficiario se necesita como mínimo:",
+        "l1": "<strong>Nombre completo</strong> — tal como aparecerá en el documento oficial.",
+        "l2": "<strong>Identificador</strong> (opcional pero recomendado) — DIP, NIF, número de empleado interno, según el tipo de trámite.",
+        "l3": "<strong>Email</strong> (opcional) — si lo facilita, el beneficiario recibirá una notificación cuando su documento esté disponible.",
+        "csv": {
+          "title": "Formato CSV de importación",
+          "body": "beneficiary_name,beneficiary_identifier,beneficiary_identifier_type,beneficiary_email\nJuan Pérez Esono,12345678,DIP,juan.perez@example.gq\nMaría Ndong Obama,87654321,DIP,maria.ndong@example.gq\nRicardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq\n...",
+          "note": "El encabezado debe estar en inglés (compatibilidad backend). Los campos <code>beneficiary_identifier_type</code> aceptados son: <code>DIP</code>, <code>NIF</code>, <code>passport</code>, <code>internal</code>, <code>other</code>. Cada línea = un beneficiario = una solicitud."
+        }
+      },
+      "step3": {
+        "title": "Paso 3 — Subir los documentos",
+        "body": "Una vez añadidos los beneficiarios, suba todos los documentos sin preocuparse del orden ni de a quién pertenecen. El IA se encarga de la clasificación: identifica el tipo de cada documento (DIP, foto carnet, certificado de empleo…) y lo asigna automáticamente al beneficiario correcto en función del nombre y de la identificación. Esta etapa dura 1-3 minutos para 50 documentos."
+      },
+      "tip": {
+        "title": "Trucos para mejorar la clasificación IA",
+        "l1": "Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.",
+        "l2": "Subir documentos legibles (300 dpi mínimo, no fotos en penumbra). El IA pide reescaneo si la calidad es insuficiente.",
+        "l3": "Subir todos los documentos del mismo tipo juntos (todos los DIP, luego todas las fotos). Útil cuando los archivos vienen del scaner del fotocopiador."
+      },
+      "step4": {
+        "title": "Paso 4 — Verificar y excluir incompletos",
+        "body": "En el estado REVIEW, cada beneficiario tiene una marca verde (✓ documentos completos) o ámbar (— faltan documentos). Para los ámbar, hay dos opciones: volver a UPLOADING para añadir los documentos que faltan, o excluir al beneficiario del lote (estado EXCLUDED). Los excluidos no entran en el pago final y se podrán retomar más tarde en otro lote."
+      },
+      "step5": {
+        "title": "Paso 5 — Pago consolidado",
+        "body": "El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href=\"34-mis-pagos-mobile.html\">Mis pagos</a> para el flujo BANGE."
+      },
+      "step6": {
+        "title": "Paso 6 — Seguimiento por beneficiario",
+        "body": "Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos."
+      }
+    },
+    "s4": {
+      "title": "4. Limitaciones y buenas prácticas",
+      "l1": "<strong>Tamaño máximo</strong> — 200 beneficiarios por lote. Más allá, divida en varios lotes (la plataforma admite varios lotes simultáneos para la misma empresa).",
+      "l2": "<strong>Mismo workflow</strong> — un lote = un único tipo de trámite. Para mezclar pasaportes y residencia para los mismos empleados, créelos en dos lotes separados.",
+      "l3": "<strong>Pago todo o nada</strong> — el pago consolidado cubre todos los beneficiarios incluidos. Si quiere pagar a algunos más tarde, excluya antes y créelos en otro lote.",
+      "l4": "<strong>Tiempo de tratamiento</strong> — el SLA por solicitud individual no cambia (depende del tipo). El lote no es más rápido por solicitud, pero ahorra horas de carga manual.",
+      "l5": "<strong>Confidencialidad</strong> — los documentos de un beneficiario sólo son visibles para los miembros de la empresa autorizados, nunca para los demás beneficiarios."
+    }
+  },
+  "page44": {
+    "html_title": "Rol Contable — Manual Facil",
+    "title": "Rol Contable: gestionar varios clientes desde una sola cuenta",
+    "subtitle": "Los contables (internos o gabinetes) tienen necesidades distintas a las de un simple miembro: hay que pasar rápidamente de una empresa a otra, preparar declaraciones por cuenta del cliente, ver consolidados multi-cliente, justificar los movimientos en caso de control. El rol Contable de Facil cubre estos casos sin necesidad de varias sesiones ni de cuentas técnicas, gracias al mandato DGI y a una vista contable dedicada.",
+    "prev": "← Anterior: Solicitudes en lote",
+    "next": "Siguiente: Rol Agente →",
+    "s1": {
+      "title": "1. Quién puede ser contable en Facil",
+      "body": "Cualquier titular de una cuenta personal Facil puede ser invitado al rol Contable de una empresa. La invitación se envía desde la página <a href=\"42-gestion-empresas.html\" data-i18n=\"page44.s1.link\">Gestionar empresas</a> por el propietario o un administrador. Una sola persona física puede ser contable de tantas empresas como quiera; cada una aparecerá en su selector de empresa con la mención <em>«rol contable»</em>.",
+      "link": "Gestionar empresas",
+      "info": {
+        "title": "Caso típico: gabinete contable",
+        "body": "Un gabinete con 30 clientes puede invitar al mismo contable como rol contable en las 30 empresas. Desde su única cuenta personal, ve la lista completa, navega de un cliente al otro y prepara las declaraciones. Las acciones quedan trazadas con su email; el cliente sabe quién hizo qué."
+      }
+    },
+    "s2": {
+      "title": "2. Permisos del rol Contable",
+      "intro": "El rol Contable está diseñado para preparar el trabajo, no para autorizar pagos ni cambiar la estructura del equipo. La matriz completa está en la página <a href=\"42-gestion-empresas.html#sec-2\" data-i18n=\"page44.s2.link\">Gestionar empresas — sección 2</a>; aquí están las acciones clave:",
+      "link": "Gestionar empresas — sección 2",
+      "l1": "<strong>Puede</strong> — crear borradores de declaración (IVA, retenciones, IS), subir libros contables, calcular importes, preparar pagos, generar documentos justificativos, descargar el histórico fiscal completo.",
+      "l2": "<strong>No puede</strong> — autorizar el pago BANGE Mobile Money (es siempre el propietario o un administrador), invitar/retirar miembros, cambiar el régimen fiscal, cerrar la cuenta empresa.",
+      "body": "Esta separación entre <em>preparación</em> (contable) y <em>autorización</em> (administrador/propietario) corresponde a un principio contable básico: la persona que prepara la declaración no es la que la firma. En Facil, esa firma es el clic en «Validar y pagar», reservado a los administradores."
+    },
+    "s3": {
+      "title": "3. Vista consolidada multi-cliente",
+      "intro": "Cuando el contable inicia la sesión, además del selector clásico de empresa, dispone de una vista «Mis clientes» que cruza todas las empresas donde tiene rol contable. Esta vista presenta:",
+      "diagram": "┌──────────────────────────────────────────────────────────────────────┐\n│ Mis clientes (vista contable consolidada)                            │\n├──────────────────────────────────────────────────────────────────────┤\n│                                                                      │\n│ Buscar:  [______________]      Filtrar:  [Todos] [Atrasados] [Hoy]   │\n│                                                                      │\n│ ┌────────────────────┬──────────────┬──────────────┬─────────────┐   │\n│ │ Empresa            │ Próx. plazo  │ Pendiente    │ Atrasados   │   │\n│ ├────────────────────┼──────────────┼──────────────┼─────────────┤   │\n│ │ ACME GE SARL       │ IVA 15/06    │ 1 borrador   │ 0           │   │\n│ │ Industrias Bata    │ IRPF 30/06   │ 0            │ 1 (IVA Mai) │   │\n│ │ Hotelera del Mar   │ Lic. 30/06   │ 2 borradores │ 0           │   │\n│ │ Pesquera Bioko     │ IS 30/09     │ 0            │ 0           │   │\n│ │ ... (26 más)       │ ...          │ ...          │ ...         │   │\n│ └────────────────────┴──────────────┴──────────────┴─────────────┘   │\n│                                                                      │\n│ [Exportar Excel]    [Calendario fiscal]    [Notificaciones globales] │\n│                                                                      │\n└──────────────────────────────────────────────────────────────────────┘",
+      "body": "Hacer clic en una línea entra en la empresa correspondiente con el contexto activado (selector posicionado, KPIs filtrados). El botón «Atrasados» arriba permite ver de un vistazo qué clientes tienen una declaración fuera de plazo o un pago pendiente, lo que se vuelve crítico el día 15 o 30 del mes (vencimientos típicos)."
+    },
+    "s4": {
+      "title": "4. Preparar una declaración por cuenta del cliente",
+      "intro": "El proceso es idéntico a una declaración hecha por la propia empresa, salvo que el contable no puede pagar. El flujo típico:",
+      "l1": "Desde «Mis clientes», el contable entra en el cliente concernido.",
+      "l2": "Selector de empresa correctamente posicionado, abre «Iniciar trámite» → tipo de declaración.",
+      "l3": "Rellena los campos, importa libros contables (CSV/Excel), revisa los importes calculados.",
+      "l4": "Guarda en estado «Borrador validado por contable» — un estado intermedio específico al rol Contable.",
+      "l5": "Notifica al propietario/administrador (botón «Solicitar autorización»): éste recibe un email + push con un enlace directo a la declaración.",
+      "l6": "El propietario/administrador autoriza el pago BANGE Mobile Money. La declaración se envía a la DGI con la mención «preparada por [contable] / firmada por [propietario]».",
+      "l7": "El recibo y el certificado de depósito quedan accesibles a los dos: contable (para su archivo) y propietario (para su contabilidad oficial)."
+    },
+    "s5": {
+      "title": "5. Mandato DGI y trazabilidad",
+      "body": "Aunque la cuenta del contable no es una cuenta técnica, sus acciones se registran como las de un mandatario reconocido. El log de auditoría de la empresa muestra para cada operación: <em>«preparado por [email del contable]»</em> y <em>«autorizado por [email del propietario]»</em>. En caso de control fiscal por parte de la DGI, esta trazabilidad permite acreditar quién ha preparado y firmado cada declaración. La DGI puede contactar directamente al contable para preguntas técnicas, sin necesidad de pasar por el cliente, gracias a un mandato implícito vinculado al rol.",
+      "warn": {
+        "title": "Cambio de gabinete contable",
+        "body": "Cuando una empresa cambia de gabinete, el propietario debe retirar el rol Contable al antiguo contable (página 42, sección 5). El historial de las declaraciones que el antiguo contable ha preparado permanece accesible (logs de auditoría conservados 7 años) pero ya no podrá ver ni modificar nada nuevo. El nuevo contable comienza con una vista limpia, sin acceso a los borradores en curso del anterior."
+      }
+    },
+    "s6": {
+      "title": "6. Funciones específicas del contable",
+      "intro": "Además de la vista «Mis clientes», el rol Contable habilita estas funciones que no aparecen para los demás roles:",
+      "l1": "<strong>Calendario fiscal multi-cliente</strong> — un calendario único que cruza los plazos de todas las empresas gestionadas; útil para planificar la carga de trabajo del mes.",
+      "l2": "<strong>Notificaciones globales</strong> — el contable recibe los recordatorios de plazos de todos sus clientes en una única bandeja, con filtros (atrasados, este mes, etiquetadas urgentes).",
+      "l3": "<strong>Exportación Excel consolidada</strong> — exportar en una sola hoja todas las declaraciones presentadas en un período para todos sus clientes (útil para informes anuales del gabinete).",
+      "l4": "<strong>Solicitudes en lote</strong> — preparar IRPFs o retenciones para varios clientes en una sola operación (página <a href=\"43-batch-requests.html\">Solicitudes en lote</a>).",
+      "l5": "<strong>Asistente IA enriquecido</strong> — el contexto del IA incluye los datos contables de la empresa activa; preguntas como «¿cuál es la diferencia entre la cifra de negocio del 1T y del 2T?» reciben respuestas concretas con datos."
+    },
+    "s7": {
+      "title": "7. Honorarios y facturación",
+      "body": "Facil no factura al contable por el uso de la plataforma; las tasas fiscales se cobran a la empresa cliente directamente (BANGE Mobile Money del propietario o administrador). Los honorarios del contable hacia su cliente están fuera del ámbito de Facil: se gestionan por el contrato comercial entre el gabinete y la empresa. La plataforma sí provee informes mensuales de actividad (número de declaraciones preparadas, tipos, fechas) que el contable puede usar para justificar su facturación al cliente."
+    }
   }
 
-  // page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
+  // page52-58, page61-69, page71-74, page81-89, page91-95: por crear
 
 };

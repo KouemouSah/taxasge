@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page55.html_title">
+<html lang="es" data-i18n-title="page44.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Consulte el Asistente IA fiscal de Facil sin necesidad de cuenta — preguntas sobre trámites, costes, documentos, plazos. Disponible 24/7.">
-  <title>Asistente IA público — Manual Facil</title>
+  <meta name="description" content="Rol Contable en Facil — gestionar varias empresas desde una sola cuenta, mandato DGI, declaraciones por cuenta del cliente, vista consolidada multi-cliente.">
+  <title>Rol Contable — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
           <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
           <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
           <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
-          <a href="55-asistente-ia-publica.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
           <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
           <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
           <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
@@ -82,7 +82,7 @@
           <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
           <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
           <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
-          <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
         </div>
 
         <div class="sidebar-section">
@@ -128,176 +128,125 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <main class="main-content">
-      <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.ai_assistant_public">Asistente IA</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+    <main class="page-main">
+      <header class="page-header">
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page44.title">Rol Contable</span>
         </div>
+        <h1 data-i18n="page44.title">Rol Contable: gestionar varios clientes desde una sola cuenta</h1>
+        <p class="page-subtitle" data-i18n="page44.subtitle">Los contables (internos o gabinetes) tienen necesidades distintas a las de un simple miembro: hay que pasar rápidamente de una empresa a otra, preparar declaraciones por cuenta del cliente, ver consolidados multi-cliente, justificar los movimientos en caso de control. El rol Contable de Facil cubre estos casos sin necesidad de varias sesiones ni de cuentas técnicas, gracias al mandato DGI y a una vista contable dedicada.</p>
       </header>
 
-      <div class="content-body">
-        <h1 class="page-title" data-i18n="page55.title">Asistente IA público</h1>
-        <p class="page-description" data-i18n="page55.description">
-          Facil incluye un asistente conversacional alimentado por IA (Gemini 2.5 Flash) que responde a sus preguntas sobre los trámites administrativos en Guinea Ecuatorial: documentos requeridos, costes estimados, plazos, procedimientos paso a paso. Disponible 24/7 sin necesidad de cuenta.
-        </p>
+      <div class="page-content">
 
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-        </div>
+        <section class="section">
+          <h2 data-i18n="page44.s1.title">1. Quién puede ser contable en Facil</h2>
+          <p data-i18n="page44.s1.body">Cualquier titular de una cuenta personal Facil puede ser invitado al rol Contable de una empresa. La invitación se envía desde la página <a href="42-gestion-empresas.html" data-i18n="page44.s1.link">Gestionar empresas</a> por el propietario o un administrador. Una sola persona física puede ser contable de tantas empresas como quiera; cada una aparecerá en su selector de empresa con la mención <em>«rol contable»</em>.</p>
 
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page55.toc.s1">1. Acceder al asistente</a></li>
-            <li><a href="#capacidades" data-i18n="page55.toc.s2">2. Capacidades del asistente público</a></li>
-            <li><a href="#sugerencias" data-i18n="page55.toc.s3">3. Sugerencias de preguntas</a></li>
-            <li><a href="#conversacion" data-i18n="page55.toc.s4_new">4. Ejemplo de conversación completa</a></li>
-            <li><a href="#limites" data-i18n="page55.toc.s4">5. Limitaciones sin sesión</a></li>
-            <li><a href="#privacidad" data-i18n="page55.toc.s5">6. Privacidad y datos</a></li>
-          </ul>
-        </div>
-
-        <section>
-          <h2 id="acceso" data-i18n="page55.s1.title">1. Acceder al asistente</h2>
-          <p data-i18n-html="page55.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Asistente IA»</strong> en la cabecera o el banner del carrusel. El asistente abre con un mensaje de bienvenida y 4 sugerencias de preguntas pulsables.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/empty-state-es.jpg" alt="Asistente IA estado vacío" data-i18n-attr-alt="page55.s1.fig1.alt">
-            <figcaption data-i18n="page55.s1.fig1.caption">Asistente IA en versión móvil — pantalla de inicio con título, mensaje de bienvenida y 4 sugerencias (servicios, documentos, pago, verificar demanda).</figcaption>
-          </figure>
+          <div class="callout callout-info">
+            <h3 data-i18n="page44.s1.info.title">Caso típico: gabinete contable</h3>
+            <p data-i18n="page44.s1.info.body">Un gabinete con 30 clientes puede invitar al mismo contable como rol contable en las 30 empresas. Desde su única cuenta personal, ve la lista completa, navega de un cliente al otro y prepara las declaraciones. Las acciones quedan trazadas con su email; el cliente sabe quién hizo qué.</p>
+          </div>
         </section>
 
-        <section>
-          <h2 id="capacidades" data-i18n="page55.s2.title">2. Capacidades del asistente público</h2>
-          <p data-i18n="page55.s2.intro">El asistente puede responder a preguntas sobre:</p>
-          <ul>
-            <li data-i18n-html="page55.s2.cap1"><strong>Trámites administrativos</strong>: pasaporte, conducir, residencia, IRPF, IVA, IS, licencias comerciales, certificados, etc. (catálogo de 873 servicios)</li>
-            <li data-i18n-html="page55.s2.cap2"><strong>Documentos requeridos</strong>: lista detallada por trámite, originales y copias</li>
-            <li data-i18n-html="page55.s2.cap3"><strong>Costes</strong>: tarifas oficiales con desglose (impuestos, suplementos eventuales)</li>
-            <li data-i18n-html="page55.s2.cap4"><strong>Plazos</strong>: tiempo de tratamiento estimado por categoría</li>
-            <li data-i18n-html="page55.s2.cap5"><strong>Procedimientos paso a paso</strong>: secuencia de etapas a seguir, lugar de cada cita</li>
-            <li data-i18n-html="page55.s2.cap6"><strong>Comparaciones</strong>: ej. «¿Cuánto cuesta abrir un restaurante en Malabo vs Bata?»</li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page44.s2.title">2. Permisos del rol Contable</h2>
+          <p data-i18n="page44.s2.intro">El rol Contable está diseñado para preparar el trabajo, no para autorizar pagos ni cambiar la estructura del equipo. La matriz completa está en la página <a href="42-gestion-empresas.html#sec-2" data-i18n="page44.s2.link">Gestionar empresas — sección 2</a>; aquí están las acciones clave:</p>
 
-          <aside class="callout callout-tip">
-            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
-            <p data-i18n="page55.s2.tip">El asistente entiende preguntas en español, francés e inglés — incluso si las mezcla en una misma frase. Use el lenguaje natural sin necesidad de palabras clave técnicas.</p>
-          </aside>
+          <ul class="feature-list">
+            <li data-i18n-html="page44.s2.l1"><strong>Puede</strong> — crear borradores de declaración (IVA, retenciones, IS), subir libros contables, calcular importes, preparar pagos, generar documentos justificativos, descargar el histórico fiscal completo.</li>
+              <li data-i18n-html="page44.s2.l2"><strong>No puede</strong> — autorizar el pago BANGE Mobile Money (es siempre el propietario o un administrador), invitar/retirar miembros, cambiar el régimen fiscal, cerrar la cuenta empresa.</li>
+            </ul>
+
+          <p data-i18n="page44.s2.body">Esta separación entre <em>preparación</em> (contable) y <em>autorización</em> (administrador/propietario) corresponde a un principio contable básico: la persona que prepara la declaración no es la que la firma. En Facil, esa firma es el clic en <em>«Validar y pagar»</em>, reservado a los administradores.</p>
         </section>
 
-        <section>
-          <h2 id="sugerencias" data-i18n="page55.s3.title">3. Sugerencias de preguntas (para empezar)</h2>
-          <p data-i18n="page55.s3.intro">Si no sabe por dónde empezar, pulse una de las sugerencias proporcionadas:</p>
-          <ul>
-            <li data-i18n-html="page55.s3.q1"><em>«¿Qué servicios están disponibles para mi DIP?»</em></li>
-            <li data-i18n-html="page55.s3.q2"><em>«¿Cuáles son los documentos para el pasaporte?»</em></li>
-            <li data-i18n-html="page55.s3.q3"><em>«¿Cuánto cuesta una licencia comercial en Bata?»</em></li>
-            <li data-i18n-html="page55.s3.q4"><em>«¿Cómo verificar mi solicitud?»</em></li>
-            <li data-i18n-html="page55.s3.q5"><em>«¿Cuál es el plazo para una renovación de carnet de conducir?»</em></li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page44.s3.title">3. Vista consolidada multi-cliente</h2>
+          <p data-i18n="page44.s3.intro">Cuando el contable inicia la sesión, además del selector clásico de empresa, dispone de una vista <em>«Mis clientes»</em> que cruza todas las empresas donde tiene rol contable. Esta vista presenta:</p>
 
-          <p data-i18n-html="page55.s3.body">El asistente responde con texto estructurado: subtítulos, listas numeradas, tablas si procede, enlaces directos al catálogo. Puede pulsar los enlaces para ir directamente al servicio mencionado.</p>
+          <pre class="ascii-diagram" data-i18n-html="page44.s3.diagram">
+┌──────────────────────────────────────────────────────────────────────┐
+│ Mis clientes (vista contable consolidada)                            │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│ Buscar:  [______________]      Filtrar:  [Todos] [Atrasados] [Hoy]   │
+│                                                                      │
+│ ┌────────────────────┬──────────────┬──────────────┬─────────────┐   │
+│ │ Empresa            │ Próx. plazo  │ Pendiente    │ Atrasados   │   │
+│ ├────────────────────┼──────────────┼──────────────┼─────────────┤   │
+│ │ ACME GE SARL       │ IVA 15/06    │ 1 borrador   │ 0           │   │
+│ │ Industrias Bata    │ IRPF 30/06   │ 0            │ 1 (IVA Mai) │   │
+│ │ Hotelera del Mar   │ Lic. 30/06   │ 2 borradores │ 0           │   │
+│ │ Pesquera Bioko     │ IS 30/09     │ 0            │ 0           │   │
+│ │ ... (26 más)       │ ...          │ ...          │ ...         │   │
+│ └────────────────────┴──────────────┴──────────────┴─────────────┘   │
+│                                                                      │
+│ [Exportar Excel]    [Calendario fiscal]    [Notificaciones globales] │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+
+          <p data-i18n="page44.s3.body">Hacer clic en una línea entra en la empresa correspondiente con el contexto activado (selector posicionado, KPIs filtrados). El botón <em>«Atrasados»</em> arriba permite ver de un vistazo qué clientes tienen una declaración fuera de plazo o un pago pendiente, lo que se vuelve crítico el día 15 o 30 del mes (vencimientos típicos).</p>
         </section>
 
-        <section>
-          <h2 id="conversacion" data-i18n="page55.s4_new.title">4. Ejemplo de conversación completa</h2>
-          <p data-i18n-html="page55.s4_new.intro">A continuación, una conversación tipo en 3 etapas — desde la pregunta hasta la respuesta detallada. Las capturas siguientes están en versión francesa (versión española visualmente idéntica salvo el texto traducido) :</p>
+        <section class="section">
+          <h2 data-i18n="page44.s4.title">4. Preparar una declaración por cuenta del cliente</h2>
+          <p data-i18n="page44.s4.intro">El proceso es idéntico a una declaración hecha por la propia empresa, salvo que el contable no puede pagar. El flujo típico:</p>
 
-          <h3 data-i18n="page55.s4_new.stage1.title">Etapa 1 — Envío de la pregunta y carga</h3>
-          <p data-i18n-html="page55.s4_new.stage1.body">Tras escribir su pregunta (ejemplo: <em>«Procédure de passeport»</em>), aparece la burbuja del usuario seguida de un indicador de escritura («typing») mientras el asistente prepara la respuesta. El tiempo de respuesta varía según la complejidad : 1-2 segundos para una pregunta simple, 4-6 segundos para una pregunta compleja con cálculos.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/loading.jpg" alt="Asistente IA cargando respuesta" data-i18n-attr-alt="page55.s4_new.fig1.alt">
-            <figcaption data-i18n="page55.s4_new.fig1.caption">Etapa 1 — Burbuja del usuario «Procédure de passeport» seguida del indicador de escritura del asistente. (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <h3 data-i18n="page55.s4_new.stage2.title">Etapa 2 — Respuesta estructurada</h3>
-          <p data-i18n-html="page55.s4_new.stage2.body">El asistente entrega una respuesta <strong>completa y estructurada</strong>: título de la sección («Pasaporte Biométrico»), información clave (coste, plazo, documentos requeridos), seguida de la lista de etapas numeradas. La presentación facilita el escaneo visual rápido.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/response.jpg" alt="Asistente IA respuesta completa estructurada" data-i18n-attr-alt="page55.s4_new.fig2.alt">
-            <figcaption data-i18n="page55.s4_new.fig2.caption">Etapa 2 — Respuesta detallada con coste, plazo, documentos requeridos, etapas numeradas. (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <h3 data-i18n="page55.s4_new.stage3.title">Etapa 3 — Continuación + acciones de feedback</h3>
-          <p data-i18n-html="page55.s4_new.stage3.body">Si la respuesta es larga, puede desplazarse para ver las últimas etapas + una <strong>nota</strong> contextual + 4 acciones disponibles al final de cada respuesta:</p>
-          <ul>
-            <li data-i18n-html="page55.s4_new.stage3.action1"><strong>👍 Pulgar arriba</strong> — la respuesta es útil. Mejora el modelo.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action2"><strong>👎 Pulgar abajo</strong> — la respuesta es incorrecta o incompleta. Le permite a las equipos mejorar el asistente.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action3"><strong>📋 Copiar</strong> — copia el texto completo en el portapapeles.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action4"><strong>📤 Compartir</strong> — comparte la respuesta vía WhatsApp, SMS, email u otra aplicación instalada.</li>
-          </ul>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/response-scroll.jpg" alt="Asistente IA continuación respuesta y acciones" data-i18n-attr-alt="page55.s4_new.fig3.alt">
-            <figcaption data-i18n="page55.s4_new.fig3.caption">Etapa 3 — Final de la respuesta (etapas 7-9), nota contextual y 4 acciones de feedback (👍 / 👎 / copiar / compartir). (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <aside class="callout callout-tip">
-            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
-            <p data-i18n-html="page55.s4_new.tip">Use el <strong>👎 Pulgar abajo</strong> sin dudar si la respuesta es errónea o desfasada — es el mecanismo principal para mejorar la calidad del asistente. Su feedback se trata anonymizado.</p>
-          </aside>
+          <ol class="numbered-list">
+            <li data-i18n="page44.s4.l1">Desde <em>«Mis clientes»</em>, el contable entra en el cliente concernido.</li>
+              <li data-i18n="page44.s4.l2">Selector de empresa correctamente posicionado, abre <em>«Iniciar trámite»</em> → tipo de declaración.</li>
+              <li data-i18n="page44.s4.l3">Rellena los campos, importa libros contables (CSV/Excel), revisa los importes calculados.</li>
+              <li data-i18n="page44.s4.l4">Guarda en estado <em>«Borrador validado por contable»</em> — un estado intermedio específico al rol Contable.</li>
+              <li data-i18n="page44.s4.l5">Notifica al propietario/administrador (botón <em>«Solicitar autorización»</em>): éste recibe un email + push con un enlace directo a la declaración.</li>
+              <li data-i18n="page44.s4.l6">El propietario/administrador autoriza el pago BANGE Mobile Money. La declaración se envía a la DGI con la mención <em>«preparada por [contable] / firmada por [propietario]»</em>.</li>
+              <li data-i18n="page44.s4.l7">El recibo y el certificado de depósito quedan accesibles a los dos: contable (para su archivo) y propietario (para su contabilidad oficial).</li>
+            </ol>
         </section>
 
-        <section>
-          <h2 id="limites" data-i18n="page55.s4.title">5. Limitaciones sin sesión</h2>
-          <p data-i18n="page55.s4.intro">Sin cuenta iniciada, el asistente <strong>no puede</strong>:</p>
-          <ul>
-            <li data-i18n-html="page55.s4.limit1"><strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)</li>
-            <li data-i18n-html="page55.s4.limit2"><strong>Iniciar un trámite por usted</strong> — solo describe el procedimiento, no actúa</li>
-            <li data-i18n-html="page55.s4.limit3"><strong>Verificar el estado de su solicitud</strong> — para eso, inicie sesión o use la página <a href="57-verificar.html">Verificar un recibo</a></li>
-            <li data-i18n-html="page55.s4.limit4"><strong>Acceder a sus documentos</strong> guardados — solo en el modo conectado</li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page44.s5.title">5. Mandato DGI y trazabilidad</h2>
+          <p data-i18n="page44.s5.body">Aunque la cuenta del contable no es una cuenta técnica, sus acciones se registran como las de un mandatario reconocido. El log de auditoría de la empresa muestra para cada operación: <em>«preparado por [email del contable]»</em> y <em>«autorizado por [email del propietario]»</em>. En caso de control fiscal por parte de la DGI, esta trazabilidad permite acreditar quién ha preparado y firmado cada declaración. La DGI puede contactar directamente al contable para preguntas técnicas, sin necesidad de pasar por el cliente, gracias a un mandato implícito vinculado al rol.</p>
 
-          <p data-i18n-html="page55.s4.body">Para esas funciones avanzadas (asistente personalizado, gestión de su caja fuerte digital, sugerencias proactivas), <a href="11-crear-cuenta.html" class="">cree una cuenta</a> y consulte la página <a href="29-soporte-web.html" class="">Asistente IA conectado</a>.</p>
+          <div class="callout callout-warning">
+            <h3 data-i18n="page44.s5.warn.title">Cambio de gabinete contable</h3>
+            <p data-i18n="page44.s5.warn.body">Cuando una empresa cambia de gabinete, el propietario debe retirar el rol Contable al antiguo contable (página 42, sección 5). El historial de las declaraciones que el antiguo contable ha preparado permanece accesible (logs de auditoría conservados 7 años) pero ya no podrá ver ni modificar nada nuevo. El nuevo contable comienza con una vista limpia, sin acceso a los borradores en curso del anterior.</p>
+          </div>
         </section>
 
-        <section>
-          <h2 id="privacidad" data-i18n="page55.s5.title">6. Privacidad y datos</h2>
-          <ul>
-            <li data-i18n-html="page55.s5.priv1"><strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)</li>
-            <li data-i18n-html="page55.s5.priv2"><strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio</li>
-            <li data-i18n-html="page55.s5.priv3"><strong>No proporcione datos sensibles</strong> — número DIP, teléfono, dirección no son necesarios para responder a una pregunta general. Si los proporciona, no se almacenan.</li>
-            <li data-i18n-html="page55.s5.priv4"><strong>Conformidad RGPD</strong> — ver <a href="58-legal.html">página legal</a> para detalles sobre el tratamiento de datos</li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page44.s6.title">6. Funciones específicas del contable</h2>
+          <p data-i18n="page44.s6.intro">Además de la vista <em>«Mis clientes»</em>, el rol Contable habilita estas funciones que no aparecen para los demás roles:</p>
 
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page55.s5.success">El asistente está disponible 24/7 para responder a sus preguntas. Si necesita actuar (presentar una solicitud, pagar, descargar un documento), inicie sesión.</p>
-          </aside>
+          <ul class="feature-list">
+            <li data-i18n-html="page44.s6.l1"><strong>Calendario fiscal multi-cliente</strong> — un calendario único que cruza los plazos de todas las empresas gestionadas; útil para planificar la carga de trabajo del mes.</li>
+              <li data-i18n-html="page44.s6.l2"><strong>Notificaciones globales</strong> — el contable recibe los recordatorios de plazos de todos sus clientes en una única bandeja, con filtros (atrasados, este mes, etiquetadas urgentes).</li>
+              <li data-i18n-html="page44.s6.l3"><strong>Exportación Excel consolidada</strong> — exportar en una sola hoja todas las declaraciones presentadas en un período para todos sus clientes (útil para informes anuales del gabinete).</li>
+              <li data-i18n-html="page44.s6.l4"><strong>Solicitudes en lote</strong> — preparar IRPFs o retenciones para varios clientes en una sola operación (página <a href="43-batch-requests.html">Solicitudes en lote</a>).</li>
+              <li data-i18n-html="page44.s6.l5"><strong>Asistente IA enriquecido</strong> — el contexto del IA incluye los datos contables de la empresa activa; preguntas como «¿cuál es la diferencia entre la cifra de negocio del 1T y del 2T?» reciben respuestas concretas con datos.</li>
+            </ul>
         </section>
+
+        <section class="section">
+          <h2 data-i18n="page44.s7.title">7. Honorarios y facturación</h2>
+          <p data-i18n="page44.s7.body">Facil no factura al contable por el uso de la plataforma; las tasas fiscales se cobran a la empresa cliente directamente (BANGE Mobile Money del propietario o administrador). Los honorarios del contable hacia su cliente están fuera del ámbito de Facil: se gestionan por el contrato comercial entre el gabinete y la empresa. La plataforma sí provee informes mensuales de actividad (número de declaraciones preparadas, tipos, fechas) que el contable puede usar para justificar su facturación al cliente.</p>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="54-licencias-comerciales.html" class="pagination-prev"><span data-i18n="page55.prev">← Anterior: Simulador de licencias</span></a>
-          <a href="56-guia.html" class="pagination-next"><span data-i18n="page55.next">Siguiente: Guía →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="page-nav">
+        <a class="nav-prev" href="43-batch-requests.html" data-i18n="page44.prev">← Anterior: Solicitudes en lote</a>
+        <a class="nav-next" href="61-rol-agente.html" data-i18n="page44.next">Siguiente: Rol Agente →</a>
+      </nav>
     </main>
   </div>
-
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

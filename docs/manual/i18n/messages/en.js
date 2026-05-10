@@ -588,6 +588,35 @@ window.__I18N__.en = {
     "next": "Next: Web view of public site →"
   },
 
+  "page41": {
+    "html_title": "Company Role — Facil Manual",
+    "title": "Company Role: acting on behalf of a legal entity",
+    "description": "Key differences with the Citizen role: entity NIF, RNT registry, multi-members, persistent company selector, specific tax obligations (VAT, withholdings, corporate tax, commercial licenses).",
+    "prev": "← Previous: Mobile-exclusive features",
+    "next": "Next: Manage companies →"
+  },
+  "page42": {
+    "html_title": "Manage companies — Facil Manual",
+    "title": "Manage members, roles and permissions",
+    "description": "4 predefined roles (owner, admin, accountant, member), detailed permission matrix, email invitation, access removal, ownership transfer, 7-year audit log.",
+    "prev": "← Previous: Company Role",
+    "next": "Next: Batch requests →"
+  },
+  "page43": {
+    "html_title": "Batch requests — Facil Manual",
+    "title": "Submit multiple requests of the same type in a single operation",
+    "description": "Batch workflow DRAFT→UPLOADING→CLASSIFYING→REVIEW→PAID→COMPLETED, AI document classification, beneficiary CSV format, consolidated payment, up to 200 beneficiaries per batch.",
+    "prev": "← Previous: Manage companies",
+    "next": "Next: Accountant Role →"
+  },
+  "page44": {
+    "html_title": "Accountant Role — Facil Manual",
+    "title": "Accountant Role: manage multiple clients from a single account",
+    "description": "Consolidated multi-client view, global tax calendar, implicit DGI mandate, preparation/authorization separation, aggregated Excel export, AI enriched with active client's accounting data.",
+    "prev": "← Previous: Batch requests",
+    "next": "Next: Agent Role →"
+  },
+
   "page59": {
     "html_title": "Web view of public site — Facil Manual",
     "title": "Web view of the public site (desktop)",

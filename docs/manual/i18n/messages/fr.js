@@ -588,6 +588,35 @@ window.__I18N__.fr = {
     "next": "Suivant : Vue Web du site public →"
   },
 
+  "page41": {
+    "html_title": "Rôle Entreprise — Manuel Facil",
+    "title": "Rôle Entreprise : agir au nom d'une personne morale",
+    "description": "Différences clés avec le rôle Citoyen : NIF de l'entité, registre RNT, multi-membres, sélecteur d'entreprise persistant, obligations fiscales spécifiques (IVA, retenues, IS, licences commerciales).",
+    "prev": "← Précédent : Fonctions exclusives Mobile",
+    "next": "Suivant : Gérer les entreprises →"
+  },
+  "page42": {
+    "html_title": "Gérer les entreprises — Manuel Facil",
+    "title": "Gérer les membres, rôles et permissions",
+    "description": "4 rôles prédéfinis (propriétaire, administrateur, comptable, membre), matrice de permissions détaillée, invitation par email, retrait d'accès, transfert de titularité, log d'audit 7 ans.",
+    "prev": "← Précédent : Rôle Entreprise",
+    "next": "Suivant : Demandes en lot →"
+  },
+  "page43": {
+    "html_title": "Demandes en lot — Manuel Facil",
+    "title": "Déposer plusieurs demandes du même type en une seule opération",
+    "description": "Workflow batch DRAFT→UPLOADING→CLASSIFYING→REVIEW→PAID→COMPLETED, classification IA des documents, format CSV des bénéficiaires, paiement consolidé, jusqu'à 200 bénéficiaires par lot.",
+    "prev": "← Précédent : Gérer les entreprises",
+    "next": "Suivant : Rôle Comptable →"
+  },
+  "page44": {
+    "html_title": "Rôle Comptable — Manuel Facil",
+    "title": "Rôle Comptable : gérer plusieurs clients depuis un seul compte",
+    "description": "Vue consolidée multi-clients, calendrier fiscal global, mandat DGI implicite, séparation préparation/autorisation, export Excel agrégé, IA enrichi avec données comptables du client actif.",
+    "prev": "← Précédent : Demandes en lot",
+    "next": "Suivant : Rôle Agent →"
+  },
+
   "page59": {
     "html_title": "Vue Web du site public — Manuel Facil",
     "title": "Vue Web du site public (desktop)",

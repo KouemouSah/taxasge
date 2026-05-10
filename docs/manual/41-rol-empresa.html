@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page55.html_title">
+<html lang="es" data-i18n-title="page41.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Consulte el Asistente IA fiscal de Facil sin necesidad de cuenta — preguntas sobre trámites, costes, documentos, plazos. Disponible 24/7.">
-  <title>Asistente IA público — Manual Facil</title>
+  <meta name="description" content="Rol Empresa en Facil — diferencias con el rol Ciudadano: NIF de la entidad, registro RNT, multi-miembros, selector de empresa.">
+  <title>Rol Empresa — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
           <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
           <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
           <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
-          <a href="55-asistente-ia-publica.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
           <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
           <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
           <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
@@ -79,7 +79,7 @@
 
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
-          <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="41-rol-empresa.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
           <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
           <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
           <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
@@ -128,176 +128,129 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <main class="main-content">
-      <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.ai_assistant_public">Asistente IA</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+    <main class="page-main">
+      <header class="page-header">
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page41.title">Rol Empresa</span>
         </div>
+        <h1 data-i18n="page41.title">Rol Empresa: trabajar a nombre de una entidad jurídica</h1>
+        <p class="page-subtitle" data-i18n="page41.subtitle">Las empresas (sociedades, asociaciones, fundaciones, sucursales) operan en Facil con un identificador propio (NIF de entidad), una ficha en el Registro Nacional Tributario (RNT) y la posibilidad de tener varios miembros con distintos roles. Esta página recorre las diferencias clave frente al rol Ciudadano y los puntos de entrada a las funciones específicas.</p>
       </header>
 
-      <div class="content-body">
-        <h1 class="page-title" data-i18n="page55.title">Asistente IA público</h1>
-        <p class="page-description" data-i18n="page55.description">
-          Facil incluye un asistente conversacional alimentado por IA (Gemini 2.5 Flash) que responde a sus preguntas sobre los trámites administrativos en Guinea Ecuatorial: documentos requeridos, costes estimados, plazos, procedimientos paso a paso. Disponible 24/7 sin necesidad de cuenta.
-        </p>
+      <div class="page-content">
 
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-        </div>
+        <section class="section">
+          <h2 data-i18n="page41.s1.title">1. ¿Cuándo se utiliza el rol Empresa?</h2>
+          <p data-i18n="page41.s1.body">El rol Empresa es para personas que actúan en nombre de una entidad jurídica registrada en Guinea Ecuatorial: una sociedad anónima, una sucursal, una asociación, una fundación o cualquier forma jurídica reconocida por el RNT. La diferencia con el rol Ciudadano no es el tipo de servicios disponibles —ambos pueden iniciar trámites, pagar y descargar documentos— sino el propietario del expediente fiscal y los flujos de obligaciones específicas (IVA, retenciones, declaraciones consolidadas, licencias comerciales).</p>
 
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page55.toc.s1">1. Acceder al asistente</a></li>
-            <li><a href="#capacidades" data-i18n="page55.toc.s2">2. Capacidades del asistente público</a></li>
-            <li><a href="#sugerencias" data-i18n="page55.toc.s3">3. Sugerencias de preguntas</a></li>
-            <li><a href="#conversacion" data-i18n="page55.toc.s4_new">4. Ejemplo de conversación completa</a></li>
-            <li><a href="#limites" data-i18n="page55.toc.s4">5. Limitaciones sin sesión</a></li>
-            <li><a href="#privacidad" data-i18n="page55.toc.s5">6. Privacidad y datos</a></li>
-          </ul>
-        </div>
-
-        <section>
-          <h2 id="acceso" data-i18n="page55.s1.title">1. Acceder al asistente</h2>
-          <p data-i18n-html="page55.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Asistente IA»</strong> en la cabecera o el banner del carrusel. El asistente abre con un mensaje de bienvenida y 4 sugerencias de preguntas pulsables.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/empty-state-es.jpg" alt="Asistente IA estado vacío" data-i18n-attr-alt="page55.s1.fig1.alt">
-            <figcaption data-i18n="page55.s1.fig1.caption">Asistente IA en versión móvil — pantalla de inicio con título, mensaje de bienvenida y 4 sugerencias (servicios, documentos, pago, verificar demanda).</figcaption>
-          </figure>
+          <div class="callout callout-info">
+            <h3 data-i18n="page41.s1.callout.title">Casos típicos del rol Empresa</h3>
+            <ul>
+              <li data-i18n="page41.s1.callout.l1">Una empresa renueva su licencia comercial anual para uno o varios establecimientos.</li>
+              <li data-i18n="page41.s1.callout.l2">Una sociedad declara el IVA mensual o trimestral.</li>
+              <li data-i18n="page41.s1.callout.l3">Una sucursal solicita pasaportes o autorizaciones de trabajo para varios empleados a la vez (solicitudes en lote — página 43).</li>
+              <li data-i18n="page41.s1.callout.l4">Un grupo paga de forma consolidada todas sus obligaciones del trimestre con un único recibo (pago agrupado — página 26).</li>
+            </ul>
+          </div>
         </section>
 
-        <section>
-          <h2 id="capacidades" data-i18n="page55.s2.title">2. Capacidades del asistente público</h2>
-          <p data-i18n="page55.s2.intro">El asistente puede responder a preguntas sobre:</p>
-          <ul>
-            <li data-i18n-html="page55.s2.cap1"><strong>Trámites administrativos</strong>: pasaporte, conducir, residencia, IRPF, IVA, IS, licencias comerciales, certificados, etc. (catálogo de 873 servicios)</li>
-            <li data-i18n-html="page55.s2.cap2"><strong>Documentos requeridos</strong>: lista detallada por trámite, originales y copias</li>
-            <li data-i18n-html="page55.s2.cap3"><strong>Costes</strong>: tarifas oficiales con desglose (impuestos, suplementos eventuales)</li>
-            <li data-i18n-html="page55.s2.cap4"><strong>Plazos</strong>: tiempo de tratamiento estimado por categoría</li>
-            <li data-i18n-html="page55.s2.cap5"><strong>Procedimientos paso a paso</strong>: secuencia de etapas a seguir, lugar de cada cita</li>
-            <li data-i18n-html="page55.s2.cap6"><strong>Comparaciones</strong>: ej. «¿Cuánto cuesta abrir un restaurante en Malabo vs Bata?»</li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page41.s2.title">2. Diferencias con el rol Ciudadano</h2>
+          <p data-i18n="page41.s2.intro">La tabla siguiente resume las cinco diferencias estructurales entre los dos roles. Todo el resto (Asistente IA, soporte, notificaciones, validación de recibos) funciona igual.</p>
 
-          <aside class="callout callout-tip">
-            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
-            <p data-i18n="page55.s2.tip">El asistente entiende preguntas en español, francés e inglés — incluso si las mezcla en una misma frase. Use el lenguaje natural sin necesidad de palabras clave técnicas.</p>
-          </aside>
+          <div class="table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th data-i18n="page41.s2.table.h1">Aspecto</th>
+                  <th data-i18n="page41.s2.table.h2">Rol Ciudadano</th>
+                  <th data-i18n="page41.s2.table.h3">Rol Empresa</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page41.s2.table.r1.c1"><strong>Identificador fiscal</strong></td>
+                  <td data-i18n="page41.s2.table.r1.c2">DIP del titular (persona física)</td>
+                  <td data-i18n="page41.s2.table.r1.c3">NIF de la entidad jurídica (asignado por la DGI al registrar la empresa)</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page41.s2.table.r2.c1"><strong>Propietario de los trámites</strong></td>
+                  <td data-i18n="page41.s2.table.r2.c2">El usuario conectado</td>
+                  <td data-i18n="page41.s2.table.r2.c3">La empresa (cualquier miembro autorizado puede acceder al expediente)</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page41.s2.table.r3.c1"><strong>Equipo</strong></td>
+                  <td data-i18n="page41.s2.table.r3.c2">Una sola persona</td>
+                  <td data-i18n="page41.s2.table.r3.c3">Hasta varios miembros con roles (propietario, administrador, contable, miembro)</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page41.s2.table.r4.c1"><strong>Obligaciones específicas</strong></td>
+                  <td data-i18n="page41.s2.table.r4.c2">IRPF, pasaportes, residencia, conducir</td>
+                  <td data-i18n="page41.s2.table.r4.c3">IVA, retenciones, IS, licencias comerciales, declaraciones consolidadas</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page41.s2.table.r5.c1"><strong>Flujos típicos</strong></td>
+                  <td data-i18n="page41.s2.table.r5.c2">Trámites individuales</td>
+                  <td data-i18n="page41.s2.table.r5.c3">Solicitudes en lote (página 43) y pago agrupado multi-obligación (página 26)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section>
-          <h2 id="sugerencias" data-i18n="page55.s3.title">3. Sugerencias de preguntas (para empezar)</h2>
-          <p data-i18n="page55.s3.intro">Si no sabe por dónde empezar, pulse una de las sugerencias proporcionadas:</p>
-          <ul>
-            <li data-i18n-html="page55.s3.q1"><em>«¿Qué servicios están disponibles para mi DIP?»</em></li>
-            <li data-i18n-html="page55.s3.q2"><em>«¿Cuáles son los documentos para el pasaporte?»</em></li>
-            <li data-i18n-html="page55.s3.q3"><em>«¿Cuánto cuesta una licencia comercial en Bata?»</em></li>
-            <li data-i18n-html="page55.s3.q4"><em>«¿Cómo verificar mi solicitud?»</em></li>
-            <li data-i18n-html="page55.s3.q5"><em>«¿Cuál es el plazo para una renovación de carnet de conducir?»</em></li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page41.s3.title">3. El selector de empresa (sticky)</h2>
+          <p data-i18n="page41.s3.body">Si su cuenta tiene acceso a varias empresas (caso del contable o del propietario de un grupo), el panel principal muestra un selector de empresa siempre visible en la parte superior. El selector indica qué entidad está activa en el contexto: todos los KPI, listas y acciones rápidas se filtran por la empresa seleccionada. Cambiar de empresa se hace en un clic; las pantallas se recargan automáticamente con los datos de la nueva entidad.</p>
 
-          <p data-i18n-html="page55.s3.body">El asistente responde con texto estructurado: subtítulos, listas numeradas, tablas si procede, enlaces directos al catálogo. Puede pulsar los enlaces para ir directamente al servicio mencionado.</p>
+          <div class="callout callout-tip">
+            <h3 data-i18n="page41.s3.tip.title">Buena práctica</h3>
+            <p data-i18n="page41.s3.tip.body">Verifique siempre el nombre de la empresa activa en el selector antes de iniciar un trámite o realizar un pago. Una solicitud creada en la empresa equivocada se queda asociada a esa empresa y, aunque corregible (transferencia administrativa por la DGI), genera trabajo de soporte adicional.</p>
+          </div>
+
+          <p data-i18n="page41.s3.body2">Para añadir una empresa al selector (porque es nueva en Facil o porque se le ha invitado a un equipo existente), consulte la página <a href="42-gestion-empresas.html" data-i18n="page41.s3.link.42">Gestionar empresas</a>. Para ver la lista completa de las empresas de su cuenta con sus licencias y obligaciones, vaya a <a href="27-mis-empresas-web.html" data-i18n="page41.s3.link.27">Mis empresas (Web)</a> o <a href="36-mis-empresas-mobile.html" data-i18n="page41.s3.link.36">Mis empresas (Móvil)</a>.</p>
         </section>
 
-        <section>
-          <h2 id="conversacion" data-i18n="page55.s4_new.title">4. Ejemplo de conversación completa</h2>
-          <p data-i18n-html="page55.s4_new.intro">A continuación, una conversación tipo en 3 etapas — desde la pregunta hasta la respuesta detallada. Las capturas siguientes están en versión francesa (versión española visualmente idéntica salvo el texto traducido) :</p>
+        <section class="section">
+          <h2 data-i18n="page41.s4.title">4. Puntos de entrada específicos del rol Empresa</h2>
+          <p data-i18n="page41.s4.intro">Una vez seleccionada una empresa, encontrará estas funciones que no aparecen en el rol Ciudadano:</p>
 
-          <h3 data-i18n="page55.s4_new.stage1.title">Etapa 1 — Envío de la pregunta y carga</h3>
-          <p data-i18n-html="page55.s4_new.stage1.body">Tras escribir su pregunta (ejemplo: <em>«Procédure de passeport»</em>), aparece la burbuja del usuario seguida de un indicador de escritura («typing») mientras el asistente prepara la respuesta. El tiempo de respuesta varía según la complejidad : 1-2 segundos para una pregunta simple, 4-6 segundos para una pregunta compleja con cálculos.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/loading.jpg" alt="Asistente IA cargando respuesta" data-i18n-attr-alt="page55.s4_new.fig1.alt">
-            <figcaption data-i18n="page55.s4_new.fig1.caption">Etapa 1 — Burbuja del usuario «Procédure de passeport» seguida del indicador de escritura del asistente. (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <h3 data-i18n="page55.s4_new.stage2.title">Etapa 2 — Respuesta estructurada</h3>
-          <p data-i18n-html="page55.s4_new.stage2.body">El asistente entrega una respuesta <strong>completa y estructurada</strong>: título de la sección («Pasaporte Biométrico»), información clave (coste, plazo, documentos requeridos), seguida de la lista de etapas numeradas. La presentación facilita el escaneo visual rápido.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/response.jpg" alt="Asistente IA respuesta completa estructurada" data-i18n-attr-alt="page55.s4_new.fig2.alt">
-            <figcaption data-i18n="page55.s4_new.fig2.caption">Etapa 2 — Respuesta detallada con coste, plazo, documentos requeridos, etapas numeradas. (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <h3 data-i18n="page55.s4_new.stage3.title">Etapa 3 — Continuación + acciones de feedback</h3>
-          <p data-i18n-html="page55.s4_new.stage3.body">Si la respuesta es larga, puede desplazarse para ver las últimas etapas + una <strong>nota</strong> contextual + 4 acciones disponibles al final de cada respuesta:</p>
-          <ul>
-            <li data-i18n-html="page55.s4_new.stage3.action1"><strong>👍 Pulgar arriba</strong> — la respuesta es útil. Mejora el modelo.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action2"><strong>👎 Pulgar abajo</strong> — la respuesta es incorrecta o incompleta. Le permite a las equipos mejorar el asistente.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action3"><strong>📋 Copiar</strong> — copia el texto completo en el portapapeles.</li>
-            <li data-i18n-html="page55.s4_new.stage3.action4"><strong>📤 Compartir</strong> — comparte la respuesta vía WhatsApp, SMS, email u otra aplicación instalada.</li>
-          </ul>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/chat/response-scroll.jpg" alt="Asistente IA continuación respuesta y acciones" data-i18n-attr-alt="page55.s4_new.fig3.alt">
-            <figcaption data-i18n="page55.s4_new.fig3.caption">Etapa 3 — Final de la respuesta (etapas 7-9), nota contextual y 4 acciones de feedback (👍 / 👎 / copiar / compartir). (Captura en versión francesa)</figcaption>
-          </figure>
-
-          <aside class="callout callout-tip">
-            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
-            <p data-i18n-html="page55.s4_new.tip">Use el <strong>👎 Pulgar abajo</strong> sin dudar si la respuesta es errónea o desfasada — es el mecanismo principal para mejorar la calidad del asistente. Su feedback se trata anonymizado.</p>
-          </aside>
+          <ul class="feature-list">
+            <li data-i18n-html="page41.s4.l1"><strong>Pago agrupado</strong> — saldar de una vez varias obligaciones (Tesoro Público, Ayuntamiento, Cámara de Comercio) con un solo recibo. Detallado en <a href="26-bundle-payment.html">Pago agrupado</a>.</li>
+              <li data-i18n-html="page41.s4.l2"><strong>Solicitudes en lote</strong> — crear varias solicitudes del mismo tipo en una operación (por ejemplo, 50 pasaportes para empleados). Detallado en <a href="43-batch-requests.html">Solicitudes en lote</a>.</li>
+              <li data-i18n-html="page41.s4.l3"><strong>Gestión de miembros y roles</strong> — invitar a un colaborador, atribuirle un rol, retirar un acceso. Detallado en <a href="42-gestion-empresas.html">Gestionar empresas</a>.</li>
+              <li data-i18n-html="page41.s4.l4"><strong>Vista contable consolidada</strong> — para los contables que gestionan varias empresas a la vez, ver <a href="44-rol-contable.html">Rol Contable</a>.</li>
+            </ul>
         </section>
 
-        <section>
-          <h2 id="limites" data-i18n="page55.s4.title">5. Limitaciones sin sesión</h2>
-          <p data-i18n="page55.s4.intro">Sin cuenta iniciada, el asistente <strong>no puede</strong>:</p>
-          <ul>
-            <li data-i18n-html="page55.s4.limit1"><strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)</li>
-            <li data-i18n-html="page55.s4.limit2"><strong>Iniciar un trámite por usted</strong> — solo describe el procedimiento, no actúa</li>
-            <li data-i18n-html="page55.s4.limit3"><strong>Verificar el estado de su solicitud</strong> — para eso, inicie sesión o use la página <a href="57-verificar.html">Verificar un recibo</a></li>
-            <li data-i18n-html="page55.s4.limit4"><strong>Acceder a sus documentos</strong> guardados — solo en el modo conectado</li>
-          </ul>
+        <section class="section">
+          <h2 data-i18n="page41.s5.title">5. Cómo añadir una empresa a su cuenta</h2>
+          <p data-i18n="page41.s5.body">Hay dos vías para que una empresa aparezca en su cuenta Facil:</p>
 
-          <p data-i18n-html="page55.s4.body">Para esas funciones avanzadas (asistente personalizado, gestión de su caja fuerte digital, sugerencias proactivas), <a href="11-crear-cuenta.html" class="">cree una cuenta</a> y consulte la página <a href="29-soporte-web.html" class="">Asistente IA conectado</a>.</p>
+          <ol class="numbered-list">
+            <li data-i18n-html="page41.s5.l1"><strong>Crear la empresa</strong> — desde <a href="27-mis-empresas-web.html">Mis empresas</a>, botón <em>«Añadir empresa»</em>. Necesita el NIF de la entidad y prueba de su rol (acta de nombramiento, poder, certificado registral). La empresa entra en estado <em>«verificación pendiente»</em> hasta que la DGI valida los justificantes (24-72 h hábiles).</li>
+              <li data-i18n-html="page41.s5.l2"><strong>Aceptar una invitación</strong> — si otro miembro le ha enviado una invitación por email, recibirá un enlace para unirse al equipo en un rol específico (administrador, contable o miembro). El acceso es inmediato tras aceptar; no necesita aportar justificantes adicionales.</li>
+            </ol>
         </section>
 
-        <section>
-          <h2 id="privacidad" data-i18n="page55.s5.title">6. Privacidad y datos</h2>
-          <ul>
-            <li data-i18n-html="page55.s5.priv1"><strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)</li>
-            <li data-i18n-html="page55.s5.priv2"><strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio</li>
-            <li data-i18n-html="page55.s5.priv3"><strong>No proporcione datos sensibles</strong> — número DIP, teléfono, dirección no son necesarios para responder a una pregunta general. Si los proporciona, no se almacenan.</li>
-            <li data-i18n-html="page55.s5.priv4"><strong>Conformidad RGPD</strong> — ver <a href="58-legal.html">página legal</a> para detalles sobre el tratamiento de datos</li>
-          </ul>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page55.s5.success">El asistente está disponible 24/7 para responder a sus preguntas. Si necesita actuar (presentar una solicitud, pagar, descargar un documento), inicie sesión.</p>
-          </aside>
+        <section class="section">
+          <h2 data-i18n="page41.s6.title">6. Mismos servicios, mismo asistente IA</h2>
+          <p data-i18n="page41.s6.body">Aparte de las funciones propias mencionadas arriba, todo lo demás es idéntico al rol Ciudadano: el catálogo de los 850+ servicios fiscales (página 51), la calculadora (página 52), el directorio (página 53), el asistente IA (página 55), la verificación de recibos (página 57). El asistente IA conectado (página 29) tiene además acceso al contexto de la empresa activa: si pregunta «¿cuál es mi obligación de IVA del próximo mes?», responde con los datos reales de la empresa seleccionada en el selector.</p>
         </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="54-licencias-comerciales.html" class="pagination-prev"><span data-i18n="page55.prev">← Anterior: Simulador de licencias</span></a>
-          <a href="56-guia.html" class="pagination-next"><span data-i18n="page55.next">Siguiente: Guía →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="page-nav">
+        <a class="nav-prev" href="39-mobile-exclusivos.html" data-i18n="page41.prev">← Anterior: Funciones exclusivas Móvil</a>
+        <a class="nav-next" href="42-gestion-empresas.html" data-i18n="page41.next">Siguiente: Gestionar empresas →</a>
+      </nav>
     </main>
   </div>
-
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

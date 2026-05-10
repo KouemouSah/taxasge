@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page12.html_title">
+<html lang="es" data-i18n-title="page42.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Inicie sesión en Facil con su email y contraseña — incluye 2FA opcional, biometría móvil, recordar sesión y protección anti-fraude.">
-  <title>Iniciar sesión — Manual Facil</title>
+  <meta name="description" content="Gestionar miembros y roles en una empresa Facil — invitar por email, atribuir rol owner/admin/accountant/member, retirar acceso, matriz de permisos.">
+  <title>Gestionar empresas — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
           <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
-          <a href="12-iniciar-sesion.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
           <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
           <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
           <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
@@ -80,7 +80,7 @@
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
           <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
-          <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
           <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
           <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
         </div>
@@ -128,173 +128,179 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <main class="main-content">
-      <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.account">Su cuenta</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.sign_in">Iniciar sesión</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+    <main class="page-main">
+      <header class="page-header">
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page42.title">Gestionar empresas</span>
         </div>
+        <h1 data-i18n="page42.title">Gestionar miembros, roles y permisos</h1>
+        <p class="page-subtitle" data-i18n="page42.subtitle">En Facil, una empresa puede tener varios miembros con distintos niveles de responsabilidad. Hay cuatro roles predefinidos (propietario, administrador, contable, miembro), una matriz de permisos clara y un sistema de invitación por email. Esta página explica cómo invitar a un colaborador, qué puede hacer cada rol, cómo retirar un acceso y cómo transferir la titularidad cuando un propietario se va.</p>
       </header>
 
-      <div class="content-body">
-        <h1 class="page-title" data-i18n="page12.title">Iniciar sesión en Facil</h1>
-        <p class="page-description" data-i18n="page12.description">Acceda a su cuenta personal con su email y contraseña. Si tiene la autenticación 2FA activada, deberá introducir además un código TOTP. La aplicación móvil ofrece adicionalmente acceso por biometría (huella o reconocimiento facial).</p>
+      <div class="page-content">
 
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-          <span class="persona-tag" data-i18n="common.persona.agent">Agente</span>
-          <span class="persona-tag" data-i18n="common.persona.admin">Administrador</span>
-        </div>
+        <section class="section">
+          <h2 data-i18n="page42.s1.title">1. Los cuatro roles de empresa</h2>
+          <p data-i18n="page42.s1.intro">Cada miembro tiene exactamente un rol en una empresa dada. Una persona puede ser propietaria de la empresa A y simple miembro de la empresa B sin conflicto. Los roles son acumulables a través de varias empresas, no dentro de una misma empresa.</p>
 
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceder" data-i18n="page12.toc.s1">1. Acceder a la pantalla de inicio de sesión</a></li>
-            <li><a href="#credenciales" data-i18n="page12.toc.s2">2. Introducir email y contraseña</a></li>
-            <li><a href="#2fa" data-i18n="page12.toc.s3">3. Código 2FA (si está activado)</a></li>
-            <li><a href="#biometria" data-i18n="page12.toc.s4">4. Acceso biométrico (móvil)</a></li>
-            <li><a href="#recordar" data-i18n="page12.toc.s5">5. Recordar la sesión</a></li>
-            <li><a href="#validacion" data-i18n="page12.toc.s_valid">6. Validación de campos en tiempo real</a></li>
-            <li><a href="#problemas" data-i18n="page12.toc.s6">7. Problemas frecuentes</a></li>
-          </ul>
-        </div>
-
-        <section>
-          <h2 id="acceder" data-i18n="page12.s1.title">1. Acceder a la pantalla de inicio de sesión</h2>
-          <p data-i18n-html="page12.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://taxasge.emacsah.com/login</code>.</p>
-
-          <div class="figure-pair">
-            <figure class="mobile-screenshot">
-              <img src="_assets/screenshots/mobile/auth/login-es.jpg" alt="Pantalla móvil login en español" data-i18n-attr-alt="page12.s1.fig1.alt">
-              <figcaption data-i18n="page12.s1.fig1.caption">Pantalla móvil de inicio de sesión (versión española) — logo Facil, mensaje «Bienvenido de nuevo», campos email + contraseña, enlace «¿Contraseña olvidada?».</figcaption>
-            </figure>
-            <figure>
-              <img src="_assets/screenshots/web/citizen/1.png" alt="Pantalla web login estado vacío" data-i18n-attr-alt="page12.s1.fig2.alt">
-              <figcaption data-i18n="page12.s1.fig2.caption">Pantalla web de inicio de sesión — pestaña «Iniciar Sesión» activa, campos vacíos con placeholders <code>su@correo.com</code>, header público accesible (Servicios, Licencias, Calculadora...).</figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="credenciales" data-i18n="page12.s2.title">2. Introducir email y contraseña</h2>
-          <ol class="step-list">
-            <li data-i18n-html="page12.s2.step1">Escriba el <strong>email</strong> con el que se registró (no use un alias o apodo).</li>
-            <li data-i18n-html="page12.s2.step2">Introduzca la <strong>contraseña</strong>. El icono de ojo le permite verificar lo que escribe (útil si tiene dudas).</li>
-            <li data-i18n-html="page12.s2.step3">Pulse <strong>«Iniciar sesión»</strong>.</li>
-          </ol>
-
-          <figure>
-            <img src="_assets/screenshots/web/citizen/01.png" alt="Pantalla web login con email pre-rellenado" data-i18n-attr-alt="page12.s2.fig1.alt">
-            <figcaption data-i18n="page12.s2.fig1.caption">Ejemplo Web con email pre-rellenado por el navegador (función de autocompletar) — gana tiempo al volver a conectarse.</figcaption>
-          </figure>
-
-          <aside class="callout callout-warning">
-            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
-            <p data-i18n-html="page12.s2.warning">Después de <strong>5 intentos fallidos</strong>, su cuenta es <strong>bloqueada durante 15 minutos</strong> por seguridad. Después de <strong>10 intentos fallidos en 24h</strong>, recibirá un email de alerta y un bloqueo más largo (1h). Si recibe esta alerta sin intentar conectarse, alguien intenta acceder a su cuenta — cambie su contraseña inmediatamente.</p>
-          </aside>
-        </section>
-
-        <section>
-          <h2 id="2fa" data-i18n="page12.s3.title">3. Código 2FA (si está activado)</h2>
-          <p data-i18n-html="page12.s3.intro">Si ha activado la <a href="14-2fa.html">autenticación de dos factores</a>, una segunda pantalla aparece después de la contraseña. Tiene <strong>30 segundos</strong> para introducir el código TOTP de 6 cifras de su aplicación de autenticación (Google Authenticator, Authy, Microsoft Authenticator).</p>
-
-          <p data-i18n-html="page12.s3.body">Si pierde acceso a su aplicación 2FA (teléfono perdido o destruido), use uno de los <strong>10 códigos de respaldo</strong> que le entregamos al activar el 2FA. Si los ha perdido también, contacte al soporte presentando una prueba de identidad.</p>
-        </section>
-
-        <section>
-          <h2 id="biometria" data-i18n="page12.s4.title">4. Acceso biométrico (solo móvil)</h2>
-          <p data-i18n-html="page12.s4.intro">Después de iniciar sesión por primera vez en la aplicación móvil, Facil le propone activar el <strong>desbloqueo biométrico</strong> (huella digital o reconocimiento facial según su teléfono).</p>
-
-          <p data-i18n-html="page12.s4.body">Una vez activado, las próximas conexiones se hacen con un simple gesto biométrico — sin necesidad de reescribir su email, contraseña o código 2FA. La biometría es local a su teléfono (los datos no salen del aparato), conforme a las normas de seguridad iOS Secure Enclave / Android StrongBox.</p>
-
-          <aside class="callout callout-info">
-            <div class="callout-title" data-i18n="common.callout.info">Información</div>
-            <p data-i18n-html="page12.s4.info">La biometría puede desactivarse en cualquier momento desde <a href="16-seguridad.html">Seguridad</a>. En caso de fallo (huella sucia, gafas que perturban Face ID), siempre puede volver al inicio de sesión clásico email + contraseña.</p>
-          </aside>
-        </section>
-
-        <section>
-          <h2 id="recordar" data-i18n="page12.s5.title">5. Recordar la sesión</h2>
-          <p data-i18n-html="page12.s5.intro">La opción <strong>«Recordarme»</strong> (visible bajo el campo contraseña) le mantiene conectado durante <strong>30 días</strong> en este dispositivo, incluso después de cerrar el navegador o la aplicación. Útil en su teléfono personal — desaconsejado en un ordenador público o compartido.</p>
-
-          <p data-i18n-html="page12.s5.body">Si no la marca, su sesión expira al cerrar el navegador (web) o al pasar 30 minutos de inactividad (móvil), por seguridad.</p>
-        </section>
-
-        <section>
-          <h2 id="validacion" data-i18n="page12.s_valid.title">6. Validación de campos en tiempo real</h2>
-          <p data-i18n-html="page12.s_valid.intro">La aplicación valida sus entradas <strong>en tiempo real</strong> mientras escribe — sin necesidad de pulsar «Iniciar sesión» para ver los errores. Útil para detectar errores tipográficos antes de enviar el formulario.</p>
-
-          <h3 data-i18n="page12.s_valid.email.title">Validación del formato de email</h3>
-          <p data-i18n-html="page12.s_valid.email.body">Si introduce un email mal formado (ej. «yy» sin <code>@</code>, falta del dominio), el campo se enmarca en <strong>rojo</strong> y el mensaje «Invalid email address» / «Dirección de correo inválida» aparece debajo. La contraseña se enmarca en <strong>verde</strong> si está rellenada correctamente, lo que permite ver de un vistazo qué campo necesita corrección.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/auth/login-validation-error.png" alt="Validación email inválido" data-i18n-attr-alt="page12.s_valid.fig1.alt">
-            <figcaption data-i18n="page12.s_valid.fig1.caption">Pantalla móvil — campo email enmarcado en rojo con mensaje «Invalid email address» (ejemplo entrada «yy»). Campo password enmarcado en verde porque está correctamente rellenado. Teclado abierto. (Captura en versión inglesa, comportamiento idéntico en español)</figcaption>
-          </figure>
-
-          <h3 data-i18n="page12.s_valid.form.title">Formulario completo válido</h3>
-          <p data-i18n-html="page12.s_valid.form.body">Cuando los 2 campos son válidos, el formulario muestra el botón <strong>«Sign In» / «Iniciar sesión»</strong> activo (verde lleno). El enlace <strong>«Forgot your password?»</strong> es siempre visible debajo del campo password. La parte inferior contiene la pregunta <strong>«Don't have an account? Create Account»</strong> hacia la página <a href="11-crear-cuenta.html">Crear cuenta</a>.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/auth/login-form.png" alt="Formulario login completo" data-i18n-attr-alt="page12.s_valid.fig2.alt">
-            <figcaption data-i18n="page12.s_valid.fig2.caption">Pantalla móvil completa con los 2 campos rellenados, botón «Sign In» activo en verde, enlace «Forgot your password?» y CTA «Don't have an account? Create Account» abajo. (Captura en versión inglesa)</figcaption>
-          </figure>
-
-          <aside class="callout callout-tip">
-            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
-            <p data-i18n="page12.s_valid.tip">El icono de ojo en el campo password permite mostrar/ocultar la contraseña — útil si tiene dudas sobre lo que ha escrito antes de validar.</p>
-          </aside>
-        </section>
-
-        <section>
-          <h2 id="problemas" data-i18n="page12.s6.title">7. Problemas frecuentes</h2>
-          <div class="table-wrapper">
-            <table>
-              <thead><tr><th data-i18n="page12.s6.table.col1">Síntoma</th><th data-i18n="page12.s6.table.col2">Solución</th></tr></thead>
+          <div class="table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th data-i18n="page42.s1.t.h1">Rol</th>
+                  <th data-i18n="page42.s1.t.h2">Para quién</th>
+                  <th data-i18n="page42.s1.t.h3">Acciones clave</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td data-i18n="page12.s6.r1.c1">«Email o contraseña incorrectos»</td><td data-i18n-html="page12.s6.r1.c2">Verifique mayúsculas/minúsculas. Si la duda persiste, use <a href="13-recuperar-contrasena.html">Recuperar contraseña</a>.</td></tr>
-                <tr><td data-i18n="page12.s6.r2.c1">«Cuenta bloqueada»</td><td data-i18n="page12.s6.r2.c2">Espere 15 minutos (5 intentos fallidos) o 1 hora (10 intentos en 24h).</td></tr>
-                <tr><td data-i18n="page12.s6.r3.c1">«Código 2FA inválido»</td><td data-i18n="page12.s6.r3.c2">Sincronice el reloj de su teléfono (los códigos TOTP dependen de la hora). Use un código de respaldo si su teléfono está desincronizado.</td></tr>
-                <tr><td data-i18n="page12.s6.r4.c1">No recibe email de alerta</td><td data-i18n="page12.s6.r4.c2">Verifique el spam. La dirección email registrada puede ser obsoleta — contacte al soporte.</td></tr>
+                <tr>
+                  <td data-i18n="page42.s1.t.r1.c1"><strong>Propietario</strong> <span class="badge-role">owner</span></td>
+                  <td data-i18n="page42.s1.t.r1.c2">Representante legal de la empresa, único e intransferible salvo procedimiento explícito</td>
+                  <td data-i18n="page42.s1.t.r1.c3">Todo: invitar/retirar miembros, cambiar roles, autorizar pagos, cerrar la cuenta empresa, transferir la titularidad</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page42.s1.t.r2.c1"><strong>Administrador</strong> <span class="badge-role">admin</span></td>
+                  <td data-i18n="page42.s1.t.r2.c2">Director, responsable administrativo de confianza</td>
+                  <td data-i18n="page42.s1.t.r2.c3">Iniciar y validar trámites, autorizar pagos, invitar/retirar miembros (excepto al propietario), gestionar licencias</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page42.s1.t.r3.c1"><strong>Contable</strong> <span class="badge-role">accountant</span></td>
+                  <td data-i18n="page42.s1.t.r3.c2">Contable interno o externo (gabinete contable)</td>
+                  <td data-i18n="page42.s1.t.r3.c3">Iniciar declaraciones (IVA, retenciones, IS), preparar pagos, descargar histórico fiscal, NO puede invitar a otros miembros</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page42.s1.t.r4.c1"><strong>Miembro</strong> <span class="badge-role">member</span></td>
+                  <td data-i18n="page42.s1.t.r4.c2">Empleado autorizado a iniciar trámites operativos puntuales</td>
+                  <td data-i18n="page42.s1.t.r4.c3">Crear borrador de solicitud, subir documentos, ver el estado del expediente. NO puede pagar ni firmar declaraciones</td>
+                </tr>
               </tbody>
             </table>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page12.s6.success">Está conectado. Ya puede acceder a su panel principal y realizar sus trámites.</p>
-          </aside>
         </section>
+
+        <section class="section" id="sec-2">
+          <h2 data-i18n="page42.s2.title">2. Matriz detallada de permisos</h2>
+          <p data-i18n="page42.s2.intro">El siguiente cuadro lista las acciones más sensibles y qué rol puede ejecutarlas. Una marca <code>✓</code> indica acceso, <code>—</code> indica que la acción está bloqueada (botón gris o ausente).</p>
+
+          <div class="table-wrap">
+            <table class="comparison-table compact">
+              <thead>
+                <tr>
+                  <th data-i18n="page42.s2.t.h1">Acción</th>
+                  <th data-i18n="page42.s2.t.h2">Owner</th>
+                  <th data-i18n="page42.s2.t.h3">Admin</th>
+                  <th data-i18n="page42.s2.t.h4">Accountant</th>
+                  <th data-i18n="page42.s2.t.h5">Member</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page42.s2.t.r1">Crear borrador de solicitud</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+                <tr><td data-i18n="page42.s2.t.r2">Subir documentos</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+                <tr><td data-i18n="page42.s2.t.r3">Validar y enviar la solicitud</td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r4">Iniciar declaración fiscal (IVA, IS, retenciones)</td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r5">Autorizar pago BANGE Mobile Money</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r6">Iniciar pago agrupado (multi-obligación)</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r7">Iniciar solicitudes en lote (Excel)</td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r8">Invitar a un nuevo miembro</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r9">Cambiar el rol de un miembro</td><td>✓</td><td>✓ (excepto owner)</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r10">Retirar a un miembro</td><td>✓</td><td>✓ (excepto owner)</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r11">Transferir la titularidad (cambiar de owner)</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+                <tr><td data-i18n="page42.s2.t.r12">Cerrar la cuenta empresa</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 data-i18n="page42.s3.title">3. Invitar a un nuevo miembro</h2>
+          <p data-i18n="page42.s3.intro">El propietario o un administrador pueden invitar a otra persona a la empresa. La invitación se hace por email; el destinatario no necesita tener una cuenta Facil previa: el flujo le propondrá crearla durante la aceptación.</p>
+
+          <h3 data-i18n="page42.s3.steps.title">Pasos</h3>
+          <ol class="numbered-list">
+            <li data-i18n-html="page42.s3.steps.l1">Vaya a <a href="27-mis-empresas-web.html">Mis empresas</a> y abra la ficha de la empresa concernida.</li>
+              <li data-i18n="page42.s3.steps.l2">Pestaña <em>«Miembros»</em>, botón <em>«Invitar miembro»</em>.</li>
+              <li data-i18n="page42.s3.steps.l3">Introduzca el email del invitado y elija el rol (administrador, contable o miembro). Solo el propietario puede transferir su rol; no es invitable directamente.</li>
+              <li data-i18n="page42.s3.steps.l4">Opcional: añada un mensaje personal (recomendable, mejora la tasa de aceptación).</li>
+              <li data-i18n="page42.s3.steps.l5">Confirme. El invitado recibe un email con un enlace válido durante 7 días.</li>
+              <li data-i18n="page42.s3.steps.l6">Mientras espera, el invitado aparece en la lista con la mención <em>«invitación pendiente»</em>. Puede reenviar el email o cancelar la invitación si fue un error.</li>
+            </ol>
+
+          <div class="callout callout-warning">
+            <h3 data-i18n="page42.s3.warn.title">Email correcto, persona correcta</h3>
+            <p data-i18n="page42.s3.warn.body">Verifique el email antes de enviar. Una invitación con dominio incorrecto (typo) se quedará pendiente sin alerta hasta que expire (7 días). Si el destinatario tiene varios emails, prefiera el profesional vinculado a la empresa.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 data-i18n="page42.s4.title">4. Cambiar el rol de un miembro</h2>
+          <p data-i18n="page42.s4.body">Desde la lista de miembros, junto a cada nombre, hay un menú desplegable con el rol actual. Cambiar el valor aplica el nuevo rol inmediatamente; el miembro afectado recibe una notificación y un email. Las acciones en curso no se interrumpen, pero las próximas se rigen por el nuevo nivel de permiso.</p>
+          <p data-i18n="page42.s4.body2">Limitación importante: un administrador no puede ascender a un miembro al rol de propietario, ni degradar al propietario actual. Estas dos operaciones requieren un procedimiento de transferencia de titularidad descrito en la sección 6.</p>
+        </section>
+
+        <section class="section">
+          <h2 data-i18n="page42.s5.title">5. Retirar a un miembro</h2>
+          <p data-i18n="page42.s5.body">Junto al menú de rol hay un botón <em>«Retirar acceso»</em>. La operación es inmediata: el miembro pierde el acceso a la empresa en el siguiente intento de carga (la sesión activa caduca en menos de 60 segundos). Las solicitudes que él haya iniciado y que estén en curso continúan su flujo, pero ya no podrá verlas ni intervenir. El historial de sus acciones (creación, modificación) permanece en el log de auditoría con su nombre, no se borra.</p>
+
+          <p data-i18n="page42.s5.body2">Caso particular: si retira a un contable que firmó declaraciones recientes, le recomendamos verificar antes que las próximas declaraciones tengan otro firmante autorizado para evitar bloqueos en cierre de mes.</p>
+        </section>
+
+        <section class="section">
+          <h2 data-i18n="page42.s6.title">6. Transferir la titularidad (cambio de propietario)</h2>
+          <p data-i18n="page42.s6.body">El propietario es único en una empresa. Para transferir su rol a otra persona (por jubilación, salida, sucesión), el propietario actual debe iniciar un procedimiento explícito:</p>
+
+          <pre class="ascii-diagram" data-i18n-html="page42.s6.diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ Procedimiento de transferencia de titularidad               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. Owner actual → menú empresa → "Transferir titularidad"  │
+│         │                                                   │
+│         ▼                                                   │
+│  2. Selección del nuevo owner entre los administradores     │
+│     (sólo un admin existente puede convertirse en owner)    │
+│         │                                                   │
+│         ▼                                                   │
+│  3. Subir acta/poder/certificado registral justificando     │
+│     el cambio (PDF, máx. 10 MB)                             │
+│         │                                                   │
+│         ▼                                                   │
+│  4. Confirmación 2FA del owner actual                       │
+│         │                                                   │
+│         ▼                                                   │
+│  5. Validación DGI (24-72 h hábiles)                        │
+│         │                                                   │
+│         ▼                                                   │
+│  6. Email + notificación al nuevo owner; el antiguo         │
+│     queda como administrador (no se le retira solo)         │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</pre>
+
+          <div class="callout callout-info">
+            <h3 data-i18n="page42.s6.info.title">¿Por qué tan formal?</h3>
+            <p data-i18n="page42.s6.info.body">Cambiar el propietario es equivalente, en derecho, a un cambio de representante legal. La DGI verifica los justificantes para evitar tomas de control fraudulentas de cuentas empresa. La duración (24-72 h) corresponde al tiempo de instrucción del expediente, no a un lapso técnico.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 data-i18n="page42.s7.title">7. Audit log de las acciones del equipo</h2>
+          <p data-i18n="page42.s7.body">Todas las acciones sensibles (invitación, cambio de rol, retiro, pago autorizado, transferencia) se registran en un log de auditoría visible al propietario y a los administradores. Para cada entrada se conserva: <em>quién</em> (email del autor), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>resultado</em> (éxito/error), <em>IP</em> y <em>user-agent</em>. Este log está disponible durante 7 años (obligación contable) y es exportable en CSV desde la pestaña <em>«Auditoría»</em> de la ficha empresa.</p>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="11-crear-cuenta.html" class="pagination-prev"><span data-i18n="page12.prev">← Anterior: Crear cuenta</span></a>
-          <a href="13-recuperar-contrasena.html" class="pagination-next"><span data-i18n="page12.next">Siguiente: Recuperar contraseña →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="page-nav">
+        <a class="nav-prev" href="41-rol-empresa.html" data-i18n="page42.prev">← Anterior: Rol Empresa</a>
+        <a class="nav-next" href="43-batch-requests.html" data-i18n="page42.next">Siguiente: Solicitudes en lote →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>
