@@ -1804,8 +1804,786 @@ window.__I18N__.es = {
         "f4": "<strong>Sus pagos pasados</strong> permanecen históricamente trazables al Tesoro Público (sin nombre)",
         "success": "Su cuenta ha sido eliminada conforme al RGPD. Si decide volver más tarde, su email queda disponible para crear una nueva cuenta."
       }
+    },
+
+  "page22": {
+      "html_title": "Iniciar trámite (Web) — Manual Facil",
+      "title": "Iniciar un trámite (Web) — wizard 10 etapas",
+      "description": "El asistente de creación de solicitud (wizard) le guía paso a paso desde la selección del trámite hasta el pago final, en 10 etapas estructuradas. Esta página recorre el flujo completo con un ejemplo concreto: «Renovación de Certificado para Conducir» (CON-2026-00001).",
+      "next": "Siguiente: Mis solicitudes →",
+      "prev": "← Anterior: Panel principal",
+      "toc": {
+        "s1": "1. Acceder al wizard",
+        "s2": "2. Seleccionar el servicio",
+        "s3": "3. Wizard — 10 etapas detalladas",
+        "s4": "4. Después de la creación",
+        "s5": "5. Documentos generados (PDF + verificación)",
+        "s6": "6. Diferencias Web vs Móvil"
+      },
+      "s1": {
+        "title": "1. Acceder al wizard",
+        "intro": "Hay 3 formas de iniciar una nueva solicitud:",
+        "f1": "Desde el <a href=\"21-dashboard-web.html\">panel principal</a> → tarjeta «Nueva solicitud»",
+        "f2": "Desde el menú lateral → «Solicitudes Servicios» → botón <strong>«Nueva solicitud»</strong>",
+        "f3": "Desde el <a href=\"55-asistente-ia-publica.html\">asistente IA</a> → popover «Iniciar un trámite» → quick-start (Pasaporte, Conducir, Residencia, etc.)"
+      },
+      "s2": {
+        "title": "2. Seleccionar el servicio",
+        "intro": "La pantalla muestra <strong>6 categorías repliables</strong> (Identidad, Conducción, Contratos, Vehículos, Extranjería, Comercio) cada una con los servicios disponibles. Use la búsqueda en la parte superior si conoce el nombre del trámite.",
+        "fig1": {
+          "alt": "Pantalla de selección de servicio",
+          "caption": "Pantalla «Nueva solicitud» — categorías repliables con detalle al expandir (ejemplo: Conducción → «Solicitud de Certificado para Conducir», entidad DGT, modo «Revisión de agente», requiere cita)."
+        },
+        "body": "Para cada servicio, ve : el <strong>nombre completo</strong>, la <strong>entidad gestora</strong> (DGT, CNEDOGE, Tesoro, etc.), el <strong>modo de tratamiento</strong> (auto-validación o revisión por agente), y si <strong>requiere cita</strong> presencial. Pulse el servicio para iniciar el wizard."
+      },
+      "s3": {
+        "title": "3. Wizard — 10 etapas detalladas",
+        "intro": "El stepper horizontal en la parte superior indica su progreso. Un <strong>cronómetro</strong> en la cabecera (29:34 al inicio) limita la sesión a 30 minutos para proteger sus datos en caso de inactividad.",
+        "s1": {
+          "title": "Etapa 1/10 — Tipo de Solicitud",
+          "body": "Elija el tipo entre las opciones del trámite. Ejemplo Conducir : Primer Certificado (30 000 XAF), Canje Permiso Extranjero (35 000), <strong>Renovación (25 000)</strong>, Duplicado (20 000), Extensión Clases (15 000). Cada opción muestra su tarifa.",
+          "fig": {
+            "alt": "Etapa 1 wizard",
+            "caption": "Etapa 1/10 con 5 opciones radio. Renovación 25 000 XAF seleccionado."
+          }
+        },
+        "s2": {
+          "title": "Etapa 2/10 — Tipo de Solicitante",
+          "body": "Indique si es <strong>Ciudadano</strong> nacional (con DIP) o <strong>Residente Extranjero</strong> (con NIE). El sistema adapta los documentos requeridos según la elección.",
+          "fig": {
+            "alt": "Etapa 2 wizard",
+            "caption": "Etapa 2/10 con Residente Extranjero (NIE) seleccionado. Botones Anterior / Siguiente abajo."
+          }
+        },
+        "s3": {
+          "title": "Etapa 3/10 — Clase(s) de Permiso",
+          "body": "7 clases marcables (puede elegir varias) : <strong>A</strong> Motos, <strong>B</strong> Ligeros, <strong>B+</strong> Remolque, <strong>C</strong> Camiones, <strong>D</strong> Autobuses, <strong>E</strong> Articulados, <strong>F</strong> Especiales. Cada clase indica la edad mínima.",
+          "fig": {
+            "alt": "Etapa 3 wizard",
+            "caption": "Etapa 3/10 con 7 clases. Clase E (articulados) seleccionada en este ejemplo."
+          }
+        },
+        "s4": {
+          "title": "Etapa 4/10 — Documentos requeridos (subida + OCR)",
+          "body": "Lista de los documentos a aportar según las elecciones anteriores. Puede arrastrar y soltar archivos (drag-drop) o pulsar para seleccionar. Cada documento subido pasa por <strong>OCR automática</strong> que extrae los datos clave con un porcentaje de confianza visible (ej. 77%, 87%, 100%).",
+          "fig1": {
+            "alt": "Etapa 4 estado inicial",
+            "caption": "Etapa 4/10 estado inicial — 3 zonas drag-drop vacías : Permiso de Residencia (Extranjeros) *, Certificado para Conducir Actual *, Fotografía tipo carnet."
+          },
+          "fig2": {
+            "alt": "Etapa 4 con docs subidos",
+            "caption": "Etapa 4/10 con 3 documentos subidos y procesados por OCR (residencia.jpg 77%, permiso.pdf 87%, foto.jpg 100% conf). Badges «Extraído con IA» visibles."
+          }
+        },
+        "s5": {
+          "title": "Etapas 5-7/10 — Verificar Datos (3 sub-pantallas)",
+          "body": "El sistema muestra los <strong>datos extraídos por OCR</strong> agrupados en 3 sub-pantallas. Verifique cada campo. Los campos OCR son <strong>readonly</strong> — para modificarlos, regrese a la etapa 4 y reuploader el documento corregido.",
+          "f1": "<strong>Etapa 5 — Datos Personales</strong> : NIE/DIP, nombre, apellidos, fecha de nacimiento, nacionalidad, dirección. Extraídos del documento de identidad.",
+          "f2": "<strong>Etapa 6 — Datos de la Solicitud</strong> : tipo (Renovación), clases (E). Resumen de las elecciones de las etapas 1-3.",
+          "f3": "<strong>Etapa 7 — Certificado Conducir Actual</strong> : número de registro, clases existentes, fecha de expedición, validez, antigüedad. Extraídos del certificado actual.",
+          "fig1": {
+            "alt": "Etapa 5 datos personales",
+            "caption": "Etapa 5/10 — Datos personales OCR readonly (NIE E12495738, KOUEMOU SAH, JEAN EMAC, fecha nac, nacionalidad CMR, dirección Bioko Norte Malabo)."
+          },
+          "fig2": {
+            "alt": "Etapa 6 datos solicitud",
+            "caption": "Etapa 6/10 — Datos solicitud (Tipo=RENOVACION, Clase=E) en readonly."
+          },
+          "fig3": {
+            "alt": "Etapa 7 certificado actual",
+            "caption": "Etapa 7/10 — Certificado conducir actual : N°Registro 2700, Clases A,B,C,D,E,F, expedido 14/01/2021, válido hasta 14/01/2022, antigüedad 15/03/2010."
+          }
+        },
+        "s6": {
+          "title": "Etapa 8/10 — Programar Cita (3 sub-pantallas)",
+          "body": "Si el trámite requiere una cita presencial (caso típico Conducir), 3 sub-pantallas se suceden para elegir la cita:",
+          "fig1": {
+            "alt": "Cita selección ubicación",
+            "caption": "Sub-pantalla A — Selección de ubicación : 1 oficina disponible para este trámite (MALABO II - Oficina Principal, Malabo Insular)."
+          },
+          "fig2": {
+            "alt": "Cita calendario",
+            "caption": "Sub-pantalla B — Calendario abril 2026 con días disponibles resaltados (27, 28, 29, 30) y plazas restantes (16 espacios cada uno)."
+          },
+          "fig3": {
+            "alt": "Cita horarios",
+            "caption": "Sub-pantalla C — Selección de horario para el día 28 abril : grilla de slots 08h00-15h30 con plazas disponibles (2 espacios cada slot)."
+          }
+        },
+        "s7": {
+          "title": "Etapa 9/10 — Pago de Tasas (5 métodos)",
+          "body": "Pantalla de pago con 5 métodos disponibles. Total visible arriba (25 000 XAF en este ejemplo). Pulse un método para ver los campos correspondientes.",
+          "m1": "<strong>Dinero Móvil</strong> : campo número de teléfono +240 — pago instantáneo",
+          "m2": "<strong>Tarjeta</strong> : Visa/Mastercard, redirige a pasarela bancaria segura",
+          "m3": "<strong>Transferencia bancaria</strong> : datos IBAN del Tesoro + referencia única",
+          "m4": "<strong>Efectivo</strong> : seleccionar oficina del Tesoro Público — requiere validación de agente posterior",
+          "m5": "<strong>Cheque</strong> : igual que efectivo, requiere validación de agente",
+          "fig1": {
+            "alt": "Pago Dinero Móvil",
+            "caption": "Etapa 9/10 — Dinero Móvil seleccionado : campo «Número de teléfono +240» visible. CTA «Pagar 25 000 XAF»."
+          },
+          "fig2": {
+            "alt": "Pago Efectivo",
+            "caption": "Etapa 9/10 — Efectivo seleccionado : aparece el selector «Oficina de pago» con la lista de oficinas Tesoro disponibles."
+          }
+        },
+        "s8": {
+          "title": "Etapa 10/10 — Confirmación",
+          "body": "Pantalla final con el <strong>número de referencia</strong> de su solicitud (ej. CON-2026-00001), el estado actual («Solicitud registrada - Pago pendiente de validación» en el caso Efectivo), la cita programada, y 2 botones: <strong>«Descargar PDF»</strong> e <strong>«Imprimir»</strong>.",
+          "fig": {
+            "alt": "Confirmación final",
+            "caption": "Etapa 10/10 — Referencia CON-2026-00001, ref pago CSH-..., monto 25 000 XAF, estado «Pendiente validación», cita 28/04/2026 09:00 MALABO II."
+          }
+        }
+      },
+      "s4": {
+        "title": "4. Después de la creación",
+        "intro": "Su solicitud aparece automáticamente en <a href=\"23-mis-solicitudes-web.html\">Mis solicitudes</a> con un <strong>stepper horizontal</strong> que muestra el progreso (88% en este ejemplo : 8 etapas verdes / 1 azul activa «Pago de Tasas»).",
+        "fig1": {
+          "alt": "Detalle solicitud creada",
+          "caption": "Vista detalle CON-2026-00001 — stepper 88%, tabs Resumen/Documentos, tarjetas Pago (Pendiente 25 000 XAF) y Cita (28/04/26 09h MALABO II)."
+        },
+        "fig2": {
+          "alt": "Detalle scroll",
+          "caption": "Detalle (scroll abajo) — Datos personales con foto + NIE/nombre, Datos solicitud, Certificado actual, CTAs Volver / PDF."
+        }
+      },
+      "s5": {
+        "title": "5. Documentos generados",
+        "intro": "El wizard genera automáticamente <strong>2 documentos PDF</strong>:",
+        "d1": "<strong>Resumen de la solicitud</strong> (<a href=\"_assets/samples/solicitud_CON-2026-00001.pdf\" target=\"_blank\">ejemplo: solicitud_CON-2026-00001.pdf</a>) : foto, datos personales, datos solicitud, certificado actual, cita programada, desglose pago, QR de verificación.",
+        "d2": "<strong>Recibo de pago</strong> (después de validación) : número REC-2026-XXXXX, fecha, importe, método, pagador, código del trámite, QR de verificación pública.",
+        "fig1": {
+          "alt": "PDF generado",
+          "caption": "PDF generado solicitud_CON-2026-00001.pdf — header con logo Facil, foto, datos personales, datos solicitud, certificado actual, cita, desglose pago + QR + URL verify."
+        },
+        "verify": {
+          "title": "Verificación pública vía QR",
+          "body": "Cada PDF lleva un QR enlazando a la <a href=\"57-verificar.html\">página de verificación pública</a>. Disponible en español y francés. Útil para presentar el documento a un tercero (banco, empleador, embajada)."
+        },
+        "fig2": {
+          "alt": "Verify ES",
+          "caption": "Página verify ES (URL <code>/es/verify/CON-2026-00001?t=...</code>) — badge verde «Solicitud Verificada» con detalles ref/tipo/expedición/DGT/cita."
+        },
+        "fig3": {
+          "alt": "Verify FR",
+          "caption": "Página verify FR (mismo QR) — versión francesa «Demande Verifiee» — escaneable por interlocutores francófonos."
+        },
+        "fig4": {
+          "alt": "PDF zoom",
+          "caption": "PDF zoom — bloc Cita Programada + Desglose Pago 25 000 XAF «Pendiente validación» + QR + URL verify."
+        },
+        "info": "Los documentos generados se guardan automáticamente en su <a href=\"25-mis-documentos-web.html\">caja fuerte digital</a> (sección «Generados»). Recibirá también un email con los PDF como adjuntos."
+      },
+      "s6": {
+        "title": "6. Diferencias Web vs Móvil",
+        "intro": "El wizard funciona de manera idéntica en ambas plataformas, con algunas diferencias UX:",
+        "table": {
+          "col1": "Aspecto", "col2": "Web", "col3": "Móvil",
+          "r1": { "c1": "Stepper horizontal visible siempre", "c3": "⚠ Compacto (icono ronde)" },
+          "r2": { "c1": "Subida de documentos", "c2": "Drag-drop o selección archivos", "c3": "Cámara directa o galería" },
+          "r3": { "c1": "Tiempo de sesión" },
+          "r4": { "c1": "Pago Dinero Móvil", "c2": "Manual (introducir tel)", "c3": "Auto-detección del SIM" }
+        },
+        "body": "Para el detalle del wizard en versión móvil, consulte la <a href=\"32-iniciar-tramite-mobile.html\" class=\"coming-soon\">página móvil dedicada</a>.",
+        "success": "Ya conoce el flujo completo. La siguiente página explica cómo seguir sus solicitudes en curso después de la creación."
+      }
+    },
+  
+    "page23": {
+      "html_title": "Mis solicitudes (Web) — Manual Facil",
+      "title": "Mis solicitudes de servicio",
+      "description": "Centralice todas sus solicitudes en una sola pantalla con filtros, KPIs y acceso al detalle. Consulte el progreso vía un stepper visual, descargue los documentos PDF, y siga la validación por las entidades emisoras.",
+      "next": "Siguiente: Mis pagos →",
+      "prev": "← Anterior: Iniciar trámite",
+      "toc": {
+        "s1": "1. Acceder a la lista",
+        "s2": "2. KPIs y filtros",
+        "s3": "3. Tabla de solicitudes",
+        "s4": "4. Detalle de una solicitud (stepper)",
+        "s5": "5. Estados posibles"
+      },
+      "s1": {
+        "title": "1. Acceder a la lista",
+        "intro": "Desde el menú lateral → <strong>«Solicitudes Servicios»</strong>. URL directa : <code>https://facil.gov.gq/dashboard/service-requests</code>. La página agrupa <strong>todas sus solicitudes</strong> activas e históricas (citoyen + empresas si tiene varios roles)."
+      },
+      "s2": {
+        "title": "2. KPIs y filtros",
+        "intro": "3 tarjetas KPI en la parte superior:",
+        "f1": "<strong>Nueva Solicitud</strong> (botón) — atajo hacia el <a href=\"22-iniciar-tramite-web.html\">wizard</a>",
+        "f2": "<strong>Mis Solicitudes</strong> — total de solicitudes con paginación (ej. «3, Página 1 de 1»)",
+        "f3": "<strong>Pendientes</strong> — número de solicitudes que esperan una acción de su parte",
+        "body": "Filtros disponibles encima de la tabla : <strong>buscar por referencia</strong>, <strong>todas las categorías</strong> (Identidad, Conducción, Comercio, etc.), <strong>todos los estados</strong> (Borrador, Enviada, Procesando, Completada, Rechazada).",
+        "fig1": {
+          "alt": "Lista solicitudes con KPIs",
+          "caption": "Página «Solicitudes de Servicio» con 3 KPI (Nueva Solicitud, Mis Solicitudes 3 — Página 1 de 1, Pendientes). Filtros activos. Tabla 1-3 de 3."
+        }
+      },
+      "s3": {
+        "title": "3. Tabla de solicitudes",
+        "intro": "Cada línea de la tabla muestra : <strong>Referencia</strong> (LIC-/CON-/PAS-), <strong>Tipo</strong>, <strong>Monto</strong> en XAF, <strong>Estado actual</strong> con barra de progreso (% completado). Pulse cualquier línea para abrir el detalle.",
+        "body": "Las solicitudes están ordenadas por defecto del más reciente al más antiguo. Use los filtros para encontrar rápidamente una solicitud específica."
+      },
+      "s4": {
+        "title": "4. Detalle de una solicitud — stepper visual",
+        "intro": "La pantalla de detalle de una solicitud muestra el progreso de manera muy visual con un <strong>stepper horizontal</strong> indicando las etapas validadas (verde) y la etapa en curso (azul). El % de progreso global está visible (ejemplo: 75% — 4/5 etapas validadas).",
+        "head": {
+          "title": "Cabecera del detalle",
+          "f1": "<strong>Número de referencia</strong> (LIC-2026-00001)",
+          "f2": "<strong>Título del trámite</strong> (Pago de Obligaciones Fiscales)",
+          "f3": "<strong>Badge estado</strong> (Procesando Pago, en color)",
+          "f4": "<strong>Stepper</strong> con las 5 etapas y el % global"
+        },
+        "fig1": {
+          "alt": "Detalle solicitud LIC stepper",
+          "caption": "Detalle LIC-2026-00001 «Pago de Obligaciones Fiscales» con stepper a 75% (4 etapas verdes : Identificación, Documentos, Formulario, Pago actif) + tabs Resumen/Documentos + tarjeta empresa Gas Natural Ecuatorial avec 3 KPI Total/Pagado/Restante."
+        },
+        "tabs": {
+          "title": "Pestañas del detalle",
+          "f1": "<strong>Resumen</strong> : datos principales del trámite, fechas creación/actualización, importe total",
+          "f2": "<strong>Documentos</strong> : todos los documentos subidos por usted + documentos generados (PDFs, recibos)"
+        },
+        "empresa": {
+          "title": "Para solicitudes de empresa (LIC-)",
+          "body": "Si la solicitud concierne a una empresa, el detalle muestra <strong>3 sub-tarjetas por entidad emisora</strong> con el estado de cada sub-pago : Ayuntamiento, Cámara de Comercio, Tesoro Público. Cada sub-tarjeta enlaza al recibo correspondiente (REC-2026-XXXXX)."
+        },
+        "fig2": {
+          "alt": "Detalle LIC scroll obligaciones",
+          "caption": "Scroll abajo del detalle LIC — sección «2 obligaciones pagadas» (Cuota Cámara 50k, Tasa Municipal 163.350) y «5 obligaciones pendientes» (Tesoro Público : CMF, Rotulos, Libreta, Ficha, Certificado)."
+        }
+      },
+      "s5": {
+        "title": "5. Estados posibles de una solicitud",
+        "table": {
+          "col1": "Estado", "col2": "Significado", "col3": "Acción esperada"
+        },
+        "r1": { "c1": "Borrador", "c2": "Wizard interrumpido antes del pago", "c3": "Reanudar el wizard" },
+        "r2": { "c1": "Enviada", "c2": "Solicitud completa, esperando validación de pago", "c3": "Esperar (1-3 días) o pagar" },
+        "r3": { "c1": "Procesando", "c2": "Pago validado, agente en revisión", "c3": "Esperar (5-15 días según trámite)" },
+        "r4": { "c1": "En revisión", "c2": "Agente solicita información adicional", "c3": "Aportar documentos solicitados" },
+        "r5": { "c1": "Completada", "c2": "Trámite finalizado con éxito", "c3": "Descargar el documento final" },
+        "r6": { "c1": "Rechazada", "c2": "Solicitud rechazada con motivo", "c3": "Leer el motivo y reiniciar si procede" },
+        "success": "Para detalles sobre los pagos asociados (recibos, validación), consulte <a href=\"24-mis-pagos-web.html\">Mis pagos</a>. Para los documentos generados (PDFs), consulte <a href=\"25-mis-documentos-web.html\">Mis documentos</a>."
+      }
+    },
+  
+    "page24": {
+      "html_title": "Mis pagos (Web) — Manual Facil",
+      "title": "Mis pagos",
+      "description": "Vista centralizada de todos sus pagos efectuados en Facil — independiente del trámite asociado. Consulte el método utilizado, el estado de validación, descargue el recibo PDF con su QR de verificación pública.",
+      "next": "Siguiente: Mis documentos →",
+      "prev": "← Anterior: Mis solicitudes",
+      "toc": {
+        "s1": "1. Los 5 métodos de pago",
+        "s2": "2. Estados de un pago",
+        "s3": "3. Después de la validación por agente",
+        "s4": "4. Recibo PDF y verificación pública",
+        "s5": "5. Problemas frecuentes"
+      },
+      "s1": {
+        "title": "1. Los 5 métodos de pago",
+        "table": {
+          "col1": "Método", "col2": "Validación", "col3": "Plazo", "col4": "Recibo"
+        },
+        "r1": { "c1": "Dinero Móvil", "c2": "Automática vía webhook BANGE", "c3": "< 1 minuto", "c4": "Inmediato" },
+        "r2": { "c1": "Tarjeta", "c2": "Pasarela bancaria segura", "c3": "< 1 minuto", "c4": "Inmediato" },
+        "r3": { "c1": "Transferencia bancaria", "c2": "Manual (verificación cuenta Tesoro)", "c3": "1-2 días hábiles", "c4": "Tras validación" },
+        "r4": { "c1": "Efectivo", "c2": "Manual por agente Tesoro presencial", "c3": "Mismo día (oficina abierta)", "c4": "Tras validación" },
+        "r5": { "c1": "Cheque", "c2": "Manual por agente + verificación bancaria", "c3": "3-7 días hábiles", "c4": "Tras compensación" }
+      },
+      "s2": {
+        "title": "2. Estados de un pago",
+        "f1": "<strong>Pendiente</strong> — pago iniciado pero no recibido (DM, tarjeta) o no validado (efectivo, cheque)",
+        "f2": "<strong>Procesando</strong> — pago recibido en curso de validación por sistema o agente",
+        "f3": "<strong>Validado</strong> — pago confirmado, recibo generado y disponible",
+        "f4": "<strong>Rechazado</strong> — pago no aceptado (cheque sin fondo, transferencia errónea, etc.)",
+        "f5": "<strong>Reembolsado</strong> — pago previamente validado y luego cancelado/devuelto"
+      },
+      "s3": {
+        "title": "3. Después de la validación por agente",
+        "intro": "Para los pagos en efectivo o cheque, un <strong>agente del Tesoro</strong> debe validar el pago manualmente. Los efectos en su cuenta son inmediatos tras esta validación:",
+        "fig1": {
+          "alt": "Solicitud Enviada post-pago",
+          "caption": "Estado «Enviada» (post-pago, pre-validación) — Banner azul «Tu solicitud ha sido enviada y está en espera de revisión». Recibo generado REC-2026-000013, cita programada."
+        },
+        "fig2": {
+          "alt": "Solicitud Completada",
+          "caption": "Estado «Completada» (tras validación final) — Stepper 100% verde. Banner verde «¡Completado! Tu documento está listo para recoger.» Pago=Completado con Recibo REC-2026-000002."
+        },
+        "notif": {
+          "title": "Notificaciones automáticas",
+          "body": "A cada cambio de estado, recibirá una notificación por email (y push si está activado) con el detalle del cambio + un enlace directo a la solicitud. Para más detalles, consulte la página <a href=\"28-notificaciones-web.html\">Notificaciones</a>."
+        }
+      },
+      "s4": {
+        "title": "4. Recibo PDF y verificación pública",
+        "intro": "Tras validación, un <strong>recibo PDF</strong> se genera automáticamente con número único <code>REC-2026-XXXXXX</code>. Contiene:",
+        "f1": "Número de recibo + fecha + hora del pago",
+        "f2": "Importe + método utilizado",
+        "f3": "Pagador (su nombre parcial por privacidad)",
+        "f4": "Código del trámite asociado + entidad emisora",
+        "f5": "<strong>QR código</strong> que enlaza a la <a href=\"57-verificar.html\">página de verificación pública</a>",
+        "f6": "Sello «VALIDADO» del Tesoro Público",
+        "body": "El recibo se almacena automáticamente en su <a href=\"25-mis-documentos-web.html\">caja fuerte digital</a> bajo «Generados → Recibos». Es válido como prueba ante cualquier administración. Su QR es escaneable por cualquier persona para verificar la autenticidad sin necesidad de cuenta."
+      },
+      "s5": {
+        "title": "5. Problemas frecuentes",
+        "table": {
+          "col1": "Síntoma", "col2": "Solución"
+        },
+        "r1": { "c1": "Pago Dinero Móvil falla", "c2": "Verifique el saldo de su cuenta BANGE Mobile Money. Reintente o use otro método." },
+        "r2": { "c1": "Pago efectivo «Pendiente» después de varios días", "c2": "Pase por la oficina Tesoro elegida con el código <code>CSH-...</code> recibido por email. Un agente lo validará." },
+        "r3": { "c1": "Recibo no descargable", "c2": "El recibo se genera tras la validación. Si está «Procesando» todavía, espere algunas horas/días según el método." },
+        "r4": { "c1": "Importe incorrecto facturado", "c2": "Contacte al <a href=\"29-soporte-web.html\">soporte</a> con la referencia del pago. La diferencia se reembolsa o se imputa al próximo pago." },
+        "success": "Para los pagos consolidados de varias obligaciones de empresa, consulte la página dedicada Pago agrupado (siguiente)."
+      }
+    },
+  
+    "page25": {
+      "html_title": "Mis documentos (Web) — Manual Facil",
+      "title": "Mis documentos — caja fuerte digital",
+      "description": "Su caja fuerte digital centraliza todos los documentos vinculados a sus trámites Facil — documentos personales subidos por usted, documentos generados automáticamente (recibos, certificados), preparación pre-trámite asistida por IA. 4 pestañas dedicadas + un asistente IA configurable.",
+      "next": "Siguiente: Pago agrupado →",
+      "prev": "← Anterior: Mis pagos",
+      "toc": {
+        "s1": "1. Primer acceso (onboarding)",
+        "s2": "2. Pestaña «Personales»",
+        "s3": "3. Pestaña «Generados»",
+        "s4": "4. Pestaña «Preparación»",
+        "s5": "5. Asistente IA configurable"
+      },
+      "s1": {
+        "title": "1. Primer acceso — modal de bienvenida",
+        "intro": "La primera vez que abre «Mis Documentos», un <strong>modal de onboarding</strong> presenta las 4 promesas del módulo: almacenamiento seguro, clasificación IA automática, alertas de vencimiento, verificación pública vía QR.",
+        "fig1": {
+          "alt": "Modal onboarding documentos",
+          "caption": "Modal «Bienvenido a Mis Documentos» con 4 bullets explicativos + CTA «Comenzar». Stats de fondo: 36 documentos totales, 0 personales, 0 generados, 0 por vencer, 11.3 MB / 100 MB cuota."
+        },
+        "body": "La <strong>cuota</strong> de almacenamiento es de <strong>100 MB</strong> por cuenta. Los archivos pueden estar en formato PDF, JPG, PNG (máx. 10 MB por archivo). El modal solo se muestra una vez — pulse «Comenzar» para acceder a las pestañas."
+      },
+      "s2": {
+        "title": "2. Pestaña «Personales»",
+        "intro": "Sus documentos subidos manualmente : DIP/NIE, certificados de residencia, fotos tipo carnet, documentos de identidad, etc. Visualización en grid de tarjetas con el icono de tipo de archivo y el nombre.",
+        "actions": {
+          "title": "Acciones por documento (menú contextual)",
+          "f1": "<strong>Ver</strong> — abrir el documento en una pestaña nueva",
+          "f2": "<strong>Descargar</strong> — guardar en su computadora",
+          "f3": "<strong>Reclasificar</strong> — corregir la categoría asignada por la IA si es errónea",
+          "f4": "<strong>Archivar</strong> — ocultar de la vista activa (puede recuperarse)",
+          "f5": "<strong>Eliminar</strong> — borrado definitivo (con confirmación)"
+        },
+        "cat": {
+          "title": "Categorías IA",
+          "body": "Filtros disponibles : <strong>Identidad</strong>, <strong>Vehículo</strong>, <strong>Legal</strong>, <strong>Financiero</strong>, <strong>Administrativo</strong>, <strong>Médico</strong>, <strong>Educación</strong>, <strong>Foto</strong>, <strong>Empresa</strong>, <strong>Empleo</strong>, <strong>Otro</strong>. La IA clasifica automáticamente cada documento subido, con posibilidad de corregir."
+        },
+        "fig1": {
+          "alt": "Pestaña Personales con menú",
+          "caption": "Pestaña «Personales» con 16 documentos en grid. Filtros de categoría visibles. Menú contextual abierto sobre un documento (Ver/Descargar/Reclasificar/Archivar/Eliminar). CTA «Agregar un documento» en la parte superior derecha."
+        }
+      },
+      "s3": {
+        "title": "3. Pestaña «Generados»",
+        "intro": "Los documentos generados automáticamente por Facil al validar sus trámites. Sub-categorías filtradas:",
+        "f1": "<strong>Recibos</strong> — pruebas de pago (REC-2026-XXXXXX)",
+        "f2": "<strong>Resúmenes de solicitud</strong> — documento PDF que lista los datos de cada solicitud (CON-, PAS-, LIC-)",
+        "f3": "<strong>Certificaciones</strong> — documentos oficiales finales (carnet de conducir, certificado de residencia, etc.)",
+        "f4": "<strong>Resúmenes de bundle</strong> — pago consolidado multi-entidad",
+        "body": "Todos estos documentos llevan el <strong>QR de verificación pública</strong> y pueden ser presentados como prueba ante cualquier administración o tercero. Vea la página <a href=\"57-verificar.html\">Verificar un recibo</a>.",
+        "fig1": {
+          "alt": "Pestaña Generados",
+          "caption": "Pestaña «Generados» con sub-pestañas (Todos / Certificados / Recibos / Resúmenes / Certificaciones). Grid de tarjetas «Recibo de pago» y «Resumen de solicitud» con fechas (23 abr 2026) y referencias (#REC-2026-..., #PAS-2026-...)."
+        }
+      },
+      "s4": {
+        "title": "4. Pestaña «Preparación»",
+        "intro": "Funcionalidad <strong>asistida por IA</strong>: prepare documentos antes de iniciar un trámite. La IA analiza sus documentos personales existentes, identifica los que cumplen con los requisitos de los trámites más comunes, y muestra el porcentaje de preparación.",
+        "cards": {
+          "title": "Tarjetas «Iniciar un trámite»",
+          "body": "Tarjetas de los trámites populares (Pasaporte, Residencia, Carnet Funcionario) con el % de preparación y la lista de documentos faltantes. Pulse para iniciar el trámite directamente."
+        },
+        "fig1": {
+          "alt": "Pestaña Preparación",
+          "caption": "Pestaña «Preparación» — tarjetas Pasaporte/Residencia/Carnet Funcionario, sección «Preparación para X» con checklist documentos requeridos + barras de progreso (100%, 75%)."
+        }
+      },
+      "s5": {
+        "title": "5. Asistente IA configurable (drawer)",
+        "intro": "Un drawer (panel lateral derecho) permite configurar el comportamiento del asistente IA en relación con sus documentos. 3 secciones:",
+        "f1": "<strong>PERMISOS</strong> — 5 conmutadores : preparar solicitudes, preparar renovaciones, clasificar documentos, sugerir citas, alertas proactivas. Cada uno con modo Proactivo (la IA actúa sin pedir) o Preparatorio (la IA propone)",
+        "f2": "<strong>MEMORIAS APRENDIDAS</strong> — lista de las preferencias aprendidas (con porcentaje de confianza, ej. 100% «prefiere ciudad X»)",
+        "f3": "<strong>STATS</strong> — número de conversaciones, permisos activos, memorias guardadas",
+        "fig1": {
+          "alt": "Drawer Configuración asistente",
+          "caption": "Drawer «Configuración del asistente» — 5 toggles ON (preparar/clasificar/sugerir/alertas), 2 memorias aprendidas (100% confianza), stats (4 conversaciones, 5 permisos, 2 memorias)."
+        },
+        "success": "El asistente IA mejora cada vez que rectifica una clasificación o confirma una sugerencia. Más lo usa, más relevante se vuelve."
+      }
+    },
+  
+    "page26": {
+      "html_title": "Pago agrupado (Web) — Manual Facil",
+      "title": "Pago agrupado de obligaciones fiscales",
+      "description": "El pago agrupado (bundle) le permite pagar múltiples obligaciones fiscales de su empresa en una sola transacción, repartida automáticamente entre las entidades emisoras (Tesoro Público, Ayuntamiento, Cámara de Comercio). Optimiza el tiempo administrativo y reduce las comisiones bancarias.",
+      "next": "Siguiente: Mis empresas →",
+      "prev": "← Anterior: Mis documentos",
+      "toc": {
+        "s1": "1. Concepto y ventajas",
+        "s2": "2. Wizard 4 etapas",
+        "s3": "3. Modo A vs Modo B",
+        "s4": "4. Confirmación y seguimiento",
+        "s5": "5. Lock ordering técnico (diagrama)"
+      },
+      "s1": {
+        "title": "1. Concepto y ventajas",
+        "intro": "Una empresa típica tiene varias obligaciones fiscales anuales : <strong>CMF</strong> (Tesoro), <strong>Tasa Municipal</strong> (Ayuntamiento), <strong>Cuota Cámara</strong> (Cámara de Comercio), <strong>Licencia comercial</strong>, <strong>Certificados de Comercio</strong>, etc. En lugar de pagar cada una por separado (varias visitas, múltiples comisiones), el bundle permite agruparlas.",
+        "benefits": {
+          "title": "Ventajas",
+          "f1": "<strong>Una sola transacción</strong> bancaria — reducción de comisiones",
+          "f2": "<strong>Reparto automático</strong> entre las 3 entidades emisoras (sin manipulación de su parte)",
+          "f3": "<strong>Solicitud única LIC-2026-XXXXX</strong> con seguimiento centralizado",
+          "f4": "<strong>3 recibos automáticos</strong> generados (uno por entidad: REC para Tesoro, REC para Ayuntamiento, REC para Cámara)",
+          "f5": "<strong>Selección flexible</strong> — pague solo las obligaciones que desea, las demás quedan pendientes"
+        }
+      },
+      "s2": {
+        "title": "2. Wizard 4 etapas",
+        "intro": "El wizard del bundle se accede desde <a href=\"27-mis-empresas-web.html\">Mis empresas</a> → botón <strong>«Pagar Obligaciones»</strong> en una empresa. Comprende 4 etapas:",
+        "s1": {
+          "title": "Etapa 1/4 — Identificación de la empresa",
+          "body": "Buscar o seleccionar la empresa concernida. Si tiene varias empresas, se muestran como cards con búsqueda por NIF, PE-XXXX o nombre.",
+          "fig1": {
+            "alt": "Wizard etapa 1 selección",
+            "caption": "Etapa 1/4 — Pantalla «Identificación de la Empresa» con search NIF/PE-XXXX/nombre + lista de las 5 empresas con CTA «Pagar →»."
+          },
+          "fig2": {
+            "alt": "Wizard etapa 1 sélectionnée",
+            "caption": "Etapa 1/4 con empresa seleccionada (Gas Natural Ecuatorial PE-1022, Bar Restaurante, Zona A1, Verificada). CTA Anterior / Siguiente."
+          }
+        },
+        "s2": {
+          "title": "Etapa 2/4 — Selección de obligaciones (Modo A vs B)",
+          "body": "La pantalla muestra todas las obligaciones fiscales 2026 de la empresa, agrupadas por entidad. Antes de seleccionar, escoja el modo:",
+          "f1": "<strong>Modo A — Por línea</strong> : seleccione individualmente cada obligación que quiere pagar (con checkbox)",
+          "f2": "<strong>Modo B — Pago consolidado</strong> : pago único de TODAS las obligaciones en una sola transacción"
+        },
+        "s3": {
+          "title": "Etapa 3/4 — Pago",
+          "body": "Pantalla de pago con resumen de las obligaciones seleccionadas, total a pagar, y selector del método de pago (Mobile Money, efectivo en agencia, transferencia, tarjeta, cheque). Mismo flujo que el <a href=\"22-iniciar-tramite-web.html\">wizard estándar</a>.",
+          "fig": {
+            "alt": "Wizard etapa 3 pago",
+            "caption": "Etapa 3/4 — Resumen «Por línea · 7 obligaciones seleccionadas» + tabla recap + Total 723 350 XAF + métodos de pago (Mobile Money, efectivo en agencia seleccionado)."
+          }
+        },
+        "s4": {
+          "title": "Etapa 4/4 — Confirmación",
+          "body": "Pantalla final con check verde, número de referencia LIC-2026-XXXXX, monto total, número de obligaciones cubiertas, modo elegido, y los próximos pasos (validación 1-3 días, procesamiento, recepción licencia por email).",
+          "fig": {
+            "alt": "Wizard etapa 4 confirmación",
+            "caption": "Etapa 4/4 — Confirmación con icono verde, ref 39ca9893-..., 723 350 XAF, 7 obligaciones, modo «Por línea». Box «Próximos pasos» 3 etapas. CTAs «Ver mis solicitudes» y «Volver al Dashboard»."
+          }
+        }
+      },
+      "s3": {
+        "title": "3. Modo A vs Modo B — comparación detallada",
+        "fig1": {
+          "alt": "Modo A — sélection par ligne",
+          "caption": "Modo A — Cada obligación tiene un checkbox individual. Botón «Seleccionar todo / Deseleccionar todo». Lista agrupada por entidad (TESORO, AYUNTAMIENTO, CAMARA)."
+        },
+        "fig2": {
+          "alt": "Modo B — consolidado",
+          "caption": "Modo B — Sin checkboxes. Todas las obligaciones se incluyen automáticamente. La lista detalla los items que serán pagados consolidados."
+        },
+        "fig3": {
+          "alt": "Total con todo seleccionado",
+          "caption": "Modo A con todo seleccionado (10 obligaciones) — Total 855 350 XAF (TESORO + AYUNTAMIENTO + CAMARA)."
+        },
+        "fig4": {
+          "alt": "Selección parcial con warning",
+          "caption": "Modo A sélection parcial (7 sur 10) — Total 723 350 XAF + alerta amarilla «Las obligaciones no seleccionadas quedarán pendientes. Podrá pagarlas en otro momento.»"
+        },
+        "tip": "Use el <strong>Modo A</strong> si quiere pagar prioritariamente las obligaciones más urgentes (próxima a vencer) o si su flujo de caja no permite pagar todo. Use el <strong>Modo B</strong> si tiene fondos disponibles para finalizar todas las obligaciones de un golpe (más rápido, menos comisiones)."
+      },
+      "s4": {
+        "title": "4. Confirmación y seguimiento",
+        "intro": "Después del pago, su solicitud LIC-2026-XXXXX aparece en <a href=\"23-mis-solicitudes-web.html\">Mis solicitudes</a> con un stepper visual y 3 sub-tarjetas (una por entidad emisora) mostrando el estado individual de cada validación.",
+        "body": "Cada entidad valida su parte por separado : Ayuntamiento puede validar antes que la Cámara, etc. Por lo tanto, recibirá <strong>3 emails progresivos</strong> con el recibo correspondiente cada vez que una entidad valida.",
+        "fig": {
+          "alt": "PDF récapitulatif bundle",
+          "caption": "PDF generado del bundle (LIC-2026-00001) con tabla de obligaciones, status por entidad (2 «Pagada», 5 «Pago pendiente»), desglose por entidad (Ayuntamiento 163 350 Pagada, Cámara 50 000 Pagada, Tesoro 510 000 escalated_supervisor), QR de verificación."
+        }
+      },
+      "s5": {
+        "title": "5. Lock ordering técnico (info técnica)",
+        "note": "Esta sección es informativa para los curiosos. No necesita comprenderla para usar la función.",
+        "intro": "El bundle implementa una lógica transaccional <strong>multi-tabla con lock ordering canónico</strong> para evitar deadlocks cuando 100+ agentes simultáneos validan operaciones similares. El orden estricto:",
+        "diagram": "┌─────────────────────────────────────────────────────────────────┐\n│  ORDEN DE LOCK CANÓNICO PARA BUNDLE PAYMENT                     │\n│  (a respetar siempre para evitar deadlocks)                     │\n└─────────────────────────────────────────────────────────────────┘\n\n   1. commercial_licenses        ← SELECT FOR UPDATE (lock racine)\n              │\n              │  Lock obtenido — la licencia comercial se reserva\n              ▼\n   2. service_requests           ← INSERT (sin FOR UPDATE)\n              │                    Concurrencia gestionada por\n              │                    índice único partial idx_sr_commercial_license_unique\n              │\n              ▼\n   3. license_obligations        ← UPDATE batch (locks auto)\n              │                    Las obligaciones se marcan\n              │                    pagadas o pendientes\n              │\n              ▼\n   4. service_payments           ← INSERT final\n              │                    Registra el pago efectivo\n              │\n              ▼\n   ✅ Commit transaction         (todo o nada — atómico)\n\n   Configuración de la transacción:\n       SET LOCAL lock_timeout = '3s';\n       SET LOCAL statement_timeout = '5s';\n\n   En caso de UniqueViolationError sobre service_requests:\n       deterministic SELECT por commercial_license_id (no retry)",
+        "body": "Este diseño asegura que <strong>1000+ pagos simultáneos</strong> sobre la misma empresa nunca terminen en deadlock. La latencia de bloqueo está limitada a 3 segundos máximo para no penalizar la experiencia usuario.",
+        "success": "El bundle es la opción recomendada para empresas con varias obligaciones. Centraliza el seguimiento y reduce el tiempo administrativo."
+      }
+    },
+  
+    "page27": {
+      "html_title": "Mis empresas (Web) — Manual Facil",
+      "title": "Mis empresas",
+      "description": "Si representa una o varias empresas registradas en Guinea Ecuatorial, esta página le permite gestionar su información, ver sus obligaciones fiscales, su historial de pagos, sus inspecciones, y descargar la licencia comercial PDF. Para ciudadanos sin empresa, esta sección no es relevante.",
+      "next": "Siguiente: Notificaciones →",
+      "prev": "← Anterior: Pago agrupado",
+      "toc": {
+        "s1": "1. Lista de empresas",
+        "s2": "2. Detalle de una empresa",
+        "s3": "3. Pestaña «Obligaciones Fiscales»",
+        "s4": "4. Pestaña «Historial de Pagos»",
+        "s5": "5. Pestaña «Inspecciones»"
+      },
+      "s1": {
+        "title": "1. Lista de empresas",
+        "intro": "Acceso : menú lateral → <strong>«Mis Empresas»</strong>. Pantalla con sus empresas en grid de tarjetas. Cada tarjeta muestra :",
+        "f1": "Nombre comercial + número PE-XXXX (identificador único)",
+        "f2": "Badge estado (Abierta, Cerrada, Suspendida)",
+        "f3": "Tag sector (abacería, bar/restaurante, cafetería, carpintería, etc.)",
+        "f4": "Zona (A1/A2/A3/B1/B2/B3/C1/C2/C3/D) + ciudad",
+        "f5": "Año fiscal en curso + número de obligaciones pendientes",
+        "f6": "Fecha de vencimiento de la licencia (31/12/2026 típicamente)",
+        "f7": "2 botones : <strong>«Ver detalle»</strong> y <strong>«Pagar Obligaciones»</strong> (atajo al wizard <a href=\"26-bundle-payment.html\">bundle</a>)",
+        "actions": {
+          "title": "Acciones globales",
+          "body": "Botones en la parte superior : exportar a Excel, refrescar, <strong>«Nueva Empresa»</strong> para registrar una empresa adicional (requiere documentos legales)."
+        },
+        "fig1": {
+          "alt": "Lista mis empresas",
+          "caption": "«Mis Empresas — Gestione sus empresas, licencias comerciales y obligaciones fiscales». Grid de 5 cards (Carpinteria, Gas Natural, Librería, Tienda El Sol, Supermercado) con badges Abierta, zona, sector, vencimiento, CTAs Ver detalle / Pagar Obligaciones."
+        }
+      },
+      "s2": {
+        "title": "2. Detalle de una empresa",
+        "intro": "Pulse «Ver detalle» o el card de la empresa para abrir su pantalla detallada. URL : <code>/dashboard/empresas/{uuid}</code>. La cabecera muestra :",
+        "f1": "Nombre comercial + PE-XXXX + tag sector + zona + ciudad",
+        "f2": "5 KPIs : <strong>Total</strong> (obligaciones del año), <strong>Pagado</strong>, <strong>Pendiente</strong>, <strong>Recuperación %</strong>, <strong>Vencimiento</strong>",
+        "f3": "3 CTAs : Ver documentos, <strong>Descargar Licencia PDF</strong>, Pagar Obligaciones",
+        "f4": "3 pestañas : <strong>Obligaciones Fiscales</strong>, <strong>Historial de Pagos</strong>, <strong>Inspecciones</strong>"
+      },
+      "s3": {
+        "title": "3. Pestaña «Obligaciones Fiscales»",
+        "intro": "Pestaña por defecto. Lista todas las obligaciones del año fiscal con :",
+        "f1": "<strong>Servicio</strong> : nombre de la obligación (Cuota Anual Comercial, CMF, Tasa Municipal, Cuota Cámara, etc.)",
+        "f2": "<strong>Tipo</strong> : badge entité (chamber, municipal, tesoro)",
+        "f3": "<strong>Monto</strong> en XAF",
+        "f4": "<strong>Vencimiento</strong> : fecha límite",
+        "f5": "<strong>Estado</strong> : pendiente, pagada, vencida",
+        "body": "Filtros disponibles (Todos / Pendientes / Pagadas) y exportación a Excel. Pulse una obligación específica para ver su detalle (cálculo, fundamento legal).",
+        "fig1": {
+          "alt": "Detalle obligaciones fiscales",
+          "caption": "Pestaña «Obligaciones Fiscales (10)» — Carpintería Hermanos PE-1011 con 5 KPIs (Total 491 250, Pagado 0, Pendiente 491 250, Recuperación 0%, Vence 31/12/2026). Tabla de 7 obligaciones visibles (Servicio, Tipo, Monto, Vencimiento, Estado pending)."
+        }
+      },
+      "s4": {
+        "title": "4. Pestaña «Historial de Pagos»",
+        "intro": "Lista de todos los pagos efectuados para esta empresa (incluyendo bundles). Columnas : <strong>Referencia</strong> (REC-2026-XXXXX), <strong>Método</strong>, <strong>Monto</strong>, <strong>Fecha</strong>, <strong>Estado</strong> (Pagado/Procesando/Rechazado), <strong>Recibo</strong> (descarga PDF).",
+        "body": "Si la empresa no tiene historial todavía, aparece un estado vacío «Sin pagos registrados».",
+        "fig1": {
+          "alt": "Historial de pagos vacío",
+          "caption": "Pestaña «Historial» — empresa sin pagos todavía, mostrando el estado vacío con tabla de columnas (Referencia, Método, Monto, Fecha, Estado, Recibo)."
+        }
+      },
+      "s5": {
+        "title": "5. Pestaña «Inspecciones»",
+        "intro": "Lista de las inspecciones realizadas por agentes públicos (OMS, salud, conformidad). Contiene la fecha, el tipo, el inspector, el resultado (conforme / no conforme con recomendaciones / sanción).",
+        "body": "Esta pestaña es <strong>solo informativa</strong> — los resultados de las inspecciones son determinados por las entidades emisoras y no pueden modificarse desde Facil. Solo recibirá notificaciones cuando una inspección se programe o se complete.",
+        "fig1": {
+          "alt": "Inspecciones empty state",
+          "caption": "Pestaña «Inspecciones (0)» — empresa sin inspecciones registradas, icono ojo + «Sin inspecciones realizadas»."
+        },
+        "info": "Las inspecciones de campo OMS son detalladas en el manual <a href=\"69-trabajo-terreno-oms.html\" class=\"coming-soon\">Trabajo de campo OMS</a> (lado agente). Lado empresa, solo recibe los resultados.",
+        "success": "Para registrar una nueva empresa o gestionar los miembros de su empresa actual (añadir socios, accountants), consulte la página <a href=\"42-gestion-empresas.html\" class=\"coming-soon\">Gestionar empresas</a>."
+      }
+    },
+  
+    "page28": {
+      "html_title": "Notificaciones (Web) — Manual Facil",
+      "title": "Notificaciones — recibir las actualizaciones",
+      "description": "Facil le mantiene informado por email a cada cambio de estado de sus solicitudes : recepción, pago pendiente, validación, finalización. Los recibos PDF son adjuntos directamente en los emails para acceso inmediato.",
+      "next": "Siguiente: Asistente IA y Soporte →",
+      "prev": "← Anterior: Mis empresas",
+      "toc": {
+        "s1": "1. Tipos de notificaciones email",
+        "s2": "2. Email «Solicitud Recibida»",
+        "s3": "3. Email «Pago Pendiente»",
+        "s4": "4. Email «Pago Validado»",
+        "s5": "5. Verificación pública desde el email",
+        "s6": "6. Configurar las preferencias"
+      },
+      "s1": {
+        "title": "1. Tipos de notificaciones email",
+        "intro": "Cada email de Facil tiene un <strong>color de header</strong> según el tipo de evento — para identificar al instante:",
+        "f1": "<span style=\"color:#FFA500\">🟠</span> <strong>Naranja</strong> — Acción requerida (pago pendiente, documento solicitado por agente)",
+        "f2": "<span style=\"color:#0062A5\">🔵</span> <strong>Azul</strong> — Información (solicitud recibida, cita programada, cambio de estado)",
+        "f3": "<span style=\"color:#009A44\">🟢</span> <strong>Verde</strong> — Validación / éxito (pago validado, trámite completado, documento listo)",
+        "f4": "<span style=\"color:#D22630\">🔴</span> <strong>Rojo</strong> — Alerta de seguridad (cambio de contraseña, conexión sospechosa) o rechazo",
+        "body": "El remitente es siempre <code>noreply@facil.gov.gq</code>. Si recibe un email de Facil con otro remitente, es <strong>phishing</strong> — no pulse en los enlaces."
+      },
+      "s2": {
+        "title": "2. Email «Solicitud Recibida»",
+        "intro": "Enviado inmediatamente después de la creación de su solicitud. Header verde, mensaje «Solicitud Recibida», nombre + referencia + lista de los próximos pasos.",
+        "fig1": {
+          "alt": "Email Solicitud Recibida",
+          "caption": "Email «Solicitud Recibida» — header «Solicitud Recibida», «Hola libre Gmil», Referencia CON-2026-00001, próximos pasos (revisada / notificaremos / contactaremos), PJ <code>solicitud_CON-...00001.pdf</code> con preview visible."
+        }
+      },
+      "s3": {
+        "title": "3. Email «Pago Pendiente»",
+        "intro": "Enviado en caso de pago efectivo o cheque después de la creación de la solicitud. Le da las instrucciones para finalizar el pago en oficina.",
+        "fig1": {
+          "alt": "Inbox Gmail con 3 emails",
+          "caption": "Inbox Gmail — 3 emails TaxasGE Platform : «Paiement en espèces validé» 17:07, «Solicitud recibida» 15:05, «Pago en efectivo pendiente» 15:05."
+        },
+        "fig2": {
+          "alt": "Email Pago Pendiente",
+          "caption": "Email «Pago en Efectivo Pendiente» (header naranja) — detalles (Ref CSH-..., 25 000 XAF, Efectivo) + sección «Próximos pasos» en 4 etapas (Acude oficina / Presenta ref / Realiza pago / Agente valida)."
+        }
+      },
+      "s4": {
+        "title": "4. Email «Pago Validado»",
+        "intro": "Enviado tras validación del agente. Header verde, recibo PDF como adjunto, enlace de verificación pública.",
+        "fig1": {
+          "alt": "Email Pago Validado split",
+          "caption": "Email «Pago en Efectivo Validado» (header verde) — detalles (Solicitud CON-2026-00001, Ref CSH-..., 25 000 XAF, Efectivo, Recibo REC-2026-000013, Fecha 2026-04-19)."
+        },
+        "fig2": {
+          "alt": "Email scroll bas",
+          "caption": "Suite del email «Pago Validado» — sección Próximos pasos «Tu solicitud continuará procesada», enlace «Verificar autenticidad del recibo» → URL verify, PJ <code>recibo_REC-...000013.pdf</code> con preview Recibo Tesoro Público Malabo."
+        }
+      },
+      "s5": {
+        "title": "5. Verificación pública desde el email",
+        "intro": "Cada email contiene un <strong>enlace «Verificar autenticidad del recibo»</strong> que abre directamente la <a href=\"57-verificar.html\">página de verificación pública</a> con la referencia y el token correspondiente. Útil cuando un tercero (banco, embajada) le pide la prueba — basta con compartir el enlace.",
+        "fig1": {
+          "alt": "Página verify recibo desde email",
+          "caption": "Página verify recibo (URL <code>/es/verify/REC-2026-...</code>) abierta desde el enlace email — badge verde «Recibo Válido», Numero REC-2026-000013, fecha, monto 25 000 XAF Efectivo, pagador, código CONDUCIR_RENOVACION, entidad DGT, ref CON-2026-00001."
+        }
+      },
+      "s6": {
+        "title": "6. Configurar las preferencias",
+        "intro": "Las preferencias de notificaciones se configuran desde su <a href=\"15-perfil.html\">Perfil</a> → pestaña «Notificaciones». 3 canales modulables :",
+        "f1": "<strong>Email</strong> (activo por defecto, no se puede desactivar para alertas críticas)",
+        "f2": "<strong>Push notifications</strong> (móvil únicamente)",
+        "f3": "<strong>SMS</strong> (opcional, coste para el operador)",
+        "body": "El idioma de las notificaciones (ES/FR/EN) se basa en la preferencia configurada en su perfil. Si cambia su idioma preferido, las próximas notificaciones se enviarán en el nuevo idioma.",
+        "tip": "Si no recibe los emails, <strong>verifique siempre la carpeta de spam</strong> primero. Añada <code>noreply@facil.gov.gq</code> a sus contactos para evitar el filtrado. Para problemas persistentes, contacte al <a href=\"29-soporte-web.html\">soporte</a>.",
+        "success": "Las notificaciones email son la columna vertebral de la comunicación con Facil — los datos están siempre disponibles también en el dashboard, los emails son una vía complementaria."
+      }
+    },
+  
+    "page29": {
+      "html_title": "Asistente IA y Soporte (Web) — Manual Facil",
+      "title": "Asistente IA conectado y Soporte",
+      "description": "Esta página combina 2 funciones complementarias para usuarios conectados : el asistente IA conectado (acceso a su contexto personal — coffre digital, empresas, solicitudes) y el sistema de tickets de soporte (problemas técnicos o administrativos).",
+      "next": "Siguiente: Panel principal Móvil →",
+      "prev": "← Anterior: Notificaciones",
+      "toc": {
+        "s1": "1. Asistente IA — pantalla inicial",
+        "s2": "2. Acciones rápidas (sugerencias y trámites)",
+        "s3": "3. Conversaciones — ejemplos reales",
+        "s4": "4. Sistema de tickets de soporte",
+        "s5": "5. Crear un ticket",
+        "s6": "6. Conversación en un ticket"
+      },
+      "s1": {
+        "title": "1. Asistente IA — pantalla inicial",
+        "intro": "Acceso : menú lateral → <strong>«Chat Asistente»</strong>. Al abrir, ve un mensaje de bienvenida personalizado y <strong>4 sugerencias contextuales</strong> + una sección <strong>«Mi Cofre Digital»</strong> con 5 quick actions:",
+        "f1": "<strong>Documentos</strong> — análisis automático de documentos faltantes",
+        "f2": "<strong>¿Cuánto cuesta?</strong> — simulación de costes",
+        "f3": "<strong>Pasos</strong> — guía paso a paso de un trámite",
+        "f4": "<strong>Servicios fiscales</strong> — info detallada por servicio",
+        "f5": "<strong>Cofre digital</strong> — vencimientos, preparados, estadísticas, faltan, pagar obligaciones",
+        "fig1": {
+          "alt": "Asistente IA estado inicial",
+          "caption": "Pantalla «Chat Asistente» con welcome «¿En qué puedo ayudarle?», 4 sugerencias contextuales y la sección «Mi Cofre Digital» con 5 quick actions."
+        }
+      },
+      "s2": {
+        "title": "2. Acciones rápidas (popovers)",
+        "intro": "Dos popovers ofrecen acceso rápido a las acciones populares:",
+        "fig1": {
+          "alt": "Popover Sugerencias",
+          "caption": "Popover «Sugerencias» (icono +) — lista 9 sugerencias clasificadas (documentos, ¿cuánto cuesta?, pasos, servicios, vencer, preparado, estadísticas, faltan, pagar obligaciones)."
+        },
+        "fig2": {
+          "alt": "Popover Iniciar trámite",
+          "caption": "Popover «Iniciar un trámite» (icono cohete) — 6 quick-start : Pasaporte Nueva expedición, Pasaporte Renovación, Residencia Primera vez, Licencia Conducir, Carnet Funcionario, Contrato ONRC."
+        }
+      },
+      "s3": {
+        "title": "3. Conversaciones — ejemplos reales",
+        "intro": "El asistente conectado responde con <strong>contexto personal</strong> : conoce sus empresas, sus solicitudes, sus documentos, y puede hacer cálculos personalizados (paquetes fiscales para una empresa específica).",
+        "fig1": {
+          "alt": "Drawer Historial",
+          "caption": "Drawer «Historial» (sidebar izquierda) — lista «Conversación actual (Activa)», mensaje «El historial estará disponible próximamente» (función futura)."
+        },
+        "ex1": {
+          "title": "Ejemplo 1 — Estadísticas del cofre digital"
+        },
+        "fig2": {
+          "alt": "Stats coffre digital",
+          "caption": "Conversación 1 — pregunta «Estadísticas de mi cofre digital» → respuesta bot estructurada (14 docs activos, 0 personales, 6 asistente, 8 generados...)."
+        },
+        "ex2": {
+          "title": "Ejemplo 2 — Pago de obligación de empresa"
+        },
+        "fig3": {
+          "alt": "Pago obligación loading",
+          "caption": "Conversación 2 — pregunta «¿Cómo puedo pagar una obligación de mi empresa?» + indicador «Preparando respuesta...» mientras la IA prepara una respuesta personalizada."
+        },
+        "ex3": {
+          "title": "Ejemplo 3 — Paquete fiscal personalizado"
+        },
+        "fig4": {
+          "alt": "Paquete fiscal restaurante",
+          "caption": "Conversación 3 — respuesta «Apertura de Restaurante en Malabo — Paquete Fiscal» con desglose detallado (Tasa Municipal 163 350, Cámara Comercio 50 000, CMF 480 000...) TOTAL 855 350 XAF + chips sugerencias (documentos restaurante, cuánto cuesta restaurante)."
+        },
+        "tip": "El asistente puede <strong>iniciar trámites</strong> desde la conversación. Pulse cualquier respuesta con un CTA «Iniciar este trámite» para abrir directamente el wizard sin volver al menú."
+      },
+      "s4": {
+        "title": "4. Sistema de tickets de soporte",
+        "intro": "Para problemas técnicos o administrativos no resolubles por el asistente IA, use el sistema de tickets. Acceso : menú lateral → <strong>«Ayuda / Soporte»</strong>. Lista de sus tickets con :",
+        "f1": "<strong>Identificador</strong> SUP-YYYYMMDD-XXXX",
+        "f2": "<strong>Asunto</strong> + estado (Abierto / En proceso / Resuelto / Cerrado)",
+        "f3": "<strong>Prioridad</strong> (Baja / Normal / Alta / Urgente)",
+        "f4": "<strong>Categoría</strong> (Cuenta / Pago / Trámite / Documentos / Técnico)",
+        "fig1": {
+          "alt": "Lista tickets soporte",
+          "caption": "Página «Soporte y Asistencia» — lista de 3 tickets (SUP-20251218-0002, SUP-20251218-0001, SUP-20251217-0001) con asuntos, estados Cerrado/Abierto, prioridad Normal. CTA «+ Nuevo Ticket». Sección «Preguntas Frecuentes» en la parte inferior."
+        }
+      },
+      "s5": {
+        "title": "5. Crear un ticket",
+        "intro": "Pulse <strong>«+ Nuevo Ticket»</strong>. Formulario sencillo:",
+        "f1": "<strong>Categoría</strong> — selector entre las 5 categorías disponibles",
+        "f2": "<strong>Asunto</strong> — descripción corta (máx 100 caracteres)",
+        "f3": "<strong>Descripción</strong> — texto detallado del problema (con posibilidad de adjuntar archivos)",
+        "f4": "<strong>Prioridad</strong> — selector entre 4 niveles (Normal por defecto)",
+        "fig1": {
+          "alt": "Formulario nuevo ticket",
+          "caption": "Página «Crear ticket» con campos Categoría (select), Asunto, Descripción (textarea), Prioridad (select Normal por defecto). CTAs Cancelar / Enviar ticket."
+        },
+        "body": "Tras enviar, el ticket recibe un identificador SUP-YYYYMMDD-XXXX y aparece en su lista. El equipo de soporte responde en <strong>24-72 horas hábiles</strong> según la prioridad."
+      },
+      "s6": {
+        "title": "6. Conversación en un ticket",
+        "intro": "Pulse un ticket en la lista para abrir su detalle. La página muestra:",
+        "f1": "<strong>Cabecera</strong> con asunto + identificador + badges (estado + prioridad)",
+        "f2": "<strong>Detalles</strong> : descripción, fecha de creación, creador, categoría",
+        "f3": "<strong>Conversación</strong> : intercambio de mensajes con el agente de soporte",
+        "f4": "<strong>Adjuntos</strong> : capturas, documentos compartidos en la conversación",
+        "f5": "<strong>Botones</strong> : responder, marcar como resuelto, cerrar (definitivo)",
+        "fig1": {
+          "alt": "Detalle ticket conversación",
+          "caption": "Detalle ticket «Second test / SUP-20251218-0001» con badge Abierto + Normal. Bloc Detalles (Descripción «Verifier la vue du ticket par l'administrateur», Creado 18/12/2025 10:40, Categoría Mi Cuenta). Sección «Ver conversación» con 1 mensaje."
+        },
+        "warning": "Una vez cerrado, un ticket NO puede ser reabierto. Si su problema no está resuelto, mejor responda al ticket existente en lugar de cerrarlo. Si necesita escalar al supervisor, indíquelo en el mensaje.",
+        "success": "Para problemas urgentes (cuenta comprometida, pago erróneo crítico), use prioridad Urgente y mencione la urgencia en el asunto. El plazo de respuesta es entonces de <strong>4-12 horas hábiles</strong>."
+      }
     }
 
-    // page22-29, page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
+  // page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
 
 };
