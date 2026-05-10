@@ -617,6 +617,77 @@ window.__I18N__.fr = {
     "next": "Suivant : Rôle Agent →"
   },
 
+  "page60": {
+    "html_title": "Assistant IA Agent — Manuel Facil",
+    "title": "Assistant IA dédié aux agents publics",
+    "description": "Variante de l'IA réservée aux agents : contexte professionnel, jurisprudence interne, cas similaires anonymisés, génération de motifs de rejet, audit complet 7 ans.",
+    "prev": "← Précédent : Travail terrain OMS",
+    "next": "Suivant : Rôle Superviseur →"
+  },
+  "page61": {
+    "html_title": "Rôle Agent — Manuel Facil",
+    "title": "Rôle Agent : concept commun à tous les agents publics",
+    "description": "7 entités (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro, OMS, Extranjería), file de travail, lock_for_review pessimiste, 7 actions agent, 17 états workflow, audit log obligatoire.",
+    "prev": "← Précédent : Rôle Comptable",
+    "next": "Suivant : Agent CNEDOGE →"
+  },
+  "page62": {
+    "html_title": "Agent CNEDOGE — Manuel Facil",
+    "title": "Agent CNEDOGE : validation des passeports",
+    "description": "Workflow 8 étapes : file → lock → vérification documentaire → convocation biométrique → contrôle in situ → approve → génération PDF → notification. Cas spéciaux mineurs et perte étranger.",
+    "prev": "← Précédent : Rôle Agent",
+    "next": "Suivant : Agent DGT →"
+  },
+  "page63": {
+    "html_title": "Agent DGT — Manuel Facil",
+    "title": "Agent DGT : validation des permis de conduire",
+    "description": "Dashboard, file de demandes, détail 3 onglets (résumé, documents, historique), gestion calendrier d'examens pratiques, 6 catégories de permis (A1, A, B, C, D, E).",
+    "prev": "← Précédent : Agent CNEDOGE",
+    "next": "Suivant : Agent Ayuntamiento + Cámara →"
+  },
+  "page64": {
+    "html_title": "Agent Ayuntamiento + Cámara — Manuel Facil",
+    "title": "Agents Ayuntamiento + Cámara : validation des paiements commerciaux",
+    "description": "Dashboard symétrique, validation paiement, génération recibo PDF, historique. Particularités CEMAC anti-blanchiment pour paiements > 1M XAF en cash.",
+    "prev": "← Précédent : Agent DGT",
+    "next": "Suivant : Agent Tesoro →"
+  },
+  "page65": {
+    "html_title": "Agent Tesoro — Manuel Facil",
+    "title": "Agent Tesoro Público : validation des paiements et réconciliation BANGE",
+    "description": "Authentification 2FA obligatoire, dashboard, validation manuelle quand webhook BANGE échoue, reconciliation bancaire, recibo officiel Tesoro.",
+    "prev": "← Précédent : Agent Ayuntamiento + Cámara",
+    "next": "Suivant : Agent Ministère OMS →"
+  },
+  "page66": {
+    "html_title": "Agent Ministère OMS — Manuel Facil",
+    "title": "Agent Ministère Sanidad : licences commerciales et inspections",
+    "description": "Dashboard ministère, consultation entreprises par NIF, gestion licences, tableau d'inspections, démarrage inspection (scan QR), réconciliation cash, conformité par tasa, file d'obligations.",
+    "prev": "← Précédent : Agent Tesoro",
+    "next": "Suivant : Agent Extranjería →"
+  },
+  "page67": {
+    "html_title": "Agent Extranjería — Manuel Facil",
+    "title": "Agent Extranjería : résidence et autorisation de travail",
+    "description": "5 types de titre, 3 contrôles externes obligatoires (INTERPOL + antécédents + aval), cas sensibles à escalader, génération titre carnet, flux renouvellement simplifié.",
+    "prev": "← Précédent : Agent Ministère OMS",
+    "next": "Suivant : Fonctions Verify →"
+  },
+  "page68": {
+    "html_title": "Fonctions Verify (3 variantes) — Manuel Facil",
+    "title": "Les 3 variantes de la fonction Verify",
+    "description": "Verify Public (QR sans login, données minimales), Verify Treasury (agent Tesoro, BANGE complet), Verify CNEDOGE (matching biométrique 95%). Tableau comparatif input/output/permissions.",
+    "prev": "← Précédent : Agent Extranjería",
+    "next": "Suivant : Travail terrain OMS →"
+  },
+  "page69": {
+    "html_title": "Travail terrain OMS — Manuel Facil",
+    "title": "Travail terrain OMS : inspection sanitaire in situ + mode offline",
+    "description": "Préparation jour, scan QR licence, checklist conformité (10-20 points), perception cash terrain, mode offline MMKV chiffré, synchronisation au retour, réconciliation caisse.",
+    "prev": "← Précédent : Fonctions Verify",
+    "next": "Suivant : Assistant IA Agent →"
+  },
+
   "page59": {
     "html_title": "Vue Web du site public — Manuel Facil",
     "title": "Vue Web du site public (desktop)",

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page43.html_title">
+<html lang="es" data-i18n-title="page63.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Solicitudes en lote en Facil — depositar varias solicitudes del mismo tipo en una sola operación: workflow DRAFT→UPLOADING→CLASSIFYING→REVIEW→PAID→COMPLETED, classification IA de documentos, formato de bénéficiaires.">
-  <title>Solicitudes en lote — Manual Facil</title>
+  <meta name="description" content="Agente DGT — Dirección General de Tráfico: validación permisos de conducir, gestión de citas, examen práctico, generación licencia PDF.">
+  <title>Agente DGT — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -81,7 +81,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
           <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
           <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
-          <a href="43-batch-requests.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
           <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
         </div>
 
@@ -89,7 +89,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
           <a href="61-rol-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
           <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
-          <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
           <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
           <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
           <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
@@ -135,150 +135,122 @@
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span data-i18n="nav.section.agent">Agentes públicos</span>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="page43.title">Solicitudes en lote</span>
+          <span data-i18n="page63.title">Agente DGT</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page43.title">Depositar varias solicitudes del mismo tipo en una sola operación</h1>
-        <p class="page-description" data-i18n="page43.subtitle">El módulo de <em>solicitudes en lote</em> está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.</p>
+        <h1 class="page-title" data-i18n="page63.title">Agente DGT: validación de permisos de conducir</h1>
+        <p class="page-description" data-i18n="page63.description">Los agentes de la Dirección General de Tráfico (DGT) tratan los permisos de conducir: expedición primera vez, renovación, duplicados, conversión de permisos extranjeros. Trabajan con un calendario de citas para los exámenes prácticos y emiten el carnet definitivo tras validación. Esta página describe la pantalla concreta de un agente DGT con capturas reales del back-office.</p>
 
         <section>
-          <h2 data-i18n="page43.s1.title">1. Diferencia con el pago agrupado (página 26)</h2>
-          <p data-i18n="page43.s1.body">Estos dos flujos son complementarios y a menudo confundidos. El siguiente cuadro aclara cuándo usar cada uno.</p>
+          <h2 data-i18n="page63.s1.title">1. Dashboard del agente DGT</h2>
+          <p data-i18n="page63.s1.body">La pantalla de inicio del agente DGT muestra los KPI clave de su jornada: número de solicitudes en cola, citas del día, tasa SLA respetada de los últimos 30 días, y horarios de cita disponibles. El submenu lateral <em>«Permisos de Conducir»</em> da acceso directo a las acciones específicas (Validación rápida, Citas, Historial).</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-dgt/2.png" alt="Dashboard DGT con submenu Permisos de Conducir expandido" data-i18n-attr-alt="page63.fig1.alt" loading="lazy">
+            <figcaption data-i18n="page63.fig1.caption">Dashboard DGT con KPIs (solicitudes pendientes, citas hoy, tasa SLA) y menú lateral expandido.</figcaption>
+          </figure>
+        </section>
 
+        <section>
+          <h2 data-i18n="page63.s2.title">2. Cola de solicitudes pendientes</h2>
+          <p data-i18n="page63.s2.body">La cola lista todas las solicitudes asignadas a la entidad DGT, ordenadas por prioridad SLA. Al hacer clic en una entrada, se abre el panel lateral derecho con un resumen y un botón <em>«Validación rápida»</em> que activa el lock_for_review (ver <a href="61-rol-agente.html">página 61</a>).</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-dgt/3.png" alt="Lista dossiers pendientes con detalle CON-2026-00001" data-i18n-attr-alt="page63.fig2.alt" loading="lazy">
+            <figcaption data-i18n="page63.fig2.caption">Cola de solicitudes con panel lateral de detalle y botón <em>Validación rápida</em>.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page63.s3.title">3. Detalle de una solicitud (3 pestañas)</h2>
+          <p data-i18n="page63.s3.intro">Tras hacer lock, el agente accede a la pantalla de detalle dividida en 3 pestañas: Resumen (datos personales y tipo de permiso), Documentos (verificación de los archivos subidos) e Historial (timeline cronológico de las acciones).</p>
+
+          <h3 data-i18n="page63.s3.sub1.title">Pestaña Resumen — datos del solicitante</h3>
+          <figure>
+            <img src="_assets/screenshots/web/agent-dgt/4.png" alt="Detalle solicitud renovación licencia con datos personales" data-i18n-attr-alt="page63.fig3.alt" loading="lazy">
+            <figcaption data-i18n="page63.fig3.caption">Resumen del expediente: tipo de servicio, datos del solicitante, importe, estado, plazo SLA restante.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page63.s3.sub2.title">Pestaña Documentos — verificación documental</h3>
+          <p data-i18n="page63.s3.sub2.body">Cada documento se previsualiza in situ (zoom, rotación, descarga). El agente marca explícitamente <em>«Conforme»</em> o <em>«No conforme»</em>. Si un documento está marcado <em>«No conforme»</em>, debe especificar el motivo (foto borrosa, fecha caducada, sello ilegible) — esta información se transmite al ciudadano si la decisión final es <code>request_documents</code>.</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-dgt/5.png" alt="Pestaña Documentos con permiso residencia y carnet" data-i18n-attr-alt="page63.fig4.alt" loading="lazy">
+            <figcaption data-i18n="page63.fig4.caption">Verificación documental: previsualización de cada archivo + botones Conforme/No conforme + campo motivo.</figcaption>
+          </figure>
+
+          <h3 data-i18n="page63.s3.sub3.title">Pestaña Historial — timeline cronológico</h3>
+          <figure>
+            <img src="_assets/screenshots/web/agent-dgt/6.png" alt="Timeline con cambios de estado y asignaciones" data-i18n-attr-alt="page63.fig5.alt" loading="lazy">
+            <figcaption data-i18n="page63.fig5.caption">Timeline de acciones: depósito, asignación, lock, decisión. Cada evento con timestamp + autor.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page63.s4.title">4. Historial de solicitudes (vista global)</h2>
+          <p data-i18n="page63.s4.body">Para auditar su propia actividad y consultar casos pasados, el agente dispone de una pantalla <em>«Historial de Solicitudes»</em> con todos los expedientes que ha tratado, filtrable por fecha, estado, tipo de servicio. El panel lateral derecho muestra el timeline detallado del expediente seleccionado y permite exportarlo en PDF para archivos.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-dgt/7.png" alt="Página Historial de Solicitudes con tabla acciones" data-i18n-attr-alt="page63.fig6.alt" loading="lazy">
+              <figcaption data-i18n="page63.fig6.caption">Vista global del historial filtrable.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-dgt/8.png" alt="Timeline detallado solicitud panel lateral exportable" data-i18n-attr-alt="page63.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page63.fig7.caption">Panel lateral con timeline detallado + botón <em>Exportar PDF</em>.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page63.s5.title">5. Gestión de citas para examen práctico</h2>
+          <p data-i18n="page63.s5.body">A diferencia de la mayoría de los agentes, el DGT necesita organizar exámenes prácticos en pista o en circuito real para los nuevos permisos. La gestión de citas se hace desde un calendario semanal donde el agente:</p>
+          <ul>
+            <li data-i18n="page63.s5.l1">Visualiza los slots ya reservados (verde: confirmados, naranja: pendientes confirmación)</li>
+            <li data-i18n="page63.s5.l2">Hace clic en un slot ocupado para abrir el panel lateral con datos del ciudadano</li>
+            <li data-i18n="page63.s5.l3">Reagenda con un drag-and-drop o botón <em>«Reprogramar»</em></li>
+            <li data-i18n="page63.s5.l4">Marca el resultado tras el examen: aprobado (genera el carnet) o suspendido (puede volver a presentarse en 30 días)</li>
+          </ul>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-dgt/9.png" alt="Calendario semanal de citas con cita confirmada" data-i18n-attr-alt="page63.fig8.alt" loading="lazy">
+              <figcaption data-i18n="page63.fig8.caption">Calendario semanal: slots disponibles, ocupados, bloqueados.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-dgt/10.png" alt="Detalle cita lateral con datos ciudadano y reprogramar" data-i18n-attr-alt="page63.fig9.alt" loading="lazy">
+              <figcaption data-i18n="page63.fig9.caption">Detalle de una cita con datos completos del ciudadano + botón Reprogramar.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page63.s6.title">6. Tipos de permisos tratados</h2>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th data-i18n="page43.s1.t.h1">Aspecto</th>
-                  <th data-i18n="page43.s1.t.h2">Solicitudes en lote (esta página)</th>
-                  <th data-i18n="page43.s1.t.h3">Pago agrupado (página 26)</th>
+                  <th data-i18n="page63.s6.t.h1">Categoría</th>
+                  <th data-i18n="page63.s6.t.h2">Vehículos autorizados</th>
+                  <th data-i18n="page63.s6.t.h3">Edad mínima</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td data-i18n="page43.s1.t.r1.c1"><strong>Objetivo</strong></td><td data-i18n="page43.s1.t.r1.c2">Crear varias <em>nuevas</em> solicitudes del mismo tipo</td><td data-i18n="page43.s1.t.r1.c3">Pagar varias obligaciones <em>existentes</em> de la empresa</td></tr>
-                <tr><td data-i18n="page43.s1.t.r2.c1"><strong>Tipo</strong></td><td data-i18n="page43.s1.t.r2.c2">Mismo workflow para todos (ej. todos pasaportes)</td><td data-i18n="page43.s1.t.r2.c3">Cualquier mezcla (licencia + IVA + Cámara)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r3.c1"><strong>Beneficiarios</strong></td><td data-i18n="page43.s1.t.r3.c2">Varias personas o establecimientos</td><td data-i18n="page43.s1.t.r3.c3">Una sola entidad (la empresa activa)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r4.c1"><strong>Ejemplo</strong></td><td data-i18n="page43.s1.t.r4.c2">50 pasaportes para empleados</td><td data-i18n="page43.s1.t.r4.c3">Saldar todas las obligaciones del 2T 2026</td></tr>
+                <tr><td>A1</td><td data-i18n="page63.s6.t.r1.c2">Motocicletas hasta 125 cc</td><td>16</td></tr>
+                <tr><td>A</td><td data-i18n="page63.s6.t.r2.c2">Motocicletas sin restricción</td><td>21</td></tr>
+                <tr><td>B</td><td data-i18n="page63.s6.t.r3.c2">Vehículos turismos hasta 3.500 kg</td><td>18</td></tr>
+                <tr><td>C</td><td data-i18n="page63.s6.t.r4.c2">Camiones más de 3.500 kg</td><td>21</td></tr>
+                <tr><td>D</td><td data-i18n="page63.s6.t.r5.c2">Autobuses, transporte de pasajeros</td><td>24</td></tr>
+                <tr><td>E</td><td data-i18n="page63.s6.t.r6.c2">Combinaciones con remolque pesado</td><td>21</td></tr>
               </tbody>
             </table>
           </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page43.s2.title">2. Workflow del lote: 8 estados</h2>
-          <p data-i18n="page43.s2.intro">Una solicitud en lote pasa por una secuencia de estados claramente definidos. Conocerlos ayuda a saber dónde se está bloqueado y qué falta.</p>
-
-          <pre data-i18n-html="page43.s2.diagram">
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│   DRAFT  ──▶  UPLOADING  ──▶  CLASSIFYING  ──▶  REVIEW                  │
-│     │           ▲                  │              │                     │
-│     │           └──────────────────┘              ▼                     │
-│     │       (volver a UPLOADING                PAYMENT_PENDING          │
-│     │        para añadir docs)                    │                     │
-│     │                                              ▼                    │
-│     │                                            PAID                   │
-│     │                                              │                    │
-│     │                                              ▼                    │
-│     │                                          IN_PROGRESS              │
-│     │                                              │                    │
-│     ▼                                              ▼                    │
-│   (eliminable)                                  COMPLETED               │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-</pre>
-
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page43.s2.t.h1">Estado</th>
-                  <th data-i18n="page43.s2.t.h2">Significado</th>
-                  <th data-i18n="page43.s2.t.h3">Qué puede hacer</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td><strong>DRAFT</strong></td><td data-i18n="page43.s2.t.r1.c2">Lote creado, nada aún cargado</td><td data-i18n="page43.s2.t.r1.c3">Añadir beneficiarios, modificar metadatos, eliminar el lote</td></tr>
-                <tr><td><strong>UPLOADING</strong></td><td data-i18n="page43.s2.t.r2.c2">Subiendo documentos (uno por beneficiario)</td><td data-i18n="page43.s2.t.r2.c3">Subir más documentos, sustituir, retirar uno</td></tr>
-                <tr><td><strong>CLASSIFYING</strong></td><td data-i18n="page43.s2.t.r3.c2">El IA está identificando cada documento (DIP, foto, antecedentes…)</td><td data-i18n="page43.s2.t.r3.c3">Esperar (1-3 minutos típicos)</td></tr>
-                <tr><td><strong>REVIEW</strong></td><td data-i18n="page43.s2.t.r4.c2">Documentos clasificados, lista listo a verificar</td><td data-i18n="page43.s2.t.r4.c3">Validar las atribuciones IA, corregir si necesario, excluir un beneficiario incompleto, volver a UPLOADING para añadir docs</td></tr>
-                <tr><td><strong>PAYMENT_PENDING</strong></td><td data-i18n="page43.s2.t.r5.c2">Lote validado, esperando pago consolidado</td><td data-i18n="page43.s2.t.r5.c3">Iniciar el pago BANGE Mobile Money con el importe total del lote</td></tr>
-                <tr><td><strong>PAID</strong></td><td data-i18n="page43.s2.t.r6.c2">Pago confirmado, lote enviado a tratamiento</td><td data-i18n="page43.s2.t.r6.c3">Descargar el recibo consolidado, esperar instrucción</td></tr>
-                <tr><td><strong>IN_PROGRESS</strong></td><td data-i18n="page43.s2.t.r7.c2">Los agentes públicos están tratando los expedientes individuales</td><td data-i18n="page43.s2.t.r7.c3">Seguir el estado por beneficiario, recibir notificaciones por cada uno</td></tr>
-                <tr><td><strong>COMPLETED</strong></td><td data-i18n="page43.s2.t.r8.c2">Todos los expedientes individuales están finalizados</td><td data-i18n="page43.s2.t.r8.c3">Descargar los documentos oficiales (uno por beneficiario)</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page43.s3.title">3. Crear un lote: paso a paso</h2>
-
-          <h3 data-i18n="page43.s3.step1.title">Paso 1 — Iniciar</h3>
-          <p data-i18n="page43.s3.step1.body">Desde el panel principal de su empresa, abra <em>«Iniciar trámite»</em> y elija el tipo de servicio (ej. <em>«Pasaporte ordinario - Expedición»</em>). En la primera pantalla, en lugar de elegir <em>«Una solicitud»</em>, marque <em>«Solicitud en lote»</em>. Esta opción aparece sólo si su rol lo permite (administrador o contable, no miembro simple) y si el tipo de servicio admite el modo lote (la mayoría sí).</p>
-
-          <h3 data-i18n="page43.s3.step2.title">Paso 2 — Añadir los beneficiarios</h3>
-          <p data-i18n="page43.s3.step2.body">Hay dos vías: añadir uno por uno con el formulario integrado, o importar una lista CSV. Para cada beneficiario se necesita como mínimo:</p>
-
-          <ul>
-            <li data-i18n-html="page43.s3.step2.l1"><strong>Nombre completo</strong> — tal como aparecerá en el documento oficial.</li>
-              <li data-i18n-html="page43.s3.step2.l2"><strong>Identificador</strong> (opcional pero recomendado) — DIP, NIF, número de empleado interno, según el tipo de trámite.</li>
-              <li data-i18n-html="page43.s3.step2.l3"><strong>Email</strong> (opcional) — si lo facilita, el beneficiario recibirá una notificación cuando su documento esté disponible.</li>
-            </ul>
-
-          <h4 data-i18n="page43.s3.step2.csv.title">Formato CSV de importación</h4>
-          <pre data-i18n-html="page43.s3.step2.csv.body">
-beneficiary_name,beneficiary_identifier,beneficiary_identifier_type,beneficiary_email
-Juan Pérez Esono,12345678,DIP,juan.perez@example.gq
-María Ndong Obama,87654321,DIP,maria.ndong@example.gq
-Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
-...
-</pre>
-          <p data-i18n-html="page43.s3.step2.csv.note">El encabezado debe estar en inglés (compatibilidad backend). Los campos <code>beneficiary_identifier_type</code> aceptados son: <code>DIP</code>, <code>NIF</code>, <code>passport</code>, <code>internal</code>, <code>other</code>. Cada línea = un beneficiario = una solicitud.</p>
-
-          <h3 data-i18n="page43.s3.step3.title">Paso 3 — Subir los documentos</h3>
-          <p data-i18n="page43.s3.step3.body">Una vez añadidos los beneficiarios, suba todos los documentos sin preocuparse del orden ni de a quién pertenecen. El IA se encarga de la clasificación: identifica el tipo de cada documento (DIP, foto carnet, certificado de empleo…) y lo asigna automáticamente al beneficiario correcto en función del nombre y de la identificación. Esta etapa dura 1-3 minutos para 50 documentos.</p>
-
-          <div class="callout callout-tip">
-            <h3 data-i18n="page43.s3.tip.title">Trucos para mejorar la clasificación IA</h3>
-            <ul>
-              <li data-i18n="page43.s3.tip.l1">Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.</li>
-              <li data-i18n="page43.s3.tip.l2">Subir documentos legibles (300 dpi mínimo, no fotos en penumbra). El IA pide reescaneo si la calidad es insuficiente.</li>
-              <li data-i18n="page43.s3.tip.l3">Subir todos los documentos del mismo tipo juntos (todos los DIP, luego todas las fotos). Útil cuando los archivos vienen del scaner del fotocopiador.</li>
-            </ul>
-          </div>
-
-          <h3 data-i18n="page43.s3.step4.title">Paso 4 — Verificar y excluir incompletos</h3>
-          <p data-i18n="page43.s3.step4.body">En el estado REVIEW, cada beneficiario tiene una marca verde (✓ documentos completos) o ámbar (— faltan documentos). Para los ámbar, hay dos opciones: volver a UPLOADING para añadir los documentos que faltan, o excluir al beneficiario del lote (estado EXCLUDED). Los excluidos no entran en el pago final y se podrán retomar más tarde en otro lote.</p>
-
-          <h3 data-i18n="page43.s3.step5.title">Paso 5 — Pago consolidado</h3>
-          <p data-i18n="page43.s3.step5.body">El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href="34-mis-pagos-mobile.html">Mis pagos</a> para el flujo BANGE.</p>
-
-          <h3 data-i18n="page43.s3.step6.title">Paso 6 — Seguimiento por beneficiario</h3>
-          <p data-i18n="page43.s3.step6.body">Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos.</p>
-        </section>
-
-        <section>
-          <h2 data-i18n="page43.s4.title">4. Limitaciones y buenas prácticas</h2>
-
-          <ul>
-            <li data-i18n-html="page43.s4.l1"><strong>Tamaño máximo</strong> — 200 beneficiarios por lote. Más allá, divida en varios lotes (la plataforma admite varios lotes simultáneos para la misma empresa).</li>
-              <li data-i18n-html="page43.s4.l2"><strong>Mismo workflow</strong> — un lote = un único tipo de trámite. Para mezclar pasaportes y residencia para los mismos empleados, créelos en dos lotes separados.</li>
-              <li data-i18n-html="page43.s4.l3"><strong>Pago todo o nada</strong> — el pago consolidado cubre todos los beneficiarios incluidos. Si quiere pagar a algunos más tarde, excluya antes y créelos en otro lote.</li>
-              <li data-i18n-html="page43.s4.l4"><strong>Tiempo de tratamiento</strong> — el SLA por solicitud individual no cambia (depende del tipo). El lote no es más rápido por solicitud, pero ahorra horas de carga manual.</li>
-              <li data-i18n-html="page43.s4.l5"><strong>Confidencialidad</strong> — los documentos de un beneficiario sólo son visibles para los miembros de la empresa autorizados, nunca para los demás beneficiarios.</li>
-            </ul>
         </section>
 
       </div>
 
       <nav class="pagination">
-        <a class="pagination-prev" href="42-gestion-empresas.html" data-i18n="page43.prev">← Anterior: Gestionar empresas</a>
-        <a class="pagination-next" href="44-rol-contable.html" data-i18n="page43.next">Siguiente: Rol Contable →</a>
+        <a class="pagination-prev" href="62-agente-cnedoge.html" data-i18n="page63.prev">← Anterior: Agente CNEDOGE</a>
+        <a class="pagination-next" href="64-agente-ayuntamiento-camara.html" data-i18n="page63.next">Siguiente: Agente Ayuntamiento + Cámara →</a>
       </nav>
     </main>
   </div>

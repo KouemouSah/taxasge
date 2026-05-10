@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page43.html_title">
+<html lang="es" data-i18n-title="page64.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Solicitudes en lote en Facil — depositar varias solicitudes del mismo tipo en una sola operación: workflow DRAFT→UPLOADING→CLASSIFYING→REVIEW→PAID→COMPLETED, classification IA de documentos, formato de bénéficiaires.">
-  <title>Solicitudes en lote — Manual Facil</title>
+  <meta name="description" content="Agentes Ayuntamiento + Cámara — validación licencias comerciales municipales (tasa de bares, restaurantes), cuotas Cámara Comercio, recibos PDF.">
+  <title>Agente Ayuntamiento + Cámara — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -81,7 +81,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
           <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
           <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
-          <a href="43-batch-requests.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
           <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
         </div>
 
@@ -90,7 +90,7 @@
           <a href="61-rol-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
           <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
           <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
-          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
           <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
           <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
           <a href="67-agente-extranjeria.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
@@ -135,150 +135,121 @@
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span data-i18n="nav.section.agent">Agentes públicos</span>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="page43.title">Solicitudes en lote</span>
+          <span data-i18n="page64.title">Agente Ayuntamiento + Cámara</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page43.title">Depositar varias solicitudes del mismo tipo en una sola operación</h1>
-        <p class="page-description" data-i18n="page43.subtitle">El módulo de <em>solicitudes en lote</em> está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.</p>
+        <h1 class="page-title" data-i18n="page64.title">Agentes Ayuntamiento + Cámara: validación pagos comerciales</h1>
+        <p class="page-description" data-i18n="page64.description">Los agentes del Ayuntamiento (municipalidad de Malabo, Bata, Mongomo…) y de la Cámara de Comercio comparten un mismo back-office aunque tratan tasas distintas. El Ayuntamiento valida las tasas municipales (licencia comercial de bares, restaurantes, tiendas) mientras que la Cámara cobra las cuotas anuales de inscripción al registro mercantil. El workflow es simétrico: cola de pagos pendientes, validación con justificantes, generación del recibo PDF firmado.</p>
 
         <section>
-          <h2 data-i18n="page43.s1.title">1. Diferencia con el pago agrupado (página 26)</h2>
-          <p data-i18n="page43.s1.body">Estos dos flujos son complementarios y a menudo confundidos. El siguiente cuadro aclara cuándo usar cada uno.</p>
-
+          <h2 data-i18n="page64.s1.title">1. Las dos entidades en paralelo</h2>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th data-i18n="page43.s1.t.h1">Aspecto</th>
-                  <th data-i18n="page43.s1.t.h2">Solicitudes en lote (esta página)</th>
-                  <th data-i18n="page43.s1.t.h3">Pago agrupado (página 26)</th>
+                  <th data-i18n="page64.s1.t.h1">Entidad</th>
+                  <th data-i18n="page64.s1.t.h2">Tasas tratadas</th>
+                  <th data-i18n="page64.s1.t.h3">Periodicidad</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td data-i18n="page43.s1.t.r1.c1"><strong>Objetivo</strong></td><td data-i18n="page43.s1.t.r1.c2">Crear varias <em>nuevas</em> solicitudes del mismo tipo</td><td data-i18n="page43.s1.t.r1.c3">Pagar varias obligaciones <em>existentes</em> de la empresa</td></tr>
-                <tr><td data-i18n="page43.s1.t.r2.c1"><strong>Tipo</strong></td><td data-i18n="page43.s1.t.r2.c2">Mismo workflow para todos (ej. todos pasaportes)</td><td data-i18n="page43.s1.t.r2.c3">Cualquier mezcla (licencia + IVA + Cámara)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r3.c1"><strong>Beneficiarios</strong></td><td data-i18n="page43.s1.t.r3.c2">Varias personas o establecimientos</td><td data-i18n="page43.s1.t.r3.c3">Una sola entidad (la empresa activa)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r4.c1"><strong>Ejemplo</strong></td><td data-i18n="page43.s1.t.r4.c2">50 pasaportes para empleados</td><td data-i18n="page43.s1.t.r4.c3">Saldar todas las obligaciones del 2T 2026</td></tr>
+                <tr>
+                  <td data-i18n="page64.s1.t.r1.c1">Ayuntamiento (Malabo, Bata, Mongomo, Ebebiyín…)</td>
+                  <td data-i18n="page64.s1.t.r1.c2">Licencia comercial de bares y restaurantes, tasa de mercado, tasa de cementerio, tasa de obras, ocupación vía pública</td>
+                  <td data-i18n="page64.s1.t.r1.c3">Anual o por evento</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page64.s1.t.r2.c1">Cámara de Comercio</td>
+                  <td data-i18n="page64.s1.t.r2.c2">Cuota anual de inscripción al registro mercantil, tasa de actualización de los estatutos, certificado de registro</td>
+                  <td data-i18n="page64.s1.t.r2.c3">Anual</td>
+                </tr>
               </tbody>
             </table>
           </div>
         </section>
 
         <section>
-          <h2 data-i18n="page43.s2.title">2. Workflow del lote: 8 estados</h2>
-          <p data-i18n="page43.s2.intro">Una solicitud en lote pasa por una secuencia de estados claramente definidos. Conocerlos ayuda a saber dónde se está bloqueado y qué falta.</p>
-
-          <pre data-i18n-html="page43.s2.diagram">
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│   DRAFT  ──▶  UPLOADING  ──▶  CLASSIFYING  ──▶  REVIEW                  │
-│     │           ▲                  │              │                     │
-│     │           └──────────────────┘              ▼                     │
-│     │       (volver a UPLOADING                PAYMENT_PENDING          │
-│     │        para añadir docs)                    │                     │
-│     │                                              ▼                    │
-│     │                                            PAID                   │
-│     │                                              │                    │
-│     │                                              ▼                    │
-│     │                                          IN_PROGRESS              │
-│     │                                              │                    │
-│     ▼                                              ▼                    │
-│   (eliminable)                                  COMPLETED               │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-</pre>
-
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page43.s2.t.h1">Estado</th>
-                  <th data-i18n="page43.s2.t.h2">Significado</th>
-                  <th data-i18n="page43.s2.t.h3">Qué puede hacer</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td><strong>DRAFT</strong></td><td data-i18n="page43.s2.t.r1.c2">Lote creado, nada aún cargado</td><td data-i18n="page43.s2.t.r1.c3">Añadir beneficiarios, modificar metadatos, eliminar el lote</td></tr>
-                <tr><td><strong>UPLOADING</strong></td><td data-i18n="page43.s2.t.r2.c2">Subiendo documentos (uno por beneficiario)</td><td data-i18n="page43.s2.t.r2.c3">Subir más documentos, sustituir, retirar uno</td></tr>
-                <tr><td><strong>CLASSIFYING</strong></td><td data-i18n="page43.s2.t.r3.c2">El IA está identificando cada documento (DIP, foto, antecedentes…)</td><td data-i18n="page43.s2.t.r3.c3">Esperar (1-3 minutos típicos)</td></tr>
-                <tr><td><strong>REVIEW</strong></td><td data-i18n="page43.s2.t.r4.c2">Documentos clasificados, lista listo a verificar</td><td data-i18n="page43.s2.t.r4.c3">Validar las atribuciones IA, corregir si necesario, excluir un beneficiario incompleto, volver a UPLOADING para añadir docs</td></tr>
-                <tr><td><strong>PAYMENT_PENDING</strong></td><td data-i18n="page43.s2.t.r5.c2">Lote validado, esperando pago consolidado</td><td data-i18n="page43.s2.t.r5.c3">Iniciar el pago BANGE Mobile Money con el importe total del lote</td></tr>
-                <tr><td><strong>PAID</strong></td><td data-i18n="page43.s2.t.r6.c2">Pago confirmado, lote enviado a tratamiento</td><td data-i18n="page43.s2.t.r6.c3">Descargar el recibo consolidado, esperar instrucción</td></tr>
-                <tr><td><strong>IN_PROGRESS</strong></td><td data-i18n="page43.s2.t.r7.c2">Los agentes públicos están tratando los expedientes individuales</td><td data-i18n="page43.s2.t.r7.c3">Seguir el estado por beneficiario, recibir notificaciones por cada uno</td></tr>
-                <tr><td><strong>COMPLETED</strong></td><td data-i18n="page43.s2.t.r8.c2">Todos los expedientes individuales están finalizados</td><td data-i18n="page43.s2.t.r8.c3">Descargar los documentos oficiales (uno por beneficiario)</td></tr>
-              </tbody>
-            </table>
+          <h2 data-i18n="page64.s2.title">2. Dashboard y cola de pagos</h2>
+          <p data-i18n="page64.s2.body">Cada agente ve únicamente las tasas de su entidad. El dashboard muestra los pagos pendientes, los validados del día y los en escalación. Los pagos consolidados (bundle, ver <a href="26-bundle-payment.html">página 26</a>) aparecen como una entrada única con el detalle del desglose por entidad.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/A1.png" alt="Dashboard Ayuntamiento con pagos bundle pendientes" data-i18n-attr-alt="page64.fig1.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig1.caption">Dashboard Ayuntamiento Malabo con pagos bundle en cola.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/C1.png" alt="Dashboard Cámara Comercio con pago pendiente" data-i18n-attr-alt="page64.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig2.caption">Dashboard Cámara Comercio Malabo con cuotas pendientes.</figcaption>
+            </figure>
           </div>
         </section>
 
         <section>
-          <h2 data-i18n="page43.s3.title">3. Crear un lote: paso a paso</h2>
-
-          <h3 data-i18n="page43.s3.step1.title">Paso 1 — Iniciar</h3>
-          <p data-i18n="page43.s3.step1.body">Desde el panel principal de su empresa, abra <em>«Iniciar trámite»</em> y elija el tipo de servicio (ej. <em>«Pasaporte ordinario - Expedición»</em>). En la primera pantalla, en lugar de elegir <em>«Una solicitud»</em>, marque <em>«Solicitud en lote»</em>. Esta opción aparece sólo si su rol lo permite (administrador o contable, no miembro simple) y si el tipo de servicio admite el modo lote (la mayoría sí).</p>
-
-          <h3 data-i18n="page43.s3.step2.title">Paso 2 — Añadir los beneficiarios</h3>
-          <p data-i18n="page43.s3.step2.body">Hay dos vías: añadir uno por uno con el formulario integrado, o importar una lista CSV. Para cada beneficiario se necesita como mínimo:</p>
-
-          <ul>
-            <li data-i18n-html="page43.s3.step2.l1"><strong>Nombre completo</strong> — tal como aparecerá en el documento oficial.</li>
-              <li data-i18n-html="page43.s3.step2.l2"><strong>Identificador</strong> (opcional pero recomendado) — DIP, NIF, número de empleado interno, según el tipo de trámite.</li>
-              <li data-i18n-html="page43.s3.step2.l3"><strong>Email</strong> (opcional) — si lo facilita, el beneficiario recibirá una notificación cuando su documento esté disponible.</li>
-            </ul>
-
-          <h4 data-i18n="page43.s3.step2.csv.title">Formato CSV de importación</h4>
-          <pre data-i18n-html="page43.s3.step2.csv.body">
-beneficiary_name,beneficiary_identifier,beneficiary_identifier_type,beneficiary_email
-Juan Pérez Esono,12345678,DIP,juan.perez@example.gq
-María Ndong Obama,87654321,DIP,maria.ndong@example.gq
-Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
-...
-</pre>
-          <p data-i18n-html="page43.s3.step2.csv.note">El encabezado debe estar en inglés (compatibilidad backend). Los campos <code>beneficiary_identifier_type</code> aceptados son: <code>DIP</code>, <code>NIF</code>, <code>passport</code>, <code>internal</code>, <code>other</code>. Cada línea = un beneficiario = una solicitud.</p>
-
-          <h3 data-i18n="page43.s3.step3.title">Paso 3 — Subir los documentos</h3>
-          <p data-i18n="page43.s3.step3.body">Una vez añadidos los beneficiarios, suba todos los documentos sin preocuparse del orden ni de a quién pertenecen. El IA se encarga de la clasificación: identifica el tipo de cada documento (DIP, foto carnet, certificado de empleo…) y lo asigna automáticamente al beneficiario correcto en función del nombre y de la identificación. Esta etapa dura 1-3 minutos para 50 documentos.</p>
-
-          <div class="callout callout-tip">
-            <h3 data-i18n="page43.s3.tip.title">Trucos para mejorar la clasificación IA</h3>
-            <ul>
-              <li data-i18n="page43.s3.tip.l1">Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.</li>
-              <li data-i18n="page43.s3.tip.l2">Subir documentos legibles (300 dpi mínimo, no fotos en penumbra). El IA pide reescaneo si la calidad es insuficiente.</li>
-              <li data-i18n="page43.s3.tip.l3">Subir todos los documentos del mismo tipo juntos (todos los DIP, luego todas las fotos). Útil cuando los archivos vienen del scaner del fotocopiador.</li>
-            </ul>
+          <h2 data-i18n="page64.s3.title">3. Validación de un pago: el flujo simétrico</h2>
+          <p data-i18n="page64.s3.intro">El agente abre un pago pendiente desde su cola. La pantalla de validación muestra: datos del comerciante (nombre, NIF, dirección), tipo de tasa, importe esperado, importe pagado, modo de pago (efectivo, transferencia BANGE, mobile money), justificante (foto del recibo bancario o de la nota de caja).</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/A2.png" alt="Validación pago efectivo Tasa Municipal Bares" data-i18n-attr-alt="page64.fig3.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig3.caption">Validación de un pago en efectivo de la Tasa Municipal de Bares y Restaurantes.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/C2.png" alt="Validación pago Cuota Cámara Comercio" data-i18n-attr-alt="page64.fig4.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig4.caption">Validación de un pago de Cuota Cámara Comercio (50.000 XAF).</figcaption>
+            </figure>
           </div>
-
-          <h3 data-i18n="page43.s3.step4.title">Paso 4 — Verificar y excluir incompletos</h3>
-          <p data-i18n="page43.s3.step4.body">En el estado REVIEW, cada beneficiario tiene una marca verde (✓ documentos completos) o ámbar (— faltan documentos). Para los ámbar, hay dos opciones: volver a UPLOADING para añadir los documentos que faltan, o excluir al beneficiario del lote (estado EXCLUDED). Los excluidos no entran en el pago final y se podrán retomar más tarde en otro lote.</p>
-
-          <h3 data-i18n="page43.s3.step5.title">Paso 5 — Pago consolidado</h3>
-          <p data-i18n="page43.s3.step5.body">El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href="34-mis-pagos-mobile.html">Mis pagos</a> para el flujo BANGE.</p>
-
-          <h3 data-i18n="page43.s3.step6.title">Paso 6 — Seguimiento por beneficiario</h3>
-          <p data-i18n="page43.s3.step6.body">Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos.</p>
+          <p data-i18n="page64.s3.body">Cuando el agente confirma, el sistema genera el recibo PDF oficial con un número único de la forma <code>REC-2026-NNNNNN</code>, sello de la entidad, firma del agente y QR de verificación. Una notificación es enviada inmediatamente al comerciante (email + push).</p>
         </section>
 
         <section>
-          <h2 data-i18n="page43.s4.title">4. Limitaciones y buenas prácticas</h2>
+          <h2 data-i18n="page64.s4.title">4. Confirmación: el recibo generado</h2>
+          <p data-i18n="page64.s4.body">Tras la validación, un modal de confirmación recapitula el recibo emitido y propone descargarlo o enviarlo por email a una dirección personalizada (caso útil cuando el comerciante quiere transmitir el recibo a su contable directamente).</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/A3.png" alt="Modal éxito recibo REC-2026-000003 generado" data-i18n-attr-alt="page64.fig5.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig5.caption">Modal éxito tras validación: número de recibo, fecha, opciones descargar/enviar.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/C3.png" alt="Modal éxito recibo REC-2026-000004 generado" data-i18n-attr-alt="page64.fig6.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig6.caption">Modal idéntico para Cámara — diseño común.</figcaption>
+            </figure>
+          </div>
+        </section>
 
-          <ul>
-            <li data-i18n-html="page43.s4.l1"><strong>Tamaño máximo</strong> — 200 beneficiarios por lote. Más allá, divida en varios lotes (la plataforma admite varios lotes simultáneos para la misma empresa).</li>
-              <li data-i18n-html="page43.s4.l2"><strong>Mismo workflow</strong> — un lote = un único tipo de trámite. Para mezclar pasaportes y residencia para los mismos empleados, créelos en dos lotes separados.</li>
-              <li data-i18n-html="page43.s4.l3"><strong>Pago todo o nada</strong> — el pago consolidado cubre todos los beneficiarios incluidos. Si quiere pagar a algunos más tarde, excluya antes y créelos en otro lote.</li>
-              <li data-i18n-html="page43.s4.l4"><strong>Tiempo de tratamiento</strong> — el SLA por solicitud individual no cambia (depende del tipo). El lote no es más rápido por solicitud, pero ahorra horas de carga manual.</li>
-              <li data-i18n-html="page43.s4.l5"><strong>Confidencialidad</strong> — los documentos de un beneficiario sólo son visibles para los miembros de la empresa autorizados, nunca para los demás beneficiarios.</li>
-            </ul>
+        <section>
+          <h2 data-i18n="page64.s5.title">5. Historial de validaciones</h2>
+          <p data-i18n="page64.s5.body">Como los agentes DGT, los agentes Ayuntamiento/Cámara disponen de un historial completo de sus validaciones, con filtros por fecha, importe, tipo de tasa, modo de pago. El panel lateral derecho permite reabrir un recibo emitido para reenvío al comerciante o para auditoría interna.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/A4.png" alt="Historial validaciones Ayuntamiento con panel lateral" data-i18n-attr-alt="page64.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig7.caption">Historial Ayuntamiento con panel lateral de detalle.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-ayuntamiento/C4.png" alt="Historial validaciones Cámara con detalle lateral" data-i18n-attr-alt="page64.fig8.alt" loading="lazy">
+              <figcaption data-i18n="page64.fig8.caption">Historial Cámara: misma estructura, datos propios a la entidad.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page64.s6.title">6. Particularidades del workflow comercial</h2>
+          <div class="callout callout-info">
+            <h3 class="callout-title" data-i18n="page64.s6.info.title">Inspección terreno (OMS)</h3>
+            <p data-i18n="page64.s6.info.body">Cuando un agente sanitario del Ministerio realiza una inspección terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) y cobra una tasa en efectivo en el local, esa tasa entra en el flujo Ayuntamiento o Cámara según su naturaleza. El agente OMS escanea el QR de la licencia, registra el cobro, y un evento se crea automáticamente en la cola del agente Ayuntamiento/Cámara para reconciliación al final del día.</p>
+          </div>
+          <div class="callout callout-warning">
+            <h3 class="callout-title" data-i18n="page64.s6.warn.title">Pagos en efectivo: declaración obligatoria</h3>
+            <p data-i18n="page64.s6.warn.body">Para los pagos en efectivo superiores a 1.000.000 XAF, el agente debe pedir un justificante de origen de fondos (extracto bancario, justificante de venta, etc.) y adjuntarlo al expediente. Esta obligación viene de la regulación CEMAC contra el blanqueo de capitales. Si el cliente no puede justificar, la decisión obliga a <code>escalate</code> al supervisor.</p>
+          </div>
         </section>
 
       </div>
 
       <nav class="pagination">
-        <a class="pagination-prev" href="42-gestion-empresas.html" data-i18n="page43.prev">← Anterior: Gestionar empresas</a>
-        <a class="pagination-next" href="44-rol-contable.html" data-i18n="page43.next">Siguiente: Rol Contable →</a>
+        <a class="pagination-prev" href="63-agente-dgt.html" data-i18n="page64.prev">← Anterior: Agente DGT</a>
+        <a class="pagination-next" href="65-agente-tesoro.html" data-i18n="page64.next">Siguiente: Agente Tesoro →</a>
       </nav>
     </main>
   </div>

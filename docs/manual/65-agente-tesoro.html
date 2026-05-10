@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page43.html_title">
+<html lang="es" data-i18n-title="page65.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Solicitudes en lote en Facil — depositar varias solicitudes del mismo tipo en una sola operación: workflow DRAFT→UPLOADING→CLASSIFYING→REVIEW→PAID→COMPLETED, classification IA de documentos, formato de bénéficiaires.">
-  <title>Solicitudes en lote — Manual Facil</title>
+  <meta name="description" content="Agente Tesoro Público — validación de pagos bancarios, reconciliación BANGE, generación de recibo oficial, autenticación 2FA reforzada.">
+  <title>Agente Tesoro — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -81,7 +81,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
           <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
           <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
-          <a href="43-batch-requests.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
           <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
         </div>
 
@@ -91,7 +91,7 @@
           <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
           <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
           <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
-          <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
           <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
           <a href="67-agente-extranjeria.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
           <a href="68-funciones-verify-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
@@ -135,150 +135,97 @@
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.business">Empresas y contables</span>
+          <span data-i18n="nav.section.agent">Agentes públicos</span>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="page43.title">Solicitudes en lote</span>
+          <span data-i18n="page65.title">Agente Tesoro</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page43.title">Depositar varias solicitudes del mismo tipo en una sola operación</h1>
-        <p class="page-description" data-i18n="page43.subtitle">El módulo de <em>solicitudes en lote</em> está pensado para empresas y contables que tienen que crear el mismo tipo de trámite para varias personas o varios establecimientos a la vez: 50 pasaportes para empleados, 30 declaraciones IRPF de clientes, 20 renovaciones de licencia comercial. La ventaja: un único pago consolidado, una clasificación IA de los documentos subidos, un seguimiento agrupado.</p>
+        <h1 class="page-title" data-i18n="page65.title">Agente Tesoro Público: validación de pagos y reconciliación BANGE</h1>
+        <p class="page-description" data-i18n="page65.description">Los agentes del Tesoro Público son los validadores finales de todos los pagos que pasan por Facil. A diferencia de los agentes Ayuntamiento o Cámara que validan tasas concretas, el Tesoro centraliza la reconciliación bancaria: confirma que el dinero ha entrado realmente en las cuentas del Estado vía BANGE Mobile Money, transferencia bancaria o ingreso en efectivo. Cada validación genera el recibo oficial firmado del Tesoro Público.</p>
 
         <section>
-          <h2 data-i18n="page43.s1.title">1. Diferencia con el pago agrupado (página 26)</h2>
-          <p data-i18n="page43.s1.body">Estos dos flujos son complementarios y a menudo confundidos. El siguiente cuadro aclara cuándo usar cada uno.</p>
+          <h2 data-i18n="page65.s1.title">1. Autenticación reforzada (2FA obligatorio)</h2>
+          <p data-i18n="page65.s1.body">Por la sensibilidad de las operaciones (validación de millones de XAF al día), los agentes del Tesoro tienen una autenticación 2FA obligatoria a cada inicio de sesión, sin excepción posible. La pantalla de configuración de la cuenta permite generar códigos de respaldo en caso de pérdida del teléfono.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-tesoro/0.png" alt="Configuración seguridad 2FA con códigos respaldo" data-i18n-attr-alt="page65.fig1.alt" loading="lazy">
+              <figcaption data-i18n="page65.fig1.caption">Configuración de seguridad 2FA con códigos de respaldo.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-tesoro/1.png" alt="Pantalla login portal de agente Facil" data-i18n-attr-alt="page65.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page65.fig2.caption">Pantalla de login común a todos los agentes Facil.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/agent-tesoro/2.png" alt="Pantalla verificación 2FA código seis dígitos" data-i18n-attr-alt="page65.fig3.alt" loading="lazy">
+            <figcaption data-i18n="page65.fig3.caption">Verificación 2FA: 6 dígitos generados por la app autenticadora del agente.</figcaption>
+          </figure>
+        </section>
 
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page43.s1.t.h1">Aspecto</th>
-                  <th data-i18n="page43.s1.t.h2">Solicitudes en lote (esta página)</th>
-                  <th data-i18n="page43.s1.t.h3">Pago agrupado (página 26)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td data-i18n="page43.s1.t.r1.c1"><strong>Objetivo</strong></td><td data-i18n="page43.s1.t.r1.c2">Crear varias <em>nuevas</em> solicitudes del mismo tipo</td><td data-i18n="page43.s1.t.r1.c3">Pagar varias obligaciones <em>existentes</em> de la empresa</td></tr>
-                <tr><td data-i18n="page43.s1.t.r2.c1"><strong>Tipo</strong></td><td data-i18n="page43.s1.t.r2.c2">Mismo workflow para todos (ej. todos pasaportes)</td><td data-i18n="page43.s1.t.r2.c3">Cualquier mezcla (licencia + IVA + Cámara)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r3.c1"><strong>Beneficiarios</strong></td><td data-i18n="page43.s1.t.r3.c2">Varias personas o establecimientos</td><td data-i18n="page43.s1.t.r3.c3">Una sola entidad (la empresa activa)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r4.c1"><strong>Ejemplo</strong></td><td data-i18n="page43.s1.t.r4.c2">50 pasaportes para empleados</td><td data-i18n="page43.s1.t.r4.c3">Saldar todas las obligaciones del 2T 2026</td></tr>
-              </tbody>
-            </table>
+        <section>
+          <h2 data-i18n="page65.s2.title">2. Dashboard del Tesoro Público</h2>
+          <p data-i18n="page65.s2.body">El dashboard agrupa los pagos según su estado: pendientes de validación (cola de trabajo), completados del día (auditoría rápida), escalados al supervisor (casos ambiguos). Los KPI muestran el importe total pendiente, el importe validado en el día, la tasa de validación automática (pagos auto_approved sin intervención humana, gracias a los webhooks BANGE).</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-tesoro/3.png" alt="Dashboard Tesoro Público con pagos pendientes y completados" data-i18n-attr-alt="page65.fig4.alt" loading="lazy">
+            <figcaption data-i18n="page65.fig4.caption">Dashboard Tesoro: pagos pendientes en la parte superior, completados en la parte inferior.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page65.s3.title">3. Validación de un pago: lista + detalle lateral</h2>
+          <p data-i18n="page65.s3.body">El agente abre la lista de pagos pendientes. Al hacer clic en una entrada, el panel lateral muestra los datos esenciales: tipo de servicio (CONDUCIR_RENOVACION, PASAPORTE_NUEVO, etc.), importe, modo de pago, identificador de transacción BANGE, justificante (extracto bancario o capture del SMS de confirmación BANGE).</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-tesoro/4.png" alt="Lista pagos pendientes con detalle CONDUCIR_RENOVACION" data-i18n-attr-alt="page65.fig5.alt" loading="lazy">
+            <figcaption data-i18n="page65.fig5.caption">Cola de pagos pendientes con panel lateral de detalle.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page65.s4.title">4. Vista completa de un pago + 3 acciones disponibles</h2>
+          <p data-i18n="page65.s4.body">Si la información del panel lateral es insuficiente, el agente abre la vista completa con el botón <em>«Ver detalle»</em>. La pantalla muestra todos los datos: histórico de transacciones BANGE para esa cuenta, capturas del recibo de pago, datos del ciudadano. Tres botones: <em>«Validar»</em> (apruebe el pago, genere el recibo), <em>«Rechazar»</em> (motivo obligatorio: importe incorrecto, fraude, doble pago), <em>«Escalar»</em> (caso ambiguo, transmite al supervisor del Tesoro).</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-tesoro/5.png" alt="Detalle pago con acciones validar rechazar escalar" data-i18n-attr-alt="page65.fig6.alt" loading="lazy">
+            <figcaption data-i18n="page65.fig6.caption">Vista detallada con los 3 botones de acción y todos los datos del pago.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page65.s5.title">5. Generación del recibo Tesoro Público</h2>
+          <p data-i18n="page65.s5.body">Tras la validación, el sistema genera el recibo oficial del Tesoro Público (formato distinto del Ayuntamiento o Cámara). Este recibo es legalmente vinculante: prueba que el ciudadano ha pagado las tasas debidas al Estado. Lleva el número único <code>REC-2026-NNNNNN</code>, la firma electrónica del Tesoro, un QR de verificación (página 57) y la mención <em>«Recibo válido para todas las administraciones de Guinea Ecuatorial»</em>.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/agent-tesoro/6.png" alt="Modal éxito recibo REC-2026-000013 generado" data-i18n-attr-alt="page65.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page65.fig7.caption">Modal éxito tras validación: número de recibo + descargar.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/agent-tesoro/7.png" alt="Recibo PDF generado con QR verificación firma Tesoro" data-i18n-attr-alt="page65.fig8.alt" loading="lazy">
+              <figcaption data-i18n="page65.fig8.caption">Recibo PDF oficial del Tesoro con QR + firma electrónica.</figcaption>
+            </figure>
           </div>
         </section>
 
         <section>
-          <h2 data-i18n="page43.s2.title">2. Workflow del lote: 8 estados</h2>
-          <p data-i18n="page43.s2.intro">Una solicitud en lote pasa por una secuencia de estados claramente definidos. Conocerlos ayuda a saber dónde se está bloqueado y qué falta.</p>
-
-          <pre data-i18n-html="page43.s2.diagram">
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│   DRAFT  ──▶  UPLOADING  ──▶  CLASSIFYING  ──▶  REVIEW                  │
-│     │           ▲                  │              │                     │
-│     │           └──────────────────┘              ▼                     │
-│     │       (volver a UPLOADING                PAYMENT_PENDING          │
-│     │        para añadir docs)                    │                     │
-│     │                                              ▼                    │
-│     │                                            PAID                   │
-│     │                                              │                    │
-│     │                                              ▼                    │
-│     │                                          IN_PROGRESS              │
-│     │                                              │                    │
-│     ▼                                              ▼                    │
-│   (eliminable)                                  COMPLETED               │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-</pre>
-
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page43.s2.t.h1">Estado</th>
-                  <th data-i18n="page43.s2.t.h2">Significado</th>
-                  <th data-i18n="page43.s2.t.h3">Qué puede hacer</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td><strong>DRAFT</strong></td><td data-i18n="page43.s2.t.r1.c2">Lote creado, nada aún cargado</td><td data-i18n="page43.s2.t.r1.c3">Añadir beneficiarios, modificar metadatos, eliminar el lote</td></tr>
-                <tr><td><strong>UPLOADING</strong></td><td data-i18n="page43.s2.t.r2.c2">Subiendo documentos (uno por beneficiario)</td><td data-i18n="page43.s2.t.r2.c3">Subir más documentos, sustituir, retirar uno</td></tr>
-                <tr><td><strong>CLASSIFYING</strong></td><td data-i18n="page43.s2.t.r3.c2">El IA está identificando cada documento (DIP, foto, antecedentes…)</td><td data-i18n="page43.s2.t.r3.c3">Esperar (1-3 minutos típicos)</td></tr>
-                <tr><td><strong>REVIEW</strong></td><td data-i18n="page43.s2.t.r4.c2">Documentos clasificados, lista listo a verificar</td><td data-i18n="page43.s2.t.r4.c3">Validar las atribuciones IA, corregir si necesario, excluir un beneficiario incompleto, volver a UPLOADING para añadir docs</td></tr>
-                <tr><td><strong>PAYMENT_PENDING</strong></td><td data-i18n="page43.s2.t.r5.c2">Lote validado, esperando pago consolidado</td><td data-i18n="page43.s2.t.r5.c3">Iniciar el pago BANGE Mobile Money con el importe total del lote</td></tr>
-                <tr><td><strong>PAID</strong></td><td data-i18n="page43.s2.t.r6.c2">Pago confirmado, lote enviado a tratamiento</td><td data-i18n="page43.s2.t.r6.c3">Descargar el recibo consolidado, esperar instrucción</td></tr>
-                <tr><td><strong>IN_PROGRESS</strong></td><td data-i18n="page43.s2.t.r7.c2">Los agentes públicos están tratando los expedientes individuales</td><td data-i18n="page43.s2.t.r7.c3">Seguir el estado por beneficiario, recibir notificaciones por cada uno</td></tr>
-                <tr><td><strong>COMPLETED</strong></td><td data-i18n="page43.s2.t.r8.c2">Todos los expedientes individuales están finalizados</td><td data-i18n="page43.s2.t.r8.c3">Descargar los documentos oficiales (uno por beneficiario)</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <h2 data-i18n="page65.s6.title">6. Mis transacciones (auditoría agente)</h2>
+          <p data-i18n="page65.s6.body">El menu <em>«Mis Transacciones»</em> reúne todos los pagos que el agente ha tratado, con filtros (fecha, tipo de servicio, importe, modo de pago) y métricas agregadas: importe total validado del mes, número medio de validaciones por día, tasa de rechazo. Útil para el cierre semanal de actividad del agente.</p>
+          <figure>
+            <img src="_assets/screenshots/web/agent-tesoro/8.png" alt="Historial de Transacciones con filtros y métricas" data-i18n-attr-alt="page65.fig9.alt" loading="lazy">
+            <figcaption data-i18n="page65.fig9.caption">Historial transacciones del agente Tesoro con filtros y métricas agregadas.</figcaption>
+          </figure>
         </section>
 
         <section>
-          <h2 data-i18n="page43.s3.title">3. Crear un lote: paso a paso</h2>
-
-          <h3 data-i18n="page43.s3.step1.title">Paso 1 — Iniciar</h3>
-          <p data-i18n="page43.s3.step1.body">Desde el panel principal de su empresa, abra <em>«Iniciar trámite»</em> y elija el tipo de servicio (ej. <em>«Pasaporte ordinario - Expedición»</em>). En la primera pantalla, en lugar de elegir <em>«Una solicitud»</em>, marque <em>«Solicitud en lote»</em>. Esta opción aparece sólo si su rol lo permite (administrador o contable, no miembro simple) y si el tipo de servicio admite el modo lote (la mayoría sí).</p>
-
-          <h3 data-i18n="page43.s3.step2.title">Paso 2 — Añadir los beneficiarios</h3>
-          <p data-i18n="page43.s3.step2.body">Hay dos vías: añadir uno por uno con el formulario integrado, o importar una lista CSV. Para cada beneficiario se necesita como mínimo:</p>
-
-          <ul>
-            <li data-i18n-html="page43.s3.step2.l1"><strong>Nombre completo</strong> — tal como aparecerá en el documento oficial.</li>
-              <li data-i18n-html="page43.s3.step2.l2"><strong>Identificador</strong> (opcional pero recomendado) — DIP, NIF, número de empleado interno, según el tipo de trámite.</li>
-              <li data-i18n-html="page43.s3.step2.l3"><strong>Email</strong> (opcional) — si lo facilita, el beneficiario recibirá una notificación cuando su documento esté disponible.</li>
-            </ul>
-
-          <h4 data-i18n="page43.s3.step2.csv.title">Formato CSV de importación</h4>
-          <pre data-i18n-html="page43.s3.step2.csv.body">
-beneficiary_name,beneficiary_identifier,beneficiary_identifier_type,beneficiary_email
-Juan Pérez Esono,12345678,DIP,juan.perez@example.gq
-María Ndong Obama,87654321,DIP,maria.ndong@example.gq
-Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
-...
-</pre>
-          <p data-i18n-html="page43.s3.step2.csv.note">El encabezado debe estar en inglés (compatibilidad backend). Los campos <code>beneficiary_identifier_type</code> aceptados son: <code>DIP</code>, <code>NIF</code>, <code>passport</code>, <code>internal</code>, <code>other</code>. Cada línea = un beneficiario = una solicitud.</p>
-
-          <h3 data-i18n="page43.s3.step3.title">Paso 3 — Subir los documentos</h3>
-          <p data-i18n="page43.s3.step3.body">Una vez añadidos los beneficiarios, suba todos los documentos sin preocuparse del orden ni de a quién pertenecen. El IA se encarga de la clasificación: identifica el tipo de cada documento (DIP, foto carnet, certificado de empleo…) y lo asigna automáticamente al beneficiario correcto en función del nombre y de la identificación. Esta etapa dura 1-3 minutos para 50 documentos.</p>
-
-          <div class="callout callout-tip">
-            <h3 data-i18n="page43.s3.tip.title">Trucos para mejorar la clasificación IA</h3>
-            <ul>
-              <li data-i18n="page43.s3.tip.l1">Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.</li>
-              <li data-i18n="page43.s3.tip.l2">Subir documentos legibles (300 dpi mínimo, no fotos en penumbra). El IA pide reescaneo si la calidad es insuficiente.</li>
-              <li data-i18n="page43.s3.tip.l3">Subir todos los documentos del mismo tipo juntos (todos los DIP, luego todas las fotos). Útil cuando los archivos vienen del scaner del fotocopiador.</li>
-            </ul>
-          </div>
-
-          <h3 data-i18n="page43.s3.step4.title">Paso 4 — Verificar y excluir incompletos</h3>
-          <p data-i18n="page43.s3.step4.body">En el estado REVIEW, cada beneficiario tiene una marca verde (✓ documentos completos) o ámbar (— faltan documentos). Para los ámbar, hay dos opciones: volver a UPLOADING para añadir los documentos que faltan, o excluir al beneficiario del lote (estado EXCLUDED). Los excluidos no entran en el pago final y se podrán retomar más tarde en otro lote.</p>
-
-          <h3 data-i18n="page43.s3.step5.title">Paso 5 — Pago consolidado</h3>
-          <p data-i18n="page43.s3.step5.body">El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href="34-mis-pagos-mobile.html">Mis pagos</a> para el flujo BANGE.</p>
-
-          <h3 data-i18n="page43.s3.step6.title">Paso 6 — Seguimiento por beneficiario</h3>
-          <p data-i18n="page43.s3.step6.body">Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos.</p>
-        </section>
-
-        <section>
-          <h2 data-i18n="page43.s4.title">4. Limitaciones y buenas prácticas</h2>
-
-          <ul>
-            <li data-i18n-html="page43.s4.l1"><strong>Tamaño máximo</strong> — 200 beneficiarios por lote. Más allá, divida en varios lotes (la plataforma admite varios lotes simultáneos para la misma empresa).</li>
-              <li data-i18n-html="page43.s4.l2"><strong>Mismo workflow</strong> — un lote = un único tipo de trámite. Para mezclar pasaportes y residencia para los mismos empleados, créelos en dos lotes separados.</li>
-              <li data-i18n-html="page43.s4.l3"><strong>Pago todo o nada</strong> — el pago consolidado cubre todos los beneficiarios incluidos. Si quiere pagar a algunos más tarde, excluya antes y créelos en otro lote.</li>
-              <li data-i18n-html="page43.s4.l4"><strong>Tiempo de tratamiento</strong> — el SLA por solicitud individual no cambia (depende del tipo). El lote no es más rápido por solicitud, pero ahorra horas de carga manual.</li>
-              <li data-i18n-html="page43.s4.l5"><strong>Confidencialidad</strong> — los documentos de un beneficiario sólo son visibles para los miembros de la empresa autorizados, nunca para los demás beneficiarios.</li>
-            </ul>
+          <h2 data-i18n="page65.s7.title">7. Reconciliación bancaria automática</h2>
+          <p data-i18n="page65.s7.body">La mayoría de los pagos vía BANGE Mobile Money son validados automáticamente por el sistema gracias al webhook BANGE: cuando un ciudadano confirma su pago con el PIN, BANGE envía una notificación a Facil que valida el pago en menos de 5 segundos. Estos pagos pasan directamente al estado <code>auto_approved</code> sin intervención del agente. El agente Tesoro interviene solo en los casos no automáticos: pagos en efectivo en la oficina, transferencias clásicas con extracto bancario, casos donde el webhook ha fallado y debe ser reconciliado manualmente.</p>
+          <p data-i18n="page65.s7.body2">Las funciones <em>Verify Treasury</em> permiten al agente buscar manualmente una transacción por su identificador BANGE para resolver discrepancias (ver <a href="68-funciones-verify-agente.html">página 68</a>).</p>
         </section>
 
       </div>
 
       <nav class="pagination">
-        <a class="pagination-prev" href="42-gestion-empresas.html" data-i18n="page43.prev">← Anterior: Gestionar empresas</a>
-        <a class="pagination-next" href="44-rol-contable.html" data-i18n="page43.next">Siguiente: Rol Contable →</a>
+        <a class="pagination-prev" href="64-agente-ayuntamiento-camara.html" data-i18n="page65.prev">← Anterior: Agente Ayuntamiento + Cámara</a>
+        <a class="pagination-next" href="66-agente-min-oms.html" data-i18n="page65.next">Siguiente: Agente Ministerio Sanidad →</a>
       </nav>
     </main>
   </div>

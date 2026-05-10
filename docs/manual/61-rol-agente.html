@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page61.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rol Agente público en Facil — concepto común a todos los agentes (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro, OMS, Extranjería). Workflow lock_for_review, estados, acciones, escalación supervisor.">
+  <title>Rol Agente — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+          <a href="59-vista-web-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#128187;</span> <span data-i18n="nav.link.web_public_view">Vista Web del sitio público</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128300;</span> <span data-i18n="nav.link.agent_oms">Agente MIN OMS</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.agent">Agentes públicos</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page61.title">Rol Agente</span>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page61.title">Rol Agente: concepto común a todos los agentes públicos</h1>
+        <p class="page-description" data-i18n="page61.description">Los agentes públicos son los funcionarios autorizados que tratan las solicitudes de los ciudadanos y empresas en Facil. Aunque cada entidad (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro Público, Ministerio de Sanidad, Extranjería) tiene su workflow específico, todos comparten un mismo modelo de trabajo: una cola de tareas, un mecanismo de bloqueo pesimista (lock_for_review) que evita que dos agentes traten la misma solicitud, y un conjunto fijo de acciones (validar, rechazar, pedir documentos, escalar). Esta página describe ese tronco común. Las pantallas y los detalles propios de cada entidad están en las páginas 62 a 67.</p>
+
+        <section>
+          <h2 data-i18n="page61.s1.title">1. Las 7 entidades de tratamiento</h2>
+          <p data-i18n="page61.s1.intro">Facil reparte las solicitudes entre 7 entidades públicas, cada una con sus agentes. La asignación es automática: cuando un ciudadano deposita una solicitud, el sistema la dirige a la entidad competente según el tipo de servicio (workflow_code). Los agentes nunca eligen su lote; reciben las solicitudes asignadas a su entidad por orden de prioridad SLA.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page61.s1.t.h1">Entidad</th>
+                  <th data-i18n="page61.s1.t.h2">Sigla</th>
+                  <th data-i18n="page61.s1.t.h3">Servicios tratados</th>
+                  <th data-i18n="page61.s1.t.h4">Página dedicada</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page61.s1.t.r1.c1">Centro Nacional de Documentación Ecuatoguineana</td>
+                  <td><span class="badge badge-blue">CNEDOGE</span></td>
+                  <td data-i18n="page61.s1.t.r1.c3">Pasaportes (expedición, renovación)</td>
+                  <td><a href="62-agente-cnedoge.html" data-i18n="page61.s1.t.r1.c4">Página 62</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r2.c1">Dirección General de Tráfico</td>
+                  <td><span class="badge badge-blue">DGT</span></td>
+                  <td data-i18n="page61.s1.t.r2.c3">Permisos de conducir</td>
+                  <td><a href="63-agente-dgt.html" data-i18n="page61.s1.t.r2.c4">Página 63</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r3.c1">Ayuntamiento + Cámara de Comercio</td>
+                  <td><span class="badge badge-blue">AYU/CAM</span></td>
+                  <td data-i18n="page61.s1.t.r3.c3">Licencias comerciales municipales, registro empresarial, tasas</td>
+                  <td><a href="64-agente-ayuntamiento-camara.html" data-i18n="page61.s1.t.r3.c4">Página 64</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r4.c1">Tesoro Público</td>
+                  <td><span class="badge badge-green">TESORO</span></td>
+                  <td data-i18n="page61.s1.t.r4.c3">Validación de pagos bancarios (reconciliación BANGE)</td>
+                  <td><a href="65-agente-tesoro.html" data-i18n="page61.s1.t.r4.c4">Página 65</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r5.c1">Ministerio de Sanidad y Bienestar Social</td>
+                  <td><span class="badge badge-blue">OMS</span></td>
+                  <td data-i18n="page61.s1.t.r5.c3">Licencias sanitarias, inspección de establecimientos</td>
+                  <td><a href="66-agente-min-oms.html" data-i18n="page61.s1.t.r5.c4">Página 66</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r6.c1">Dirección de Extranjería</td>
+                  <td><span class="badge badge-blue">EXT</span></td>
+                  <td data-i18n="page61.s1.t.r6.c3">Permisos de residencia, autorizaciones de trabajo</td>
+                  <td><a href="67-agente-extranjeria.html" data-i18n="page61.s1.t.r6.c4">Página 67</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page61.s1.t.r7.c1">DGI — Dirección General de Impuestos</td>
+                  <td><span class="badge badge-blue">DGI</span></td>
+                  <td data-i18n="page61.s1.t.r7.c3">Declaraciones fiscales (IVA, IRPF, IS, retenciones)</td>
+                  <td data-i18n="page61.s1.t.r7.c4">Cubierto en agentes Tesoro + supervisores DGI</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s2.title">2. La cola de trabajo (queue)</h2>
+          <p data-i18n="page61.s2.body">El primer pantalla de cualquier agente es su cola de trabajo: la lista de solicitudes asignadas a su entidad, ordenadas por una prioridad calculada automáticamente. La fórmula combina tres factores:</p>
+
+          <ul>
+            <li data-i18n-html="page61.s2.l1"><strong>SLA restante</strong> — cuánto tiempo queda antes de que la solicitud incumpla el plazo legal. Cuanto menos tiempo, mayor prioridad.</li>
+            <li data-i18n-html="page61.s2.l2"><strong>Importe</strong> — los pagos elevados (más de 1 millón XAF) suben en la cola para reducir el riesgo financiero.</li>
+            <li data-i18n-html="page61.s2.l3"><strong>Complejidad</strong> — las solicitudes con muchas piezas justificativas o flagged por la IA (anomalías documentales, mismatch nombre, etc.) tienen un score más alto.</li>
+          </ul>
+
+          <p data-i18n="page61.s2.body2">El agente no puede saltar manualmente una entrada de la cola; debe tratar las solicitudes en el orden propuesto. Si una solicitud necesita un especialista (por ejemplo un caso médico complejo en OMS), la opción <em>«asignar a un colega»</em> permite transferirla con un mensaje justificativo (ver sección 4).</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s3.title">3. El bloqueo pesimista: lock_for_review</h2>
+          <p data-i18n="page61.s3.intro">Cuando dos agentes trabajan en la misma entidad, el riesgo es que ambos abran la misma solicitud y emitan decisiones contradictorias. Facil resuelve este problema con un bloqueo pesimista: solo un agente puede tener una solicitud en estado <em>«locked_by_agent»</em> a la vez.</p>
+
+          <pre data-i18n-html="page61.s3.diagram">
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Workflow lock_for_review (3 agentes en paralelo)                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   Cola común                                                            │
+│   ┌────────┬────────┬────────┬────────┐                                 │
+│   │ #1234  │ #1235  │ #1236  │ #1237  │  ← solicitudes pending_agent    │
+│   └────┬───┴────┬───┴────┬───┴────────┘                                 │
+│        │        │        │                                              │
+│   Agente A    Agente B  Agente C                                        │
+│   click       click     click                                           │
+│   #1234       #1235     #1234 ← bloqueado por A                         │
+│   ✓ lock      ✓ lock    ✗ "Solicitud ya está siendo tratada por A"      │
+│                                                                         │
+│   ▶ Tras lock por A : #1234 desaparece de la cola de B y C              │
+│   ▶ Tras decisión final A : #1234 entra en approved/rejected/etc.       │
+│   ▶ Si A se aleja sin liberar : timeout 30 min → unlock automático      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+          <p data-i18n="page61.s3.body">El timeout de 30 minutos es importante: si un agente abre una solicitud y se va a comer, la solicitud se desbloquea automáticamente y vuelve a la cola común. Esto evita que las solicitudes queden indefinidamente bloqueadas si un agente cierra el navegador sin terminar. El agente que tenía el bloqueo recibe una notificación de pérdida.</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s4.title">4. Las 7 acciones del agente</h2>
+          <p data-i18n="page61.s4.intro">Una vez bloqueada una solicitud, el agente dispone de 7 acciones (definidas en el enum <code>agent_action_type</code> del backend). No todas son aplicables a la vez; el botón está activo solo si el contexto lo permite.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page61.s4.t.h1">Acción</th>
+                  <th data-i18n="page61.s4.t.h2">Cuándo se usa</th>
+                  <th data-i18n="page61.s4.t.h3">Resultado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>lock_for_review</code></td>
+                  <td data-i18n="page61.s4.t.r1.c2">Al hacer clic en una solicitud de la cola</td>
+                  <td data-i18n="page61.s4.t.r1.c3">La solicitud cambia a <code>locked_by_agent</code>, ningún otro agente puede abrirla</td>
+                </tr>
+                <tr>
+                  <td><code>approve</code></td>
+                  <td data-i18n="page61.s4.t.r2.c2">Documentación correcta, control validado</td>
+                  <td data-i18n="page61.s4.t.r2.c3">Genera el documento oficial (PDF), firma del agente, envío al ciudadano + al vault</td>
+                </tr>
+                <tr>
+                  <td><code>reject</code></td>
+                  <td data-i18n="page61.s4.t.r3.c2">Documento falsificado, datos inverificables, fraude detectado</td>
+                  <td data-i18n="page61.s4.t.r3.c3">Solicitud marcada rechazada con motivo obligatorio (mín. 50 caracteres). Notificación al ciudadano, posibilidad de recurso</td>
+                </tr>
+                <tr>
+                  <td><code>request_documents</code></td>
+                  <td data-i18n="page61.s4.t.r4.c2">Falta una pieza, foto borrosa, fecha caducada</td>
+                  <td data-i18n="page61.s4.t.r4.c3">Estado <code>requires_documents</code>. Notificación al ciudadano con la lista exacta de lo que falta. Plazo 30 días, luego rechazo automático</td>
+                </tr>
+                <tr>
+                  <td><code>escalate</code></td>
+                  <td data-i18n="page61.s4.t.r5.c2">Caso ambiguo, sospecha de fraude organizado, decisión más allá del nivel</td>
+                  <td data-i18n="page61.s4.t.r5.c3">Estado <code>escalated_supervisor</code>. La solicitud sale de la cola del agente y entra en la del supervisor de la entidad</td>
+                </tr>
+                <tr>
+                  <td><code>unlock_release</code></td>
+                  <td data-i18n="page61.s4.t.r6.c2">Antes de irse a comer / fin de jornada / interrupción</td>
+                  <td data-i18n="page61.s4.t.r6.c3">La solicitud vuelve a la cola común sin decisión. No es un rechazo, es una pausa</td>
+                </tr>
+                <tr>
+                  <td><code>assign_to_colleague</code></td>
+                  <td data-i18n="page61.s4.t.r7.c2">Necesidad de un especialista (ej. caso médico complejo en OMS)</td>
+                  <td data-i18n="page61.s4.t.r7.c3">La solicitud va directamente a la cola del colega designado, con un mensaje justificativo</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s5.title">5. Audit log: cada acción es trazada</h2>
+          <p data-i18n="page61.s5.body">Toda acción del agente queda registrada en un log de auditoría con: <em>quién</em> (email del agente), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>antes/después</em> (estado anterior y nuevo), <em>motivo</em> (campo obligatorio en rechazo y escalación), <em>IP + user-agent</em>. Este log está visible para el supervisor de la entidad y para el administrador. Se conserva 7 años (obligación legal de archivo administrativo). El ciudadano puede solicitar una copia del log de su solicitud en virtud del derecho de acceso (página 58 — Legal).</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s6.title">6. Estados del workflow (los 17 estados)</h2>
+          <p data-i18n="page61.s6.intro">El workflow completo de una solicitud cuenta 17 estados (definidos en el enum <code>payment_workflow_status</code> del backend). Un agente trabaja típicamente sobre los estados marcados con ★.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page61.s6.t.h1">Estado</th>
+                  <th data-i18n="page61.s6.t.h2">Significado</th>
+                  <th data-i18n="page61.s6.t.h3">Agente actúa</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>submitted</code></td><td data-i18n="page61.s6.t.r1.c2">Solicitud depositada por el ciudadano</td><td>—</td></tr>
+                <tr><td><code>auto_processing</code></td><td data-i18n="page61.s6.t.r2.c2">El sistema verifica datos automáticamente</td><td>—</td></tr>
+                <tr><td><code>auto_approved</code></td><td data-i18n="page61.s6.t.r3.c2">Validación 100% automática (caso simple)</td><td>—</td></tr>
+                <tr><td><code>pending_agent_review</code></td><td data-i18n="page61.s6.t.r4.c2">En cola del agente</td><td>★</td></tr>
+                <tr><td><code>locked_by_agent</code></td><td data-i18n="page61.s6.t.r5.c2">Bloqueada por un agente para tratamiento</td><td>★</td></tr>
+                <tr><td><code>requires_documents</code></td><td data-i18n="page61.s6.t.r6.c2">Esperando docs adicionales del ciudadano</td><td>★ (espera)</td></tr>
+                <tr><td><code>docs_resubmitted</code></td><td data-i18n="page61.s6.t.r7.c2">El ciudadano ha enviado los nuevos docs</td><td>★ (revaluar)</td></tr>
+                <tr><td><code>approved_by_agent</code></td><td data-i18n="page61.s6.t.r8.c2">Validada por el agente, decisión final</td><td>★</td></tr>
+                <tr><td><code>rejected_by_agent</code></td><td data-i18n="page61.s6.t.r9.c2">Rechazada por el agente</td><td>★</td></tr>
+                <tr><td><code>escalated_supervisor</code></td><td data-i18n="page61.s6.t.r10.c2">Escalada al supervisor de la entidad</td><td>—</td></tr>
+                <tr><td><code>supervisor_reviewing</code></td><td data-i18n="page61.s6.t.r11.c2">Bloqueada por el supervisor</td><td>—</td></tr>
+                <tr><td><code>completed</code></td><td data-i18n="page61.s6.t.r12.c2">Documento oficial generado y entregado</td><td>—</td></tr>
+                <tr><td><code>cancelled_by_user</code></td><td data-i18n="page61.s6.t.r13.c2">Cancelada por el ciudadano</td><td>—</td></tr>
+                <tr><td><code>cancelled_by_agent</code></td><td data-i18n="page61.s6.t.r14.c2">Cancelada por el agente (caso administrativo)</td><td>★</td></tr>
+                <tr><td><code>expired</code></td><td data-i18n="page61.s6.t.r15.c2">Plazo de aporte de documentos vencido</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page61.s7.title">7. Indicadores de carga (workload)</h2>
+          <p data-i18n="page61.s7.body">Cada agente tiene una marca de carga en tiempo real: número de solicitudes en su cola, edad de la más antigua, tasa SLA respetada en los últimos 30 días. Estos indicadores son visibles para el supervisor para detectar agentes saturados o desocupados. La asignación automática toma este indicador en cuenta: las nuevas solicitudes van preferentemente a los agentes con menor carga, lo que equilibra el flujo.</p>
+        </section>
+
+      </div>
+
+      <nav class="pagination">
+        <a class="pagination-prev" href="44-rol-contable.html" data-i18n="page61.prev">← Anterior: Rol Contable</a>
+        <a class="pagination-next" href="62-agente-cnedoge.html" data-i18n="page61.next">Siguiente: Agente CNEDOGE →</a>
+      </nav>
+    </main>
+  </div>
+  <script src="search.js" defer></script>
+</body>
+</html>

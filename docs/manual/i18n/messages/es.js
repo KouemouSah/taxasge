@@ -3873,8 +3873,884 @@ window.__I18N__.es = {
       "title": "7. Honorarios y facturación",
       "body": "Facil no factura al contable por el uso de la plataforma; las tasas fiscales se cobran a la empresa cliente directamente (BANGE Mobile Money del propietario o administrador). Los honorarios del contable hacia su cliente están fuera del ámbito de Facil: se gestionan por el contrato comercial entre el gabinete y la empresa. La plataforma sí provee informes mensuales de actividad (número de declaraciones preparadas, tipos, fechas) que el contable puede usar para justificar su facturación al cliente."
     }
+  },
+
+  "page60": {
+    "html_title": "Asistente IA Agente — Manual Facil",
+    "title": "Asistente IA dedicado a los agentes públicos",
+    "description": "Los agentes públicos disponen de su propio asistente IA, distinto de la versión pública (página 55) y de la versión ciudadano conectado (página 29). Esta variante está alimentada con un contexto específico al rol agente: workflows internos, jurisprudencia administrativa de Guinea Ecuatorial, casos similares pasados, modelos de motivos de rechazo. Su objetivo es acelerar la toma de decisión y reducir las disparidades entre agentes para casos comparables.",
+    "s1": {
+      "title": "1. Diferencias con las otras variantes IA",
+      "t": {
+        "h1": "Aspecto",
+        "h2": "IA pública (p. 55)",
+        "h3": "IA ciudadano (p. 29)",
+        "h4": "IA agente (esta página)",
+        "r1": {
+          "c1": "<strong>Acceso</strong>",
+          "c2": "Sin login",
+          "c3": "Login + contexto personal",
+          "c4": "Login agente + contexto profesional"
+        },
+        "r2": {
+          "c1": "<strong>Datos accesibles</strong>",
+          "c2": "Solo catálogo público",
+          "c3": "Catálogo + datos del usuario",
+          "c4": "Catálogo + jurisprudencia + casos pasados (anonimizados)"
+        },
+        "r3": {
+          "c1": "<strong>Idiomas</strong>",
+          "c2": "ES / FR / EN",
+          "c3": "ES / FR / EN",
+          "c4": "ES (lengua oficial administrativa) por defecto"
+        },
+        "r4": {
+          "c1": "<strong>Limit de queries</strong>",
+          "c2": "10 / hora / IP",
+          "c3": "100 / día",
+          "c4": "Sin límite (uso profesional)"
+        },
+        "r5": {
+          "c1": "<strong>Audit log</strong>",
+          "c2": "Mínimo",
+          "c3": "Estándar",
+          "c4": "Completo + retention 7 años"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Casos de uso típicos para un agente",
+      "uc1": {
+        "title": "Buscar casos similares pasados",
+        "body": "Antes de tomar una decisión sobre un caso ambiguo, el agente puede preguntar al IA: «¿Cuántos casos similares han sido tratados los últimos 12 meses? ¿Qué decisión se tomó en mayoría?». El IA busca en la base anonimizada de casos pasados (sin datos personales identificables) y retorna la decisión mayoritaria con porcentaje de coincidencia. Esto reduce las disparidades entre agentes."
+      },
+      "uc2": {
+        "title": "Generar un motivo de rechazo",
+        "body": "Cuando el agente decide rechazar (acción <code>reject</code>, ver <a href=\"61-rol-agente.html\">página 61</a>), el motivo es obligatorio (mínimo 50 caracteres, redacción precisa). El IA puede generar un primer borrador del motivo basado en los puntos no conformes detectados durante la verificación documental. El agente revisa, corrige, valida. Esto ahorra 2-3 minutos por rechazo y mejora la calidad redactional."
+      },
+      "uc3": {
+        "title": "Consultar la jurisprudencia interna",
+        "body": "Para los casos complejos (interpretación de un texto legal, conflicto de jurisprudencia entre dos circulares), el IA tiene acceso al corpus de circulares ministeriales y consultas jurídicas pasadas. Pregunta tipo: «¿Cómo interpreta la circular del 12 de marzo 2024 sobre las solicitudes de pasaporte de menores?». El IA cita las fuentes (circular CN-2024-042, p. 3) lo que permite al agente verificar."
+      },
+      "uc4": {
+        "title": "Detectar patterns de fraude",
+        "body": "Si el agente nota anomalías (NIF que no coincide con el nombre, mismo tutor para muchos menores, dirección sospechosa) puede pedir al IA: «¿Hay otros casos con esta dirección o este NIF en los últimos 6 meses?». Si el IA detecta clusters anómalos, alerta al agente que escala (acción <code>escalate</code>) hacia el supervisor con el reporte adjunto."
+      }
+    },
+    "s3": {
+      "title": "3. Ejemplos de prompts útiles",
+      "intro": "Algunos prompts de partida que los nuevos agentes pueden adaptar:",
+      "l1": "<code>«¿Cuál es el plazo legal de tratamiento para una renovación de pasaporte?»</code> — respuesta inmediata con la circular fuente",
+      "l2": "<code>«Encuéntrame los 5 últimos rechazos de tipo passport_renewal con motivo \"DIP caducado\", para inspirarme la redacción»</code> — el IA muestra los motivos anonimizados",
+      "l3": "<code>«¿Esta solicitud presenta un riesgo elevado de fraude basado en el historial?»</code> — el IA aplica las reglas de detección al caso concreto",
+      "l4": "<code>«Genera un email de notificación para pedirle al ciudadano que vuelva a enviar una foto carnet conforme»</code> — el IA propone el texto, el agente revisa antes del envío"
+    },
+    "s4": {
+      "title": "4. Limitaciones importantes",
+      "warn1": {
+        "title": "El IA no toma la decisión",
+        "body": "El asistente IA es una <em>ayuda a la decisión</em>, no un decisor. La decisión final (validar, rechazar, escalar) corresponde al agente y solo al agente. La firma del agente es la única que cuenta legalmente. Si el agente sigue ciegamente la sugerencia del IA sin verificar, asume la responsabilidad de cualquier error."
+      },
+      "warn2": {
+        "title": "El IA no accede a datos personales identificables",
+        "body": "Los casos similares retornados por el IA están anonimizados (nombre reemplazado por «Ciudadano X», datos sensibles enmascarados). El IA no puede recuperar el expediente completo de otro ciudadano para «comparar», porque eso violaría la confidencialidad. Esta limitación es un freno aceptado para preservar el secreto profesional."
+      },
+      "warn3": {
+        "title": "No usar para preguntas externas al trabajo",
+        "body": "El IA agente está limitado a preguntas profesionales relativas al rol del agente. Las preguntas personales (vacaciones, salario, pregunta general no profesional) son rechazadas con un mensaje explicativo. Cada query es loggeada en el audit log con su contenido."
+      }
+    },
+    "s5": {
+      "title": "5. Acceso a la interfaz",
+      "body": "El asistente IA agente está accesible desde una pequeña burbuja de chat siempre visible en la esquina inferior derecha del back-office (todas las páginas de los agentes 61-69). Al hacer clic se abre el panel de chat. La conversación se conserva durante la sesión; al fin de sesión, el historial es archivado en el log de auditoría y un nuevo chat empieza en la próxima sesión."
+    },
+    "prev": "← Anterior: Trabajo terreno OMS",
+    "next": "Siguiente: Rol Supervisor →"
+  },
+  "page61": {
+    "html_title": "Rol Agente — Manual Facil",
+    "title": "Rol Agente: concepto común a todos los agentes públicos",
+    "description": "Los agentes públicos son los funcionarios autorizados que tratan las solicitudes de los ciudadanos y empresas en Facil. Aunque cada entidad (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro Público, Ministerio de Sanidad, Extranjería) tiene su workflow específico, todos comparten un mismo modelo de trabajo: una cola de tareas, un mecanismo de bloqueo pesimista (lock_for_review) que evita que dos agentes traten la misma solicitud, y un conjunto fijo de acciones (validar, rechazar, pedir documentos, escalar). Esta página describe ese tronco común. Las pantallas y los detalles propios de cada entidad están en las páginas 62 a 67.",
+    "s1": {
+      "title": "1. Las 7 entidades de tratamiento",
+      "intro": "Facil reparte las solicitudes entre 7 entidades públicas, cada una con sus agentes. La asignación es automática: cuando un ciudadano deposita una solicitud, el sistema la dirige a la entidad competente según el tipo de servicio (workflow_code). Los agentes nunca eligen su lote; reciben las solicitudes asignadas a su entidad por orden de prioridad SLA.",
+      "t": {
+        "h1": "Entidad",
+        "h2": "Sigla",
+        "h3": "Servicios tratados",
+        "h4": "Página dedicada",
+        "r1": {
+          "c1": "Centro Nacional de Documentación Ecuatoguineana",
+          "c3": "Pasaportes (expedición, renovación)",
+          "c4": "Página 62"
+        },
+        "r2": {
+          "c1": "Dirección General de Tráfico",
+          "c3": "Permisos de conducir",
+          "c4": "Página 63"
+        },
+        "r3": {
+          "c1": "Ayuntamiento + Cámara de Comercio",
+          "c3": "Licencias comerciales municipales, registro empresarial, tasas",
+          "c4": "Página 64"
+        },
+        "r4": {
+          "c1": "Tesoro Público",
+          "c3": "Validación de pagos bancarios (reconciliación BANGE)",
+          "c4": "Página 65"
+        },
+        "r5": {
+          "c1": "Ministerio de Sanidad y Bienestar Social",
+          "c3": "Licencias sanitarias, inspección de establecimientos",
+          "c4": "Página 66"
+        },
+        "r6": {
+          "c1": "Dirección de Extranjería",
+          "c3": "Permisos de residencia, autorizaciones de trabajo",
+          "c4": "Página 67"
+        },
+        "r7": {
+          "c1": "DGI — Dirección General de Impuestos",
+          "c3": "Declaraciones fiscales (IVA, IRPF, IS, retenciones)",
+          "c4": "Cubierto en agentes Tesoro + supervisores DGI"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. La cola de trabajo (queue)",
+      "body": "El primer pantalla de cualquier agente es su cola de trabajo: la lista de solicitudes asignadas a su entidad, ordenadas por una prioridad calculada automáticamente. La fórmula combina tres factores:",
+      "l1": "<strong>SLA restante</strong> — cuánto tiempo queda antes de que la solicitud incumpla el plazo legal. Cuanto menos tiempo, mayor prioridad.",
+      "l2": "<strong>Importe</strong> — los pagos elevados (más de 1 millón XAF) suben en la cola para reducir el riesgo financiero.",
+      "l3": "<strong>Complejidad</strong> — las solicitudes con muchas piezas justificativas o flagged por la IA (anomalías documentales, mismatch nombre, etc.) tienen un score más alto.",
+      "body2": "El agente no puede saltar manualmente una entrada de la cola; debe tratar las solicitudes en el orden propuesto. Si una solicitud necesita un especialista (por ejemplo un caso médico complejo en OMS), la opción <em>«asignar a un colega»</em> permite transferirla con un mensaje justificativo (ver sección 4)."
+    },
+    "s3": {
+      "title": "3. El bloqueo pesimista: lock_for_review",
+      "intro": "Cuando dos agentes trabajan en la misma entidad, el riesgo es que ambos abran la misma solicitud y emitan decisiones contradictorias. Facil resuelve este problema con un bloqueo pesimista: solo un agente puede tener una solicitud en estado <em>«locked_by_agent»</em> a la vez.",
+      "diagram": "\n┌─────────────────────────────────────────────────────────────────────────┐\n│ Workflow lock_for_review (3 agentes en paralelo)                        │\n├─────────────────────────────────────────────────────────────────────────┤\n│                                                                         │\n│   Cola común                                                            │\n│   ┌────────┬────────┬────────┬────────┐                                 │\n│   │ #1234  │ #1235  │ #1236  │ #1237  │  ← solicitudes pending_agent    │\n│   └────┬───┴────┬───┴────┬───┴────────┘                                 │\n│        │        │        │                                              │\n│   Agente A    Agente B  Agente C                                        │\n│   click       click     click                                           │\n│   #1234       #1235     #1234 ← bloqueado por A                         │\n│   ✓ lock      ✓ lock    ✗ \"Solicitud ya está siendo tratada por A\"      │\n│                                                                         │\n│   ▶ Tras lock por A : #1234 desaparece de la cola de B y C              │\n│   ▶ Tras decisión final A : #1234 entra en approved/rejected/etc.       │\n│   ▶ Si A se aleja sin liberar : timeout 30 min → unlock automático      │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘\n",
+      "body": "El timeout de 30 minutos es importante: si un agente abre una solicitud y se va a comer, la solicitud se desbloquea automáticamente y vuelve a la cola común. Esto evita que las solicitudes queden indefinidamente bloqueadas si un agente cierra el navegador sin terminar. El agente que tenía el bloqueo recibe una notificación de pérdida."
+    },
+    "s4": {
+      "title": "4. Las 7 acciones del agente",
+      "intro": "Una vez bloqueada una solicitud, el agente dispone de 7 acciones (definidas en el enum <code>agent_action_type</code> del backend). No todas son aplicables a la vez; el botón está activo solo si el contexto lo permite.",
+      "t": {
+        "h1": "Acción",
+        "h2": "Cuándo se usa",
+        "h3": "Resultado",
+        "r1": {
+          "c2": "Al hacer clic en una solicitud de la cola",
+          "c3": "La solicitud cambia a <code>locked_by_agent</code>, ningún otro agente puede abrirla"
+        },
+        "r2": {
+          "c2": "Documentación correcta, control validado",
+          "c3": "Genera el documento oficial (PDF), firma del agente, envío al ciudadano + al vault"
+        },
+        "r3": {
+          "c2": "Documento falsificado, datos inverificables, fraude detectado",
+          "c3": "Solicitud marcada rechazada con motivo obligatorio (mín. 50 caracteres). Notificación al ciudadano, posibilidad de recurso"
+        },
+        "r4": {
+          "c2": "Falta una pieza, foto borrosa, fecha caducada",
+          "c3": "Estado <code>requires_documents</code>. Notificación al ciudadano con la lista exacta de lo que falta. Plazo 30 días, luego rechazo automático"
+        },
+        "r5": {
+          "c2": "Caso ambiguo, sospecha de fraude organizado, decisión más allá del nivel",
+          "c3": "Estado <code>escalated_supervisor</code>. La solicitud sale de la cola del agente y entra en la del supervisor de la entidad"
+        },
+        "r6": {
+          "c2": "Antes de irse a comer / fin de jornada / interrupción",
+          "c3": "La solicitud vuelve a la cola común sin decisión. No es un rechazo, es una pausa"
+        },
+        "r7": {
+          "c2": "Necesidad de un especialista (ej. caso médico complejo en OMS)",
+          "c3": "La solicitud va directamente a la cola del colega designado, con un mensaje justificativo"
+        }
+      }
+    },
+    "s5": {
+      "title": "5. Audit log: cada acción es trazada",
+      "body": "Toda acción del agente queda registrada en un log de auditoría con: <em>quién</em> (email del agente), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>antes/después</em> (estado anterior y nuevo), <em>motivo</em> (campo obligatorio en rechazo y escalación), <em>IP + user-agent</em>. Este log está visible para el supervisor de la entidad y para el administrador. Se conserva 7 años (obligación legal de archivo administrativo). El ciudadano puede solicitar una copia del log de su solicitud en virtud del derecho de acceso (página 58 — Legal)."
+    },
+    "s6": {
+      "title": "6. Estados del workflow (los 17 estados)",
+      "intro": "El workflow completo de una solicitud cuenta 17 estados (definidos en el enum <code>payment_workflow_status</code> del backend). Un agente trabaja típicamente sobre los estados marcados con ★.",
+      "t": {
+        "h1": "Estado",
+        "h2": "Significado",
+        "h3": "Agente actúa",
+        "r1": { "c2": "Solicitud depositada por el ciudadano" },
+        "r2": { "c2": "El sistema verifica datos automáticamente" },
+        "r3": { "c2": "Validación 100% automática (caso simple)" },
+        "r4": { "c2": "En cola del agente" },
+        "r5": { "c2": "Bloqueada por un agente para tratamiento" },
+        "r6": { "c2": "Esperando docs adicionales del ciudadano" },
+        "r7": { "c2": "El ciudadano ha enviado los nuevos docs" },
+        "r8": { "c2": "Validada por el agente, decisión final" },
+        "r9": { "c2": "Rechazada por el agente" },
+        "r10": { "c2": "Escalada al supervisor de la entidad" },
+        "r11": { "c2": "Bloqueada por el supervisor" },
+        "r12": { "c2": "Documento oficial generado y entregado" },
+        "r13": { "c2": "Cancelada por el ciudadano" },
+        "r14": { "c2": "Cancelada por el agente (caso administrativo)" },
+        "r15": { "c2": "Plazo de aporte de documentos vencido" }
+      }
+    },
+    "s7": {
+      "title": "7. Indicadores de carga (workload)",
+      "body": "Cada agente tiene una marca de carga en tiempo real: número de solicitudes en su cola, edad de la más antigua, tasa SLA respetada en los últimos 30 días. Estos indicadores son visibles para el supervisor para detectar agentes saturados o desocupados. La asignación automática toma este indicador en cuenta: las nuevas solicitudes van preferentemente a los agentes con menor carga, lo que equilibra el flujo."
+    },
+    "prev": "← Anterior: Rol Contable",
+    "next": "Siguiente: Agente CNEDOGE →"
+  },
+  "page62": {
+    "html_title": "Agente CNEDOGE — Manual Facil",
+    "title": "Agente CNEDOGE: validación de pasaportes",
+    "description": "Los agentes del Centro Nacional de Documentación Ecuatoguineana (CNEDOGE) tratan las solicitudes de pasaportes (expedición y renovación). Su trabajo es triple: verificar la conformidad documental (DIP en curso de validez, foto reciente, documento de filiación), realizar el control biométrico cuando el ciudadano se presenta físicamente, generar el pasaporte oficial PDF firmado. Esta página describe el workflow completo. Los conceptos comunes (cola, lock_for_review, acciones, audit log) están en la <a href=\"61-rol-agente.html\">página 61</a>.",
+    "s1": {
+      "title": "1. Tipos de solicitud tratados",
+      "t": {
+        "h1": "Tipo",
+        "h2": "Documentos exigidos",
+        "h3": "SLA legal",
+        "r1": {
+          "c1": "Expedición de pasaporte (primera solicitud)",
+          "c2": "DIP, certificado de nacimiento, foto carnet 35×45 mm fondo blanco, prueba de domicilio",
+          "c3": "10 días hábiles"
+        },
+        "r2": {
+          "c1": "Renovación (pasaporte caducado o por caducar)",
+          "c2": "DIP, pasaporte anterior (incluso caducado), foto carnet",
+          "c3": "5 días hábiles"
+        },
+        "r3": {
+          "c1": "Pérdida o robo (con declaración a la policía)",
+          "c2": "DIP, declaración policía firmada, foto carnet, justificante de pago de tasa adicional",
+          "c3": "15 días hábiles"
+        },
+        "r4": {
+          "c1": "Pasaporte de menor (menos de 18 años)",
+          "c2": "Acta nacimiento, DIP de los dos padres, autorización notarial firmada por ambos, foto carnet",
+          "c3": "10 días hábiles"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Workflow de validación CNEDOGE (8 pasos)",
+      "diagram": "\n┌─────────────────────────────────────────────────────────────────────────┐\n│                                                                         │\n│  1. Solicitud entra en cola CNEDOGE (state: pending_agent_review)       │\n│         │                                                               │\n│         ▼                                                               │\n│  2. Agente abre desde la cola → lock_for_review (locked_by_agent)       │\n│         │                                                               │\n│         ▼                                                               │\n│  3. Verificación documental                                             │\n│     • DIP en curso de validez (control fecha + autenticidad sello)      │\n│     • Foto carnet conforme (fondo blanco, sin sombras, frontal)         │\n│     • Acta nacimiento (control coherencia datos)                        │\n│     • Para menores: autorización notarial de los 2 padres               │\n│         │                                                               │\n│         ├─ Falta algo o doc dudoso ──▶ request_documents                │\n│         │     (ciudadano tiene 30 días para enviar)                     │\n│         ▼                                                               │\n│  4. Convocatoria del ciudadano (cita biométrica)                        │\n│     • Email + SMS con fecha/hora propuesta (sistema de citas)           │\n│     • Ciudadano puede reagendar 1 vez sin justificación                 │\n│         │                                                               │\n│         ▼                                                               │\n│  5. Día de cita: control biométrico in situ                             │\n│     • Foto frontal con cámara CNEDOGE                                   │\n│     • Toma de huellas dactilares (10 dedos)                             │\n│     • Verificación cara-DIP por agente                                  │\n│         │                                                               │\n│         ├─ Fraude detectado ──▶ reject (motivo obligatorio)             │\n│         │                  ──▶ informe a Extranjería si extranjero      │\n│         ▼                                                               │\n│  6. approve → generación PDF pasaporte                                  │\n│     • Datos extraidos de DIP + foto biométrica                          │\n│     • Firma del agente + sello CNEDOGE                                  │\n│     • QR de verificación (página 57)                                    │\n│         │                                                               │\n│         ▼                                                               │\n│  7. Notificación al ciudadano                                           │\n│     • Email con PDF en pieza adjunta                                    │\n│     • Push (móvil) y notificación in-app                                │\n│     • PDF disponible en el vault del ciudadano (página 25)              │\n│         │                                                               │\n│         ▼                                                               │\n│  8. completed (state final)                                             │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘\n"
+    },
+    "s3": {
+      "title": "3. Citas biométricas: gestión del calendario",
+      "body": "A diferencia de los otros agentes, CNEDOGE depende de una citoyen en presencia para la toma biométrica. La página de gestión de citas muestra un calendario semanal con los slots disponibles (típicamente 8h-12h y 14h-17h, lunes a viernes, 15 min por cita). El agente puede :",
+      "l1": "Confirmar la cita propuesta automáticamente por el sistema",
+      "l2": "Reagendar a petición del ciudadano (botón <em>«Reprogramar»</em>)",
+      "l3": "Marcar <em>«Ausente»</em> si el ciudadano no se presenta (3 ausencias = cancelación automática)",
+      "l4": "Bloquear un slot para mantenimiento del equipo biométrico"
+    },
+    "s4": {
+      "title": "4. Casos especiales",
+      "warn": {
+        "title": "Pasaporte de un menor",
+        "body": "El control es más estricto: la autorización notarial de los DOS padres es obligatoria. En caso de divorcio o de padre/madre soltero/a, se acepta una decisión judicial (custodia exclusiva). Si solo un padre firma sin justificación, la solicitud debe ser <code>escalate</code> al supervisor para evitar conflictos familiares."
+      },
+      "info": {
+        "title": "Pérdida durante un viaje al extranjero",
+        "body": "Si la pérdida o robo se produce fuera del país, el ciudadano debe primero contactar la embajada de Guinea Ecuatorial del país de residencia para obtener un salvoconducto de regreso. Una vez en el país, presenta su solicitud en Facil con la declaración de la embajada. El agente debe verificar la autenticidad del documento de la embajada antes de validar."
+      }
+    },
+    "s5": {
+      "title": "5. Indicadores específicos CNEDOGE",
+      "l1": "<strong>Tasa de citas honradas</strong> — porcentaje de ciudadanos que se presentan a su cita; objetivo &gt; 90%",
+      "l2": "<strong>Tasa de fraude detectado</strong> — número de rechazos por documento falso / total tratado; un pico es señal de organización fraudulenta",
+      "l3": "<strong>Plazo medio de tratamiento</strong> — desde el depósito hasta la generación del PDF; objetivo &lt; 5 días para renovaciones, &lt; 10 días para nuevas expediciones"
+    },
+    "prev": "← Anterior: Rol Agente",
+    "next": "Siguiente: Agente DGT →"
+  },
+  "page63": {
+    "html_title": "Agente DGT — Manual Facil",
+    "title": "Agente DGT: validación de permisos de conducir",
+    "description": "Los agentes de la Dirección General de Tráfico (DGT) tratan los permisos de conducir: expedición primera vez, renovación, duplicados, conversión de permisos extranjeros. Trabajan con un calendario de citas para los exámenes prácticos y emiten el carnet definitivo tras validación. Esta página describe la pantalla concreta de un agente DGT con capturas reales del back-office.",
+    "s1": {
+      "title": "1. Dashboard del agente DGT",
+      "body": "La pantalla de inicio del agente DGT muestra los KPI clave de su jornada: número de solicitudes en cola, citas del día, tasa SLA respetada de los últimos 30 días, y horarios de cita disponibles. El submenu lateral <em>«Permisos de Conducir»</em> da acceso directo a las acciones específicas (Validación rápida, Citas, Historial)."
+    },
+    "fig1": {
+      "alt": "Dashboard DGT con submenu Permisos de Conducir expandido",
+      "caption": "Dashboard DGT con KPIs (solicitudes pendientes, citas hoy, tasa SLA) y menú lateral expandido."
+    },
+    "s2": {
+      "title": "2. Cola de solicitudes pendientes",
+      "body": "La cola lista todas las solicitudes asignadas a la entidad DGT, ordenadas por prioridad SLA. Al hacer clic en una entrada, se abre el panel lateral derecho con un resumen y un botón <em>«Validación rápida»</em> que activa el lock_for_review (ver <a href=\"61-rol-agente.html\">página 61</a>)."
+    },
+    "fig2": {
+      "alt": "Lista dossiers pendientes con detalle CON-2026-00001",
+      "caption": "Cola de solicitudes con panel lateral de detalle y botón <em>Validación rápida</em>."
+    },
+    "s3": {
+      "title": "3. Detalle de una solicitud (3 pestañas)",
+      "intro": "Tras hacer lock, el agente accede a la pantalla de detalle dividida en 3 pestañas: Resumen (datos personales y tipo de permiso), Documentos (verificación de los archivos subidos) e Historial (timeline cronológico de las acciones).",
+      "sub1": {
+        "title": "Pestaña Resumen — datos del solicitante"
+      },
+      "sub2": {
+        "title": "Pestaña Documentos — verificación documental",
+        "body": "Cada documento se previsualiza in situ (zoom, rotación, descarga). El agente marca explícitamente <em>«Conforme»</em> o <em>«No conforme»</em>. Si un documento está marcado <em>«No conforme»</em>, debe especificar el motivo (foto borrosa, fecha caducada, sello ilegible) — esta información se transmite al ciudadano si la decisión final es <code>request_documents</code>."
+      },
+      "sub3": {
+        "title": "Pestaña Historial — timeline cronológico"
+      }
+    },
+    "fig3": {
+      "alt": "Detalle solicitud renovación licencia con datos personales",
+      "caption": "Resumen del expediente: tipo de servicio, datos del solicitante, importe, estado, plazo SLA restante."
+    },
+    "fig4": {
+      "alt": "Pestaña Documentos con permiso residencia y carnet",
+      "caption": "Verificación documental: previsualización de cada archivo + botones Conforme/No conforme + campo motivo."
+    },
+    "fig5": {
+      "alt": "Timeline con cambios de estado y asignaciones",
+      "caption": "Timeline de acciones: depósito, asignación, lock, decisión. Cada evento con timestamp + autor."
+    },
+    "s4": {
+      "title": "4. Historial de solicitudes (vista global)",
+      "body": "Para auditar su propia actividad y consultar casos pasados, el agente dispone de una pantalla <em>«Historial de Solicitudes»</em> con todos los expedientes que ha tratado, filtrable por fecha, estado, tipo de servicio. El panel lateral derecho muestra el timeline detallado del expediente seleccionado y permite exportarlo en PDF para archivos."
+    },
+    "fig6": {
+      "alt": "Página Historial de Solicitudes con tabla acciones",
+      "caption": "Vista global del historial filtrable."
+    },
+    "fig7": {
+      "alt": "Timeline detallado solicitud panel lateral exportable",
+      "caption": "Panel lateral con timeline detallado + botón <em>Exportar PDF</em>."
+    },
+    "s5": {
+      "title": "5. Gestión de citas para examen práctico",
+      "body": "A diferencia de la mayoría de los agentes, el DGT necesita organizar exámenes prácticos en pista o en circuito real para los nuevos permisos. La gestión de citas se hace desde un calendario semanal donde el agente:",
+      "l1": "Visualiza los slots ya reservados (verde: confirmados, naranja: pendientes confirmación)",
+      "l2": "Hace clic en un slot ocupado para abrir el panel lateral con datos del ciudadano",
+      "l3": "Reagenda con un drag-and-drop o botón <em>«Reprogramar»</em>",
+      "l4": "Marca el resultado tras el examen: aprobado (genera el carnet) o suspendido (puede volver a presentarse en 30 días)"
+    },
+    "fig8": {
+      "alt": "Calendario semanal de citas con cita confirmada",
+      "caption": "Calendario semanal: slots disponibles, ocupados, bloqueados."
+    },
+    "fig9": {
+      "alt": "Detalle cita lateral con datos ciudadano y reprogramar",
+      "caption": "Detalle de una cita con datos completos del ciudadano + botón Reprogramar."
+    },
+    "s6": {
+      "title": "6. Tipos de permisos tratados",
+      "t": {
+        "h1": "Categoría",
+        "h2": "Vehículos autorizados",
+        "h3": "Edad mínima",
+        "r1": { "c2": "Motocicletas hasta 125 cc" },
+        "r2": { "c2": "Motocicletas sin restricción" },
+        "r3": { "c2": "Vehículos turismos hasta 3.500 kg" },
+        "r4": { "c2": "Camiones más de 3.500 kg" },
+        "r5": { "c2": "Autobuses, transporte de pasajeros" },
+        "r6": { "c2": "Combinaciones con remolque pesado" }
+      }
+    },
+    "prev": "← Anterior: Agente CNEDOGE",
+    "next": "Siguiente: Agente Ayuntamiento + Cámara →"
+  },
+  "page64": {
+    "html_title": "Agente Ayuntamiento + Cámara — Manual Facil",
+    "title": "Agentes Ayuntamiento + Cámara: validación pagos comerciales",
+    "description": "Los agentes del Ayuntamiento (municipalidad de Malabo, Bata, Mongomo…) y de la Cámara de Comercio comparten un mismo back-office aunque tratan tasas distintas. El Ayuntamiento valida las tasas municipales (licencia comercial de bares, restaurantes, tiendas) mientras que la Cámara cobra las cuotas anuales de inscripción al registro mercantil. El workflow es simétrico: cola de pagos pendientes, validación con justificantes, generación del recibo PDF firmado.",
+    "s1": {
+      "title": "1. Las dos entidades en paralelo",
+      "t": {
+        "h1": "Entidad",
+        "h2": "Tasas tratadas",
+        "h3": "Periodicidad",
+        "r1": {
+          "c1": "Ayuntamiento (Malabo, Bata, Mongomo, Ebebiyín…)",
+          "c2": "Licencia comercial de bares y restaurantes, tasa de mercado, tasa de cementerio, tasa de obras, ocupación vía pública",
+          "c3": "Anual o por evento"
+        },
+        "r2": {
+          "c1": "Cámara de Comercio",
+          "c2": "Cuota anual de inscripción al registro mercantil, tasa de actualización de los estatutos, certificado de registro",
+          "c3": "Anual"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Dashboard y cola de pagos",
+      "body": "Cada agente ve únicamente las tasas de su entidad. El dashboard muestra los pagos pendientes, los validados del día y los en escalación. Los pagos consolidados (bundle, ver <a href=\"26-bundle-payment.html\">página 26</a>) aparecen como una entrada única con el detalle del desglose por entidad."
+    },
+    "fig1": {
+      "alt": "Dashboard Ayuntamiento con pagos bundle pendientes",
+      "caption": "Dashboard Ayuntamiento Malabo con pagos bundle en cola."
+    },
+    "fig2": {
+      "alt": "Dashboard Cámara Comercio con pago pendiente",
+      "caption": "Dashboard Cámara Comercio Malabo con cuotas pendientes."
+    },
+    "s3": {
+      "title": "3. Validación de un pago: el flujo simétrico",
+      "intro": "El agente abre un pago pendiente desde su cola. La pantalla de validación muestra: datos del comerciante (nombre, NIF, dirección), tipo de tasa, importe esperado, importe pagado, modo de pago (efectivo, transferencia BANGE, mobile money), justificante (foto del recibo bancario o de la nota de caja).",
+      "body": "Cuando el agente confirma, el sistema genera el recibo PDF oficial con un número único de la forma <code>REC-2026-NNNNNN</code>, sello de la entidad, firma del agente y QR de verificación. Una notificación es enviada inmediatamente al comerciante (email + push)."
+    },
+    "fig3": {
+      "alt": "Validación pago efectivo Tasa Municipal Bares",
+      "caption": "Validación de un pago en efectivo de la Tasa Municipal de Bares y Restaurantes."
+    },
+    "fig4": {
+      "alt": "Validación pago Cuota Cámara Comercio",
+      "caption": "Validación de un pago de Cuota Cámara Comercio (50.000 XAF)."
+    },
+    "s4": {
+      "title": "4. Confirmación: el recibo generado",
+      "body": "Tras la validación, un modal de confirmación recapitula el recibo emitido y propone descargarlo o enviarlo por email a una dirección personalizada (caso útil cuando el comerciante quiere transmitir el recibo a su contable directamente)."
+    },
+    "fig5": {
+      "alt": "Modal éxito recibo REC-2026-000003 generado",
+      "caption": "Modal éxito tras validación: número de recibo, fecha, opciones descargar/enviar."
+    },
+    "fig6": {
+      "alt": "Modal éxito recibo REC-2026-000004 generado",
+      "caption": "Modal idéntico para Cámara — diseño común."
+    },
+    "s5": {
+      "title": "5. Historial de validaciones",
+      "body": "Como los agentes DGT, los agentes Ayuntamiento/Cámara disponen de un historial completo de sus validaciones, con filtros por fecha, importe, tipo de tasa, modo de pago. El panel lateral derecho permite reabrir un recibo emitido para reenvío al comerciante o para auditoría interna."
+    },
+    "fig7": {
+      "alt": "Historial validaciones Ayuntamiento con panel lateral",
+      "caption": "Historial Ayuntamiento con panel lateral de detalle."
+    },
+    "fig8": {
+      "alt": "Historial validaciones Cámara con detalle lateral",
+      "caption": "Historial Cámara: misma estructura, datos propios a la entidad."
+    },
+    "s6": {
+      "title": "6. Particularidades del workflow comercial",
+      "info": {
+        "title": "Inspección terreno (OMS)",
+        "body": "Cuando un agente sanitario del Ministerio realiza una inspección terreno (ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) y cobra una tasa en efectivo en el local, esa tasa entra en el flujo Ayuntamiento o Cámara según su naturaleza. El agente OMS escanea el QR de la licencia, registra el cobro, y un evento se crea automáticamente en la cola del agente Ayuntamiento/Cámara para reconciliación al final del día."
+      },
+      "warn": {
+        "title": "Pagos en efectivo: declaración obligatoria",
+        "body": "Para los pagos en efectivo superiores a 1.000.000 XAF, el agente debe pedir un justificante de origen de fondos (extracto bancario, justificante de venta, etc.) y adjuntarlo al expediente. Esta obligación viene de la regulación CEMAC contra el blanqueo de capitales. Si el cliente no puede justificar, la decisión obliga a <code>escalate</code> al supervisor."
+      }
+    },
+    "prev": "← Anterior: Agente DGT",
+    "next": "Siguiente: Agente Tesoro →"
+  },
+  "page65": {
+    "html_title": "Agente Tesoro — Manual Facil",
+    "title": "Agente Tesoro Público: validación de pagos y reconciliación BANGE",
+    "description": "Los agentes del Tesoro Público son los validadores finales de todos los pagos que pasan por Facil. A diferencia de los agentes Ayuntamiento o Cámara que validan tasas concretas, el Tesoro centraliza la reconciliación bancaria: confirma que el dinero ha entrado realmente en las cuentas del Estado vía BANGE Mobile Money, transferencia bancaria o ingreso en efectivo. Cada validación genera el recibo oficial firmado del Tesoro Público.",
+    "s1": {
+      "title": "1. Autenticación reforzada (2FA obligatorio)",
+      "body": "Por la sensibilidad de las operaciones (validación de millones de XAF al día), los agentes del Tesoro tienen una autenticación 2FA obligatoria a cada inicio de sesión, sin excepción posible. La pantalla de configuración de la cuenta permite generar códigos de respaldo en caso de pérdida del teléfono."
+    },
+    "fig1": {
+      "alt": "Configuración seguridad 2FA con códigos respaldo",
+      "caption": "Configuración de seguridad 2FA con códigos de respaldo."
+    },
+    "fig2": {
+      "alt": "Pantalla login portal de agente Facil",
+      "caption": "Pantalla de login común a todos los agentes Facil."
+    },
+    "fig3": {
+      "alt": "Pantalla verificación 2FA código seis dígitos",
+      "caption": "Verificación 2FA: 6 dígitos generados por la app autenticadora del agente."
+    },
+    "s2": {
+      "title": "2. Dashboard del Tesoro Público",
+      "body": "El dashboard agrupa los pagos según su estado: pendientes de validación (cola de trabajo), completados del día (auditoría rápida), escalados al supervisor (casos ambiguos). Los KPI muestran el importe total pendiente, el importe validado en el día, la tasa de validación automática (pagos auto_approved sin intervención humana, gracias a los webhooks BANGE)."
+    },
+    "fig4": {
+      "alt": "Dashboard Tesoro Público con pagos pendientes y completados",
+      "caption": "Dashboard Tesoro: pagos pendientes en la parte superior, completados en la parte inferior."
+    },
+    "s3": {
+      "title": "3. Validación de un pago: lista + detalle lateral",
+      "body": "El agente abre la lista de pagos pendientes. Al hacer clic en una entrada, el panel lateral muestra los datos esenciales: tipo de servicio (CONDUCIR_RENOVACION, PASAPORTE_NUEVO, etc.), importe, modo de pago, identificador de transacción BANGE, justificante (extracto bancario o capture del SMS de confirmación BANGE)."
+    },
+    "fig5": {
+      "alt": "Lista pagos pendientes con detalle CONDUCIR_RENOVACION",
+      "caption": "Cola de pagos pendientes con panel lateral de detalle."
+    },
+    "s4": {
+      "title": "4. Vista completa de un pago + 3 acciones disponibles",
+      "body": "Si la información del panel lateral es insuficiente, el agente abre la vista completa con el botón <em>«Ver detalle»</em>. La pantalla muestra todos los datos: histórico de transacciones BANGE para esa cuenta, capturas del recibo de pago, datos del ciudadano. Tres botones: <em>«Validar»</em> (apruebe el pago, genere el recibo), <em>«Rechazar»</em> (motivo obligatorio: importe incorrecto, fraude, doble pago), <em>«Escalar»</em> (caso ambiguo, transmite al supervisor del Tesoro)."
+    },
+    "fig6": {
+      "alt": "Detalle pago con acciones validar rechazar escalar",
+      "caption": "Vista detallada con los 3 botones de acción y todos los datos del pago."
+    },
+    "s5": {
+      "title": "5. Generación del recibo Tesoro Público",
+      "body": "Tras la validación, el sistema genera el recibo oficial del Tesoro Público (formato distinto del Ayuntamiento o Cámara). Este recibo es legalmente vinculante: prueba que el ciudadano ha pagado las tasas debidas al Estado. Lleva el número único <code>REC-2026-NNNNNN</code>, la firma electrónica del Tesoro, un QR de verificación (página 57) y la mención <em>«Recibo válido para todas las administraciones de Guinea Ecuatorial»</em>."
+    },
+    "fig7": {
+      "alt": "Modal éxito recibo REC-2026-000013 generado",
+      "caption": "Modal éxito tras validación: número de recibo + descargar."
+    },
+    "fig8": {
+      "alt": "Recibo PDF generado con QR verificación firma Tesoro",
+      "caption": "Recibo PDF oficial del Tesoro con QR + firma electrónica."
+    },
+    "s6": {
+      "title": "6. Mis transacciones (auditoría agente)",
+      "body": "El menu <em>«Mis Transacciones»</em> reúne todos los pagos que el agente ha tratado, con filtros (fecha, tipo de servicio, importe, modo de pago) y métricas agregadas: importe total validado del mes, número medio de validaciones por día, tasa de rechazo. Útil para el cierre semanal de actividad del agente."
+    },
+    "fig9": {
+      "alt": "Historial de Transacciones con filtros y métricas",
+      "caption": "Historial transacciones del agente Tesoro con filtros y métricas agregadas."
+    },
+    "s7": {
+      "title": "7. Reconciliación bancaria automática",
+      "body": "La mayoría de los pagos vía BANGE Mobile Money son validados automáticamente por el sistema gracias al webhook BANGE: cuando un ciudadano confirma su pago con el PIN, BANGE envía una notificación a Facil que valida el pago en menos de 5 segundos. Estos pagos pasan directamente al estado <code>auto_approved</code> sin intervención del agente. El agente Tesoro interviene solo en los casos no automáticos: pagos en efectivo en la oficina, transferencias clásicas con extracto bancario, casos donde el webhook ha fallado y debe ser reconciliado manualmente.",
+      "body2": "Las funciones <em>Verify Treasury</em> permiten al agente buscar manualmente una transacción por su identificador BANGE para resolver discrepancias (ver <a href=\"68-funciones-verify-agente.html\">página 68</a>)."
+    },
+    "prev": "← Anterior: Agente Ayuntamiento + Cámara",
+    "next": "Siguiente: Agente Ministerio Sanidad →"
+  },
+  "page66": {
+    "html_title": "Agente Ministerio OMS — Manual Facil",
+    "title": "Agente Ministerio Sanidad: licencias comerciales e inspecciones",
+    "description": "Los agentes del Ministerio de Sanidad y Bienestar Social («OMS» en la jerga interna del proyecto, no confundir con la Organización Mundial de la Salud) gestionan las licencias sanitarias de los establecimientos comerciales (bares, restaurantes, farmacias, peluquerías, etc.) y realizan las inspecciones terreno periódicas. Su trabajo combina back-office (consulta de licencias, validación de conformidad) y trabajo terreno (inspección física in situ — ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>). Esta página describe el back-office.",
+    "s1": {
+      "title": "1. Dashboard del Ministerio",
+      "body": "El dashboard del Ministerio de Sanidad muestra los KPIs específicos: número de licencias en curso de validez, vencidas, en renovación; inspecciones realizadas del mes; obligaciones pendientes de pago por las empresas. Las acciones rápidas dan acceso directo a las funciones más frecuentes: nueva inspección, consulta de empresa por NIF, lista de licencias, conformidad por tipo de tasa."
+    },
+    "fig1": {
+      "alt": "Dashboard Ministerio Comercio con KPIs y acciones rápidas",
+      "caption": "Dashboard del Ministerio con KPIs licencias, inspecciones, obligaciones."
+    },
+    "s2": {
+      "title": "2. Consulta de empresas",
+      "body": "El menú <em>«Consulta empresas»</em> permite buscar una empresa por NIF, número de registro mercantil o nombre comercial. Útil cuando el agente recibe una llamada de un comerciante o necesita auditar el historial de un establecimiento antes de una inspección."
+    },
+    "fig2": {
+      "alt": "Consulta empresas búsqueda por NIF/registro/nombre",
+      "caption": "Búsqueda de empresa con campos NIF, registro mercantil, nombre comercial."
+    },
+    "s3": {
+      "title": "3. Licencias comerciales",
+      "body": "La pantalla <em>«Licencias comerciales»</em> lista todas las licencias gestionadas por el Ministerio, con sus identificadores, su empresa propietaria, su saldo de obligaciones (número de tasas no pagadas) y su estado (en validez, vencida, en renovación, suspendida).",
+      "body2": "Hacer clic en una licencia abre la vista detallada con el desglose por obligación (tasa anual, tasa de inspección, tasa Cámara…) y la opción de regenerar el certificado PDF de la licencia."
+    },
+    "fig3": {
+      "alt": "Lista licencias comerciales con identificadores y saldos",
+      "caption": "Vista global de las licencias con identificadores y saldos pendientes."
+    },
+    "fig4": {
+      "alt": "Detalle licencia Ferreteria con 5 obligaciones pendientes",
+      "caption": "Detalle de una licencia con desglose de obligaciones pendientes."
+    },
+    "s4": {
+      "title": "4. Tablero de inspecciones del día",
+      "body": "El menú <em>«Inspecciones»</em> abre el tablero de control terrain con todas las inspecciones del día (programadas y efectuadas). Es la pantalla central del agente OMS antes de salir al terrain. Cada inspección muestra: empresa visitada, dirección, hora prevista, conformidad observada (si ya hecha), tasas cobradas en efectivo (si aplicable)."
+    },
+    "fig5": {
+      "alt": "Tablero Control Terrain inspecciones del día",
+      "caption": "Tablero de control terrain con inspecciones del día."
+    },
+    "s5": {
+      "title": "5. Iniciar una nueva inspección",
+      "body": "Para empezar una inspección, el agente puede escanear el QR de la licencia comercial pegado en el establecimiento (caso typique cuando llega al local) o buscar el NIF manualmente desde la oficina. El sistema valida el QR contra la base de datos y abre la ficha de inspección preparada con los datos pre-llenados."
+    },
+    "fig6": {
+      "alt": "Nueva Inspección escanear QR o buscar NIF manual",
+      "caption": "Pantalla de inicio de inspección: escanear QR o buscar NIF manual."
+    },
+    "s6": {
+      "title": "6. Reconciliación de cobros del día",
+      "body": "Al final de la jornada, el agente que ha cobrado tasas en efectivo (multas sanitarias, tasas adicionales) debe reconciliar su caja: la suma de los cobros registrados en cada inspección debe coincidir con el efectivo en su poder. La pantalla de reconciliación muestra las diferencias y permite generar un recibo agregado a depositar al cajero del Ministerio."
+    },
+    "fig7": {
+      "alt": "Reconciliación cobros del día (cash collectado)",
+      "caption": "Reconciliación de cobros: importes cobrados vs efectivo en caja."
+    },
+    "s7": {
+      "title": "7. Conformidad por tipo de tasa",
+      "body": "La pantalla <em>«Conformidad»</em> muestra el porcentaje de conformidad de las empresas por tipo de tasa: Cámara (CHAMBER), Municipal (MUNICIPAL), Tesoro (TESORO). Útil para detectar las categorías con mayor índice de retraso de pago y orientar las acciones de control."
+    },
+    "fig8": {
+      "alt": "Conformidad por tipo de tasa CHAMBER MUNICIPAL TESORO",
+      "caption": "Tasa de conformidad por categoría (CHAMBER, MUNICIPAL, TESORO)."
+    },
+    "s8": {
+      "title": "8. Cola de obligaciones",
+      "body": "Cuando una obligación (tasa anual, tasa de control) vence sin pago, entra en una cola dedicada que el agente puede consultar para realizar acciones de relance: notificación al comerciante, escalación al supervisor, programación de una inspección de control. La pestaña <em>«Obligaciones terminadas»</em> da acceso al historial pasado."
+    },
+    "fig9": {
+      "alt": "Cola obligaciones en curso vacía",
+      "caption": "Cola de obligaciones en curso (vacía en este ejemplo)."
+    },
+    "fig10": {
+      "alt": "Obligaciones terminadas historial sin registros",
+      "caption": "Pestaña <em>Obligaciones terminadas</em> (historial)."
+    },
+    "prev": "← Anterior: Agente Tesoro",
+    "next": "Siguiente: Agente Extranjería →"
+  },
+  "page67": {
+    "html_title": "Agente Extranjería — Manual Facil",
+    "title": "Agente Extranjería: residencia y autorización de trabajo",
+    "description": "La Dirección de Extranjería gestiona los permisos de residencia y las autorizaciones de trabajo para los extranjeros que viven o quieren trabajar en Guinea Ecuatorial. Las solicitudes son controladas más estrictamente que las de los nacionales (verificación INTERPOL, antecedentes penales, aval profesional), por lo que el flujo incluye varios puntos de control adicionales y un plazo de tratamiento más largo (30 a 60 días según el tipo).",
+    "s1": {
+      "title": "1. Tipos de solicitud tratados",
+      "t": {
+        "h1": "Tipo",
+        "h2": "Para quién",
+        "h3": "Validez",
+        "h4": "SLA",
+        "r1": {
+          "c1": "Residencia temporal",
+          "c2": "Estudiante, conjoint de national, profesional con contrato &lt; 1 año",
+          "c3": "1 año renovable",
+          "c4": "30 días"
+        },
+        "r2": {
+          "c1": "Residencia permanente",
+          "c2": "Más de 5 años de residencia continua, conjoint nacional con 3 años de unión, inversor con &gt; 100 M XAF en GE",
+          "c3": "5 años renovable",
+          "c4": "60 días"
+        },
+        "r3": {
+          "c1": "Autorización de trabajo",
+          "c2": "Trabajador extranjero contratado por una empresa local",
+          "c3": "Vinculada al contrato de trabajo",
+          "c4": "45 días"
+        },
+        "r4": {
+          "c1": "Reagrupación familiar",
+          "c2": "Conjoint y hijos menores de un residente legal en GE",
+          "c3": "Igual al titular",
+          "c4": "60 días"
+        },
+        "r5": {
+          "c1": "Naturalización",
+          "c2": "Residente desde 10 años, dominio del español, sin antecedentes",
+          "c3": "Permanente",
+          "c4": "180 días + decreto presidencial"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Workflow específico Extranjería (puntos de control adicionales)",
+      "intro": "A diferencia de los otros agentes, el agente Extranjería realiza tres controles externos obligatorios antes de poder validar:",
+      "diagram": "\n┌────────────────────────────────────────────────────────────────────────┐\n│                                                                        │\n│  Workflow Extranjería (3 controles externos obligatorios)              │\n│                                                                        │\n│  pending_agent_review (cola Extranjería)                               │\n│         │                                                              │\n│         ▼                                                              │\n│  lock_for_review                                                       │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 1 — Documentos de identidad                 │               │\n│  │  • Pasaporte país de origen en validez (mín. 6 meses)│              │\n│  │  • Visa actual o salvoconducto consular             │               │\n│  │  • Foto carnet                                      │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 2 — Verificación INTERPOL ★                  │              │\n│  │  • Búsqueda en base internacional de antecedentes   │               │\n│  │  • Si match : escalada automática al supervisor      │              │\n│  │  • Si nada : continuación del flow                  │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 3 — Antecedentes país de origen ★            │              │\n│  │  • Certificado país de origen, traducido y visado    │              │\n│  │  • Para algunos países: legalización vía embajada    │              │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 4 — Aval profesional/familiar (según tipo) ★ │              │\n│  │  • Trabajo: contrato visado por Ministerio Trabajo   │              │\n│  │  • Estudiante: inscripción universitaria             │              │\n│  │  • Conjoint: acta de matrimonio + DIP del conjoint  │              │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  approve / reject (motivo obligatorio) / escalate                      │\n│                                                                        │\n│  ★ = control no presente en los otros agentes                          │\n│                                                                        │\n└────────────────────────────────────────────────────────────────────────┘\n"
+    },
+    "s3": {
+      "title": "3. Casos sensibles que obligan a escalar",
+      "intro": "El agente Extranjería debe usar <code>escalate</code> sin dudar en los siguientes casos:",
+      "l1": "<strong>Match INTERPOL</strong> — incluso parcial, debe ser revisado por el supervisor (puede ser homonimia)",
+      "l2": "<strong>Procedencia de un país sancionado</strong> — la lista oficial actualizada está en el menú <em>«Países sensibles»</em>",
+      "l3": "<strong>Reagrupación familiar con un residente con antecedentes</strong> — el supervisor decide si los antecedentes del titular impactan la solicitud",
+      "l4": "<strong>Documento sospechoso de falsificación</strong> — si el OCR detecta inconsistencias, escalación obligatoria",
+      "l5": "<strong>Solicitud de naturalización</strong> — sistemáticamente escalada (decisión final ministerial, no del agente)"
+    },
+    "s4": {
+      "title": "4. Generación del título de residencia",
+      "body": "Tras la validación, el sistema genera un título de residencia físico (carnet plástico) que el ciudadano debe retirar en la oficina de Extranjería en presencia (toma biométrica complementaria : huellas + foto). El sistema convoca automáticamente al ciudadano por email + SMS con la cita propuesta. La presencia es obligatoria; ningún título puede enviarse por correo o por intermediario."
+    },
+    "s5": {
+      "title": "5. Renovación: el flujo simplificado",
+      "body": "Cuando el residente renueva su título antes del vencimiento (anticipo recomendado de 60 días), el flow es más rápido: solo los controles 1 (documentos) y 2 (INTERPOL) se rehacen, los controles 3 y 4 se omiten salvo cambio de situación (nuevo trabajo, nuevo conjoint). Esta simplificación reduce el plazo a 15-20 días en lugar de 30-60."
+    },
+    "s6": {
+      "title": "6. Particularidad: ningún screenshot disponible",
+      "info": {
+        "title": "Por qué no hay capturas en esta página",
+        "body": "A diferencia de las páginas 63-66, esta página describe el agente Extranjería de forma textual porque la integración Facil + Extranjería está aún en fase de despliegue piloto en mayo 2026. Las pantallas concretas serán añadidas en una versión ulterior del manual cuando el back-office esté generalizado. Los flujos descritos aquí son sin embargo conformes a las especificaciones validadas con la Dirección de Extranjería."
+      }
+    },
+    "prev": "← Anterior: Agente Ministerio OMS",
+    "next": "Siguiente: Funciones Verify (3 variantes) →"
+  },
+  "page68": {
+    "html_title": "Funciones Verify (3 variantes) — Manual Facil",
+    "title": "Las 3 variantes de la función Verify",
+    "description": "La función «Verify» en Facil tiene tres formas distintas, según quién la usa y para qué. Las tres comparten un mismo principio (verificar la autenticidad de un documento o de una transacción) pero difieren radicalmente por el scope, los datos accesibles y los permisos requeridos. Esta página las describe en paralelo para evitar las confusiones que causaban tickets de soporte recurrentes.",
+    "s1": {
+      "title": "1. Tabla comparativa de las 3 Verify",
+      "t": {
+        "h1": "Aspecto",
+        "h2": "Verify Público",
+        "h3": "Verify Treasury",
+        "h4": "Verify CNEDOGE",
+        "r1": {
+          "c1": "<strong>Quién lo usa</strong>",
+          "c2": "Cualquier persona (ciudadano, comerciante, banco)",
+          "c3": "Agente Tesoro Público autenticado",
+          "c4": "Agente CNEDOGE autenticado"
+        },
+        "r2": {
+          "c1": "<strong>Acceso</strong>",
+          "c2": "Sin login (URL pública /verify)",
+          "c3": "Login + 2FA + permission validate_payment",
+          "c4": "Login + permission validate_passport_biometric"
+        },
+        "r3": {
+          "c1": "<strong>Input</strong>",
+          "c2": "QR scan o número de recibo (saisie manuelle)",
+          "c3": "Identificador de transacción BANGE o número de recibo Tesoro",
+          "c4": "Número DIP + foto en directo (control biométrico)"
+        },
+        "r4": {
+          "c1": "<strong>Output (datos retornados)</strong>",
+          "c2": "Mínimo: válido (sí/no) + nombre del servicio + fecha de emisión. Sin datos personales",
+          "c3": "Detalle completo: importe, datos del ciudadano, modo de pago, todas las transacciones BANGE asociadas, conciliación bancaria",
+          "c4": "Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes, antecedentes flagged INTERPOL si match"
+        },
+        "r5": {
+          "c1": "<strong>Latencia</strong>",
+          "c2": "&lt; 500 ms (cache Redis)",
+          "c3": "1-3 s (consulta BANGE)",
+          "c4": "2-5 s (cómputo de matching biométrico)"
+        },
+        "r6": {
+          "c1": "<strong>Audit</strong>",
+          "c2": "Log mínimo (fecha, IP, código vérifié)",
+          "c3": "Log completo (agente, fecha, identifier, resultado)",
+          "c4": "Log completo + retention 7 años obligatoria"
+        },
+        "r7": {
+          "c1": "<strong>Página dedicada</strong>",
+          "c2": "Página 57",
+          "c3": "Esta página (sección 3)",
+          "c4": "Esta página (sección 4)"
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Verify Público — recapitulación",
+      "body": "La variante pública está cubierta en detalle en la <a href=\"57-verificar.html\">página 57</a>. Su característica clave es la confidencialidad: cualquier persona puede verificar un recibo sin login, pero la respuesta no expone ningún dato personal del ciudadano (solo «sí, este recibo es válido + nombre del servicio + fecha»). Esto evita los riesgos de scraping de datos personales por parte de actores malintencionados."
+    },
+    "s3": {
+      "title": "3. Verify Treasury — para reconciliación bancaria",
+      "intro": "El agente del Tesoro Público (ver <a href=\"65-agente-tesoro.html\">página 65</a>) usa esta variante cuando el webhook BANGE ha fallado y necesita reconciliar manualmente un pago. El acceso requiere autenticación 2FA + el permiso explícito <code>validate_payment</code>.",
+      "usecase": {
+        "title": "Caso de uso típico",
+        "l1": "Un ciudadano paga sus tasas de pasaporte vía BANGE Mobile Money (40.000 XAF).",
+        "l2": "El SMS de confirmación BANGE llega al ciudadano pero el webhook a Facil no se ha producido (red caída, problema técnico).",
+        "l3": "La solicitud queda en estado <code>pending_agent_review</code> con el mensaje «pago no recibido».",
+        "l4": "El ciudadano contacta al soporte aportando su SMS BANGE.",
+        "l5": "El agente Tesoro abre Verify Treasury, busca con el identificador de transacción BANGE (presente en el SMS).",
+        "l6": "Si la transacción existe en BANGE, valida manualmente el pago. La solicitud pasa a <code>approved_by_agent</code>."
+      }
+    },
+    "s4": {
+      "title": "4. Verify CNEDOGE — control biométrico de pasaporte",
+      "intro": "El agente CNEDOGE (ver <a href=\"62-agente-cnedoge.html\">página 62</a>) usa esta variante en dos contextos:",
+      "l1": "<strong>Cita biométrica de un nuevo pasaporte</strong> — verifica que la persona presente coincide con la del DIP suministrado (% de matching foto-DIP, mínimo 95% para validación)",
+      "l2": "<strong>Control de identidad in situ</strong> — un agente fronterizo o policial puede pedir esta verificación si sospecha de un pasaporte falso (caso raro, requiere autorización jerárquica)",
+      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ Verify CNEDOGE — flujo de control biométrico                │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: número DIP + foto en directo (cámara)               │\n│                       │                                     │\n│                       ▼                                     │\n│  Recuperación foto biométrica de la base CNEDOGE             │\n│                       │                                     │\n│                       ▼                                     │\n│  Cómputo de matching (algoritmo facial recognition)          │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validado                     ✗ Rechazado                │\n│   • Nombre + apellidos          • Motivo: similarity bajo   │\n│   • Fecha nacimiento            • Petición de retoma de foto │\n│   • Estado pasaporte (en        • Si confirma: escalación    │\n│     curso, caducado, etc.)         supervisor + investigación │\n│   • Flag INTERPOL si match                                   │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
+    },
+    "s5": {
+      "title": "5. Por qué tres Verify y no una sola?",
+      "body": "La separación viene de un imperativo de seguridad: cada variante tiene un nivel de exposición distinto. La Verify Público debe ser accesible a todos sin login (escenario fronterizo, caja de un comerciante), por lo que retorna mínimo información. La Verify Treasury accede a datos bancarios sensibles, requiere 2FA. La Verify CNEDOGE accede a fotografías biométricas, requiere un permiso adicional y un audit log de 7 años. Combinar las tres en una sola endpoint expondría los datos sensibles a usuarios no autorizados."
+    },
+    "s6": {
+      "title": "6. Errores comunes y cómo evitarlos",
+      "warn": {
+        "title": "Tickets de soporte recurrentes",
+        "l1": "<strong>«El comerciante me dice que mi recibo no es válido»</strong> — el comerciante usa Verify Público (correcto). Si la verify retorna inválido, contactar el agente Tesoro para una Verify Treasury manual.",
+        "l2": "<strong>«No puedo acceder a Verify Treasury»</strong> — solo accesible a los agentes Tesoro. Los otros agentes (DGT, OMS…) no la ven en su menú.",
+        "l3": "<strong>«Verify CNEDOGE devuelve un % bajo aunque la persona es la titular»</strong> — la calidad de la cámara o las condiciones de luz pueden afectar el matching. Repetir la toma con buena iluminación. Si persiste, escalación al supervisor para una verificación manual."
+      }
+    },
+    "prev": "← Anterior: Agente Extranjería",
+    "next": "Siguiente: Trabajo terreno OMS →"
+  },
+  "page69": {
+    "html_title": "Trabajo terreno OMS — Manual Facil",
+    "title": "Trabajo terreno OMS: inspección sanitaria in situ + modo offline",
+    "description": "Los agentes del Ministerio de Sanidad realizan inspecciones físicas en los establecimientos comerciales (bares, restaurantes, farmacias, peluquerías). Estas inspecciones se hacen sobre el terreno, a menudo en zonas con mala conectividad, donde el back-office Web (página 66) no es utilizable directamente. Facil propone un modo terreno específico para estos agentes con sus propias funciones: scan QR de licencia, checklist conformidad, cobro en efectivo, modo offline con sincronización al regreso al servicio.",
+    "s1": {
+      "title": "1. Preparación de la jornada (oficina, antes de salir)",
+      "body": "Antes de salir, el agente prepara su jornada desde el back-office (ver <a href=\"66-agente-min-oms.html\">página 66</a>) :",
+      "l1": "Selecciona los establecimientos a visitar (programación previa o ruta del día)",
+      "l2": "Pre-descarga los datos de las licencias en su tablet/smartphone (modo offline activado)",
+      "l3": "Verifica que la batería del terminal está al máximo (los días de inspección son largos)",
+      "l4": "Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal"
+    },
+    "s2": {
+      "title": "2. Llegada al establecimiento: escaneo del QR",
+      "body": "Cada establecimiento tiene una licencia comercial pegada en una pared visible (obligación reglamentaria). En la licencia hay un QR code único que identifica el establecimiento. El agente abre la app Facil terreno y escanea este QR. La app abre directamente la ficha de inspección preparada con los datos del establecimiento (nombre comercial, dirección, NIF, historial de inspecciones anteriores, observaciones precedentes).",
+      "info": {
+        "title": "Si el QR está deteriorado o ausente",
+        "body": "El agente puede buscar manualmente el establecimiento por NIF o por nombre comercial. Si la licencia es ausente sobre la pared visible, esto en sí mismo constituye una infracción y debe ser anotado en la inspección."
+      }
+    },
+    "s3": {
+      "title": "3. La checklist de conformidad (10-20 puntos según tipo)",
+      "intro": "Cada tipo de establecimiento tiene su propia checklist, definida por el Ministerio. Por ejemplo, para un restaurante:",
+      "t": {
+        "h1": "N°",
+        "h2": "Punto a verificar",
+        "h3": "Criterio",
+        "h4": "Sanción si fallo",
+        "r1": {
+          "c1": "Licencia comercial visible",
+          "c2": "QR pegado en pared accesible",
+          "c3": "Tasa 50.000 XAF"
+        },
+        "r2": {
+          "c1": "Carnet sanitario del personal",
+          "c2": "Cada empleado tiene su carnet en validez",
+          "c3": "10.000 XAF por empleado no en regla"
+        },
+        "r3": {
+          "c1": "Limpieza de la cocina",
+          "c2": "Sin moho visible, sin desperdicios apilados",
+          "c3": "Advertencia + control 30 días"
+        },
+        "r4": {
+          "c1": "Conservación de los alimentos",
+          "c2": "Frío -18°C / +4°C; trazabilidad lotes",
+          "c3": "Cierre temporal posible"
+        },
+        "r5": {
+          "c1": "Servicios sanitarios",
+          "c2": "WC en estado de funcionamiento, jabón, agua corriente",
+          "c3": "Tasa 25.000 XAF"
+        },
+        "r6": {
+          "c1": "(15 puntos suplementarios)"
+        }
+      },
+      "body": "El agente recorre la checklist marcando cada punto en su tablet : <em>conforme / no conforme / no aplicable / observación</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran)."
+    },
+    "s4": {
+      "title": "4. Cobro de tasas y sanciones en efectivo",
+      "body": "Si la inspección revela infracciones generadoras de tasas inmediatas (ver tabla arriba), el agente cobra en efectivo en el lugar. La app calcula automáticamente el total a cobrar y permite generar un recibo provisional (impreso vía Bluetooth con una mini-impresora térmica que el agente lleva consigo). Este recibo provisional será sustituido por el recibo oficial (REC-2026-NNNNNN) tras la reconciliación al regreso al servicio.",
+      "warn": {
+        "title": "Trazabilidad obligatoria",
+        "body": "Cada moneda cobrada en efectivo debe generar un evento en la app (botón <em>«Cobro efectivo + importe»</em>). Esto crea una trazabilidad infalsificable: la suma de los eventos de cobro debe igualar el efectivo en el bolsillo del agente al final de la jornada. Cualquier discrepancia es señal de fraude o de error y obliga a una explicación inmediata al supervisor."
+      }
+    },
+    "s5": {
+      "title": "5. Modo offline: cómo trabaja la sincronización",
+      "diagram": "\n┌───────────────────────────────────────────────────────────────────────┐\n│ Modo offline OMS — sincronización al regreso                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  En la oficina (con red)                                              │\n│        │                                                              │\n│        │ Pre-download datos: licencias, checklists, fotos             │\n│        │ → almacenados en cache MMKV (cifrado AES-256)                │\n│        ▼                                                              │\n│  En el terreno (sin red)                                              │\n│        │                                                              │\n│        ├─ Scan QR licencia            → leer desde cache              │\n│        ├─ Marcar checklist             → escribir en cache (queue)    │\n│        ├─ Tomar fotos                  → cifradas + queue local       │\n│        ├─ Cobrar tasas efectivo        → eventos en queue             │\n│        ▼                                                              │\n│  Regreso a la oficina (red recuperada)                                │\n│        │                                                              │\n│        │ Detección automática de conexión                             │\n│        │ Sincronización automática de la queue:                       │\n│        │  • Inspecciones realizadas → service_requests                │\n│        │  • Fotos → Firebase Storage cifrado                          │\n│        │  • Cobros efectivo → bank_transactions con flag «field»      │\n│        │  • Eventos audit → audit_logs                                │\n│        ▼                                                              │\n│  Reconciliación caja                                                  │\n│        │                                                              │\n│        │ Comparación: total eventos cobro = efectivo en caja           │\n│        │  • Si igual: validación auto + recibos oficiales generados   │\n│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │\n│        ▼                                                              │\n│  Estado final: jornada cerrada, recibos oficiales emitidos             │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘\n"
+    },
+    "s6": {
+      "title": "6. Reconciliación al regreso (procedimiento administrativo)",
+      "body": "Una vez de vuelta al servicio, el agente debe completar la reconciliación administrativa en menos de 24 h. La pantalla de reconciliación (capturada en la <a href=\"66-agente-min-oms.html\">página 66 § 6</a>) lista todos los cobros realizados en el día, agrupados por establecimiento, y propide un total esperado. El agente cuenta su efectivo y registra el importe; si coincide, el sistema valida automáticamente y genera los recibos oficiales para cada cobro. Si difiere, una explicación obligatoria es solicitada (error de cálculo, robo, perdida) y el supervisor es notificado."
+    },
+    "s7": {
+      "title": "7. Buenas prácticas terreno",
+      "l1": "<strong>Llegar de improviso</strong> — para que el establecimiento no tenga tiempo de prepararse. Las inspecciones programadas con aviso pierden eficacia.",
+      "l2": "<strong>Trabajar en pareja</strong> — un agente con el otro como testigo, sobre todo cuando hay cobro en efectivo, para evitar acusaciones de corrupción.",
+      "l3": "<strong>Tomar fotos sistemáticamente</strong> — incluso de los puntos conformes. En caso de litigio ulterior con el comerciante, las fotos sirven de prueba.",
+      "l4": "<strong>Sincronizar al regreso al servicio</strong> — antes del fin de la jornada. La memoria del cache MMKV es limitada (~1 GB) y se llena rápido si se acumulan inspecciones.",
+      "l5": "<strong>Mantener carga el terminal</strong> — un terminal apagado durante una sincronización pendiente puede perder eventos. Power bank obligatorio."
+    },
+    "prev": "← Anterior: Funciones Verify",
+    "next": "Siguiente: Asistente IA Agente →"
   }
 
-  // page52-58, page61-69, page71-74, page81-89, page91-95: por crear
+  // page52-58, page71-74, page81-89, page91-95: por crear
 
 };

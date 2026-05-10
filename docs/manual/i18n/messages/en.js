@@ -617,6 +617,77 @@ window.__I18N__.en = {
     "next": "Next: Agent Role →"
   },
 
+  "page60": {
+    "html_title": "Agent AI Assistant — Facil Manual",
+    "title": "AI Assistant dedicated to public agents",
+    "description": "AI variant reserved for agents: professional context, internal jurisprudence, anonymized similar cases, rejection reason generation, full 7-year audit.",
+    "prev": "← Previous: OMS field work",
+    "next": "Next: Supervisor Role →"
+  },
+  "page61": {
+    "html_title": "Agent Role — Facil Manual",
+    "title": "Agent Role: concept common to all public agents",
+    "description": "7 entities (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro, OMS, Extranjería), work queue, pessimistic lock_for_review, 7 agent actions, 17 workflow states, mandatory audit log.",
+    "prev": "← Previous: Accountant Role",
+    "next": "Next: CNEDOGE Agent →"
+  },
+  "page62": {
+    "html_title": "CNEDOGE Agent — Facil Manual",
+    "title": "CNEDOGE Agent: passport validation",
+    "description": "8-step workflow: queue → lock → document verification → biometric appointment → on-site control → approve → PDF generation → notification. Special cases for minors and overseas loss.",
+    "prev": "← Previous: Agent Role",
+    "next": "Next: DGT Agent →"
+  },
+  "page63": {
+    "html_title": "DGT Agent — Facil Manual",
+    "title": "DGT Agent: driving license validation",
+    "description": "Dashboard, request queue, 3-tab detail (summary, documents, history), practical exam calendar management, 6 license categories (A1, A, B, C, D, E).",
+    "prev": "← Previous: CNEDOGE Agent",
+    "next": "Next: Ayuntamiento + Cámara Agent →"
+  },
+  "page64": {
+    "html_title": "Ayuntamiento + Cámara Agent — Facil Manual",
+    "title": "Ayuntamiento + Cámara Agents: commercial payment validation",
+    "description": "Symmetric dashboard, payment validation, PDF receipt generation, history. CEMAC anti-money-laundering specifics for cash payments > 1M XAF.",
+    "prev": "← Previous: DGT Agent",
+    "next": "Next: Tesoro Agent →"
+  },
+  "page65": {
+    "html_title": "Tesoro Agent — Facil Manual",
+    "title": "Tesoro Público Agent: payment validation and BANGE reconciliation",
+    "description": "Mandatory 2FA, dashboard, manual validation when BANGE webhook fails, bank reconciliation, official Tesoro receipt.",
+    "prev": "← Previous: Ayuntamiento + Cámara Agent",
+    "next": "Next: OMS Ministry Agent →"
+  },
+  "page66": {
+    "html_title": "OMS Ministry Agent — Facil Manual",
+    "title": "Sanidad Ministry Agent: commercial licenses and inspections",
+    "description": "Ministry dashboard, NIF-based company lookup, license management, inspection board, inspection start (QR scan), cash reconciliation, conformity by tasa, obligations queue.",
+    "prev": "← Previous: Tesoro Agent",
+    "next": "Next: Extranjería Agent →"
+  },
+  "page67": {
+    "html_title": "Extranjería Agent — Facil Manual",
+    "title": "Extranjería Agent: residence and work authorization",
+    "description": "5 title types, 3 mandatory external controls (INTERPOL + records + sponsor), sensitive cases to escalate, ID card generation, simplified renewal flow.",
+    "prev": "← Previous: OMS Ministry Agent",
+    "next": "Next: Verify Functions →"
+  },
+  "page68": {
+    "html_title": "Verify Functions (3 variants) — Facil Manual",
+    "title": "The 3 variants of the Verify function",
+    "description": "Verify Public (QR no login, minimal data), Verify Treasury (Tesoro agent, full BANGE), Verify CNEDOGE (95% biometric matching). Comparison table input/output/permissions.",
+    "prev": "← Previous: Extranjería Agent",
+    "next": "Next: OMS field work →"
+  },
+  "page69": {
+    "html_title": "OMS field work — Facil Manual",
+    "title": "OMS field work: on-site sanitary inspection + offline mode",
+    "description": "Day prep, QR license scan, conformity checklist (10-20 points), field cash collection, encrypted MMKV offline mode, sync on return, cash reconciliation.",
+    "prev": "← Previous: Verify Functions",
+    "next": "Next: Agent AI Assistant →"
+  },
+
   "page59": {
     "html_title": "Web view of public site — Facil Manual",
     "title": "Web view of the public site (desktop)",
