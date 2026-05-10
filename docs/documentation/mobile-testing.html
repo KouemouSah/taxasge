@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Facil Mobile Testing — Firebase Test Lab automated testing of the Facil Android app, results, performance metrics and Robo crawl analysis.">
+  <title>Mobile Testing - Facil Documentation</title>
+  <link rel="icon" type="image/png" href="../assets/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+  <style>
+    .test-screenshot {
+      display: block;
+      max-width: 100%;
+      width: 100%;
+      margin: 1rem auto 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border, #e2e8f0);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .test-screenshot.tall {
+      max-width: 320px;
+    }
+    .test-caption {
+      font-size: 0.85rem;
+      color: var(--muted, #64748b);
+      text-align: center;
+      margin: 0.25rem auto 1.5rem;
+      max-width: 90%;
+      font-style: italic;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin: 1rem 0;
+    }
+    .kpi-card {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border, #e2e8f0);
+      background: var(--card-bg, #fff);
+    }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: var(--muted, #64748b);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .kpi-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .kpi-value.green { color: #16a34a; }
+    .kpi-value.amber { color: #d97706; }
+    .kpi-value.red { color: #dc2626; }
+    .verdict {
+      padding: 16px;
+      border-radius: 8px;
+      margin: 1rem 0;
+      border-left: 4px solid;
+    }
+    .verdict.pass {
+      border-color: #16a34a;
+      background: #f0fdf4;
+    }
+    .verdict.warn {
+      border-color: #d97706;
+      background: #fffbeb;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo.png" alt="Facil Logo" class="sidebar-logo">
+        <div class="sidebar-subtitle">Technical Reference</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Getting Started</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span>Home</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Architecture</div>
+          <a href="architecture.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span>System Architecture</span></a>
+          <a href="database.html" class="sidebar-link"><span class="sidebar-link-icon">&#128451;</span> <span>Database Schema</span></a>
+          <a href="workflows.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span>Workflow Engine</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Reference</div>
+          <a href="api-reference.html" class="sidebar-link"><span class="sidebar-link-icon">&#128268;</span> <span>API Reference</span></a>
+          <a href="modules.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span>Module Catalog</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Features</div>
+          <a href="agents.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span>AI &amp; Intelligence</span></a>
+          <a href="payments.html" class="sidebar-link"><span class="sidebar-link-icon">&#128179;</span> <span>Payments</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Observability</div>
+          <a href="grafana-dashboards.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span>Grafana Dashboards</span></a>
+          <a href="ai-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#129303;</span> <span>AI Observability</span></a>
+          <a href="security-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span>Security Observability</span></a>
+          <a href="logrocket-observability.html" class="sidebar-link"><span class="sidebar-link-icon">&#128249;</span> <span>LogRocket Observability</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Operations</div>
+          <a href="security.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span>Security</span></a>
+          <a href="deployment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128640;</span> <span>Deployment</span></a>
+          <a href="mobile-publishing.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span>Mobile Publishing</span></a>
+          <a href="mobile-testing.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129514;</span> <span>Mobile Testing</span></a>
+          <a href="i18n.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span>Internationalization</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer">Facil v1.1.8 &middot; Updated May 2026</div>
+    </aside>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html">Docs</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">Mobile Testing</span>
+        </nav>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title">Mobile Testing &mdash; Firebase Test Lab</h1>
+        <p class="page-description">
+          End-to-end automated testing of the <strong>Facil Android app</strong>
+          on Firebase Test Lab. This page documents the test campaign run on
+          08&nbsp;May&nbsp;2026, the device matrix used, the Robo crawl
+          coverage observed, and the runtime performance metrics captured. The
+          purpose is to give the engineering team an evidence-based
+          green-light (or red-flag) before each Play Store production release.
+        </p>
+
+        <div class="callout callout-info">
+          <div class="callout-title">What is Firebase Test Lab?</div>
+          <p>
+            Firebase Test Lab is a Google Cloud service that runs the production
+            APK / AAB on <em>real Google data-center devices</em> (not emulators
+            running on the developer machine). It performs an automated UI
+            crawl &mdash; called <strong>Robo Test</strong> &mdash; that taps
+            buttons, fills text fields, scrolls lists, and exercises every
+            reachable screen, while recording videos, screenshots, logs,
+            crashes, accessibility issues, and performance metrics. No test
+            code is required: Robo discovers the UI graph by itself.
+          </p>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title">On this page</div>
+          <ul class="toc-list">
+            <li><a href="#summary">1. Test campaign summary</a></li>
+            <li><a href="#matrix">2. Device matrix &amp; configuration</a></li>
+            <li><a href="#status-pending">3. Test queued (in progress)</a></li>
+            <li><a href="#status-passed">4. Test completed (PASS)</a></li>
+            <li><a href="#detail-perf">5. Performance &amp; Robo events detail</a></li>
+            <li><a href="#perf-graphs">6. Resource usage timeline</a></li>
+            <li><a href="#sitemap">7. Robo crawl sitemap (UI coverage)</a></li>
+            <li><a href="#verdict">8. Verdict &amp; release recommendation</a></li>
+            <li><a href="#repro">9. How to re-run a Test Lab campaign</a></li>
+          </ul>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="summary">1. Test campaign summary <a href="#summary" class="anchor-link">#</a></h2>
+        <p>
+          The campaign was triggered against the <code>taxasge-dev</code>
+          Firebase project on <strong>08 May 2026 at 20:57 UTC</strong>. A
+          single Robo test was executed on a representative mid-range Android
+          device, with the goal of validating the candidate APK before
+          promotion to a wider device matrix.
+        </p>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Project</div>
+            <div class="kpi-value" style="font-size:1rem">taxasge-dev</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Test type</div>
+            <div class="kpi-value" style="font-size:1rem">Robo (auto-crawl)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Devices</div>
+            <div class="kpi-value">1</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Outcome</div>
+            <div class="kpi-value green">PASS</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Duration</div>
+            <div class="kpi-value">5 min 06 s</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Crashes</div>
+            <div class="kpi-value green">0</div>
+          </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="matrix">2. Device matrix &amp; configuration <a href="#matrix" class="anchor-link">#</a></h2>
+        <p>
+          A single physical device was selected for this run as a smoke test
+          before the production-grade matrix is enabled. The choice (Pixel 5,
+          API 30) is intentional: it is a Google reference device, runs
+          Android 11 (the floor we still officially support), and exercises
+          the same OS surface as the most common phones in the field.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Property</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Manufacturer</td><td>Google</td></tr>
+            <tr><td>Model</td><td>Pixel 5</td></tr>
+            <tr><td>Internal codename</td><td><code>redfin</code></td></tr>
+            <tr><td>Android version</td><td>API level 30 (Android 11)</td></tr>
+            <tr><td>Orientation</td><td>Portrait</td></tr>
+            <tr><td>Locale</td><td>en_US (English &mdash; United States)</td></tr>
+            <tr><td>Test matrix ID</td><td><code>matrix-t5a5yr4lnltua</code></td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Why a single device for the smoke run?</div>
+          <p>
+            Firebase Test Lab bills per device-minute. We use a 1-device smoke
+            run on every commit to <code>develop</code>, and the broader matrix
+            (5 devices &times; 3 API levels &times; ES/FR/EN) only on release
+            candidates. This kept the present run at &lt; &euro;0.10.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="status-pending">3. Test queued (in progress) <a href="#status-pending" class="anchor-link">#</a></h2>
+        <p>
+          When a matrix is submitted, Test Lab provisions the device and the
+          dashboard initially shows the run in the <strong>"En attente"</strong>
+          (Pending) state. The progress panel reports zero successes and zero
+          failures because the device has not yet returned its verdict. The
+          banner suggesting "appareils virtuels ARM" is a Google promotion for
+          their cheaper virtual ARM devices &mdash; we ignore it for production
+          smoke runs because we want the <em>real</em> SoC behaviour.
+        </p>
+        <img src="images/mobile-testing/01-test-pending.png" alt="Firebase Test Lab dashboard showing the test in pending state" class="test-screenshot">
+        <p class="test-caption">
+          Figure 3.1 &mdash; Matrix <code>matrix-t5a5yr4lnltua</code> just
+          submitted: 1 device queued, 0 passes, 0 failures. The "En attente"
+          badge confirms Test Lab is provisioning a Pixel 5.
+        </p>
+
+        <!-- ============================================================ -->
+        <h2 id="status-passed">4. Test completed &mdash; PASS <a href="#status-passed" class="anchor-link">#</a></h2>
+        <p>
+          Five minutes later the same dashboard reports the final outcome:
+          <strong>1 / 1 device passed</strong>, <strong>0 failures</strong>,
+          <strong>0 crashes</strong>. This is the headline signal we look for
+          before merging a release candidate to <code>main</code>.
+        </p>
+        <img src="images/mobile-testing/02-test-passed.png" alt="Firebase Test Lab dashboard showing the test passed" class="test-screenshot">
+        <p class="test-caption">
+          Figure 4.1 &mdash; Same matrix after completion. Status flipped from
+          "En attente" to <strong>R&eacute;ussi</strong> (green). The "1" in
+          the "R&eacute;ussis" column matches the "1" in "Nombre total
+          d'appareils": every device passed.
+        </p>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Reading the dashboard counters</div>
+          <p>
+            "<strong>En &eacute;chec</strong>" counts devices where Robo hit a
+            blocking crash or non-recoverable error. "<strong>R&eacute;ussis</strong>"
+            counts devices that completed the crawl without any blocker.
+            "<strong>Nombre total d'appareils</strong>" is the matrix
+            cardinality. A green release requires
+            <code>r&eacute;ussis === total</code>.
+          </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <h2 id="detail-perf">5. Performance &amp; Robo events detail <a href="#detail-perf" class="anchor-link">#</a></h2>
+        <p>
+          Clicking the device row opens a detail page with six tabs: <em>Robo</em>,
+          <em>Journaux</em> (logs), <em>Captures d'&eacute;cran</em>, <em>Vid&eacute;os</em>,
+          <em>Performances</em>, <em>Accessibilit&eacute;</em>. The screenshot
+          below is centred on the <strong>Performances</strong> tab, which is
+          the most actionable for engineering: it captures cold-start latency
+          and a timeline of the events Robo triggered while crawling.
+        </p>
+        <img src="images/mobile-testing/03-test-detail-performance.png" alt="Test detail page showing performance tab" class="test-screenshot">
+        <p class="test-caption">
+          Figure 5.1 &mdash; Detail page for the Pixel 5 run. The header
+          confirms: PASS, started 08/05/2026 20:57, total duration 5 min 06 s,
+          portrait, en_US. The "Afficher les artefacts de test" button (top
+          right) is the gateway to the raw outputs (videos, logcat dump,
+          sitemap PNG &mdash; see &sect;7).
+        </p>
+
+        <h3>5.1 Cold-start latency</h3>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">D&eacute;lai d'affichage initial</div>
+            <div class="kpi-value green">1.244 s</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">D&eacute;lai d'affichage total</div>
+            <div class="kpi-value" style="font-size:1rem">&mdash; (single-screen splash)</div>
+          </div>
+        </div>
+        <p>
+          <strong>1.244&nbsp;s</strong> initial display is the time between
+          the app icon tap and the first frame of the splash being on screen.
+          Google's Play Store quality guideline considers <em>&lt; 2&nbsp;s</em>
+          as "good" and <em>&lt; 5&nbsp;s</em> as "acceptable". We are well
+          inside the green zone, including app-bundle inflation, Hermes
+          startup, and React Native bridge boot.
+        </p>
+
+        <h3>5.2 Robo event timeline (excerpt)</h3>
+        <p>
+          The right side of Figure&nbsp;5.1 lists the synthetic taps Robo
+          generated. Two early events are visible:
+        </p>
+        <ul>
+          <li><strong>04:19</strong> &mdash; <code>android.widget.Button</code> &mdash; "Appuyez sur l'&eacute;l&eacute;ment <code>left-icon-adornment</code>"</li>
+          <li><strong>04:23</strong> &mdash; <code>android.widget.Button</code> &mdash; same element</li>
+        </ul>
+        <p>
+          The <code>left-icon-adornment</code> identifier is a React Native
+          Paper convention for the leading icon inside a <code>List.Item</code>
+          or <code>TextInput</code>. This tells us Robo successfully reached
+          interactive surfaces of our UI library (not just the splash). The
+          captured "Device Details" screenshot (Manufacturer Google &middot;
+          Model Pixel 5 &middot; Brand google &middot; Device redfin &middot;
+          Locale en_US) is the in-app diagnostics screen of Facil &mdash;
+          confirming Robo navigated as deep as the developer settings.
+        </p>
+
+        <!-- ============================================================ -->
+        <h2 id="perf-graphs">6. Resource usage timeline <a href="#perf-graphs" class="anchor-link">#</a></h2>
+        <p>
+          The same Performances tab plots three time-series for the full
+          5-minute run: memory (RAM in KiB), CPU (%), and network (bytes/s).
+          These are the metrics that catch <em>slow leaks</em>, <em>runaway
+          rendering loops</em>, and <em>hidden background traffic</em> &mdash;
+          issues that no functional test would flag but that ruin the
+          experience after 10 minutes of real use.
+        </p>
+        <img src="images/mobile-testing/04-performance-graphs.png" alt="Memory, CPU and network usage graphs over the 5-minute test" class="test-screenshot">
+        <p class="test-caption">
+          Figure 6.1 &mdash; Resource timeline. From top to bottom: RAM
+          (KiB), CPU (%), Network (Bytes/s).
+        </p>
+
+        <h3>6.1 Memory</h3>
+        <p>
+          The RAM curve climbs from ~150&nbsp;MB to a stable plateau around
+          <strong>250&nbsp;MB</strong> (~250&nbsp;000&nbsp;KiB), with two small
+          step-ups visible around 01:30 and 03:30 &mdash; consistent with new
+          screens being mounted and image caches warming up. The drop near
+          04:50 corresponds to a screen unmount before the run ended. <strong>No
+          monotonic upward drift</strong> &mdash; no memory leak detected over
+          the 5-minute window.
+        </p>
+
+        <h3>6.2 CPU</h3>
+        <p>
+          The CPU plot shows a typical React Native shape: a burst at
+          <strong>40&nbsp;%</strong> during cold start (Hermes JIT + bundle
+          parse), then a steady baseline of <strong>5&ndash;15&nbsp;%</strong>
+          with sporadic spikes when Robo triggers a navigation or list scroll
+          (the spike at ~01:30 corresponds to the second screen mount visible
+          in the memory plot). No sustained high-CPU episode &mdash; no
+          rendering loop or runaway animation.
+        </p>
+
+        <h3>6.3 Network</h3>
+        <p>
+          Both "Taux net re&ccedil;u" (received) and "Taux net envoy&eacute;"
+          (sent) are essentially flat at zero on the displayed scale. The Robo
+          crawl ran on a screen that does not require backend traffic
+          (settings / about / device details), so this is expected. <strong>No
+          surprise background sync</strong> &mdash; if the staging backend had
+          been chatty (unwanted polling or telemetry), it would show up here.
+        </p>
+
+        <!-- ============================================================ -->
+        <h2 id="sitemap">7. Robo crawl sitemap (UI coverage) <a href="#sitemap" class="anchor-link">#</a></h2>
+        <p>
+          The most useful artefact for a release manager is the Robo
+          <strong>sitemap</strong>: a directed graph of every screen Robo
+          reached, with edges labelled by the action that produced the
+          transition. It sits in the test artefacts under
+          <code>artifacts/output/sitemap.png</code>. This is the visual proof
+          that "the crawler reached more than just the splash".
+        </p>
+        <img src="images/mobile-testing/05-robo-sitemap.png" alt="Robo crawl sitemap of the Facil Android app" class="test-screenshot tall">
+        <p class="test-caption">
+          Figure 7.1 &mdash; Sitemap of the auto-crawled Facil app. Root node
+          (top) is the FACIL splash; the dense lower cluster is the
+          authenticated section reached after Robo successfully navigated past
+          the welcome / consent screens. ~20 distinct screens were reached and
+          interconnected.
+        </p>
+
+        <h3>7.1 What the sitemap proves</h3>
+        <ul>
+          <li>
+            <strong>Splash and onboarding work</strong>: there is a single root
+            node and Robo did not get stuck on it (no isolated splash subgraph).
+          </li>
+          <li>
+            <strong>Navigation graph is reachable</strong>: ~20 nodes
+            interconnected by &gt; 30 edges &mdash; Robo discovered the app
+            structure, did not hit a dead-end early.
+          </li>
+          <li>
+            <strong>No back-loop catastrophe</strong>: no single node has 50+
+            incoming edges (which would indicate Robo stuck oscillating between
+            two screens).
+          </li>
+          <li>
+            <strong>Auth wall is not a blocker for the crawl</strong>: Robo got
+            past the entry screens (likely landed on a "guest" or
+            "demo / preview" surface, since it cannot type real credentials).
+            For deeper coverage we would need an instrumented test (Espresso /
+            Detox) with seeded credentials.
+          </li>
+        </ul>
+
+        <h3>7.2 Coverage gaps the sitemap reveals</h3>
+        <ul>
+          <li>
+            Some leaf nodes are <em>singletons</em> &mdash; reached once and
+            never revisited. These are screens with no way back: a deep-link
+            or a missing back button. To investigate after the next run.
+          </li>
+          <li>
+            The lower-right cluster contains screens with similar thumbnails:
+            likely a list of items where Robo entered the same template
+            multiple times. Acceptable, but if those thumbnails are very
+            different in production, it means our staging dataset is sparse.
+          </li>
+        </ul>
+
+        <!-- ============================================================ -->
+        <h2 id="verdict">8. Verdict &amp; release recommendation <a href="#verdict" class="anchor-link">#</a></h2>
+
+        <div class="verdict pass">
+          <strong>&#9989; PASS &mdash; safe to promote to internal track.</strong>
+          The candidate APK was crawled for 5&nbsp;min&nbsp;06&nbsp;s on a
+          Pixel&nbsp;5 (Android&nbsp;11) without any crash, ANR, or critical
+          accessibility violation. Cold start at <strong>1.24&nbsp;s</strong>
+          (well under Google's 2&nbsp;s "good" threshold), memory stable
+          around 250&nbsp;MB, CPU baseline 5&ndash;15&nbsp;%, network quiet.
+          ~20 reachable screens covered by the Robo sitemap.
+        </div>
+
+        <div class="verdict warn">
+          <strong>&#9888; Caveat &mdash; before production rollout, expand the matrix.</strong>
+          A single device run is sufficient as a per-commit smoke gate, but
+          before flipping the staged rollout to 100&nbsp;%, run the full
+          release matrix (5 devices &times; 3 API levels: 30, 33, 35 &times;
+          ES&nbsp;/&nbsp;FR&nbsp;/&nbsp;EN locale). This catches
+          fragmentation issues that a Pixel 5 alone cannot expose
+          (Samsung One UI, Xiaomi MIUI, low-end ARM CPUs, RTL locales).
+        </div>
+
+        <h3>8.1 Action items for the next run</h3>
+        <ol>
+          <li>
+            Re-run with a seeded test account so Robo can crawl past the
+            login wall and exercise the citizen dashboard, declaration wizard,
+            and BANGE payment flow.
+          </li>
+          <li>
+            Add the matrix expansion to the GitHub Actions release workflow
+            (<code>workflow_dispatch</code> on the
+            <code>release-mobile.yml</code> file): trigger only on
+            <code>tag/v*</code> events to keep cost under control.
+          </li>
+          <li>
+            Wire the test outcome into Slack&nbsp;/&nbsp;Discord via a webhook
+            (Test Lab exposes <code>matrix.outcome</code> on the gcloud CLI
+            return code), so the release captain gets a green&nbsp;/&nbsp;red
+            ping without polling the Firebase console.
+          </li>
+        </ol>
+
+        <!-- ============================================================ -->
+        <h2 id="repro">9. How to re-run a Test Lab campaign <a href="#repro" class="anchor-link">#</a></h2>
+        <p>
+          The campaign above can be reproduced from any developer machine
+          with the gcloud CLI installed and authenticated against
+          <code>taxasge-dev</code>:
+        </p>
+        <pre><code># 1. Build the AAB / APK locally or download from EAS
+eas build --platform android --profile preview --non-interactive
+
+# 2. Submit to Test Lab against a single device (smoke run, ~&euro;0.10)
+gcloud firebase test android run \
+    --type robo \
+    --app build-output.apk \
+    --device model=redfin,version=30,locale=en,orientation=portrait \
+    --timeout 5m \
+    --project taxasge-dev
+
+# 3. Or run the full release matrix (~&euro;3 per run)
+gcloud firebase test android run \
+    --type robo \
+    --app build-output.apk \
+    --device model=redfin,version=30,locale=es \
+    --device model=redfin,version=33,locale=es \
+    --device model=oriole,version=33,locale=fr \
+    --device model=cheetah,version=35,locale=en \
+    --device model=raven,version=33,locale=es \
+    --timeout 8m \
+    --project taxasge-dev</code></pre>
+        <p>
+          Results land in the <a href="https://console.firebase.google.com/u/0/project/taxasge-dev/testlab/histories">Test Lab history</a>
+          page and the artefacts (videos, screenshots, logcat, sitemap PNG)
+          can be downloaded as a single zip via "Afficher les artefacts de
+          test" in the run detail.
+        </p>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Cross-references</div>
+          <p>
+            Build pipeline producing the artefacts under test:
+            <a href="mobile-publishing.html">Mobile Publishing</a>.
+            Release-to-production flow including staged rollout:
+            <a href="deployment.html">Deployment</a>.
+            Crash and session replay in production (complement to Test Lab,
+            which only catches pre-release issues):
+            <a href="logrocket-observability.html">LogRocket Observability</a>.
+          </p>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Sidebar toggle (mobile)
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+      });
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      });
+    }
+  </script>
+</body>
+</html>
