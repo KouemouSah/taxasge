@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sitemap del manual de usuario Facil
+  Generado en Phase 0 con páginas placeholder.
+  Actualizado en Phase 10 una vez todas las páginas creadas.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://facil.gov.gq/manual/index.html</loc>
+    <lastmod>2026-05-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://facil.gov.gq/manual/search.html</loc>
+    <lastmod>2026-05-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!--
+    URLs de páginas adicionales se añaden a medida que se crean en Phase 2-8.
+    Convención: priority 0.9 para páginas de bienvenida/quick-start,
+    0.7 para páginas de procedimiento, 0.5 para anexos.
+  -->
+</urlset>

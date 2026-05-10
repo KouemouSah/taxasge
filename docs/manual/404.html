@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="errorpage.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+  <style>
+    .error-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: var(--space-2xl); }
+    .error-code { font-size: 6rem; font-weight: 800; color: var(--ge-blue); line-height: 1; margin-bottom: var(--space-md); }
+    .error-message { font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-md); }
+    .error-description { color: var(--text-secondary); margin-bottom: var(--space-2xl); max-width: 500px; }
+    .error-actions { display: flex; gap: var(--space-md); flex-wrap: wrap; justify-content: center; }
+    .error-actions a { padding: var(--space-md) var(--space-xl); border-radius: var(--radius-md); font-weight: 600; text-decoration: none; }
+    .error-actions a.primary { background: var(--ge-blue); color: #fff; }
+    .error-actions a.primary:hover { background: var(--blue-dark); }
+    .error-actions a.secondary { border: 1px solid var(--border); color: var(--text-primary); }
+    .error-actions a.secondary:hover { background: var(--blue-light); border-color: var(--ge-blue); color: var(--ge-blue); }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <div class="error-code">404</div>
+    <div class="error-message" data-i18n="errorpage.message">Página no encontrada</div>
+    <p class="error-description" data-i18n="errorpage.description">
+      La página que busca no existe o ha sido movida. Vuelva al inicio o utilice la búsqueda.
+    </p>
+    <div class="error-actions">
+      <a href="index.html" class="primary" data-i18n="errorpage.back_home">Volver al inicio</a>
+      <a href="search.html" class="secondary" data-i18n="errorpage.search">Buscar</a>
+    </div>
+  </div>
+</body>
+</html>

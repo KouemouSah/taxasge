@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  =================================================================
+  Plantilla de página — Manual de usuario Facil
+  =================================================================
+  Cómo usar esta plantilla:
+    1. Copiar este archivo en `docs/manual/NN-slug.html` (NN entre 00-99).
+    2. Reemplazar TODAS las claves `data-i18n="page__PAGEKEY__.xxx"` por la clave real
+       (ej: `data-i18n="page21.title"` para la página 21).
+    3. Añadir las cadenas de texto correspondientes en los 3 archivos
+       `i18n/messages/{es,fr,en}.js` con la misma estructura.
+    4. Actualizar el `<title>`, `<meta description>`, breadcrumb y enlaces
+       prev/next al final de la página.
+    5. Verificar `data-i18n-attr-alt` en cada `<img>` y `data-i18n-title` en `<html>`.
+
+  Convenciones obligatorias:
+    - Idioma fuente: español (ES). Las traducciones FR/EN se generan en Phase 9.
+    - Toda cadena visible al usuario DEBE tener `data-i18n` (textContent)
+      o `data-i18n-html` (innerHTML para texto enriquecido).
+    - Ningún texto en duro en HTML (HTML por defecto = español como fallback).
+    - Capturas en `_assets/screenshots/{web|mobile}/{persona}/{nombre-descriptivo.{ext}}`.
+    - Hierarquía: solo h1 una vez; h2 para secciones principales; h3 para subsecciones.
+  =================================================================
+-->
+<html lang="es" data-i18n-title="page__PAGEKEY__.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Manual de usuario Facil — descripción específica de la página">
+  <meta name="author" content="Equipo Facil">
+  <title>Facil — Manual de usuario</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+  <!-- Pagefind UI (opcional, comentado en Phase 0 — activado en Phase 10) -->
+  <!--
+  <link rel="stylesheet" href="pagefind/pagefind-ui.css">
+  <script src="pagefind/pagefind-ui.js" defer></script>
+  -->
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!--
+          La navegación se construye en cada página mediante el patrón:
+          - Sección por persona (Citoyen / Empresa / Agente / Supervisor / Admin)
+          - Cada enlace tiene data-i18n para el texto y data-persona="..." para filtrado
+          - Marcar la página activa con class="sidebar-link active"
+
+          IMPORTANTE: copiar la lista de navegación EXACTA desde index.html
+          (sección <nav class="sidebar-nav">) para mantener consistencia.
+          Solo cambiar la clase `active` al enlace de la página actual.
+        -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+        </div>
+        <!-- ... resto de la navegación copiar desde index.html ... -->
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual de usuario</div>
+    </aside>
+
+    <!-- Sidebar toggle (mobile) -->
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page__PAGEKEY__.breadcrumb.section">Sección</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="page__PAGEKEY__.breadcrumb.current">Esta página</span>
+        </nav>
+        <div class="header-actions">
+          <!-- Botón de impresión / exportar PDF -->
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir o exportar a PDF" data-i18n-attr-aria-label="common.print.label">
+            <span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+
+        <!-- ===== Page Title ===== -->
+        <h1 class="page-title" data-i18n="page__PAGEKEY__.title">Título principal de la página</h1>
+        <p class="page-description" data-i18n="page__PAGEKEY__.description">
+          Resumen breve (1-2 frases) de lo que cubre esta página y por qué es útil.
+        </p>
+
+        <!-- ===== Persona target (si aplica) ===== -->
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <!-- añadir más persona-tag según corresponda -->
+        </div>
+
+        <!-- ===== Platform tabs (Web vs Mobile) — solo si la página cubre ambas ===== -->
+        <!--
+        <div class="platform-tabs">
+          <button class="platform-tab active" data-platform="web" data-i18n="common.platform.web">Web</button>
+          <button class="platform-tab" data-platform="mobile" data-i18n="common.platform.mobile">Móvil</button>
+        </div>
+        -->
+
+        <!-- ===== Table of Contents ===== -->
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#seccion-1" data-i18n="page__PAGEKEY__.toc.section1">1. Primera sección</a></li>
+            <li><a href="#seccion-2" data-i18n="page__PAGEKEY__.toc.section2">2. Segunda sección</a></li>
+            <!-- ... -->
+          </ul>
+        </div>
+
+        <!-- ===== Sección 1 ===== -->
+        <section>
+          <h2 id="seccion-1" data-i18n="page__PAGEKEY__.section1.title">1. Primera sección</h2>
+          <p data-i18n="page__PAGEKEY__.section1.intro">Introducción de la sección.</p>
+
+          <!-- Lista pas-à-pas -->
+          <ol class="step-list">
+            <li data-i18n-html="page__PAGEKEY__.section1.step1">Primer paso explicado <strong>claramente</strong>.</li>
+            <li data-i18n-html="page__PAGEKEY__.section1.step2">Segundo paso.</li>
+            <li data-i18n-html="page__PAGEKEY__.section1.step3">Tercer paso.</li>
+          </ol>
+
+          <!-- Captura con anotación -->
+          <figure>
+            <img src="_assets/screenshots/web/citizen/example.png" alt="Captura ejemplo" data-i18n-attr-alt="page__PAGEKEY__.section1.fig1.alt">
+            <figcaption data-i18n="page__PAGEKEY__.section1.fig1.caption">Pie de la imagen explicando lo que se ve.</figcaption>
+          </figure>
+
+          <!-- Callout: tip -->
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page__PAGEKEY__.section1.tip">Texto del consejo práctico.</p>
+          </aside>
+        </section>
+
+        <!-- ===== Sección 2 ===== -->
+        <section>
+          <h2 id="seccion-2" data-i18n="page__PAGEKEY__.section2.title">2. Segunda sección</h2>
+          <p data-i18n="page__PAGEKEY__.section2.intro">Contenido de la segunda sección.</p>
+
+          <!-- Tabla -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page__PAGEKEY__.section2.table.col1">Columna 1</th>
+                  <th data-i18n="page__PAGEKEY__.section2.table.col2">Columna 2</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page__PAGEKEY__.section2.table.row1.c1">Fila 1, Col 1</td>
+                  <td data-i18n="page__PAGEKEY__.section2.table.row1.c2">Fila 1, Col 2</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Callout: warning -->
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n="page__PAGEKEY__.section2.warning">Aviso importante.</p>
+          </aside>
+        </section>
+
+      </div>
+
+      <!-- ===== Footer / Pagination ===== -->
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="prev-page.html" class="pagination-prev" data-i18n="common.nav.previous">&larr; Anterior</a>
+          <a href="next-page.html" class="pagination-next" data-i18n="common.nav.next">Siguiente &rarr;</a>
+        </nav>
+        <div class="footer-meta">
+          <span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Sidebar toggle (mobile)
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

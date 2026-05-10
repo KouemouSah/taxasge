@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="searchpage.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Búsqueda en el manual de usuario Facil">
+  <title>Buscar — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+  <!-- Pagefind UI: activado en Phase 10 después de generar el índice
+  <link rel="stylesheet" href="pagefind/pagefind-ui.css">
+  <script src="pagefind/pagefind-ui.js" defer></script>
+  -->
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo">
+        <div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="search.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+        <!-- Resto de la navegación: copiada desde index.html en Phase 1 -->
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="searchpage.breadcrumb">Buscar</span>
+        </nav>
+      </header>
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="searchpage.title">Buscar en el manual</h1>
+        <p class="page-description" data-i18n="searchpage.description">
+          Encuentre rápidamente la información que necesita en las 62 páginas del manual.
+        </p>
+
+        <div class="search-wrapper">
+          <!-- Pagefind UI montará aquí su input + resultados después de Phase 10 -->
+          <div id="search"></div>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n="searchpage.info">
+              La búsqueda completa se activa después de la fase 10 del proyecto (generación del índice Pagefind). Mientras tanto, navegue mediante el menú lateral o el sumario de la página de inicio.
+            </p>
+          </aside>
+        </div>
+      </div>
+      <footer class="page-footer">
+        <span data-i18n="indexpage.footer">Plataforma Facil · Manual de usuario v1.1.8 · © 2026</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Pagefind UI init: activado en Phase 10
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      new PagefindUI({ element: '#search', showSubResults: true });
+    });
+  </script>
+  -->
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>
