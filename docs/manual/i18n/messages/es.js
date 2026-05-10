@@ -277,15 +277,15 @@ window.__I18N__.es = {
     "next": "Siguiente: Explorar servicios →",
     "prev": "← Anterior: Inicio del manual",
     "toc": {
-      "s1": "1. La pantalla de inicio",
-      "s2": "2. El carrusel de novedades",
-      "s3": "3. Las 4 acciones principales",
-      "s4": "4. Onboarding móvil (primera instalación)",
+      "s1": "2. La pantalla de inicio",
+      "s2": "3. El carrusel de novedades",
+      "s3": "4. Las 4 acciones principales",
+      "s4": "1. Onboarding móvil (primera instalación)",
       "s5": "5. Explorar sin cuenta o iniciar sesión",
       "s6": "6. Diferencias Web vs Móvil"
     },
     "s1": {
-      "title": "1. La pantalla de inicio",
+      "title": "2. La pantalla de inicio",
       "intro": "Cuando abre <strong>Facil</strong> sin haber iniciado sesión — ya sea desde un navegador en <code>facil.gov.gq</code> o desde la aplicación móvil — accede a la pantalla de bienvenida pública. Esta pantalla está disponible <strong>en español, francés e inglés</strong>: el selector de idioma está en la cabecera (ES / FR / EN).",
       "body": "La pantalla está estructurada en 4 zonas principales:",
       "zone1": "<strong>Banner principal (hero)</strong> — eslogan «Nada más fácil para servirle», con el logo Facil y el escudo de la República de Guinea Ecuatorial.",
@@ -298,7 +298,7 @@ window.__I18N__.es = {
       }
     },
     "s2": {
-      "title": "2. El carrusel de novedades",
+      "title": "3. El carrusel de novedades",
       "intro": "La pantalla de bienvenida incluye un <strong>carrusel</strong> de varias diapositivas que destaca las funcionalidades clave de Facil. Las diapositivas pasan automáticamente cada 5 segundos, o usted puede pasar manualmente con un deslizamiento.",
       "slide1": {
         "title": "Diapositiva 1 — Bienvenida general",
@@ -314,7 +314,7 @@ window.__I18N__.es = {
       }
     },
     "s3": {
-      "title": "3. Las 4 acciones principales",
+      "title": "4. Las 4 acciones principales",
       "intro": "Desde la pantalla de bienvenida, 4 tarjetas le dan acceso directo a las funciones más utilizadas — sin necesidad de iniciar sesión:",
       "table": {
         "col1": "Tarjeta", "col2": "Para qué sirve", "col3": "Página manual",
@@ -326,7 +326,7 @@ window.__I18N__.es = {
       "tip": "Pulse cualquier tarjeta para descubrir la sección. Puede regresar a la pantalla de bienvenida en cualquier momento desde el botón «Inicio» de la cabecera."
     },
     "s4": {
-      "title": "4. Onboarding móvil (primera instalación)",
+      "title": "1. Onboarding móvil (primera instalación)",
       "intro": "La <strong>primera vez</strong> que abre la aplicación móvil Facil después de instalarla, accede a una pantalla de presentación en 3 diapositivas (onboarding) antes de ver la pantalla de bienvenida estándar. Estas diapositivas explican rápidamente las ventajas de Facil.",
       "slide1": {
         "title": "Diapositiva 1 — Bienvenida",
