@@ -1259,8 +1259,553 @@ window.__I18N__.es = {
     },
     "prev": "← Anterior: Verificar un recibo",
     "next": "Siguiente: Crear cuenta →"
-  }
+  },
 
-  // page01, page11-17, page22-29, page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
+  // ---- page11 — Crear cuenta ----
+    "page11": {
+      "html_title": "Crear cuenta — Manual Facil",
+      "title": "Crear su cuenta Facil",
+      "description": "Para realizar trámites administrativos en Facil (presentar una solicitud, pagar una tasa, descargar un recibo) necesita una cuenta personal. La creación es gratuita, en línea, y le toma 3-5 minutos.",
+      "next": "Siguiente: Iniciar sesión →",
+      "prev": "← Anterior: Información legal",
+      "toc": {
+        "s1": "1. Elegir el tipo de cuenta",
+        "s2": "2. Rellenar los datos personales",
+        "s3": "3. Verificar el correo electrónico",
+        "s4": "4. Crear la contraseña",
+        "s5": "5. Diferencias Web vs Móvil",
+        "s6": "6. Errores frecuentes"
+      },
+      "s1": {
+        "title": "1. Elegir el tipo de cuenta",
+        "intro": "Al iniciar la creación, debe elegir entre 2 tipos de cuenta — la elección determina los campos a rellenar y los servicios disponibles después de la conexión:",
+        "table": {
+          "col1": "Tipo", "col2": "Para quién", "col3": "Documentos requeridos",
+          "r1": { "c1": "Ciudadano", "c2": "Particular que realiza trámites para sí mismo o su familia", "c3": "DIP (nacionales) o NIE (residentes extranjeros)" },
+          "r2": { "c1": "Empresa", "c2": "Representante legal de una empresa registrada en Guinea Ecuatorial", "c3": "NIF de la empresa + DIP/NIE del representante" }
+        },
+        "fig1": {
+          "alt": "Pantalla de registro con selector tipo de cuenta",
+          "caption": "Pantalla de registro Web — selector «Tipo de cuenta» (Ciudadano seleccionado por defecto / Empresa) seguido de los campos Nombre, Apellido, Correo, Teléfono, Contraseña, y CTA «Crear una cuenta»."
+        },
+        "info": "Si gestiona varias empresas, comience por crear su cuenta personal (tipo Ciudadano) y luego añada las empresas mediante <a href=\"42-gestion-empresas.html\" class=\"coming-soon\">Gestionar empresas</a>. Esto le permite cambiar entre sus diferentes roles desde el mismo inicio de sesión."
+      },
+      "s2": {
+        "title": "2. Rellenar los datos personales",
+        "intro": "Los campos varían según el tipo de cuenta elegido:",
+        "citizen": {
+          "title": "Cuenta Ciudadano",
+          "f1": "<strong>Nombre y apellidos</strong> — exactamente como aparecen en su DIP/NIE (acentos, mayúsculas)",
+          "f2": "<strong>Correo electrónico</strong> — un email personal al que tenga acceso (no uno desactivado, no un email temporal)",
+          "f3": "<strong>Teléfono</strong> — número móvil con prefijo internacional (+240 para Guinea Ecuatorial)"
+        },
+        "business": {
+          "title": "Cuenta Empresa",
+          "f1": "<strong>NIF de la empresa</strong> — Número de Identificación Fiscal único, exactamente como aparece en el certificado de registro",
+          "f2": "<strong>Nombre comercial</strong> — denominación oficial registrada",
+          "f3": "<strong>Datos del representante legal</strong> — nombre, DIP/NIE, email profesional, teléfono"
+        },
+        "fig1": {
+          "alt": "Pantalla móvil registro etapa 1/2",
+          "caption": "Pantalla móvil — etapa 1/2 «Crea tu cuenta Facil» con el campo email y el botón «Enviar código» de verificación."
+        }
+      },
+      "s3": {
+        "title": "3. Verificar el correo electrónico",
+        "intro": "Después de validar la etapa 1, Facil envía un <strong>código de verificación de 6 cifras</strong> a su correo electrónico. Este código tiene una validez de <strong>15 minutos</strong>.",
+        "step1": "Abra su buzón de correo (incluya la carpeta de spam si no aparece).",
+        "step2": "Localice el email de <code>noreply@facil.gov.gq</code> con el asunto «Código de verificación Facil».",
+        "step3": "Copie el código de 6 cifras y pegelo en el campo correspondiente en la pantalla.",
+        "step4": "Pulse <strong>«Verificar»</strong>. Si el código es correcto, accede a la etapa siguiente.",
+        "warning": "Si no recibe el email después de <strong>5 minutos</strong>: (1) verifique la ortografía de la dirección email introducida, (2) consulte el spam/correo no deseado, (3) pulse «Reenviar el código» (límite : 3 reenvíos en 15 minutos)."
+      },
+      "s4": {
+        "title": "4. Crear la contraseña",
+        "intro": "La contraseña debe respetar las siguientes reglas de seguridad:",
+        "r1": "<strong>Mínimo 8 caracteres</strong>",
+        "r2": "<strong>Al menos 1 mayúscula</strong> (A-Z)",
+        "r3": "<strong>Al menos 1 minúscula</strong> (a-z)",
+        "r4": "<strong>Al menos 1 cifra</strong> (0-9)",
+        "r5": "<strong>Recomendado: 1 carácter especial</strong> (!@#$%^&* etc.)",
+        "r6": "No debe contener su nombre, apellido o fecha de nacimiento",
+        "tip": "Use un <strong>gestor de contraseñas</strong> (Bitwarden, 1Password, o el integrado en su navegador) para generar una contraseña fuerte y guardarla. Active la <a href=\"14-2fa.html\">autenticación 2FA</a> después de crear su cuenta para una seguridad reforzada."
+      },
+      "s5": {
+        "title": "5. Diferencias Web vs Móvil",
+        "intro": "El proceso es idéntico en sustancia pero presenta algunas diferencias visuales:",
+        "table": {
+          "col1": "Aspecto", "col2": "Web", "col3": "Móvil",
+          "r1": { "c1": "Pantalla todo-en-uno", "c3": "2 etapas separadas (email → datos)" },
+          "r2": { "c1": "Selector tipo cuenta", "c2": "Botones grandes lado a lado", "c3": "Lista vertical" },
+          "r3": { "c1": "Permisos cámara/contactos", "c3": "✅ (opcional, para foto perfil)" }
+        }
+      },
+      "s6": {
+        "title": "6. Errores frecuentes",
+        "table": {
+          "col1": "Mensaje", "col2": "Causa", "col3": "Solución"
+        },
+        "r1": { "c1": "«Email ya registrado»", "c2": "Una cuenta existe con este email", "c3": "Inicie sesión o use «Contraseña olvidada»" },
+        "r2": { "c1": "«DIP/NIF ya registrado»", "c2": "Su identidad ya está vinculada a una cuenta", "c3": "Recupere la cuenta original o contacte al soporte" },
+        "r3": { "c1": "«Código incorrecto»", "c2": "Código mal copiado o caducado (>15 min)", "c3": "Solicite un nuevo código mediante «Reenviar»" },
+        "r4": { "c1": "«Contraseña demasiado débil»", "c2": "No cumple las reglas de la sección 4", "c3": "Añada mayúscula + cifra + carácter especial" },
+        "success": "Su cuenta está creada. Ya puede <a href=\"12-iniciar-sesion.html\">iniciar sesión</a> y comenzar sus trámites. Le recomendamos activar la <a href=\"14-2fa.html\">autenticación 2FA</a> de inmediato para proteger su cuenta."
+      }
+    },
+  
+    // ---- page12 — Iniciar sesión ----
+    "page12": {
+      "html_title": "Iniciar sesión — Manual Facil",
+      "title": "Iniciar sesión en Facil",
+      "description": "Acceda a su cuenta personal con su email y contraseña. Si tiene la autenticación 2FA activada, deberá introducir además un código TOTP. La aplicación móvil ofrece adicionalmente acceso por biometría (huella o reconocimiento facial).",
+      "next": "Siguiente: Recuperar contraseña →",
+      "prev": "← Anterior: Crear cuenta",
+      "toc": {
+        "s1": "1. Acceder a la pantalla de inicio de sesión",
+        "s2": "2. Introducir email y contraseña",
+        "s3": "3. Código 2FA (si está activado)",
+        "s4": "4. Acceso biométrico (móvil)",
+        "s5": "5. Recordar la sesión",
+        "s6": "6. Problemas frecuentes"
+      },
+      "s1": {
+        "title": "1. Acceder a la pantalla de inicio de sesión",
+        "intro": "Desde la pantalla de bienvenida, pulse el botón <strong>«Iniciar sesión»</strong> (azul, en la parte inferior). En la versión Web, también puede usar la URL directa <code>https://facil.gov.gq/login</code>.",
+        "fig1": {
+          "alt": "Pantalla móvil login en español",
+          "caption": "Pantalla móvil de inicio de sesión (versión española) — logo Facil, mensaje «Bienvenido de nuevo», campos email + contraseña, enlace «¿Contraseña olvidada?»."
+        },
+        "fig2": {
+          "alt": "Pantalla web login estado vacío",
+          "caption": "Pantalla web de inicio de sesión — pestaña «Iniciar Sesión» activa, campos vacíos con placeholders <code>su@correo.com</code>, header público accesible (Servicios, Licencias, Calculadora...)."
+        }
+      },
+      "s2": {
+        "title": "2. Introducir email y contraseña",
+        "step1": "Escriba el <strong>email</strong> con el que se registró (no use un alias o apodo).",
+        "step2": "Introduzca la <strong>contraseña</strong>. El icono de ojo le permite verificar lo que escribe (útil si tiene dudas).",
+        "step3": "Pulse <strong>«Iniciar sesión»</strong>.",
+        "fig1": {
+          "alt": "Pantalla web login con email pre-rellenado",
+          "caption": "Ejemplo Web con email pre-rellenado por el navegador (función de autocompletar) — gana tiempo al volver a conectarse."
+        },
+        "warning": "Después de <strong>5 intentos fallidos</strong>, su cuenta es <strong>bloqueada durante 15 minutos</strong> por seguridad. Después de <strong>10 intentos fallidos en 24h</strong>, recibirá un email de alerta y un bloqueo más largo (1h). Si recibe esta alerta sin intentar conectarse, alguien intenta acceder a su cuenta — cambie su contraseña inmediatamente."
+      },
+      "s3": {
+        "title": "3. Código 2FA (si está activado)",
+        "intro": "Si ha activado la <a href=\"14-2fa.html\">autenticación de dos factores</a>, una segunda pantalla aparece después de la contraseña. Tiene <strong>30 segundos</strong> para introducir el código TOTP de 6 cifras de su aplicación de autenticación (Google Authenticator, Authy, Microsoft Authenticator).",
+        "body": "Si pierde acceso a su aplicación 2FA (teléfono perdido o destruido), use uno de los <strong>10 códigos de respaldo</strong> que le entregamos al activar el 2FA. Si los ha perdido también, contacte al soporte presentando una prueba de identidad."
+      },
+      "s4": {
+        "title": "4. Acceso biométrico (solo móvil)",
+        "intro": "Después de iniciar sesión por primera vez en la aplicación móvil, Facil le propone activar el <strong>desbloqueo biométrico</strong> (huella digital o reconocimiento facial según su teléfono).",
+        "body": "Una vez activado, las próximas conexiones se hacen con un simple gesto biométrico — sin necesidad de reescribir su email, contraseña o código 2FA. La biometría es local a su teléfono (los datos no salen del aparato), conforme a las normas de seguridad iOS Secure Enclave / Android StrongBox.",
+        "info": "La biometría puede desactivarse en cualquier momento desde <a href=\"16-seguridad.html\">Seguridad</a>. En caso de fallo (huella sucia, gafas que perturban Face ID), siempre puede volver al inicio de sesión clásico email + contraseña."
+      },
+      "s5": {
+        "title": "5. Recordar la sesión",
+        "intro": "La opción <strong>«Recordarme»</strong> (visible bajo el campo contraseña) le mantiene conectado durante <strong>30 días</strong> en este dispositivo, incluso después de cerrar el navegador o la aplicación. Útil en su teléfono personal — desaconsejado en un ordenador público o compartido.",
+        "body": "Si no la marca, su sesión expira al cerrar el navegador (web) o al pasar 30 minutos de inactividad (móvil), por seguridad."
+      },
+      "s6": {
+        "title": "6. Problemas frecuentes",
+        "table": {
+          "col1": "Síntoma", "col2": "Solución"
+        },
+        "r1": { "c1": "«Email o contraseña incorrectos»", "c2": "Verifique mayúsculas/minúsculas. Si la duda persiste, use <a href=\"13-recuperar-contrasena.html\">Recuperar contraseña</a>." },
+        "r2": { "c1": "«Cuenta bloqueada»", "c2": "Espere 15 minutos (5 intentos fallidos) o 1 hora (10 intentos en 24h)." },
+        "r3": { "c1": "«Código 2FA inválido»", "c2": "Sincronice el reloj de su teléfono (los códigos TOTP dependen de la hora). Use un código de respaldo si su teléfono está desincronizado." },
+        "r4": { "c1": "No recibe email de alerta", "c2": "Verifique el spam. La dirección email registrada puede ser obsoleta — contacte al soporte." },
+        "success": "Está conectado. Ya puede acceder a su panel principal y realizar sus trámites."
+      }
+    },
+  
+    // ---- page13 — Recuperar contraseña ----
+    "page13": {
+      "html_title": "Recuperar contraseña — Manual Facil",
+      "title": "Recuperar su contraseña",
+      "description": "Si ha olvidado su contraseña, no necesita crear una nueva cuenta. El procedimiento de recuperación restablece su acceso en menos de 5 minutos vía un enlace seguro enviado a su email.",
+      "next": "Siguiente: Autenticación 2FA →",
+      "prev": "← Anterior: Iniciar sesión",
+      "no_capture": "<strong>Esta página describe el flujo paso a paso</strong> sin capturas — la pantalla cambia poco entre versiones (Web/Móvil) y el flujo es lineal. Use el diagrama ASCII de la sección 2 para visualizar el conjunto.",
+      "toc": {
+        "s1": "1. Solicitar el enlace de recuperación",
+        "s2": "2. Flujo completo (diagrama)",
+        "s3": "3. Recibir y abrir el email",
+        "s4": "4. Definir una nueva contraseña",
+        "s5": "5. Notas de seguridad",
+        "s6": "6. Sin acceso al email registrado"
+      },
+      "s1": {
+        "title": "1. Solicitar el enlace de recuperación",
+        "step1": "Vaya a la pantalla de <a href=\"12-iniciar-sesion.html\">inicio de sesión</a>.",
+        "step2": "Pulse el enlace <strong>«¿Contraseña olvidada?»</strong> situado bajo el campo contraseña.",
+        "step3": "Introduzca el <strong>email</strong> asociado a su cuenta. Use exactamente el mismo email con el que se registró (sensible a mayúsculas).",
+        "step4": "Pulse <strong>«Enviar el enlace»</strong>.",
+        "step5": "Aparece un mensaje de confirmación: «Si una cuenta existe con este email, recibirá un enlace en pocos minutos». Por seguridad, el sistema no revela si el email está realmente registrado o no."
+      },
+      "s2": {
+        "title": "2. Flujo completo (diagrama)",
+        "diagram": "┌─────────────────┐        ┌──────────────────┐\n│   USUARIO       │        │  FRONTEND FACIL  │\n│ Olvidó MDP      ├───────►│  /forgot-password│\n└─────────────────┘        └────────┬─────────┘\n                                    │ POST {email}\n                                    ▼\n                          ┌─────────────────────┐\n                          │   BACKEND           │\n                          │ 1. Verifica email   │\n                          │    en BD            │\n                          │ 2. Genera token     │\n                          │    (24h validez)    │\n                          │ 3. Envía email      │\n                          │    con enlace       │\n                          └─────────┬───────────┘\n                                    │\n                                    ▼\n                          ┌─────────────────────┐\n                          │  EMAIL ENVIADO      │\n                          │  asunto: Recupere su│\n                          │  contraseña Facil   │\n                          │  link: /reset/{token}│\n                          └─────────┬───────────┘\n                                    │\n                       Usuario abre │ enlace\n                                    ▼\n                          ┌─────────────────────┐\n                          │  /reset/{token}     │\n                          │  Form: nueva contraseña │\n                          │  Form: confirmación │\n                          └─────────┬───────────┘\n                                    │ POST {token, nueva}\n                                    ▼\n                          ┌─────────────────────┐\n                          │   BACKEND           │\n                          │ 1. Verifica token   │\n                          │    válido + no usado│\n                          │ 2. Aplica reglas    │\n                          │    contraseña       │\n                          │ 3. Hash + guarda    │\n                          │    bcrypt 12 rounds │\n                          │ 4. Invalida token   │\n                          │ 5. Cierra sesiones  │\n                          │    activas          │\n                          └─────────┬───────────┘\n                                    │\n                                    ▼\n                          ┌─────────────────────┐\n                          │  ✅ Acceso restaurado│\n                          │  Email confirmación │\n                          │  enviado            │\n                          └─────────────────────┘"
+      },
+      "s3": {
+        "title": "3. Recibir y abrir el email",
+        "intro": "El email arriba en su buzón en menos de <strong>2 minutos</strong>. Características:",
+        "f1": "<strong>Remitente</strong> : <code>noreply@facil.gov.gq</code>",
+        "f2": "<strong>Asunto</strong> : «Recupere su contraseña Facil»",
+        "f3": "<strong>Enlace de un solo uso</strong>, válido durante <strong>24 horas</strong>",
+        "f4": "<strong>Información de seguridad</strong> : IP del solicitante + navegador (para detectar abusos)",
+        "warning": "Si el email no llega después de 5 minutos: (1) revise su carpeta de spam; (2) verifique que el email introducido es correcto; (3) puede solicitar un nuevo enlace 30 segundos después del anterior."
+      },
+      "s4": {
+        "title": "4. Definir una nueva contraseña",
+        "step1": "Pulse el enlace en el email — abre la página <code>/reset/{token}</code> en su navegador.",
+        "step2": "Introduzca su <strong>nueva contraseña</strong> (mismas reglas que en <a href=\"11-crear-cuenta.html\">creación de cuenta</a>: mín. 8 caracteres, mayúscula, cifra).",
+        "step3": "Confírmela en el segundo campo.",
+        "step4": "Pulse <strong>«Guardar la nueva contraseña»</strong>.",
+        "step5": "Será redirigido automáticamente a la pantalla de inicio de sesión. Conéctese con su nueva contraseña.",
+        "tip": "No reutilice una contraseña ya usada en otro sitio. Use un <strong>gestor de contraseñas</strong> para generar y almacenar una contraseña aleatoria fuerte. Si tiene 2FA activado, sigue activo después del cambio (no necesita reconfigurarlo)."
+      },
+      "s5": {
+        "title": "5. Notas de seguridad",
+        "f1": "<strong>Cierre automático de sesiones</strong>: al cambiar la contraseña, todas sus sesiones activas se cierran automáticamente (todos los dispositivos donde estaba conectado). Deberá conectarse de nuevo en cada uno.",
+        "f2": "<strong>Email de confirmación</strong>: recibirá un email confirmando el cambio. Si no es usted quien lo ha hecho, contacte al soporte y bloquee su cuenta inmediatamente.",
+        "f3": "<strong>Token de un solo uso</strong>: el enlace recibido por email no puede ser reutilizado. Una vez cambiada la contraseña, el enlace queda inválido.",
+        "f4": "<strong>Caducidad 24h</strong>: si no usa el enlace en las 24 horas, expira. Solicite uno nuevo."
+      },
+      "s6": {
+        "title": "6. Si ya no tiene acceso al email registrado",
+        "intro": "El procedimiento estándar requiere acceso al email. Si lo ha perdido (cuenta cerrada, email del trabajo desactivado, etc.), <strong>contacte directamente al soporte Facil</strong>:",
+        "step1": "Envíe un email a <code>facilege26@gmail.com</code> con el asunto «Recuperación de cuenta - email perdido».",
+        "step2": "Adjunte una <strong>copia de su DIP/NIE</strong> (foto clara, frente y dorso).",
+        "step3": "Indique su <strong>nuevo email</strong> al que desea asociar la cuenta.",
+        "step4": "El equipo de soporte verifica su identidad y le contesta en <strong>48-72 horas hábiles</strong>.",
+        "success": "Su acceso ha sido restablecido. Considere activar la autenticación 2FA para una protección adicional."
+      }
+    },
+  
+    // ---- page14 — Autenticación 2FA ----
+    "page14": {
+      "html_title": "Autenticación 2FA — Manual Facil",
+      "title": "Autenticación de dos factores (2FA)",
+      "description": "La autenticación de dos factores (2FA) basada en TOTP es la protección más fuerte contra el robo de su cuenta. Activarla añade un código de 6 cifras generado por una aplicación de autenticación cada vez que inicia sesión — incluso si alguien obtiene su contraseña, no puede entrar sin su teléfono.",
+      "next": "Siguiente: Su perfil →",
+      "prev": "← Anterior: Recuperar contraseña",
+      "toc": {
+        "s1": "1. ¿Por qué activar el 2FA?",
+        "s2": "2. Aplicaciones recomendadas",
+        "s3": "3. Activar el 2FA paso a paso",
+        "s4": "4. Códigos de respaldo",
+        "s5": "5. Uso diario",
+        "s6": "6. Desactivar el 2FA"
+      },
+      "s1": {
+        "title": "1. ¿Por qué activar el 2FA?",
+        "intro": "El 2FA protege su cuenta incluso si su contraseña es comprometida (filtración, phishing, ataque de fuerza bruta). Cifras concretas:",
+        "f1": "Sin 2FA, una cuenta con contraseña filtrada es comprometida en <strong>menos de 24 horas</strong> en promedio.",
+        "f2": "Con 2FA, el atacante necesitaría además su teléfono — riesgo casi nulo a distancia.",
+        "f3": "El 2FA es <strong>obligatorio</strong> para los agentes públicos y administradores. <strong>Recomendado fuertemente</strong> para todos."
+      },
+      "s2": {
+        "title": "2. Aplicaciones recomendadas",
+        "intro": "Necesita una aplicación de autenticación TOTP (Time-based One-Time Password) en su teléfono. Las más usadas:",
+        "table": {
+          "col1": "Aplicación", "col2": "Plataformas", "col3": "Ventajas",
+          "r1": { "c3": "Simple, gratuito, soporte exportación entre teléfonos" },
+          "r2": { "c3": "Sincronización multi-dispositivo, copia de seguridad cifrada en la nube" },
+          "r3": { "c3": "Notificaciones push, integración con cuentas Microsoft" },
+          "r4": { "c2": "Multiplataforma", "c3": "Integrado con su gestor de contraseñas (rellena códigos automáticamente)" }
+        },
+        "info": "<strong>Evite los SMS para 2FA</strong> — son interceptables (ataques SIM swap). El TOTP funciona offline, no depende de la red móvil, y es mucho más seguro."
+      },
+      "s3": {
+        "title": "3. Activar el 2FA paso a paso",
+        "step1": "Conéctese a su cuenta y vaya a <strong>Configuración → Seguridad</strong>.",
+        "step2": "En la tarjeta «Autenticación 2FA», pulse el <strong>conmutador para activarlo</strong>.",
+        "step3": "Aparece un modal con un <strong>QR código</strong> y un código manual alfanumérico.",
+        "step4": "Abra su aplicación de autenticación → «Añadir cuenta» → «Escanear QR código» → apunte la cámara hacia el QR de la pantalla. La cuenta «Facil» se añade automáticamente con un código que cambia cada 30 segundos.",
+        "step5": "Si no puede escanear (problema cámara), copie el código manual y peguelo en su aplicación («Añadir cuenta» → «Manualmente»).",
+        "step6": "Pulse <strong>«He escaneado el QR»</strong> en Facil. Una pantalla le pide introducir el código actual de su aplicación (6 cifras) para validar la activación.",
+        "step7": "Tras la validación, recibirá <strong>10 códigos de respaldo</strong> a un solo uso (sección 4).",
+        "fig1": {
+          "alt": "Modal activación 2FA con QR code",
+          "caption": "Modal de activación 2FA — Pantalla con el QR código (centro) + código manual alfanumérico (ejemplo: <code>NC7BEZNWYTNDF53VQURQ2LA6MLYZGHPB</code>) + lista de aplicaciones recomendadas (Google/Authy/Microsoft) + botón «J'ai scanné le QR code» (capturado en versión francesa)."
+        }
+      },
+      "s4": {
+        "title": "4. Códigos de respaldo (10 únicos)",
+        "intro": "Tras activar el 2FA, Facil le entrega <strong>10 códigos de respaldo</strong> alfanuméricos a un solo uso. Estos códigos le permiten conectarse si pierde acceso a su aplicación de autenticación (teléfono perdido, robado, destruido).",
+        "guarda": {
+          "title": "Cómo guardarlos correctamente",
+          "f1": "<strong>Imprimirlos</strong> y guardarlos en un lugar seguro (caja fuerte, archivos personales)",
+          "f2": "<strong>Guardarlos en su gestor de contraseñas</strong> (Bitwarden, 1Password) cifrados",
+          "f3": "<strong>NO</strong> guardarlos en notas no cifradas en su teléfono o como captura de pantalla",
+          "f4": "<strong>NO</strong> compartirlos con nadie"
+        },
+        "uso": {
+          "title": "Cómo usarlos",
+          "body": "En la pantalla de inicio de sesión 2FA, pulse el enlace <strong>«Usar un código de respaldo»</strong> en lugar de introducir el código TOTP. Introduzca uno de los 10 códigos. Tras uso, ese código se invalida — quedan 9. Si los gasta todos, deberá regenerar nuevos códigos desde Configuración → Seguridad."
+        },
+        "danger": "Si pierde su teléfono <strong>Y</strong> sus códigos de respaldo, deberá contactar al <a href=\"29-soporte-web.html\" class=\"coming-soon\">soporte</a> presentando una prueba de identidad (DIP/NIE) — el plazo de tratamiento es de 5-10 días hábiles. Es la peor situación posible — siempre conserve sus códigos de respaldo."
+      },
+      "s5": {
+        "title": "5. Uso diario con 2FA activo",
+        "intro": "Tras activar el 2FA, su flujo de inicio de sesión cambia ligeramente:",
+        "step1": "Email + contraseña como de costumbre.",
+        "step2": "Una segunda pantalla aparece pidiendo el <strong>código TOTP</strong> de su aplicación.",
+        "step3": "Abra su aplicación → encuentre la entrada «Facil» → copie el código de 6 cifras (renueva cada 30 segundos).",
+        "step4": "Pegue el código en Facil → conexión completada.",
+        "body": "Tiempo total ~10 segundos suplementarios. Si activa el <strong>«Recordar este dispositivo»</strong> después de la validación, no se le pedirá el código 2FA durante 30 días en este dispositivo (a usar con prudencia, solo en su teléfono personal)."
+      },
+      "s6": {
+        "title": "6. Desactivar el 2FA",
+        "intro": "No recomendado, pero posible si tiene problemas con su aplicación de autenticación:",
+        "step1": "Conéctese y vaya a <strong>Configuración → Seguridad</strong>.",
+        "step2": "Pulse el conmutador 2FA para desactivarlo.",
+        "step3": "Confirme con su contraseña + un código TOTP válido (o un código de respaldo).",
+        "step4": "El 2FA está desactivado. Su cuenta solo está protegida por la contraseña.",
+        "warning": "Recibirá un email de confirmación. Si no es usted quien lo ha desactivado, su cuenta está comprometida — cambie su contraseña inmediatamente y reactive el 2FA.",
+        "success": "El 2FA es la mejor protección que puede activar en menos de 5 minutos. Si aún no lo ha hecho, hágalo ahora — su cuenta lo agradecerá."
+      }
+    },
+  
+    // ---- page15 — Su perfil ----
+    "page15": {
+      "html_title": "Su perfil — Manual Facil",
+      "title": "Su perfil personal",
+      "description": "El perfil reúne todos sus datos personales en Facil, organizados en 4 pestañas: información personal, información de cuenta, preferencias de notificaciones, y verificación de funcionario (si aplicable). Acceda desde el menú lateral «Perfil».",
+      "next": "Siguiente: Seguridad →",
+      "prev": "← Anterior: Autenticación 2FA",
+      "toc": {
+        "s1": "1. Pestaña «Información personal»",
+        "s2": "2. Pestaña «Información de cuenta»",
+        "s3": "3. Pestaña «Notificaciones»",
+        "s4": "4. Pestaña «Verificación funcionario»"
+      },
+      "s1": {
+        "title": "1. Pestaña «Información personal»",
+        "intro": "Por defecto cuando abre su perfil. Contiene los datos personales declarados en la creación de cuenta. Pulse <strong>«Modificar»</strong> abajo para entrar en modo edición.",
+        "editable": {
+          "title": "Campos modificables",
+          "f1": "<strong>Nombre y apellidos</strong> — corregir errores ortográficos",
+          "f2": "<strong>Email</strong> — requiere una nueva verificación por email",
+          "f3": "<strong>Teléfono</strong> — requiere una verificación por SMS",
+          "f4": "<strong>Tipo y número de documento</strong> (DIP/NIE) — atención: si se equivoca aquí, la mayoría de sus solicitudes futuras serán rechazadas",
+          "f5": "<strong>Dirección postal y ciudad</strong> — útil para los envíos físicos (carnets, certificados)"
+        },
+        "fig1": {
+          "alt": "Pestaña Información personal",
+          "caption": "Pestaña «Informaciones personales» — campos Nombre, Apellido, Email (verificado), Teléfono, Tipo+Número de documento, Dirección, Ciudad. Botón «Modificar» abajo a la derecha."
+        },
+        "warning": "Si modifica el <strong>nombre, apellidos o número DIP</strong>, las solicitudes activas pueden ser rechazadas porque los datos OCR de los documentos subidos ya no coinciden. Mejor terminar las solicitudes en curso antes de modificar estos campos."
+      },
+      "s2": {
+        "title": "2. Pestaña «Información de cuenta»",
+        "intro": "Información <strong>técnica de su cuenta</strong>, no modificable directamente. Útil para soporte y para tener una visión general de su perfil:",
+        "f1": "<strong>Rol</strong> : Ciudadano / Empresa / Comptable / Agente / Administrador (definido a la creación)",
+        "f2": "<strong>Estado</strong> : Activo / Suspendido / Pendiente verificación / Desactivado",
+        "f3": "<strong>Fecha de creación</strong> de la cuenta",
+        "f4": "<strong>2FA</strong> : Activado / Desactivado (con enlace directo a <a href=\"14-2fa.html\">la página 2FA</a>)",
+        "f5": "<strong>Última conexión</strong> : fecha + hora de su último login (verifique aquí si detecta una conexión sospechosa)",
+        "f6": "<strong>Enlace «Configuración de seguridad»</strong> hacia la página <a href=\"16-seguridad.html\">Seguridad</a>",
+        "fig1": {
+          "alt": "Pestaña Información de cuenta",
+          "caption": "Pestaña «Informaciones de la cuenta» — Rol=Ciudadano, Estado=Activo, fechas, 2FA Desactivada, última conexión, enlace «Configuración de seguridad»."
+        }
+      },
+      "s3": {
+        "title": "3. Pestaña «Notificaciones»",
+        "intro": "Configure cómo Facil le contacta. 2 grupos de preferencias:",
+        "idioma": {
+          "title": "Idioma preferido",
+          "body": "Elija el idioma de los emails, SMS, push y la interfaz: <strong>Español</strong> (por defecto), <strong>Francés</strong> o <strong>Inglés</strong>. Le aconsejamos elegir el idioma que utiliza con sus interlocutores administrativos para evitar errores de comprensión."
+        },
+        "canales": {
+          "title": "Canales de notificación",
+          "f1": "<strong>Email</strong> (activo por defecto) — actualizaciones de estado, alertas de plazo, recibos PDF",
+          "f2": "<strong>Push notifications</strong> (activo por defecto, solo móvil) — alertas instantáneas",
+          "f3": "<strong>SMS</strong> (desactivado por defecto) — útil sin internet, pero coste para el operador"
+        },
+        "fig1": {
+          "alt": "Pestaña Notificaciones",
+          "caption": "Pestaña «Notificaciones» — selector de idioma (FR seleccionado en este ejemplo), 3 conmutadores (Email ON, Push ON, SMS OFF), botón «Guardar las preferencias»."
+        },
+        "info": "Algunas notificaciones son <strong>obligatorias</strong> y no pueden desactivarse: alertas de seguridad (cambio de contraseña, conexión sospechosa, activación 2FA), validaciones de pago. Solo las notificaciones marketing y promocionales son opcionales."
+      },
+      "s4": {
+        "title": "4. Pestaña «Verificación funcionario» (si aplicable)",
+        "intro": "Solo para los <strong>funcionarios públicos</strong> que desean acceder a servicios reservados a su categoría (descuentos en ciertas tasas, procedimientos prioritarios). La verificación es opcional pero da acceso a beneficios.",
+        "proc": {
+          "title": "Procedimiento",
+          "step1": "Introduzca su <strong>número de matrícula</strong> de funcionario (formato <code>FP-XXXXX</code>).",
+          "step2": "Adjunte una <strong>copia del carnet de funcionario</strong> (foto frente y dorso).",
+          "step3": "Tiene <strong>30 minutos</strong> para completar el formulario tras iniciarlo (cronómetro visible).",
+          "step4": "Pulse <strong>«Continuar»</strong>.",
+          "step5": "El equipo Función Pública verifica su matrícula en su base de datos central — el plazo es de <strong>2-5 días hábiles</strong>.",
+          "step6": "Recibirá una notificación cuando la verificación esté validada (o rechazada con motivo)."
+        },
+        "fig1": {
+          "alt": "Pestaña Verificación Funcionario",
+          "caption": "Pestaña «Verificación Funcionario» — campo «Número de Matrícula» (Ej: FP-12345), aviso «Tiene 30 minutos para completar» con icono cronómetro, botón «Continuar» (deshabilitado hasta rellenar el campo)."
+        },
+        "success": "Tras la validación, su rol se actualiza a <strong>Funcionario</strong> y se desbloquean los descuentos y procedimientos correspondientes en su próximo trámite."
+      }
+    },
+  
+    // ---- page16 — Seguridad ----
+    "page16": {
+      "html_title": "Seguridad — Manual Facil",
+      "title": "Configurar la seguridad de su cuenta",
+      "description": "La página Seguridad agrupa todas las opciones que protegen su cuenta: contraseña, 2FA, sesiones activas, exportación RGPD. En la versión móvil añade biometría y bloqueo local de la aplicación. Acceso : Configuración → Seguridad.",
+      "next": "Siguiente: Eliminar cuenta →",
+      "prev": "← Anterior: Su perfil",
+      "toc": {
+        "s1": "1. Cambiar la contraseña",
+        "s2": "2. Autenticación 2FA",
+        "s3": "3. Biometría (solo móvil)",
+        "s4": "4. App lock — bloqueo local (solo móvil)",
+        "s5": "5. Sesiones activas",
+        "s6": "6. Exportar mis datos (RGPD)"
+      },
+      "s1": {
+        "title": "1. Cambiar la contraseña",
+        "intro": "Recomendado cada <strong>6-12 meses</strong> o tras cualquier sospecha de filtración. El formulario contiene 3 campos:",
+        "step1": "<strong>Contraseña actual</strong> (requisito de seguridad)",
+        "step2": "<strong>Nueva contraseña</strong> (mismas reglas que en creación: 8+ chars, mayúscula, cifra)",
+        "step3": "<strong>Confirmación de la nueva contraseña</strong>",
+        "step4": "Pulse <strong>«Cambiar la contraseña»</strong>. Todas sus sesiones activas (web + móvil) se cierran automáticamente — deberá conectarse de nuevo en cada dispositivo.",
+        "fig1": {
+          "alt": "Página Configuración Seguridad",
+          "caption": "Página «Configuración Seguridad» — 2 tarjetas principales: Contraseña (3 campos + botón «Cambiar la contraseña») y Autenticación 2FA (conmutador OFF/ON)."
+        }
+      },
+      "s2": {
+        "title": "2. Autenticación 2FA",
+        "intro": "El conmutador 2FA en esta página activa o desactiva la autenticación de dos factores. Detalle completo del setup, códigos de respaldo y uso diario en la <a href=\"14-2fa.html\">página dedicada 2FA</a>.",
+        "body": "Tras activación, podrá:",
+        "f1": "<strong>Regenerar nuevos códigos de respaldo</strong> (si ha gastado los 10 originales)",
+        "f2": "<strong>Cambiar de aplicación de autenticación</strong> (re-escanear un nuevo QR código)",
+        "f3": "<strong>Desactivar el 2FA</strong> (no recomendado, requiere contraseña + código TOTP válido)"
+      },
+      "s3": {
+        "title": "3. Biometría (solo móvil)",
+        "intro": "En la aplicación móvil, puede activar el desbloqueo por <strong>huella digital</strong> (Touch ID, fingerprint Android) o <strong>reconocimiento facial</strong> (Face ID, reconocimiento Android). Tras la activación:",
+        "f1": "Las próximas conexiones se hacen con un simple gesto biométrico (sin email + contraseña + 2FA)",
+        "f2": "Los datos biométricos <strong>nunca salen de su teléfono</strong> — usan los chips seguros iOS Secure Enclave / Android StrongBox",
+        "f3": "En caso de fallo (huella sucia, gafas que perturban Face ID), siempre puede volver al inicio de sesión clásico",
+        "f4": "Después de <strong>5 fallos consecutivos</strong>, la biometría se desactiva temporalmente y se pide la contraseña",
+        "info": "Si presta su teléfono a alguien que tiene su huella digital o cara registrada en el aparato, esa persona podrá conectarse a su cuenta Facil. Tenga cuidado con los teléfonos compartidos — desactive la biometría en este caso."
+      },
+      "s4": {
+        "title": "4. App lock — bloqueo local (solo móvil)",
+        "intro": "El App Lock añade una capa adicional <strong>al abrir la aplicación móvil</strong> (incluso sin cerrar sesión). Útil si presta su teléfono o lo deja desbloqueado.",
+        "f1": "<strong>PIN local de 4-6 cifras</strong> a introducir al abrir la aplicación",
+        "f2": "<strong>O biometría</strong> si está activa (más rápido)",
+        "f3": "<strong>Tiempo de espera configurable</strong> : aplicar el bloqueo después de 0 segundos / 30 segundos / 1 minuto / 5 minutos / al apagar la pantalla",
+        "f4": "El App Lock <strong>no reemplaza el login Facil</strong> — es solamente local al teléfono"
+      },
+      "s5": {
+        "title": "5. Sesiones activas",
+        "intro": "Lista de todos los dispositivos donde está conectado actualmente. Para cada sesión:",
+        "f1": "<strong>Tipo de dispositivo</strong> (Android, iOS, Web Chrome/Firefox/Safari)",
+        "f2": "<strong>Localización aproximada</strong> (ciudad, basada en la IP)",
+        "f3": "<strong>Última actividad</strong> (hace 5 min, hace 2 horas, hace 3 días, etc.)",
+        "f4": "<strong>Botón «Cerrar esta sesión»</strong> para desconectar este dispositivo a distancia",
+        "f5": "<strong>Botón «Cerrar todas las sesiones»</strong> útil si pierde su teléfono — desconecta todo, incluida su sesión actual",
+        "warning": "Si ve una sesión <strong>desconocida</strong> (tipo de dispositivo extraño, ciudad lejana, fecha sospechosa) — su cuenta está comprometida. Cierre esta sesión inmediatamente, cambie su contraseña, y active el 2FA si aún no está hecho."
+      },
+      "s6": {
+        "title": "6. Exportar mis datos (RGPD)",
+        "intro": "Conforme al RGPD, puede exportar todos sus datos personales en cualquier momento. Pulse <strong>«Exportar mis datos»</strong> y elija el formato:",
+        "f1": "<strong>JSON</strong> — formato técnico, completo, importable en otras herramientas",
+        "f2": "<strong>PDF</strong> — formato legible por humanos, presentable como prueba",
+        "body": "El archivo se genera en algunos minutos y se descarga directamente. Contiene: datos personales, lista de solicitudes, lista de pagos, documentos subidos, audit log de las acciones, preferencias.",
+        "info": "La exportación es <strong>gratuita</strong> y posible <strong>sin límite</strong> de frecuencia. Sus datos no salen de la plataforma — la exportación es para usted solamente. Para más detalles RGPD, consulte la página <a href=\"58-legal.html\">Legal</a>.",
+        "success": "Su cuenta es ahora segura. Si quiere ir más lejos, considere usar un gestor de contraseñas y verificar regularmente sus sesiones activas."
+      }
+    },
+  
+    // ---- page17 — Eliminar cuenta ----
+    "page17": {
+      "html_title": "Eliminar cuenta — Manual Facil",
+      "title": "Eliminar su cuenta Facil",
+      "description": "Si ya no desea usar Facil, puede solicitar la eliminación de su cuenta. El procedimiento incluye un período de gracia de 30 días para protegerle contra las eliminaciones accidentales. Algunos datos se conservan legalmente (10 años) por obligación fiscal y administrativa.",
+      "next": "Siguiente: Panel principal Web →",
+      "prev": "← Anterior: Seguridad",
+      "danger": "<strong>La eliminación es irreversible</strong> después del período de gracia de 30 días. Lea atentamente la sección 3 «Qué se borra realmente» antes de iniciar el procedimiento.",
+      "toc": {
+        "s1": "1. Alternativas antes de eliminar",
+        "s2": "2. Timeline 30 días (diagrama)",
+        "s3": "3. Qué se borra realmente",
+        "s4": "4. Procedimiento paso a paso",
+        "s5": "5. Cancelar la solicitud (durante los 30 días)",
+        "s6": "6. Después de la eliminación"
+      },
+      "s1": {
+        "title": "1. Alternativas antes de eliminar",
+        "intro": "Antes de eliminar definitivamente, considere estas opciones menos drásticas:",
+        "table": {
+          "col1": "Si su problema es...", "col2": "Considere...",
+          "r1": { "c1": "Demasiados emails de Facil", "c2": "Modificar las preferencias en <a href=\"15-perfil.html\">Perfil → Notificaciones</a> (desactivar push, SMS, mantener solo emails críticos)" },
+          "r2": { "c1": "Cuenta comprometida (alguien ha robado su contraseña)", "c2": "Cambie su contraseña, active el 2FA, cierre las sesiones sospechosas — la eliminación no es necesaria" },
+          "r3": { "c1": "Pausa temporal (no usa la cuenta durante varios meses)", "c2": "No es necesario eliminar — la cuenta puede permanecer inactiva indefinidamente" },
+          "r4": { "c1": "Quiere descargar sus datos antes de irse", "c2": "Use «Exportar mis datos» en <a href=\"16-seguridad.html\">Seguridad</a> antes de eliminar" }
+        }
+      },
+      "s2": {
+        "title": "2. Timeline 30 días (diagrama)",
+        "diagram": "DÍA 0                  DÍA 1-29              DÍA 30                DÍA 30+\n═══════               ════════════           ══════════           ══════════════\nSolicitud              Período de gracia     Eliminación          Conservación legal\nde eliminación        (cuenta desactivada)   efectiva             (10 años)\n   │                          │                  │                      │\n   │ 1. Pide eliminación      │ • Cuenta         │ • Datos personales   │ • Recibos\n   │    desde Configuración   │   inaccesible    │   borrados           │   PDF\n   │                          │   públicamente   │ • Documentos         │ • Audit log\n   │ 2. Confirma con          │ • Notificacion   │   subidos            │ • Solicitudes\n   │    contraseña + email    │   email cada     │   borrados           │ • Pagos\n   │                          │   semana         │ • Email anonimizado  │\n   │ 3. Email de confirmación │ • POSIBILIDAD    │ • Email confirmación │ Anonimizados\n   │    enviado               │   de cancelar    │   final enviado      │ (su nombre +\n   │                          │   en cualquier   │                      │ DIP están\n   │                          │   momento        │                      │ borrados,\n   │                          │                  │                      │ pero las\n   │                          │                  │                      │ referencias\n   │                          │                  │                      │ legales\n   │                          │                  │                      │ permanecen)"
+      },
+      "s3": {
+        "title": "3. Qué se borra realmente",
+        "borrado": {
+          "title": "✅ Borrado al día 30",
+          "f1": "<strong>Datos personales</strong> : nombre, apellidos, fecha de nacimiento, DIP/NIE, dirección, teléfono",
+          "f2": "<strong>Email</strong> : reemplazado por <code>deleted-XXXXX@facil.gov.gq</code>",
+          "f3": "<strong>Contraseña</strong> : hash borrado",
+          "f4": "<strong>Documentos subidos</strong> : copias DIP, fotos identidad, archivos personales",
+          "f5": "<strong>Solicitudes en borrador</strong> (no enviadas) o canceladas",
+          "f6": "<strong>Sesiones, tokens 2FA, códigos de respaldo</strong>",
+          "f7": "<strong>Preferencias y notificaciones</strong>"
+        },
+        "conservado": {
+          "title": "📦 Conservado 10 años (anonimizado)",
+          "intro": "Algunos datos se conservan por <strong>obligación legal fiscal y administrativa</strong>, pero anonimizados (su nombre + identificadores son borrados, queda solo la referencia técnica) :",
+          "f1": "<strong>Recibos PDF</strong> de pagos efectuados (obligación contable 10 años)",
+          "f2": "<strong>Audit log</strong> de las acciones (creación de solicitud, validación de pago) — para trazabilidad legal",
+          "f3": "<strong>Solicitudes completadas</strong> con su número de referencia (sin sus datos personales)",
+          "f4": "<strong>Pagos validados</strong> con importe + entidad emisora (sin pagador identificado)"
+        },
+        "info": "Esta conservación es <strong>obligatoria por ley</strong> — no podemos borrar más, ni siquiera a su demanda explícita. Después de los 10 años, todos los datos restantes son destruidos automáticamente."
+      },
+      "s4": {
+        "title": "4. Procedimiento paso a paso",
+        "step1": "Conéctese a su cuenta y vaya a <strong>Configuración → Cuenta</strong>.",
+        "step2": "Desplácese hasta abajo a la sección <strong>«Zona peligrosa»</strong> (fondo rojo).",
+        "step3": "Pulse el botón <strong>«Eliminar mi cuenta»</strong>.",
+        "step4": "Una pantalla de confirmación lista <strong>las consecuencias</strong> (sección 3) y le pide confirmar leyendo cada punto.",
+        "step5": "Introduzca su <strong>contraseña</strong> + razón opcional (encuesta de feedback).",
+        "step6": "Validar — recibe un email de confirmación con el enlace de cancelación válido durante los 30 días.",
+        "step7": "Su cuenta es <strong>desactivada inmediatamente</strong>. No puede conectarse durante el período de gracia."
+      },
+      "s5": {
+        "title": "5. Cancelar la solicitud (durante los 30 días)",
+        "intro": "Durante el período de gracia, puede <strong>cancelar la eliminación</strong> de 2 formas:",
+        "f1": "Pulse el enlace <strong>«Cancelar la eliminación»</strong> en el email de confirmación recibido al día 0",
+        "f2": "O conéctese normalmente con sus credenciales — el sistema le propondrá automáticamente cancelar la eliminación e reactivar la cuenta",
+        "body": "Tras cancelación, su cuenta se reactiva inmediatamente con todos sus datos intactos. Recibirá un email de confirmación.",
+        "tip": "Recibirá un <strong>email semanal</strong> durante el período de gracia, recordándole la solicitud y el plazo restante. Estos emails contienen también el enlace de cancelación — útil si ha perdido el primer email."
+      },
+      "s6": {
+        "title": "6. Después de la eliminación efectiva (día 30+)",
+        "f1": "<strong>Email final</strong> enviado al día 30 confirmando la eliminación efectiva",
+        "f2": "<strong>Su email original es liberado</strong> — puede reusarlo para crear una nueva cuenta si quiere volver a Facil",
+        "f3": "<strong>Sus referencias de solicitudes pasadas</strong> permanecen verificables vía la <a href=\"57-verificar.html\">página Verify</a> con el número original (sin sus datos personales)",
+        "f4": "<strong>Sus pagos pasados</strong> permanecen históricamente trazables al Tesoro Público (sin nombre)",
+        "success": "Su cuenta ha sido eliminada conforme al RGPD. Si decide volver más tarde, su email queda disponible para crear una nueva cuenta."
+      }
+    }
+
+    // page22-29, page31-39, page41-44, page52-58, page61-69, page71-74, page81-89, page91-95: por crear
 
 };
