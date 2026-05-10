@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page53.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Consulte el directorio público de empresas registradas en Guinea Ecuatorial: nombre, NIF, tier, sector, ciudad. Acceso público sin sesión.">
+  <title>Directorio de empresas — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.directory">Directorio de empresas</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page53.title">Directorio de empresas</h1>
+        <p class="page-description" data-i18n="page53.description">
+          Consulte el directorio público de las empresas registradas en Guinea Ecuatorial. Para cada empresa: nombre comercial, NIF, sector, tier (A/B/C/D), ciudad y representante legal. Acceso totalmente público — útil para verificar la existencia legal de un proveedor antes de firmar un contrato.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page53.toc.s1">1. Acceder al directorio</a></li>
+            <li><a href="#busqueda" data-i18n="page53.toc.s2">2. Buscar y filtrar</a></li>
+            <li><a href="#tier" data-i18n="page53.toc.s3">3. Sistema de tier (A/B/C/D)</a></li>
+            <li><a href="#detalle" data-i18n="page53.toc.s4">4. Detalle de una empresa</a></li>
+            <li><a href="#usos" data-i18n="page53.toc.s5">5. Usos prácticos</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page53.s1.title">1. Acceder al directorio</h2>
+          <p data-i18n-html="page53.s1.intro">Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Empresas»</strong>. Se muestra el directorio con un contador del total de empresas registradas (ejemplo: «20/49 empresas» en pantalla, paginación abajo).</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/business-directory.jpg" alt="Directorio de empresas" data-i18n-attr-alt="page53.s1.fig1.alt">
+            <figcaption data-i18n="page53.s1.fig1.caption">Directorio de empresas en versión móvil — listado con búsqueda, badge de tier por empresa (A1/C1/C2/D1), 20 resultados por página.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="busqueda" data-i18n="page53.s2.title">2. Buscar y filtrar</h2>
+          <p data-i18n="page53.s2.intro">Tres herramientas para localizar una empresa:</p>
+          <ul>
+            <li data-i18n-html="page53.s2.search"><strong>Búsqueda por nombre</strong> — escriba el nombre comercial total o parcial. La búsqueda funciona por mejor coincidencia (no necesita escritura exacta).</li>
+            <li data-i18n-html="page53.s2.nif"><strong>Búsqueda por NIF</strong> — el Número de Identificación Fiscal único de la empresa. Útil cuando ya tiene una factura.</li>
+            <li data-i18n-html="page53.s2.filter"><strong>Filtros</strong> — por tier (A/B/C/D), sector (comercio, servicios, industria...), ciudad (Malabo, Bata, Mongomo...).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="tier" data-i18n="page53.s3.title">3. Sistema de tier (A / B / C / D)</h2>
+          <p data-i18n-html="page53.s3.intro">Cada empresa tiene un <strong>tier</strong> (categoría de tamaño y zona) que determina el régimen fiscal aplicable y las tarifas de licencias. El tier se asigna a la creación y se revisa anualmente.</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page53.s3.table.col1">Tier</th>
+                  <th data-i18n="page53.s3.table.col2">Zona</th>
+                  <th data-i18n="page53.s3.table.col3">Tipo de comercio típico</th>
+                  <th data-i18n="page53.s3.table.col4">Ejemplo de licencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>A1, A2, A3</strong></td><td data-i18n="page53.s3.table.r1.c2">Capitales de región (Malabo, Bata)</td><td data-i18n="page53.s3.table.r1.c3">Grandes empresas, supermercados</td><td>250 000+ XAF</td></tr>
+                <tr><td><strong>B1, B2, B3</strong></td><td data-i18n="page53.s3.table.r2.c2">Capitales de provincia</td><td data-i18n="page53.s3.table.r2.c3">Mediana empresa, restaurantes</td><td>150 000 XAF</td></tr>
+                <tr><td><strong>C1, C2, C3</strong></td><td data-i18n="page53.s3.table.r3.c2">Capitales de distrito</td><td data-i18n="page53.s3.table.r3.c3">Pequeña empresa, abacerías</td><td>75 000 XAF</td></tr>
+                <tr><td><strong>D</strong></td><td data-i18n="page53.s3.table.r4.c2">Pueblos y zona rural</td><td data-i18n="page53.s3.table.r4.c3">Comercio local, talleres</td><td>50 000 XAF</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="detalle" data-i18n="page53.s4.title">4. Detalle de una empresa</h2>
+          <p data-i18n="page53.s4.intro">Pulse una empresa para abrir su ficha pública. Información mostrada:</p>
+          <ul>
+            <li data-i18n-html="page53.s4.info1"><strong>Identidad</strong>: nombre comercial, forma jurídica, NIF, fecha de registro</li>
+            <li data-i18n-html="page53.s4.info2"><strong>Localización</strong>: ciudad, dirección de la sede social</li>
+            <li data-i18n-html="page53.s4.info3"><strong>Clasificación</strong>: tier asignado, sector de actividad principal</li>
+            <li data-i18n-html="page53.s4.info4"><strong>Representante legal</strong>: nombre del director o gerente declarado oficialmente</li>
+            <li data-i18n-html="page53.s4.info5"><strong>Estado</strong>: activa, suspendida, en liquidación</li>
+          </ul>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n="page53.s4.info_callout">Los datos sensibles (cifra de negocios, deudas fiscales, sanciones) NO son públicos. Solo el representante legal y los agentes autorizados pueden acceder a ellos tras autenticación.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="usos" data-i18n="page53.s5.title">5. Usos prácticos</h2>
+          <ul>
+            <li data-i18n-html="page53.s5.use1"><strong>Verificar un proveedor</strong> antes de firmar un contrato — consulte que la empresa esté activa y declarada en el sector adecuado.</li>
+            <li data-i18n-html="page53.s5.use2"><strong>Encontrar el NIF de una empresa</strong> a partir de su nombre comercial (útil para emitir una factura).</li>
+            <li data-i18n-html="page53.s5.use3"><strong>Verificar un cambio de representante</strong> — la fecha de actualización del representante legal indica si está correctamente identificado.</li>
+            <li data-i18n-html="page53.s5.use4"><strong>Estudiar el mercado</strong> — visualizar las empresas activas por sector y por ciudad antes de crear una nueva actividad.</li>
+          </ul>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page53.s5.success">El directorio es accesible 24/7 sin necesidad de cuenta. Para registrar su propia empresa, consulte la página <a href="42-gestion-empresas.html" class="coming-soon">Gestionar empresas</a>.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="52-calculadora.html" class="pagination-prev"><span data-i18n="page53.prev">← Anterior: Calculadora fiscal</span></a>
+          <a href="54-licencias-comerciales.html" class="pagination-next"><span data-i18n="page53.next">Siguiente: Simulador de licencias →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

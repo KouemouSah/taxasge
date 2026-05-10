@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page56.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Guía paso a paso del uso de Facil: pasos para iniciar un trámite, preguntas frecuentes, descarga de formularios oficiales.">
+  <title>Guía — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.guide">Guía</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page56.title">Guía rápida de Facil</h1>
+        <p class="page-description" data-i18n="page56.description">
+          La guía integrada en Facil le acompaña en sus primeros pasos. Tres pestañas: pasos a seguir para iniciar un trámite, preguntas frecuentes (FAQ), formularios oficiales descargables. Acceso público sin sesión.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#pestana-pasos" data-i18n="page56.toc.s1">1. Pestaña «Pasos»</a></li>
+            <li><a href="#pestana-preguntas" data-i18n="page56.toc.s2">2. Pestaña «Preguntas frecuentes»</a></li>
+            <li><a href="#pestana-formularios" data-i18n="page56.toc.s3">3. Pestaña «Formularios»</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="pestana-pasos" data-i18n="page56.s1.title">1. Pestaña «Pasos» — guía paso a paso</h2>
+          <p data-i18n="page56.s1.intro">La pestaña «Pasos» enumera los 6 pasos genéricos para realizar cualquier trámite en Facil:</p>
+
+          <ol class="step-list">
+            <li data-i18n-html="page56.s1.step1"><strong>Crear su cuenta</strong> — verificación por email + opción de añadir 2FA</li>
+            <li data-i18n-html="page56.s1.step2"><strong>Iniciar sesión</strong> — con email y contraseña, opcionalmente con biometría en móvil</li>
+            <li data-i18n-html="page56.s1.step3"><strong>Elegir su trámite</strong> — desde el catálogo, las sugerencias del asistente IA o la búsqueda</li>
+            <li data-i18n-html="page56.s1.step4"><strong>Subir los documentos requeridos</strong> — foto desde el móvil o subida de archivos PDF/JPG. El OCR extrae automáticamente los datos.</li>
+            <li data-i18n-html="page56.s1.step5"><strong>Rellenar el formulario</strong> — la mayoría de los campos están prerellenados con los datos OCR. Verifique y complete.</li>
+            <li data-i18n-html="page56.s1.step6"><strong>Programar la cita</strong> — elija oficina, fecha y hora entre los disponibles, luego pague.</li>
+          </ol>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/guide/steps-tab-es.jpg" alt="Pestaña Pasos en versión española" data-i18n-attr-alt="page56.s1.fig1.alt">
+            <figcaption data-i18n="page56.s1.fig1.caption">Pestaña «Pasos» en la versión española — los 6 pasos numerados con iconos.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="pestana-preguntas" data-i18n="page56.s2.title">2. Pestaña «Preguntas frecuentes»</h2>
+          <p data-i18n="page56.s2.intro">La FAQ contiene 6 preguntas cuya respuesta se despliega al pulsarlas. Las preguntas tratan los temas más frecuentes:</p>
+
+          <ul>
+            <li data-i18n-html="page56.s2.q1"><strong>¿Necesito una cuenta para todo?</strong> — No, los servicios públicos (catálogo, calculadora, simulador, asistente IA, verificación) son accesibles sin sesión.</li>
+            <li data-i18n-html="page56.s2.q2"><strong>¿Cómo cambio de idioma?</strong> — Selector ES/FR/EN en la cabecera, en cualquier momento.</li>
+            <li data-i18n-html="page56.s2.q3"><strong>¿Puedo pagar en efectivo?</strong> — Sí, en la oficina del Tesoro Público. La solicitud genera una referencia que presenta en caja.</li>
+            <li data-i18n-html="page56.s2.q4"><strong>¿Cuánto tiempo dura el tratamiento?</strong> — Variable según el trámite (de 24h para una verificación a 15 días para una licencia compleja). El plazo está indicado en la ficha de cada servicio.</li>
+            <li data-i18n-html="page56.s2.q5"><strong>¿Mis datos están seguros?</strong> — Sí, conforme RGPD. Cifrado en tránsito (HTTPS) y en reposo. Ver <a href="58-legal.html">página legal</a> y <a href="16-seguridad.html" class="coming-soon">página seguridad</a>.</li>
+            <li data-i18n-html="page56.s2.q6"><strong>¿Qué pasa si pierdo mi cuenta?</strong> — Use «Contraseña olvidada» en la pantalla de inicio de sesión. Si pierde acceso al email también, contacte con soporte.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="pestana-formularios" data-i18n="page56.s3.title">3. Pestaña «Formularios» — descargas oficiales</h2>
+          <p data-i18n="page56.s3.intro">La pestaña Formularios da acceso a los <strong>formularios fiscales oficiales en PDF</strong> que puede descargar, rellenar y luego subir en su solicitud. Lista de formularios disponibles:</p>
+
+          <ul>
+            <li data-i18n-html="page56.s3.f1"><strong>Retención 3%, 5%, 10%</strong> — formularios de retención fiscal para empleadores</li>
+            <li data-i18n-html="page56.s3.f2"><strong>Cuota mínima</strong> — declaración de la cuota mínima IS</li>
+            <li data-i18n-html="page56.s3.f3"><strong>IVA Forfaitaire / IVA Real</strong> — declaraciones IVA según el régimen</li>
+            <li data-i18n-html="page56.s3.f4"><strong>IRPF</strong> — declaración anual del impuesto sobre la renta</li>
+            <li data-i18n-html="page56.s3.f5"><strong>Otros formularios sectoriales</strong> — petrolero, mineros, agrícolas</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/guide/forms-tab-es.jpg" alt="Pestaña Formularios" data-i18n-attr-alt="page56.s3.fig1.alt">
+            <figcaption data-i18n="page56.s3.fig1.caption">Pestaña «Formularios» en versión española — lista de PDF descargables agrupados por tipo de declaración.</figcaption>
+          </figure>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page56.s3.info">Los formularios son los <strong>oficiales del Ministerio de Hacienda</strong>. Si los rellena en papel, escanéelos en buena calidad antes de subirlos. La calculadora <a href="52-calculadora.html">Calculadora fiscal</a> le ayuda a calcular las cantidades antes de rellenar el formulario.</p>
+          </aside>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page56.s3.success">Ahora conoce los recursos públicos disponibles. Si tiene una pregunta no cubierta por la FAQ, use el asistente IA o contacte con soporte una vez iniciada la sesión.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="55-asistente-ia-publica.html" class="pagination-prev"><span data-i18n="page56.prev">← Anterior: Asistente IA</span></a>
+          <a href="57-verificar.html" class="pagination-next"><span data-i18n="page56.next">Siguiente: Verificar un recibo →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

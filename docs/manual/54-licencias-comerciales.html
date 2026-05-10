@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page54.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simulador de licencias comerciales en 3 etapas: tipo de comercio, zona geográfica, resultado con desglose de tarifas y documentos requeridos.">
+  <title>Simulador de licencias comerciales — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.license_simulator">Simulador de licencias</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page54.title">Simulador de licencias comerciales</h1>
+        <p class="page-description" data-i18n="page54.description">
+          Antes de abrir un comercio en Guinea Ecuatorial, conozca con precisión la tarifa de su licencia comercial. El simulador le guía en 3 etapas: tipo de comercio, zona geográfica, resultado detallado. Sin necesidad de cuenta.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page54.toc.s1">1. Acceder al simulador</a></li>
+            <li><a href="#step1" data-i18n="page54.toc.s2">2. Etapa 1/3 — Tipo de comercio</a></li>
+            <li><a href="#step2" data-i18n="page54.toc.s3">3. Etapa 2/3 — Zona comercial</a></li>
+            <li><a href="#step3" data-i18n="page54.toc.s4">4. Etapa 3/3 — Resultado</a></li>
+            <li><a href="#variantes" data-i18n="page54.toc.s5">5. Variantes según el tier</a></li>
+            <li><a href="#siguiente" data-i18n="page54.toc.s6">6. Después de la simulación</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page54.s1.title">1. Acceder al simulador</h2>
+          <p data-i18n-html="page54.s1.intro">Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Licencias»</strong>. El simulador se abre en la etapa 1/3 con la lista de tipos de comercio disponibles.</p>
+        </section>
+
+        <section>
+          <h2 id="step1" data-i18n="page54.s2.title">2. Etapa 1/3 — Tipo de comercio</h2>
+          <p data-i18n="page54.s2.intro">Elija su tipo de comercio entre las 10+ categorías disponibles:</p>
+          <ul>
+            <li data-i18n="page54.s2.cat1">Abacerías (alimentación)</li>
+            <li data-i18n="page54.s2.cat2">Bares y restaurantes</li>
+            <li data-i18n="page54.s2.cat3">Cafeterías</li>
+            <li data-i18n="page54.s2.cat4">Carpinterías y talleres</li>
+            <li data-i18n="page54.s2.cat5">Clínicas y farmacias</li>
+            <li data-i18n="page54.s2.cat6">Hostelería (hoteles)</li>
+            <li data-i18n="page54.s2.cat7">Comercio textil y vestuario</li>
+            <li data-i18n="page54.s2.cat8">Servicios profesionales</li>
+            <li data-i18n="page54.s2.cat9">Y otras categorías específicas</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/license-sim-step1-es.jpg" alt="Etapa 1/3 selección tipo de comercio" data-i18n-attr-alt="page54.s2.fig1.alt">
+            <figcaption data-i18n="page54.s2.fig1.caption">Etapa 1/3 — Lista de tipos de comercio en versión española.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="step2" data-i18n="page54.s3.title">3. Etapa 2/3 — Zona comercial</h2>
+          <p data-i18n-html="page54.s3.intro">Elija la zona geográfica donde estará situado su comercio. Las zonas se agrupan en 4 niveles (tier) con sub-zonas:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page54.s3.table.col1">Tier</th><th data-i18n="page54.s3.table.col2">Sub-zonas</th><th data-i18n="page54.s3.table.col3">Ejemplos</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>A</strong></td><td>A1, A2, A3</td><td data-i18n="page54.s3.table.r1.c3">Centro Malabo, Centro Bata</td></tr>
+                <tr><td><strong>B</strong></td><td>B1, B2, B3</td><td data-i18n="page54.s3.table.r2.c3">Periferia Malabo/Bata, ciudades de provincia</td></tr>
+                <tr><td><strong>C</strong></td><td>C1, C2, C3</td><td data-i18n="page54.s3.table.r3.c3">Capitales de distrito (Mongomo, Niefang...)</td></tr>
+                <tr><td><strong>D</strong></td><td>—</td><td data-i18n="page54.s3.table.r4.c3">Pueblos y zona rural</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/license-sim-step2-es.jpg" alt="Etapa 2/3 selección zona" data-i18n-attr-alt="page54.s3.fig1.alt">
+            <figcaption data-i18n="page54.s3.fig1.caption">Etapa 2/3 — Selector de zona con 3 niveles desplegables.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="step3" data-i18n="page54.s4.title">4. Etapa 3/3 — Resultado detallado</h2>
+          <p data-i18n="page54.s4.intro">El simulador calcula automáticamente la tarifa según las dos selecciones y muestra:</p>
+          <ul>
+            <li data-i18n-html="page54.s4.r1"><strong>Importe total</strong> a pagar (ejemplo: 204 000 XAF)</li>
+            <li data-i18n-html="page54.s4.r2"><strong>Desglose</strong>: tasa de Tesoro Público, suplementos eventuales (Cámara de Comercio para tier C+, etc.)</li>
+            <li data-i18n-html="page54.s4.r3"><strong>Documentos requeridos</strong>: lista de documentos a aportar para la solicitud real</li>
+            <li data-i18n-html="page54.s4.r4"><strong>Plazo</strong> de tratamiento estimado</li>
+            <li data-i18n-html="page54.s4.r5"><strong>Botones de acción</strong>: Copiar el resumen, Descargar PDF, Compartir (WhatsApp, SMS...)</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/license-sim-step3-es.jpg" alt="Etapa 3/3 resultado simulador" data-i18n-attr-alt="page54.s4.fig1.alt">
+            <figcaption data-i18n="page54.s4.fig1.caption">Etapa 3/3 — Resultado para una clínica/farmacia, tier D, total 114 000 XAF, documentos requeridos y CTAs Copiar / Descargar / Compartir.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="variantes" data-i18n="page54.s5.title">5. Variantes según el tier</h2>
+          <p data-i18n-html="page54.s5.intro">Según el tier, el desglose puede incluir <strong>cuotas adicionales</strong>. Ejemplo concreto con cafeterías:</p>
+
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/public/license-sim-step3-d.jpg" alt="Resultado tier D simple" data-i18n-attr-alt="page54.s5.fig1.alt">
+              <figcaption data-i18n="page54.s5.fig1.caption">Cafetería tier D — Total 204 000 XAF (solo Tesoro Público). Captura en versión francesa.</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/public/license-sim-step3-c.jpg" alt="Resultado tier C con Cámara" data-i18n-attr-alt="page54.s5.fig2.alt">
+              <figcaption data-i18n="page54.s5.fig2.caption">Cafetería tier C — Total 242 000 XAF (Tesoro Público + Cámara de Comercio). Captura en versión francesa.</figcaption>
+            </figure>
+          </div>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page54.s5.info">A partir del tier C, la <strong>Cámara de Comercio</strong> añade una cuota anual obligatoria. Los tiers A y B requieren además un certificado de inspección sanitaria para algunas categorías (restaurantes, clínicas).</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="siguiente" data-i18n="page54.s6.title">6. Después de la simulación</h2>
+          <p data-i18n-html="page54.s6.intro">El resultado del simulador es <strong>indicativo</strong>. Para presentar la solicitud real:</p>
+          <ol class="step-list">
+            <li data-i18n-html="page54.s6.step1">Pulse <strong>«Iniciar la solicitud»</strong> al final del simulador (necesita iniciar sesión).</li>
+            <li data-i18n-html="page54.s6.step2">Aporte los <strong>documentos requeridos</strong> indicados en la etapa 3/3.</li>
+            <li data-i18n-html="page54.s6.step3">Programe una <strong>cita</strong> en el ayuntamiento competente (paso integrado en el wizard).</li>
+            <li data-i18n-html="page54.s6.step4">Pague la tasa (Dinero Móvil, transferencia, efectivo en oficina del Tesoro).</li>
+            <li data-i18n-html="page54.s6.step5">Reciba la confirmación y el recibo. La licencia se emite en 5-15 días según el tier.</li>
+          </ol>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n-html="page54.s6.success">Para más detalles sobre el proceso completo, consulte la página <a href="22-iniciar-tramite-web.html" class="coming-soon">Iniciar trámite (Web)</a> o <a href="32-iniciar-tramite-mobile.html" class="coming-soon">Iniciar trámite (Móvil)</a>.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="53-directorio.html" class="pagination-prev"><span data-i18n="page54.prev">← Anterior: Directorio</span></a>
+          <a href="55-asistente-ia-publica.html" class="pagination-next"><span data-i18n="page54.next">Siguiente: Asistente IA →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

@@ -361,6 +361,57 @@ window.__I18N__.fr = {
     "description": "Après vous être connecté, vous arrivez sur votre tableau de bord : le centre névralgique d'où vous suivez toutes vos demandes, gérez vos documents et accédez aux services. Cette page décrit chaque élément de l'écran.",
     "next": "Suivant : Démarrer une démarche (Web) →",
     "prev": "← Précédent : Supprimer le compte"
+  },
+
+  // ---- pages 52-58 (Phase 2 publiques, traduction minimale - complétées Phase 9) ----
+  "page52": {
+    "html_title": "Calculatrice fiscale — Manuel Facil",
+    "title": "Calculatrice fiscale",
+    "description": "Simulez vos impôts avant de les déclarer : IRPP (6 tranches), TVA (15%), IS (35%) et services fiscaux. Sans nécessiter de compte.",
+    "next": "Suivant : Annuaire des entreprises →",
+    "prev": "← Précédent : Explorer les services"
+  },
+  "page53": {
+    "html_title": "Annuaire des entreprises — Manuel Facil",
+    "title": "Annuaire des entreprises",
+    "description": "Consultez l'annuaire public des entreprises enregistrées en Guinée équatoriale. Pour chaque entreprise : nom, NIF, secteur, tier, ville, représentant légal. Accès public sans connexion.",
+    "next": "Suivant : Simulateur de licences →",
+    "prev": "← Précédent : Calculatrice fiscale"
+  },
+  "page54": {
+    "html_title": "Simulateur de licences — Manuel Facil",
+    "title": "Simulateur de licences commerciales",
+    "description": "Avant d'ouvrir un commerce en Guinée équatoriale, connaissez précisément le tarif de votre licence commerciale. Le simulateur vous guide en 3 étapes : type de commerce, zone géographique, résultat détaillé.",
+    "next": "Suivant : Assistant IA →",
+    "prev": "← Précédent : Annuaire"
+  },
+  "page55": {
+    "html_title": "Assistant IA public — Manuel Facil",
+    "title": "Assistant IA public",
+    "description": "Facil inclut un assistant conversationnel propulsé par IA (Gemini 2.5 Flash) qui répond à vos questions sur les démarches administratives en Guinée équatoriale : documents requis, coûts estimés, délais, procédures pas-à-pas. Disponible 24/7 sans nécessiter de compte.",
+    "next": "Suivant : Guide →",
+    "prev": "← Précédent : Simulateur de licences"
+  },
+  "page56": {
+    "html_title": "Guide — Manuel Facil",
+    "title": "Guide rapide de Facil",
+    "description": "Le guide intégré dans Facil vous accompagne dans vos premiers pas. Trois onglets : étapes à suivre pour démarrer une démarche, foire aux questions (FAQ), formulaires officiels téléchargeables. Accès public sans connexion.",
+    "next": "Suivant : Vérifier un reçu →",
+    "prev": "← Précédent : Assistant IA"
+  },
+  "page57": {
+    "html_title": "Vérifier un reçu — Manuel Facil",
+    "title": "Vérifier l'authenticité d'un reçu",
+    "description": "Toute personne peut vérifier l'authenticité d'un reçu, d'une demande ou d'une licence commerciale émis par Facil — sans avoir besoin de compte. La vérification fonctionne via QR code ou par numéro de référence.",
+    "next": "Suivant : Mentions légales →",
+    "prev": "← Précédent : Guide"
+  },
+  "page58": {
+    "html_title": "Mentions légales — Manuel Facil",
+    "title": "Mentions légales",
+    "description": "Résumé des conditions d'utilisation, de la politique de confidentialité RGPD, de la gestion des cookies et de la procédure de suppression de compte de Facil. Cette page renvoie aux textes officiels complets disponibles dans l'application.",
+    "next": "Suivant : Créer un compte →",
+    "prev": "← Précédent : Vérifier un reçu"
   }
 
 };

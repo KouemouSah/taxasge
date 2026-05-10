@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page57.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Verifique la autenticidad de un recibo, una solicitud o una licencia comercial mediante QR código o número de referencia. Acceso público sin sesión.">
+  <title>Verificar un recibo — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link active"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.verify">Verificar un recibo</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page57.title">Verificar la autenticidad de un recibo</h1>
+        <p class="page-description" data-i18n="page57.description">
+          Cualquiera puede verificar la autenticidad de un recibo, una solicitud o una licencia comercial emitidos por Facil — sin necesidad de cuenta. La verificación funciona mediante código QR (escaneado desde la app móvil o desde un PDF) o por número de referencia. Útil para los agentes de campo, los proveedores y los ciudadanos que reciben un documento.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.agent">Agente</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <aside class="callout callout-info">
+          <div class="callout-title" data-i18n="common.callout.info">Información</div>
+          <p data-i18n-html="page57.no_capture">
+            <strong>Esta página no incluye capturas</strong>: la verificación es una función de backend que devuelve datos estructurados según el tipo de identificador. La descripción es por lo tanto textual con diagramas en ASCII y tablas detalladas para cada variante.
+          </p>
+        </aside>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page57.toc.s1">1. Cómo acceder a la verificación</a></li>
+            <li><a href="#flujo" data-i18n="page57.toc.s2">2. Flujo de la verificación (diagrama)</a></li>
+            <li><a href="#variantes" data-i18n="page57.toc.s3">3. Las 3 variantes de verificación</a></li>
+            <li><a href="#ejemplos" data-i18n="page57.toc.s4">4. Ejemplos concretos</a></li>
+            <li><a href="#seguridad" data-i18n="page57.toc.s5">5. Seguridad y firma</a></li>
+            <li><a href="#errores" data-i18n="page57.toc.s6">6. Mensajes de error posibles</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page57.s1.title">1. Cómo acceder a la verificación</h2>
+          <p data-i18n="page57.s1.intro">Hay dos formas de iniciar una verificación:</p>
+
+          <h3 data-i18n="page57.s1.qr.title">A. Escanear el QR código</h3>
+          <p data-i18n-html="page57.s1.qr.body">Cada documento generado por Facil (recibo PDF, solicitud, certificado) lleva un <strong>QR código</strong> en una esquina. Escanee este QR con la cámara de su teléfono o con la aplicación Facil — abre directamente la página de verificación con todos los datos rellenados.</p>
+
+          <h3 data-i18n="page57.s1.url.title">B. Introducir manualmente el número</h3>
+          <p data-i18n-html="page57.s1.url.body">Vaya a <code>https://facil.gov.gq/verify/{REFERENCIA}</code> en su navegador. La <code>{REFERENCIA}</code> es el número del documento (ejemplo: <code>REC-2026-000013</code> para un recibo, <code>CON-2026-00001</code> para una solicitud Conducir). El sistema detecta automáticamente el tipo y muestra la información correspondiente.</p>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n-html="page57.s1.warning">La URL de verificación incluye un <strong>token firmado</strong> (parámetro <code>?t=...</code>) que prueba la autenticidad. Sin este token, la verificación falla — incluso si conoce la referencia exacta. El token se genera automáticamente cuando Facil emite el documento.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="flujo" data-i18n="page57.s2.title">2. Flujo de la verificación</h2>
+          <p data-i18n="page57.s2.intro">Diagrama del flujo desde el escaneo hasta la respuesta del servidor:</p>
+
+          <pre><code data-i18n="page57.s2.diagram">┌────────────────┐    Escanea QR /                ┌──────────────────┐
+│   USUARIO      │   abre URL                     │  FRONTEND FACIL  │
+│ (Agente / pub.)├──────────────────────────────► │  /verify/{ref}    │
+└────────────────┘                                └────────┬─────────┘
+                                                           │
+                                                           ▼
+                                              ┌────────────────────────┐
+                                              │  GET /api/v1/verify/   │
+                                              │  {ref}?t={token}       │
+                                              └────────┬───────────────┘
+                                                       │
+                                                       ▼
+                                            ┌─────────────────────────┐
+                                            │   BACKEND VERIFICACIÓN  │
+                                            │                         │
+                                            │  1. Detecta tipo según  │
+                                            │     prefijo ref:        │
+                                            │       REC- → recibo     │
+                                            │       CON-/PAS-/LIC- →  │
+                                            │           solicitud     │
+                                            │       LIC- (sólo) →     │
+                                            │           licencia      │
+                                            │  2. Verifica el token   │
+                                            │     firmado (HMAC)      │
+                                            │  3. Carga el documento  │
+                                            │     desde la BD         │
+                                            │  4. Devuelve datos      │
+                                            │     públicos (sin info  │
+                                            │     personal sensible)  │
+                                            └────────┬────────────────┘
+                                                     │
+                                                     ▼
+                                          ┌──────────────────────────┐
+                                          │   RESULTADO MOSTRADO     │
+                                          │                          │
+                                          │   ✅ Documento válido    │
+                                          │   - Número                │
+                                          │   - Fecha de emisión      │
+                                          │   - Importe (si aplica)   │
+                                          │   - Entidad emisora       │
+                                          │   - Estado actual         │
+                                          │                          │
+                                          │   ❌ Documento inválido  │
+                                          │   - Token incorrecto     │
+                                          │   - Documento revocado   │
+                                          │   - Referencia inexistente│
+                                          └──────────────────────────┘</code></pre>
+
+          <p data-i18n-html="page57.s2.body">Toda la operación dura <strong>menos de 200 ms</strong> en condiciones normales. La página de verificación está optimizada para los móviles con conexión lenta (cache CDN, payload comprimido).</p>
+        </section>
+
+        <section>
+          <h2 id="variantes" data-i18n="page57.s3.title">3. Las 3 variantes de verificación</h2>
+          <p data-i18n="page57.s3.intro">Facil distingue 3 tipos de documentos verificables. El sistema detecta automáticamente la variante a partir del prefijo de la referencia:</p>
+
+          <h3 data-i18n="page57.s3.v1.title">Variante 1 — Recibo de pago (prefijo REC-)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page57.s3.table.col1">Campo</th><th data-i18n="page57.s3.table.col2">Detalle</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page57.s3.v1.field1">Identificador</td><td>REC-2026-000013</td></tr>
+                <tr><td data-i18n="page57.s3.v1.field2">Datos mostrados</td><td data-i18n="page57.s3.v1.detail2">Número, fecha, hora, importe XAF, método de pago, entidad emisora (Tesoro), nombre del pagador (parcial), código del trámite asociado, estado del recibo (válido / revocado).</td></tr>
+                <tr><td data-i18n="page57.s3.v1.field3">Permisos</td><td data-i18n="page57.s3.v1.detail3">Acceso público total con token. Sin token: error 403.</td></tr>
+                <tr><td data-i18n="page57.s3.v1.field4">Caso de uso</td><td data-i18n="page57.s3.v1.detail4">Un agente comprueba que un ciudadano ha pagado bien antes de procesar la siguiente etapa de su expediente.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 data-i18n="page57.s3.v2.title">Variante 2 — Solicitud (prefijos CON-, PAS-, LIC-, etc.)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page57.s3.table.col1">Campo</th><th data-i18n="page57.s3.table.col2">Detalle</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page57.s3.v2.field1">Identificador</td><td>CON-2026-00001 (Conducir), PAS-2026-00001 (Pasaporte), LIC-2026-00001 (Licencia)</td></tr>
+                <tr><td data-i18n="page57.s3.v2.field2">Datos mostrados</td><td data-i18n="page57.s3.v2.detail2">Tipo de trámite, estado de la solicitud (Borrador, Enviada, En proceso, Completada, Rechazada), entidad gestora (DGT, CNEDOGE, Ayuntamiento...), fecha de creación, fecha y lugar de la cita programada (si aplica), importe pagado (si aplica).</td></tr>
+                <tr><td data-i18n="page57.s3.v2.field3">Permisos</td><td data-i18n="page57.s3.v2.detail3">Público con token. Los datos personales sensibles (DIP completo, número permiso) se muestran parcialmente.</td></tr>
+                <tr><td data-i18n="page57.s3.v2.field4">Caso de uso</td><td data-i18n="page57.s3.v2.detail4">Un ciudadano comparte el QR de su solicitud con su empleador, su banco o un tercero que necesita probar la existencia del trámite oficial.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 data-i18n="page57.s3.v3.title">Variante 3 — Licencia comercial activa (prefijo LIC- después validación final)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page57.s3.table.col1">Campo</th><th data-i18n="page57.s3.table.col2">Detalle</th></tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page57.s3.v3.field1">Identificador</td><td>LIC-2026-00001 (estado «Active» o «Renewed»)</td></tr>
+                <tr><td data-i18n="page57.s3.v3.field2">Datos mostrados</td><td data-i18n="page57.s3.v3.detail2">Nombre comercial titular, NIF de la empresa, sector, tier (A1/B2/C1/D), validez (fecha de inicio + caducidad), obligaciones pendientes (cantidades pendientes), última inspección registrada.</td></tr>
+                <tr><td data-i18n="page57.s3.v3.field3">Permisos</td><td data-i18n="page57.s3.v3.detail3">Acceso público total. Útil para los agentes de inspección de campo (OMS) que verifican la conformidad de un comercio antes de la inspección.</td></tr>
+                <tr><td data-i18n="page57.s3.v3.field4">Caso de uso</td><td data-i18n="page57.s3.v3.detail4">Un agente OMS escanea el QR pegado en la fachada del comercio durante una inspección de campo — comprueba inmediatamente la validez de la licencia y las eventuales obligaciones pendientes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="ejemplos" data-i18n="page57.s4.title">4. Ejemplos concretos</h2>
+
+          <h3 data-i18n="page57.s4.ex1.title">Ejemplo 1 — Verificación pública de un recibo</h3>
+          <pre><code data-i18n="page57.s4.ex1.code">URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...
+GET → 200 OK
+Respuesta:
+{
+  "tipo": "recibo",
+  "numero": "REC-2026-000013",
+  "fecha": "2026-04-19T15:07:00",
+  "importe_xaf": 25000,
+  "metodo": "Efectivo",
+  "pagador_parcial": "libre G***",
+  "tramite_ref": "CON-2026-00001",
+  "entidad": "Tesoro Público Malabo II",
+  "estado": "valido"
+}</code></pre>
+
+          <h3 data-i18n="page57.s4.ex2.title">Ejemplo 2 — Verificación de una solicitud Conducir</h3>
+          <pre><code data-i18n="page57.s4.ex2.code">URL : https://facil.gov.gq/es/verify/CON-2026-00001?t=...
+GET → 200 OK
+Respuesta:
+{
+  "tipo": "solicitud",
+  "subtipo": "conducir_renovacion",
+  "numero": "CON-2026-00001",
+  "estado": "Completada",
+  "entidad": "DGT",
+  "tipo_expedicion": "RENOVACION",
+  "cita": {
+    "fecha": "2026-04-28",
+    "hora": "09:00",
+    "oficina": "MALABO II"
+  },
+  "importe_pagado_xaf": 25000
+}</code></pre>
+
+          <h3 data-i18n="page57.s4.ex3.title">Ejemplo 3 — Token inválido</h3>
+          <pre><code data-i18n="page57.s4.ex3.code">URL : https://facil.gov.gq/verify/REC-2026-000013  ← sin token
+GET → 403 Forbidden
+Respuesta: { "error": "Token requerido para acceso público" }</code></pre>
+        </section>
+
+        <section>
+          <h2 id="seguridad" data-i18n="page57.s5.title">5. Seguridad y firma</h2>
+          <ul>
+            <li data-i18n-html="page57.s5.sec1"><strong>Token HMAC-SHA256</strong> — el parámetro <code>?t=...</code> es una firma HMAC del identificador. Sin la clave del Tesoro Público, es imposible falsificar.</li>
+            <li data-i18n-html="page57.s5.sec2"><strong>Sin caducidad por defecto</strong> — los tokens son válidos mientras el documento existe. Para los documentos sensibles (recibos), un token puede ser revocado por un agente.</li>
+            <li data-i18n-html="page57.s5.sec3"><strong>Datos sensibles protegidos</strong> — el DIP completo, el teléfono, la dirección postal NUNCA se devuelven en la verificación pública. Solo los datos visibles en el documento PDF original se muestran.</li>
+            <li data-i18n-html="page57.s5.sec4"><strong>Audit log</strong> — todas las verificaciones se registran (IP, fecha, referencia). Útil para detectar fraudes (escaneo masivo).</li>
+            <li data-i18n-html="page57.s5.sec5"><strong>Rate limiting</strong> — máximo 60 verificaciones / minuto / IP para evitar abusos.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="errores" data-i18n="page57.s6.title">6. Mensajes de error posibles</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th data-i18n="page57.s6.table.col1">Mensaje</th><th data-i18n="page57.s6.table.col2">Causa</th><th data-i18n="page57.s6.table.col3">Acción</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>Token requerido</code></td><td data-i18n="page57.s6.err1.cause">Falta el parámetro ?t=...</td><td data-i18n="page57.s6.err1.action">Re-escanee el QR original o solicite un nuevo enlace al emisor.</td></tr>
+                <tr><td><code>Token inválido</code></td><td data-i18n="page57.s6.err2.cause">Token modificado o caducado</td><td data-i18n="page57.s6.err2.action">El documento ha sido alterado. No fíarse, contactar al emisor.</td></tr>
+                <tr><td><code>Documento no encontrado</code></td><td data-i18n="page57.s6.err3.cause">Referencia inexistente</td><td data-i18n="page57.s6.err3.action">Verifique la ortografía. Los identificadores son case-sensitive (REC, CON, LIC, PAS).</td></tr>
+                <tr><td><code>Documento revocado</code></td><td data-i18n="page57.s6.err4.cause">El documento ha sido invalidado por un agente (fraude, error de tratamiento)</td><td data-i18n="page57.s6.err4.action">El documento ya no es válido. Contactar al emisor.</td></tr>
+                <tr><td><code>Demasiadas verificaciones</code></td><td data-i18n="page57.s6.err5.cause">Rate limit (60/min/IP) superado</td><td data-i18n="page57.s6.err5.action">Espere 1 minuto y vuelva a intentarlo. Si persiste, contactar soporte.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page57.s6.success">La verificación pública es una de las funciones más críticas de Facil — permite a la administración garantizar la autenticidad de los documentos sin necesidad de cuenta. Los agentes públicos disponen de funciones avanzadas de verificación documentadas en la página <a href="68-funciones-verify-agente.html" class="coming-soon">Funciones de verificación (agentes)</a>.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="56-guia.html" class="pagination-prev"><span data-i18n="page57.prev">← Anterior: Guía</span></a>
+          <a href="58-legal.html" class="pagination-next"><span data-i18n="page57.next">Siguiente: Información legal →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

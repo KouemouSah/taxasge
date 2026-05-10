@@ -361,6 +361,57 @@ window.__I18N__.en = {
     "description": "After signing in, you arrive at your main dashboard: the nerve center from which you track all your requests, manage your documents, and access services. This page describes each element of the screen.",
     "next": "Next: Start a procedure (Web) →",
     "prev": "← Previous: Delete account"
+  },
+
+  // ---- pages 52-58 (Phase 2 public, minimal translation - completed in Phase 9) ----
+  "page52": {
+    "html_title": "Tax calculator — Facil Manual",
+    "title": "Tax calculator",
+    "description": "Simulate your taxes before filing: income tax (6 brackets), VAT (15%), corporate tax (35%), and fiscal services. No account required.",
+    "next": "Next: Business directory →",
+    "prev": "← Previous: Explore services"
+  },
+  "page53": {
+    "html_title": "Business directory — Facil Manual",
+    "title": "Business directory",
+    "description": "Browse the public directory of companies registered in Equatorial Guinea. For each company: name, tax ID, sector, tier, city, legal representative. Public access, no sign-in required.",
+    "next": "Next: License simulator →",
+    "prev": "← Previous: Tax calculator"
+  },
+  "page54": {
+    "html_title": "License simulator — Facil Manual",
+    "title": "Commercial license simulator",
+    "description": "Before opening a business in Equatorial Guinea, get the precise fee for your commercial license. The simulator guides you in 3 steps: business type, geographic zone, detailed result.",
+    "next": "Next: AI assistant →",
+    "prev": "← Previous: Directory"
+  },
+  "page55": {
+    "html_title": "Public AI assistant — Facil Manual",
+    "title": "Public AI assistant",
+    "description": "Facil includes an AI-powered conversational assistant (Gemini 2.5 Flash) that answers your questions about administrative procedures in Equatorial Guinea: required documents, estimated costs, deadlines, step-by-step procedures. Available 24/7, no account required.",
+    "next": "Next: Guide →",
+    "prev": "← Previous: License simulator"
+  },
+  "page56": {
+    "html_title": "Guide — Facil Manual",
+    "title": "Facil quick guide",
+    "description": "The guide built into Facil walks you through your first steps. Three tabs: steps to follow when starting a procedure, frequently asked questions (FAQ), downloadable official forms. Public access, no sign-in required.",
+    "next": "Next: Verify a receipt →",
+    "prev": "← Previous: AI assistant"
+  },
+  "page57": {
+    "html_title": "Verify a receipt — Facil Manual",
+    "title": "Verify the authenticity of a receipt",
+    "description": "Anyone can verify the authenticity of a receipt, request, or commercial license issued by Facil — no account needed. Verification works via QR code or by reference number.",
+    "next": "Next: Legal information →",
+    "prev": "← Previous: Guide"
+  },
+  "page58": {
+    "html_title": "Legal information — Facil Manual",
+    "title": "Legal information",
+    "description": "Summary of terms of use, GDPR privacy policy, cookie management, and account deletion procedure for Facil. This page links to the full official texts available in the app.",
+    "next": "Next: Create account →",
+    "prev": "← Previous: Verify a receipt"
   }
 
 };

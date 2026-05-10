@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page55.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Consulte el Asistente IA fiscal de Facil sin necesidad de cuenta — preguntas sobre trámites, costes, documentos, plazos. Disponible 24/7.">
+  <title>Asistente IA público — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.ai_assistant_public">Asistente IA</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page55.title">Asistente IA público</h1>
+        <p class="page-description" data-i18n="page55.description">
+          Facil incluye un asistente conversacional alimentado por IA (Gemini 2.5 Flash) que responde a sus preguntas sobre los trámites administrativos en Guinea Ecuatorial: documentos requeridos, costes estimados, plazos, procedimientos paso a paso. Disponible 24/7 sin necesidad de cuenta.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page55.toc.s1">1. Acceder al asistente</a></li>
+            <li><a href="#capacidades" data-i18n="page55.toc.s2">2. Capacidades del asistente público</a></li>
+            <li><a href="#sugerencias" data-i18n="page55.toc.s3">3. Sugerencias de preguntas</a></li>
+            <li><a href="#limites" data-i18n="page55.toc.s4">4. Limitaciones sin sesión</a></li>
+            <li><a href="#privacidad" data-i18n="page55.toc.s5">5. Privacidad y datos</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page55.s1.title">1. Acceder al asistente</h2>
+          <p data-i18n-html="page55.s1.intro">Desde la pantalla de bienvenida, pulse el botón <strong>«Asistente IA»</strong> en la cabecera o el banner del carrusel. El asistente abre con un mensaje de bienvenida y 4 sugerencias de preguntas pulsables.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/chat/empty-state-es.jpg" alt="Asistente IA estado vacío" data-i18n-attr-alt="page55.s1.fig1.alt">
+            <figcaption data-i18n="page55.s1.fig1.caption">Asistente IA en versión móvil — pantalla de inicio con título, mensaje de bienvenida y 4 sugerencias (servicios, documentos, pago, verificar demanda).</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="capacidades" data-i18n="page55.s2.title">2. Capacidades del asistente público</h2>
+          <p data-i18n="page55.s2.intro">El asistente puede responder a preguntas sobre:</p>
+          <ul>
+            <li data-i18n-html="page55.s2.cap1"><strong>Trámites administrativos</strong>: pasaporte, conducir, residencia, IRPF, IVA, IS, licencias comerciales, certificados, etc. (catálogo de 873 servicios)</li>
+            <li data-i18n-html="page55.s2.cap2"><strong>Documentos requeridos</strong>: lista detallada por trámite, originales y copias</li>
+            <li data-i18n-html="page55.s2.cap3"><strong>Costes</strong>: tarifas oficiales con desglose (impuestos, suplementos eventuales)</li>
+            <li data-i18n-html="page55.s2.cap4"><strong>Plazos</strong>: tiempo de tratamiento estimado por categoría</li>
+            <li data-i18n-html="page55.s2.cap5"><strong>Procedimientos paso a paso</strong>: secuencia de etapas a seguir, lugar de cada cita</li>
+            <li data-i18n-html="page55.s2.cap6"><strong>Comparaciones</strong>: ej. «¿Cuánto cuesta abrir un restaurante en Malabo vs Bata?»</li>
+          </ul>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page55.s2.tip">El asistente entiende preguntas en español, francés e inglés — incluso si las mezcla en una misma frase. Use el lenguaje natural sin necesidad de palabras clave técnicas.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="sugerencias" data-i18n="page55.s3.title">3. Sugerencias de preguntas (para empezar)</h2>
+          <p data-i18n="page55.s3.intro">Si no sabe por dónde empezar, pulse una de las sugerencias proporcionadas:</p>
+          <ul>
+            <li data-i18n-html="page55.s3.q1"><em>«¿Qué servicios están disponibles para mi DIP?»</em></li>
+            <li data-i18n-html="page55.s3.q2"><em>«¿Cuáles son los documentos para el pasaporte?»</em></li>
+            <li data-i18n-html="page55.s3.q3"><em>«¿Cuánto cuesta una licencia comercial en Bata?»</em></li>
+            <li data-i18n-html="page55.s3.q4"><em>«¿Cómo verificar mi solicitud?»</em></li>
+            <li data-i18n-html="page55.s3.q5"><em>«¿Cuál es el plazo para una renovación de carnet de conducir?»</em></li>
+          </ul>
+
+          <p data-i18n-html="page55.s3.body">El asistente responde con texto estructurado: subtítulos, listas numeradas, tablas si procede, enlaces directos al catálogo. Puede pulsar los enlaces para ir directamente al servicio mencionado.</p>
+        </section>
+
+        <section>
+          <h2 id="limites" data-i18n="page55.s4.title">4. Limitaciones sin sesión</h2>
+          <p data-i18n="page55.s4.intro">Sin cuenta iniciada, el asistente <strong>no puede</strong>:</p>
+          <ul>
+            <li data-i18n-html="page55.s4.limit1"><strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)</li>
+            <li data-i18n-html="page55.s4.limit2"><strong>Iniciar un trámite por usted</strong> — solo describe el procedimiento, no actúa</li>
+            <li data-i18n-html="page55.s4.limit3"><strong>Verificar el estado de su solicitud</strong> — para eso, inicie sesión o use la página <a href="57-verificar.html">Verificar un recibo</a></li>
+            <li data-i18n-html="page55.s4.limit4"><strong>Acceder a sus documentos</strong> guardados — solo en el modo conectado</li>
+          </ul>
+
+          <p data-i18n-html="page55.s4.body">Para esas funciones avanzadas (asistente personalizado, gestión de su caja fuerte digital, sugerencias proactivas), <a href="11-crear-cuenta.html" class="coming-soon">cree una cuenta</a> y consulte la página <a href="29-soporte-web.html" class="coming-soon">Asistente IA conectado</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="privacidad" data-i18n="page55.s5.title">5. Privacidad y datos</h2>
+          <ul>
+            <li data-i18n-html="page55.s5.priv1"><strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)</li>
+            <li data-i18n-html="page55.s5.priv2"><strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio</li>
+            <li data-i18n-html="page55.s5.priv3"><strong>No proporcione datos sensibles</strong> — número DIP, teléfono, dirección no son necesarios para responder a una pregunta general. Si los proporciona, no se almacenan.</li>
+            <li data-i18n-html="page55.s5.priv4"><strong>Conformidad RGPD</strong> — ver <a href="58-legal.html">página legal</a> para detalles sobre el tratamiento de datos</li>
+          </ul>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page55.s5.success">El asistente está disponible 24/7 para responder a sus preguntas. Si necesita actuar (presentar una solicitud, pagar, descargar un documento), inicie sesión.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="54-licencias-comerciales.html" class="pagination-prev"><span data-i18n="page55.prev">← Anterior: Simulador de licencias</span></a>
+          <a href="56-guia.html" class="pagination-next"><span data-i18n="page55.next">Siguiente: Guía →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>

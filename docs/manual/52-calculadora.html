@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page52.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simule sus impuestos antes de declararlos: IRPF (6 tramos), IVA (15%), IS (35%) y servicios fiscales. Sin necesidad de cuenta.">
+  <title>Calculadora fiscal — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link"><span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span></a>
+          <a href="01-bienvenida.html" class="sidebar-link"><span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link active"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+        </div>
+        <div class="sidebar-section"><div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+      </nav>
+      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <header class="content-header">
+        <nav class="breadcrumb">
+          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.public">Acceso público</span><span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current" data-i18n="nav.link.calculator">Calculadora fiscal</span>
+        </nav>
+        <div class="header-actions">
+          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page52.title">Calculadora fiscal</h1>
+        <p class="page-description" data-i18n="page52.description">
+          Simule sus impuestos antes de declararlos. La calculadora cubre 4 categorías: IRPF (impuesto sobre la renta de personas físicas), IVA (impuesto sobre el valor añadido), IS (impuesto de sociedades) y servicios fiscales específicos. Sin necesidad de iniciar sesión.
+        </p>
+
+        <div class="persona-bar">
+          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
+          <span class="persona-tag" data-i18n="common.persona.public">Público (sin sesión)</span>
+          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
+          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
+        </div>
+
+        <div class="toc">
+          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
+          <ul class="toc-list">
+            <li><a href="#acceso" data-i18n="page52.toc.s1">1. Acceder a la calculadora</a></li>
+            <li><a href="#irpf" data-i18n="page52.toc.s2">2. IRPF — Impuesto sobre la renta</a></li>
+            <li><a href="#iva" data-i18n="page52.toc.s3">3. IVA — Impuesto sobre el valor añadido</a></li>
+            <li><a href="#is" data-i18n="page52.toc.s4">4. IS — Impuesto de sociedades</a></li>
+            <li><a href="#servicios" data-i18n="page52.toc.s5">5. Servicios fiscales (formulas)</a></li>
+            <li><a href="#limites" data-i18n="page52.toc.s6">6. Limitaciones de la calculadora</a></li>
+          </ul>
+        </div>
+
+        <section>
+          <h2 id="acceso" data-i18n="page52.s1.title">1. Acceder a la calculadora</h2>
+          <p data-i18n-html="page52.s1.intro">Desde la pantalla de bienvenida, pulse la tarjeta <strong>«Calculadora»</strong>. La calculadora se compone de 4 pestañas: IRPF, IVA, IS, Servicios. Cada pestaña le pide los datos necesarios y muestra el cálculo automáticamente.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/public/calculator.jpg" alt="Calculadora fiscal con 4 pestañas" data-i18n-attr-alt="page52.s1.fig1.alt">
+            <figcaption data-i18n="page52.s1.fig1.caption">Calculadora en versión móvil (idioma español) — pestaña IRPF activa con ingreso ejemplo 200 000 XAF y desglose por tramos.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 id="irpf" data-i18n="page52.s2.title">2. IRPF — Impuesto sobre la renta de personas físicas</h2>
+          <p data-i18n-html="page52.s2.intro">El IRPF se calcula con <strong>6 tramos progresivos</strong>: cuanto mayor es su renta anual, mayor es el tipo aplicable a la parte que supera cada umbral. Solo las cantidades dentro de cada tramo soportan el tipo correspondiente.</p>
+
+          <h3 data-i18n="page52.s2.brackets.title">Tabla oficial de tramos IRPF (Guinea Ecuatorial)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page52.s2.brackets.col1">Tramo</th>
+                  <th data-i18n="page52.s2.brackets.col2">Renta anual (XAF)</th>
+                  <th data-i18n="page52.s2.brackets.col3">Tipo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td data-i18n="page52.s2.brackets.r1">0 – 1 000 000</td><td>0 %</td></tr>
+                <tr><td>2</td><td data-i18n="page52.s2.brackets.r2">1 000 001 – 3 000 000</td><td>10 %</td></tr>
+                <tr><td>3</td><td data-i18n="page52.s2.brackets.r3">3 000 001 – 5 000 000</td><td>15 %</td></tr>
+                <tr><td>4</td><td data-i18n="page52.s2.brackets.r4">5 000 001 – 10 000 000</td><td>20 %</td></tr>
+                <tr><td>5</td><td data-i18n="page52.s2.brackets.r5">10 000 001 – 15 000 000</td><td>25 %</td></tr>
+                <tr><td>6</td><td data-i18n="page52.s2.brackets.r6">> 15 000 000</td><td>35 %</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 data-i18n="page52.s2.example.title">Ejemplo de cálculo</h3>
+          <p data-i18n-html="page52.s2.example.intro">Para una renta anual de <strong>4 000 000 XAF</strong>:</p>
+          <pre><code data-i18n="page52.s2.example.calc">Tramo 1 (0–1M)         : 1 000 000 × 0%  =       0 XAF
+Tramo 2 (1M–3M)        : 2 000 000 × 10% = 200 000 XAF
+Tramo 3 (3M–4M parcial):  1 000 000 × 15% = 150 000 XAF
+                                           ─────────
+TOTAL IRPF anual                          = 350 000 XAF
+Tipo efectivo                             = 8,75%</code></pre>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n="page52.s2.tip">Indique su renta <strong>anual</strong> bruta (no mensual). La calculadora hace automáticamente el cálculo por tramos y le muestra el desglose detallado.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="iva" data-i18n="page52.s3.title">3. IVA — Impuesto sobre el valor añadido</h2>
+          <p data-i18n-html="page52.s3.intro">El IVA es un impuesto <strong>flat al 15%</strong> sobre la mayoría de los bienes y servicios en Guinea Ecuatorial. La calculadora ofrece 2 modos:</p>
+
+          <ul>
+            <li data-i18n-html="page52.s3.mode1"><strong>Añadir IVA</strong> (precio sin IVA → precio con IVA): <code>precio_con_iva = precio_sin_iva × 1,15</code></li>
+            <li data-i18n-html="page52.s3.mode2"><strong>Extraer IVA</strong> (precio con IVA → precio sin IVA): <code>precio_sin_iva = precio_con_iva / 1,15</code></li>
+          </ul>
+
+          <h3 data-i18n="page52.s3.example.title">Ejemplos</h3>
+          <pre><code data-i18n="page52.s3.example.calc">Añadir IVA :  1 000 000 XAF (sin IVA) → 1 150 000 XAF (con IVA), IVA = 150 000
+Extraer IVA : 1 150 000 XAF (con IVA) → 1 000 000 XAF (sin IVA), IVA = 150 000</code></pre>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page52.s3.info">Algunos productos están <strong>exentos</strong> (productos básicos alimentarios, salud, educación). La calculadora aplica el 15% por defecto — verifique con su contable si su producto/servicio está exento.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="is" data-i18n="page52.s4.title">4. IS — Impuesto de sociedades</h2>
+          <p data-i18n-html="page52.s4.intro">El IS se aplica al <strong>beneficio neto</strong> de las sociedades a un tipo único de <strong>35%</strong>. Fórmula:</p>
+          <pre><code data-i18n="page52.s4.formula">IS = (Ingresos − Gastos deducibles) × 35%</code></pre>
+
+          <h3 data-i18n="page52.s4.example.title">Ejemplo</h3>
+          <pre><code data-i18n="page52.s4.example.calc">Ingresos          : 50 000 000 XAF
+Gastos deducibles : 35 000 000 XAF
+                    ─────────────
+Beneficio neto    : 15 000 000 XAF
+IS (35%)          :  5 250 000 XAF</code></pre>
+
+          <aside class="callout callout-warning">
+            <div class="callout-title" data-i18n="common.callout.warning">Atención</div>
+            <p data-i18n="page52.s4.warning">La calculadora estima un IS aproximado. La declaración real requiere la contabilidad oficial certificada por un contable autorizado. Existe una <strong>cuota mínima</strong> aplicable incluso en caso de pérdida — consulte con un experto contable.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="servicios" data-i18n="page52.s5.title">5. Servicios fiscales (formulas específicas)</h2>
+          <p data-i18n="page52.s5.intro">Algunos trámites se calculan con fórmulas específicas, no con un tipo único. Categorías principales:</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page52.s5.table.col1">Tipo de servicio</th>
+                  <th data-i18n="page52.s5.table.col2">Fórmula</th>
+                  <th data-i18n="page52.s5.table.col3">Ejemplo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td data-i18n="page52.s5.table.r1.c1">Expedición fija</td><td><code>tasa = T</code></td><td data-i18n="page52.s5.table.r1.c3">Pasaporte = 50 000 XAF</td></tr>
+                <tr><td data-i18n="page52.s5.table.r2.c1">Renovación fija</td><td><code>tasa = R</code></td><td data-i18n="page52.s5.table.r2.c3">Renovación carnet = 25 000 XAF</td></tr>
+                <tr><td data-i18n="page52.s5.table.r3.c1">Porcentaje sobre base</td><td><code>tasa = B × t%</code></td><td data-i18n="page52.s5.table.r3.c3">Inspección 1% sobre el valor declarado</td></tr>
+                <tr><td data-i18n="page52.s5.table.r4.c1">Por unidad</td><td><code>tasa = U × p</code></td><td data-i18n="page52.s5.table.r4.c3">U folios × 5 000 XAF/folio</td></tr>
+                <tr><td data-i18n="page52.s5.table.r5.c1">Tarifas escalonadas</td><td><code>tramos progresivos</code></td><td data-i18n="page52.s5.table.r5.c3">Licencia comercial según tier (A/B/C/D)</td></tr>
+                <tr><td data-i18n="page52.s5.table.r6.c1">Fórmula avanzada</td><td><code>tasa = RF + t × CA / 100</code></td><td data-i18n="page52.s5.table.r6.c3">Canon = Royalty fijo + porcentaje sobre la cifra de negocio</td></tr>
+                <tr><td data-i18n="page52.s5.table.r7.c1">Fijo + por unidad</td><td><code>tasa = F + U × p</code></td><td data-i18n="page52.s5.table.r7.c3">Tasa base + folios suplementarios</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p data-i18n-html="page52.s5.body">La calculadora le pregunta los datos según el tipo de servicio elegido. Los cálculos siguen la misma lógica que las facturas oficiales del Tesoro Público — el resultado es indicativo y se confirma cuando inicia la solicitud (ver <a href="22-iniciar-tramite-web.html" class="coming-soon">Iniciar trámite</a>).</p>
+        </section>
+
+        <section>
+          <h2 id="limites" data-i18n="page52.s6.title">6. Limitaciones de la calculadora</h2>
+          <ul>
+            <li data-i18n-html="page52.s6.limit1"><strong>Indicativa</strong> — el resultado es una estimación basada en las tarifas oficiales vigentes. Las cantidades reales pueden incluir tasas suplementarias (timbres, servicios urgentes, suplementos por trámite a distancia).</li>
+            <li data-i18n-html="page52.s6.limit2"><strong>Sin descuentos personales</strong> — la calculadora no tiene en cuenta deducciones individuales (familia numerosa, primera vivienda, donaciones a entidades reconocidas).</li>
+            <li data-i18n-html="page52.s6.limit3"><strong>Sin garantía legal</strong> — los cálculos no constituyen un cálculo oficial. Para una declaración legal, consulte con un contable autorizado o utilice el formulario oficial.</li>
+          </ul>
+
+          <aside class="callout callout-success">
+            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
+            <p data-i18n="page52.s6.success">Ahora sabe estimar sus impuestos. Si necesita ayuda específica, consulte el <a href="55-asistente-ia-publica.html">Asistente IA</a> o contacte con un contable autorizado.</p>
+          </aside>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <nav class="pagination">
+          <a href="51-explorar-servicios.html" class="pagination-prev"><span data-i18n="page52.prev">← Anterior: Explorar servicios</span></a>
+          <a href="53-directorio.html" class="pagination-next"><span data-i18n="page52.next">Siguiente: Directorio de empresas →</span></a>
+        </nav>
+        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    }
+  </script>
+</body>
+</html>
