@@ -80,9 +80,10 @@
             <li><a href="#acceso" data-i18n="page57.toc.s1">1. Cómo acceder a la verificación</a></li>
             <li><a href="#flujo" data-i18n="page57.toc.s2">2. Flujo de la verificación (diagrama)</a></li>
             <li><a href="#variantes" data-i18n="page57.toc.s3">3. Las 3 variantes de verificación</a></li>
-            <li><a href="#ejemplos" data-i18n="page57.toc.s4">4. Ejemplos concretos</a></li>
-            <li><a href="#seguridad" data-i18n="page57.toc.s5">5. Seguridad y firma</a></li>
-            <li><a href="#errores" data-i18n="page57.toc.s6">6. Mensajes de error posibles</a></li>
+            <li><a href="#visuales" data-i18n="page57.toc.s_visual">4. Ejemplos visuales del sistema</a></li>
+            <li><a href="#ejemplos" data-i18n="page57.toc.s4">5. Ejemplos concretos (JSON)</a></li>
+            <li><a href="#seguridad" data-i18n="page57.toc.s5">6. Seguridad y firma</a></li>
+            <li><a href="#errores" data-i18n="page57.toc.s6">7. Mensajes de error posibles</a></li>
           </ul>
         </div>
 
@@ -208,7 +209,94 @@
         </section>
 
         <section>
-          <h2 id="ejemplos" data-i18n="page57.s4.title">4. Ejemplos concretos</h2>
+          <h2 id="visuales" data-i18n="page57.s_visual.title">4. Ejemplos visuales del sistema en producción</h2>
+          <p data-i18n-html="page57.s_visual.intro">Esta sección muestra <strong>capturas reales</strong> del sistema de verificación tal como se presenta al usuario después del escaneo de un QR o la apertura de la URL. Las capturas en versión española se priorizan; las versiones francesas se incluyen como referencia para usuarios francófonos.</p>
+
+          <h3 data-i18n="page57.s_visual.loading.title">Estado de carga (verificación en curso)</h3>
+          <p data-i18n-html="page57.s_visual.loading.body">Inmediatamente después de abrir la URL de verificación, el sistema muestra un <strong>spinner</strong> azul con la referencia que se está verificando. La operación dura típicamente menos de 200 ms — este estado solo es visible si la conexión es lenta.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/verify/verificacion-en-curso-fr.jpg" alt="Verificación en curso — estado de carga" data-i18n-attr-alt="page57.s_visual.loading.fig.alt">
+            <figcaption data-i18n="page57.s_visual.loading.fig.caption">Estado de carga durante la verificación de REC-2026-000002 — spinner azul con referencia visible. (Captura en versión francesa, comportamiento idéntico en español)</figcaption>
+          </figure>
+
+          <h3 data-i18n="page57.s_visual.recibo.title">Caso 1 — Recibo válido</h3>
+          <p data-i18n-html="page57.s_visual.recibo.body">Cuando el recibo es auténtico, la pantalla muestra un <strong>icono verde</strong> de validación con el badge «Recibo Válido» y todos los detalles del pago: número, fecha, importe en XAF, método, pagador (parcialmente anónimo), código del trámite asociado, entidad emisora, tipo de solicitud y referencia.</p>
+
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/recibo-valido-vista-superior.jpg" alt="Recibo válido vista superior" data-i18n-attr-alt="page57.s_visual.recibo.fig1.alt">
+              <figcaption data-i18n="page57.s_visual.recibo.fig1.caption">Vista superior — header con logo Facil, título «Verificación de Recibo», badge verde «Recibo Válido» y primeros campos (Número, Fecha, Monto, Método, Pagador, Código).</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/recibo-valido-detalles.jpg" alt="Recibo válido detalles" data-i18n-attr-alt="page57.s_visual.recibo.fig2.alt">
+              <figcaption data-i18n="page57.s_visual.recibo.fig2.caption">Vista de detalles — sección inferior con Entidad emisora (DGT), Tipo de solicitud (expedición), Referencia de solicitud asociada (CON-2026-00001) y disclaimer del Tesoro Público.</figcaption>
+            </figure>
+          </div>
+
+          <h3 data-i18n="page57.s_visual.solicitud.title">Caso 2 — Solicitud verificada</h3>
+          <p data-i18n-html="page57.s_visual.solicitud.body">Cuando la referencia es una solicitud (PAS-, CON-, LIC-, etc.), la pantalla muestra «Solicitud Verificada» con los detalles del trámite : tipo, estado (Enviada / En proceso / Completada), entidad gestora, fecha de creación, cita programada (fecha + hora + lugar) e importe pagado.</p>
+
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/solicitud-verificada-vista-superior.jpg" alt="Solicitud verificada vista superior" data-i18n-attr-alt="page57.s_visual.solicitud.fig1.alt">
+              <figcaption data-i18n="page57.s_visual.solicitud.fig1.caption">Vista superior — «Verificación de Solicitud» con badge verde «Solicitud Verificada», Referencia (PAS-2026-00001), Trámite (Solicitud de Pasaporte), Estado (Completada), Tipo (Renovación), Fecha, Entidad (CNEDOGE_PASAPORTE).</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/solicitud-verificada-detalles.jpg" alt="Solicitud verificada detalles" data-i18n-attr-alt="page57.s_visual.solicitud.fig2.alt">
+              <figcaption data-i18n="page57.s_visual.solicitud.fig2.caption">Vista de detalles — Cita Programada (Fecha 28/04/2026, Hora 09:00, Ubicación MOSTOLES) + Monto 7 500 XAF + Estado del Pago (Pagado).</figcaption>
+            </figure>
+          </div>
+
+          <h3 data-i18n="page57.s_visual.errores.title">Caso 3 — Documento no válido (errores)</h3>
+          <p data-i18n-html="page57.s_visual.errores.body">Si el documento no existe, ha sido revocado, o el token es inválido, la pantalla muestra un <strong>icono rojo/naranja</strong> con un mensaje claro y la referencia introducida. Dos ejemplos típicos:</p>
+
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/licencia-no-valida.jpg" alt="Licencia comercial no válida" data-i18n-attr-alt="page57.s_visual.errores.fig1.alt">
+              <figcaption data-i18n="page57.s_visual.errores.fig1.caption">Caso licencia comercial inexistente — «Verificación de Licencia Comercial» con icono rojo de error, badge naranja «Licencia No Válida» y la referencia (LIC-2026-2982F468) que no se ha encontrado en la base de datos.</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/recibo-no-valido-fr.jpg" alt="Recibo no válido (versión francesa)" data-i18n-attr-alt="page57.s_visual.errores.fig2.alt">
+              <figcaption data-i18n="page57.s_visual.errores.fig2.caption">Caso recibo inexistente — «Verification du Reçu» con icono rojo, badge «Recu Non Valide», y mensaje bilingüe «Recibo no encontrado / Receipt not found». (Captura en versión francesa)</figcaption>
+            </figure>
+          </div>
+
+          <aside class="callout callout-info">
+            <div class="callout-title" data-i18n="common.callout.info">Información</div>
+            <p data-i18n-html="page57.s_visual.info">El <strong>botón flotante «Asistente Facil»</strong> visible en todas las capturas permite acceder al chatbot IA público sin abandonar la página de verificación — útil si el verificador necesita contexto adicional sobre un trámite o un error.</p>
+          </aside>
+
+          <h3 data-i18n="page57.s_visual.fr.title">Versiones francesas (referencia)</h3>
+          <p data-i18n-html="page57.s_visual.fr.body">Para usuarios francófonos, las mismas pantallas en versión francesa están disponibles vía la URL <code>/fr/verify/{ref}</code> o el selector ES/FR/EN en la cabecera. La estructura es idéntica:</p>
+
+          <h4 data-i18n="page57.s_visual.fr.recu.title">Recibo válido — versión francesa («Verification du Recu»)</h4>
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/recibo-valido-fr-vista-superior.jpg" alt="Reçu valide vue supérieure FR" data-i18n-attr-alt="page57.s_visual.fr.fig1.alt">
+              <figcaption data-i18n="page57.s_visual.fr.fig1.caption">Vista superior FR — header completo (logo + título + sub-título «Systeme de Verification des Paiements du Tresor Public»), badge «Recu Valide» y primeros campos (Numero de Recu, Date de Paiement, Montant, Mode de Paiement, Payeur, Code de Procedure).</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/recibo-valido-fr-detalles.jpg" alt="Reçu valide détails FR" data-i18n-attr-alt="page57.s_visual.fr.fig2.alt">
+              <figcaption data-i18n="page57.s_visual.fr.fig2.caption">Vista de detalles FR — sección inferior con Entité (DGT), Type de demande (expedicion), Reference de la demande (CON-2026-00001) y disclaimer «Ce systeme de verification est fourni par la plateforme Facil pour authentifier les requetes».</figcaption>
+            </figure>
+          </div>
+
+          <h4 data-i18n="page57.s_visual.fr.demande.title">Solicitud verificada — versión francesa («Verification de la Demande»)</h4>
+          <div class="figure-pair">
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/solicitud-verificada-fr-vista-superior.jpg" alt="Demande Verifiée FR vue supérieure" data-i18n-attr-alt="page57.s_visual.fr.fig3.alt">
+              <figcaption data-i18n="page57.s_visual.fr.fig3.caption">Vista superior FR — badge «Demande Verifiee», sub-título trilingüe «Solicitud verificada / Request verified» y campos Reference (PAS-2026-00001), Procedure (Solicitud de Pasaporte), Statut (Completada), Type (Renovacion), Date (23/04/2026), Entité (CNEDOGE_PASAPORTE).</figcaption>
+            </figure>
+            <figure class="mobile-screenshot">
+              <img src="_assets/screenshots/mobile/verify/solicitud-verificada-fr-detalles.jpg" alt="Demande Verifiée FR détails" data-i18n-attr-alt="page57.s_visual.fr.fig4.alt">
+              <figcaption data-i18n="page57.s_visual.fr.fig4.caption">Vista de detalles FR — Rendez-vous Programme (Date 28/04/2026, Heure 09:00, Lieu MOSTOLES) + Montant 7 500 XAF + Statut du paiement (Paye).</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="ejemplos" data-i18n="page57.s4.title">5. Ejemplos concretos (JSON)</h2>
 
           <h3 data-i18n="page57.s4.ex1.title">Ejemplo 1 — Verificación pública de un recibo</h3>
           <pre><code data-i18n="page57.s4.ex1.code">URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...
@@ -252,7 +340,7 @@ Respuesta: { "error": "Token requerido para acceso público" }</code></pre>
         </section>
 
         <section>
-          <h2 id="seguridad" data-i18n="page57.s5.title">5. Seguridad y firma</h2>
+          <h2 id="seguridad" data-i18n="page57.s5.title">6. Seguridad y firma</h2>
           <ul>
             <li data-i18n-html="page57.s5.sec1"><strong>Token HMAC-SHA256</strong> — el parámetro <code>?t=...</code> es una firma HMAC del identificador. Sin la clave del Tesoro Público, es imposible falsificar.</li>
             <li data-i18n-html="page57.s5.sec2"><strong>Sin caducidad por defecto</strong> — los tokens son válidos mientras el documento existe. Para los documentos sensibles (recibos), un token puede ser revocado por un agente.</li>
@@ -263,7 +351,7 @@ Respuesta: { "error": "Token requerido para acceso público" }</code></pre>
         </section>
 
         <section>
-          <h2 id="errores" data-i18n="page57.s6.title">6. Mensajes de error posibles</h2>
+          <h2 id="errores" data-i18n="page57.s6.title">7. Mensajes de error posibles</h2>
           <div class="table-wrapper">
             <table>
               <thead>

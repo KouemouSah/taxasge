@@ -972,14 +972,15 @@ window.__I18N__.es = {
     "html_title": "Verificar un recibo — Manual Facil",
     "title": "Verificar la autenticidad de un recibo",
     "description": "Cualquiera puede verificar la autenticidad de un recibo, una solicitud o una licencia comercial emitidos por Facil — sin necesidad de cuenta. La verificación funciona mediante código QR (escaneado desde la app móvil o desde un PDF) o por número de referencia. Útil para los agentes de campo, los proveedores y los ciudadanos que reciben un documento.",
-    "no_capture": "<strong>Esta página no incluye capturas</strong>: la verificación es una función de backend que devuelve datos estructurados según el tipo de identificador. La descripción es por lo tanto textual con diagramas en ASCII y tablas detalladas para cada variante.",
+    "no_capture": "<strong>Esta página combina texto, diagramas en ASCII y capturas reales</strong> del sistema de verificación. Las capturas (sección 4) muestran los 3 casos típicos : recibo válido, solicitud verificada y errores. La descripción técnica del flujo (sección 2) usa un diagrama ASCII para representar el intercambio entre frontend y backend.",
     "toc": {
       "s1": "1. Cómo acceder a la verificación",
       "s2": "2. Flujo de la verificación (diagrama)",
       "s3": "3. Las 3 variantes de verificación",
-      "s4": "4. Ejemplos concretos",
-      "s5": "5. Seguridad y firma",
-      "s6": "6. Mensajes de error posibles"
+      "s_visual": "4. Ejemplos visuales del sistema",
+      "s4": "5. Ejemplos concretos (JSON)",
+      "s5": "6. Seguridad y firma",
+      "s6": "7. Mensajes de error posibles"
     },
     "s1": {
       "title": "1. Cómo acceder a la verificación",
@@ -1038,8 +1039,83 @@ window.__I18N__.es = {
         "detail4": "Un agente OMS escanea el QR pegado en la fachada del comercio durante una inspección de campo — comprueba inmediatamente la validez de la licencia y las eventuales obligaciones pendientes."
       }
     },
+    "s_visual": {
+      "title": "4. Ejemplos visuales del sistema en producción",
+      "intro": "Esta sección muestra <strong>capturas reales</strong> del sistema de verificación tal como se presenta al usuario después del escaneo de un QR o la apertura de la URL. Las capturas en versión española se priorizan; las versiones francesas se incluyen como referencia para usuarios francófonos.",
+      "loading": {
+        "title": "Estado de carga (verificación en curso)",
+        "body": "Inmediatamente después de abrir la URL de verificación, el sistema muestra un <strong>spinner</strong> azul con la referencia que se está verificando. La operación dura típicamente menos de 200 ms — este estado solo es visible si la conexión es lenta.",
+        "fig": {
+          "alt": "Verificación en curso — estado de carga",
+          "caption": "Estado de carga durante la verificación de REC-2026-000002 — spinner azul con referencia visible. (Captura en versión francesa, comportamiento idéntico en español)"
+        }
+      },
+      "recibo": {
+        "title": "Caso 1 — Recibo válido",
+        "body": "Cuando el recibo es auténtico, la pantalla muestra un <strong>icono verde</strong> de validación con el badge «Recibo Válido» y todos los detalles del pago: número, fecha, importe en XAF, método, pagador (parcialmente anónimo), código del trámite asociado, entidad emisora, tipo de solicitud y referencia.",
+        "fig1": {
+          "alt": "Recibo válido vista superior",
+          "caption": "Vista superior — header con logo Facil, título «Verificación de Recibo», badge verde «Recibo Válido» y primeros campos (Número, Fecha, Monto, Método, Pagador, Código)."
+        },
+        "fig2": {
+          "alt": "Recibo válido detalles",
+          "caption": "Vista de detalles — sección inferior con Entidad emisora (DGT), Tipo de solicitud (expedición), Referencia de solicitud asociada (CON-2026-00001) y disclaimer del Tesoro Público."
+        }
+      },
+      "solicitud": {
+        "title": "Caso 2 — Solicitud verificada",
+        "body": "Cuando la referencia es una solicitud (PAS-, CON-, LIC-, etc.), la pantalla muestra «Solicitud Verificada» con los detalles del trámite : tipo, estado (Enviada / En proceso / Completada), entidad gestora, fecha de creación, cita programada (fecha + hora + lugar) e importe pagado.",
+        "fig1": {
+          "alt": "Solicitud verificada vista superior",
+          "caption": "Vista superior — «Verificación de Solicitud» con badge verde «Solicitud Verificada», Referencia (PAS-2026-00001), Trámite (Solicitud de Pasaporte), Estado (Completada), Tipo (Renovación), Fecha, Entidad (CNEDOGE_PASAPORTE)."
+        },
+        "fig2": {
+          "alt": "Solicitud verificada detalles",
+          "caption": "Vista de detalles — Cita Programada (Fecha 28/04/2026, Hora 09:00, Ubicación MOSTOLES) + Monto 7 500 XAF + Estado del Pago (Pagado)."
+        }
+      },
+      "errores": {
+        "title": "Caso 3 — Documento no válido (errores)",
+        "body": "Si el documento no existe, ha sido revocado, o el token es inválido, la pantalla muestra un <strong>icono rojo/naranja</strong> con un mensaje claro y la referencia introducida. Dos ejemplos típicos:",
+        "fig1": {
+          "alt": "Licencia comercial no válida",
+          "caption": "Caso licencia comercial inexistente — «Verificación de Licencia Comercial» con icono rojo de error, badge naranja «Licencia No Válida» y la referencia (LIC-2026-2982F468) que no se ha encontrado en la base de datos."
+        },
+        "fig2": {
+          "alt": "Recibo no válido (versión francesa)",
+          "caption": "Caso recibo inexistente — «Verification du Reçu» con icono rojo, badge «Recu Non Valide», y mensaje bilingüe «Recibo no encontrado / Receipt not found». (Captura en versión francesa)"
+        }
+      },
+      "info": "El <strong>botón flotante «Asistente Facil»</strong> visible en todas las capturas permite acceder al chatbot IA público sin abandonar la página de verificación — útil si el verificador necesita contexto adicional sobre un trámite o un error.",
+      "fr": {
+        "title": "Versiones francesas (referencia)",
+        "body": "Para usuarios francófonos, las mismas pantallas en versión francesa están disponibles vía la URL <code>/fr/verify/{ref}</code> o el selector ES/FR/EN en la cabecera. La estructura es idéntica:",
+        "recu": {
+          "title": "Recibo válido — versión francesa («Verification du Recu»)"
+        },
+        "fig1": {
+          "alt": "Reçu valide vue supérieure FR",
+          "caption": "Vista superior FR — header completo (logo + título + sub-título «Systeme de Verification des Paiements du Tresor Public»), badge «Recu Valide» y primeros campos (Numero de Recu, Date de Paiement, Montant, Mode de Paiement, Payeur, Code de Procedure)."
+        },
+        "fig2": {
+          "alt": "Reçu valide détails FR",
+          "caption": "Vista de detalles FR — sección inferior con Entité (DGT), Type de demande (expedicion), Reference de la demande (CON-2026-00001) y disclaimer «Ce systeme de verification est fourni par la plateforme Facil pour authentifier les requetes»."
+        },
+        "demande": {
+          "title": "Solicitud verificada — versión francesa («Verification de la Demande»)"
+        },
+        "fig3": {
+          "alt": "Demande Verifiée FR vue supérieure",
+          "caption": "Vista superior FR — badge «Demande Verifiee», sub-título trilingüe «Solicitud verificada / Request verified» y campos Reference (PAS-2026-00001), Procedure (Solicitud de Pasaporte), Statut (Completada), Type (Renovacion), Date (23/04/2026), Entité (CNEDOGE_PASAPORTE)."
+        },
+        "fig4": {
+          "alt": "Demande Verifiée FR détails",
+          "caption": "Vista de detalles FR — Rendez-vous Programme (Date 28/04/2026, Heure 09:00, Lieu MOSTOLES) + Montant 7 500 XAF + Statut du paiement (Paye)."
+        }
+      }
+    },
     "s4": {
-      "title": "4. Ejemplos concretos",
+      "title": "5. Ejemplos concretos (JSON)",
       "ex1": {
         "title": "Ejemplo 1 — Verificación pública de un recibo",
         "code": "URL : https://facil.gov.gq/verify/REC-2026-000013?t=eyJhbGc...\nGET → 200 OK\nRespuesta:\n{\n  \"tipo\": \"recibo\",\n  \"numero\": \"REC-2026-000013\",\n  \"fecha\": \"2026-04-19T15:07:00\",\n  \"importe_xaf\": 25000,\n  \"metodo\": \"Efectivo\",\n  \"pagador_parcial\": \"libre G***\",\n  \"tramite_ref\": \"CON-2026-00001\",\n  \"entidad\": \"Tesoro Público Malabo II\",\n  \"estado\": \"valido\"\n}"
@@ -1054,7 +1130,7 @@ window.__I18N__.es = {
       }
     },
     "s5": {
-      "title": "5. Seguridad y firma",
+      "title": "6. Seguridad y firma",
       "sec1": "<strong>Token HMAC-SHA256</strong> — el parámetro <code>?t=...</code> es una firma HMAC del identificador. Sin la clave del Tesoro Público, es imposible falsificar.",
       "sec2": "<strong>Sin caducidad por defecto</strong> — los tokens son válidos mientras el documento existe. Para los documentos sensibles (recibos), un token puede ser revocado por un agente.",
       "sec3": "<strong>Datos sensibles protegidos</strong> — el DIP completo, el teléfono, la dirección postal NUNCA se devuelven en la verificación pública. Solo los datos visibles en el documento PDF original se muestran.",
@@ -1062,7 +1138,7 @@ window.__I18N__.es = {
       "sec5": "<strong>Rate limiting</strong> — máximo 60 verificaciones / minuto / IP para evitar abusos."
     },
     "s6": {
-      "title": "6. Mensajes de error posibles",
+      "title": "7. Mensajes de error posibles",
       "table": {
         "col1": "Mensaje",
         "col2": "Causa",
