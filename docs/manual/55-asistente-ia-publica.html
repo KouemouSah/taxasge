@@ -72,8 +72,9 @@
             <li><a href="#acceso" data-i18n="page55.toc.s1">1. Acceder al asistente</a></li>
             <li><a href="#capacidades" data-i18n="page55.toc.s2">2. Capacidades del asistente público</a></li>
             <li><a href="#sugerencias" data-i18n="page55.toc.s3">3. Sugerencias de preguntas</a></li>
-            <li><a href="#limites" data-i18n="page55.toc.s4">4. Limitaciones sin sesión</a></li>
-            <li><a href="#privacidad" data-i18n="page55.toc.s5">5. Privacidad y datos</a></li>
+            <li><a href="#conversacion" data-i18n="page55.toc.s4_new">4. Ejemplo de conversación completa</a></li>
+            <li><a href="#limites" data-i18n="page55.toc.s4">5. Limitaciones sin sesión</a></li>
+            <li><a href="#privacidad" data-i18n="page55.toc.s5">6. Privacidad y datos</a></li>
           </ul>
         </div>
 
@@ -120,7 +121,47 @@
         </section>
 
         <section>
-          <h2 id="limites" data-i18n="page55.s4.title">4. Limitaciones sin sesión</h2>
+          <h2 id="conversacion" data-i18n="page55.s4_new.title">4. Ejemplo de conversación completa</h2>
+          <p data-i18n-html="page55.s4_new.intro">A continuación, una conversación tipo en 3 etapas — desde la pregunta hasta la respuesta detallada. Las capturas siguientes están en versión francesa (versión española visualmente idéntica salvo el texto traducido) :</p>
+
+          <h3 data-i18n="page55.s4_new.stage1.title">Etapa 1 — Envío de la pregunta y carga</h3>
+          <p data-i18n-html="page55.s4_new.stage1.body">Tras escribir su pregunta (ejemplo: <em>«Procédure de passeport»</em>), aparece la burbuja del usuario seguida de un indicador de escritura («typing») mientras el asistente prepara la respuesta. El tiempo de respuesta varía según la complejidad : 1-2 segundos para una pregunta simple, 4-6 segundos para una pregunta compleja con cálculos.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/chat/loading.jpg" alt="Asistente IA cargando respuesta" data-i18n-attr-alt="page55.s4_new.fig1.alt">
+            <figcaption data-i18n="page55.s4_new.fig1.caption">Etapa 1 — Burbuja del usuario «Procédure de passeport» seguida del indicador de escritura del asistente. (Captura en versión francesa)</figcaption>
+          </figure>
+
+          <h3 data-i18n="page55.s4_new.stage2.title">Etapa 2 — Respuesta estructurada</h3>
+          <p data-i18n-html="page55.s4_new.stage2.body">El asistente entrega una respuesta <strong>completa y estructurada</strong>: título de la sección («Pasaporte Biométrico»), información clave (coste, plazo, documentos requeridos), seguida de la lista de etapas numeradas. La presentación facilita el escaneo visual rápido.</p>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/chat/response.jpg" alt="Asistente IA respuesta completa estructurada" data-i18n-attr-alt="page55.s4_new.fig2.alt">
+            <figcaption data-i18n="page55.s4_new.fig2.caption">Etapa 2 — Respuesta detallada con coste, plazo, documentos requeridos, etapas numeradas. (Captura en versión francesa)</figcaption>
+          </figure>
+
+          <h3 data-i18n="page55.s4_new.stage3.title">Etapa 3 — Continuación + acciones de feedback</h3>
+          <p data-i18n-html="page55.s4_new.stage3.body">Si la respuesta es larga, puede desplazarse para ver las últimas etapas + una <strong>nota</strong> contextual + 4 acciones disponibles al final de cada respuesta:</p>
+          <ul>
+            <li data-i18n-html="page55.s4_new.stage3.action1"><strong>👍 Pulgar arriba</strong> — la respuesta es útil. Mejora el modelo.</li>
+            <li data-i18n-html="page55.s4_new.stage3.action2"><strong>👎 Pulgar abajo</strong> — la respuesta es incorrecta o incompleta. Le permite a las equipos mejorar el asistente.</li>
+            <li data-i18n-html="page55.s4_new.stage3.action3"><strong>📋 Copiar</strong> — copia el texto completo en el portapapeles.</li>
+            <li data-i18n-html="page55.s4_new.stage3.action4"><strong>📤 Compartir</strong> — comparte la respuesta vía WhatsApp, SMS, email u otra aplicación instalada.</li>
+          </ul>
+
+          <figure class="mobile-screenshot">
+            <img src="_assets/screenshots/mobile/chat/response-scroll.jpg" alt="Asistente IA continuación respuesta y acciones" data-i18n-attr-alt="page55.s4_new.fig3.alt">
+            <figcaption data-i18n="page55.s4_new.fig3.caption">Etapa 3 — Final de la respuesta (etapas 7-9), nota contextual y 4 acciones de feedback (👍 / 👎 / copiar / compartir). (Captura en versión francesa)</figcaption>
+          </figure>
+
+          <aside class="callout callout-tip">
+            <div class="callout-title" data-i18n="common.callout.tip">Consejo</div>
+            <p data-i18n-html="page55.s4_new.tip">Use el <strong>👎 Pulgar abajo</strong> sin dudar si la respuesta es errónea o desfasada — es el mecanismo principal para mejorar la calidad del asistente. Su feedback se trata anonymizado.</p>
+          </aside>
+        </section>
+
+        <section>
+          <h2 id="limites" data-i18n="page55.s4.title">5. Limitaciones sin sesión</h2>
           <p data-i18n="page55.s4.intro">Sin cuenta iniciada, el asistente <strong>no puede</strong>:</p>
           <ul>
             <li data-i18n-html="page55.s4.limit1"><strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)</li>
@@ -133,7 +174,7 @@
         </section>
 
         <section>
-          <h2 id="privacidad" data-i18n="page55.s5.title">5. Privacidad y datos</h2>
+          <h2 id="privacidad" data-i18n="page55.s5.title">6. Privacidad y datos</h2>
           <ul>
             <li data-i18n-html="page55.s5.priv1"><strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)</li>
             <li data-i18n-html="page55.s5.priv2"><strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio</li>

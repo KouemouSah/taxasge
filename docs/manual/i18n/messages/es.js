@@ -831,8 +831,9 @@ window.__I18N__.es = {
       "s1": "1. Acceder al asistente",
       "s2": "2. Capacidades del asistente público",
       "s3": "3. Sugerencias de preguntas",
-      "s4": "4. Limitaciones sin sesión",
-      "s5": "5. Privacidad y datos"
+      "s4_new": "4. Ejemplo de conversación completa",
+      "s4": "5. Limitaciones sin sesión",
+      "s5": "6. Privacidad y datos"
     },
     "s1": {
       "title": "1. Acceder al asistente",
@@ -863,8 +864,41 @@ window.__I18N__.es = {
       "q5": "<em>«¿Cuál es el plazo para una renovación de carnet de conducir?»</em>",
       "body": "El asistente responde con texto estructurado: subtítulos, listas numeradas, tablas si procede, enlaces directos al catálogo. Puede pulsar los enlaces para ir directamente al servicio mencionado."
     },
+    "s4_new": {
+      "title": "4. Ejemplo de conversación completa",
+      "intro": "A continuación, una conversación tipo en 3 etapas — desde la pregunta hasta la respuesta detallada. Las capturas siguientes están en versión francesa (versión española visualmente idéntica salvo el texto traducido) :",
+      "stage1": {
+        "title": "Etapa 1 — Envío de la pregunta y carga",
+        "body": "Tras escribir su pregunta (ejemplo: <em>«Procédure de passeport»</em>), aparece la burbuja del usuario seguida de un indicador de escritura («typing») mientras el asistente prepara la respuesta. El tiempo de respuesta varía según la complejidad : 1-2 segundos para una pregunta simple, 4-6 segundos para una pregunta compleja con cálculos."
+      },
+      "fig1": {
+        "alt": "Asistente IA cargando respuesta",
+        "caption": "Etapa 1 — Burbuja del usuario «Procédure de passeport» seguida del indicador de escritura del asistente. (Captura en versión francesa)"
+      },
+      "stage2": {
+        "title": "Etapa 2 — Respuesta estructurada",
+        "body": "El asistente entrega una respuesta <strong>completa y estructurada</strong>: título de la sección («Pasaporte Biométrico»), información clave (coste, plazo, documentos requeridos), seguida de la lista de etapas numeradas. La presentación facilita el escaneo visual rápido."
+      },
+      "fig2": {
+        "alt": "Asistente IA respuesta completa estructurada",
+        "caption": "Etapa 2 — Respuesta detallada con coste, plazo, documentos requeridos, etapas numeradas. (Captura en versión francesa)"
+      },
+      "stage3": {
+        "title": "Etapa 3 — Continuación + acciones de feedback",
+        "body": "Si la respuesta es larga, puede desplazarse para ver las últimas etapas + una <strong>nota</strong> contextual + 4 acciones disponibles al final de cada respuesta:",
+        "action1": "<strong>👍 Pulgar arriba</strong> — la respuesta es útil. Mejora el modelo.",
+        "action2": "<strong>👎 Pulgar abajo</strong> — la respuesta es incorrecta o incompleta. Le permite a las equipos mejorar el asistente.",
+        "action3": "<strong>📋 Copiar</strong> — copia el texto completo en el portapapeles.",
+        "action4": "<strong>📤 Compartir</strong> — comparte la respuesta vía WhatsApp, SMS, email u otra aplicación instalada."
+      },
+      "fig3": {
+        "alt": "Asistente IA continuación respuesta y acciones",
+        "caption": "Etapa 3 — Final de la respuesta (etapas 7-9), nota contextual y 4 acciones de feedback (👍 / 👎 / copiar / compartir). (Captura en versión francesa)"
+      },
+      "tip": "Use el <strong>👎 Pulgar abajo</strong> sin dudar si la respuesta es errónea o desfasada — es el mecanismo principal para mejorar la calidad del asistente. Su feedback se trata anonymizado."
+    },
     "s4": {
-      "title": "4. Limitaciones sin sesión",
+      "title": "5. Limitaciones sin sesión",
       "intro": "Sin cuenta iniciada, el asistente <strong>no puede</strong>:",
       "limit1": "<strong>Acceder a sus datos personales</strong> (no conoce su nombre, sus solicitudes, su histórico)",
       "limit2": "<strong>Iniciar un trámite por usted</strong> — solo describe el procedimiento, no actúa",
@@ -873,7 +907,7 @@ window.__I18N__.es = {
       "body": "Para esas funciones avanzadas (asistente personalizado, gestión de su caja fuerte digital, sugerencias proactivas), <a href=\"11-crear-cuenta.html\" class=\"coming-soon\">cree una cuenta</a> y consulte la página <a href=\"29-soporte-web.html\" class=\"coming-soon\">Asistente IA conectado</a>."
     },
     "s5": {
-      "title": "5. Privacidad y datos",
+      "title": "6. Privacidad y datos",
       "priv1": "<strong>Sin grabación personal</strong> — sus preguntas no se asocian a ningún identificador (sin sesión)",
       "priv2": "<strong>Estadísticas anónimas</strong> — solo se recolectan estadísticas globales (volumen, temas frecuentes) para mejorar el servicio",
       "priv3": "<strong>No proporcione datos sensibles</strong> — número DIP, teléfono, dirección no son necesarios para responder a una pregunta general. Si los proporciona, no se almacenan.",
