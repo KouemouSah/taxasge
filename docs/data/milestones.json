@@ -114,10 +114,10 @@
     "title": "M4: Mobile & Inspector Applications [ITIL: Service Transition]",
     "state": "open",
     "description": "ITIL: Service Transition | PMP: Executing\nStatus: IN PROGRESS (85%)\n\nCITIZEN APP (Expo SDK 54 / React Native / Paper MD3):\n  [done] P0: Architecture setup (55 files, Expo Router, React Query, Zustand)\n  [done] P1: Auth complete (sign-in, sign-up, forgot, reset, 2FA)\n  [done] P2: Dashboard + Listings + Fiscal Services\n  [done] P2-hotfix: Language bug, phone prefix, profile redesign\n  [todo] P3: Service request wizard with OCR document upload\n  [todo] P4: AI chatbot (Gemini 2.5 Flash) + Push notifications\n  [todo] P5: Production build + Google Play Store submission\n\nINSPECTOR APP (Expo SDK 54 / React Native):\n  [done] P1: Auth + basic dashboard\n  [done] P2: QR scanning + document capture\n  [done] P3: Workflow state management\n  [done] P4: Supervisor dashboard\n  [done] P5: Offline mode with sync\n  [todo] P6: Loading skeletons, haptic feedback, MD3 animations\n\nDistribution: Expo.dev (beta links) + GitHub Releases (APK) + Play Store (planned)",
-    "open_issues": 2,
-    "closed_issues": 0,
+    "open_issues": 0,
+    "closed_issues": 2,
     "due_on": "2026-06-29T00:00:00Z",
-    "progress": 0
+    "progress": 100
   },
   {
     "number": 13,

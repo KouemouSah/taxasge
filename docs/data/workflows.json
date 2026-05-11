@@ -70,5 +70,17 @@
     "name": "Auto-tag Mobile/Inspector",
     "state": "active",
     "path": ".github/workflows/auto-tag-mobile-inspector.yml"
+  },
+  {
+    "id": 271937120,
+    "name": "Mobile EAS Submit (Play Console)",
+    "state": "active",
+    "path": ".github/workflows/mobile-eas-submit.yml"
+  },
+  {
+    "id": 273886429,
+    "name": "DB Migrate (Auto Mode)",
+    "state": "active",
+    "path": ".github/workflows/db-migrate-auto.yml"
   }
 ]
