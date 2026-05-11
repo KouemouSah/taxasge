@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page81.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Rol Admin en Facil — overview de las 9 secciones admin : usuarios+RBAC, servicios, comunicaciones, empresas, config sistema, audit, traducciones, workflow designer, dashboard global.">
+  <title>Rol Admin — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -108,7 +108,7 @@
 
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
-          <a href="81-rol-admin.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="81-rol-admin.html" class="sidebar-link active"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
           <a href="82-admin-usuarios-roles.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
           <a href="83-admin-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
           <a href="84-admin-comunicaciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
@@ -128,131 +128,124 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.admin">Administradores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page81.title">Rol Admin</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page81.title">Rol Admin : configuración global de la plataforma</h1>
+        <p class="page-description" data-i18n="page81.description">Los administradores son responsables de la configuración técnica y funcional global de Facil. A diferencia de los supervisores (que operan dentro de una entidad), los admin operan a nivel plataforma : RBAC global, catálogo de servicios fiscales, providers de comunicación, configuración del sistema, workflows, traducciones. Esta página da una vista panorámica de las 9 secciones admin disponibles. Cada sección tiene su propia página dedicada (82-89).</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
-        </section>
-
-        <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
-
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
+          <h2 data-i18n="page81.s1.title">1. Dashboard global admin</h2>
+          <p data-i18n="page81.s1.body">La pantalla de inicio del admin reúne los indicadores clave de la plataforma : número de usuarios actifs, número de solicitudes en curso, importes tratados del mes, salud de los providers (verde / naranja / rojo), número de alertas no tratadas, etat de los crons.</p>
+          <figure>
+            <img src="_assets/screenshots/web/admin/0.png" alt="Dashboard admin overview" data-i18n-attr-alt="page81.fig1.alt" loading="lazy">
+            <figcaption data-i18n="page81.fig1.caption">Vista global del dashboard admin con todos los KPIs plataforma.</figcaption>
+          </figure>
+          <figure>
+            <img src="_assets/screenshots/web/admin/1.png" alt="Dashboard admin sections" data-i18n-attr-alt="page81.fig2.alt" loading="lazy">
+            <figcaption data-i18n="page81.fig2.caption">Acceso a las 9 secciones de configuración admin.</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
+          <h2 data-i18n="page81.s2.title">2. Las 9 secciones del back-office admin</h2>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
+              <thead>
+                <tr>
+                  <th data-i18n="page81.s2.t.h1">Sección</th>
+                  <th data-i18n="page81.s2.t.h2">Contenido</th>
+                  <th data-i18n="page81.s2.t.h3">Página dedicada</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r1.c1">Usuarios + RBAC</td>
+                  <td data-i18n="page81.s2.t.r1.c2">Gestión de usuarios, asignación de roles, creación de roles personalizados, permisos granulaires (50+ permisos disponibles)</td>
+                  <td><a href="82-admin-usuarios-roles.html" data-i18n="page81.s2.t.r1.c3">Página 82</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r2.c1">Servicios fiscales</td>
+                  <td data-i18n="page81.s2.t.r2.c2">Catálogo de los 850+ servicios, templates de documentos, templates de procédures, tarification</td>
+                  <td><a href="83-admin-servicios.html" data-i18n="page81.s2.t.r2.c3">Página 83</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r3.c1">Comunicaciones</td>
+                  <td data-i18n="page81.s2.t.r3.c2">5 providers (Email SMTP/SendGrid, SMS Twilio/Africa's Talking, Push FCM/APNs, USSD Getesa/Muni, WhatsApp Business)</td>
+                  <td><a href="84-admin-comunicaciones.html" data-i18n="page81.s2.t.r3.c3">Página 84</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r4.c1">Empresas</td>
+                  <td data-i18n="page81.s2.t.r4.c2">Validación de nuevas empresas, fusión de duplicados, suspensión administrativa, registro mercantil</td>
+                  <td><a href="85-admin-empresas.html" data-i18n="page81.s2.t.r4.c3">Página 85</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r5.c1">Config Sistema</td>
+                  <td data-i18n="page81.s2.t.r5.c2">Configuraciones globales (umbrales SLA, tasas BANGE, paramètres email, mode mantenimiento), conexiones BANCO</td>
+                  <td><a href="86-admin-config-sistema.html" data-i18n="page81.s2.t.r5.c3">Página 86</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r6.c1">Audit Logs</td>
+                  <td data-i18n="page81.s2.t.r6.c2">Trazabilidad completa (7 colonnes, retention 7 ans, chain_hash, alertes configurables, export RGPD)</td>
+                  <td><a href="87-admin-audit-logs.html" data-i18n="page81.s2.t.r6.c3">Página 87</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r7.c1">Traducciones</td>
+                  <td data-i18n="page81.s2.t.r7.c2">Gestión ES/FR/EN — 5.000+ claves UI + 1.100+ entidades, import/export CSV, cache Redis 1h</td>
+                  <td><a href="88-admin-traducciones.html" data-i18n="page81.s2.t.r7.c3">Página 88</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r8.c1">Workflow Designer</td>
+                  <td data-i18n="page81.s2.t.r8.c2">Creación visual de workflows para servicios nuevos, modificación de los existantes, validación par règles métiers</td>
+                  <td><a href="89-admin-workflow-config.html" data-i18n="page81.s2.t.r8.c3">Página 89</a></td>
+                </tr>
+                <tr>
+                  <td data-i18n="page81.s2.t.r9.c1">Menu Config</td>
+                  <td data-i18n="page81.s2.t.r9.c2">Configuración dinámica de los menús por rol (workflow_menu_mapping + menu_config explicite)</td>
+                  <td><a href="89-admin-workflow-config.html#menu" data-i18n="page81.s2.t.r9.c3">Página 89 §3</a></td>
+                </tr>
               </tbody>
             </table>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page81.s3.title">3. Sépration des pouvoirs : admin vs admin-técnico</h2>
+          <p data-i18n="page81.s3.body">En las grandes organizaciones (ministerio DGI, Tesoro), el rol Admin se divide en dos sub-roles para respetar el principio de separación de poderes :</p>
+          <ul>
+            <li data-i18n-html="page81.s3.l1"><strong>Admin funcional</strong> — gestión de los usuarios, servicios, traducciones, audit logs operacionales. No tiene acceso al config sistema, ni a los workflows, ni a los providers.</li>
+            <li data-i18n-html="page81.s3.l2"><strong>Admin técnico</strong> — config sistema, workflows, providers, monitoring infrastructura. No puede crear/modificar usuarios ni revisar audit logs personales.</li>
+          </ul>
+          <p data-i18n="page81.s3.body2">Esta separación evita que una sola persona puede a la vez modificar la configuración técnica y borrar el audit log que prouvería la modificación. Las dos funciones son intencionalmente incompatibles. Solo el director del ministerio puede asignar/retirar los roles Admin.</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page81.s4.title">4. Audit log especial admin : doble registro</h2>
+          <div class="callout callout-warning">
+            <h3 class="callout-title" data-i18n="page81.s4.warn.title">Acciones admin = trazabilidad renforcée</h3>
+            <p data-i18n="page81.s4.warn.body">Toda acción admin (creación de un usuario, modificación de un workflow, suppresión de un service, cambio de role) está registrada DOS veces : en el audit log general (página 87) Y en una tabla dedicada <code>admin_actions_log</code> con retención permanente (jamás purgée, contrariamente a los 7 años del log general). Esta redondancia garantiza que las acciones admin queden trazables incluso si una manipulación maliciosa logra borrar el log general.</p>
+          </div>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="74-supervisor-inspecciones.html" data-i18n="page81.prev">← Anterior: Supervisor Inspecciones</a>
+        <a class="pagination-next" href="82-admin-usuarios-roles.html" data-i18n="page81.next">Siguiente: Admin Usuarios + Roles →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page62.html_title">
+<html lang="es" data-i18n-title="page72.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Agente CNEDOGE — workflow validación de pasaportes en Facil: cola, lock_for_review, control biométrico DIP, generación PDF, citoyens convocados.">
-  <title>Agente CNEDOGE — Manual Facil</title>
+  <meta name="description" content="Supervisor Tesoro Público — dashboard, equipo agentes, reconciliación BANGE, informes ejecutivos, analítica IA, escalaciones, panel ministerial multi-vista.">
+  <title>Supervisor Tesoro — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -88,7 +88,7 @@
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
           <a href="61-rol-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
-          <a href="62-agente-cnedoge.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
           <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
           <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
           <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
@@ -101,7 +101,7 @@
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
           <a href="71-rol-supervisor.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
-          <a href="72-supervisor-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
           <a href="73-supervisor-ayu-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
           <a href="74-supervisor-inspecciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
         </div>
@@ -135,142 +135,199 @@
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.agent">Agentes públicos</span>
+          <span data-i18n="nav.section.supervisor">Supervisores</span>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="page62.title">Agente CNEDOGE</span>
+          <span data-i18n="page72.title">Supervisor Tesoro</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page62.title">Agente CNEDOGE: validación de pasaportes</h1>
-        <p class="page-description" data-i18n="page62.description">Los agentes del Centro Nacional de Documentación Ecuatoguineana (CNEDOGE) tratan las solicitudes de pasaportes (expedición y renovación). Su trabajo es triple: verificar la conformidad documental (DIP en curso de validez, foto reciente, documento de filiación), realizar el control biométrico cuando el ciudadano se presenta físicamente, generar el pasaporte oficial PDF firmado. Esta página describe el workflow completo. Los conceptos comunes (cola, lock_for_review, acciones, audit log) están en la <a href="61-rol-agente.html">página 61</a>.</p>
+        <h1 class="page-title" data-i18n="page72.title">Supervisor Tesoro Público : el back-office más denso</h1>
+        <p class="page-description" data-i18n="page72.description">El supervisor del Tesoro Público dispone del back-office más completo de Facil. Su rol cubre 7 grandes secciones : dashboard ejecutivo, gestión del equipo de agentes, reconciliación bancaria BANGE, informes y analítica (incluido un asistente IA financiero), escalaciones, vista estratégica de las empresas por zona, supervisión de las inspecciones terreno. Esta página presenta cada sección con sus capturas reales.</p>
 
         <section>
-          <h2 data-i18n="page62.s1.title">1. Tipos de solicitud tratados</h2>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page62.s1.t.h1">Tipo</th>
-                  <th data-i18n="page62.s1.t.h2">Documentos exigidos</th>
-                  <th data-i18n="page62.s1.t.h3">SLA legal</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td data-i18n="page62.s1.t.r1.c1">Expedición de pasaporte (primera solicitud)</td>
-                  <td data-i18n="page62.s1.t.r1.c2">DIP, certificado de nacimiento, foto carnet 35×45 mm fondo blanco, prueba de domicilio</td>
-                  <td data-i18n="page62.s1.t.r1.c3">10 días hábiles</td>
-                </tr>
-                <tr>
-                  <td data-i18n="page62.s1.t.r2.c1">Renovación (pasaporte caducado o por caducar)</td>
-                  <td data-i18n="page62.s1.t.r2.c2">DIP, pasaporte anterior (incluso caducado), foto carnet</td>
-                  <td data-i18n="page62.s1.t.r2.c3">5 días hábiles</td>
-                </tr>
-                <tr>
-                  <td data-i18n="page62.s1.t.r3.c1">Pérdida o robo (con declaración a la policía)</td>
-                  <td data-i18n="page62.s1.t.r3.c2">DIP, declaración policía firmada, foto carnet, justificante de pago de tasa adicional</td>
-                  <td data-i18n="page62.s1.t.r3.c3">15 días hábiles</td>
-                </tr>
-                <tr>
-                  <td data-i18n="page62.s1.t.r4.c1">Pasaporte de menor (menos de 18 años)</td>
-                  <td data-i18n="page62.s1.t.r4.c2">Acta nacimiento, DIP de los dos padres, autorización notarial firmada por ambos, foto carnet</td>
-                  <td data-i18n="page62.s1.t.r4.c3">10 días hábiles</td>
-                </tr>
-              </tbody>
-            </table>
+          <h2 data-i18n="page72.s1.title">1. Dashboard ejecutivo</h2>
+          <p data-i18n="page72.s1.body">La pantalla de entrada muestra el flujo de ingresos del día, la distribución por servicios, la carga de los agentes en tiempo real y las alertas SLA. Una sola vista permite saber dónde focaliser la atención.</p>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/0.png" alt="Dashboard supervisor Tesoro con flujo ingresos y carga" data-i18n-attr-alt="page72.fig0.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig0.caption">Dashboard principal con flujo ingresos, distribución por servicios, carga agentes, alertas SLA.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s2.title">2. Gestión del equipo</h2>
+          <p data-i18n="page72.s2.body">Dos pestañas : <em>Agentes</em> (lista con capacidad, disponibilidad, tasa de éxito) y <em>Carga de trabajo</em> (estadísticas por agente con validados, rechazos, score performance).</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/1.png" alt="Equipo Agentes Tesoro" data-i18n-attr-alt="page72.fig1.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig1.caption">Agentes Tesoro con capacidad/disponibilidad/tasa éxito.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/2.png" alt="Carga trabajo agentes estadísticas" data-i18n-attr-alt="page72.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig2.caption">Carga de trabajo : validados, rechazos, puntuación por agente.</figcaption>
+            </figure>
           </div>
         </section>
 
         <section>
-          <h2 data-i18n="page62.s2.title">2. Workflow de validación CNEDOGE (8 pasos)</h2>
-          <pre data-i18n-html="page62.s2.diagram">
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│  1. Solicitud entra en cola CNEDOGE (state: pending_agent_review)       │
-│         │                                                               │
-│         ▼                                                               │
-│  2. Agente abre desde la cola → lock_for_review (locked_by_agent)       │
-│         │                                                               │
-│         ▼                                                               │
-│  3. Verificación documental                                             │
-│     • DIP en curso de validez (control fecha + autenticidad sello)      │
-│     • Foto carnet conforme (fondo blanco, sin sombras, frontal)         │
-│     • Acta nacimiento (control coherencia datos)                        │
-│     • Para menores: autorización notarial de los 2 padres               │
-│         │                                                               │
-│         ├─ Falta algo o doc dudoso ──▶ request_documents                │
-│         │     (ciudadano tiene 30 días para enviar)                     │
-│         ▼                                                               │
-│  4. Convocatoria del ciudadano (cita biométrica)                        │
-│     • Email + SMS con fecha/hora propuesta (sistema de citas)           │
-│     • Ciudadano puede reagendar 1 vez sin justificación                 │
-│         │                                                               │
-│         ▼                                                               │
-│  5. Día de cita: control biométrico in situ                             │
-│     • Foto frontal con cámara CNEDOGE                                   │
-│     • Toma de huellas dactilares (10 dedos)                             │
-│     • Verificación cara-DIP por agente                                  │
-│         │                                                               │
-│         ├─ Fraude detectado ──▶ reject (motivo obligatorio)             │
-│         │                  ──▶ informe a Extranjería si extranjero      │
-│         ▼                                                               │
-│  6. approve → generación PDF pasaporte                                  │
-│     • Datos extraidos de DIP + foto biométrica                          │
-│     • Firma del agente + sello CNEDOGE                                  │
-│     • QR de verificación (página 57)                                    │
-│         │                                                               │
-│         ▼                                                               │
-│  7. Notificación al ciudadano                                           │
-│     • Email con PDF en pieza adjunta                                    │
-│     • Push (móvil) y notificación in-app                                │
-│     • PDF disponible en el vault del ciudadano (página 25)              │
-│         │                                                               │
-│         ▼                                                               │
-│  8. completed (state final)                                             │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-</pre>
-        </section>
-
-        <section>
-          <h2 data-i18n="page62.s3.title">3. Citas biométricas: gestión del calendario</h2>
-          <p data-i18n="page62.s3.body">A diferencia de los otros agentes, CNEDOGE depende de una citoyen en presencia para la toma biométrica. La página de gestión de citas muestra un calendario semanal con los slots disponibles (típicamente 8h-12h y 14h-17h, lunes a viernes, 15 min por cita). El agente puede :</p>
-          <ul>
-            <li data-i18n="page62.s3.l1">Confirmar la cita propuesta automáticamente por el sistema</li>
-            <li data-i18n="page62.s3.l2">Reagendar a petición del ciudadano (botón <em>«Reprogramar»</em>)</li>
-            <li data-i18n="page62.s3.l3">Marcar <em>«Ausente»</em> si el ciudadano no se presenta (3 ausencias = cancelación automática)</li>
-            <li data-i18n="page62.s3.l4">Bloquear un slot para mantenimiento del equipo biométrico</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 data-i18n="page62.s4.title">4. Casos especiales</h2>
-          <div class="callout callout-warning">
-            <h3 class="callout-title" data-i18n="page62.s4.warn.title">Pasaporte de un menor</h3>
-            <p data-i18n="page62.s4.warn.body">El control es más estricto: la autorización notarial de los DOS padres es obligatoria. En caso de divorcio o de padre/madre soltero/a, se acepta una decisión judicial (custodia exclusiva). Si solo un padre firma sin justificación, la solicitud debe ser <code>escalate</code> al supervisor para evitar conflictos familiares.</p>
-          </div>
-
-          <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page62.s4.info.title">Pérdida durante un viaje al extranjero</h3>
-            <p data-i18n="page62.s4.info.body">Si la pérdida o robo se produce fuera del país, el ciudadano debe primero contactar la embajada de Guinea Ecuatorial del país de residencia para obtener un salvoconducto de regreso. Una vez en el país, presenta su solicitud en Facil con la declaración de la embajada. El agente debe verificar la autenticidad del documento de la embajada antes de validar.</p>
+          <h2 data-i18n="page72.s3.title">3. Reconciliación bancaria BANGE</h2>
+          <p data-i18n="page72.s3.body">La sección clave del Tesoro : reconciliar los pagos efectivos con los importes esperados. Las transacciones se filtran por fecha, estado, importe, identificador BANGE.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/3.png" alt="Reconciliación bancaria BANGE" data-i18n-attr-alt="page72.fig3.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig3.caption">245.850 XAF a reconciliar — lista de pagos en curso.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/4.png" alt="Historial transacciones procesadas" data-i18n-attr-alt="page72.fig4.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig4.caption">Historial de transacciones procesadas con filtros.</figcaption>
+            </figure>
           </div>
         </section>
 
         <section>
-          <h2 data-i18n="page62.s5.title">5. Indicadores específicos CNEDOGE</h2>
-          <ul>
-            <li data-i18n-html="page62.s5.l1"><strong>Tasa de citas honradas</strong> — porcentaje de ciudadanos que se presentan a su cita; objetivo &gt; 90%</li>
-            <li data-i18n-html="page62.s5.l2"><strong>Tasa de fraude detectado</strong> — número de rechazos por documento falso / total tratado; un pico es señal de organización fraudulenta</li>
-            <li data-i18n-html="page62.s5.l3"><strong>Plazo medio de tratamiento</strong> — desde el depósito hasta la generación del PDF; objetivo &lt; 5 días para renovaciones, &lt; 10 días para nuevas expediciones</li>
-          </ul>
+          <h2 data-i18n="page72.s4.title">4. Informes y analítica</h2>
+          <p data-i18n="page72.s4.intro">5 vistas complementarias : Dashboard ejecutivo (KPIs), Estadísticas Agentes, SLA, Analítica predictiva, Asistente IA financiero. Las 5 cubren el reporting mensual al directorio.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/5.png" alt="Dashboard ejecutivo KPIs" data-i18n-attr-alt="page72.fig5.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig5.caption">Dashboard Ejecutivo : recaudado, SLA 100%, otros KPIs.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/6.png" alt="Estadísticas por agente" data-i18n-attr-alt="page72.fig6.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig6.caption">Velocidad, SLA y carga por agente.</figcaption>
+            </figure>
+          </div>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/7.png" alt="Métricas SLA" data-i18n-attr-alt="page72.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig7.caption">Tasa de cumplimiento SLA, distribución estados, umbrales.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/8.png" alt="Analítica predictiva con estadísticas" data-i18n-attr-alt="page72.fig8.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig8.caption">Análisis estadístico (media, mediana, percentiles).</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/12.png" alt="Asistente IA financiero chat" data-i18n-attr-alt="page72.fig12.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig12.caption">Analista IA : chat de análisis financiero con comparación entidades.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s5.title">5. Exportaciones contables</h2>
+          <p data-i18n="page72.s5.body">El Tesoro debe transmitir periódicamente sus datos a otros sistemas contables nacionales o internacionales : Auditoría interna, BEAC (Banque des États de l'Afrique Centrale), Ministerial, SAGE X3. Una pantalla dedicada lista las plantillas y permite generar un export en CSV / Excel formaté.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/9.png" alt="Plantillas de exports contables" data-i18n-attr-alt="page72.fig9.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig9.caption">Plantillas : Auditoría, BEAC, Ministerial, SAGE X3.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/10.png" alt="Historial exports completados" data-i18n-attr-alt="page72.fig10.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig10.caption">Historial de exports con estado completado/error.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/11.png" alt="Modal nuevo export SAGE X3 con fechas" data-i18n-attr-alt="page72.fig11.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig11.caption">Modal <em>«Nuevo Export»</em> SAGE X3 con rango de fechas.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s6.title">6. Escalaciones pendientes</h2>
+          <p data-i18n="page72.s6.body">La cola de escalaciones lista las solicitudes que los agentes Tesoro han transmitido al supervisor. Filtros por prioridad y motivo. Una entrada vacía es señal de un equipo bien organizado.</p>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/13.png" alt="Cola escalaciones pendientes" data-i18n-attr-alt="page72.fig13.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig13.caption">Escalaciones pendientes con filtros prioridad/motivo.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s7.title">7. Vista estratégica de las empresas por zona</h2>
+          <p data-i18n="page72.s7.intro">El supervisor Tesoro tiene una vista panorámica de las empresas registradas por zona geográfica. Cuatro pestañas (Estratégico, Operacional, Control, Tabular) ofrecen distintos ángulos de análisis.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/14.png" alt="Vista estratégica zona mapa tendencias" data-i18n-attr-alt="page72.fig14.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig14.caption">Vista estratégica : mapa, tendencias, régimen fiscal.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/15.png" alt="Vista operacional empresas deudoras" data-i18n-attr-alt="page72.fig15.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig15.caption">Vista operacional : deudores con score de riesgo.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/16.png" alt="Vista control KPIs verificación" data-i18n-attr-alt="page72.fig16.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig16.caption">Vista control : KPIs verificación, tasa de cobro, anomalías detectadas.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s8.title">8. Panel ministerial multi-vista</h2>
+          <p data-i18n="page72.s8.body">Para el reporting al ministerio, 4 vistas complementarias muestran las obligaciones de las empresas a nivel nacional : Estratégico (donut por zona), Pilotaje (tabular), Operacional (top deudores), Control (compliance + recovery rate).</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/17.png" alt="Panel ministerial estratégico donut zona" data-i18n-attr-alt="page72.fig17.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig17.caption">Estratégico : obligaciones por zona en donut.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/18.png" alt="Panel ministerial pilotaje tabular" data-i18n-attr-alt="page72.fig18.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig18.caption">Pilotaje : desglose tabular por zona.</figcaption>
+            </figure>
+          </div>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/19.png" alt="Panel ministerial top deudores" data-i18n-attr-alt="page72.fig19.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig19.caption">Operacional : top empresas deudoras con scoring.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/20.png" alt="Panel ministerial control compliance" data-i18n-attr-alt="page72.fig20.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig20.caption">Control : compliance por zona, tasa de recuperación.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s9.title">9. Catálogo y deuda empresarial</h2>
+          <p data-i18n="page72.s9.body">Una pantalla list 23 empresas registradas en la zona del supervisor, con NIF, estado de verificación, estado fiscal. Búsqueda directa por nombre/NIF para acceder al detalle de la deuda con timeline débito/pagado.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/21.png" alt="Catálogo empresas zona 23 registradas" data-i18n-attr-alt="page72.fig21.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig21.caption">Catálogo de las 23 empresas registradas en la zona.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/22.png" alt="Búsqueda deuda Tienda El Sol" data-i18n-attr-alt="page72.fig22.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig22.caption">Búsqueda de deuda — ejemplo «Tienda El Sol» bundle.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/23.png" alt="Detalle deuda timeline débito pagado" data-i18n-attr-alt="page72.fig23.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig23.caption">Detalle deuda 216k XAF con timeline débito / pagado.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page72.s10.title">10. Supervisión de las inspecciones terreno</h2>
+          <p data-i18n="page72.s10.body">El supervisor Tesoro también monitorea las inspecciones realizadas por los agentes OMS (ver <a href="74-supervisor-inspecciones.html">página 74</a>), pero desde una vista financiera : cash cobrado, MED (Misiones En curso de Desarrollo), zonas que requieren atención.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/24.png" alt="Supervisión inspecciones agentes terreno cash" data-i18n-attr-alt="page72.fig24.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig24.caption">Vista supervisión : agentes terreno, cash cobrado, MED.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/supervisor-tesoro/25.png" alt="Dashboard misiones KPIs zonas atención" data-i18n-attr-alt="page72.fig25.alt" loading="lazy">
+              <figcaption data-i18n="page72.fig25.caption">Dashboard misiones con KPIs y zonas a focaliser.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/supervisor-tesoro/26.png" alt="Modal crear modelo misión recurrente" data-i18n-attr-alt="page72.fig26.alt" loading="lazy">
+            <figcaption data-i18n="page72.fig26.caption">Modal <em>«Nuevo Modelo»</em> de misión recurrente.</figcaption>
+          </figure>
         </section>
 
       </div>
 
       <nav class="pagination">
-        <a class="pagination-prev" href="61-rol-agente.html" data-i18n="page62.prev">← Anterior: Rol Agente</a>
-        <a class="pagination-next" href="63-agente-dgt.html" data-i18n="page62.next">Siguiente: Agente DGT →</a>
+        <a class="pagination-prev" href="71-rol-supervisor.html" data-i18n="page72.prev">← Anterior: Rol Supervisor</a>
+        <a class="pagination-next" href="73-supervisor-ayu-camara.html" data-i18n="page72.next">Siguiente: Supervisor Ayuntamiento + Cámara →</a>
       </nav>
     </main>
   </div>

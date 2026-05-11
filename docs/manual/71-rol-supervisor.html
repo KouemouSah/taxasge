@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page71.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Rol Supervisor en Facil — encadre los agentes de su entidad, valida escalaciones, monitorea SLA y carga de trabajo, audita las decisiones.">
+  <title>Rol Supervisor — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -100,7 +100,7 @@
 
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
-          <a href="71-rol-supervisor.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="71-rol-supervisor.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
           <a href="72-supervisor-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
           <a href="73-supervisor-ayu-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
           <a href="74-supervisor-inspecciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
@@ -128,131 +128,148 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.supervisor">Supervisores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page71.title">Rol Supervisor</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page71.title">Rol Supervisor: encadrar los agentes y validar las escalaciones</h1>
+        <p class="page-description" data-i18n="page71.description">Los supervisores son funcionarios de rango superior dentro de cada entidad (Tesoro, Ayuntamiento, Cámara, OMS, CNEDOGE, DGT, Extranjería). Su misión es triple: encadrar a los agentes (asignación, formación, evaluación), tratar las escalaciones que los agentes les transmiten (casos ambiguos, fraude, decisiones complejas), monitorear los indicadores de la entidad (SLA, carga, conformidad). Esta página describe el rol común — las pantallas específicas Tesoro y Ayuntamiento+Cámara están en las páginas 72 y 73.</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
-        </section>
-
-        <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
-
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
+          <h2 data-i18n="page71.s1.title">1. Las 5 responsabilidades del supervisor</h2>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
+              <thead>
+                <tr>
+                  <th data-i18n="page71.s1.t.h1">Responsabilidad</th>
+                  <th data-i18n="page71.s1.t.h2">Acciones concretas en Facil</th>
+                  <th data-i18n="page71.s1.t.h3">Frecuencia</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
+                <tr>
+                  <td data-i18n="page71.s1.t.r1.c1"><strong>Tratar escalaciones</strong></td>
+                  <td data-i18n="page71.s1.t.r1.c2">Revisar las solicitudes que los agentes han escalado (acción <code>escalate</code>); validar, rechazar o asignar a un colega especializado</td>
+                  <td data-i18n="page71.s1.t.r1.c3">Diaria (varias por día en Tesoro)</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page71.s1.t.r2.c1"><strong>Encadrar los agentes</strong></td>
+                  <td data-i18n="page71.s1.t.r2.c2">Asignar solicitudes manualmente cuando un agente está saturado, formar a un nuevo agente, evaluar el rendimiento individual</td>
+                  <td data-i18n="page71.s1.t.r2.c3">Semanal</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page71.s1.t.r3.c1"><strong>Monitorear los KPI</strong></td>
+                  <td data-i18n="page71.s1.t.r3.c2">SLA tasa respetada, carga moyenne agente, tasa de rechazo, importes tratados</td>
+                  <td data-i18n="page71.s1.t.r3.c3">Diaria (dashboard) + reporting mensual</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page71.s1.t.r4.c1"><strong>Auditar las decisiones</strong></td>
+                  <td data-i18n="page71.s1.t.r4.c2">Consultar el audit log, revisar muestreo de decisiones de los agentes, detectar disparidades</td>
+                  <td data-i18n="page71.s1.t.r4.c3">Mensual</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page71.s1.t.r5.c1"><strong>Reportar al directorio</strong></td>
+                  <td data-i18n="page71.s1.t.r5.c2">Exportar informes (Excel/PDF) para el director de la entidad, alertar sobre anomalías</td>
+                  <td data-i18n="page71.s1.t.r5.c3">Mensual + ad hoc</td>
+                </tr>
               </tbody>
             </table>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page71.s2.title">2. Workflow de tratamiento de una escalación</h2>
+          <p data-i18n="page71.s2.intro">Cuando un agente escala una solicitud (acción <code>escalate</code>, ver <a href="61-rol-agente.html">página 61 §4</a>), entra en la cola del supervisor con el motivo explicitado. El supervisor dispone entonces de las mismas 7 acciones que el agente, pero con un nivel adicional: la decisión final no es escalable a otra instancia (excepto al directorio para casos exceptionnels).</p>
+
+          <pre data-i18n-html="page71.s2.diagram">
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Flujo escalación agente → supervisor                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Agente: locked_by_agent → escalate(motivo)                             │
+│         │                                                               │
+│         ▼                                                               │
+│  Solicitud: state=escalated_supervisor                                  │
+│         │                                                               │
+│         │ Notificación push + email al supervisor                       │
+│         ▼                                                               │
+│  Supervisor: ve la entrada en su cola "Escalaciones"                    │
+│         │                                                               │
+│         │ Click → lock_for_review (estado: supervisor_reviewing)        │
+│         ▼                                                               │
+│  Análisis del expediente con visibilidad completa :                     │
+│   • Histórico completo de las acciones del agente                        │
+│   • Motivo de la escalación                                              │
+│   • Casos similares pasados (vía IA agente, ver página 60)              │
+│   • Audit log de todas las modificaciones                                │
+│         │                                                               │
+│         ▼                                                               │
+│  Decisión del supervisor                                                │
+│   ├─ approve → genera el documento oficial, completo                    │
+│   ├─ reject → motivo obligatorio, posibilidad de recurso del ciudadano   │
+│   ├─ request_documents → como un agente                                  │
+│   ├─ assign_to_agent → re-asigna a un agente experto                    │
+│   └─ escalate_director → caso exceptionnel, decisión directorio          │
+│         │                                                               │
+│         ▼                                                               │
+│  Estado final + audit log con doble firma                                │
+│  (firma agente + firma supervisor)                                      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+</pre>
+        </section>
+
+        <section>
+          <h2 data-i18n="page71.s3.title">3. Dashboard supervisor: las 4 vistas clave</h2>
+          <p data-i18n="page71.s3.intro">El dashboard del supervisor está dividido en 4 secciones que cubren el conjunto de sus responsabilidades operativas:</p>
+          <ul>
+            <li data-i18n-html="page71.s3.l1"><strong>Cola escalaciones</strong> — solicitudes en estado <code>escalated_supervisor</code> esperando su decisión. Ordenadas por SLA restante (descendiente, las más urgentes primero).</li>
+            <li data-i18n-html="page71.s3.l2"><strong>Vista carga agentes</strong> — para cada agente de la entidad: nombre, número de solicitudes en cola, edad de la más antigua, indicador de saturación (verde &lt;15 / naranja 15-30 / rojo &gt;30).</li>
+            <li data-i18n-html="page71.s3.l3"><strong>KPI semana en curso</strong> — SLA respetado %, número de validaciones, número de rechazos, importe total tratado. Comparación con la semana anterior (delta %).</li>
+            <li data-i18n-html="page71.s3.l4"><strong>Alertas</strong> — eventos anormales detectados automáticamente: agente offline desde X horas, solicitud bloqueada hace más de 30 minutos, pico de rechazos sobre un mismo motivo, etc.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 data-i18n="page71.s4.title">4. Re-asignación manual de una solicitud</h2>
+          <p data-i18n="page71.s4.body">Cuando el supervisor observa que un agente está saturado (cola &gt; 30 solicitudes, edad media &gt; 48h), puede re-asignar manualmente algunas solicitudes a otros agentes menos cargados. Esta acción no requiere la aprobación del agente concerné; es una decisión jerárquica. El audit log conserva la fecha, el supervisor que ha decidido, las solicitudes movidas, y los agentes implicados (antes/después).</p>
+          <div class="callout callout-tip">
+            <h3 class="callout-title" data-i18n="page71.s4.tip.title">Buena práctica</h3>
+            <p data-i18n="page71.s4.tip.body">Privilegiar la asignación automática (basada en la carga calculada por el sistema) sobre la asignación manual. La manual debe quedarse reservada a casos excepcionales (formación, especialización, ausencia). El uso excesivo de la asignación manual sugiere que la regla automática no está bien calibrada y debe ser revisada con el administrador (página 89).</p>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page71.s5.title">5. Audit log: ver y exportar</h2>
+          <p data-i18n="page71.s5.body">El supervisor tiene acceso de lectura al audit log completo de su entidad (todas las acciones de sus agentes y de sí mismo). Filtros disponibles: período, agente, acción, tipo de servicio, decisión final. Exportación en CSV (Excel) o PDF (informe formaté). Estos exports son la base para los rapports mensuales al directorio.</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page71.s6.title">6. Diferencias con el rol Admin</h2>
+          <div class="callout callout-info">
+            <h3 class="callout-title" data-i18n="page71.s6.info.title">Supervisor vs Admin</h3>
+            <p data-i18n="page71.s6.info.body">El supervisor opera <em>dentro</em> de una entidad concreta (Tesoro, OMS, etc.); el admin opera <em>encima</em> de todas las entidades. El supervisor no puede crear nuevos servicios fiscales, modificar el workflow de un trámite, configurar los providers SMS/email, ni cambiar los roles del sistema. Estas acciones requieren el rol Admin (páginas 81-89). En cambio, el supervisor tiene una vista operativa de su entidad que el admin no necesita en el día a día.</p>
+          </div>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="60-asistente-ia-agente.html" data-i18n="page71.prev">← Anterior: Asistente IA Agente</a>
+        <a class="pagination-next" href="72-supervisor-tesoro.html" data-i18n="page71.next">Siguiente: Supervisor Tesoro →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

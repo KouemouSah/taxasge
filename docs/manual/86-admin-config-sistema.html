@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page86.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Admin Config Sistema — AI agents, centro operativo, logs sistema, traducciones técnicas, configuración bancaria, módulo de actualización en caliente.">
+  <title>Admin Config Sistema — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -113,7 +113,7 @@
           <a href="83-admin-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
           <a href="84-admin-comunicaciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
           <a href="85-admin-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
-          <a href="86-admin-config-sistema.html" class="sidebar-link"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
           <a href="87-admin-audit-logs.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
           <a href="88-admin-traducciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
           <a href="89-admin-workflow-config.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
@@ -128,131 +128,102 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.admin">Administradores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page86.title">Config Sistema</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page86.title">Admin Config Sistema : configuración técnica global</h1>
+        <p class="page-description" data-i18n="page86.description">La sección Config Sistema reúne las configuraciones técnicas que tocan al funcionamiento profundo de Facil : agentes IA (Gemini contexto + parámetros), centro operativo (monitoring infrastructura), logs sistema (debug, performance, errores), traducciones técnicas (claves no UI), conexiones bancarias (BANCO). Solo el rol Admin técnico tiene acceso a estas pantallas (separación de poderes — ver página 81 §3).</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
-        </section>
-
-        <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
-
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
+          <h2 data-i18n="page86.s1.title">1. Configuración de los AI Agents</h2>
+          <p data-i18n="page86.s1.body">Facil utiliza Gemini 2.0 Flash para varias funcionalidades : asistente IA público (página 55), IA ciudadano conectado (página 29), IA agente (página 60), enriquecimiento de servicios (página 83). El admin técnico configura los parámetros : modelo activo, temperatura, max tokens, contexto sistema por uso, fallback en caso de falla.</p>
+          <figure>
+            <img src="_assets/screenshots/web/admin/Config/SISTEMA/AI AGENTS.png" alt="Configuración AI Agents Gemini parámetros" data-i18n-attr-alt="page86.fig0.alt" loading="lazy">
+            <figcaption data-i18n="page86.fig0.caption">Configuración de los AI Agents : modelo, temperatura, max tokens, contexto sistema.</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
+          <h2 data-i18n="page86.s2.title">2. Centro operativo (monitoring infrastructura)</h2>
+          <p data-i18n="page86.s2.body">El Centro Operativo da una vista en tiempo real de la salud de la infraestructura : servidor backend (CPU/RAM/disco), base de datos PostgreSQL (conexiones activas, queries lentas, replicación), Redis (hit rate, memoria), proveedores externos (BANGE, FCM, SMS). Alertas automáticas si un indicador pasa un umbral.</p>
+          <figure>
+            <img src="_assets/screenshots/web/admin/Config/SISTEMA/CENTRO OPERATIVO.png" alt="Centro operativo monitoring infraestructura" data-i18n-attr-alt="page86.fig1.alt" loading="lazy">
+            <figcaption data-i18n="page86.fig1.caption">Centro Operativo : estado backend, BD, Redis, proveedores externos.</figcaption>
+          </figure>
         </section>
 
         <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
-          <div class="table-wrapper">
-            <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
-              <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
-              </tbody>
-            </table>
+          <h2 data-i18n="page86.s3.title">3. Logs sistema (debug + performance + errores)</h2>
+          <p data-i18n="page86.s3.body">A diferencia del audit log (página 87, que registra las acciones funcionales), los logs sistema registran los eventos técnicos : queries lentas, errores 500, timeouts, deadlocks PostgreSQL. Filtros por nivel (DEBUG / INFO / WARNING / ERROR / CRITICAL), por componente (auth, payments, ocr, ai), por período.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/SISTEMA/LOG.png" alt="Logs sistema vista principal" data-i18n-attr-alt="page86.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig2.caption">Vista principal de los logs sistema con filtros por nivel.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/SISTEMA/LOG1.png" alt="Logs sistema detalle entrada" data-i18n-attr-alt="page86.fig3.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig3.caption">Detalle de una entrada log : stack trace, contexto, timestamp.</figcaption>
+            </figure>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page86.s4.title">4. Traducciones técnicas (no UI)</h2>
+          <p data-i18n="page86.s4.body">A diferencia de las traducciones UI (página 88), estas traducciones técnicas conciernen los textos generados dinámicamente por el código (mensajes de error sistema, plantillas de emails generados automáticamente con variables, libellés de PDF oficiales). Edición delicada porque algunas variables son indispensables.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/SISTEMA/TRADUCCION.png" alt="Traducciones técnicas vista principal" data-i18n-attr-alt="page86.fig4.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig4.caption">Vista principal de las traducciones técnicas.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/SISTEMA/TRADUCCION1.png" alt="Traducciones técnicas edición clave" data-i18n-attr-alt="page86.fig5.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig5.caption">Edición de una clave técnica con variables interpoladas.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page86.s5.title">5. Configuración bancaria (BANCO)</h2>
+          <p data-i18n="page86.s5.body">Las conexiones con los bancos partenaires son configurables : BANGE (principal — Mobile Money), Banco Nacional de Guinea Ecuatorial (transferencias), BGFI (transferencias internacionales). El admin define la URL API, la clave secreta, los certificados TLS, los webhooks de respuesta.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/BANCO/0.png" alt="Configuración BANCO listo proveedores" data-i18n-attr-alt="page86.fig6.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig6.caption">Lista de los proveedores bancarios configurados.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Config/BANCO/1.png" alt="Editar conexión bancaria detalle" data-i18n-attr-alt="page86.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page86.fig7.caption">Editar conexión bancaria : URL, claves, webhooks, TLS.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page86.s6.title">6. Modo de mantenimiento</h2>
+          <div class="callout callout-warning">
+            <h3 class="callout-title" data-i18n="page86.s6.warn.title">Activar el modo mantenimiento</h3>
+            <p data-i18n="page86.s6.warn.body">Antes de una migración importante o de una actualización backend, el admin técnico puede activar el modo mantenimiento. Los usuarios ven una página explicativa (« Sistema en mantenimiento, vuelva en X minutos »). Las solicitudes en curso son preservadas; las nuevas son temporalmente bloqueadas. La duración prevista es comunicada por email a todos los usuarios afectados por el modo (típicamente solo los agentes; los ciudadanos pueden generalmente continuar a depositar en cola).</p>
+          </div>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="85-admin-empresas.html" data-i18n="page86.prev">← Anterior: Admin Empresas</a>
+        <a class="pagination-next" href="87-admin-audit-logs.html" data-i18n="page86.next">Siguiente: Audit Logs →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

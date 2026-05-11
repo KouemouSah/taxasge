@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page87.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Admin Audit Logs — schema 7 columnas (quién/cuándo/qué/antes/después/IP/UA), retention 7 años, alertas automáticas, export RGPD, recherche.">
+  <title>Admin Audit Logs — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -114,7 +114,7 @@
           <a href="84-admin-comunicaciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
           <a href="85-admin-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
           <a href="86-admin-config-sistema.html" class="sidebar-link"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
-          <a href="87-admin-audit-logs.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
           <a href="88-admin-traducciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
           <a href="89-admin-workflow-config.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
         </div>
@@ -128,131 +128,150 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.admin">Administradores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page87.title">Audit Logs</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page87.title">Audit Logs : trazabilidad completa y conservación 7 años</h1>
+        <p class="page-description" data-i18n="page87.description">Toda acción sensible en Facil (login, decisión agente, modificación de configuración, acceso a datos personales, validación de pago) está registrada en un audit log dedicado. La retención legal es de 7 años (obligación de archivo administrativo en Guinea Ecuatorial) y la integridad está garantizada por una cadena de hash inalterable. Solo el rol Admin tiene acceso completo al log; los supervisores ven los logs de su entidad; los agentes ven sus propios logs.</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
-        </section>
-
-        <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
-
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
+          <h2 data-i18n="page87.s1.title">1. Schema de las entradas (7 columnas obligatorias)</h2>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
+              <thead>
+                <tr>
+                  <th data-i18n="page87.s1.t.h1">Columna</th>
+                  <th data-i18n="page87.s1.t.h2">Tipo</th>
+                  <th data-i18n="page87.s1.t.h3">Descripción</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
+                <tr><td><code>id</code></td><td>UUID</td><td data-i18n="page87.s1.t.r1.c3">Identificador único de la entrada</td></tr>
+                <tr><td><code>timestamp</code></td><td>TIMESTAMPTZ UTC</td><td data-i18n="page87.s1.t.r2.c3">Fecha + hora precisa al milisegundo, en UTC</td></tr>
+                <tr><td><code>actor_email</code></td><td>TEXT</td><td data-i18n="page87.s1.t.r3.c3">Email del usuario que realizó la acción (o «system» para acciones automáticas)</td></tr>
+                <tr><td><code>action</code></td><td>TEXT (enum)</td><td data-i18n="page87.s1.t.r4.c3">Tipo de acción : login, logout, approve, reject, escalate, role_change, config_update, etc.</td></tr>
+                <tr><td><code>entity_type</code> + <code>entity_id</code></td><td>TEXT + UUID</td><td data-i18n="page87.s1.t.r5.c3">Objeto modificado : service_request, user, payment, role, config_key, etc.</td></tr>
+                <tr><td><code>before</code> / <code>after</code></td><td>JSONB</td><td data-i18n="page87.s1.t.r6.c3">Snapshot antes y después de la modificación (para acciones de update)</td></tr>
+                <tr><td><code>ip_address</code> + <code>user_agent</code></td><td>INET + TEXT</td><td data-i18n="page87.s1.t.r7.c3">Para trazabilidad técnica y detección de uso fraudulento (IP no habitual)</td></tr>
               </tbody>
             </table>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page87.s2.title">2. Cadena de hash : integridad infalsificable</h2>
+          <p data-i18n="page87.s2.body">Cada entrada del log lleva un campo adicional <code>chain_hash</code> calculado como : <code>SHA-256(prev_chain_hash || row_data)</code>. La primera entrada usa un hash de génesis. Esta cadena garantiza la integridad : si una entrada es modificada o suprimida posteriormente, todas las entradas siguientes tienen un hash incoherente, lo que se detecta automáticamente.</p>
+          <pre data-i18n-html="page87.s2.diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│ Cadena de hash de los audit logs                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Entrada 1 :                                                    │
+│   prev_chain_hash = GENESIS                                     │
+│   chain_hash = SHA256(GENESIS || timestamp:..., actor:..., ...) │
+│                                                                 │
+│  Entrada 2 :                                                    │
+│   prev_chain_hash = chain_hash[1]                                │
+│   chain_hash = SHA256(chain_hash[1] || timestamp:..., ...)      │
+│                                                                 │
+│  Entrada N :                                                    │
+│   prev_chain_hash = chain_hash[N-1]                              │
+│   chain_hash = SHA256(chain_hash[N-1] || timestamp:..., ...)    │
+│                                                                 │
+│  Verificación :                                                  │
+│   • Recalcular toda la cadena desde GENESIS                     │
+│   • Comparar con los chain_hash almacenados                     │
+│   • Discrepancia = entrada manipulada (con índice exacto)       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+</pre>
+        </section>
+
+        <section>
+          <h2 data-i18n="page87.s3.title">3. Búsqueda y filtrado</h2>
+          <p data-i18n="page87.s3.intro">La interfaz admin propone una pantalla de búsqueda con los filtros siguientes :</p>
+          <ul>
+            <li data-i18n-html="page87.s3.l1"><strong>Período</strong> — hoy / esta semana / este mes / personalizado (rango de fechas)</li>
+            <li data-i18n-html="page87.s3.l2"><strong>Actor</strong> — email exacto o pattern (ej. <code>*@dgi.gov.gq</code>)</li>
+            <li data-i18n-html="page87.s3.l3"><strong>Acción</strong> — drop-down con todas las acciones disponibles</li>
+            <li data-i18n-html="page87.s3.l4"><strong>Tipo de entidad</strong> — service_request / user / payment / etc.</li>
+            <li data-i18n-html="page87.s3.l5"><strong>IP</strong> — dirección exacta o subred CIDR</li>
+            <li data-i18n-html="page87.s3.l6"><strong>Búsqueda libre</strong> — full-text sobre <code>before</code>/<code>after</code> JSONB (usa GIN index PostgreSQL)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 data-i18n="page87.s4.title">4. Alertas automáticas configurables</h2>
+          <p data-i18n="page87.s4.body">El admin puede definir reglas de alerta sobre patrones detectados en el log. Ejemplos típicos :</p>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page87.s4.t.h1">Pattern</th>
+                  <th data-i18n="page87.s4.t.h2">Trigger</th>
+                  <th data-i18n="page87.s4.t.h3">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page87.s4.t.r1.c1">Login fallido repetido</td>
+                  <td data-i18n="page87.s4.t.r1.c2">&gt; 10 fallos en 10 min sobre la misma cuenta</td>
+                  <td data-i18n="page87.s4.t.r1.c3">Bloqueo temporal + email admin</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page87.s4.t.r2.c1">Login geo anormal</td>
+                  <td data-i18n="page87.s4.t.r2.c2">IP de otro país que la habitual</td>
+                  <td data-i18n="page87.s4.t.r2.c3">Push usuario + email admin + 2FA forzada</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page87.s4.t.r3.c1">Rechazos en bloque</td>
+                  <td data-i18n="page87.s4.t.r3.c2">Un agente rechaza &gt; 10 solicitudes en 1h con el mismo motivo</td>
+                  <td data-i18n="page87.s4.t.r3.c3">Email supervisor para auditoría</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page87.s4.t.r4.c1">Importe sospechoso</td>
+                  <td data-i18n="page87.s4.t.r4.c2">Validación de pago &gt; 5M XAF por un mismo agente en una jornada</td>
+                  <td data-i18n="page87.s4.t.r4.c3">Email director Tesoro + obligación reporting hebdomadario</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page87.s4.t.r5.c1">Modificación config crítica</td>
+                  <td data-i18n="page87.s4.t.r5.c2">Cambio role admin, modificación workflow_engine, suppression endpoint</td>
+                  <td data-i18n="page87.s4.t.r5.c3">Email todos los admin + log doble (en log + en table dedicada)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page87.s5.title">5. Export y conformidad RGPD</h2>
+          <p data-i18n="page87.s5.body">Ciudadanos y empresas pueden solicitar (en virtud del derecho de acceso) un export de las acciones que les conciernen. El admin tramita la solicitud desde la pantalla Audit Logs con el filtro <em>«entity_id = [identificador del solicitante]»</em>. El export se genera en formato JSON estructurado + PDF lisible. Plazo máximo: 30 días (obligación legal). El export queda registrado en el log lui-même (méta-action : <code>data_access_request</code>).</p>
+        </section>
+
+        <section>
+          <h2 data-i18n="page87.s6.title">6. Retención : 7 años + archivado</h2>
+          <p data-i18n="page87.s6.body">Las entradas activas se mantienen en la BD principal durante 12 meses (acceso rápido para auditoría operacional). Después de 12 meses, las entradas son archivadas en cold storage (Google Cloud Storage, encriptado AES-256, con replicación geográfica). El acceso a los archivos requiere una solicitud al equipo técnico (delay típico : 24-48h). La duración total de retención es de 7 años desde la fecha de la acción. Después de 7 años, las entradas son destruidas con una opération auditable (méta-entry «retention_purge»).</p>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="86-admin-config-sistema.html" data-i18n="page87.prev">← Anterior: Config Sistema</a>
+        <a class="pagination-next" href="88-admin-traducciones.html" data-i18n="page87.next">Siguiente: Admin Traducciones →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

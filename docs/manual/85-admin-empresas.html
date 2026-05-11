@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page85.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Admin Empresas — gestión global de las empresas registradas, validación nuevos registros, fusión duplicados, suspensión administrativa, registro mercantil.">
+  <title>Admin Empresas — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -112,7 +112,7 @@
           <a href="82-admin-usuarios-roles.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
           <a href="83-admin-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
           <a href="84-admin-comunicaciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
-          <a href="85-admin-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
           <a href="86-admin-config-sistema.html" class="sidebar-link"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
           <a href="87-admin-audit-logs.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
           <a href="88-admin-traducciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
@@ -128,131 +128,129 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.admin">Administradores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page85.title">Empresas</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page85.title">Admin Empresas : gestión global del registro</h1>
+        <p class="page-description" data-i18n="page85.description">El admin gestiona el conjunto de las empresas registradas en Facil : validación de nuevos registros (con justificantes legales), fusión de duplicados (mismo NIF declarado varias veces), suspensión administrativa (decisión judicial o sanción), gestión del registro mercantil (en sinergia con la Cámara de Comercio).</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
+          <h2 data-i18n="page85.s1.title">1. Catálogo global de empresas</h2>
+          <p data-i18n="page85.s1.body">La pantalla principal lista todas las empresas registradas con filtros : NIF, nombre, estado (verificada, pendiente, suspendida, archivada), ministerio de tutelle, sector económico. Búsqueda directa por NIF o nombre.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/0.png" alt="Catálogo empresas vista principal" data-i18n-attr-alt="page85.fig0.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig0.caption">Catálogo global con filtros y búsqueda.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/1.png" alt="Catálogo empresas segunda vista" data-i18n-attr-alt="page85.fig1.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig1.caption">Vista complementaria con más detalles agregados.</figcaption>
+            </figure>
+          </div>
         </section>
 
         <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
+          <h2 data-i18n="page85.s2.title">2. Ficha detallada de una empresa</h2>
+          <p data-i18n="page85.s2.body">Hacer clic en una empresa abre su ficha detallada con todas sus informaciones : datos administrativos, registro mercantil, licencias comerciales, miembros (con sus roles), histórico de declaraciones fiscales, obligaciones pendientes, audit log de las acciones.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/2.png" alt="Ficha empresa datos administrativos" data-i18n-attr-alt="page85.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig2.caption">Ficha empresa : datos administrativos, NIF, dirección, ministerio tutelle.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/3.png" alt="Ficha empresa licencias miembros" data-i18n-attr-alt="page85.fig3.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig3.caption">Licencias activas + miembros con sus roles + histórico fiscal.</figcaption>
+            </figure>
+          </div>
+        </section>
 
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
+        <section>
+          <h2 data-i18n="page85.s3.title">3. Validación de nuevos registros</h2>
+          <p data-i18n="page85.s3.body">Cuando un nuevo registro de empresa entra en Facil (vía el flujo « Añadir empresa » desde la cuenta de un usuario), entra en estado <em>«verificación pendiente»</em>. El admin (o un delegado de la DGI) revisa los justificantes (acta constitutiva, NIF, certificado registro mercantil, identidad del representante legal) y valida o rechaza con motivo.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/4.png" alt="Cola verificaciones pendientes" data-i18n-attr-alt="page85.fig4.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig4.caption">Cola de empresas en verificación pendiente.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/5.png" alt="Validar empresa justificantes" data-i18n-attr-alt="page85.fig5.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig5.caption">Validar empresa con justificantes adjuntos.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/admin/Empresas/6.png" alt="Aprobar empresa modal confirmación" data-i18n-attr-alt="page85.fig6.alt" loading="lazy">
+            <figcaption data-i18n="page85.fig6.caption">Modal de aprobación con resumen + firma electrónica admin.</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
-          <div class="table-wrapper">
-            <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
-              <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
-              </tbody>
-            </table>
+          <h2 data-i18n="page85.s4.title">4. Detección y fusión de duplicados</h2>
+          <p data-i18n="page85.s4.body">Una empresa puede tener varias entradas erroneas (nombre escrito diferentemente, NIF mal capturado). Facil detecta automáticamente los duplicados sospechosos (mismo NIF, o nombres similares, o misma dirección + responsable legal) y propide su fusión. La fusión preserva los datos de la empresa principal y migra los miembros, licencias, declaraciones del duplicado.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/7.png" alt="Detección duplicados sospechosos" data-i18n-attr-alt="page85.fig7.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig7.caption">Lista de duplicados sospechosos detectados automáticamente.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/8.png" alt="Fusión empresas asistente" data-i18n-attr-alt="page85.fig8.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig8.caption">Asistente de fusión : empresa principal vs duplicado a integrar.</figcaption>
+            </figure>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page85.s5.title">5. Suspensión administrativa</h2>
+          <p data-i18n="page85.s5.body">El admin puede suspender una empresa en caso de decisión judicial, sanción fiscal mayor o fraude detectado. La suspensión bloquea todas las acciones de la empresa (no puede iniciar solicitudes, no puede pagar) pero preserva los datos.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/9.png" alt="Suspensión empresa motivo" data-i18n-attr-alt="page85.fig9.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig9.caption">Suspensión administrativa con motivo obligatorio.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/10.png" alt="Empresa suspendida banner" data-i18n-attr-alt="page85.fig10.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig10.caption">Banner « Empresa suspendida » visible para los miembros.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page85.s6.title">6. Histórico y archivos</h2>
+          <p data-i18n="page85.s6.body">Cada empresa tiene un histórico detallado de todas las acciones administrativas que la conciernen : verificaciones, suspensiones, reactivaciones, fusiones, cambios de propietario. Útil para auditorías ministeriales o para reconstituir la cronología de un caso litigieux.</p>
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/11.png" alt="Histórico empresa timeline" data-i18n-attr-alt="page85.fig11.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig11.caption">Timeline cronológico de todas las acciones admin sobre la empresa.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/web/admin/Empresas/12.png" alt="Archivos empresa documentos legales" data-i18n-attr-alt="page85.fig12.alt" loading="lazy">
+              <figcaption data-i18n="page85.fig12.caption">Archivos legales asociados : acta, NIF, certificados, decisiones.</figcaption>
+            </figure>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/web/admin/Empresas/13.png" alt="Exportar histórico empresa PDF" data-i18n-attr-alt="page85.fig13.alt" loading="lazy">
+            <figcaption data-i18n="page85.fig13.caption">Exportación PDF del histórico completo para auditoría externa.</figcaption>
+          </figure>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="84-admin-comunicaciones.html" data-i18n="page85.prev">← Anterior: Admin Comunicaciones</a>
+        <a class="pagination-next" href="86-admin-config-sistema.html" data-i18n="page85.next">Siguiente: Admin Config Sistema →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

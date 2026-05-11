@@ -118,7 +118,7 @@ window.__I18N__.en = {
       "agent_dgt": "DGT Agent",
       "agent_ayuntamiento": "Town Hall & Chamber Agent",
       "agent_tesoro": "Treasury Agent",
-      "agent_oms": "MIN OMS Agent",
+      "agent_oms": "OMS Agent (Obligations)",
       "agent_extranjeria": "Extranjería Agent",
       "verify_functions": "Verification functions",
       "field_work": "OMS field work",
@@ -660,9 +660,9 @@ window.__I18N__.en = {
     "next": "Next: OMS Ministry Agent →"
   },
   "page66": {
-    "html_title": "OMS Ministry Agent — Facil Manual",
-    "title": "Sanidad Ministry Agent: commercial licenses and inspections",
-    "description": "Ministry dashboard, NIF-based company lookup, license management, inspection board, inspection start (QR scan), cash reconciliation, conformity by tasa, obligations queue.",
+    "html_title": "OMS Agent — Facil Manual",
+    "title": "OMS Agent: post-payment processing of bundle obligations",
+    "description": "OMS = Obligation Management System (unrelated to health). Module that processes bundle obligations after payment: distribution to tesoro/municipal/chamber/sectoral ministry agents, Mode A per-line or Mode B consolidated polyvalent.",
     "prev": "← Previous: Tesoro Agent",
     "next": "Next: Extranjería Agent →"
   },
@@ -682,10 +682,102 @@ window.__I18N__.en = {
   },
   "page69": {
     "html_title": "OMS field work — Facil Manual",
-    "title": "OMS field work: on-site sanitary inspection + offline mode",
-    "description": "Day prep, QR license scan, conformity checklist (10-20 points), field cash collection, encrypted MMKV offline mode, sync on return, cash reconciliation.",
+    "title": "OMS field work: commercial bundle inspection + payment collection + offline mode",
+    "description": "Commercial (not sanitary) inspections to verify merchants' bundle obligations and collect outstanding payments. QR license scan, 7-point commercial/fiscal checklist, BANGE Mobile Money or cash payment, AES-256 MMKV offline mode, sync on return. Strict lock ordering (CLAUDE.md).",
     "prev": "← Previous: Verify Functions",
     "next": "Next: Agent AI Assistant →"
+  },
+
+  "page71": {
+    "html_title": "Supervisor Role — Facil Manual",
+    "title": "Supervisor Role: managing agents and validating escalations",
+    "description": "5 responsibilities (escalations, supervision, KPIs, audit, reporting), ASCII escalation workflow, 4 dashboard views, manual re-assignment, exportable audit log.",
+    "prev": "← Previous: Agent AI Assistant",
+    "next": "Next: Tesoro Supervisor →"
+  },
+  "page72": {
+    "html_title": "Tesoro Supervisor — Facil Manual",
+    "title": "Tesoro Público Supervisor: the densest back-office",
+    "description": "10 sections: dashboard, agent team, BANGE reconciliation, reports & analytics (financial AI), BEAC/SAGE exports, escalations, strategic company view, field inspections supervision.",
+    "prev": "← Previous: Supervisor Role",
+    "next": "Next: Ayuntamiento + Cámara Supervisor →"
+  },
+  "page73": {
+    "html_title": "Ayuntamiento + Cámara Supervisor — Facil Manual",
+    "title": "Ayuntamiento + Cámara Supervisor: local back-office",
+    "description": "Municipal dashboard, local companies, commercial licenses, obligations (taxes + Cámara fees), light municipal inspections, comparison with Tesoro.",
+    "prev": "← Previous: Tesoro Supervisor",
+    "next": "Next: Inspections Supervisor →"
+  },
+  "page74": {
+    "html_title": "Inspections Supervisor — Facil Manual",
+    "title": "OMS Inspections Supervisor (Obligation Management System)",
+    "description": "Manages agents performing commercial bundle field inspections (not sanitary): validates sanctions > 500K XAF for overdue obligations, temporary license suspensions, merchant appeals, real-time cash monitoring, end-of-day reconciliation.",
+    "prev": "← Previous: Ayuntamiento + Cámara Supervisor",
+    "next": "Next: Admin Role →"
+  },
+  "page81": {
+    "html_title": "Admin Role — Facil Manual",
+    "title": "Admin Role: platform-wide configuration",
+    "description": "Global dashboard, 9 admin sections (Users+RBAC, Services, Communications, Empresas, System Config, Audit, Translations, Workflow Designer, Menu Config), functional/technical admin separation, double audit log.",
+    "prev": "← Previous: Inspections Supervisor",
+    "next": "Next: Admin Users + RBAC →"
+  },
+  "page82": {
+    "html_title": "Admin Users + RBAC — Facil Manual",
+    "title": "Admin Users + RBAC: granular roles and permissions",
+    "description": "10 RBAC screens, 50+ permissions in 8 families, standard roles (citizen, business, accountant, agent_*, supervisor_*, admin), custom role creation, MFA reset, account suspension.",
+    "prev": "← Previous: Admin Role",
+    "next": "Next: Admin Services →"
+  },
+  "page83": {
+    "html_title": "Admin Services — Facil Manual",
+    "title": "Admin Services: catalog of the 873 fiscal services",
+    "description": "Catalog, 7-tab creation wizard, hierarchy management (21 ministries, 17 sectors, 100 categories), document/procedure templates, AI description enrichment.",
+    "prev": "← Previous: Admin Users + RBAC",
+    "next": "Next: Admin Communications →"
+  },
+  "page84": {
+    "html_title": "Admin Communications — Facil Manual",
+    "title": "Admin Communications: 5 multi-provider channels",
+    "description": "Templates Email (32) + SMS + Push + USSD (Getesa, Muni) + WhatsApp Business. Configurable providers (Gmail SMTP, Infobip, FCM/APNs, Meta). In-app notifications + incoming webhooks.",
+    "prev": "← Previous: Admin Services",
+    "next": "Next: Admin Empresas →"
+  },
+  "page85": {
+    "html_title": "Admin Empresas — Facil Manual",
+    "title": "Admin Empresas: global registry management",
+    "description": "Catalog, detailed sheet, new registration validation with supporting documents, duplicate detection and merging, administrative suspension, history and PDF archives.",
+    "prev": "← Previous: Admin Communications",
+    "next": "Next: Admin System Config →"
+  },
+  "page86": {
+    "html_title": "Admin System Config — Facil Manual",
+    "title": "Admin System Config: global technical configuration",
+    "description": "Gemini AI Agents, Operations Center (infra monitoring), system logs (DEBUG → CRITICAL), technical translations, bank connections (BANGE + BNGE + BGFI), maintenance mode.",
+    "prev": "← Previous: Admin Empresas",
+    "next": "Next: Audit Logs →"
+  },
+  "page87": {
+    "html_title": "Audit Logs — Facil Manual",
+    "title": "Audit Logs: complete traceability and 7-year retention",
+    "description": "7-column schema, tamper-proof SHA-256 hash chain, multi-criteria search, configurable alerts (login fail, geo anomaly, bulk rejections, suspicious amounts), GDPR export, 7-year retention.",
+    "prev": "← Previous: Admin System Config",
+    "next": "Next: Admin Translations →"
+  },
+  "page88": {
+    "html_title": "Admin Translations — Facil Manual",
+    "title": "Admin Translations: ES / FR / EN trilingual",
+    "description": "2 tables (translations + entity_translations), CRUD interface with inline editing, new key / correction workflow, CSV import/export, 1h Redis cache with auto invalidation.",
+    "prev": "← Previous: Audit Logs",
+    "next": "Next: Workflows + Citas + Entidades →"
+  },
+  "page89": {
+    "html_title": "Workflows + Citas + Entidades — Facil Manual",
+    "title": "Workflows, Citas, Entidades and Menús Configuration",
+    "description": "36 predefined workflows (read-only), supplementary tariffs, appointment management (schedules + slots + blocked dates + waiting rules), entities + 17 cities + 34 locations, dynamic menu config per role.",
+    "prev": "← Previous: Admin Translations",
+    "next": "Back to home →"
   },
 
   "page59": {

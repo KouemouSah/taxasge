@@ -132,7 +132,7 @@ window.__I18N__.es = {
       "agent_dgt": "Agente DGT",
       "agent_ayuntamiento": "Agente Ayuntamiento y Cámara",
       "agent_tesoro": "Agente Tesoro",
-      "agent_oms": "Agente MIN OMS",
+      "agent_oms": "Agente OMS (Obligaciones)",
       "agent_extranjeria": "Agente Extranjería",
       "verify_functions": "Funciones de verificación",
       "field_work": "Trabajo de campo OMS",
@@ -3970,7 +3970,7 @@ window.__I18N__.es = {
   "page61": {
     "html_title": "Rol Agente — Manual Facil",
     "title": "Rol Agente: concepto común a todos los agentes públicos",
-    "description": "Los agentes públicos son los funcionarios autorizados que tratan las solicitudes de los ciudadanos y empresas en Facil. Aunque cada entidad (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro Público, Ministerio de Sanidad, Extranjería) tiene su workflow específico, todos comparten un mismo modelo de trabajo: una cola de tareas, un mecanismo de bloqueo pesimista (lock_for_review) que evita que dos agentes traten la misma solicitud, y un conjunto fijo de acciones (validar, rechazar, pedir documentos, escalar). Esta página describe ese tronco común. Las pantallas y los detalles propios de cada entidad están en las páginas 62 a 67.",
+    "description": "Los agentes públicos son los funcionarios autorizados que tratan las solicitudes de los ciudadanos y empresas en Facil. Aunque cada entidad (CNEDOGE, DGT, Ayuntamiento, Cámara, Tesoro Público, OMS — Obligation Management System, Extranjería) tiene su workflow específico, todos comparten un mismo modelo de trabajo: una cola de tareas, un mecanismo de bloqueo pesimista (lock_for_review) que evita que dos agentes traten la misma solicitud, y un conjunto fijo de acciones (validar, rechazar, pedir documentos, escalar). Esta página describe ese tronco común. Las pantallas y los detalles propios de cada entidad están en las páginas 62 a 67.",
     "s1": {
       "title": "1. Las 7 entidades de tratamiento",
       "intro": "Facil reparte las solicitudes entre 7 entidades públicas, cada una con sus agentes. La asignación es automática: cuando un ciudadano deposita una solicitud, el sistema la dirige a la entidad competente según el tipo de servicio (workflow_code). Los agentes nunca eligen su lote; reciben las solicitudes asignadas a su entidad por orden de prioridad SLA.",
@@ -4000,8 +4000,8 @@ window.__I18N__.es = {
           "c4": "Página 65"
         },
         "r5": {
-          "c1": "Ministerio de Sanidad y Bienestar Social",
-          "c3": "Licencias sanitarias, inspección de establecimientos",
+          "c1": "OMS — Obligation Management System",
+          "c3": "Procesamiento post-pago de obligaciones bundle (licencias comerciales): distribución de obligaciones tesoro/municipal/chamber en Modo A (per-line por ministerio) o Modo B (consolidado polivalente)",
           "c4": "Página 66"
         },
         "r6": {
@@ -4078,21 +4078,21 @@ window.__I18N__.es = {
         "h1": "Estado",
         "h2": "Significado",
         "h3": "Agente actúa",
-        "r1": { "c2": "Solicitud depositada por el ciudadano" },
-        "r2": { "c2": "El sistema verifica datos automáticamente" },
-        "r3": { "c2": "Validación 100% automática (caso simple)" },
-        "r4": { "c2": "En cola del agente" },
-        "r5": { "c2": "Bloqueada por un agente para tratamiento" },
-        "r6": { "c2": "Esperando docs adicionales del ciudadano" },
-        "r7": { "c2": "El ciudadano ha enviado los nuevos docs" },
-        "r8": { "c2": "Validada por el agente, decisión final" },
-        "r9": { "c2": "Rechazada por el agente" },
-        "r10": { "c2": "Escalada al supervisor de la entidad" },
-        "r11": { "c2": "Bloqueada por el supervisor" },
-        "r12": { "c2": "Documento oficial generado y entregado" },
-        "r13": { "c2": "Cancelada por el ciudadano" },
-        "r14": { "c2": "Cancelada por el agente (caso administrativo)" },
-        "r15": { "c2": "Plazo de aporte de documentos vencido" }
+        "r1": {"c2": "Solicitud depositada por el ciudadano"},
+        "r2": {"c2": "El sistema verifica datos automáticamente"},
+        "r3": {"c2": "Validación 100% automática (caso simple)"},
+        "r4": {"c2": "En cola del agente"},
+        "r5": {"c2": "Bloqueada por un agente para tratamiento"},
+        "r6": {"c2": "Esperando docs adicionales del ciudadano"},
+        "r7": {"c2": "El ciudadano ha enviado los nuevos docs"},
+        "r8": {"c2": "Validada por el agente, decisión final"},
+        "r9": {"c2": "Rechazada por el agente"},
+        "r10": {"c2": "Escalada al supervisor de la entidad"},
+        "r11": {"c2": "Bloqueada por el supervisor"},
+        "r12": {"c2": "Documento oficial generado y entregado"},
+        "r13": {"c2": "Cancelada por el ciudadano"},
+        "r14": {"c2": "Cancelada por el agente (caso administrativo)"},
+        "r15": {"c2": "Plazo de aporte de documentos vencido"}
       }
     },
     "s7": {
@@ -4332,7 +4332,7 @@ window.__I18N__.es = {
       "title": "6. Particularidades del workflow comercial",
       "info": {
         "title": "Inspección terreno (OMS)",
-        "body": "Cuando un agente sanitario del Ministerio realiza una inspección terreno (ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) y cobra una tasa en efectivo en el local, esa tasa entra en el flujo Ayuntamiento o Cámara según su naturaleza. El agente OMS escanea el QR de la licencia, registra el cobro, y un evento se crea automáticamente en la cola del agente Ayuntamiento/Cámara para reconciliación al final del día."
+        "body": "Cuando un agente OMS (Obligation Management System — sin relación con la salud) realiza una inspección comercial bundle en el terreno (ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) y collectó una obligación en efectivo en el local, esa obligación entra en el flujo Ayuntamiento o Cámara según su <code>fee_type</code> (municipal o chamber). El agente OMS escanea el QR de la licencia, registra el cobro, y un evento se crea automáticamente en la cola del agente Ayuntamiento/Cámara para reconciliación al final del día."
       },
       "warn": {
         "title": "Pagos en efectivo: declaración obligatoria",
@@ -4415,81 +4415,93 @@ window.__I18N__.es = {
     "next": "Siguiente: Agente Ministerio Sanidad →"
   },
   "page66": {
-    "html_title": "Agente Ministerio OMS — Manual Facil",
-    "title": "Agente Ministerio Sanidad: licencias comerciales e inspecciones",
-    "description": "Los agentes del Ministerio de Sanidad y Bienestar Social («OMS» en la jerga interna del proyecto, no confundir con la Organización Mundial de la Salud) gestionan las licencias sanitarias de los establecimientos comerciales (bares, restaurantes, farmacias, peluquerías, etc.) y realizan las inspecciones terreno periódicas. Su trabajo combina back-office (consulta de licencias, validación de conformidad) y trabajo terreno (inspección física in situ — ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>). Esta página describe el back-office.",
+    "html_title": "Agente OMS — Manual Facil",
+    "title": "Agente OMS: procesamiento post-pago de obligaciones bundle",
+    "description": "OMS (<em>Obligation Management System</em>) es el módulo interno de Facil que trata las obligaciones de licencias comerciales bundle <strong>después</strong> del pago. No tiene relación con la salud — el acrónimo coincide pero refiere al sistema de gestión de obligaciones definido en <code>licenses.py</code>. Cuando un comerciante paga su bundle (página 26), las obligaciones individuales (impuestos Tesoro, tasas Ayuntamiento, cotizaciones Cámara, impuestos sectoriales por ministerio) se distribuyen entre agentes según el modo de procesamiento configurado: <strong>Mode A — per_line</strong> (cada obligación va al ministerio competente) o <strong>Mode B — consolidated</strong> (un agente polyvalent <code>agent_oms_polyvalent</code> trata todo agregado).",
     "s1": {
-      "title": "1. Dashboard del Ministerio",
-      "body": "El dashboard del Ministerio de Sanidad muestra los KPIs específicos: número de licencias en curso de validez, vencidas, en renovación; inspecciones realizadas del mes; obligaciones pendientes de pago por las empresas. Las acciones rápidas dan acceso directo a las funciones más frecuentes: nueva inspección, consulta de empresa por NIF, lista de licencias, conformidad por tipo de tasa."
+      "title": "1. Dashboard del agente OMS",
+      "body": "El dashboard muestra los KPIs específicos del procesamiento bundle: número de obligaciones en cola, conformidad por <code>fee_type</code> (TESORO / MUNICIPAL / CHAMBER), licencias comerciales activas, tiempo medio de procesamiento. Las acciones rápidas dan acceso directo a las funciones más frecuentes: nueva inspección terreno, consulta de empresa por NIF, lista de licencias, conformidad por tipo de tasa."
     },
     "fig1": {
-      "alt": "Dashboard Ministerio Comercio con KPIs y acciones rápidas",
-      "caption": "Dashboard del Ministerio con KPIs licencias, inspecciones, obligaciones."
+      "alt": "Dashboard agente OMS con KPIs obligaciones bundle",
+      "caption": "Dashboard agente OMS con KPIs licencias, obligaciones, conformidad."
     },
     "s2": {
       "title": "2. Consulta de empresas",
-      "body": "El menú <em>«Consulta empresas»</em> permite buscar una empresa por NIF, número de registro mercantil o nombre comercial. Útil cuando el agente recibe una llamada de un comerciante o necesita auditar el historial de un establecimiento antes de una inspección."
+      "body": "El menú <em>«Consulta empresas»</em> permite buscar una empresa por NIF, número de registro mercantil o nombre comercial. Útil cuando el agente recibe una llamada del comerciante o necesita auditar el historial bundle de un establecimiento antes de una inspección terreno."
     },
     "fig2": {
       "alt": "Consulta empresas búsqueda por NIF/registro/nombre",
       "caption": "Búsqueda de empresa con campos NIF, registro mercantil, nombre comercial."
     },
     "s3": {
-      "title": "3. Licencias comerciales",
-      "body": "La pantalla <em>«Licencias comerciales»</em> lista todas las licencias gestionadas por el Ministerio, con sus identificadores, su empresa propietaria, su saldo de obligaciones (número de tasas no pagadas) y su estado (en validez, vencida, en renovación, suspendida).",
-      "body2": "Hacer clic en una licencia abre la vista detallada con el desglose por obligación (tasa anual, tasa de inspección, tasa Cámara…) y la opción de regenerar el certificado PDF de la licencia."
+      "title": "3. Licencias comerciales bundle",
+      "body": "La pantalla <em>«Licencias comerciales»</em> lista todas las licencias gestionadas por el módulo OMS, con sus identificadores, su empresa propietaria, su saldo de obligaciones (número de obligaciones bundle no pagadas) y su estado (en validez, vencida, en renovación, suspendida).",
+      "body2": "Hacer clic en una licencia abre la vista detallada con el desglose por obligación (tasa Tesoro, tasa Ayuntamiento, cotización Cámara, impuesto sectorial ministerial) y la opción de regenerar el certificado PDF de la licencia."
     },
     "fig3": {
       "alt": "Lista licencias comerciales con identificadores y saldos",
-      "caption": "Vista global de las licencias con identificadores y saldos pendientes."
+      "caption": "Vista global de las licencias bundle con identificadores y saldos pendientes."
     },
     "fig4": {
-      "alt": "Detalle licencia Ferreteria con 5 obligaciones pendientes",
-      "caption": "Detalle de una licencia con desglose de obligaciones pendientes."
+      "alt": "Detalle licencia bundle con obligaciones desglosadas",
+      "caption": "Detalle de una licencia con desglose de obligaciones bundle pendientes (tesoro / municipal / chamber / ministerial)."
     },
     "s4": {
       "title": "4. Tablero de inspecciones del día",
-      "body": "El menú <em>«Inspecciones»</em> abre el tablero de control terrain con todas las inspecciones del día (programadas y efectuadas). Es la pantalla central del agente OMS antes de salir al terrain. Cada inspección muestra: empresa visitada, dirección, hora prevista, conformidad observada (si ya hecha), tasas cobradas en efectivo (si aplicable)."
+      "body": "El menú <em>«Inspecciones»</em> abre el tablero de control terreno con todas las inspecciones del día (programadas y efectuadas). Las inspecciones OMS no son sanitarias — son <strong>visitas comerciales</strong> para verificar que el comerciante está al día de sus obligaciones bundle y eventualmente collectar los pagos pendientes en el terreno (Mobile Money o cash). Cada inspección muestra: empresa visitada, dirección, hora prevista, conformidad observada (si ya hecha), tasas collectadas (si aplicable)."
     },
     "fig5": {
-      "alt": "Tablero Control Terrain inspecciones del día",
-      "caption": "Tablero de control terrain con inspecciones del día."
+      "alt": "Tablero Control Terreno inspecciones bundle del día",
+      "caption": "Tablero de control terreno con inspecciones comerciales bundle del día."
     },
     "s5": {
-      "title": "5. Iniciar una nueva inspección",
-      "body": "Para empezar una inspección, el agente puede escanear el QR de la licencia comercial pegado en el establecimiento (caso typique cuando llega al local) o buscar el NIF manualmente desde la oficina. El sistema valida el QR contra la base de datos y abre la ficha de inspección preparada con los datos pre-llenados."
+      "title": "5. Iniciar una nueva inspección comercial",
+      "body": "Para empezar una inspección, el agente puede escanear el QR de la licencia comercial pegado en el establecimiento (caso típico cuando llega al local) o buscar el NIF manualmente desde la oficina. El sistema valida el QR contra la base de datos y abre la ficha de inspección preparada con los datos pre-rellenados (obligaciones pendientes, importes esperados, historial bundle del comerciante)."
     },
     "fig6": {
       "alt": "Nueva Inspección escanear QR o buscar NIF manual",
-      "caption": "Pantalla de inicio de inspección: escanear QR o buscar NIF manual."
+      "caption": "Pantalla de inicio de inspección: escanear QR de licencia o buscar NIF manual."
     },
     "s6": {
       "title": "6. Reconciliación de cobros del día",
-      "body": "Al final de la jornada, el agente que ha cobrado tasas en efectivo (multas sanitarias, tasas adicionales) debe reconciliar su caja: la suma de los cobros registrados en cada inspección debe coincidir con el efectivo en su poder. La pantalla de reconciliación muestra las diferencias y permite generar un recibo agregado a depositar al cajero del Ministerio."
+      "body": "Al final de la jornada, el agente que ha collectado obligaciones en efectivo durante las inspecciones terreno debe reconciliar su caja: la suma de los cobros registrados en cada inspección bundle debe coincidir con el efectivo en su poder. La pantalla de reconciliación muestra las diferencias y permite generar un recibo agregado a depositar al cajero. Esto es crítico para evitar discrepancias entre el sistema OMS y el flujo Tesoro (página 65)."
     },
     "fig7": {
-      "alt": "Reconciliación cobros del día (cash collectado)",
-      "caption": "Reconciliación de cobros: importes cobrados vs efectivo en caja."
+      "alt": "Reconciliación cobros bundle del día cash collectado",
+      "caption": "Reconciliación de cobros bundle terreno : importes cobrados vs efectivo en caja."
     },
     "s7": {
-      "title": "7. Conformidad por tipo de tasa",
-      "body": "La pantalla <em>«Conformidad»</em> muestra el porcentaje de conformidad de las empresas por tipo de tasa: Cámara (CHAMBER), Municipal (MUNICIPAL), Tesoro (TESORO). Útil para detectar las categorías con mayor índice de retraso de pago y orientar las acciones de control."
+      "title": "7. Conformidad por tipo de obligación (fee_type)",
+      "body": "La pantalla <em>«Conformidad»</em> muestra el porcentaje de conformidad de las empresas por <code>fee_type</code> (campo del modelo bundle en <code>bundles.py</code>): <strong>CHAMBER</strong> (cotizaciones Cámara de Comercio), <strong>MUNICIPAL</strong> (tasas Ayuntamiento), <strong>TESORO</strong> (impuestos Tesoro Público). Útil para detectar las categorías con mayor índice de retraso de pago y orientar las acciones de control."
     },
     "fig8": {
-      "alt": "Conformidad por tipo de tasa CHAMBER MUNICIPAL TESORO",
-      "caption": "Tasa de conformidad por categoría (CHAMBER, MUNICIPAL, TESORO)."
+      "alt": "Conformidad por fee_type CHAMBER MUNICIPAL TESORO",
+      "caption": "Tasa de conformidad por <code>fee_type</code> (CHAMBER, MUNICIPAL, TESORO)."
     },
     "s8": {
       "title": "8. Cola de obligaciones",
-      "body": "Cuando una obligación (tasa anual, tasa de control) vence sin pago, entra en una cola dedicada que el agente puede consultar para realizar acciones de relance: notificación al comerciante, escalación al supervisor, programación de una inspección de control. La pestaña <em>«Obligaciones terminadas»</em> da acceso al historial pasado."
+      "body": "Las obligaciones bundle entran en la cola OMS tras el pago. La cola muestra las obligaciones « en curso » (en espera de procesamiento por un agente) y las « terminadas » (procesadas, validadas, archivadas). Cada obligación tiene una prioridad calculada según el fee_type, el importe y el tiempo de espera. Importante : la asignación a un agente respeta el <strong>Mode A</strong> (per_line — cada fee_type va a su ministerio) o el <strong>Mode B</strong> (consolidated — todo va al <code>agent_oms_polyvalent</code>), configurado al nivel del bundle."
     },
     "fig9": {
-      "alt": "Cola obligaciones en curso vacía",
-      "caption": "Cola de obligaciones en curso (vacía en este ejemplo)."
+      "alt": "Cola obligaciones bundle en curso",
+      "caption": "Cola de obligaciones en curso de procesamiento."
     },
     "fig10": {
-      "alt": "Obligaciones terminadas historial sin registros",
-      "caption": "Pestaña <em>Obligaciones terminadas</em> (historial)."
+      "alt": "Obligaciones terminadas historial",
+      "caption": "Pestaña <em>Obligaciones terminadas</em> con historial."
+    },
+    "s9": {
+      "title": "9. Roles asociados al módulo OMS",
+      "info": {
+        "title": "Diferenciación de los roles OMS",
+        "body": "Varios roles intervienen en el procesamiento OMS según el modo configurado (<code>OMS_PROCESSOR_ROLES</code> en <code>oms_agent_service.py</code>):",
+        "l1": "<strong><code>agent_tesoro</code></strong> + <strong><code>supervisor_tesoro</code></strong> — obligaciones fee_type=tesoro (página 65)",
+        "l2": "<strong><code>agent_ayuntamiento</code></strong> + <strong><code>supervisor_ayuntamiento</code></strong> — obligaciones fee_type=municipal (página 64)",
+        "l3": "<strong><code>agent_camara</code></strong> + <strong><code>supervisor_camara</code></strong> — obligaciones fee_type=chamber (página 64)",
+        "l4": "<strong>6 ministerios sectoriales</strong> (<code>agent_min_comercio</code>, <code>agent_min_hacienda</code>, <code>agent_min_informacion</code>, <code>agent_min_turismo</code>, <code>agent_min_agricultura</code>, <code>agent_min_electricidad</code>) — Mode A per_line ministerial",
+        "l5": "<strong><code>agent_oms_polyvalent</code></strong> — Mode B consolidated (esta página describe principalmente este rol). <code>supervisor_tesoro</code> también ve esta cola."
+      }
     },
     "prev": "← Anterior: Agente Tesoro",
     "next": "Siguiente: Agente Extranjería →"
@@ -4666,91 +4678,1308 @@ window.__I18N__.es = {
   },
   "page69": {
     "html_title": "Trabajo terreno OMS — Manual Facil",
-    "title": "Trabajo terreno OMS: inspección sanitaria in situ + modo offline",
-    "description": "Los agentes del Ministerio de Sanidad realizan inspecciones físicas en los establecimientos comerciales (bares, restaurantes, farmacias, peluquerías). Estas inspecciones se hacen sobre el terreno, a menudo en zonas con mala conectividad, donde el back-office Web (página 66) no es utilizable directamente. Facil propone un modo terreno específico para estos agentes con sus propias funciones: scan QR de licencia, checklist conformidad, cobro en efectivo, modo offline con sincronización al regreso al servicio.",
+    "title": "Trabajo terreno OMS: inspección comercial bundle + collection de paiements + mode offline",
+    "description": "Los agentes OMS (Obligation Management System) realizan inspecciones <strong>comerciales</strong> en los establecimientos titulares de licencias bundle. El objetivo no es sanitario — es verificar que el comerciante está al día de sus <strong>obligaciones</strong> bundle (tasas Tesoro, Ayuntamiento, Cámara, impuestos sectoriales) y eventualmente collectar los pagos pendientes directamente en el terreno (Mobile Money via BANGE o cash). Estas inspecciones se hacen sobre el terreno, a menudo en zonas con mala conectividad, donde el back-office Web (página 66) no es utilizable directamente. Facil propone un mode terreno específico con sus propias funciones: scan QR de licencia, verificación obligations, collection Mobile Money/cash, mode offline MMKV cifrado con sincronización al regreso. La implementación técnica está en <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.",
     "s1": {
       "title": "1. Preparación de la jornada (oficina, antes de salir)",
       "body": "Antes de salir, el agente prepara su jornada desde el back-office (ver <a href=\"66-agente-min-oms.html\">página 66</a>) :",
-      "l1": "Selecciona los establecimientos a visitar (programación previa o ruta del día)",
-      "l2": "Pre-descarga los datos de las licencias en su tablet/smartphone (modo offline activado)",
+      "l1": "Selecciona los establecimientos a visitar (programación previa, ruta del día, o empresas con obligaciones vencidas detectadas por el sistema)",
+      "l2": "Pre-descarga los datos de las licencias bundle en su tablet/smartphone (modo offline activado, cifrado MMKV)",
       "l3": "Verifica que la batería del terminal está al máximo (los días de inspección son largos)",
       "l4": "Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal"
     },
     "s2": {
-      "title": "2. Llegada al establecimiento: escaneo del QR",
-      "body": "Cada establecimiento tiene una licencia comercial pegada en una pared visible (obligación reglamentaria). En la licencia hay un QR code único que identifica el establecimiento. El agente abre la app Facil terreno y escanea este QR. La app abre directamente la ficha de inspección preparada con los datos del establecimiento (nombre comercial, dirección, NIF, historial de inspecciones anteriores, observaciones precedentes).",
+      "title": "2. Llegada al establecimiento: escaneo del QR de la licencia",
+      "body": "Cada establecimiento titular de una licencia comercial bundle tiene su QR code único pegado en una pared visible. El agente abre la app Facil terreno y escanea este QR. La app abre directamente la ficha de inspección preparada con los datos del establecimiento: nombre comercial, NIF, historial bundle, <strong>obligaciones pendientes y sus importes</strong>, observaciones precedentes.",
       "info": {
         "title": "Si el QR está deteriorado o ausente",
-        "body": "El agente puede buscar manualmente el establecimiento por NIF o por nombre comercial. Si la licencia es ausente sobre la pared visible, esto en sí mismo constituye una infracción y debe ser anotado en la inspección."
+        "body": "El agente puede buscar manualmente el establecimiento por NIF o por nombre comercial. La ausencia o ilegibilidad del QR en sí misma constituye una infracción registrable en el rapport de inspección."
       }
     },
     "s3": {
-      "title": "3. La checklist de conformidad (10-20 puntos según tipo)",
-      "intro": "Cada tipo de establecimiento tiene su propia checklist, definida por el Ministerio. Por ejemplo, para un restaurante:",
+      "title": "3. Checklist comercial bundle",
+      "intro": "A diferencia de un control sanitario, la checklist OMS verifica la conformidad <strong>comercial y fiscal</strong> del establecimiento:",
       "t": {
         "h1": "N°",
         "h2": "Punto a verificar",
         "h3": "Criterio",
-        "h4": "Sanción si fallo",
+        "h4": "Acción si fallo",
         "r1": {
           "c1": "Licencia comercial visible",
-          "c2": "QR pegado en pared accesible",
-          "c3": "Tasa 50.000 XAF"
+          "c2": "QR pegado en pared accesible al público",
+          "c3": "Sanción 50.000 XAF (registrada como obligación adicional)"
         },
         "r2": {
-          "c1": "Carnet sanitario del personal",
-          "c2": "Cada empleado tiene su carnet en validez",
-          "c3": "10.000 XAF por empleado no en regla"
+          "c1": "Obligaciones Tesoro al día",
+          "c2": "No obligaciones <code>fee_type=tesoro</code> vencidas sin pagar",
+          "c3": "Collection inmediata Mobile Money o cash"
         },
         "r3": {
-          "c1": "Limpieza de la cocina",
-          "c2": "Sin moho visible, sin desperdicios apilados",
-          "c3": "Advertencia + control 30 días"
+          "c1": "Obligaciones Municipal al día",
+          "c2": "No obligaciones <code>fee_type=municipal</code> vencidas (tasas Ayuntamiento)",
+          "c3": "Collection inmediata o convocatoria oficial"
         },
         "r4": {
-          "c1": "Conservación de los alimentos",
-          "c2": "Frío -18°C / +4°C; trazabilidad lotes",
-          "c3": "Cierre temporal posible"
+          "c1": "Obligaciones Chamber al día",
+          "c2": "Cuotas anuales Cámara <code>fee_type=chamber</code> al día",
+          "c3": "Collection o pénalité según el caso"
         },
         "r5": {
-          "c1": "Servicios sanitarios",
-          "c2": "WC en estado de funcionamiento, jabón, agua corriente",
-          "c3": "Tasa 25.000 XAF"
+          "c1": "Actividad declarada = actividad real",
+          "c2": "El tipo de comercio observado in situ coincide con la categoría declarada en la licencia",
+          "c3": "Re-clasificación de la licencia + ajuste tarifa"
         },
         "r6": {
-          "c1": "(15 puntos suplementarios)"
+          "c1": "Registro mercantil válido",
+          "c2": "Empresa registrada en el registro Cámara, NIF activo",
+          "c3": "Escalación al supervisor para verificación"
+        },
+        "r7": {
+          "c1": "Tasas anuales sectoriales",
+          "c2": "Impuesto sectorial específico (ministerio competente) al día",
+          "c3": "Notificación al ministerio sectorial"
         }
       },
-      "body": "El agente recorre la checklist marcando cada punto en su tablet : <em>conforme / no conforme / no aplicable / observación</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran)."
+      "body": "El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran)."
     },
     "s4": {
-      "title": "4. Cobro de tasas y sanciones en efectivo",
-      "body": "Si la inspección revela infracciones generadoras de tasas inmediatas (ver tabla arriba), el agente cobra en efectivo en el lugar. La app calcula automáticamente el total a cobrar y permite generar un recibo provisional (impreso vía Bluetooth con una mini-impresora térmica que el agente lleva consigo). Este recibo provisional será sustituido por el recibo oficial (REC-2026-NNNNNN) tras la reconciliación al regreso al servicio.",
+      "title": "4. Collection de obligaciones en el terreno",
+      "body": "Si la inspección revela obligaciones bundle no pagadas, el agente puede collectar inmediatamente en el lugar. La app calcula automáticamente el total a cobrar (suma de las obligaciones vencidas + eventual penalité) y propide 2 opciones de paiement :",
+      "l1": "<strong>Mobile Money via BANGE</strong> — el comerciante saisit su número de teléfono, recibe un PIN SMS BANGE, confirma. Webhook BANGE notifica Facil inmediatamente. Solución preferida (trazabilité totale, sin manipulación de cash).",
+      "l2": "<strong>Cash en el lugar</strong> — el agente collectó el efectivo, imprime un recibo provisional via mini-impresora Bluetooth (si dispone). Este recibo será sustituido por el recibo oficial <code>REC-2026-NNNNNN</code> tras la reconciliación al regreso al servicio (ver página 66 §6).",
       "warn": {
-        "title": "Trazabilidad obligatoria",
-        "body": "Cada moneda cobrada en efectivo debe generar un evento en la app (botón <em>«Cobro efectivo + importe»</em>). Esto crea una trazabilidad infalsificable: la suma de los eventos de cobro debe igualar el efectivo en el bolsillo del agente al final de la jornada. Cualquier discrepancia es señal de fraude o de error y obliga a una explicación inmediata al supervisor."
+        "title": "Lock ordering strict (CLAUDE.md)",
+        "body": "La transaction de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agents simultáneos) : <code>commercial_licenses</code> (FOR UPDATE) → <code>service_requests</code> (INSERT optimista via partial UNIQUE index) → <code>license_obligations</code> (UPDATE batch) → <code>service_payments</code> (INSERT). Timeouts : <code>lock_timeout=3s</code>, <code>statement_timeout=5s</code>. Implementación en <code>collection_service.py::CollectionService.collect_field_payment</code>."
       }
     },
     "s5": {
-      "title": "5. Modo offline: cómo trabaja la sincronización",
-      "diagram": "\n┌───────────────────────────────────────────────────────────────────────┐\n│ Modo offline OMS — sincronización al regreso                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  En la oficina (con red)                                              │\n│        │                                                              │\n│        │ Pre-download datos: licencias, checklists, fotos             │\n│        │ → almacenados en cache MMKV (cifrado AES-256)                │\n│        ▼                                                              │\n│  En el terreno (sin red)                                              │\n│        │                                                              │\n│        ├─ Scan QR licencia            → leer desde cache              │\n│        ├─ Marcar checklist             → escribir en cache (queue)    │\n│        ├─ Tomar fotos                  → cifradas + queue local       │\n│        ├─ Cobrar tasas efectivo        → eventos en queue             │\n│        ▼                                                              │\n│  Regreso a la oficina (red recuperada)                                │\n│        │                                                              │\n│        │ Detección automática de conexión                             │\n│        │ Sincronización automática de la queue:                       │\n│        │  • Inspecciones realizadas → service_requests                │\n│        │  • Fotos → Firebase Storage cifrado                          │\n│        │  • Cobros efectivo → bank_transactions con flag «field»      │\n│        │  • Eventos audit → audit_logs                                │\n│        ▼                                                              │\n│  Reconciliación caja                                                  │\n│        │                                                              │\n│        │ Comparación: total eventos cobro = efectivo en caja           │\n│        │  • Si igual: validación auto + recibos oficiales generados   │\n│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │\n│        ▼                                                              │\n│  Estado final: jornada cerrada, recibos oficiales emitidos             │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘\n"
+      "title": "5. Mode offline: cómo trabaja la sincronización",
+      "diagram": "\n┌───────────────────────────────────────────────────────────────────────┐\n│ Mode offline OMS — sincronización al regreso                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  En la oficina (con red)                                              │\n│        │                                                              │\n│        │ Pre-download datos: licencias bundle, obligations,           │\n│        │  checklists, fotos. Cifrado MMKV AES-256                     │\n│        ▼                                                              │\n│  En el terreno (sin red)                                              │\n│        │                                                              │\n│        ├─ Scan QR licencia            → leer desde cache              │\n│        ├─ Marcar checklist             → escribir en cache (queue)    │\n│        ├─ Tomar fotos                  → cifradas + queue local       │\n│        ├─ Collectar obligaciones cash  → eventos en queue             │\n│        ▼                                                              │\n│  Regreso a la oficina (red recuperada)                                │\n│        │                                                              │\n│        │ Detección automática de conexión                             │\n│        │ Sincronización automática de la queue:                       │\n│        │  • Inspecciones realizadas → service_requests                │\n│        │  • Fotos → Firebase Storage cifrado                          │\n│        │  • Collections cash → bank_transactions con flag «field»     │\n│        │  • Eventos audit → audit_logs                                │\n│        ▼                                                              │\n│  Reconciliación caja                                                  │\n│        │                                                              │\n│        │ Comparación: total eventos collection = efectivo en caja      │\n│        │  • Si igual: validación auto + recibos oficiales generados   │\n│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │\n│        ▼                                                              │\n│  Estado final: jornada cerrada, recibos oficiales emitidos             │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘\n"
     },
     "s6": {
       "title": "6. Reconciliación al regreso (procedimiento administrativo)",
-      "body": "Una vez de vuelta al servicio, el agente debe completar la reconciliación administrativa en menos de 24 h. La pantalla de reconciliación (capturada en la <a href=\"66-agente-min-oms.html\">página 66 § 6</a>) lista todos los cobros realizados en el día, agrupados por establecimiento, y propide un total esperado. El agente cuenta su efectivo y registra el importe; si coincide, el sistema valida automáticamente y genera los recibos oficiales para cada cobro. Si difiere, una explicación obligatoria es solicitada (error de cálculo, robo, perdida) y el supervisor es notificado."
+      "body": "Una vez de vuelta al servicio, el agente debe completar la reconciliación administrativa en menos de 24 h. La pantalla de reconciliación (capturada en la <a href=\"66-agente-min-oms.html\">página 66 § 6</a>) lista todos los collections realizados en el día, agrupados por establecimiento, y propide un total esperado. El agente cuenta su efectivo y registra el importe; si coincide, el sistema valida automáticamente y genera los recibos oficiales para cada collection. Si difiere, una explicación obligatoria es solicitada y el supervisor es notificado."
     },
     "s7": {
       "title": "7. Buenas prácticas terreno",
       "l1": "<strong>Llegar de improviso</strong> — para que el establecimiento no tenga tiempo de prepararse. Las inspecciones programadas con aviso pierden eficacia.",
-      "l2": "<strong>Trabajar en pareja</strong> — un agente con el otro como testigo, sobre todo cuando hay cobro en efectivo, para evitar acusaciones de corrupción.",
-      "l3": "<strong>Tomar fotos sistemáticamente</strong> — incluso de los puntos conformes. En caso de litigio ulterior con el comerciante, las fotos sirven de prueba.",
+      "l2": "<strong>Trabajar en pareja</strong> — un agente con el otro como testigo, sobre todo cuando hay collection cash, para evitar acusaciones de corrupción.",
+      "l3": "<strong>Preferir Mobile Money</strong> — incluso si el comerciante propone cash, pedirle el Mobile Money primero (trazabilité, BANGE webhook, sin manipulación física de efectivo).",
       "l4": "<strong>Sincronizar al regreso al servicio</strong> — antes del fin de la jornada. La memoria del cache MMKV es limitada (~1 GB) y se llena rápido si se acumulan inspecciones.",
       "l5": "<strong>Mantener carga el terminal</strong> — un terminal apagado durante una sincronización pendiente puede perder eventos. Power bank obligatorio."
     },
     "prev": "← Anterior: Funciones Verify",
     "next": "Siguiente: Asistente IA Agente →"
-  }
+  },
 
-  // page52-58, page71-74, page81-89, page91-95: por crear
+  "page71": {
+      "html_title": "Rol Supervisor — Manual Facil",
+      "title": "Rol Supervisor: encadrar los agentes y validar las escalaciones",
+      "description": "Los supervisores son funcionarios de rango superior dentro de cada entidad (Tesoro, Ayuntamiento, Cámara, OMS, CNEDOGE, DGT, Extranjería). Su misión es triple: encadrar a los agentes (asignación, formación, evaluación), tratar las escalaciones que los agentes les transmiten (casos ambiguos, fraude, decisiones complejas), monitorear los indicadores de la entidad (SLA, carga, conformidad). Esta página describe el rol común — las pantallas específicas Tesoro y Ayuntamiento+Cámara están en las páginas 72 y 73.",
+      "s1": {
+        "title": "1. Las 5 responsabilidades del supervisor",
+        "t": {
+          "h1": "Responsabilidad",
+          "h2": "Acciones concretas en Facil",
+          "h3": "Frecuencia",
+          "r1": {
+            "c1": "<strong>Tratar escalaciones</strong>",
+            "c2": "Revisar las solicitudes que los agentes han escalado (acción <code>escalate</code>); validar, rechazar o asignar a un colega especializado",
+            "c3": "Diaria (varias por día en Tesoro)"
+          },
+          "r2": {
+            "c1": "<strong>Encadrar los agentes</strong>",
+            "c2": "Asignar solicitudes manualmente cuando un agente está saturado, formar a un nuevo agente, evaluar el rendimiento individual",
+            "c3": "Semanal"
+          },
+          "r3": {
+            "c1": "<strong>Monitorear los KPI</strong>",
+            "c2": "SLA tasa respetada, carga moyenne agente, tasa de rechazo, importes tratados",
+            "c3": "Diaria (dashboard) + reporting mensual"
+          },
+          "r4": {
+            "c1": "<strong>Auditar las decisiones</strong>",
+            "c2": "Consultar el audit log, revisar muestreo de decisiones de los agentes, detectar disparidades",
+            "c3": "Mensual"
+          },
+          "r5": {
+            "c1": "<strong>Reportar al directorio</strong>",
+            "c2": "Exportar informes (Excel/PDF) para el director de la entidad, alertar sobre anomalías",
+            "c3": "Mensual + ad hoc"
+          }
+        }
+      },
+      "s2": {
+        "title": "2. Workflow de tratamiento de una escalación",
+        "intro": "Cuando un agente escala una solicitud (acción <code>escalate</code>, ver <a href=\"61-rol-agente.html\">página 61 §4</a>), entra en la cola del supervisor con el motivo explicitado. El supervisor dispone entonces de las mismas 7 acciones que el agente, pero con un nivel adicional: la decisión final no es escalable a otra instancia (excepto al directorio para casos exceptionnels).",
+        "diagram": "\n┌─────────────────────────────────────────────────────────────────────────┐\n│ Flujo escalación agente → supervisor                                    │\n├─────────────────────────────────────────────────────────────────────────┤\n│                                                                         │\n│  Agente: locked_by_agent → escalate(motivo)                             │\n│         │                                                               │\n│         ▼                                                               │\n│  Solicitud: state=escalated_supervisor                                  │\n│         │                                                               │\n│         │ Notificación push + email al supervisor                       │\n│         ▼                                                               │\n│  Supervisor: ve la entrada en su cola \"Escalaciones\"                    │\n│         │                                                               │\n│         │ Click → lock_for_review (estado: supervisor_reviewing)        │\n│         ▼                                                               │\n│  Análisis del expediente con visibilidad completa :                     │\n│   • Histórico completo de las acciones del agente                        │\n│   • Motivo de la escalación                                              │\n│   • Casos similares pasados (vía IA agente, ver página 60)              │\n│   • Audit log de todas las modificaciones                                │\n│         │                                                               │\n│         ▼                                                               │\n│  Decisión del supervisor                                                │\n│   ├─ approve → genera el documento oficial, completo                    │\n│   ├─ reject → motivo obligatorio, posibilidad de recurso del ciudadano   │\n│   ├─ request_documents → como un agente                                  │\n│   ├─ assign_to_agent → re-asigna a un agente experto                    │\n│   └─ escalate_director → caso exceptionnel, decisión directorio          │\n│         │                                                               │\n│         ▼                                                               │\n│  Estado final + audit log con doble firma                                │\n│  (firma agente + firma supervisor)                                      │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘\n"
+      },
+      "s3": {
+        "title": "3. Dashboard supervisor: las 4 vistas clave",
+        "intro": "El dashboard del supervisor está dividido en 4 secciones que cubren el conjunto de sus responsabilidades operativas:",
+        "l1": "<strong>Cola escalaciones</strong> — solicitudes en estado <code>escalated_supervisor</code> esperando su decisión. Ordenadas por SLA restante (descendiente, las más urgentes primero).",
+        "l2": "<strong>Vista carga agentes</strong> — para cada agente de la entidad: nombre, número de solicitudes en cola, edad de la más antigua, indicador de saturación (verde &lt;15 / naranja 15-30 / rojo &gt;30).",
+        "l3": "<strong>KPI semana en curso</strong> — SLA respetado %, número de validaciones, número de rechazos, importe total tratado. Comparación con la semana anterior (delta %).",
+        "l4": "<strong>Alertas</strong> — eventos anormales detectados automáticamente: agente offline desde X horas, solicitud bloqueada hace más de 30 minutos, pico de rechazos sobre un mismo motivo, etc."
+      },
+      "s4": {
+        "title": "4. Re-asignación manual de una solicitud",
+        "body": "Cuando el supervisor observa que un agente está saturado (cola &gt; 30 solicitudes, edad media &gt; 48h), puede re-asignar manualmente algunas solicitudes a otros agentes menos cargados. Esta acción no requiere la aprobación del agente concerné; es una decisión jerárquica. El audit log conserva la fecha, el supervisor que ha decidido, las solicitudes movidas, y los agentes implicados (antes/después).",
+        "tip": {
+          "title": "Buena práctica",
+          "body": "Privilegiar la asignación automática (basada en la carga calculada por el sistema) sobre la asignación manual. La manual debe quedarse reservada a casos excepcionales (formación, especialización, ausencia). El uso excesivo de la asignación manual sugiere que la regla automática no está bien calibrada y debe ser revisada con el administrador (página 89)."
+        }
+      },
+      "s5": {
+        "title": "5. Audit log: ver y exportar",
+        "body": "El supervisor tiene acceso de lectura al audit log completo de su entidad (todas las acciones de sus agentes y de sí mismo). Filtros disponibles: período, agente, acción, tipo de servicio, decisión final. Exportación en CSV (Excel) o PDF (informe formaté). Estos exports son la base para los rapports mensuales al directorio."
+      },
+      "s6": {
+        "title": "6. Diferencias con el rol Admin",
+        "info": {
+          "title": "Supervisor vs Admin",
+          "body": "El supervisor opera <em>dentro</em> de una entidad concreta (Tesoro, OMS, etc.); el admin opera <em>encima</em> de todas las entidades. El supervisor no puede crear nuevos servicios fiscales, modificar el workflow de un trámite, configurar los providers SMS/email, ni cambiar los roles del sistema. Estas acciones requieren el rol Admin (páginas 81-89). En cambio, el supervisor tiene una vista operativa de su entidad que el admin no necesita en el día a día."
+        }
+      },
+      "prev": "← Anterior: Asistente IA Agente",
+      "next": "Siguiente: Supervisor Tesoro →"
+    },
+    "page72": {
+      "html_title": "Supervisor Tesoro — Manual Facil",
+      "title": "Supervisor Tesoro Público : el back-office más denso",
+      "description": "El supervisor del Tesoro Público dispone del back-office más completo de Facil. Su rol cubre 7 grandes secciones : dashboard ejecutivo, gestión del equipo de agentes, reconciliación bancaria BANGE, informes y analítica (incluido un asistente IA financiero), escalaciones, vista estratégica de las empresas por zona, supervisión de las inspecciones terreno. Esta página presenta cada sección con sus capturas reales.",
+      "s1": {
+        "title": "1. Dashboard ejecutivo",
+        "body": "La pantalla de entrada muestra el flujo de ingresos del día, la distribución por servicios, la carga de los agentes en tiempo real y las alertas SLA. Una sola vista permite saber dónde focaliser la atención."
+      },
+      "s2": {
+        "title": "2. Gestión del equipo",
+        "body": "Dos pestañas : <em>Agentes</em> (lista con capacidad, disponibilidad, tasa de éxito) y <em>Carga de trabajo</em> (estadísticas por agente con validados, rechazos, score performance)."
+      },
+      "s3": {
+        "title": "3. Reconciliación bancaria BANGE",
+        "body": "La sección clave del Tesoro : reconciliar los pagos efectivos con los importes esperados. Las transacciones se filtran por fecha, estado, importe, identificador BANGE."
+      },
+      "s4": {
+        "title": "4. Informes y analítica",
+        "intro": "5 vistas complementarias : Dashboard ejecutivo (KPIs), Estadísticas Agentes, SLA, Analítica predictiva, Asistente IA financiero. Las 5 cubren el reporting mensual al directorio."
+      },
+      "s5": {
+        "title": "5. Exportaciones contables",
+        "body": "El Tesoro debe transmitir periódicamente sus datos a otros sistemas contables nacionales o internacionales : Auditoría interna, BEAC (Banque des États de l'Afrique Centrale), Ministerial, SAGE X3. Una pantalla dedicada lista las plantillas y permite generar un export en CSV / Excel formaté."
+      },
+      "s6": {
+        "title": "6. Escalaciones pendientes",
+        "body": "La cola de escalaciones lista las solicitudes que los agentes Tesoro han transmitido al supervisor. Filtros por prioridad y motivo. Una entrada vacía es señal de un equipo bien organizado."
+      },
+      "s7": {
+        "title": "7. Vista estratégica de las empresas por zona",
+        "intro": "El supervisor Tesoro tiene una vista panorámica de las empresas registradas por zona geográfica. Cuatro pestañas (Estratégico, Operacional, Control, Tabular) ofrecen distintos ángulos de análisis."
+      },
+      "s8": {
+        "title": "8. Panel ministerial multi-vista",
+        "body": "Para el reporting al ministerio, 4 vistas complementarias muestran las obligaciones de las empresas a nivel nacional : Estratégico (donut por zona), Pilotaje (tabular), Operacional (top deudores), Control (compliance + recovery rate)."
+      },
+      "s9": {
+        "title": "9. Catálogo y deuda empresarial",
+        "body": "Una pantalla list 23 empresas registradas en la zona del supervisor, con NIF, estado de verificación, estado fiscal. Búsqueda directa por nombre/NIF para acceder al detalle de la deuda con timeline débito/pagado."
+      },
+      "s10": {
+        "title": "10. Supervisión de las inspecciones terreno",
+        "body": "El supervisor Tesoro también monitorea las inspecciones realizadas por los agentes OMS (ver <a href=\"74-supervisor-inspecciones.html\">página 74</a>), pero desde una vista financiera : cash cobrado, MED (Misiones En curso de Desarrollo), zonas que requieren atención."
+      },
+      "fig0": {
+        "alt": "Dashboard supervisor Tesoro con flujo ingresos y carga",
+        "caption": "Dashboard principal con flujo ingresos, distribución por servicios, carga agentes, alertas SLA."
+      },
+      "fig1": {
+        "alt": "Equipo Agentes Tesoro",
+        "caption": "Agentes Tesoro con capacidad/disponibilidad/tasa éxito."
+      },
+      "fig2": {
+        "alt": "Carga trabajo agentes estadísticas",
+        "caption": "Carga de trabajo : validados, rechazos, puntuación por agente."
+      },
+      "fig3": {
+        "alt": "Reconciliación bancaria BANGE",
+        "caption": "245.850 XAF a reconciliar — lista de pagos en curso."
+      },
+      "fig4": {
+        "alt": "Historial transacciones procesadas",
+        "caption": "Historial de transacciones procesadas con filtros."
+      },
+      "fig5": {
+        "alt": "Dashboard ejecutivo KPIs",
+        "caption": "Dashboard Ejecutivo : recaudado, SLA 100%, otros KPIs."
+      },
+      "fig6": {
+        "alt": "Estadísticas por agente",
+        "caption": "Velocidad, SLA y carga por agente."
+      },
+      "fig7": {
+        "alt": "Métricas SLA",
+        "caption": "Tasa de cumplimiento SLA, distribución estados, umbrales."
+      },
+      "fig8": {
+        "alt": "Analítica predictiva con estadísticas",
+        "caption": "Análisis estadístico (media, mediana, percentiles)."
+      },
+      "fig9": {
+        "alt": "Plantillas de exports contables",
+        "caption": "Plantillas : Auditoría, BEAC, Ministerial, SAGE X3."
+      },
+      "fig10": {
+        "alt": "Historial exports completados",
+        "caption": "Historial de exports con estado completado/error."
+      },
+      "fig11": {
+        "alt": "Modal nuevo export SAGE X3 con fechas",
+        "caption": "Modal <em>«Nuevo Export»</em> SAGE X3 con rango de fechas."
+      },
+      "fig12": {
+        "alt": "Asistente IA financiero chat",
+        "caption": "Analista IA : chat de análisis financiero con comparación entidades."
+      },
+      "fig13": {
+        "alt": "Cola escalaciones pendientes",
+        "caption": "Escalaciones pendientes con filtros prioridad/motivo."
+      },
+      "fig14": {
+        "alt": "Vista estratégica zona mapa tendencias",
+        "caption": "Vista estratégica : mapa, tendencias, régimen fiscal."
+      },
+      "fig15": {
+        "alt": "Vista operacional empresas deudoras",
+        "caption": "Vista operacional : deudores con score de riesgo."
+      },
+      "fig16": {
+        "alt": "Vista control KPIs verificación",
+        "caption": "Vista control : KPIs verificación, tasa de cobro, anomalías detectadas."
+      },
+      "fig17": {
+        "alt": "Panel ministerial estratégico donut zona",
+        "caption": "Estratégico : obligaciones por zona en donut."
+      },
+      "fig18": {
+        "alt": "Panel ministerial pilotaje tabular",
+        "caption": "Pilotaje : desglose tabular por zona."
+      },
+      "fig19": {
+        "alt": "Panel ministerial top deudores",
+        "caption": "Operacional : top empresas deudoras con scoring."
+      },
+      "fig20": {
+        "alt": "Panel ministerial control compliance",
+        "caption": "Control : compliance por zona, tasa de recuperación."
+      },
+      "fig21": {
+        "alt": "Catálogo empresas zona 23 registradas",
+        "caption": "Catálogo de las 23 empresas registradas en la zona."
+      },
+      "fig22": {
+        "alt": "Búsqueda deuda Tienda El Sol",
+        "caption": "Búsqueda de deuda — ejemplo «Tienda El Sol» bundle."
+      },
+      "fig23": {
+        "alt": "Detalle deuda timeline débito pagado",
+        "caption": "Detalle deuda 216k XAF con timeline débito / pagado."
+      },
+      "fig24": {
+        "alt": "Supervisión inspecciones agentes terreno cash",
+        "caption": "Vista supervisión : agentes terreno, cash cobrado, MED."
+      },
+      "fig25": {
+        "alt": "Dashboard misiones KPIs zonas atención",
+        "caption": "Dashboard misiones con KPIs y zonas a focaliser."
+      },
+      "fig26": {
+        "alt": "Modal crear modelo misión recurrente",
+        "caption": "Modal <em>«Nuevo Modelo»</em> de misión recurrente."
+      },
+      "prev": "← Anterior: Rol Supervisor",
+      "next": "Siguiente: Supervisor Ayuntamiento + Cámara →"
+    },
+    "page73": {
+      "html_title": "Supervisor Ayuntamiento + Cámara — Manual Facil",
+      "title": "Supervisor Ayuntamiento + Cámara : back-office local",
+      "description": "Los supervisores municipales (Ayuntamiento) y los de la Cámara de Comercio comparten un back-office común con los KPI propios a su entidad : licencias comerciales gestionadas, empresas registradas, obligaciones por tipo, inspecciones locales. La vista es más sencilla que la del Tesoro porque el ámbito geográfico es local (un municipio) y los volúmenes son menores.",
+      "s1": {
+        "title": "1. Dashboard supervisor local",
+        "body": "Las pantallas principales agrupan KPIs municipales : número de empresas activas, licencias en curso, vencimientos próximos, recaudación del mes."
+      },
+      "s2": {
+        "title": "2. Empresas registradas en el municipio",
+        "body": "La sección <em>Empresas</em> lista todas las entidades comerciales registradas en el ámbito municipal con su NIF, su licencia comercial activa, su estado de pago de las obligaciones locales."
+      },
+      "s3": {
+        "title": "3. Inspecciones municipales",
+        "body": "A diferencia del Tesoro o de OMS, las inspecciones municipales son más ligeras (control de actividad comercial declarada vs realidad terrain). El supervisor las programa, las asigna a un inspector municipal, y valida los resultados."
+      },
+      "s4": {
+        "title": "4. Licencias comerciales locales",
+        "intro": "Tres pantallas dedicadas a la gestión de las licencias comerciales : lista global, detalle de una licencia, vista por categoría/sector."
+      },
+      "s5": {
+        "title": "5. Obligaciones locales (tasas + cuotas)",
+        "body": "Las obligaciones agrupan las tasas municipales (mercado, cementerio, obras, ocupación vía pública) y las cuotas Cámara (inscripción anual, actualizaciones estatutos). El supervisor monitorea los vencidos y planifica relances ou inspecciones."
+      },
+      "s6": {
+        "title": "6. Comparación con el supervisor Tesoro",
+        "body": "El supervisor municipal tiene un periodo de validez más corto y un ámbito más restringido :",
+        "t": {
+          "h1": "Aspecto",
+          "h2": "Supervisor Tesoro",
+          "h3": "Supervisor Ayu/Cám",
+          "r1": {
+            "c1": "Ámbito",
+            "c2": "Nacional, todas zonas",
+            "c3": "Local (un municipio o una Cámara)"
+          },
+          "r2": {
+            "c1": "Volumen típico",
+            "c2": "~500 transacciones/día",
+            "c3": "~50 transacciones/día"
+          },
+          "r3": {
+            "c1": "Vista panorámica",
+            "c2": "7 secciones, IA financiero, exports BEAC/SAGE",
+            "c3": "5 secciones, vista municipal sencilla"
+          },
+          "r4": {
+            "c1": "Reporting",
+            "c2": "Ministerio + BEAC + DGI",
+            "c3": "Ayuntamiento + Cámara local"
+          }
+        }
+      },
+      "fig0": {
+        "alt": "Dashboard Ayuntamiento KPIs",
+        "caption": "Dashboard supervisor — vista resumen del municipio."
+      },
+      "fig1": {
+        "alt": "Dashboard segunda vista",
+        "caption": "Vista complementaria con métricas operacionales."
+      },
+      "fig2": {
+        "alt": "Dashboard tercera vista",
+        "caption": "Tercera pestaña del dashboard con detalles agregados."
+      },
+      "fig3": {
+        "alt": "Lista empresas municipio",
+        "caption": "Empresas registradas con NIF, estado licencia, obligaciones."
+      },
+      "fig4": {
+        "alt": "Dashboard inspecciones municipales",
+        "caption": "Dashboard inspecciones municipales con KPIs y planning."
+      },
+      "fig5": {
+        "alt": "Lista licencias comerciales",
+        "caption": "Vista global de las licencias del municipio."
+      },
+      "fig6": {
+        "alt": "Detalle licencia comercial",
+        "caption": "Detalle de una licencia : empresa, importe, vencimiento, historial."
+      },
+      "fig7": {
+        "alt": "Vista por categoría sector",
+        "caption": "Vista de licencias agrupadas por categoría o sector económico."
+      },
+      "fig8": {
+        "alt": "Obligaciones en curso",
+        "caption": "Cola de obligaciones en curso con prioridad."
+      },
+      "fig9": {
+        "alt": "Detalle obligaciones por entidad",
+        "caption": "Desglose detallado de obligaciones por entidad/categoría."
+      },
+      "prev": "← Anterior: Supervisor Tesoro",
+      "next": "Siguiente: Supervisor Inspecciones →"
+    },
+    "page74": {
+    "html_title": "Supervisor Inspecciones — Manual Facil",
+    "title": "Supervisor Inspecciones OMS",
+    "description": "El supervisor de Inspecciones OMS encadre los agentes que realizan inspecciones <strong>comerciales bundle</strong> en el terreno (página 69) y valida los casos sensibles: sanciones importantes (más de 500.000 XAF) por incumplimiento de obligaciones bundle, suspensiones temporales de licencia, recursos del comerciante. Trabaja en estrecha colaboración con los agentes que escanean los QR de licencias en el terreno y necesita visibilidad real-time sobre los cobros en efectivo para detectar anomalías rápidamente. <em>OMS = Obligation Management System — no tiene relación con la salud.</em>",
+    "s1": {
+      "title": "1. Responsabilidades específicas",
+      "l1": "<strong>Validar las sanciones &gt; 500.000 XAF</strong> — sobre ese umbral, el agente terreno no puede cobrar sin la validación del supervisor. La validación se hace por la app en menos de 5 minutos (notificación push al supervisor con el dossier del establecimiento + foto de la infracción).",
+      "l2": "<strong>Decidir suspensiones temporales de licencia</strong> — si un comerciante acumula obligaciones bundle vencidas (más de 3 meses, importe &gt; umbral configurable) o se detecta una incoherencia mayor (actividad declarada ≠ actividad real, NIF suspendido), el agente terreno escala. El supervisor confirma vía la app y emite la orden de suspensión electrónica de la licencia.",
+      "l3": "<strong>Tratar los recurros</strong> — si el comerciante impugna una sanción (vía soporte o vía correo), el supervisor revisa el expediente (fotos, checklist), eventualmente cita al comerciante en la oficina, decide el mantenimiento o la anulación.",
+      "l4": "<strong>Monitorear los cobros en efectivo en tiempo real</strong> — dashboard con todos los agentes en el terreno, sus cobros del día, su consonancia con los importes esperados. Alerta automática si una diferencia &gt; 50.000 XAF aparece.",
+      "l5": "<strong>Validar las reconciliaciones de fin de jornada</strong> — cada agente regresa con su efectivo y declara su reconciliación. El supervisor valida o solicita explicación si hay diferencia."
+    },
+    "s2": {
+      "title": "2. Por qué no hay captures específicas en esta página",
+      "info": {
+        "title": "Reutilización de las pantallas OMS",
+        "body": "El supervisor de Inspecciones utiliza las mismas pantallas que los agentes OMS (página 66) con permisos extendidos. No hay back-office dedicado distinto: la diferenciación se hace por los permisos. El supervisor ve un menú suplementario <em>«Validaciones supervisor»</em> y <em>«Cierres temporales»</em> que no aparece para los agentes simples. Las pantallas básicas (dashboard, lista de licencias, detalle inspección) son visualmente idénticas a las de la página 66, simplemente con datos extendidos y botones de acción adicionales."
+      }
+    },
+    "s3": {
+      "title": "3. Workflow validación sanción &gt; 500.000 XAF (obligación bundle)",
+      "diagram": "\n┌─────────────────────────────────────────────────────────────────────┐\n│ Flujo escalación sanción terreno OMS (obligación bundle)            │\n├─────────────────────────────────────────────────────────────────────┤\n│                                                                     │\n│  Agente terreno: detecta obligación vencida grave (> 500K XAF)      │\n│         │                                                           │\n│         │ Llena checklist + tomas fotos                              │\n│         │ App calcula importe automático                              │\n│         │ Botón \"Aplicar sanción\" → BLOQUEADO si importe > 500K     │\n│         ▼                                                           │\n│  App: \"Sanción superior al umbral, requiere validación supervisor\"  │\n│         │                                                           │\n│         │ Notificación push supervisor + dossier en línea (fotos,   │\n│         │ checklist, datos comerciante, importes calculados)         │\n│         ▼                                                           │\n│  Supervisor: recibe en su móvil (puede estar en oficina o terreno)  │\n│         │                                                           │\n│         │ Revisa fotos, eventualmente llama al agente               │\n│         │ por telecom interno integrado                              │\n│         ▼                                                           │\n│       Decisión                                                       │\n│         ├─ Validar → sanción autorizada, agente puede cobrar         │\n│         ├─ Modificar importe → propone otra cifra (justificada)      │\n│         ├─ Rechazar → infracción no calificada, agente anota         │\n│         │   warning solamente                                        │\n│         └─ Diferir → caso complejo, citará al comerciante en oficina │\n│         ▼                                                           │\n│  Trazabilidad : audit log con doble firma (agente + supervisor)      │\n│                                                                     │\n└─────────────────────────────────────────────────────────────────────┘\n"
+    },
+    "s4": {
+      "title": "4. Reconciliación de caja: el control crítico",
+      "body": "El momento más sensible es la reconciliación de fin de jornada del agente terreno. El supervisor valida el rapport de reconciliación y firma electrónicamente. Si hay una diferencia entre los cobros declarados en la app y el efectivo presentado, el supervisor debe :",
+      "l1": "Verificar las firmas del comerciante en cada recibo cobrado (presencia obligatoria en el momento del cobro)",
+      "l2": "Recontar el efectivo en presencia del agente",
+      "l3": "Solicitar explicación escrita si la diferencia persiste",
+      "l4": "Bloquear la sincronización de la jornada hasta resolución",
+      "l5": "Escalar al director si la diferencia &gt; 100.000 XAF o repetida 2 veces en el mes"
+    },
+    "prev": "← Anterior: Supervisor Ayuntamiento+Cámara",
+    "next": "Siguiente: Rol Admin →"
+  },
+    "page81": {
+      "html_title": "Rol Admin — Manual Facil",
+      "title": "Rol Admin : configuración global de la plataforma",
+      "description": "Los administradores son responsables de la configuración técnica y funcional global de Facil. A diferencia de los supervisores (que operan dentro de una entidad), los admin operan a nivel plataforma : RBAC global, catálogo de servicios fiscales, providers de comunicación, configuración del sistema, workflows, traducciones. Esta página da una vista panorámica de las 9 secciones admin disponibles. Cada sección tiene su propia página dedicada (82-89).",
+      "s1": {
+        "title": "1. Dashboard global admin",
+        "body": "La pantalla de inicio del admin reúne los indicadores clave de la plataforma : número de usuarios actifs, número de solicitudes en curso, importes tratados del mes, salud de los providers (verde / naranja / rojo), número de alertas no tratadas, etat de los crons."
+      },
+      "s2": {
+        "title": "2. Las 9 secciones del back-office admin",
+        "t": {
+          "h1": "Sección",
+          "h2": "Contenido",
+          "h3": "Página dedicada",
+          "r1": {
+            "c1": "Usuarios + RBAC",
+            "c2": "Gestión de usuarios, asignación de roles, creación de roles personalizados, permisos granulaires (50+ permisos disponibles)",
+            "c3": "Página 82"
+          },
+          "r2": {
+            "c1": "Servicios fiscales",
+            "c2": "Catálogo de los 850+ servicios, templates de documentos, templates de procédures, tarification",
+            "c3": "Página 83"
+          },
+          "r3": {
+            "c1": "Comunicaciones",
+            "c2": "5 providers (Email SMTP/SendGrid, SMS Twilio/Africa's Talking, Push FCM/APNs, USSD Getesa/Muni, WhatsApp Business)",
+            "c3": "Página 84"
+          },
+          "r4": {
+            "c1": "Empresas",
+            "c2": "Validación de nuevas empresas, fusión de duplicados, suspensión administrativa, registro mercantil",
+            "c3": "Página 85"
+          },
+          "r5": {
+            "c1": "Config Sistema",
+            "c2": "Configuraciones globales (umbrales SLA, tasas BANGE, paramètres email, mode mantenimiento), conexiones BANCO",
+            "c3": "Página 86"
+          },
+          "r6": {
+            "c1": "Audit Logs",
+            "c2": "Trazabilidad completa (7 colonnes, retention 7 ans, chain_hash, alertes configurables, export RGPD)",
+            "c3": "Página 87"
+          },
+          "r7": {
+            "c1": "Traducciones",
+            "c2": "Gestión ES/FR/EN — 5.000+ claves UI + 1.100+ entidades, import/export CSV, cache Redis 1h",
+            "c3": "Página 88"
+          },
+          "r8": {
+            "c1": "Workflow Designer",
+            "c2": "Creación visual de workflows para servicios nuevos, modificación de los existantes, validación par règles métiers",
+            "c3": "Página 89"
+          },
+          "r9": {
+            "c1": "Menu Config",
+            "c2": "Configuración dinámica de los menús por rol (workflow_menu_mapping + menu_config explicite)",
+            "c3": "Página 89 §3"
+          }
+        }
+      },
+      "s3": {
+        "title": "3. Sépration des pouvoirs : admin vs admin-técnico",
+        "body": "En las grandes organizaciones (ministerio DGI, Tesoro), el rol Admin se divide en dos sub-roles para respetar el principio de separación de poderes :",
+        "l1": "<strong>Admin funcional</strong> — gestión de los usuarios, servicios, traducciones, audit logs operacionales. No tiene acceso al config sistema, ni a los workflows, ni a los providers.",
+        "l2": "<strong>Admin técnico</strong> — config sistema, workflows, providers, monitoring infrastructura. No puede crear/modificar usuarios ni revisar audit logs personales.",
+        "body2": "Esta separación evita que una sola persona puede a la vez modificar la configuración técnica y borrar el audit log que prouvería la modificación. Las dos funciones son intencionalmente incompatibles. Solo el director del ministerio puede asignar/retirar los roles Admin."
+      },
+      "s4": {
+        "title": "4. Audit log especial admin : doble registro",
+        "warn": {
+          "title": "Acciones admin = trazabilidad renforcée",
+          "body": "Toda acción admin (creación de un usuario, modificación de un workflow, suppresión de un service, cambio de role) está registrada DOS veces : en el audit log general (página 87) Y en una tabla dedicada <code>admin_actions_log</code> con retención permanente (jamás purgée, contrariamente a los 7 años del log general). Esta redondancia garantiza que las acciones admin queden trazables incluso si una manipulación maliciosa logra borrar el log general."
+        }
+      },
+      "fig1": {
+        "alt": "Dashboard admin overview",
+        "caption": "Vista global del dashboard admin con todos los KPIs plataforma."
+      },
+      "fig2": {
+        "alt": "Dashboard admin sections",
+        "caption": "Acceso a las 9 secciones de configuración admin."
+      },
+      "prev": "← Anterior: Supervisor Inspecciones",
+      "next": "Siguiente: Admin Usuarios + Roles →"
+    },
+    "page82": {
+      "html_title": "Admin Usuarios + RBAC — Manual Facil",
+      "title": "Admin Usuarios + RBAC : roles y permisos granulares",
+      "description": "El RBAC (Role-Based Access Control) de Facil dispone de 50+ permisos granulares organizados en familias (usuarios, servicios, pagos, comunicaciones, audit, etc.). El admin puede crear roles personalizados combinando permisos según las necesidades específicas de una entidad. Las acciones cubren : crear/modificar/suspender usuarios, atribuir roles (estándar o personalizados), reset MFA, ver el historial de conexiones por usuario.",
+      "s1": {
+        "title": "1. Las 10 pantallas de gestión RBAC",
+        "body": "El módulo RBAC se compone de 10 vistas complementarias que cubren todo el ciclo de vida de los usuarios y de los roles."
+      },
+      "s2": {
+        "title": "2. Roles estándar del sistema",
+        "intro": "Facil viene con varios roles preconfigurados que cubren la mayoría de los casos. Los roles personalizados se crean solo para necesidades excepcionales.",
+        "t": {
+          "h1": "Rol estándar",
+          "h2": "Permisos clave",
+          "h3": "Modificable",
+          "r1": {
+            "c2": "Crear solicitudes propias, pagar, ver mis documentos, recibos",
+            "c3": "No (sistema)"
+          },
+          "r2": {
+            "c2": "Idéntico citizen + gestión empresas + bundle payment + batch requests",
+            "c3": "No (sistema)"
+          },
+          "r3": {
+            "c2": "Acceso multi-clientes, vista consolidada, sin autorizar pagos",
+            "c3": "No (sistema)"
+          },
+          "r4": {
+            "c2": "Validación de solicitudes según entidad (CNEDOGE, DGT, etc.)",
+            "c3": "Parcial (permisos granulares)"
+          },
+          "r5": {
+            "c2": "Encadrar agentes + tratar escalaciones + KPIs entidad",
+            "c3": "Parcial"
+          },
+          "r6": {
+            "c2": "Configuración global plataforma + RBAC",
+            "c3": "No (sistema)"
+          },
+          "r7": {
+            "c2": "Config sistema + workflows + providers (sin RBAC ni audit)",
+            "c3": "No (sistema)"
+          }
+        }
+      },
+      "s3": {
+        "title": "3. Familias de permisos (50+ permisos)",
+        "intro": "Los permisos están agrupados en 8 familias para facilitar la asignación :",
+        "l1": "<strong>users.*</strong> — view, create, update, suspend, delete, view_own, view_team (7 permisos)",
+        "l2": "<strong>roles.*</strong> — view, create, update, delete, assign, view_audit (6 permisos)",
+        "l3": "<strong>service_requests.*</strong> — view_own, view_team, view_all, lock, approve, reject, escalate, request_documents, assign (9 permisos)",
+        "l4": "<strong>payments.*</strong> — view, validate, reconcile, refund, escalate (5 permisos)",
+        "l5": "<strong>companies.*</strong> — view, create, verify, suspend, merge_duplicates (5 permisos)",
+        "l6": "<strong>config.*</strong> — view, update_communications, update_workflow, update_system, update_translations (5 permisos)",
+        "l7": "<strong>audit.*</strong> — view_own, view_team, view_all, export (4 permisos)",
+        "l8": "<strong>special.*</strong> — verify_treasury, verify_biometric, ai_agent, field_collection (9 permisos)"
+      },
+      "s4": {
+        "title": "4. Acciones administrativas críticas",
+        "warn": {
+          "title": "Reset MFA",
+          "body": "El admin puede resetear el 2FA de un usuario que ha perdido su dispositivo. Esta acción está logueada de forma especial : la próxima conexión del usuario forzará la reconfiguración del 2FA, con un email + SMS de notificación al usuario para confirmar que el reset es legítimo. Si el usuario no reconoce el reset, debe contactar inmediatamente el soporte."
+        },
+        "warn2": {
+          "title": "Suspensión de cuenta",
+          "body": "Una cuenta suspendida no puede acceder a Facil pero sus datos quedan preservados. La suspensión se hace con motivo obligatorio (sospecha de fraude, decisión jerárquica, demanda judicial). El usuario es notificado por email. La reactivación requiere una acción admin explícita."
+        }
+      },
+      "fig0": {
+        "alt": "Vista RBAC inicial",
+        "caption": "Pantalla principal RBAC con accesos a usuarios, roles, permisos."
+      },
+      "fig1": {
+        "alt": "Lista usuarios",
+        "caption": "Lista de usuarios con filtros (rol, entidad, estado)."
+      },
+      "fig2": {
+        "alt": "Detalle usuario",
+        "caption": "Ficha detallada de un usuario : datos, roles, sesiones activas, audit."
+      },
+      "fig3": {
+        "alt": "Creación usuario",
+        "caption": "Formulario de creación de un nuevo usuario con asignación de rol inicial."
+      },
+      "fig4": {
+        "alt": "Lista roles",
+        "caption": "Catálogo de roles estándar y personalizados."
+      },
+      "fig5": {
+        "alt": "Detalle rol con permisos",
+        "caption": "Detalle de un rol con su matriz de permisos atribuidos."
+      },
+      "fig6": {
+        "alt": "Creación rol personalizado",
+        "caption": "Creación de un rol personalizado : nombre + sélection des permisos."
+      },
+      "fig7": {
+        "alt": "Catálogo de permisos",
+        "caption": "Catálogo de los 50+ permisos disponibles agrupados por familia."
+      },
+      "fig8": {
+        "alt": "Asignación permisos a un rol",
+        "caption": "Atribución granular : marcar/desmarcar permisos por familia."
+      },
+      "fig9": {
+        "alt": "Audit de cambios RBAC",
+        "caption": "Historial RBAC : todos los cambios de roles/permisos con autor."
+      },
+      "prev": "← Anterior: Rol Admin",
+      "next": "Siguiente: Admin Servicios →"
+    },
+    "page83": {
+      "html_title": "Admin Servicios — Manual Facil",
+      "title": "Admin Servicios : catálogo de los 873 servicios fiscales",
+      "description": "El catálogo de servicios fiscales es el corazón funcional de Facil. 873 servicios actuales, organizados en jerarquía Ministerio → Sector → Categoría → Servicio. Cada servicio tiene su tarificación, sus documentos requeridos, sus procedimientos, sus referencias legales. El admin gestiona el ciclo de vida completo : creación (asistente 7 tabs), modificación, plantillas de documentos/procedimientos, enriquecimiento IA para las descripciones.",
+      "s1": {
+        "title": "1. Catálogo principal",
+        "body": "La pantalla de inicio lista los 873 servicios con búsqueda, filtros (ministerio, sector, tipo, estado), tri por columna. Cada línea : código único, nombre ES/FR/EN, ministerio, tasa, estado (activo, inactivo, borrador, deprecated)."
+      },
+      "s2": {
+        "title": "2. Asistente de creación de servicio (7 tabs)",
+        "intro": "Crear un nuevo servicio requiere completar 7 pestañas. El asistente guía el admin paso a paso, con validación cada vez antes de pasar a la siguiente.",
+        "t1": {
+          "title": "Tab 1 — Información básica"
+        },
+        "t2": {
+          "title": "Tab 2 — Jerarquía"
+        },
+        "t3": {
+          "title": "Tab 3 — Cálculo"
+        },
+        "t4": {
+          "title": "Tab 4 — Validez"
+        },
+        "t5": {
+          "title": "Tab 5 — Legal"
+        },
+        "t6": {
+          "title": "Tab 6 — Asignaciones"
+        },
+        "t7": {
+          "title": "Tab 7 — Avanzado"
+        }
+      },
+      "s3": {
+        "title": "3. Gestión de la jerarquía : Ministerios, Sectores, Categorías",
+        "intro": "Tres pantallas dedicadas para gestionar los niveles supérieurs de la taxonomía. La jerarquía debe ser configurada ANTES de crear los servicios."
+      },
+      "s4": {
+        "title": "4. Plantillas de documentos",
+        "body": "Cada servicio genera un documento oficial (pasaporte, licencia, certificado, recibo). Las plantillas reusables están centralizadas con código, nombre, descripción, validez en meses."
+      },
+      "s5": {
+        "title": "5. Plantillas de procedimientos",
+        "body": "Cada procedimiento describe los pasos administrativos a seguir (orden, condiciones, validaciones, agentes implicados). 11 plantillas disponibles, reutilizables para varios servicios similares."
+      },
+      "s6": {
+        "title": "6. Enriquecimiento IA : generación masiva de descripciones",
+        "intro": "Para acelerar la documentación de los 873 servicios, Facil propone un módulo IA que genera descripciones ES/FR/EN basadas en los datos estructurados (jerarquía, tarificación, referencia legal). El admin revisa, aprueba o rechaza individualmente cada borrador."
+      },
+      "fig0": {
+        "alt": "Catálogo servicios fiscales 873 entradas",
+        "caption": "Catálogo completo de los 873 servicios fiscales con filtros y búsqueda."
+      },
+      "fig1": {
+        "alt": "Crear servicio tab Información básica",
+        "caption": "Código único, nombre ES/FR/EN, tipo de servicio."
+      },
+      "fig2": {
+        "alt": "Crear servicio tab Jerarquía",
+        "caption": "Asignación a ministerio + sector + categoría."
+      },
+      "fig3": {
+        "alt": "Crear servicio tab Cálculo",
+        "caption": "Método de cálculo, tasa de expedición/renovación, soportes adicionales."
+      },
+      "fig4": {
+        "alt": "Crear servicio tab Validez",
+        "caption": "Período de validez del documento generado, frecuencia de renovación, penalización por retraso."
+      },
+      "fig5": {
+        "alt": "Crear servicio tab Legal",
+        "caption": "Referencia legal (decreto, ley, circular), artículos específicos, fecha de vigencia."
+      },
+      "fig6": {
+        "alt": "Crear servicio tab Asignaciones",
+        "caption": "Documentos requeridos del ciudadano + procedimientos administrativos asociados."
+      },
+      "fig7": {
+        "alt": "Crear servicio tab Avanzado",
+        "caption": "Prioridad SLA, complejidad estimada, servicio padre (para los servicios dérivés)."
+      },
+      "fig8": {
+        "alt": "Gestión ministerios 21 entradas",
+        "caption": "21 ministerios con código y estado."
+      },
+      "fig9": {
+        "alt": "Modal crear ministerio editor enriquecido",
+        "caption": "Modal de creación de ministerio con editor enriquecido."
+      },
+      "fig10": {
+        "alt": "Gestión sectores 17 entradas",
+        "caption": "17 sectores organizados por ministerio."
+      },
+      "fig11": {
+        "alt": "Modal crear sector con color",
+        "caption": "Modal crear sector : código, ministerio, nombre, color."
+      },
+      "fig12": {
+        "alt": "Gestión categorías 100 entradas",
+        "caption": "100 categorías de servicios fiscales."
+      },
+      "fig13": {
+        "alt": "Modal crear categoría con tipo",
+        "caption": "Modal crear categoría : código, tipo, ministerio, sector."
+      },
+      "fig14": {
+        "alt": "Plantillas documentos lista",
+        "caption": "Catálogo de las plantillas de documentos disponibles."
+      },
+      "fig15": {
+        "alt": "Crear plantilla documento",
+        "caption": "Crear plantilla : código, nombre, descripción, validez (en meses)."
+      },
+      "fig16": {
+        "alt": "Plantillas procedimientos 11 entradas",
+        "caption": "Las 11 plantillas de procedimientos con número de pasos."
+      },
+      "fig17": {
+        "alt": "Crear plantilla procedimiento con pasos",
+        "caption": "Crear plantilla : información + sección dedicada a los pasos."
+      },
+      "fig18": {
+        "alt": "IA enriquecimiento Revisión sin borradores",
+        "caption": "Pestaña Revisión : lista los borradores en espera de validación."
+      },
+      "fig19": {
+        "alt": "IA enriquecimiento Acciones masivas",
+        "caption": "Acciones : generar descripciones en masa, cambiar visibilidad."
+      },
+      "fig20": {
+        "alt": "IA enriquecimiento Ministerios aprobar borradores",
+        "caption": "Aprobar/rechazar descripciones generadas para los ministerios."
+      },
+      "prev": "← Anterior: Admin Usuarios + RBAC",
+      "next": "Siguiente: Admin Comunicaciones →"
+    },
+    "page84": {
+      "html_title": "Admin Comunicaciones — Manual Facil",
+      "title": "Admin Comunicaciones : 5 canales multi-providers",
+      "description": "Facil envía mensajes a sus usuarios por 5 canales : Email, SMS, Push (móvil/web), USSD (operadores telefónicos), WhatsApp Business. Para cada canal, el admin gestiona los providers técnicos (Gmail SMTP, Infobip, FCM/APNs, Getesa/Muni, Meta WhatsApp) y las plantillas de mensajes ES/FR/EN. Los webhooks permiten integrar respuestas entrantes (WhatsApp principalmente).",
+      "s1": {
+        "title": "1. Plantillas Email",
+        "body": "32 plantillas Email gestionadas con variables interpoladas ({nombre}, {número_recibo}, {monto}), asunto, contenido HTML enriquecido, versión texto plano (fallback)."
+      },
+      "s2": {
+        "title": "2. Plantillas SMS",
+        "body": "Los SMS están limitados a 160 caracteres por segmento (estándar GSM-7). La interfaz cuenta los segmentos en tiempo real durante la edición, lo que importa porque cada segmento adicional aumenta el coste de envío."
+      },
+      "s3": {
+        "title": "3. Proveedores SMS",
+        "body": "Los proveedores SMS son configurables : Infobip (primario internacional), operadores locales (Getesa, Muni para SMS techos prioritarios en GE). Cada proveedor define la URL API, la clave secreta, los límites por minuto, el coste por SMS."
+      },
+      "s4": {
+        "title": "4. Plantillas Push (móvil + web)",
+        "body": "12 plantillas push multi-plataforma (iOS, Android, Web). El admin define el título, el cuerpo, el icono, el deep-link (ouvre la app sur la page correspondante), la categoría (estado solicitud, alerta SLA, notificación general)."
+      },
+      "s5": {
+        "title": "5. Configuración USSD",
+        "body": "USSD permite a los usuarios acceder a servicios desde un teléfono sin internet (ej. consultar el estado de una solicitud). Dos operadores configurados : Getesa (<code>*123#</code>) y Muni (<code>*456#</code>)."
+      },
+      "s6": {
+        "title": "6. Proveedor WhatsApp Business",
+        "body": "WhatsApp Business via Meta API permite enviar notificaciones y recibir mensajes entrantes. La configuración requiere el Phone Number ID, el Business Account ID, y un Verify Token para el webhook entrante."
+      },
+      "s7": {
+        "title": "7. Notificaciones in-app",
+        "body": "Aparte de los canales externos, Facil tiene su propio sistema de notificaciones in-app (la campana en la barra superior). Plantillas tipées con prioridad (info/warning/error), tipos (estado solicitud, alerta admin, mensaje sistema)."
+      },
+      "s8": {
+        "title": "8. Webhooks (mensajes entrantes)",
+        "body": "Los webhooks permiten a Facil recibir mensajes entrantes (WhatsApp principalmente) y reaccionar : crear tickets de soporte, actualizar el estado de una solicitud, responder automáticamente vía chatbot. El admin configura el endpoint, el timeout, los métodos de autenticación."
+      },
+      "fig0": {
+        "alt": "Plantillas Email lista 32 entradas",
+        "caption": "Lista de las 32 plantillas Email con variables, asunto, estado."
+      },
+      "fig1": {
+        "alt": "Plantillas Email predefinidas 8 templates",
+        "caption": "8 plantillas predefinidas (bienvenida, alerta SLA, recibo, etc.)."
+      },
+      "fig2": {
+        "alt": "Proveedores Email Gmail SMTP SendGrid",
+        "caption": "Proveedores Email : Gmail SMTP (primario) + SendGrid (respaldo)."
+      },
+      "fig3": {
+        "alt": "Plantillas SMS lista con segmentos",
+        "caption": "Plantillas SMS con segmentos contados, preview del contenido."
+      },
+      "fig4": {
+        "alt": "Crear plantilla SMS multilingüe",
+        "caption": "Crear plantilla SMS : código, categoría, contenido ES/FR/EN."
+      },
+      "fig5": {
+        "alt": "Plantilla SMS inglés con variables segmentos",
+        "caption": "Variables interpoladas + indicador de segmentos por lengua."
+      },
+      "fig6": {
+        "alt": "Proveedores SMS Infobip configurado",
+        "caption": "Lista proveedores SMS con Infobip configurado."
+      },
+      "fig7": {
+        "alt": "Agregar proveedor SMS URL API clave",
+        "caption": "Modal de agregación de un nuevo proveedor SMS."
+      },
+      "fig8": {
+        "alt": "Plantillas Push 12 templates multi-plataforma",
+        "caption": "12 plantillas push multi-plataforma (iOS/Android/Web)."
+      },
+      "fig9": {
+        "alt": "Configuración USSD Getesa Muni operadores",
+        "caption": "Configuraciones USSD : Getesa y Muni con sus shortcodes."
+      },
+      "fig10": {
+        "alt": "Proveedor WhatsApp Business Meta configurado",
+        "caption": "Configuración WhatsApp Business via Meta API."
+      },
+      "fig11": {
+        "alt": "Editar configuración WhatsApp Phone Business ID",
+        "caption": "Editar : Phone ID, Business ID, Verify Token."
+      },
+      "fig12": {
+        "alt": "Plantillas notificaciones in-app",
+        "caption": "Plantillas notificaciones in-app con tipo/prioridad."
+      },
+      "fig13": {
+        "alt": "Crear notificación información básica multilingüe",
+        "caption": "Crear notificación : información básica + multilingüe."
+      },
+      "fig14": {
+        "alt": "Crear notificación contenido variables",
+        "caption": "Contenido multilingüe + variables interpoladas."
+      },
+      "fig15": {
+        "alt": "Crear webhook URL endpoint timeout auth",
+        "caption": "Crear webhook : URL endpoint, timeout, autenticación."
+      },
+      "prev": "← Anterior: Admin Servicios",
+      "next": "Siguiente: Admin Empresas →"
+    },
+    "page85": {
+      "html_title": "Admin Empresas — Manual Facil",
+      "title": "Admin Empresas : gestión global del registro",
+      "description": "El admin gestiona el conjunto de las empresas registradas en Facil : validación de nuevos registros (con justificantes legales), fusión de duplicados (mismo NIF declarado varias veces), suspensión administrativa (decisión judicial o sanción), gestión del registro mercantil (en sinergia con la Cámara de Comercio).",
+      "s1": {
+        "title": "1. Catálogo global de empresas",
+        "body": "La pantalla principal lista todas las empresas registradas con filtros : NIF, nombre, estado (verificada, pendiente, suspendida, archivada), ministerio de tutelle, sector económico. Búsqueda directa por NIF o nombre."
+      },
+      "s2": {
+        "title": "2. Ficha detallada de una empresa",
+        "body": "Hacer clic en una empresa abre su ficha detallada con todas sus informaciones : datos administrativos, registro mercantil, licencias comerciales, miembros (con sus roles), histórico de declaraciones fiscales, obligaciones pendientes, audit log de las acciones."
+      },
+      "s3": {
+        "title": "3. Validación de nuevos registros",
+        "body": "Cuando un nuevo registro de empresa entra en Facil (vía el flujo « Añadir empresa » desde la cuenta de un usuario), entra en estado <em>«verificación pendiente»</em>. El admin (o un delegado de la DGI) revisa los justificantes (acta constitutiva, NIF, certificado registro mercantil, identidad del representante legal) y valida o rechaza con motivo."
+      },
+      "s4": {
+        "title": "4. Detección y fusión de duplicados",
+        "body": "Una empresa puede tener varias entradas erroneas (nombre escrito diferentemente, NIF mal capturado). Facil detecta automáticamente los duplicados sospechosos (mismo NIF, o nombres similares, o misma dirección + responsable legal) y propide su fusión. La fusión preserva los datos de la empresa principal y migra los miembros, licencias, declaraciones del duplicado."
+      },
+      "s5": {
+        "title": "5. Suspensión administrativa",
+        "body": "El admin puede suspender una empresa en caso de decisión judicial, sanción fiscal mayor o fraude detectado. La suspensión bloquea todas las acciones de la empresa (no puede iniciar solicitudes, no puede pagar) pero preserva los datos."
+      },
+      "s6": {
+        "title": "6. Histórico y archivos",
+        "body": "Cada empresa tiene un histórico detallado de todas las acciones administrativas que la conciernen : verificaciones, suspensiones, reactivaciones, fusiones, cambios de propietario. Útil para auditorías ministeriales o para reconstituir la cronología de un caso litigieux."
+      },
+      "fig0": {
+        "alt": "Catálogo empresas vista principal",
+        "caption": "Catálogo global con filtros y búsqueda."
+      },
+      "fig1": {
+        "alt": "Catálogo empresas segunda vista",
+        "caption": "Vista complementaria con más detalles agregados."
+      },
+      "fig2": {
+        "alt": "Ficha empresa datos administrativos",
+        "caption": "Ficha empresa : datos administrativos, NIF, dirección, ministerio tutelle."
+      },
+      "fig3": {
+        "alt": "Ficha empresa licencias miembros",
+        "caption": "Licencias activas + miembros con sus roles + histórico fiscal."
+      },
+      "fig4": {
+        "alt": "Cola verificaciones pendientes",
+        "caption": "Cola de empresas en verificación pendiente."
+      },
+      "fig5": {
+        "alt": "Validar empresa justificantes",
+        "caption": "Validar empresa con justificantes adjuntos."
+      },
+      "fig6": {
+        "alt": "Aprobar empresa modal confirmación",
+        "caption": "Modal de aprobación con resumen + firma electrónica admin."
+      },
+      "fig7": {
+        "alt": "Detección duplicados sospechosos",
+        "caption": "Lista de duplicados sospechosos detectados automáticamente."
+      },
+      "fig8": {
+        "alt": "Fusión empresas asistente",
+        "caption": "Asistente de fusión : empresa principal vs duplicado a integrar."
+      },
+      "fig9": {
+        "alt": "Suspensión empresa motivo",
+        "caption": "Suspensión administrativa con motivo obligatorio."
+      },
+      "fig10": {
+        "alt": "Empresa suspendida banner",
+        "caption": "Banner « Empresa suspendida » visible para los miembros."
+      },
+      "fig11": {
+        "alt": "Histórico empresa timeline",
+        "caption": "Timeline cronológico de todas las acciones admin sobre la empresa."
+      },
+      "fig12": {
+        "alt": "Archivos empresa documentos legales",
+        "caption": "Archivos legales asociados : acta, NIF, certificados, decisiones."
+      },
+      "fig13": {
+        "alt": "Exportar histórico empresa PDF",
+        "caption": "Exportación PDF del histórico completo para auditoría externa."
+      },
+      "prev": "← Anterior: Admin Comunicaciones",
+      "next": "Siguiente: Admin Config Sistema →"
+    },
+    "page86": {
+      "html_title": "Admin Config Sistema — Manual Facil",
+      "title": "Admin Config Sistema : configuración técnica global",
+      "description": "La sección Config Sistema reúne las configuraciones técnicas que tocan al funcionamiento profundo de Facil : agentes IA (Gemini contexto + parámetros), centro operativo (monitoring infrastructura), logs sistema (debug, performance, errores), traducciones técnicas (claves no UI), conexiones bancarias (BANCO). Solo el rol Admin técnico tiene acceso a estas pantallas (separación de poderes — ver página 81 §3).",
+      "s1": {
+        "title": "1. Configuración de los AI Agents",
+        "body": "Facil utiliza Gemini 2.0 Flash para varias funcionalidades : asistente IA público (página 55), IA ciudadano conectado (página 29), IA agente (página 60), enriquecimiento de servicios (página 83). El admin técnico configura los parámetros : modelo activo, temperatura, max tokens, contexto sistema por uso, fallback en caso de falla."
+      },
+      "s2": {
+        "title": "2. Centro operativo (monitoring infrastructura)",
+        "body": "El Centro Operativo da una vista en tiempo real de la salud de la infraestructura : servidor backend (CPU/RAM/disco), base de datos PostgreSQL (conexiones activas, queries lentas, replicación), Redis (hit rate, memoria), proveedores externos (BANGE, FCM, SMS). Alertas automáticas si un indicador pasa un umbral."
+      },
+      "s3": {
+        "title": "3. Logs sistema (debug + performance + errores)",
+        "body": "A diferencia del audit log (página 87, que registra las acciones funcionales), los logs sistema registran los eventos técnicos : queries lentas, errores 500, timeouts, deadlocks PostgreSQL. Filtros por nivel (DEBUG / INFO / WARNING / ERROR / CRITICAL), por componente (auth, payments, ocr, ai), por período."
+      },
+      "s4": {
+        "title": "4. Traducciones técnicas (no UI)",
+        "body": "A diferencia de las traducciones UI (página 88), estas traducciones técnicas conciernen los textos generados dinámicamente por el código (mensajes de error sistema, plantillas de emails generados automáticamente con variables, libellés de PDF oficiales). Edición delicada porque algunas variables son indispensables."
+      },
+      "s5": {
+        "title": "5. Configuración bancaria (BANCO)",
+        "body": "Las conexiones con los bancos partenaires son configurables : BANGE (principal — Mobile Money), Banco Nacional de Guinea Ecuatorial (transferencias), BGFI (transferencias internacionales). El admin define la URL API, la clave secreta, los certificados TLS, los webhooks de respuesta."
+      },
+      "s6": {
+        "title": "6. Modo de mantenimiento",
+        "warn": {
+          "title": "Activar el modo mantenimiento",
+          "body": "Antes de una migración importante o de una actualización backend, el admin técnico puede activar el modo mantenimiento. Los usuarios ven una página explicativa (« Sistema en mantenimiento, vuelva en X minutos »). Las solicitudes en curso son preservadas; las nuevas son temporalmente bloqueadas. La duración prevista es comunicada por email a todos los usuarios afectados por el modo (típicamente solo los agentes; los ciudadanos pueden generalmente continuar a depositar en cola)."
+        }
+      },
+      "fig0": {
+        "alt": "Configuración AI Agents Gemini parámetros",
+        "caption": "Configuración de los AI Agents : modelo, temperatura, max tokens, contexto sistema."
+      },
+      "fig1": {
+        "alt": "Centro operativo monitoring infraestructura",
+        "caption": "Centro Operativo : estado backend, BD, Redis, proveedores externos."
+      },
+      "fig2": {
+        "alt": "Logs sistema vista principal",
+        "caption": "Vista principal de los logs sistema con filtros por nivel."
+      },
+      "fig3": {
+        "alt": "Logs sistema detalle entrada",
+        "caption": "Detalle de una entrada log : stack trace, contexto, timestamp."
+      },
+      "fig4": {
+        "alt": "Traducciones técnicas vista principal",
+        "caption": "Vista principal de las traducciones técnicas."
+      },
+      "fig5": {
+        "alt": "Traducciones técnicas edición clave",
+        "caption": "Edición de una clave técnica con variables interpoladas."
+      },
+      "fig6": {
+        "alt": "Configuración BANCO listo proveedores",
+        "caption": "Lista de los proveedores bancarios configurados."
+      },
+      "fig7": {
+        "alt": "Editar conexión bancaria detalle",
+        "caption": "Editar conexión bancaria : URL, claves, webhooks, TLS."
+      },
+      "prev": "← Anterior: Admin Empresas",
+      "next": "Siguiente: Audit Logs →"
+    },
+    "page87": {
+      "html_title": "Admin Audit Logs — Manual Facil",
+      "title": "Audit Logs : trazabilidad completa y conservación 7 años",
+      "description": "Toda acción sensible en Facil (login, decisión agente, modificación de configuración, acceso a datos personales, validación de pago) está registrada en un audit log dedicado. La retención legal es de 7 años (obligación de archivo administrativo en Guinea Ecuatorial) y la integridad está garantizada por una cadena de hash inalterable. Solo el rol Admin tiene acceso completo al log; los supervisores ven los logs de su entidad; los agentes ven sus propios logs.",
+      "s1": {
+        "title": "1. Schema de las entradas (7 columnas obligatorias)",
+        "t": {
+          "h1": "Columna",
+          "h2": "Tipo",
+          "h3": "Descripción",
+          "r1": {
+            "c3": "Identificador único de la entrada"
+          },
+          "r2": {
+            "c3": "Fecha + hora precisa al milisegundo, en UTC"
+          },
+          "r3": {
+            "c3": "Email del usuario que realizó la acción (o «system» para acciones automáticas)"
+          },
+          "r4": {
+            "c3": "Tipo de acción : login, logout, approve, reject, escalate, role_change, config_update, etc."
+          },
+          "r5": {
+            "c3": "Objeto modificado : service_request, user, payment, role, config_key, etc."
+          },
+          "r6": {
+            "c3": "Snapshot antes y después de la modificación (para acciones de update)"
+          },
+          "r7": {
+            "c3": "Para trazabilidad técnica y detección de uso fraudulento (IP no habitual)"
+          }
+        }
+      },
+      "s2": {
+        "title": "2. Cadena de hash : integridad infalsificable",
+        "body": "Cada entrada del log lleva un campo adicional <code>chain_hash</code> calculado como : <code>SHA-256(prev_chain_hash || row_data)</code>. La primera entrada usa un hash de génesis. Esta cadena garantiza la integridad : si una entrada es modificada o suprimida posteriormente, todas las entradas siguientes tienen un hash incoherente, lo que se detecta automáticamente.",
+        "diagram": "\n┌─────────────────────────────────────────────────────────────────┐\n│ Cadena de hash de los audit logs                                │\n├─────────────────────────────────────────────────────────────────┤\n│                                                                 │\n│  Entrada 1 :                                                    │\n│   prev_chain_hash = GENESIS                                     │\n│   chain_hash = SHA256(GENESIS || timestamp:..., actor:..., ...) │\n│                                                                 │\n│  Entrada 2 :                                                    │\n│   prev_chain_hash = chain_hash[1]                                │\n│   chain_hash = SHA256(chain_hash[1] || timestamp:..., ...)      │\n│                                                                 │\n│  Entrada N :                                                    │\n│   prev_chain_hash = chain_hash[N-1]                              │\n│   chain_hash = SHA256(chain_hash[N-1] || timestamp:..., ...)    │\n│                                                                 │\n│  Verificación :                                                  │\n│   • Recalcular toda la cadena desde GENESIS                     │\n│   • Comparar con los chain_hash almacenados                     │\n│   • Discrepancia = entrada manipulada (con índice exacto)       │\n│                                                                 │\n└─────────────────────────────────────────────────────────────────┘\n"
+      },
+      "s3": {
+        "title": "3. Búsqueda y filtrado",
+        "intro": "La interfaz admin propone una pantalla de búsqueda con los filtros siguientes :",
+        "l1": "<strong>Período</strong> — hoy / esta semana / este mes / personalizado (rango de fechas)",
+        "l2": "<strong>Actor</strong> — email exacto o pattern (ej. <code>*@dgi.gov.gq</code>)",
+        "l3": "<strong>Acción</strong> — drop-down con todas las acciones disponibles",
+        "l4": "<strong>Tipo de entidad</strong> — service_request / user / payment / etc.",
+        "l5": "<strong>IP</strong> — dirección exacta o subred CIDR",
+        "l6": "<strong>Búsqueda libre</strong> — full-text sobre <code>before</code>/<code>after</code> JSONB (usa GIN index PostgreSQL)"
+      },
+      "s4": {
+        "title": "4. Alertas automáticas configurables",
+        "body": "El admin puede definir reglas de alerta sobre patrones detectados en el log. Ejemplos típicos :",
+        "t": {
+          "h1": "Pattern",
+          "h2": "Trigger",
+          "h3": "Acción",
+          "r1": {
+            "c1": "Login fallido repetido",
+            "c2": "&gt; 10 fallos en 10 min sobre la misma cuenta",
+            "c3": "Bloqueo temporal + email admin"
+          },
+          "r2": {
+            "c1": "Login geo anormal",
+            "c2": "IP de otro país que la habitual",
+            "c3": "Push usuario + email admin + 2FA forzada"
+          },
+          "r3": {
+            "c1": "Rechazos en bloque",
+            "c2": "Un agente rechaza &gt; 10 solicitudes en 1h con el mismo motivo",
+            "c3": "Email supervisor para auditoría"
+          },
+          "r4": {
+            "c1": "Importe sospechoso",
+            "c2": "Validación de pago &gt; 5M XAF por un mismo agente en una jornada",
+            "c3": "Email director Tesoro + obligación reporting hebdomadario"
+          },
+          "r5": {
+            "c1": "Modificación config crítica",
+            "c2": "Cambio role admin, modificación workflow_engine, suppression endpoint",
+            "c3": "Email todos los admin + log doble (en log + en table dedicada)"
+          }
+        }
+      },
+      "s5": {
+        "title": "5. Export y conformidad RGPD",
+        "body": "Ciudadanos y empresas pueden solicitar (en virtud del derecho de acceso) un export de las acciones que les conciernen. El admin tramita la solicitud desde la pantalla Audit Logs con el filtro <em>«entity_id = [identificador del solicitante]»</em>. El export se genera en formato JSON estructurado + PDF lisible. Plazo máximo: 30 días (obligación legal). El export queda registrado en el log lui-même (méta-action : <code>data_access_request</code>)."
+      },
+      "s6": {
+        "title": "6. Retención : 7 años + archivado",
+        "body": "Las entradas activas se mantienen en la BD principal durante 12 meses (acceso rápido para auditoría operacional). Después de 12 meses, las entradas son archivadas en cold storage (Google Cloud Storage, encriptado AES-256, con replicación geográfica). El acceso a los archivos requiere una solicitud al equipo técnico (delay típico : 24-48h). La duración total de retención es de 7 años desde la fecha de la acción. Después de 7 años, las entradas son destruidas con una opération auditable (méta-entry «retention_purge»)."
+      },
+      "prev": "← Anterior: Config Sistema",
+      "next": "Siguiente: Admin Traducciones →"
+    },
+    "page88": {
+      "html_title": "Admin Traducciones — Manual Facil",
+      "title": "Admin Traducciones : ES / FR / EN trilingue",
+      "description": "Facil es trilingue : español (lengua oficial), francés (segunda lengua), inglés (internacional). El admin gestiona todas las traducciones desde una interfaz dedicada que cubre 4 dominios : ENUMs (estados de workflow, tipos de pago, roles), UI (textos de la app), Forms (etiquetas de formularios), System messages (mensajes de error, notificaciones). Una table separada <code>entity_translations</code> almacena las traducciones de las entidades (ministerios, sectores, servicios) con un 40% de economía de almacenamiento gracias a una estructura key-value.",
+      "s1": {
+        "title": "1. Las 2 tablas de traducciones",
+        "t": {
+          "h1": "Tabla",
+          "h2": "Contenido",
+          "h3": "Volumen estimado",
+          "r1": {
+            "c2": "ENUMs (estados, roles, tipos), UI (etiquetas, botones, menús), Forms (campos, placeholders, validaciones), System (errores, notificaciones, emails)",
+            "c3": "~5.000 claves × 3 lenguas = 15.000 entradas"
+          },
+          "r2": {
+            "c2": "Ministerios (28), sectores (160+), categorías servicios (50+), nombres y descripciones de servicios fiscales (850+)",
+            "c3": "~1.100 entidades × 3 lenguas = 3.300 entradas"
+          }
+        }
+      },
+      "s2": {
+        "title": "2. Interfaz de administración",
+        "body": "La pantalla principal lista las claves en una tabla con :",
+        "l1": "Filtro por dominio (ENUM / UI / Forms / System / Entity)",
+        "l2": "Filtro por estado de traducción (completas / parciales / faltantes)",
+        "l3": "Búsqueda libre sobre la clave y los valores",
+        "l4": "Edición inline (clic en una celda → editor inline → ENTER para validar)",
+        "l5": "Indicador de completitud por lengua (porcentaje ES / FR / EN)"
+      },
+      "s3": {
+        "title": "3. Workflow de traducción",
+        "diagram": "\n┌─────────────────────────────────────────────────────────────────────┐\n│ Workflow para añadir / modificar una traducción                     │\n├─────────────────────────────────────────────────────────────────────┤\n│                                                                     │\n│  Caso 1 : nueva clave necesaria (desarrollo de una nueva feature)   │\n│                                                                     │\n│  Desarrollador agrega la clave en el código (Backend o Frontend)     │\n│       │                                                             │\n│       │ Migration alimenta translations con valor ES                  │\n│       │ FR y EN quedan NULL                                          │\n│       ▼                                                             │\n│  Admin Translations : alerta \"claves nuevas FR/EN faltantes\"        │\n│       │                                                             │\n│       │ Admin asigna a un traductor profesional (opción email)       │\n│       │ Traductor entra, llena FR y EN, valida                       │\n│       ▼                                                             │\n│  Sistema : marca FR/EN como completas, cache invalidación auto      │\n│                                                                     │\n│  Caso 2 : corrección de una traducción existente                    │\n│                                                                     │\n│  Usuario reporta error vía soporte (página 29) ou directamente       │\n│       │                                                             │\n│       ▼                                                             │\n│  Admin recibe el report, abre la pantalla translations, busca clave │\n│       │                                                             │\n│       │ Edita el valor, valida                                       │\n│       │ El sistema invalida el cache (TTL Redis = 1h)                │\n│       ▼                                                             │\n│  Usuarios ven la nueva traducción en su próximo refresh             │\n│                                                                     │\n└─────────────────────────────────────────────────────────────────────┘\n"
+      },
+      "s4": {
+        "title": "4. Import / Export CSV",
+        "body": "Para grandes lotes de traducción, el admin puede exportar todas las claves no traducidas en un CSV (3 columnas : clave, español, francés/inglés vacío), entregárselo a un prestatario externo, y reimportar el CSV una vez completado. El sistema detecta automáticamente las claves no modificadas y las omite. Conflictos potenciales (clave modificada por dos personas) son señalados antes del commit.",
+        "format": "Formato CSV esperado :",
+        "example": "\nkey,es,fr,en\n\"common.button.save\",\"Guardar\",\"Enregistrer\",\"Save\"\n\"common.button.cancel\",\"Cancelar\",\"Annuler\",\"Cancel\"\n\"page27.s2.title\",\"Sus empresas\",\"Vos entreprises\",\"Your companies\"\n...\n"
+      },
+      "s5": {
+        "title": "5. Buenas prácticas",
+        "tip": {
+          "title": "Recomendaciones",
+          "l1": "<strong>ES es la lengua de referencia</strong> — toda nueva clave nace en ES, las otras lenguas son traducciones de la ES. Nunca traducir desde el FR/EN porque genera derivas.",
+          "l2": "<strong>Términos GE específicos</strong> — XAF, NIF, DIP, Tesoro Público, BANGE Mobile Money, etc. quedan en la lengua original, no traducidos.",
+          "l3": "<strong>Espacios y puntuación</strong> — el FR usa una espacio insécable antes de los signos doubles (« : », « ; », « ! », « ? »). El ES y EN no. El sistema valida automáticamente la consistencia.",
+          "l4": "<strong>Variables interpoladas</strong> — las variables del tipo <code>{{count}}</code> o <code>{name}</code> deben aparecer en cada lengua. El sistema detecta las variables manquantes.",
+          "l5": "<strong>HTML inline</strong> — las claves <code>data-i18n-html</code> pueden contener balises (<code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;a href=\"...\"&gt;</code>). El sistema valida que las balises están bien fermées en cada lengua."
+        }
+      },
+      "s6": {
+        "title": "6. Cache Redis : invalidación automática",
+        "body": "Las traducciones están cacheadas en Redis con un TTL de 1h (para minimizar las consultas BD en una app a millones de usuarios). Cuando una traducción es modificada vía la UI admin, el sistema invalida automáticamente las claves cache concernidas. La propagación es immediate para los nuevos requêtes; los usuarios con la app abierta ven el cambio en su próximo refresh de la pantalla."
+      },
+      "prev": "← Anterior: Audit Logs",
+      "next": "Siguiente: Workflow + Menu Config →"
+    },
+    "page89": {
+      "html_title": "Admin Workflows + Citas + Entidades — Manual Facil",
+      "title": "Configuración Workflows, Citas, Entidades y Menús",
+      "description": "Esta sección agrupa la configuración alrededor del flujo operacional de los servicios. Importante : los workflows en Facil son <strong>predefinidos en el código</strong> (no hay designer visuel drag-drop) — 36 workflows cubren todos los casos actuales (pasaportes, residencia, vehículos, etc.). El admin configura aquí los parámetros : tarifas suplementarias, citas (horarios y reglas), entidades administrativas, ciudades y ubicaciones, además del menú dinámico por rol.",
+      "s1": {
+        "title": "1. Catálogo de los 36 workflows predefinidos",
+        "body": "Los workflows están definidos por el código backend (<code>workflow_engine</code>) y representan el ciclo de vida completo de cada tipo de servicio fiscal. El admin los visualiza en lectura sola; las modificaciones requieren un release backend."
+      },
+      "s2": {
+        "title": "2. Configuración de las tarifas suplementarias",
+        "body": "Sobre la tarifa de base de un servicio, el admin puede definir suplementos (timbre fiscal, póliza, cédula complementaria). Estos suplementos están atribuidos por workflow."
+      },
+      "s3": {
+        "title": "3. Gestión de las citas (horarios + slots)",
+        "intro": "Para los servicios que requieren una cita en persona (CNEDOGE biométrico, DGT examen pratico, Extranjería retiro de carnet), el admin configura los horarios de oficina por entidad + ciudad, define los slots, las fechas bloqueadas (feriados), las reglas de espera (prioridad/workflow)."
+      },
+      "s4": {
+        "title": "4. Entidades administrativas",
+        "body": "Las entidades son las 20+ administraciones públicas que operan en Facil : AYUNTAMIENTO, CNEDOGE, DGT, etc. Cada entidad tiene un código, un nombre, un tipo padre (ministerio o municipio), y los workflows que gestiona."
+      },
+      "s5": {
+        "title": "5. Ciudades y ubicaciones",
+        "body": "17 ciudades de Guinea Ecuatorial registradas (Bata, Ebebiyín, Malabo, Mongomo, …). Cada ubicación física (oficina, sede) está vinculada a una entidad y a una ciudad con su dirección y mención de sede principal."
+      },
+      "s6": {
+        "title": "6. Configuración dinámica de los menús (Menu Config)",
+        "body": "Cada rol tiene su menú propio adaptado a sus permisos. Dos modos de configuración disponibles : <strong>workflow-based</strong> (automático, basado en los <code>workflow_codes</code> de la entidad) o <strong>module-based</strong> (manuel, JSON explícito en <code>roles.menu_config</code>). El admin gestiona el mapping workflow → menu desde la pantalla dedicada."
+      },
+      "s7": {
+        "title": "7. ¿Por qué no hay Workflow Designer drag-drop?",
+        "info": {
+          "title": "Workflows predefinidos por seguridad",
+          "body": "Los workflows en Facil cubren los servicios fiscales oficiales de Guinea Ecuatorial. Una modificación visual ad-hoc desde la UI introduciría riesgos importantes : un workflow mal configurado podría dejar pasar fraudes, perder solicitudes, o generar inconsistencias con la legislación. Por eso, los workflows están definidos por el código (testés, audités, versionados) y solo los parámetros (tarifas, horarios, citas, entidades) son configurables por el admin. Si una nueva ley introduce un nuevo tipo de servicio, el equipo técnico desarrolla el workflow correspondiente y lo despliega con un release."
+        }
+      },
+      "fig0": {
+        "alt": "Catálogo 36 workflows agrupados",
+        "caption": "36 workflows agrupados por familia (Pasaportes, Residencia, Vehículos, …)."
+      },
+      "fig1": {
+        "alt": "Detalle workflow Solicitud Pasaporte info tarifas docs citas",
+        "caption": "Detalle de un workflow («Solicitud de Pasaporte») : info + tarifas + documentos requeridos + citas."
+      },
+      "fig2": {
+        "alt": "Lista suplementos tarifas",
+        "caption": "Lista de suplementos tarifas con código, nombre, monto."
+      },
+      "fig3": {
+        "alt": "Crear suplemento código nombre monto",
+        "caption": "Crear suplemento : código, nombre, monto XAF, vigencia."
+      },
+      "fig4": {
+        "alt": "Configuración horarios entidad ciudad",
+        "caption": "Horarios por entidad + ciudad con duración de slot."
+      },
+      "fig5": {
+        "alt": "Crear horario cita días hora duración",
+        "caption": "Crear horario : ciudad, días de la semana, hora inicio/fin, duración slot."
+      },
+      "fig6": {
+        "alt": "Fechas bloqueadas feriados nacionales",
+        "caption": "Fechas bloqueadas : feriados nacionales (Año Nuevo, etc.)."
+      },
+      "fig7": {
+        "alt": "Reglas espera días hábiles prioridad",
+        "caption": "Reglas de espera : días hábiles por prioridad/workflow."
+      },
+      "fig8": {
+        "alt": "Estadísticas citas KPIs horarios",
+        "caption": "Estadísticas citas : KPIs horarios, ubicaciones, capacidad diaria."
+      },
+      "fig9": {
+        "alt": "Desglose por entidad reglas demora",
+        "caption": "Desglose por entidad + reglas de demora."
+      },
+      "fig10": {
+        "alt": "Lista entidades 20 administraciones",
+        "caption": "Lista de las 20 entidades administrativas registradas."
+      },
+      "fig11": {
+        "alt": "Crear entidad código nombre workflows",
+        "caption": "Crear entidad : código, nombre, tipo padre, workflows asignados."
+      },
+      "fig12": {
+        "alt": "Lista 17 ciudades Bata Malabo Mongomo",
+        "caption": "17 ciudades con su región (Insular/Continental)."
+      },
+      "fig13": {
+        "alt": "Crear ciudad nombre región capital",
+        "caption": "Modal añadir ciudad : nombre, región, capital."
+      },
+      "fig14": {
+        "alt": "34 ubicaciones físicas entidad ciudad",
+        "caption": "34 ubicaciones físicas por entidad/ciudad."
+      },
+      "fig15": {
+        "alt": "Crear ubicación ciudad entidad dirección sede",
+        "caption": "Modal crear ubicación : ciudad, entidad, dirección, sede principal."
+      },
+      "fig16": {
+        "alt": "Menu config workflow mapping",
+        "caption": "Mapping workflow → estructura menu (icono, sub-menus)."
+      },
+      "fig17": {
+        "alt": "Editar mapping workflow menu",
+        "caption": "Editar un mapping con pattern workflow + sub-entries."
+      },
+      "prev": "← Anterior: Admin Traducciones",
+      "next": "Volver al inicio →"
+    }
+
+  // page52-58, page91-95: por crear
 
 };

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page33.html_title">
+<html lang="es" data-i18n-title="page88.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Lista y seguimiento de sus solicitudes en la app móvil Facil — filtros tactiles, FAB nueva solicitud, swipe acciones.">
-  <title>Mis solicitudes (Móvil) — Manual Facil</title>
+  <meta name="description" content="Admin Traducciones — gestión de las traducciones trilingues ES/FR/EN, table translations (ENUM/UI/Forms/System), entity_translations (40% económie storage), import/export CSV.">
+  <title>Admin Traducciones — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
           <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
           <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
-          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
           <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
           <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
           <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
@@ -115,7 +115,7 @@
           <a href="85-admin-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
           <a href="86-admin-config-sistema.html" class="sidebar-link"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
           <a href="87-admin-audit-logs.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
-          <a href="88-admin-traducciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link active"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
           <a href="89-admin-workflow-config.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
         </div>
 
@@ -128,131 +128,139 @@
         </div>
 
       </nav>
-      <div class="sidebar-footer" data-i18n="common.sidebar.footer">Facil v1.1.8 · Manual mayo 2026</div>
     </aside>
-    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar navegación" data-i18n-attr-aria-label="common.sidebar.toggle_label">&#9776;</button>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main class="main-content">
       <header class="content-header">
-        <nav class="breadcrumb">
-          <a href="index.html" data-i18n="nav.breadcrumb.home">Inicio</a><span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</span><span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current" data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span>
-        </nav>
-        <div class="header-actions">
-          <button type="button" class="print-btn" onclick="window.print()" aria-label="Imprimir" data-i18n-attr-aria-label="common.print.label"><span aria-hidden="true">&#128424;</span> <span data-i18n="common.print.button">Imprimir</span></button>
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.admin">Administradores</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page88.title">Traducciones</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page33.title">Mis solicitudes (Móvil)</h1>
-        <p class="page-description" data-i18n="page33.description">Lista de todas sus solicitudes con filtros táctiles, FAB (Floating Action Button) para crear una nueva, y acceso al detalle por simple toque. Versión simplificada y optimizada del dashboard de seguimiento.</p>
-
-        <div class="persona-bar">
-          <span class="persona-label" data-i18n="common.persona.label">Para:</span>
-          <span class="persona-tag" data-i18n="common.persona.citizen">Ciudadano</span>
-          <span class="persona-tag" data-i18n="common.persona.business">Empresa</span>
-        </div>
-
-        <div class="toc">
-          <div class="toc-title" data-i18n="common.toc.title">En esta página</div>
-          <ul class="toc-list">
-            <li><a href="#acceso" data-i18n="page33.toc.s1">1. Acceder a la lista</a></li>
-            <li><a href="#filtros" data-i18n="page33.toc.s2">2. Filtros y FAB</a></li>
-            <li><a href="#lista" data-i18n="page33.toc.s3">3. Lista de solicitudes</a></li>
-            <li><a href="#detalle" data-i18n="page33.toc.s4">4. Detalle de una solicitud</a></li>
-            <li><a href="#diff" data-i18n="page33.toc.s5">5. Diferencias con la versión Web</a></li>
-          </ul>
-        </div>
+        <h1 class="page-title" data-i18n="page88.title">Admin Traducciones : ES / FR / EN trilingue</h1>
+        <p class="page-description" data-i18n="page88.description">Facil es trilingue : español (lengua oficial), francés (segunda lengua), inglés (internacional). El admin gestiona todas las traducciones desde una interfaz dedicada que cubre 4 dominios : ENUMs (estados de workflow, tipos de pago, roles), UI (textos de la app), Forms (etiquetas de formularios), System messages (mensajes de error, notificaciones). Una table separada <code>entity_translations</code> almacena las traducciones de las entidades (ministerios, sectores, servicios) con un 40% de economía de almacenamiento gracias a una estructura key-value.</p>
 
         <section>
-          <h2 id="acceso" data-i18n="page33.s1.title">1. Acceder a la lista</h2>
-          <p data-i18n-html="page33.s1.intro">2 caminos: <strong>Panel principal → tarjeta «Mis Solicitudes»</strong> o <strong>menú hamburguesa → «Mis Solicitudes»</strong>.</p>
-        </section>
-
-        <section>
-          <h2 id="filtros" data-i18n="page33.s2.title">2. Filtros y FAB</h2>
-          <p data-i18n-html="page33.s2.intro">En la parte superior, una <strong>barra de filtros horizontales</strong> (chips) permite alternar entre estados:</p>
-          <ul>
-            <li data-i18n-html="page33.s2.f1"><strong>Ver todo</strong> — muestra todas las solicitudes</li>
-            <li data-i18n-html="page33.s2.f2"><strong>Enviada</strong> — esperando validación</li>
-            <li data-i18n-html="page33.s2.f3"><strong>En proceso</strong> — agente revisando</li>
-            <li data-i18n-html="page33.s2.f4"><strong>En revisión</strong> — agente solicita info adicional</li>
-          </ul>
-
-          <p data-i18n-html="page33.s2.body">En la parte inferior derecha, un <strong>FAB (Floating Action Button)</strong> verde con el icono <strong>«+ Nueva Solicitud»</strong> permite lanzar el wizard directamente sin volver al panel.</p>
-
-          <figure class="mobile-screenshot">
-            <img src="_assets/screenshots/mobile/citizen/my-requests.jpg" alt="Mis solicitudes lista" data-i18n-attr-alt="page33.s2.fig1.alt">
-            <figcaption data-i18n="page33.s2.fig1.caption">Pantalla «Mis Solicitudes» — chips de filtros (Ver todo / Enviada / En proceso / En revisión), 3 solicitudes listadas (Bundle Payment, Conducir Renovacion, Pasaporte Deterioro), FAB «+ Nueva Solicitud» abajo a la derecha.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 id="lista" data-i18n="page33.s3.title">3. Lista de solicitudes</h2>
-          <p data-i18n-html="page33.s3.intro">Cada línea muestra:</p>
-          <ul>
-            <li data-i18n-html="page33.s3.f1"><strong>Icono del trámite</strong> a la izquierda (passeport, conducir, etc.)</li>
-            <li data-i18n-html="page33.s3.f2"><strong>Título corto</strong> + referencia (ex. CON-2026-00001)</li>
-            <li data-i18n-html="page33.s3.f3"><strong>Badge estado</strong> con color (azul=Enviada, naranja=Procesando, verde=Completada, rojo=Rechazada)</li>
-            <li data-i18n-html="page33.s3.f4"><strong>Fecha</strong> de última actualización</li>
-            <li data-i18n-html="page33.s3.f5">Pulse la línea para abrir el detalle</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="detalle" data-i18n="page33.s4.title">4. Detalle de una solicitud (vista móvil)</h2>
-          <p data-i18n-html="page33.s4.intro">La pantalla de detalle muestra los mismos elementos que la versión Web (cf. <a href="23-mis-solicitudes-web.html">page 23</a>) con adaptaciones móviles:</p>
-          <ul>
-            <li data-i18n-html="page33.s4.f1"><strong>Stepper vertical</strong> (en lugar de horizontal) — más fácil de leer en pantalla pequeña</li>
-            <li data-i18n-html="page33.s4.f2"><strong>Tabs deslizables</strong> entre Resumen / Documentos / Pagos</li>
-            <li data-i18n-html="page33.s4.f3"><strong>CTA «Compartir»</strong> nativo (WhatsApp, SMS, email)</li>
-            <li data-i18n-html="page33.s4.f4"><strong>CTA «Descargar PDF»</strong> con guardado en la galería del teléfono</li>
-            <li data-i18n-html="page33.s4.f5"><strong>Pull-to-refresh</strong> — desliza hacia abajo para refrescar el estado</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 id="diff" data-i18n="page33.s5.title">5. Diferencias con la versión Web</h2>
+          <h2 data-i18n="page88.s1.title">1. Las 2 tablas de traducciones</h2>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th data-i18n="page33.s5.table.col1">Función</th><th data-i18n="page33.s5.table.col2">Web</th><th data-i18n="page33.s5.table.col3">Móvil</th></tr></thead>
+              <thead>
+                <tr>
+                  <th data-i18n="page88.s1.t.h1">Tabla</th>
+                  <th data-i18n="page88.s1.t.h2">Contenido</th>
+                  <th data-i18n="page88.s1.t.h3">Volumen estimado</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td data-i18n="page33.s5.r1.c1">KPIs cabecera</td><td>3 cards horizontales</td><td>Compactados en 1 línea</td></tr>
-                <tr><td data-i18n="page33.s5.r2.c1">Filtros</td><td>Dropdowns + search</td><td>Chips horizontales scroll</td></tr>
-                <tr><td data-i18n="page33.s5.r3.c1">Stepper detalle</td><td>Horizontal completo</td><td>Vertical adaptado</td></tr>
-                <tr><td data-i18n="page33.s5.r4.c1">Acciones rápidas</td><td>3 cards superiores</td><td>FAB «+ Nueva Solicitud»</td></tr>
-                <tr><td data-i18n="page33.s5.r5.c1">Pull-to-refresh</td><td>❌</td><td>✅ Estándar Android/iOS</td></tr>
-                <tr><td data-i18n="page33.s5.r6.c1">Compartir</td><td>URL copiable</td><td>Compartir nativo (WhatsApp...)</td></tr>
+                <tr>
+                  <td><code>translations</code></td>
+                  <td data-i18n="page88.s1.t.r1.c2">ENUMs (estados, roles, tipos), UI (etiquetas, botones, menús), Forms (campos, placeholders, validaciones), System (errores, notificaciones, emails)</td>
+                  <td data-i18n="page88.s1.t.r1.c3">~5.000 claves × 3 lenguas = 15.000 entradas</td>
+                </tr>
+                <tr>
+                  <td><code>entity_translations</code></td>
+                  <td data-i18n="page88.s1.t.r2.c2">Ministerios (28), sectores (160+), categorías servicios (50+), nombres y descripciones de servicios fiscales (850+)</td>
+                  <td data-i18n="page88.s1.t.r2.c3">~1.100 entidades × 3 lenguas = 3.300 entradas</td>
+                </tr>
               </tbody>
             </table>
           </div>
-
-          <aside class="callout callout-success">
-            <div class="callout-title" data-i18n="common.callout.success">Bien hecho</div>
-            <p data-i18n="page33.s5.success">Para los pagos asociados a las solicitudes, ver siguiente página.</p>
-          </aside>
         </section>
+
+        <section>
+          <h2 data-i18n="page88.s2.title">2. Interfaz de administración</h2>
+          <p data-i18n="page88.s2.body">La pantalla principal lista las claves en una tabla con :</p>
+          <ul>
+            <li data-i18n="page88.s2.l1">Filtro por dominio (ENUM / UI / Forms / System / Entity)</li>
+            <li data-i18n="page88.s2.l2">Filtro por estado de traducción (completas / parciales / faltantes)</li>
+            <li data-i18n="page88.s2.l3">Búsqueda libre sobre la clave y los valores</li>
+            <li data-i18n="page88.s2.l4">Edición inline (clic en una celda → editor inline → ENTER para validar)</li>
+            <li data-i18n="page88.s2.l5">Indicador de completitud por lengua (porcentaje ES / FR / EN)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 data-i18n="page88.s3.title">3. Workflow de traducción</h2>
+          <pre data-i18n-html="page88.s3.diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│ Workflow para añadir / modificar una traducción                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Caso 1 : nueva clave necesaria (desarrollo de una nueva feature)   │
+│                                                                     │
+│  Desarrollador agrega la clave en el código (Backend o Frontend)     │
+│       │                                                             │
+│       │ Migration alimenta translations con valor ES                  │
+│       │ FR y EN quedan NULL                                          │
+│       ▼                                                             │
+│  Admin Translations : alerta "claves nuevas FR/EN faltantes"        │
+│       │                                                             │
+│       │ Admin asigna a un traductor profesional (opción email)       │
+│       │ Traductor entra, llena FR y EN, valida                       │
+│       ▼                                                             │
+│  Sistema : marca FR/EN como completas, cache invalidación auto      │
+│                                                                     │
+│  Caso 2 : corrección de una traducción existente                    │
+│                                                                     │
+│  Usuario reporta error vía soporte (página 29) ou directamente       │
+│       │                                                             │
+│       ▼                                                             │
+│  Admin recibe el report, abre la pantalla translations, busca clave │
+│       │                                                             │
+│       │ Edita el valor, valida                                       │
+│       │ El sistema invalida el cache (TTL Redis = 1h)                │
+│       ▼                                                             │
+│  Usuarios ven la nueva traducción en su próximo refresh             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+        </section>
+
+        <section>
+          <h2 data-i18n="page88.s4.title">4. Import / Export CSV</h2>
+          <p data-i18n="page88.s4.body">Para grandes lotes de traducción, el admin puede exportar todas las claves no traducidas en un CSV (3 columnas : clave, español, francés/inglés vacío), entregárselo a un prestatario externo, y reimportar el CSV una vez completado. El sistema detecta automáticamente las claves no modificadas y las omite. Conflictos potenciales (clave modificada por dos personas) son señalados antes del commit.</p>
+          <p data-i18n-html="page88.s4.format">Formato CSV esperado :</p>
+          <pre data-i18n-html="page88.s4.example">
+key,es,fr,en
+"common.button.save","Guardar","Enregistrer","Save"
+"common.button.cancel","Cancelar","Annuler","Cancel"
+"page27.s2.title","Sus empresas","Vos entreprises","Your companies"
+...
+</pre>
+        </section>
+
+        <section>
+          <h2 data-i18n="page88.s5.title">5. Buenas prácticas</h2>
+          <div class="callout callout-tip">
+            <h3 class="callout-title" data-i18n="page88.s5.tip.title">Recomendaciones</h3>
+            <ul>
+              <li data-i18n-html="page88.s5.tip.l1"><strong>ES es la lengua de referencia</strong> — toda nueva clave nace en ES, las otras lenguas son traducciones de la ES. Nunca traducir desde el FR/EN porque genera derivas.</li>
+              <li data-i18n-html="page88.s5.tip.l2"><strong>Términos GE específicos</strong> — XAF, NIF, DIP, Tesoro Público, BANGE Mobile Money, etc. quedan en la lengua original, no traducidos.</li>
+              <li data-i18n-html="page88.s5.tip.l3"><strong>Espacios y puntuación</strong> — el FR usa una espacio insécable antes de los signos doubles (« : », « ; », « ! », « ? »). El ES y EN no. El sistema valida automáticamente la consistencia.</li>
+              <li data-i18n-html="page88.s5.tip.l4"><strong>Variables interpoladas</strong> — las variables del tipo <code>{{count}}</code> o <code>{name}</code> deben aparecer en cada lengua. El sistema detecta las variables manquantes.</li>
+              <li data-i18n-html="page88.s5.tip.l5"><strong>HTML inline</strong> — las claves <code>data-i18n-html</code> pueden contener balises (<code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;a href="..."&gt;</code>). El sistema valida que las balises están bien fermées en cada lengua.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page88.s6.title">6. Cache Redis : invalidación automática</h2>
+          <p data-i18n="page88.s6.body">Las traducciones están cacheadas en Redis con un TTL de 1h (para minimizar las consultas BD en una app a millones de usuarios). Cuando una traducción es modificada vía la UI admin, el sistema invalida automáticamente las claves cache concernidas. La propagación es immediate para los nuevos requêtes; los usuarios con la app abierta ven el cambio en su próximo refresh de la pantalla.</p>
+        </section>
+
       </div>
 
-      <footer class="page-footer">
-        <nav class="pagination">
-          <a href="32-iniciar-tramite-mobile.html" class="pagination-prev"><span data-i18n="page33.prev">← Anterior: Iniciar trámite</span></a>
-          <a href="34-mis-pagos-mobile.html" class="pagination-next"><span data-i18n="page33.next">Siguiente: Mis pagos (Móvil) →</span></a>
-        </nav>
-        <div class="footer-meta"><span data-i18n="common.footer.copyright">Plataforma Facil · © 2026</span></div>
-      </footer>
+      <nav class="pagination">
+        <a class="pagination-prev" href="87-admin-audit-logs.html" data-i18n="page88.prev">← Anterior: Audit Logs</a>
+        <a class="pagination-next" href="89-admin-workflow-config.html" data-i18n="page88.next">Siguiente: Workflow + Menu Config →</a>
+      </nav>
     </main>
   </div>
-  <script>
-    const toggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (toggle && sidebar && overlay) {
-      toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-      overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-    }
-  </script>
+  <script src="search.js" defer></script>
 </body>
 </html>

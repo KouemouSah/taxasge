@@ -118,7 +118,7 @@ window.__I18N__.fr = {
       "agent_dgt": "Agent DGT",
       "agent_ayuntamiento": "Agent Mairie & Chambre",
       "agent_tesoro": "Agent Trésor",
-      "agent_oms": "Agent MIN OMS",
+      "agent_oms": "Agent OMS (Obligations)",
       "agent_extranjeria": "Agent Extranjería",
       "verify_functions": "Fonctions de vérification",
       "field_work": "Travail terrain OMS",
@@ -660,9 +660,9 @@ window.__I18N__.fr = {
     "next": "Suivant : Agent Ministère OMS →"
   },
   "page66": {
-    "html_title": "Agent Ministère OMS — Manuel Facil",
-    "title": "Agent Ministère Sanidad : licences commerciales et inspections",
-    "description": "Dashboard ministère, consultation entreprises par NIF, gestion licences, tableau d'inspections, démarrage inspection (scan QR), réconciliation cash, conformité par tasa, file d'obligations.",
+    "html_title": "Agent OMS — Manuel Facil",
+    "title": "Agent OMS : traitement post-paiement des obligations bundle",
+    "description": "OMS = Obligation Management System (aucun rapport avec la santé). Module qui traite les obligations bundle après paiement : distribution aux agents tesoro/municipal/chamber/ministères sectoriels, Mode A per-line ou Mode B consolidated polyvalent.",
     "prev": "← Précédent : Agent Tesoro",
     "next": "Suivant : Agent Extranjería →"
   },
@@ -682,10 +682,102 @@ window.__I18N__.fr = {
   },
   "page69": {
     "html_title": "Travail terrain OMS — Manuel Facil",
-    "title": "Travail terrain OMS : inspection sanitaire in situ + mode offline",
-    "description": "Préparation jour, scan QR licence, checklist conformité (10-20 points), perception cash terrain, mode offline MMKV chiffré, synchronisation au retour, réconciliation caisse.",
+    "title": "Travail terrain OMS : inspection commerciale bundle + collection paiements + mode offline",
+    "description": "Inspections commerciales (non sanitaires) pour vérifier les obligations bundle des commerçants et collecter les paiements en attente. Scan QR licence, checklist 7 points commerciale/fiscale, paiement BANGE Mobile Money ou cash, mode offline MMKV AES-256, sync au retour. Lock ordering strict (CLAUDE.md).",
     "prev": "← Précédent : Fonctions Verify",
     "next": "Suivant : Assistant IA Agent →"
+  },
+
+  "page71": {
+    "html_title": "Rôle Superviseur — Manuel Facil",
+    "title": "Rôle Superviseur : encadrer les agents et valider les escalations",
+    "description": "5 responsabilités (escalations, encadrement, KPI, audit, reporting), ASCII workflow escalation, 4 vues dashboard, ré-assignation manuelle, audit log exportable.",
+    "prev": "← Précédent : Assistant IA Agent",
+    "next": "Suivant : Superviseur Tesoro →"
+  },
+  "page72": {
+    "html_title": "Superviseur Tesoro — Manuel Facil",
+    "title": "Superviseur Tesoro Público : le back-office le plus dense",
+    "description": "10 sections : dashboard, équipe agents, réconciliation BANGE, rapports & analytique (IA financière), exports BEAC/SAGE, escalations, vue stratégique entreprises, supervision inspections.",
+    "prev": "← Précédent : Rôle Superviseur",
+    "next": "Suivant : Superviseur Ayuntamiento + Cámara →"
+  },
+  "page73": {
+    "html_title": "Superviseur Ayuntamiento + Cámara — Manuel Facil",
+    "title": "Superviseur Ayuntamiento + Cámara : back-office local",
+    "description": "Dashboard municipal, entreprises locales, licences commerciales, obligations (taxes + cotisations Cámara), inspections municipales légères, comparaison avec Tesoro.",
+    "prev": "← Précédent : Superviseur Tesoro",
+    "next": "Suivant : Superviseur Inspections →"
+  },
+  "page74": {
+    "html_title": "Superviseur Inspections — Manuel Facil",
+    "title": "Superviseur Inspections OMS (Obligation Management System)",
+    "description": "Encadre les agents inspections commerciales bundle terreno (non sanitaires) : valide sanctions > 500K XAF pour obligations vencidas, suspensions temporaires de licence, recours commerçants, monitoring cash temps réel, réconciliation fin de journée.",
+    "prev": "← Précédent : Superviseur Ayuntamiento + Cámara",
+    "next": "Suivant : Rôle Admin →"
+  },
+  "page81": {
+    "html_title": "Rôle Admin — Manuel Facil",
+    "title": "Rôle Admin : configuration globale de la plateforme",
+    "description": "Dashboard global, 9 sections admin (Users+RBAC, Services, Communications, Empresas, Config Système, Audit, Traductions, Workflow Designer, Menu Config), séparation admin fonctionnel/technique, double audit log.",
+    "prev": "← Précédent : Superviseur Inspections",
+    "next": "Suivant : Admin Users + RBAC →"
+  },
+  "page82": {
+    "html_title": "Admin Users + RBAC — Manuel Facil",
+    "title": "Admin Users + RBAC : rôles et permissions granulaires",
+    "description": "10 écrans RBAC, 50+ permissions en 8 familles, rôles standard (citizen, business, accountant, agent_*, supervisor_*, admin), création de rôles personnalisés, reset MFA, suspension de compte.",
+    "prev": "← Précédent : Rôle Admin",
+    "next": "Suivant : Admin Services →"
+  },
+  "page83": {
+    "html_title": "Admin Services — Manuel Facil",
+    "title": "Admin Services : catalogue des 873 services fiscaux",
+    "description": "Catalogue, assistant de création 7 onglets, gestion hiérarchie (21 ministères, 17 secteurs, 100 catégories), modèles documents/procédures, enrichissement IA des descriptions.",
+    "prev": "← Précédent : Admin Users + RBAC",
+    "next": "Suivant : Admin Communications →"
+  },
+  "page84": {
+    "html_title": "Admin Communications — Manuel Facil",
+    "title": "Admin Communications : 5 canaux multi-providers",
+    "description": "Templates Email (32) + SMS + Push + USSD (Getesa, Muni) + WhatsApp Business. Providers configurables (Gmail SMTP, Infobip, FCM/APNs, Meta). Notifications in-app + webhooks entrants.",
+    "prev": "← Précédent : Admin Services",
+    "next": "Suivant : Admin Empresas →"
+  },
+  "page85": {
+    "html_title": "Admin Empresas — Manuel Facil",
+    "title": "Admin Empresas : gestion globale du registre",
+    "description": "Catalogue, fiche détaillée, validation nouveaux registres avec justificatifs, détection et fusion de doublons, suspension administrative, historique et archives PDF.",
+    "prev": "← Précédent : Admin Communications",
+    "next": "Suivant : Admin Config Système →"
+  },
+  "page86": {
+    "html_title": "Admin Config Système — Manuel Facil",
+    "title": "Admin Config Système : configuration technique globale",
+    "description": "AI Agents Gemini, Centre Opératif (monitoring infra), logs système (DEBUG → CRITICAL), traductions techniques, connexions bancaires (BANGE + BNGE + BGFI), mode maintenance.",
+    "prev": "← Précédent : Admin Empresas",
+    "next": "Suivant : Audit Logs →"
+  },
+  "page87": {
+    "html_title": "Audit Logs — Manuel Facil",
+    "title": "Audit Logs : traçabilité complète et conservation 7 ans",
+    "description": "Schema 7 colonnes, chaîne de hash SHA-256 infalsifiable, recherche multi-critères, alertes configurables (login fail, geo anormal, rejets en bloc, montants suspects), export RGPD, rétention 7 ans.",
+    "prev": "← Précédent : Admin Config Système",
+    "next": "Suivant : Admin Traductions →"
+  },
+  "page88": {
+    "html_title": "Admin Traductions — Manuel Facil",
+    "title": "Admin Traductions : ES / FR / EN trilingue",
+    "description": "2 tables (translations + entity_translations), interface CRUD avec édition inline, workflow nouvelle clé / correction, import/export CSV, cache Redis 1h avec invalidation auto.",
+    "prev": "← Précédent : Audit Logs",
+    "next": "Suivant : Workflows + Citas + Entidades →"
+  },
+  "page89": {
+    "html_title": "Workflows + Citas + Entidades — Manuel Facil",
+    "title": "Configuration Workflows, Citas, Entidades et Menús",
+    "description": "36 workflows prédéfinis (read-only), tarifs supplémentaires, gestion citas (horaires + slots + fechas bloqueadas + reglas espera), entités + 17 villes + 34 emplacements, menu config dynamique par rôle.",
+    "prev": "← Précédent : Admin Traductions",
+    "next": "Retour à l'accueil →"
   },
 
   "page59": {
