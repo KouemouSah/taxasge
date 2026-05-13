@@ -159,43 +159,43 @@
               </thead>
               <tbody>
                 <tr>
-                  <td data-i18n="page68.s1.t.r1.c1"><strong>Quién lo usa</strong></td>
+                  <td data-i18n-html="page68.s1.t.r1.c1"><strong>Quién lo usa</strong></td>
                   <td data-i18n="page68.s1.t.r1.c2">Cualquier persona (ciudadano, comerciante, banco)</td>
                   <td data-i18n="page68.s1.t.r1.c3">Agente Tesoro Público autenticado</td>
                   <td data-i18n="page68.s1.t.r1.c4">Agente CNEDOGE autenticado</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r2.c1"><strong>Acceso</strong></td>
+                  <td data-i18n-html="page68.s1.t.r2.c1"><strong>Acceso</strong></td>
                   <td data-i18n="page68.s1.t.r2.c2">Sin login (URL pública /verify)</td>
                   <td data-i18n="page68.s1.t.r2.c3">Login + 2FA + permission validate_payment</td>
                   <td data-i18n="page68.s1.t.r2.c4">Login + permission validate_passport_biometric</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r3.c1"><strong>Input</strong></td>
+                  <td data-i18n-html="page68.s1.t.r3.c1"><strong>Input</strong></td>
                   <td data-i18n="page68.s1.t.r3.c2">QR scan o número de recibo (saisie manuelle)</td>
                   <td data-i18n="page68.s1.t.r3.c3">Identificador de transacción BANGE o número de recibo Tesoro</td>
                   <td data-i18n="page68.s1.t.r3.c4">Número DIP + foto en directo (control biométrico)</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r4.c1"><strong>Output (datos retornados)</strong></td>
+                  <td data-i18n-html="page68.s1.t.r4.c1"><strong>Output (datos retornados)</strong></td>
                   <td data-i18n="page68.s1.t.r4.c2">Mínimo: válido (sí/no) + nombre del servicio + fecha de emisión. Sin datos personales</td>
                   <td data-i18n="page68.s1.t.r4.c3">Detalle completo: importe, datos del ciudadano, modo de pago, todas las transacciones BANGE asociadas, conciliación bancaria</td>
-                  <td data-i18n="page68.s1.t.r4.c4">Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes, antecedentes flagged INTERPOL si match</td>
+                  <td data-i18n="page68.s1.t.r4.c4">Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r5.c1"><strong>Latencia</strong></td>
-                  <td data-i18n="page68.s1.t.r5.c2">&lt; 500 ms (cache Redis)</td>
+                  <td data-i18n-html="page68.s1.t.r5.c1"><strong>Latencia</strong></td>
+                  <td data-i18n-html="page68.s1.t.r5.c2">&lt; 500 ms (cache Redis)</td>
                   <td data-i18n="page68.s1.t.r5.c3">1-3 s (consulta BANGE)</td>
                   <td data-i18n="page68.s1.t.r5.c4">2-5 s (cómputo de matching biométrico)</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r6.c1"><strong>Audit</strong></td>
+                  <td data-i18n-html="page68.s1.t.r6.c1"><strong>Audit</strong></td>
                   <td data-i18n="page68.s1.t.r6.c2">Log mínimo (fecha, IP, código vérifié)</td>
                   <td data-i18n="page68.s1.t.r6.c3">Log completo (agente, fecha, identifier, resultado)</td>
                   <td data-i18n="page68.s1.t.r6.c4">Log completo + retention 7 años obligatoria</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page68.s1.t.r7.c1"><strong>Página dedicada</strong></td>
+                  <td data-i18n-html="page68.s1.t.r7.c1"><strong>Página dedicada</strong></td>
                   <td><a href="57-verificar.html" data-i18n="page68.s1.t.r7.c2">Página 57</a></td>
                   <td data-i18n="page68.s1.t.r7.c3">Esta página (sección 3)</td>
                   <td data-i18n="page68.s1.t.r7.c4">Esta página (sección 4)</td>
@@ -255,7 +255,6 @@
 │   • Fecha nacimiento            • Petición de retoma de foto │
 │   • Estado pasaporte (en        • Si confirma: escalación    │
 │     curso, caducado, etc.)         supervisor + investigación │
-│   • Flag INTERPOL si match                                   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 </pre>

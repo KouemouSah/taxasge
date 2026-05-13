@@ -4508,74 +4508,97 @@ window.__I18N__.es = {
   },
   "page67": {
     "html_title": "Agente Extranjería — Manual Facil",
-    "title": "Agente Extranjería: residencia y autorización de trabajo",
-    "description": "La Dirección de Extranjería gestiona los permisos de residencia y las autorizaciones de trabajo para los extranjeros que viven o quieren trabajar en Guinea Ecuatorial. Las solicitudes son controladas más estrictamente que las de los nacionales (verificación INTERPOL, antecedentes penales, aval profesional), por lo que el flujo incluye varios puntos de control adicionales y un plazo de tratamiento más largo (30 a 60 días según el tipo).",
+    "title": "Agente Extranjería: workflows reales residencia y trámites de visado",
+    "description": "La Dirección General de Extranjería y Fronteras (entidad <code>EXTRANJERIA</code>) gestiona dos familias de trámites en Facil, basadas en la Orden Ministerial 01/2021: <strong>Permisos de Residencia para Extranjeros</strong> (Art. 3 Sección A — 2 sub_types: Primera Vez y Renovación) y <strong>Trámites de Visado</strong> (Art. 3 Sección B — 4 sub_types: Prórroga, Alternativo, Permanencia, Salida con visado vencido). El sistema NO emite el permiso físico (carnet de residencia o sello de visa), ese paso es presencial en la oficina; Facil genera el <em>comprobante de validación de la solicitud</em> y, para residencia, programa la cita en CNEDOGE para la entrega física.",
     "s1": {
-      "title": "1. Tipos de solicitud tratados",
+      "title": "1. Workflows reales gestionados por EXTRANJERIA",
+      "intro": "Dos clases Python concretas implementan estos trámites, registradas en <code>app/modules/service_requests/workflows/extranjeria/</code>:",
       "t": {
-        "h1": "Tipo",
-        "h2": "Para quién",
-        "h3": "Validez",
-        "h4": "SLA",
+        "h1": "Workflow",
+        "h2": "sub_types / códigos",
+        "h3": "Documentos",
+        "h4": "Tarifa principal",
+        "h5": "Cita requerida",
         "r1": {
-          "c1": "Residencia temporal",
-          "c2": "Estudiante, conjoint de national, profesional con contrato &lt; 1 año",
-          "c3": "1 año renovable",
-          "c4": "30 días"
+          "c1": "<code>ResidenciaWorkflow</code> (Primera Vez)",
+          "c3": "13-14 documentos (varía persona física/jurídica)",
+          "c4": "200 000 XAF (Fase 2, vía Nota de Ingreso) + 2 500 XAF stamps (Fase 1: Cédula 1 500 + Póliza 1 000)",
+          "c5": "Sí (CNEDOGE)"
         },
         "r2": {
-          "c1": "Residencia permanente",
-          "c2": "Más de 5 años de residencia continua, conjoint nacional con 3 años de unión, inversor con &gt; 100 M XAF en GE",
-          "c3": "5 años renovable",
-          "c4": "60 días"
+          "c1": "<code>ResidenciaWorkflow</code> (Renovación)",
+          "c3": "11-12 documentos",
+          "c4": "100 000 XAF × años (1, 2 o 5) + 2 500 XAF stamps",
+          "c5": "Sí (CNEDOGE)"
         },
         "r3": {
-          "c1": "Autorización de trabajo",
-          "c2": "Trabajador extranjero contratado por una empresa local",
-          "c3": "Vinculada al contrato de trabajo",
-          "c4": "45 días"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Prórroga",
+          "c3": "4 documentos (instancia + 3 páginas pasaporte)",
+          "c4": "20 000 XAF (1 mes fijo, solo visa LIMITADO en vigor)",
+          "c5": "No"
         },
         "r4": {
-          "c1": "Reagrupación familiar",
-          "c2": "Conjoint y hijos menores de un residente legal en GE",
-          "c3": "Igual al titular",
-          "c4": "60 días"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Alternativo",
+          "c3": "4 documentos",
+          "c4": "20 000 / 40 000 / 80 000 / 600 000 XAF según 3/6/12/24 meses",
+          "c5": "No"
         },
         "r5": {
-          "c1": "Naturalización",
-          "c2": "Residente desde 10 años, dominio del español, sin antecedentes",
-          "c3": "Permanente",
-          "c4": "180 días + decreto presidencial"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Permanencia",
+          "c3": "4 documentos",
+          "c4": "50 000 XAF × número de meses (máx. 12)",
+          "c5": "No"
+        },
+        "r6": {
+          "c1": "<code>TramitesVisadoWorkflow</code> — Salida Vencido",
+          "c3": "4 documentos",
+          "c4": "30 000 XAF × mes de estancia irregular (auto-calculado, penalidad)",
+          "c5": "No"
         }
       }
     },
     "s2": {
-      "title": "2. Workflow específico Extranjería (puntos de control adicionales)",
-      "intro": "A diferencia de los otros agentes, el agente Extranjería realiza tres controles externos obligatorios antes de poder validar:",
-      "diagram": "\n┌────────────────────────────────────────────────────────────────────────┐\n│                                                                        │\n│  Workflow Extranjería (3 controles externos obligatorios)              │\n│                                                                        │\n│  pending_agent_review (cola Extranjería)                               │\n│         │                                                              │\n│         ▼                                                              │\n│  lock_for_review                                                       │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 1 — Documentos de identidad                 │               │\n│  │  • Pasaporte país de origen en validez (mín. 6 meses)│              │\n│  │  • Visa actual o salvoconducto consular             │               │\n│  │  • Foto carnet                                      │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 2 — Verificación INTERPOL ★                  │              │\n│  │  • Búsqueda en base internacional de antecedentes   │               │\n│  │  • Si match : escalada automática al supervisor      │              │\n│  │  • Si nada : continuación del flow                  │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 3 — Antecedentes país de origen ★            │              │\n│  │  • Certificado país de origen, traducido y visado    │              │\n│  │  • Para algunos países: legalización vía embajada    │              │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Control 4 — Aval profesional/familiar (según tipo) ★ │              │\n│  │  • Trabajo: contrato visado por Ministerio Trabajo   │              │\n│  │  • Estudiante: inscripción universitaria             │              │\n│  │  • Conjoint: acta de matrimonio + DIP del conjoint  │              │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  approve / reject (motivo obligatorio) / escalate                      │\n│                                                                        │\n│  ★ = control no presente en los otros agentes                          │\n│                                                                        │\n└────────────────────────────────────────────────────────────────────────┘\n"
+      "title": "2. ResidenciaWorkflow: las 2 fases reales",
+      "intro": "El workflow de residencia se divide en dos fases consecutivas, separadas por el control administrativo en Extranjería. El campo <code>con_nota_ingreso</code> (definido en el step 0 SELECTION) determina la fase activa. La Nota de Ingreso es el documento oficial emitido por Extranjería <strong>tras validar la Fase 1</strong>, que autoriza el pago principal en Fase 2.",
+      "diagram": "┌─────────────────────────────────────────────────────────────────────────┐\n│ ResidenciaWorkflow — flujo real (2 fases, vérifié contra residencia_*) │\n├─────────────────────────────────────────────────────────────────────────┤\n│                                                                         │\n│  FASE 1 (con_nota_ingreso=false): Dossier completo → stamps             │\n│                                                                         │\n│  Step 0  selection: solicitud_type (EXPEDICION/RENOVACION) +            │\n│                     persona_type (física/jurídica) + con_nota=false     │\n│  Step 1  upload_documents: 13-14 docs (CEMAC condition aplicada)        │\n│  Step 2  form_review_1: pasaporte + sello entrada o residencia previa   │\n│  Step 3  form_review_2: datos profesionales/empresa (persona jurídica)  │\n│  Step 4  form_review_3: buena_conducta, antecedentes, NIF/autorización  │\n│  Step 5  appointment: cita en Extranjería                               │\n│  Step 6  stamp_payment: Cédula Personal 1 500 + Póliza 1 000 = 2 500    │\n│  Step 7  payment: Fase 1 stamps payment                                 │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Validación Extranjería (off-platform)                      │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Emisión de la Nota de Ingreso (papel oficial)              │\n│                                                                         │\n│  ─────────────────────────────────────────────────────                  │\n│                                                                         │\n│  FASE 2 (con_nota_ingreso=true): Nota + identidad → pago CNEDOGE        │\n│                                                                         │\n│  Step 8   upload_nota: Nota de Ingreso (scan) + documento identidad     │\n│  Step 9   form_review_nota: verificación OCR del importe Nota           │\n│  Step 10  appointment_cnedoge: cita CNEDOGE (entrega presencial)        │\n│  Step 11  payment_phase2: 200 000 XAF (EXPEDICION) o                    │\n│                          100 000 × años (RENOVACION)                    │\n│  Step 12  confirmation: resumen + agent_checklist                       │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Comprobante de validación de solicitud (PDF Facil)         │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Cita presencial CNEDOGE → entrega física del permiso       │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘"
     },
     "s3": {
-      "title": "3. Casos sensibles que obligan a escalar",
-      "intro": "El agente Extranjería debe usar <code>escalate</code> sin dudar en los siguientes casos:",
-      "l1": "<strong>Match INTERPOL</strong> — incluso parcial, debe ser revisado por el supervisor (puede ser homonimia)",
-      "l2": "<strong>Procedencia de un país sancionado</strong> — la lista oficial actualizada está en el menú <em>«Países sensibles»</em>",
-      "l3": "<strong>Reagrupación familiar con un residente con antecedentes</strong> — el supervisor decide si los antecedentes del titular impactan la solicitud",
-      "l4": "<strong>Documento sospechoso de falsificación</strong> — si el OCR detecta inconsistencias, escalación obligatoria",
-      "l5": "<strong>Solicitud de naturalización</strong> — sistemáticamente escalada (decisión final ministerial, no del agente)"
+      "title": "3. Reglas CEMAC: documentos exigibles según nacionalidad",
+      "intro": "La constante <code>CEMAC_COUNTRY_CODES</code> del workflow contiene 6 países (Comunidad Económica y Monetaria de África Central): Camerún (CMR), República Centroafricana (CAF), Congo Brazzaville (COG), Gabón (GAB), Guinea Ecuatorial (GNQ — excluido por regla <code>nacionalidad_extranjero</code>) y Chad (TCD). Sus nacionales <strong>no necesitan visado</strong> pero su entrada debe ser inferior a 90 días (regla <code>cemac_90_dias</code>, warning si excede). Los no-CEMAC <strong>deben aportar un visado válido</strong> (<code>VISADO_GQ_V1</code>) — solo aplicable para EXPEDICION (primera vez).",
+      "info": {
+        "title": "Validaciones del workflow (11 reglas reales)",
+        "body": "Las reglas verifican: <code>entrada_legal_fecha</code> (fecha extraída del sello), <code>cemac_90_dias</code>, <code>visado_requerido</code> (no-CEMAC), <code>nacionalidad_extranjero</code>, <code>residencia_renovable</code> (vence en &lt;90 días para RENOVACION), <code>nombres_coherentes</code> (matching pasaporte vs residencia anterior, distancia Levenshtein), <code>solvencia_resultado</code> (warning si NO_SOLVENTE), <code>buena_conducta_resultado</code>, <code>antecedentes_resultado</code> (error si POSITIVO/HAS_CONVICTIONS), <code>nota_amount_coherent</code> (Fase 2), <code>nota_expired</code>."
+      }
     },
     "s4": {
-      "title": "4. Generación del título de residencia",
-      "body": "Tras la validación, el sistema genera un título de residencia físico (carnet plástico) que el ciudadano debe retirar en la oficina de Extranjería en presencia (toma biométrica complementaria : huellas + foto). El sistema convoca automáticamente al ciudadano por email + SMS con la cita propuesta. La presencia es obligatoria; ningún título puede enviarse por correo o por intermediario."
+      "title": "4. Schemas OCR utilizados (12 documentos vérifiables)",
+      "body": "Los documentos del expediente se validan con schemas OCR en <code>app/modules/service_requests/schemas/</code>: <code>PASAPORTE_INTERNATIONAL_V1</code>, <code>SELLO_ENTRADA_GQ_V1</code> (página de sello con fecha y aeropuerto), <code>PERMISO_RESIDENCIA_GQ_V1</code> (renovación), <code>CERTIFICADO_NIF_GQ_V1</code> (persona jurídica), <code>AUTORIZACION_GUBERNATIVA_GQ_V1</code>, <code>CERTIFICADO_BUENA_CONDUCTA_GQ_V1</code>, <code>EXTRAIT_CASIER_JUDICIAIRE_INTERNATIONAL_V1</code> (primera vez), <code>ANTECEDENTES_PENALES_GQ_V1</code> (renovación), <code>SOLVENCIA_TRIBUTARIA_GQ_V1</code>, <code>ATESTACION_BANCARIA_GQ_V1</code>, <code>PERMISO_TRABAJO_GQ_V1</code>, <code>VISADO_GQ_V1</code> (no-CEMAC)."
     },
     "s5": {
-      "title": "5. Renovación: el flujo simplificado",
-      "body": "Cuando el residente renueva su título antes del vencimiento (anticipo recomendado de 60 días), el flow es más rápido: solo los controles 1 (documentos) y 2 (INTERPOL) se rehacen, los controles 3 y 4 se omiten salvo cambio de situación (nuevo trabajo, nuevo conjoint). Esta simplificación reduce el plazo a 15-20 días en lugar de 30-60."
+      "title": "5. Lo que Facil genera (y lo que NO genera)",
+      "warn": {
+        "title": "Facil NO emite el permiso físico",
+        "body": "Contrariamente a una impresión frecuente, el sistema <strong>no genera el carnet de residencia</strong> ni el sello físico del visado. Esos documentos se entregan presencialmente en la oficina de Extranjería o CNEDOGE el día de la cita programada. Lo que Facil emite son <em>comprobantes electrónicos de trámite</em> que el solicitante presenta en su cita (y conserva como prueba del depósito)."
+      },
+      "body": "Documentos generados automáticamente por Facil (vía <code>summary_pdf_service.py</code>):",
+      "l1": "<strong>Comprobante de validación de la solicitud</strong> (PDF) — al final del workflow, contiene número de solicitud (<code>SRV-2026-XXXXX</code>), datos del solicitante, sub_type, documentos depositados, fecha y código de verificación QR. Sirve como <em>justificante de depósito</em>.",
+      "l2": "<strong>Recibo del pago de stamps</strong> (Fase 1 residencia, 2 500 XAF) — formato <code>REC-2026-XXXXX</code>, generado tras el pago BANGE Mobile Money o cash.",
+      "l3": "<strong>Recibo del pago principal</strong> (Fase 2 residencia 200K/100K, o trámite de visado) — mismo formato, separado del stamps.",
+      "l4": "<strong>Convocatoria de cita</strong> (residencia: Fase 1 en Extranjería, Fase 2 en CNEDOGE) — email + SMS automáticos con fecha, hora y dirección."
     },
     "s6": {
-      "title": "6. Particularidad: ningún screenshot disponible",
+      "title": "6. Acciones disponibles para el agente Extranjería",
+      "intro": "El agente Extranjería accede a la cola de solicitudes en estado <code>pending_agent_review</code> de los workflows mencionados. Las acciones genéricas (<code>lock_for_review</code>, <code>approve</code>, <code>reject</code>, <code>request_documents</code>, <code>escalate</code>) están documentadas en la <a href=\"61-rol-agente.html\">página 61</a>. Las particularidades de Extranjería:",
+      "l1": "<strong>Validación condicional</strong> — antes de <code>approve</code>, el agente revisa los resultados OCR de los 12 schemas (algunos opcionales según persona física/jurídica y CEMAC/no-CEMAC).",
+      "l2": "<strong>Rechazo motivado</strong> — los motivos válidos (campo <code>rejection_reason</code>) son: documento ilegible, datos incoherentes, antecedentes positivos, solvencia negativa (persona jurídica), nota de ingreso expirada, importe nota incoherente con tarifa.",
+      "l3": "<strong>Doble cita (residencia)</strong> — Fase 1 implica una primera cita en Extranjería para validación de originales y entrega de la Nota; Fase 2 implica una segunda cita en CNEDOGE para entrega del carnet.",
+      "l4": "<strong>Trámites de visado sin cita</strong> — los 4 sub_types de <code>TramitesVisadoWorkflow</code> (<code>requires_appointment=False</code>) no requieren cita presencial; la regularización ocurre por correspondencia con la entidad."
+    },
+    "s7": {
+      "title": "7. Aviso honestidad documental",
       "info": {
-        "title": "Por qué no hay capturas en esta página",
-        "body": "A diferencia de las páginas 63-66, esta página describe el agente Extranjería de forma textual porque la integración Facil + Extranjería está aún en fase de despliegue piloto en mayo 2026. Las pantallas concretas serán añadidas en una versión ulterior del manual cuando el back-office esté generalizado. Los flujos descritos aquí son sin embargo conformes a las especificaciones validadas con la Dirección de Extranjería."
+        "title": "Lo que NO existe en el código (mayo 2026)",
+        "body": "A diferencia de descripciones genéricas circulando sobre la plataforma, el workflow real de Extranjería <strong>no contempla actualmente</strong>: verificación INTERPOL automatizada, naturalización (decreto presidencial fuera del scope Facil), categorías «residencia temporal» vs «residencia permanente» (el código solo distingue PRIMERA_VEZ y RENOVACION según Art. 3.A.1 y Art. 3.A.2), reagrupación familiar como sub_type distinto, ni lista de países sancionados gestionada por Facil. Si alguno de estos puntos se añade en una versión futura, esta página será actualizada conforme al código."
       }
     },
     "prev": "← Anterior: Agente Ministerio OMS",
@@ -4614,7 +4637,7 @@ window.__I18N__.es = {
           "c1": "<strong>Output (datos retornados)</strong>",
           "c2": "Mínimo: válido (sí/no) + nombre del servicio + fecha de emisión. Sin datos personales",
           "c3": "Detalle completo: importe, datos del ciudadano, modo de pago, todas las transacciones BANGE asociadas, conciliación bancaria",
-          "c4": "Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes, antecedentes flagged INTERPOL si match"
+          "c4": "Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes"
         },
         "r5": {
           "c1": "<strong>Latencia</strong>",
@@ -4658,7 +4681,7 @@ window.__I18N__.es = {
       "intro": "El agente CNEDOGE (ver <a href=\"62-agente-cnedoge.html\">página 62</a>) usa esta variante en dos contextos:",
       "l1": "<strong>Cita biométrica de un nuevo pasaporte</strong> — verifica que la persona presente coincide con la del DIP suministrado (% de matching foto-DIP, mínimo 95% para validación)",
       "l2": "<strong>Control de identidad in situ</strong> — un agente fronterizo o policial puede pedir esta verificación si sospecha de un pasaporte falso (caso raro, requiere autorización jerárquica)",
-      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ Verify CNEDOGE — flujo de control biométrico                │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: número DIP + foto en directo (cámara)               │\n│                       │                                     │\n│                       ▼                                     │\n│  Recuperación foto biométrica de la base CNEDOGE             │\n│                       │                                     │\n│                       ▼                                     │\n│  Cómputo de matching (algoritmo facial recognition)          │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validado                     ✗ Rechazado                │\n│   • Nombre + apellidos          • Motivo: similarity bajo   │\n│   • Fecha nacimiento            • Petición de retoma de foto │\n│   • Estado pasaporte (en        • Si confirma: escalación    │\n│     curso, caducado, etc.)         supervisor + investigación │\n│   • Flag INTERPOL si match                                   │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
+      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ Verify CNEDOGE — flujo de control biométrico                │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: número DIP + foto en directo (cámara)               │\n│                       │                                     │\n│                       ▼                                     │\n│  Recuperación foto biométrica de la base CNEDOGE             │\n│                       │                                     │\n│                       ▼                                     │\n│  Cómputo de matching (algoritmo facial recognition)          │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validado                     ✗ Rechazado                │\n│   • Nombre + apellidos          • Motivo: similarity bajo   │\n│   • Fecha nacimiento            • Petición de retoma de foto │\n│   • Estado pasaporte (en        • Si confirma: escalación    │\n│     curso, caducado, etc.)         supervisor + investigación │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
     },
     "s5": {
       "title": "5. Por qué tres Verify y no una sola?",

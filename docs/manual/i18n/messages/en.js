@@ -4853,74 +4853,97 @@ window.__I18N__.en = {
   },
   "page67": {
     "html_title": "Immigration Agent — Facil Manual",
-    "title": "Immigration Agent: residence and work authorisation",
-    "description": "The Immigration office manages residence permits and work authorisations for foreigners living in or wishing to work in Equatorial Guinea. Requests are scrutinised more strictly than those from nationals (INTERPOL check, criminal record, professional sponsor), so the flow includes several additional checkpoints and a longer processing time (30 to 60 days depending on the type).",
+    "title": "Immigration Agent: real workflows for residence and visa procedures",
+    "description": "The Directorate-General of Immigration and Borders (entity <code>EXTRANJERIA</code>) handles two families of procedures in Facil, based on Orden Ministerial 01/2021: <strong>Residence Permits for Foreigners</strong> (Art. 3 Section A — 2 sub_types: First Time and Renewal) and <strong>Visa Procedures</strong> (Art. 3 Section B — 4 sub_types: Extension, Alternative, Stay, Exit with expired visa). The system does NOT issue the physical permit (residence card or visa stamp); that step happens in person at the office. Facil produces the <em>filing receipt for the request</em> and, for residence, schedules the CNEDOGE appointment for the physical handover.",
     "s1": {
-      "title": "1. Types of request handled",
+      "title": "1. Real workflows handled by EXTRANJERIA",
+      "intro": "Two concrete Python classes implement these procedures, registered under <code>app/modules/service_requests/workflows/extranjeria/</code>:",
       "t": {
-        "h1": "Type",
-        "h2": "For whom",
-        "h3": "Validity",
-        "h4": "SLA",
+        "h1": "Workflow",
+        "h2": "sub_types / codes",
+        "h3": "Documents",
+        "h4": "Main fee",
+        "h5": "Appointment required",
         "r1": {
-          "c1": "Temporary residence",
-          "c2": "Student, national's spouse, professional with contract &lt; 1 year",
-          "c3": "1 year, renewable",
-          "c4": "30 days"
+          "c1": "<code>ResidenciaWorkflow</code> (First Time)",
+          "c3": "13-14 documents (varies for natural/legal person)",
+          "c4": "200,000 XAF (Phase 2, via Nota de Ingreso) + 2,500 XAF stamps (Phase 1: Cédula 1,500 + Póliza 1,000)",
+          "c5": "Yes (CNEDOGE)"
         },
         "r2": {
-          "c1": "Permanent residence",
-          "c2": "More than 5 years of continuous residence, spouse of a national with 3 years of union, investor with &gt; 100 M XAF in GE",
-          "c3": "5 years, renewable",
-          "c4": "60 days"
+          "c1": "<code>ResidenciaWorkflow</code> (Renewal)",
+          "c3": "11-12 documents",
+          "c4": "100,000 XAF × years (1, 2 or 5) + 2,500 XAF stamps",
+          "c5": "Yes (CNEDOGE)"
         },
         "r3": {
-          "c1": "Work authorisation",
-          "c2": "Foreign worker hired by a local company",
-          "c3": "Tied to the employment contract",
-          "c4": "45 days"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Extension",
+          "c3": "4 documents (instance + 3 passport pages)",
+          "c4": "20,000 XAF (1 month fixed, only LIMITADO visa in force)",
+          "c5": "No"
         },
         "r4": {
-          "c1": "Family reunification",
-          "c2": "Spouse and minor children of a legal resident in GE",
-          "c3": "Same as the holder",
-          "c4": "60 days"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Alternative",
+          "c3": "4 documents",
+          "c4": "20,000 / 40,000 / 80,000 / 600,000 XAF for 3/6/12/24 months",
+          "c5": "No"
         },
         "r5": {
-          "c1": "Naturalisation",
-          "c2": "Resident for 10 years, fluent in Spanish, no criminal record",
-          "c3": "Permanent",
-          "c4": "180 days + presidential decree"
+          "c1": "<code>TramitesVisadoWorkflow</code> — Stay (Permanencia)",
+          "c3": "4 documents",
+          "c4": "50,000 XAF × number of months (max. 12)",
+          "c5": "No"
+        },
+        "r6": {
+          "c1": "<code>TramitesVisadoWorkflow</code> — Expired-Visa Exit",
+          "c3": "4 documents",
+          "c4": "30,000 XAF × month of irregular stay (auto-calculated, penalty)",
+          "c5": "No"
         }
       }
     },
     "s2": {
-      "title": "2. Immigration-specific workflow (additional checkpoints)",
-      "intro": "Unlike other agents, the Immigration agent performs three mandatory external checks before being able to approve:",
-      "diagram": "\n┌────────────────────────────────────────────────────────────────────────┐\n│                                                                        │\n│  Immigration workflow (3 mandatory external checks)                    │\n│                                                                        │\n│  pending_agent_review (Immigration queue)                              │\n│         │                                                              │\n│         ▼                                                              │\n│  lock_for_review                                                       │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Check 1 — Identity documents                        │               │\n│  │  • Origin-country passport valid (min. 6 months)    │               │\n│  │  • Current visa or consular safe-conduct            │               │\n│  │  • ID photo                                         │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Check 2 — INTERPOL verification ★                   │               │\n│  │  • Search in international criminal-record database │               │\n│  │  • If match: automatic escalation to supervisor     │               │\n│  │  • If nothing: flow continues                       │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Check 3 — Origin-country criminal record ★          │               │\n│  │  • Origin-country certificate, translated and visaed│               │\n│  │  • For some countries: embassy legalisation         │               │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  ┌─────────────────────────────────────────────────────┐               │\n│  │ Check 4 — Professional/family sponsor (per type) ★  │               │\n│  │  • Work: contract endorsed by Ministry of Labour    │               │\n│  │  • Student: university enrolment                    │               │\n│  │  • Spouse: marriage certificate + spouse DIP        │              │\n│  └─────────────────────────────────────────────────────┘               │\n│         │                                                              │\n│         ▼                                                              │\n│  approve / reject (mandatory reason) / escalate                        │\n│                                                                        │\n│  ★ = check not present in other agents                                 │\n│                                                                        │\n└────────────────────────────────────────────────────────────────────────┘\n"
+      "title": "2. ResidenciaWorkflow: the two real phases",
+      "intro": "The residence workflow is split into two consecutive phases, separated by the administrative check at Immigration. The <code>con_nota_ingreso</code> field (set at step 0 SELECTION) determines the active phase. The Nota de Ingreso is the official paper document issued by Immigration <strong>after Phase 1 is validated</strong>, authorising the main payment in Phase 2.",
+      "diagram": "┌─────────────────────────────────────────────────────────────────────────┐\n│ ResidenciaWorkflow — real flow (2 phases, verified against residencia_*)│\n├─────────────────────────────────────────────────────────────────────────┤\n│                                                                         │\n│  PHASE 1 (con_nota_ingreso=false): full dossier → stamps                │\n│                                                                         │\n│  Step 0  selection: solicitud_type (EXPEDICION/RENOVACION) +            │\n│                     persona_type (natural/legal) + con_nota=false       │\n│  Step 1  upload_documents: 13-14 docs (CEMAC condition applies)         │\n│  Step 2  form_review_1: passport + entry stamp or previous residence    │\n│  Step 3  form_review_2: professional/company data (legal person)        │\n│  Step 4  form_review_3: buena_conducta, criminal record, NIF/auth.      │\n│  Step 5  appointment: Immigration office appointment                    │\n│  Step 6  stamp_payment: Cédula Personal 1,500 + Póliza 1,000 = 2,500    │\n│  Step 7  payment: Phase 1 stamps payment                                │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Immigration validation (off-platform)                      │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Issuance of the Nota de Ingreso (official paper)           │\n│                                                                         │\n│  ─────────────────────────────────────────────────────                  │\n│                                                                         │\n│  PHASE 2 (con_nota_ingreso=true): nota + ID → CNEDOGE payment           │\n│                                                                         │\n│  Step 8   upload_nota: Nota de Ingreso (scan) + ID document             │\n│  Step 9   form_review_nota: OCR verification of the nota amount         │\n│  Step 10  appointment_cnedoge: CNEDOGE appointment (physical handover)  │\n│  Step 11  payment_phase2: 200,000 XAF (EXPEDICION) or                   │\n│                           100,000 × years (RENOVACION)                  │\n│  Step 12  confirmation: summary + agent_checklist                       │\n│                       │                                                 │\n│                       ▼                                                 │\n│              Filing receipt for the request (Facil PDF)                 │\n│                       │                                                 │\n│                       ▼                                                 │\n│              In-person CNEDOGE appointment → physical permit handover   │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘"
     },
     "s3": {
-      "title": "3. Sensitive cases that must be escalated",
-      "intro": "The Immigration agent must use <code>escalate</code> without hesitation in the following cases:",
-      "l1": "<strong>INTERPOL match</strong> — even partial, must be reviewed by the supervisor (could be a namesake)",
-      "l2": "<strong>Origin from a sanctioned country</strong> — the official up-to-date list is in the <em>\"Sensitive countries\"</em> menu",
-      "l3": "<strong>Family reunification with a resident with a criminal record</strong> — the supervisor decides whether the holder's record impacts the request",
-      "l4": "<strong>Document suspected of forgery</strong> — if OCR detects inconsistencies, escalation is mandatory",
-      "l5": "<strong>Naturalisation request</strong> — systematically escalated (final ministerial decision, not the agent's)"
+      "title": "3. CEMAC rules: documents required by nationality",
+      "intro": "The workflow constant <code>CEMAC_COUNTRY_CODES</code> contains 6 countries (Central African Economic and Monetary Community): Cameroon (CMR), Central African Republic (CAF), Congo Brazzaville (COG), Gabon (GAB), Equatorial Guinea (GNQ — excluded by the <code>nacionalidad_extranjero</code> rule) and Chad (TCD). Their nationals <strong>do not need a visa</strong> but their entry must be under 90 days (rule <code>cemac_90_dias</code>, warning if exceeded). Non-CEMAC nationals <strong>must provide a valid visa</strong> (<code>VISADO_GQ_V1</code>) — applies only to EXPEDICION (first time).",
+      "info": {
+        "title": "Workflow validations (11 real rules)",
+        "body": "Rules verify: <code>entrada_legal_fecha</code> (date extracted from the stamp), <code>cemac_90_dias</code>, <code>visado_requerido</code> (non-CEMAC), <code>nacionalidad_extranjero</code>, <code>residencia_renovable</code> (expires within &lt;90 days for RENOVACION), <code>nombres_coherentes</code> (passport vs previous residence match, Levenshtein distance), <code>solvencia_resultado</code> (warning if NO_SOLVENTE), <code>buena_conducta_resultado</code>, <code>antecedentes_resultado</code> (error if POSITIVO/HAS_CONVICTIONS), <code>nota_amount_coherent</code> (Phase 2), <code>nota_expired</code>."
+      }
     },
     "s4": {
-      "title": "4. Generation of the residence permit",
-      "body": "After validation, the system generates a physical residence permit (plastic card) that the citizen must pick up at the Immigration office in person (additional biometric capture: fingerprints + photo). The system automatically books the citizen by email + SMS with the proposed appointment. Attendance is mandatory; no permit can be sent by mail or via an intermediary."
+      "title": "4. OCR schemas used (12 verifiable documents)",
+      "body": "Dossier documents are validated through OCR schemas in <code>app/modules/service_requests/schemas/</code>: <code>PASAPORTE_INTERNATIONAL_V1</code>, <code>SELLO_ENTRADA_GQ_V1</code> (stamp page with date and airport), <code>PERMISO_RESIDENCIA_GQ_V1</code> (renewal), <code>CERTIFICADO_NIF_GQ_V1</code> (legal person), <code>AUTORIZACION_GUBERNATIVA_GQ_V1</code>, <code>CERTIFICADO_BUENA_CONDUCTA_GQ_V1</code>, <code>EXTRAIT_CASIER_JUDICIAIRE_INTERNATIONAL_V1</code> (first time), <code>ANTECEDENTES_PENALES_GQ_V1</code> (renewal), <code>SOLVENCIA_TRIBUTARIA_GQ_V1</code>, <code>ATESTACION_BANCARIA_GQ_V1</code>, <code>PERMISO_TRABAJO_GQ_V1</code>, <code>VISADO_GQ_V1</code> (non-CEMAC)."
     },
     "s5": {
-      "title": "5. Renewal: the simplified flow",
-      "body": "When the resident renews their permit before expiry (recommended 60 days ahead), the flow is faster: only checks 1 (documents) and 2 (INTERPOL) are redone; checks 3 and 4 are skipped unless circumstances changed (new job, new spouse). This simplification reduces the time to 15-20 days instead of 30-60."
+      "title": "5. What Facil produces (and what it does NOT)",
+      "warn": {
+        "title": "Facil does NOT issue the physical permit",
+        "body": "Contrary to a common assumption, the system <strong>does not generate the residence card</strong> nor the physical visa stamp. Those documents are handed over in person at the Immigration office or CNEDOGE on the scheduled appointment day. What Facil issues are <em>electronic procedure receipts</em> that the applicant presents at the appointment (and keeps as proof of filing)."
+      },
+      "body": "Documents automatically generated by Facil (via <code>summary_pdf_service.py</code>):",
+      "l1": "<strong>Filing receipt for the request</strong> (PDF) — at the end of the workflow; contains the request number (<code>SRV-2026-XXXXX</code>), the applicant's data, the sub_type, the documents submitted, the date and a QR verification code. Serves as <em>proof of filing</em>.",
+      "l2": "<strong>Stamps payment receipt</strong> (Phase 1 residence, 2,500 XAF) — format <code>REC-2026-XXXXX</code>, generated after BANGE Mobile Money or cash payment.",
+      "l3": "<strong>Main payment receipt</strong> (Phase 2 residence 200K/100K, or visa procedure) — same format, separate from the stamps receipt.",
+      "l4": "<strong>Appointment notice</strong> (residence: Phase 1 at Immigration, Phase 2 at CNEDOGE) — automatic email + SMS with date, time and address."
     },
     "s6": {
-      "title": "6. Note: no screenshots available",
+      "title": "6. Actions available to the Immigration agent",
+      "intro": "The Immigration agent accesses the queue of requests in state <code>pending_agent_review</code> for the workflows above. Generic actions (<code>lock_for_review</code>, <code>approve</code>, <code>reject</code>, <code>request_documents</code>, <code>escalate</code>) are documented on <a href=\"61-rol-agente.html\">page 61</a>. Immigration specifics:",
+      "l1": "<strong>Conditional validation</strong> — before <code>approve</code>, the agent reviews the OCR results from the 12 schemas (some optional based on natural/legal person and CEMAC/non-CEMAC).",
+      "l2": "<strong>Motivated rejection</strong> — valid reasons (<code>rejection_reason</code> field) are: illegible document, inconsistent data, positive criminal record, negative solvency (legal person), expired Nota de Ingreso, nota amount inconsistent with the fee.",
+      "l3": "<strong>Double appointment (residence)</strong> — Phase 1 entails a first appointment at Immigration to validate originals and hand over the Nota; Phase 2 entails a second appointment at CNEDOGE to hand over the residence card.",
+      "l4": "<strong>Visa procedures with no appointment</strong> — the 4 sub_types of <code>TramitesVisadoWorkflow</code> (<code>requires_appointment=False</code>) do not require an in-person visit; settlement happens through correspondence with the entity."
+    },
+    "s7": {
+      "title": "7. Documentation honesty note",
       "info": {
-        "title": "Why there are no screenshots on this page",
-        "body": "Unlike pages 63-66, this page describes the Immigration agent textually because the Facil + Immigration integration is still in its pilot rollout phase in May 2026. The actual screens will be added in a later version of the manual once the back-office is generalised. The flows described here are however compliant with the specifications validated with the Immigration office."
+        "title": "What does NOT exist in the code (May 2026)",
+        "body": "Contrary to generic descriptions circulating about the platform, the actual Immigration workflow <strong>does not currently include</strong>: automated INTERPOL verification, naturalisation (presidential decree out of Facil's scope), \"temporary residence\" vs \"permanent residence\" categories (the code only distinguishes PRIMERA_VEZ and RENOVACION per Art. 3.A.1 and Art. 3.A.2), family reunification as a separate sub_type, nor a sanctioned-countries list managed by Facil. If any of those points is added in a future version, this page will be updated to match the code."
       }
     },
     "prev": "← Previous: OMS ministerial agent",
@@ -4959,7 +4982,7 @@ window.__I18N__.en = {
           "c1": "<strong>Output (returned data)</strong>",
           "c2": "Minimal: valid (yes/no) + service name + issue date. No personal data",
           "c3": "Full detail: amount, citizen data, payment method, all related BANGE transactions, bank reconciliation",
-          "c4": "Photo-to-DIP match (% similarity), holder data, passport history, INTERPOL flags if match"
+          "c4": "Photo-to-DIP match (% similarity), holder data, passport history"
         },
         "r5": {
           "c1": "<strong>Latency</strong>",
@@ -5003,7 +5026,7 @@ window.__I18N__.en = {
       "intro": "The CNEDOGE agent (see <a href=\"62-agente-cnedoge.html\">page 62</a>) uses this variant in two contexts:",
       "l1": "<strong>Biometric appointment for a new passport</strong> — verifies that the person present matches the DIP submitted (% photo-DIP match, minimum 95% for validation)",
       "l2": "<strong>On-site identity check</strong> — a border or police agent can request this verification if they suspect a forged passport (rare case, requires hierarchical authorisation)",
-      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ CNEDOGE Verify — biometric check flow                       │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: DIP number + live photo (camera)                    │\n│                       │                                     │\n│                       ▼                                     │\n│  Retrieve biometric photo from CNEDOGE database              │\n│                       │                                     │\n│                       ▼                                     │\n│  Matching compute (facial-recognition algorithm)             │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validated                    ✗ Rejected                 │\n│   • First and last names         • Reason: low similarity   │\n│   • Date of birth                • Request to retake photo   │\n│   • Passport status (valid,      • If confirmed: escalate    │\n│     expired, etc.)                 supervisor + investigate   │\n│   • INTERPOL flag if match                                   │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
+      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ CNEDOGE Verify — biometric check flow                       │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: DIP number + live photo (camera)                    │\n│                       │                                     │\n│                       ▼                                     │\n│  Retrieve biometric photo from CNEDOGE database              │\n│                       │                                     │\n│                       ▼                                     │\n│  Matching compute (facial-recognition algorithm)             │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validated                    ✗ Rejected                 │\n│   • First and last names         • Reason: low similarity   │\n│   • Date of birth                • Request to retake photo   │\n│   • Passport status (valid,      • If confirmed: escalate    │\n│     expired, etc.)                 supervisor + investigate   │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
     },
     "s5": {
       "title": "5. Why three Verify functions and not one?",
