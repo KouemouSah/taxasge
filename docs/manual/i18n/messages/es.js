@@ -4605,95 +4605,87 @@ window.__I18N__.es = {
     "next": "Siguiente: Funciones Verify (3 variantes) →"
   },
   "page68": {
-    "html_title": "Funciones Verify (3 variantes) — Manual Facil",
-    "title": "Las 3 variantes de la función Verify",
-    "description": "La función «Verify» en Facil tiene tres formas distintas, según quién la usa y para qué. Las tres comparten un mismo principio (verificar la autenticidad de un documento o de una transacción) pero difieren radicalmente por el scope, los datos accesibles y los permisos requeridos. Esta página las describe en paralelo para evitar las confusiones que causaban tickets de soporte recurrentes.",
+    "html_title": "Funciones Verify — Manual Facil",
+    "title": "Funciones Verify: 4 endpoints públicos HMAC + Verify agentes",
+    "description": "Facil expone 4 endpoints de verificación <strong>públicos</strong> (sin autenticación, protegidos por token HMAC-SHA256 incrustado en el código QR) más 2 funciones de verificación reservadas a agentes autenticados. Esta página describe la realidad del módulo <code>app/modules/payments/api/verify_routes.py</code> (públicos) y de los endpoints agente en <code>inspections/api/inspection_routes.py</code> y <code>verified_identifiers/api/verified_identifiers_routes.py</code>. Cada endpoint tiene su propio scope, su propio formato de input y su propia respuesta — todos están listados a continuación.",
     "s1": {
-      "title": "1. Tabla comparativa de las 3 Verify",
+      "title": "1. Los 4 endpoints públicos de verificación HMAC",
+      "intro": "Los 4 endpoints comparten el mismo principio : una entrada (número de recibo, referencia de solicitud, ID de licencia, número de certificado) + un token HMAC <code>t</code> que viene del código QR impreso en el documento original. Sin token válido, la verificación falla. El HMAC se calcula con el secret <code>RECEIPT_VERIFICATION_SECRET</code> (o <code>JWT_SECRET_KEY</code> en fallback), nunca con <code>SECRET_KEY</code> (que se regenera en cada deploy).",
       "t": {
-        "h1": "Aspecto",
-        "h2": "Verify Público",
-        "h3": "Verify Treasury",
-        "h4": "Verify CNEDOGE",
+        "h1": "Endpoint",
+        "h2": "Para qué",
+        "h3": "Input",
+        "h4": "Output principal",
         "r1": {
-          "c1": "<strong>Quién lo usa</strong>",
-          "c2": "Cualquier persona (ciudadano, comerciante, banco)",
-          "c3": "Agente Tesoro Público autenticado",
-          "c4": "Agente CNEDOGE autenticado"
+          "c2": "Verificar una solicitud (estado, cita, importe)",
+          "c3": "<code>reference</code> tipo <code>SRV-2026-XXXXX</code> + token HMAC (16 hex)",
+          "c4": "workflow_name, status, status_label, cita_date, cita_time, appointment_location, payment_amount, currency"
         },
         "r2": {
-          "c1": "<strong>Acceso</strong>",
-          "c2": "Sin login (URL pública /verify)",
-          "c3": "Login + 2FA + permission validate_payment",
-          "c4": "Login + permission validate_passport_biometric"
+          "c2": "Verificar un recibo de pago (anti-fraude)",
+          "c3": "<code>receipt_number</code> tipo <code>REC-2025-XXXXX</code> + token HMAC",
+          "c4": "amount, currency, payment_method, paid_at, payer_name, workflow_code, entity_code, validated_by, validated_at"
         },
         "r3": {
-          "c1": "<strong>Input</strong>",
-          "c2": "QR scan o número de recibo (saisie manuelle)",
-          "c3": "Identificador de transacción BANGE o número de recibo Tesoro",
-          "c4": "Número DIP + foto en directo (control biométrico)"
+          "c2": "Verificar una licencia comercial bundle",
+          "c3": "<code>license_ref</code> tipo <code>LIC-2026-A1B2C3D4</code> + token + UUID de licencia",
+          "c4": "company_name, nif, regimen_fiscal, bundle_name, commerce_type, fiscal_year, status, obligations_total/paid, compliance_score"
         },
         "r4": {
-          "c1": "<strong>Output (datos retornados)</strong>",
-          "c2": "Mínimo: válido (sí/no) + nombre del servicio + fecha de emisión. Sin datos personales",
-          "c3": "Detalle completo: importe, datos del ciudadano, modo de pago, todas las transacciones BANGE asociadas, conciliación bancaria",
-          "c4": "Coincidencia foto-DIP (% similarity), datos del titular, historial de pasaportes"
-        },
-        "r5": {
-          "c1": "<strong>Latencia</strong>",
-          "c2": "&lt; 500 ms (cache Redis)",
-          "c3": "1-3 s (consulta BANGE)",
-          "c4": "2-5 s (cómputo de matching biométrico)"
-        },
-        "r6": {
-          "c1": "<strong>Audit</strong>",
-          "c2": "Log mínimo (fecha, IP, código vérifié)",
-          "c3": "Log completo (agente, fecha, identifier, resultado)",
-          "c4": "Log completo + retention 7 años obligatoria"
-        },
-        "r7": {
-          "c1": "<strong>Página dedicada</strong>",
-          "c2": "Página 57",
-          "c3": "Esta página (sección 3)",
-          "c4": "Esta página (sección 4)"
+          "c2": "Verificar un certificado de licencia (HMAC reforzado, solo si <code>status='complete'</code>)",
+          "c3": "<code>certificate_number</code> + token (24 hex) + UUID de licencia",
+          "c4": "company_name, representante_legal, registration_number, commerce_type, zone_code, city_name, fiscal_year, total_amount, completed_at"
         }
+      },
+      "info": {
+        "title": "Sin autenticación: cómo se protege la confidencialidad",
+        "body": "Como los 4 endpoints son públicos, su único contrôle es el token HMAC del QR. Sin QR (o sin un token correcto), la respuesta es siempre <code>valid: false</code>. Esto previene la enumeración: un atacante no puede iterar <code>REC-2026-00001</code>, <code>00002</code>... para descubrir recibos válidos, porque cada uno requiere su propio token específico calculado con el secret servidor."
       }
     },
     "s2": {
-      "title": "2. Verify Público — recapitulación",
-      "body": "La variante pública está cubierta en detalle en la <a href=\"57-verificar.html\">página 57</a>. Su característica clave es la confidencialidad: cualquier persona puede verificar un recibo sin login, pero la respuesta no expone ningún dato personal del ciudadano (solo «sí, este recibo es válido + nombre del servicio + fecha»). Esto evita los riesgos de scraping de datos personales por parte de actores malintencionados."
+      "title": "2. Página pública /verify para los ciudadanos",
+      "body": "El frontend expone una página pública en <code>/verify/{receiptNumber}?t=...</code> que llama a estos endpoints. Cuando un ciudadano escanea el QR de su recibo (o de la licencia bundle de un comerciante), el navegador carga directamente esta página con el token preinscrito. Detalle completo en la <a href=\"57-verificar.html\">página 57</a>. Esta variante es la única <strong>pensada para los ciudadanos</strong> y los terceros (comerciantes, bancos) que quieren verificar la autenticidad de un documento."
     },
     "s3": {
-      "title": "3. Verify Treasury — para reconciliación bancaria",
-      "intro": "El agente del Tesoro Público (ver <a href=\"65-agente-tesoro.html\">página 65</a>) usa esta variante cuando el webhook BANGE ha fallado y necesita reconciliar manualmente un pago. El acceso requiere autenticación 2FA + el permiso explícito <code>validate_payment</code>.",
-      "usecase": {
-        "title": "Caso de uso típico",
-        "l1": "Un ciudadano paga sus tasas de pasaporte vía BANGE Mobile Money (40.000 XAF).",
-        "l2": "El SMS de confirmación BANGE llega al ciudadano pero el webhook a Facil no se ha producido (red caída, problema técnico).",
-        "l3": "La solicitud queda en estado <code>pending_agent_review</code> con el mensaje «pago no recibido».",
-        "l4": "El ciudadano contacta al soporte aportando su SMS BANGE.",
-        "l5": "El agente Tesoro abre Verify Treasury, busca con el identificador de transacción BANGE (presente en el SMS).",
-        "l6": "Si la transacción existe en BANGE, valida manualmente el pago. La solicitud pasa a <code>approved_by_agent</code>."
+      "title": "3. Verify agente terreno OMS: scan QR + búsqueda NIF",
+      "intro": "El agente OMS sobre el terreno (ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) dispone de un endpoint distinto, NO público : <code>GET /api/v1/inspections/verify</code>. Este endpoint requiere autenticación + permiso <code>inspection.create</code> + rate-limit (30 req/min/agente, OWASP A04, anti-enumeración NIF).",
+      "input": {
+        "title": "Input",
+        "body": "El agente fournit <strong>uno</strong> de los tres identificadores (mutuamente exclusivos): <code>license_id</code> (UUID, lectura QR licencia), <code>nif</code> (formato <code>GExxxxx</code>) o <code>registration_number</code> (formato <code>PE-xxxxxx</code>). Es así cuando el QR del establecimiento está deteriorado, el agente puede buscar manualmente por NIF."
+      },
+      "output": {
+        "title": "Output",
+        "body": "Datos enriquecidos de la licencia bundle: la empresa, su tier de obligaciones (Tesoro/Municipal/Cámara/Sectorial), todas las obligaciones de la licencia (incluso las ya pagadas), los importes calculados, y para cada obligación: si el agente puede collectarla en el terreno o no (regla controlada por <code>verify_license_for_agent</code>)."
       }
     },
     "s4": {
-      "title": "4. Verify CNEDOGE — control biométrico de pasaporte",
-      "intro": "El agente CNEDOGE (ver <a href=\"62-agente-cnedoge.html\">página 62</a>) usa esta variante en dos contextos:",
-      "l1": "<strong>Cita biométrica de un nuevo pasaporte</strong> — verifica que la persona presente coincide con la del DIP suministrado (% de matching foto-DIP, mínimo 95% para validación)",
-      "l2": "<strong>Control de identidad in situ</strong> — un agente fronterizo o policial puede pedir esta verificación si sospecha de un pasaporte falso (caso raro, requiere autorización jerárquica)",
-      "diagram": "\n┌─────────────────────────────────────────────────────────────┐\n│ Verify CNEDOGE — flujo de control biométrico                │\n├─────────────────────────────────────────────────────────────┤\n│                                                             │\n│  Input: número DIP + foto en directo (cámara)               │\n│                       │                                     │\n│                       ▼                                     │\n│  Recuperación foto biométrica de la base CNEDOGE             │\n│                       │                                     │\n│                       ▼                                     │\n│  Cómputo de matching (algoritmo facial recognition)          │\n│                       │                                     │\n│       ┌───────────────┴───────────────┐                     │\n│       ▼                               ▼                     │\n│   match >= 95%                   match < 95%                │\n│       │                               │                     │\n│       ▼                               ▼                     │\n│   ✓ Validado                     ✗ Rechazado                │\n│   • Nombre + apellidos          • Motivo: similarity bajo   │\n│   • Fecha nacimiento            • Petición de retoma de foto │\n│   • Estado pasaporte (en        • Si confirma: escalación    │\n│     curso, caducado, etc.)         supervisor + investigación │\n│                                                             │\n└─────────────────────────────────────────────────────────────┘\n"
+      "title": "4. Verify identidad de un DIP (agentes verified_identifiers)",
+      "intro": "El módulo <code>verified_identifiers</code> expone un conjunto de endpoints reservados a los agentes con permiso <code>service_request.verify_manually</code>. Estos endpoints sirven para <strong>marcar como verificado</strong> un identificador (DIP, registro mercantil, NIF, etc.) tras haber controlado el documento original presentado por el ciudadano.",
+      "body": "La verificación es <em>declarativa</em> : el agente afirma haber controlado el documento físico (o el scan certificado), y firma la decisión en el sistema. Esta firma incluye el identificador del agente, la fecha, una nota opcional y eventualmente una foto-prueba. <strong>No hay matching biométrico automatizado</strong> entre la foto del ciudadano presente y la foto biométrica de la base: el control de identidad es responsabilidad del agente, no del algoritmo.",
+      "info": {
+        "title": "Captura biométrica vs reconocimiento facial",
+        "body": "Los workflows de pasaporte o carnet de funcionario incluyen un step «cita biométrica» en una oficina CNEDOGE (ver <code>carnet_workflow.py</code>, step 4 «Appointment (biometric capture)»). Este step significa que el ciudadano debe presentarse físicamente para que su pasaporte/carnet sea producido con sus datos biométricos reales (huellas + foto). <strong>No es un control de identidad por reconocimiento facial automatizado</strong> en el momento de un trámite Facil. La validación de la identidad permanece manual y presencial."
+      }
     },
     "s5": {
-      "title": "5. Por qué tres Verify y no una sola?",
-      "body": "La separación viene de un imperativo de seguridad: cada variante tiene un nivel de exposición distinto. La Verify Público debe ser accesible a todos sin login (escenario fronterizo, caja de un comerciante), por lo que retorna mínimo información. La Verify Treasury accede a datos bancarios sensibles, requiere 2FA. La Verify CNEDOGE accede a fotografías biométricas, requiere un permiso adicional y un audit log de 7 años. Combinar las tres en una sola endpoint expondría los datos sensibles a usuarios no autorizados."
+      "title": "5. Por qué esta separación pública/agente",
+      "body": "Los 4 endpoints públicos permiten a un ciudadano o tercero <strong>auto-verificar</strong> un documento (un recibo, una licencia, un certificado) sin pasar por un funcionario. Esto evita los falsos documentos y reduce el flujo en las oficinas. Los endpoints agente, por su parte, permiten <strong>aumentar el contexto operativo</strong> (un agente OMS sobre el terreno necesita ver el detalle bundle completo de una licencia, no solo «¿es válido?»). La separación previene también que un atacante con un endpoint público acceda a datos personales sensibles: el endpoint <code>request</code> público no expone el nombre del solicitante, mientras que la consulta agente de una solicitud expone los datos completos."
     },
     "s6": {
       "title": "6. Errores comunes y cómo evitarlos",
       "warn": {
         "title": "Tickets de soporte recurrentes",
-        "l1": "<strong>«El comerciante me dice que mi recibo no es válido»</strong> — el comerciante usa Verify Público (correcto). Si la verify retorna inválido, contactar el agente Tesoro para una Verify Treasury manual.",
-        "l2": "<strong>«No puedo acceder a Verify Treasury»</strong> — solo accesible a los agentes Tesoro. Los otros agentes (DGT, OMS…) no la ven en su menú.",
-        "l3": "<strong>«Verify CNEDOGE devuelve un % bajo aunque la persona es la titular»</strong> — la calidad de la cámara o las condiciones de luz pueden afectar el matching. Repetir la toma con buena iluminación. Si persiste, escalación al supervisor para una verificación manual."
+        "l1": "<strong>«El comerciante me dice que mi recibo no es válido»</strong> — verifique que escanea el código QR completo (no solo el número de recibo). El token HMAC <code>t</code> está en el QR, sin él la verificación falla siempre.",
+        "l2": "<strong>«El agente OMS no encuentra mi licencia con el NIF»</strong> — el NIF debe ser exactamente el formato <code>GExxxxx</code> o el registro <code>PE-xxxxxx</code>. Espacios o errores de tipeo causan «not found». Pedir al ciudadano que muestre su QR de licencia o que confirme el formato exacto.",
+        "l3": "<strong>«El agente CNEDOGE quiere comparar mi foto presente con la foto del DIP»</strong> — esto es un <em>control visual humano</em>, no un algoritmo automatizado. El agente compara directamente las dos imágenes (la del DIP escaneado/presentado y la del ciudadano presente), y firma su decisión. Es responsabilidad del agente, no del sistema.",
+        "l4": "<strong>«¿Por qué la verificación pública no me muestra el nombre del comprador?»</strong> — protección de la privacidad. Los endpoints públicos retornan el mínimo necesario para constatar la autenticidad (importe, fecha, servicio). Los datos personales solo aparecen vía agente autenticado."
+      }
+    },
+    "s7": {
+      "title": "7. Aviso honestidad documental",
+      "info": {
+        "title": "Lo que NO existe en el código (mayo 2026)",
+        "body": "A diferencia de descripciones genéricas previas, el módulo Verify de Facil <strong>no incluye actualmente</strong> : reconocimiento facial automatizado (no hay <code>facial_recognition</code> en el código), matching biométrico foto-DIP por algoritmo, scoring de similarity en % entre dos fotos, permission <code>validate_passport_biometric</code> (inventada, no registrada), permission <code>validate_payment</code> (inventada, las verdaderas son <code>service_request.verify_manually</code> y <code>inspection.create</code>), variante «Verify Treasury» con 2FA específica (la 2FA está al nivel del login del agente, no del endpoint), retention obligatoria 7 años distinta de la política general de audit_logs. Las verificaciones biométricas reales (toma de huellas + foto) ocurren en presencial sobre la cita CNEDOGE de los workflows pasaporte/carnet, no vía un endpoint Verify dedicado."
       }
     },
     "prev": "← Anterior: Agente Extranjería",
