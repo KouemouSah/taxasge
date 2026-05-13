@@ -1,0 +1,67 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Auto-assignment d'un dossier à un agent (multi-criteria scoring)
+%% Statut: IMPLEMENTÉ (avec LLM-augmented routing en feature flag)
+%% Référence code: packages/backend/app/modules/assignment/services/
+%%   - auto_assignment_service.py
+%%   - rules_engine.py
+%%   - llm_routing_service.py
+%% Tables: assignments, agent_workloads, agent_work_queue, agent_workflow_proficiency
+%% ==========================================================================
+flowchart TD
+    Start([Trigger — nouveau dossier à assigner]) --> Input
+
+    Input[Inputs: item_id, item_type, workflow_code, entity_code, entity_location_id, complexity_score]
+    Input --> Resolve{Entity resolved?}
+    Resolve -->|entity_code fourni| EntityCode[Lookup entity_id depuis entities table]
+    Resolve -->|workflow_code seul| Workflow[Lookup entity via workflow_code fallback]
+    EntityCode --> Available
+    Workflow --> Available
+
+    Available[get_available_agents — filtre entity_id + entity_location_id + max_workload_pct]
+    Available --> CheckAvail{Agents disponibles?}
+    CheckAvail -->|Aucun| LogWarn[Log WARNING + return None]
+    LogWarn --> EndKO([Fin — pas d assignation])
+
+    CheckAvail -->|Oui| Rules[RulesEngine.select_best_agent]
+    Rules --> RuleHit{Règle explicite trouvée?}
+    RuleHit -->|Oui| Selected[agent_profile_id sélectionné]
+    RuleHit -->|Non| Score[Multi-criteria scoring]
+
+    subgraph Scoring_Algorithm
+      Score --> S1[1. Workload 30 pct — capacity_percentage inversé]
+      S1 --> S2[2. Success rate 25 pct — success_rate proficiency]
+      S2 --> S3[3. Specialization 20 pct — workflow in agent.specializations]
+      S3 --> S4[4. Site match 15 pct — entity_location_id égal]
+      S4 --> S5[5. Speed 10 pct — avg_processing_hours inversé]
+      S5 --> Total[Score total = somme pondérée]
+      Total --> Penalty{complexity ≥ seuil ET success_rate < seuil?}
+      Penalty -->|Oui| Underperf[Penalty * ANOMALY_UNDERPERFORMER_PENALTY]
+      Penalty -->|Non| Sort
+      Underperf --> Sort
+      Sort[Tri par score DESC, tie-breaker current_assignments ASC]
+    end
+
+    Sort --> LLMCheck{Gap top1-top2 < threshold ET FEATURE_LLM_ROUTING?}
+    LLMCheck -->|Oui| LLM[LLMRoutingService — Gemini contextual reasoning]
+    LLMCheck -->|Non| Selected
+    LLM --> LLMPick{LLM accepte top1?}
+    LLMPick -->|Oui| Selected
+    LLMPick -->|Non, override| LLMOverride[agent_profile_id = LLM choice]
+    LLMOverride --> Selected
+
+    Selected --> CreateAss[INSERT assignments method=AUTO]
+    CreateAss --> SyncQueue[UPDATE agent_work_queue SET assigned_to = user_id]
+    SyncQueue --> UpdLoad[UPDATE agent_workloads.current_assignments + 1]
+    UpdLoad --> Notif[EventBus + notification agent + email]
+    Notif --> End([Fin — agent assigné])
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style EndKO fill:#FFD700
+    style Resolve fill:#FFA500
+    style CheckAvail fill:#FFA500
+    style RuleHit fill:#FFA500
+    style Penalty fill:#FFA500
+    style LLMCheck fill:#FFA500
+    style LLMPick fill:#FFA500
+    style LLM fill:#E6E6FA

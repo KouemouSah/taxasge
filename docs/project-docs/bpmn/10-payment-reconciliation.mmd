@@ -1,0 +1,95 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Réconciliation Trésor (matching automatique transactions bancaires ↔ paiements)
+%% Statut: IMPLEMENTÉ (treasury_reconciliation_service avec scoring SQL LATERAL JOIN)
+%% Référence code: packages/backend/app/modules/service_requests/services/
+%%   - treasury_reconciliation_service.py
+%%   - treasury_anomaly_service.py
+%%   - treasury_analyst_service.py
+%% Tables: bank_transactions, service_payments, payment_validation_audit
+%% Algo scoring SQL: 100 pts ref exacte / 80 pts montant exact / 60 pts ±1% same day / 40 pts ±5% ±3j
+%% Auto-match threshold: ≥ 80 pts
+%% ==========================================================================
+flowchart TD
+    Start([Cron quotidien — POST /cron/treasury-reconciliation]) --> FetchBank
+
+    subgraph Source_Bancaire
+      FetchBank[Import bank_transactions via webhook BANGE/Ecobank/Mastercard ou CSV manuel]
+      FetchBank --> Filter[Filter status=unreconciled + date < J-30]
+    end
+
+    subgraph Scoring_SQL
+      Filter --> Scoring[SQL LATERAL JOIN — top 10 candidats par bank_transaction]
+      Scoring --> CalcScore[Calcul score par paire]
+      CalcScore --> S100{Référence exacte?}
+      S100 -->|Oui| Pts100[+100 pts — bank_reference == payment_reference]
+      S100 -->|Non| S80
+      S80{Montant + currency exact?}
+      S80 -->|Oui| Pts80[+80 pts]
+      S80 -->|Non| S60
+      S60{Montant ±1% ET same day?}
+      S60 -->|Oui| Pts60[+60 pts]
+      S60 -->|Non| S40
+      S40{Montant ±5% ET ±3j?}
+      S40 -->|Oui| Pts40[+40 pts]
+      S40 -->|Non| Pts0[0 pts — ignoré]
+
+      Pts100 --> Top3
+      Pts80 --> Top3
+      Pts60 --> Top3
+      Pts40 --> Top3
+      Top3[ROW_NUMBER PARTITION BY transaction LIMIT 3]
+    end
+
+    subgraph Auto_Match_Decision
+      Top3 --> Threshold{Top1 score ≥ 80?}
+      Threshold -->|Oui — auto-match| AutoMatch[UPDATE bank_transactions.service_payment_id]
+      Threshold -->|Non — manuel| ToManual[INSERT reconciliation_candidates pour analyste]
+
+      AutoMatch --> UpdSP[UPDATE service_payments status=completed + workflow_status=completed]
+      UpdSP --> UpdSR[UPDATE service_requests status=PAID]
+      UpdSR --> Audit[INSERT payment_validation_audit method=auto_match + score]
+      Audit --> EventBus[EventBus.PAYMENT_RECONCILED]
+      EventBus --> Notif[Email contribuable + génération reçu PDF + vault]
+    end
+
+    subgraph Manual_Review_Treasury
+      ToManual --> AnalystUI[Affichage candidats top3 dans dashboard analyste Trésor]
+      AnalystUI --> AnalystDec{Décision analyste?}
+      AnalystDec -->|Match top1| ManualMatch[Match manuel + score raison]
+      AnalystDec -->|Match autre| AltMatch[Sélection candidat alternatif]
+      AnalystDec -->|Aucun match| Investigate[Investigation — flag anomalie]
+      AnalystDec -->|Doublon banque| MarkDup[Mark duplicate transaction]
+
+      ManualMatch --> UpdSP
+      AltMatch --> UpdSP
+      Investigate --> Anomaly[treasury_anomaly_service détection patterns]
+      Anomaly --> AlertSup[Alerte superviseur Trésor + email]
+      MarkDup --> EndDup([Fin — doublon ignoré])
+    end
+
+    subgraph Anomaly_Detection
+      Anomaly --> A1[Pattern 1: montants identiques répétés < 5min]
+      Anomaly --> A2[Pattern 2: bank_transaction sans payment correspondant > 30j]
+      Anomaly --> A3[Pattern 3: payment validé mais pas de bank_transaction]
+      Anomaly --> A4[Pattern 4: écart de change suspect]
+      A1 --> RaiseFlag[Raise anomaly_flag dans dashboard]
+      A2 --> RaiseFlag
+      A3 --> RaiseFlag
+      A4 --> RaiseFlag
+    end
+
+    Notif --> End([Fin — paiement réconcilié])
+    AlertSup --> EndAnom([Fin — escalade anomalie])
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style EndAnom fill:#FF6B6B
+    style EndDup fill:#FFD700
+    style Threshold fill:#FFA500
+    style AnalystDec fill:#FFA500
+    style S100 fill:#FFA500
+    style S80 fill:#FFA500
+    style S60 fill:#FFA500
+    style S40 fill:#FFA500
+    style Scoring fill:#E6E6FA
+    style CalcScore fill:#E6E6FA

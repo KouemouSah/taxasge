@@ -1,0 +1,149 @@
+%% C4 — Niveau 3 (Components) — Backend Facil
+%% Zoom dans le container "Backend Services" : 31 modules métier groupés par domaine
+%% Source : packages/backend/app/modules/ (ls verified 2026-05-11)
+%% Référence : https://c4model.com
+
+flowchart TB
+    APIIn["📥 FastAPI Gateway<br/>31 routers registered<br/>app/main.py"]:::gateway
+
+    %% Domaine 1 — Identité & Sécurité
+    subgraph Identity["🛡️ Identité, Auth, RBAC (5 modules)"]
+        ModAuth["🔐 auth<br/>JWT + 2FA TOTP + bcrypt<br/>sessions / refresh_tokens"]
+        ModUsers["👥 users<br/>CRUD comptes + profils<br/>device_tokens (FCM)"]
+        ModPerm["🗝️ permissions<br/>50+ permissions RBAC<br/>role_permissions / overrides"]
+        ModVerified["✅ verified_identifiers<br/>email / phone verification<br/>+ pending_registrations"]
+        ModLegal["📜 legal<br/>CGU / RGPD-like / disclosure<br/>multilingue"]
+    end
+
+    %% Domaine 2 — Catalogue de services
+    subgraph Catalog["📚 Catalogue & Référentiels (6 modules)"]
+        ModFiscalSvc["💼 fiscal_services<br/>850+ services + 28 types declarations<br/>service_keywords + categories"]
+        ModCities["🏙️ cities<br/>Districts + provinces GE<br/>Geo IDs"]
+        ModEntLoc["📍 entity_locations<br/>Sites physiques agents<br/>+ Routing site scope"]
+        ModTranslations["🌐 translations<br/>i18n unified table<br/>ENUMs / UI / forms"]
+        ModHomepage["🏠 homepage<br/>Sections dynamiques<br/>+ user_favorites"]
+        ModEnrich["✨ enrichment<br/>Données enrichies catalogue<br/>+ recherche sémantique"]
+    end
+
+    %% Domaine 3 — Workflow Core
+    subgraph WorkflowCore["⚙️ Workflow Core (4 modules)"]
+        ModServReq["📋 service_requests<br/>WorkflowEngine + 28 workflows<br/>+ gemini_document_processor"]
+        ModDecl["📊 declarations<br/>20+ types fiscaux GE<br/>+ workflow_transitions"]
+        ModAssign["🎯 assignment<br/>Auto-assignment 5-criteria<br/>+ LLM tie-breaker"]
+        ModBatch["📦 batch_requests<br/>Imports massifs Excel<br/>import_batches / items"]
+    end
+
+    %% Domaine 4 — Treasury & Paiement
+    subgraph Treasury["💰 Trésor & Paiements (3 modules)"]
+        ModPayments["💳 payments<br/>Gateways BANGE/Ecobank/MC/USSD<br/>+ processors + receipts PDF"]
+        ModTreasury["📥 treasury<br/>Réconciliation auto<br/>+ anomaly detection"]
+        ModInspect["🛂 inspections<br/>Field collection 100+ agents<br/>+ Lock ordering canonique"]
+    end
+
+    %% Domaine 5 — Documents & IA
+    subgraph DocAI["📄 Documents & IA (3 modules)"]
+        ModDocs["📑 documents<br/>OCR Tesseract + queue<br/>+ form_templates"]
+        ModUserDocs["📂 user_documents<br/>Vault citoyen<br/>+ verify_token + QR"]
+        ModChatbot["💬 chatbot<br/>RAG Gemini + pgvector<br/>README_RAG.md détails"]
+    end
+
+    %% Domaine 6 — Communication & Support
+    subgraph Comms["📡 Communication & Support (3 modules)"]
+        ModComms["📨 communications<br/>Email/SMS/Push/USSD/WA<br/>communication_provider_settings"]
+        ModWebhooks["🔗 webhooks<br/>Webhook entrants + log<br/>webhook_configurations"]
+        ModSupport["🎫 support<br/>Tickets + messages + catégories<br/>+ attachments"]
+    end
+
+    %% Domaine 7 — Companies & Funcionario
+    subgraph Companies["🏢 Companies & Fonction publique (3 modules)"]
+        ModCompanies["🏢 companies<br/>CRUD entreprises<br/>+ user_company_roles"]
+        ModAccount["🧮 accountant<br/>Cabinets comptables<br/>+ délégations"]
+        ModFunc["👔 funcionario<br/>Workflows fonction publique<br/>5 types funcionario_*"]
+    end
+
+    %% Domaine 8 — Agents & Dashboards
+    subgraph Operations["🎛️ Opérations agents & supervision (4 modules)"]
+        ModAgents["👮 agents<br/>agent_profiles + workloads<br/>+ workflow_proficiency"]
+        ModDashboards["📊 dashboards<br/>Widgets par rôle<br/>+ Looker MV wrappers"]
+        ModMenuConf["🧭 menu_config<br/>Workflow-based ou JSON<br/>+ workflow_menu_mapping"]
+        ModAdmin["⚙️ admin<br/>RBAC config + audit_log review<br/>+ system_rules dynamic"]
+    end
+
+    %% Module transverse
+    ModShared["🔧 shared<br/>Utilitaires transverses<br/>(non métier)"]:::shared
+
+    %% Core cross-cutting (pas un module mais cité)
+    subgraph CoreCC["🔩 Core cross-cutting"]
+        Cache["app/core/cache.py<br/>HybridCache 5 instances"]
+        AICore["app/core/ai_telemetry.py<br/>+ ai_security.py"]
+        Sched["app/core/scheduler.py<br/>cron registration"]
+        Secrets["app/core/secrets.py<br/>Google Secret Manager"]
+        ReqTel["app/core/request_telemetry_middleware.py<br/>pure ASGI sampling"]
+        GeoIP["app/core/geoip.py<br/>MaxMind GeoLite2"]
+        UAParser["app/core/user_agent_parser.py<br/>lru_cache 4096"]
+    end
+
+    %% Connexions API → modules par domaine
+    APIIn --> Identity
+    APIIn --> Catalog
+    APIIn --> WorkflowCore
+    APIIn --> Treasury
+    APIIn --> DocAI
+    APIIn --> Comms
+    APIIn --> Companies
+    APIIn --> Operations
+
+    %% Dépendances inter-modules clés
+    ModServReq -->|"orchestrate"| ModAssign
+    ModServReq -->|"upload + extract"| ModDocs
+    ModServReq -->|"trigger payment"| ModPayments
+    ModInspect -->|"lock ordering<br/>FOR UPDATE root"| ModPayments
+    ModInspect -->|"close obligations"| ModServReq
+    ModPayments -->|"webhook events"| ModTreasury
+    ModDecl -->|"auto-assign"| ModAssign
+    ModAssign -.->|"LLM tie-breaker"| AICore
+    ModDocs -.->|"Gemini processor"| AICore
+    ModChatbot -.->|"RAG + embeddings"| AICore
+    ModComms -.->|"templates"| ModAuth
+    ModAuth -->|"verify"| ModVerified
+    ModUsers -->|"permissions"| ModPerm
+    ModCompanies -->|"roles"| ModUsers
+    ModAccount -->|"délégation"| ModCompanies
+    ModFunc -->|"workflows"| ModServReq
+    ModAdmin -->|"config dynamique"| ModPerm
+    ModAdmin -->|"menu config"| ModMenuConf
+    ModDashboards -->|"widgets"| ModAgents
+    ModBatch -->|"imports"| ModFiscalSvc
+
+    %% Cross-cutting connections
+    Identity -.-> Cache
+    WorkflowCore -.-> Cache
+    Catalog -.-> Cache
+    APIIn -.-> ReqTel
+    ReqTel -.-> GeoIP
+    ReqTel -.-> UAParser
+    APIIn -.-> Secrets
+    WorkflowCore -.-> Sched
+
+    %% Styling
+    classDef gateway fill:#1168BD,stroke:#0B4884,color:#fff
+    classDef identity fill:#08427B,stroke:#052E56,color:#fff
+    classDef catalog fill:#62A5C0,stroke:#3B7A93,color:#fff
+    classDef wf fill:#438DD5,stroke:#2E6295,color:#fff
+    classDef treasury fill:#2D936C,stroke:#1A6048,color:#fff
+    classDef docai fill:#E6E6FA,stroke:#9B6CCC,color:#333
+    classDef comms fill:#F2A23B,stroke:#C57E1F,color:#fff
+    classDef companies fill:#9B6CCC,stroke:#6F4A99,color:#fff
+    classDef ops fill:#C25450,stroke:#823633,color:#fff
+    classDef shared fill:#666666,stroke:#333333,color:#fff
+    classDef core fill:#FFB6C1,stroke:#C25C75,color:#333
+
+    class ModAuth,ModUsers,ModPerm,ModVerified,ModLegal identity
+    class ModFiscalSvc,ModCities,ModEntLoc,ModTranslations,ModHomepage,ModEnrich catalog
+    class ModServReq,ModDecl,ModAssign,ModBatch wf
+    class ModPayments,ModTreasury,ModInspect treasury
+    class ModDocs,ModUserDocs,ModChatbot docai
+    class ModComms,ModWebhooks,ModSupport comms
+    class ModCompanies,ModAccount,ModFunc companies
+    class ModAgents,ModDashboards,ModMenuConf,ModAdmin ops
+    class Cache,AICore,Sched,Secrets,ReqTel,GeoIP,UAParser core

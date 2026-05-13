@@ -1,0 +1,140 @@
+%% État machine GLOBAL d'un dossier Facil (vue agrégée multi-workflow)
+%% Couvre service_request + tax_declaration + service_payment + assignment + appointment
+%% De la soumission citoyen à l'archivage / recours
+
+stateDiagram-v2
+    [*] --> Idle: Citoyen / Business connecté
+
+    state "📝 Initiation" as Init {
+        Idle --> Drafting: Démarrage wizard
+        Drafting --> Drafting: Auto-save partielle
+        Drafting --> ValidationLocal: Soumission préliminaire
+        ValidationLocal --> Drafting: Erreurs Pydantic
+    }
+
+    state "🏛️ Timbres fiscaux" as Stamps {
+        ValidationLocal --> Stamping: requires_timbres == true
+        Stamping --> StampsPaying: Choix paiement timbres
+        StampsPaying --> StampsPaid: Webhook OK
+        StampsPaying --> StampsFailed: Webhook KO
+        StampsFailed --> Stamping: Retry citoyen
+    }
+
+    state "📨 Soumission" as Submission {
+        ValidationLocal --> Submitted: requires_timbres == false
+        StampsPaid --> Submitted: Auto
+        Submitted --> AutoAssigning: EventBus déclenche AutoAssignmentService
+    }
+
+    state "🎯 Assignment + Queue" as Routing {
+        AutoAssigning --> Assigned: Match agent_profile<br/>(location scope absolu)
+        AutoAssigning --> WaitingPool: Aucun agent disponible<br/>(visible supervisor)
+        WaitingPool --> Assigned: Supervisor assigne manuel
+        Assigned --> InReview: Agent ouvre dossier<br/>(locks par assignment)
+    }
+
+    state "👁️ Revue agent" as Review {
+        InReview --> DocsRequested: Docs manquants<br/>(work_queue=waiting_documents)
+        DocsRequested --> ReUploaded: Citoyen ré-upload
+        ReUploaded --> InReview: Auto
+        InReview --> Approved: Décision OK
+        InReview --> Rejected: Décision KO
+        InReview --> Escalated: Doute / complexité
+        Escalated --> SupervisorReview: Supervisor prend
+        SupervisorReview --> Approved: Validé
+        SupervisorReview --> Rejected: Rejeté
+        SupervisorReview --> AdminReview: Escalation 2e niveau
+    }
+
+    state "💰 Paiement principal" as Payment {
+        Approved --> NotaIngresoPending: requires_nota_ingreso
+        NotaIngresoPending --> NotaUploaded: Upload citoyen
+        NotaUploaded --> PaymentPending: Validation auto
+        Approved --> PaymentPending: !requires_nota_ingreso
+        PaymentPending --> PaymentProcessing: Paiement initié
+        PaymentProcessing --> Paid: Webhook BANGE/Ecobank OK
+        PaymentProcessing --> PaymentFailed: Webhook KO ou timeout
+        PaymentFailed --> PaymentPending: Retry citoyen
+        PaymentProcessing --> PaymentExpired: > 30 min sans webhook
+    }
+
+    state "📅 Rendez-vous" as Appointment {
+        Paid --> CitaScheduled: requires_appointment
+        Paid --> InProgress: !requires_appointment
+        CitaScheduled --> InProgress: Citoyen présent
+        CitaScheduled --> Expired: No-show + délai
+    }
+
+    state "🎁 Exécution + Délivrance" as Execution {
+        InProgress --> DocumentGenerated: Agent émet document
+        DocumentGenerated --> PDFInVault: Firebase upload<br/>+ register_document_in_vault
+        PDFInVault --> NotifiedCitizen: Email + push<br/>+ verify_token
+        NotifiedCitizen --> Completed: Citoyen consulte
+    }
+
+    state "💼 Réconciliation Trésor" as Recon {
+        Paid --> AwaitingReconciliation: bank_transactions reçue
+        AwaitingReconciliation --> ReconciledAuto: Score >= 80 pts
+        AwaitingReconciliation --> ReconciledManual: Score < 80<br/>analyste valide
+        AwaitingReconciliation --> Anomaly: Pattern 1-4 détecté
+        Anomaly --> ReconciledManual: Analyste résout
+        Anomaly --> WriteOffNeeded: Supervisor décide
+    }
+
+    state "⚖️ Recours (PLANIFIÉ V1.1)" as Appeals {
+        Rejected --> AppealFiled: Citoyen dépose recours
+        AppealFiled --> AppealReview: Commission analyse
+        AppealReview --> AppealApproved: Décision favorable
+        AppealReview --> AppealConfirmed: Décision défavorable confirmée
+        AppealApproved --> InReview: Réintégrer workflow
+        AppealConfirmed --> ArchivedRejected: Terminal
+    }
+
+    state "🗄️ Archivage" as Archive {
+        Completed --> Archived: > 12 mois<br/>+ obligation légale conservation
+        AppealConfirmed --> ArchivedRejected
+        Expired --> ArchivedExpired
+        Cancelled --> ArchivedCancelled
+    }
+
+    %% Transitions transverses
+    Drafting --> Cancelled: Citoyen abandonne<br/>(manual)
+    PaymentExpired --> Expired
+    PaymentFailed --> Cancelled: Citoyen abandonne
+    DocsRequested --> Expired: > 30j sans réponse
+    CitaScheduled --> Cancelled: Citoyen annule
+
+    %% Terminaux
+    Archived --> [*]
+    ArchivedRejected --> [*]
+    ArchivedExpired --> [*]
+    ArchivedCancelled --> [*]
+    Cancelled --> [*]
+    WriteOffNeeded --> [*]
+    Completed --> [*]
+    ReconciledAuto --> [*]
+    ReconciledManual --> [*]
+
+    note right of Routing
+        Location scope absolu :
+        pas de re-routage cross-site
+        (Règle mémoire #20)
+    end note
+
+    note right of Review
+        Tout passage = audit_logs
+        + workflow_transitions
+        (append-only)
+    end note
+
+    note right of Recon
+        Réconciliation Trésor
+        peut tourner en // de l'exécution
+        (cron + dashboard analyste)
+    end note
+
+    note right of Appeals
+        Recours administratif :
+        📋 PLANIFIÉ Facil V1.1
+        (proc 7, doc BPMN)
+    end note

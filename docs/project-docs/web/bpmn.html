@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BPMN visuel Facil — 17 diagrammes Mermaid rendus inline : 10 processus métier, 4 vues C4, état machine, cross-functional, pattern lock ordering." />
+  <meta name="theme-color" content="#1F4E79" />
+  <title>BPMN visuel — Facil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <header class="site-header" role="banner">
+    <button class="sidebar-toggle" aria-label="Ouvrir la navigation latérale" aria-expanded="false" aria-controls="sidebar">Menu</button>
+    <a href="index.html" class="logo" aria-label="Accueil Facil">
+      <img src="assets/img/logo.png" alt="Facil" class="logo-img" />
+    </a>
+    <nav role="navigation" aria-label="Navigation principale">
+      <a href="index.html">Accueil</a>
+      <a href="prd.html">PRD</a>
+      <a href="bpmn.html">BPMN</a>
+      <a href="prd-bpmn.html">Vue couplée</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Liste des workflows">
+      <h2>Docs PROJET</h2>
+      <ul>
+        <li><a href="index.html">Accueil</a></li>
+        <li><a href="prd.html">PRD interactif</a></li>
+        <li><a href="bpmn.html" aria-current="page">BPMN visuel</a></li>
+        <li><a href="prd-bpmn.html">Vue couplée</a></li>
+      </ul>
+      <h2>Vue d'ensemble</h2>
+      <ul>
+        <li><a href="#overview">Grille 17 diagrammes</a></li>
+      </ul>
+      <h2>Processus métier (10)</h2>
+      <ul id="wf-processes"></ul>
+      <h2>Architecture C4 (4)</h2>
+      <ul id="wf-architecture"></ul>
+      <h2>État machine & cross (3)</h2>
+      <ul id="wf-others"></ul>
+    </aside>
+
+    <main class="main" id="main">
+      <h1>BPMN visuel — Processus métier Facil v2</h1>
+      <p><strong>17 diagrammes Mermaid</strong> rendus inline : 10 processus métier + 4 vues C4 architecture + 1 état machine globale + 1 cross-functional citoyen + 1 pattern lock ordering. Source : <code>03-BPMN_PROCESSES.md</code> + <code>bpmn/*.mmd</code>.</p>
+
+      <section id="overview" aria-labelledby="h-overview">
+        <h2 id="h-overview">Vue d'ensemble des 17 diagrammes</h2>
+        <p>Cliquez sur une miniature pour scroller vers le diagramme complet.</p>
+        <div id="wf-mini-grid" class="workflow-mini-grid"></div>
+      </section>
+
+      <section id="legend" aria-labelledby="h-legend">
+        <h2 id="h-legend">Légende statuts</h2>
+        <p>
+          <span class="status-badge implemented">Implémenté</span> code production-ready, testé.
+          <span class="status-badge partial">Partiel</span> stabilisation en cours.
+          <span class="status-badge planned">Planifié</span> V1.1+ via Facil Framework.
+        </p>
+      </section>
+
+      <section id="workflows-detail">
+        <h2>Diagrammes détaillés</h2>
+        <p>Chaque diagramme est rendu inline. Statut, SLA, KPIs, tables BD et liens vers code source documentés.</p>
+        <div id="wf-list" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-grid">
+      <div><h4>Source</h4><ul><li><a href="../03-BPMN_PROCESSES.md">03-BPMN_PROCESSES.md</a></li><li><a href="../bpmn/">bpmn/*.mmd</a></li></ul></div>
+      <div><h4>Voir aussi</h4><ul><li><a href="prd.html">PRD interactif</a></li><li><a href="prd-bpmn.html">Vue couplée</a></li></ul></div>
+      <div><h4>Note Mermaid</h4><ul><li>Mermaid n'est pas BPMN 2.0 strict (couvre ~90% du besoin). Pour Camunda/Bonita executable, voir partie XIII du document source.</li></ul></div>
+    </div>
+  </footer>
+  <div class="copyright" role="contentinfo" style="text-align:center; padding:14px 24px; border-top:1px solid var(--color-border); color: var(--color-text-muted); font-size:13px;">&copy; 2026 <strong>Facil</strong> — KOUEMOU SAH JEAN EMAC. Tous droits réservés.</div>
+
+  <script src="assets/mermaid.min.js" defer></script>
+  <script src="assets/prd-data.js"></script>
+  <script src="assets/bpmn-data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      markActiveNav('bpmn.html');
+      initSidebarToggle();
+
+      // Wait for Mermaid to load
+      function ensureMermaid(cb) {
+        if (window.mermaid) { initMermaid(); cb(); }
+        else setTimeout(function () { ensureMermaid(cb); }, 80);
+      }
+
+      ensureMermaid(function () {
+        loadBPMN().then(function (data) {
+          renderSidebar(data);
+          renderMiniGrid(data);
+          renderWorkflows(data);
+        }).catch(function (err) {
+          qs('#wf-list').innerHTML = '<div class="empty-state">Erreur de chargement : ' + (err.message || err) + '</div>';
+        });
+      });
+    });
+
+    function renderSidebar(data) {
+      var procEl = qs('#wf-processes');
+      var archEl = qs('#wf-architecture');
+      var othEl = qs('#wf-others');
+      data.workflows.forEach(function (wf) {
+        var li = el('li', null, el('a', {
+          href: '#' + wf.id,
+          text: wf.number + '. ' + wf.name,
+          'aria-label': 'Aller au workflow ' + wf.name
+        }));
+        if (wf.category === 'process') procEl.appendChild(li);
+        else if (wf.category === 'architecture') archEl.appendChild(li);
+        else othEl.appendChild(li);
+      });
+    }
+
+    function renderMiniGrid(data) {
+      var grid = qs('#wf-mini-grid');
+      data.workflows.forEach(function (wf) {
+        var card = el('a', {
+          className: 'workflow-mini',
+          href: '#' + wf.id,
+          'aria-label': 'Aller au diagramme ' + wf.name
+        });
+        card.appendChild(el('span', { className: 'wf-id', text: 'Diag ' + wf.number }));
+        card.appendChild(el('span', { className: 'wf-title', text: wf.name }));
+        var meta = el('span', { className: 'wf-meta' });
+        meta.appendChild(statusBadge(wf.status));
+        card.appendChild(meta);
+        grid.appendChild(card);
+      });
+    }
+
+    function renderWorkflows(data) {
+      var list = qs('#wf-list');
+      data.workflows.forEach(function (wf) {
+        var card = el('article', { className: 'workflow-card', id: wf.id });
+
+        var header = el('h2');
+        header.appendChild(document.createTextNode(wf.number + '. ' + wf.name + ' '));
+        header.appendChild(statusBadge(wf.status));
+        card.appendChild(header);
+
+        card.appendChild(el('p', { text: wf.objective }));
+
+        // Meta grid
+        var meta = el('div', { className: 'workflow-meta' });
+        meta.appendChild(metaItem('Acteurs', (wf.actor_labels || wf.actors).join(' / ')));
+        meta.appendChild(metaItem('SLA cible', wf.sla || '—'));
+        meta.appendChild(metaItem('Volume', wf.volume || '—'));
+        if (wf.tables && wf.tables.length) meta.appendChild(metaItem('Tables BD', wf.tables.join(', ')));
+        if (wf.enums && wf.enums.length) meta.appendChild(metaItem('Enums', wf.enums.join(', ')));
+        if (wf.kpis && wf.kpis.length) meta.appendChild(metaItem('KPIs', wf.kpis.join(' / ')));
+        card.appendChild(meta);
+
+        // Diagram
+        var diag = el('div', { className: 'diagram-container' });
+        diag.innerHTML = '<div class="empty-state">Chargement du diagramme…</div>';
+        card.appendChild(diag);
+        loadMermaid(wf, diag);
+
+        // Code refs
+        if (wf.code_refs && wf.code_refs.length) {
+          card.appendChild(el('h3', { text: 'Référence code' }));
+          var refUl = el('ul');
+          wf.code_refs.forEach(function (r) {
+            refUl.appendChild(el('li', null, el('code', { text: r })));
+          });
+          card.appendChild(refUl);
+        }
+
+        // Linked user stories
+        if (wf.linked_user_stories && wf.linked_user_stories.length) {
+          card.appendChild(el('h3', { text: 'User stories liées (PRD)' }));
+          var actions = el('div', { className: 'actions' });
+          wf.linked_user_stories.forEach(function (usId) {
+            var link = el('a', {
+              className: 'link-btn',
+              href: 'prd-bpmn.html?us=' + encodeURIComponent(usId) + '&wf=' + encodeURIComponent(wf.id),
+              'aria-label': 'Ouvrir la vue couplée pour ' + usId,
+              text: usId
+            });
+            actions.appendChild(link);
+          });
+          card.appendChild(actions);
+        } else {
+          card.appendChild(el('p', { className: 'empty-state', text: 'Aucune user story directement liée (workflow architecture ou pattern).' }));
+        }
+
+        list.appendChild(card);
+      });
+    }
+
+    function metaItem(label, value) {
+      var m = el('div', { className: 'meta' });
+      m.appendChild(el('strong', { text: label }));
+      m.appendChild(document.createTextNode(value));
+      return m;
+    }
+  </script>
+</body>
+</html>

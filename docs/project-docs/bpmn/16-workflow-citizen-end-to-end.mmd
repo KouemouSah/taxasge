@@ -1,0 +1,124 @@
+%% Parcours citoyen END-TO-END (vue cross-functional swimlane)
+%% De la création de compte au support post-livraison
+%% Cible : démonstration bailleurs + investisseurs + gov GE
+
+flowchart TB
+    Start([🚀 Citoyen découvre Facil<br/>Web / Mobile / Bouche-à-oreille]):::start
+
+    subgraph S0["📝 0. Onboarding"]
+        Reg["Création compte<br/>Email + tel + ID national"]
+        Verif["Vérification email + SMS<br/>pending_registrations<br/>15 min expiry"]
+        TOTP["Activation 2FA TOTP<br/>(optionnelle pour citoyen,<br/>obligatoire pour agents)"]
+    end
+
+    subgraph S1["🔍 1. Découverte service"]
+        Catalog["Recherche catalogue<br/>850+ services<br/>+ service_keywords"]
+        Chat["Chatbot RAG Gemini<br/>Assistance 24/7<br/>multilingue es/fr/en"]
+        Detail["Page détail service<br/>+ procédure + documents requis<br/>+ tarif estimé"]
+    end
+
+    subgraph S2["📋 2. Demande de service"]
+        Wizard["Wizard multi-étapes<br/>(28 workflows possibles)"]
+        Upload["Upload documents<br/>PREVIEW + VALIDATE pattern"]
+        OCR["OCR Tesseract<br/>+ Gemini extraction<br/>response_mime_type=JSON"]
+        Review["Citoyen révise champs<br/>extraits (confidence < seuil)"]
+        Submit["Soumission service_request<br/>status=SUBMITTED"]
+    end
+
+    subgraph S3["🏛️ 3. Timbres fiscaux (si requis)"]
+        StampsPay["Paiement timbres<br/>BANGE / USSD / cash"]
+        StampsOK["Timbres validés<br/>service_request → SUBMITTED"]
+    end
+
+    subgraph S4["🎯 4. Traitement administratif"]
+        Auto["Auto-assignment<br/>5 critères + LLM tie-breaker"]
+        AgentRev["Agent entité analyse<br/>(CNEDOGE / DGT / etc.)"]
+        DocsReq["Si docs manquants<br/>→ Citoyen notifié<br/>(email + push)"]
+        Decision["Décision agent<br/>Approve / Reject / Escalate"]
+    end
+
+    subgraph S5["💳 5. Paiement principal"]
+        PayChoice["Choix mode paiement<br/>BANGE / Ecobank / Mastercard<br/>USSD / Cash caissier"]
+        PayInit["Initiation paiement<br/>payment_workflow_status<br/>= processing"]
+        PayWebhook["Webhook signed HMAC<br/>idempotency external_id"]
+        PayOK["Paiement validé<br/>service_payments<br/>+ payment_receipts PDF"]
+    end
+
+    subgraph S6["📅 6. Rendez-vous physique (si applicable)"]
+        BookCita["Réservation slot<br/>+ entity_location_id<br/>+ calendar widget"]
+        Present["Présence citoyen<br/>+ check-in mobile"]
+    end
+
+    subgraph S7["🎁 7. Délivrance"]
+        Process["Agent finalise<br/>+ document généré"]
+        PDFVault["PDF upload Firebase<br/>+ register_document_in_vault<br/>+ verify_token QR"]
+        Notify["Notifications multi-canal<br/>Email + SMS + Push + WA"]
+        Download["Citoyen télécharge<br/>PDF signé QR vérifiable"]
+    end
+
+    subgraph S8["📊 8. Suivi & vérification"]
+        History["Historique demandes<br/>tableau de bord citoyen"]
+        QRVerify["Vérification QR publique<br/>verify_token immutable"]
+        Recurring["Récurrence annuelle<br/>(bundle licence ex.)"]
+    end
+
+    subgraph S9["🎫 9. Support post-délivrance"]
+        Ticket["Création ticket support<br/>support_tickets + messages"]
+        Reply["Agent support répond<br/>+ attachments"]
+        Resolved["Ticket résolu<br/>+ satisfaction"]
+    end
+
+    subgraph S10["⚖️ 10. Recours (📋 PLANIFIÉ V1.1)"]
+        AppealForm["Formulaire recours<br/>(post-rejet)"]
+        Commission["Commission de recours<br/>30j délai"]
+        DecisionRec["Décision recours<br/>favorable / défavorable"]
+    end
+
+    End([🏁 Service livré + dossier archivé]):::endNode
+    AppealsEnd([⚖️ Recours résolu]):::endNode
+
+    %% Flux principal
+    Start --> Reg --> Verif --> TOTP --> Catalog
+    Catalog --> Chat
+    Catalog --> Detail
+    Chat --> Detail
+    Detail --> Wizard --> Upload --> OCR --> Review --> Submit
+
+    Submit -->|"requires_timbres"| StampsPay --> StampsOK --> Auto
+    Submit -->|"!requires_timbres"| Auto
+
+    Auto --> AgentRev
+    AgentRev -->|"docs manquants"| DocsReq --> Upload
+    AgentRev --> Decision
+
+    Decision -->|"approved"| PayChoice
+    Decision -->|"rejected"| AppealForm
+    AppealForm --> Commission --> DecisionRec
+    DecisionRec -->|"favorable"| AgentRev
+    DecisionRec -->|"défavorable"| AppealsEnd
+
+    PayChoice --> PayInit --> PayWebhook --> PayOK
+
+    PayOK -->|"requires_appointment"| BookCita --> Present --> Process
+    PayOK -->|"!requires_appointment"| Process
+
+    Process --> PDFVault --> Notify --> Download
+    Download --> History
+    History --> QRVerify
+    History --> Ticket
+    Ticket --> Reply --> Resolved
+    Resolved --> History
+    History --> Recurring
+    Recurring -.->|"prochaine période"| Catalog
+    History --> End
+
+    %% Styling
+    classDef start fill:#90EE90,stroke:#2D936C,color:#1A6048
+    classDef endNode fill:#90EE90,stroke:#2D936C,color:#1A6048
+    classDef stamps fill:#F2A23B,stroke:#C57E1F,color:#fff
+    classDef pay fill:#2D936C,stroke:#1A6048,color:#fff
+    classDef appeal fill:#C25450,stroke:#823633,color:#fff,stroke-dasharray: 5 5
+
+    class S3 stamps
+    class S5 pay
+    class S10 appeal

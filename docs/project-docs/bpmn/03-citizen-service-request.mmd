@@ -1,0 +1,86 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Demande de service citoyen (passeport, résidence, conducir, etc.)
+%% Statut: IMPLEMENTÉ (28 workflows enregistrés via WorkflowEngine)
+%% Référence code: packages/backend/app/modules/service_requests/services/
+%%   - service_request_service.py
+%%   - workflow_engine.py
+%%   - workflows/*.py (pasaporte_workflow_v2, conducir_workflow, etc.)
+%% Tables: service_requests, uploaded_files, document_processing_queue
+%% ==========================================================================
+flowchart TD
+    Start([Citoyen — Démarrage demande]) --> Browse
+
+    subgraph Citoyen
+      Browse[Navigue catalogue 850+ services]
+      Browse --> Select[Sélection service ex: passeport]
+      Select --> Wizard[Wizard de saisie multi-étapes]
+      Wizard --> Step0[Étape 0: identification + type solicitud]
+      Step0 --> Step1[Étape 1: upload documents requis]
+      Step1 --> Preview[Preview extraction OCR/AI]
+      Preview --> CheckExt{Extraction correcte?}
+      CheckExt -->|Non| EditExt[Correction manuelle des champs]
+      CheckExt -->|Oui| Step2[Étape 2: revue formulaire]
+      EditExt --> Step2
+      Step2 --> Step3[Étape 3: paiement timbres si requis]
+      Step3 --> Step4[Étape 4: confirmation finale]
+    end
+
+    subgraph Système_Facil
+      Step4 --> CreateSR[create_request — INSERT service_requests status=DRAFT]
+      CreateSR --> ValidateDocs[Validation documents requis présents]
+      ValidateDocs -->|Manquants| MissDocs[status=DOCUMENTS_REQUIRED]
+      MissDocs --> Notif1[Notif citoyen]
+      ValidateDocs -->|OK| HasTimbres{Tarif timbres > 0?}
+      HasTimbres -->|Oui| StTPending[status=TIMBRES_PENDING]
+      HasTimbres -->|Non| StSubmitted[status=SUBMITTED]
+      StTPending --> WaitTimbre[Attente paiement timbres]
+      WaitTimbre --> Paid[status=TIMBRES_PAID]
+      Paid --> StSubmitted
+      StSubmitted --> AutoAssign[Auto-assignment AutoAssignmentService]
+      AutoAssign --> Queue[Insert agent_work_queue + assignments]
+    end
+
+    subgraph Agent_Entité
+      Queue --> AgentReceive[Agent reçoit dans dashboard work_queue]
+      AgentReceive --> AgentLock[status=UNDER_REVIEW + assigned_to]
+      AgentLock --> AgentReview[Agent review documents + données]
+      AgentReview --> AgentDec{Décision?}
+      AgentDec -->|OK| StValid[status=DOSSIER_VALIDE]
+      AgentDec -->|Docs manquants| ReqDoc[status=DOCUMENTS_REQUIRED + agent_work_queue.status=waiting_documents]
+      AgentDec -->|Rejeté| StRej[status=REJECTED + motif]
+      AgentDec -->|Escalade| StEsc[status=UNDER_REVIEW + escalation_level]
+    end
+
+    subgraph Phase_Paiement
+      StValid --> NotaCheck{Requires nota_ingreso?}
+      NotaCheck -->|Oui| StNotaPending[status=PENDING_NOTA_INGRESO]
+      NotaCheck -->|Non| StPayPending[status=PAYMENT_PENDING]
+      StNotaPending --> NotaUp[Upload nota par contribuable]
+      NotaUp --> StNotaUp[status=NOTA_UPLOADED]
+      StNotaUp --> StPayPending
+      StPayPending --> Pay[Paiement BANGE / cash / virement]
+      Pay --> StPaid[status=PAID]
+    end
+
+    subgraph Final
+      StPaid --> NeedCita{Requires appointment?}
+      NeedCita -->|Oui| Cita[status=CITA_SCHEDULED + agenda]
+      NeedCita -->|Non| InProg[status=IN_PROGRESS]
+      Cita --> InProg
+      InProg --> Issue[Émission document final + PDF + Firebase + vault]
+      Issue --> StComp[status=COMPLETED]
+      StComp --> NotifFin[Notification + email avec PJ]
+    end
+
+    NotifFin --> End([Fin — service délivré])
+    StRej --> EndKO([Fin — rejeté, recours possible])
+    Notif1 --> Step1
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style EndKO fill:#FFD700
+    style AgentDec fill:#FFA500
+    style CheckExt fill:#FFA500
+    style HasTimbres fill:#FFA500
+    style NotaCheck fill:#FFA500
+    style NeedCita fill:#FFA500

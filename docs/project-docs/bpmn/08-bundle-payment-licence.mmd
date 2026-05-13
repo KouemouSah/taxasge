@@ -1,0 +1,81 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Bundle Payment Licence Commerciale (paiement obligations annuelles)
+%% Statut: IMPLEMENTÉ (workflow BUNDLE_PAYMENT, entité TESORO)
+%% Référence code: packages/backend/app/modules/service_requests/workflows/bundle_payment_workflow.py
+%% Plan détail: .claude/plans/design_bundle_workflow.md
+%% Particularités vs workflows standard:
+%%   - Tarif DYNAMIQUE (bundle_items × zone pricing)
+%%   - 1 service_payment pour N obligations multi-entités
+%%   - Pas d'appointment requis
+%%   - Document conditionnel (uniquement nouvelles entreprises)
+%%   - Récurrence annuelle
+%% Tables: commercial_licenses, license_obligations, bundle_items, service_payments
+%% ==========================================================================
+flowchart TD
+    Start([Citoyen entrepreneur autonomo — démarrage paiement annuel]) --> Step0
+
+    subgraph Step0_Identification
+      Step0[Étape 0: company_identification SELECTION]
+      Step0 --> Search[Recherche société par NIF/RUC]
+      Search --> Found{Société trouvée?}
+      Found -->|Oui — déjà enregistrée| LoadHist[Chargement historique licence]
+      Found -->|Non — nouvelle| TriggerNew[Trigger upload certificado padrón]
+    end
+
+    subgraph Step1_Document_Conditional
+      TriggerNew --> Step1[Étape 1: document_upload DOCUMENT_UPLOAD]
+      Step1 --> UpPad[Upload Certificado de Padrón Municipal]
+      UpPad --> ExtractAI[Extraction Gemini: NIF, raison sociale, zone, activité]
+      ExtractAI --> ReviewExt[Citoyen valide extraction]
+      ReviewExt --> CreateCompany[INSERT companies + commercial_licenses status=draft]
+    end
+
+    subgraph Step2_Obligations
+      CreateCompany --> Step2
+      LoadHist --> Step2
+      Step2[Étape 2: obligations_review FORM_REVIEW]
+      Step2 --> CalcDyn[Calcul tarif DYNAMIQUE: bundle_items × zone × année fiscale]
+      CalcDyn --> ListObl[Liste obligations: TESORO + AYUNTAMIENTO + CAMARA_COMERCIO + ministères]
+      ListObl --> ModeChoice{Mode paiement?}
+      ModeChoice -->|Mode A — Tout en une fois| ModeA[Sélection toutes obligations]
+      ModeChoice -->|Mode B — Sélectif| ModeB[Sélection obligations partielles]
+      ModeA --> TotalCalc[Calcul total + pénalités si overdue]
+      ModeB --> TotalCalc
+    end
+
+    subgraph Step3_Payment
+      TotalCalc --> Step3[Étape 3: payment PAYMENT]
+      Step3 --> MethodChoice{Méthode?}
+      MethodChoice -->|BANGE Mobile Money| BANGE[Voir bpmn 04-payment-bange]
+      MethodChoice -->|Cash en agence| Cash[Génération nota ingreso pour caisse]
+      MethodChoice -->|Virement bancaire| Wire[Affichage IBAN + référence unique]
+
+      BANGE --> AfterPay[Webhook ou validation manuelle]
+      Cash --> CashierVal[Validation par caissier Tesoro]
+      Wire --> ReconCheck[Réconciliation auto via treasury_reconciliation_service]
+
+      AfterPay --> Distribute
+      CashierVal --> Distribute
+      ReconCheck --> Distribute
+
+      Distribute[Distribution montants vers ministères concernés via license_compliance_events]
+    end
+
+    subgraph Step4_Confirmation
+      Distribute --> Step4[Étape 4: confirmation CONFIRMATION]
+      Step4 --> UpdObl[UPDATE license_obligations.status=paid]
+      UpdObl --> UpdLic[UPDATE commercial_licenses.status=active + valid_until = year + 1]
+      UpdLic --> GenPDF[Génération attestation paiement PDF]
+      GenPDF --> Vault[register_document_in_vault]
+      Vault --> NotifCit[Email + push: licence valide jusqu au DD/MM/YYYY]
+    end
+
+    NotifCit --> End([Fin — licence renouvelée])
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style Found fill:#FFA500
+    style ModeChoice fill:#FFA500
+    style MethodChoice fill:#FFA500
+    style CalcDyn fill:#FFB6C1
+    style Distribute fill:#FFB6C1

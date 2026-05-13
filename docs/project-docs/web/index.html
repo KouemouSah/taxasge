@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Facil — Documentation interactive : PRD, BPMN, vue couplée user stories ↔ workflows. Plateforme de transformation digitale fiscale." />
+  <meta name="theme-color" content="#1F4E79" />
+  <title>Facil — Documentation interactive (PRD + BPMN)</title>
+  <link rel="icon" href="assets/img/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="assets/miro.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <header class="site-header" role="banner">
+    <a href="index.html" class="logo" aria-label="Accueil Facil">
+      <img src="assets/img/logo.png" alt="Facil" class="logo-img" />
+    </a>
+    <nav role="navigation" aria-label="Navigation principale">
+      <a href="index.html">Accueil</a>
+      <a href="prd.html">PRD</a>
+      <a href="bpmn.html">BPMN</a>
+      <a href="prd-bpmn.html">Vue couplée</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="miro-hero">
+      <div class="miro-hero-inner">
+        <span class="pill"><span id="hero-pill-icon"></span> MVP avancé — pre-launch</span>
+        <h1>Facil — Plateforme native souveraine de transformation digitale fiscale</h1>
+        <p>Documentation interactive : Product Requirements Document (PRD), processus métier BPMN, et vue couplée user stories ↔ workflows. Première instance déployée en Guinée Équatoriale, conçue pour s'étendre à la région CEMAC / UEMOA / OHADA.</p>
+      </div>
+    </section>
+
+    <section class="miro-card-grid" aria-label="Accès rapide à la documentation">
+      <a class="miro-big-card" href="prd.html" aria-label="Ouvrir le PRD interactif">
+        <span id="card-icon-prd" class="icon-large" aria-hidden="true"></span>
+        <h3>PRD interactif</h3>
+        <p>32 user stories filtrables par persona, statut, priorité. Vue sticky-notes color-coded. Recherche en direct. Sections navigables : vision, personas, fonctionnalités, NFR, roadmap, risques.</p>
+        <span class="arrow">Explorer <span id="arrow-prd"></span></span>
+      </a>
+
+      <a class="miro-big-card" href="bpmn.html" aria-label="Ouvrir le BPMN visuel">
+        <span id="card-icon-bpmn" class="icon-large" aria-hidden="true"></span>
+        <h3>BPMN visuel</h3>
+        <p>17 diagrammes Mermaid rendus inline (offline) : 10 processus métier + 4 vues C4 architecture + état machine globale + cross-functional + pattern lock ordering.</p>
+        <span class="arrow">Visualiser <span id="arrow-bpmn"></span></span>
+      </a>
+
+      <a class="miro-big-card" href="prd-bpmn.html" aria-label="Ouvrir la vue couplée">
+        <span id="card-icon-coupled" class="icon-large" aria-hidden="true"></span>
+        <h3>Vue couplée PRD ↔ BPMN</h3>
+        <p>Innovation : split-screen. Sélectionner une user story affiche le workflow BPMN correspondant. Sélectionner un workflow affiche les user stories liées. Navigation bidirectionnelle.</p>
+        <span class="arrow">Coupler <span id="arrow-coupled"></span></span>
+      </a>
+    </section>
+
+    <section class="miro-info" aria-labelledby="h-about">
+      <h2 id="h-about">Statut produit</h2>
+      <div class="miro-info-grid">
+        <div class="miro-info-item">
+          <span id="info-icon-1"></span>
+          <div><strong>Maturité</strong><span>MVP avancé pre-launch (pas encore citizen-facing massif).</span></div>
+        </div>
+        <div class="miro-info-item">
+          <span id="info-icon-2"></span>
+          <div><strong>Backend</strong><span>31 modules métier, 77 tables PostgreSQL, 25 enums, 300+ migrations.</span></div>
+        </div>
+        <div class="miro-info-item">
+          <span id="info-icon-3"></span>
+          <div><strong>Frontend</strong><span>42 modules Next.js 14 + Expo mobile (iOS / Android natifs).</span></div>
+        </div>
+        <div class="miro-info-item">
+          <span id="info-icon-4"></span>
+          <div><strong>Observabilité</strong><span>Grafana Cloud — Loki + Tempo + Prometheus + AI/Security Observability.</span></div>
+        </div>
+        <div class="miro-info-item">
+          <span id="info-icon-5"></span>
+          <div><strong>Pilote</strong><span>Q3 2026 cible — portail numérique DGT et entités partenaires.</span></div>
+        </div>
+        <div class="miro-info-item">
+          <span id="info-icon-6"></span>
+          <div><strong>Régions</strong><span>GE → CEMAC / UEMOA / OHADA. Multilingue ES/FR/EN.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="miro-info" aria-labelledby="h-pillars">
+      <h2 id="h-pillars">6 piliers de la solution</h2>
+
+      <!-- Schéma visuel hub-and-spoke : Facil au centre + 6 piliers en orbite -->
+      <div class="pillars-hub" role="img" aria-label="Schéma des 6 piliers Facil organisés autour du cœur produit">
+        <div class="pillars-hub-svg-bg" aria-hidden="true">
+          <svg viewBox="0 0 800 480" preserveAspectRatio="none" width="100%" height="100%">
+            <defs>
+              <radialGradient id="hubGradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#1F4E79" stop-opacity="0.10"/>
+                <stop offset="70%" stop-color="#1F4E79" stop-opacity="0.02"/>
+                <stop offset="100%" stop-color="#1F4E79" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <!-- Halo central -->
+            <circle cx="400" cy="240" r="200" fill="url(#hubGradient)"/>
+            <!-- Lines from center to each pillar (3x2 grid: top-left, top-center, top-right, bottom-left, bottom-center, bottom-right) -->
+            <line x1="400" y1="240" x2="130" y2="90"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            <line x1="400" y1="240" x2="400" y2="80"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            <line x1="400" y1="240" x2="670" y2="90"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            <line x1="400" y1="240" x2="130" y2="390" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            <line x1="400" y1="240" x2="400" y2="400" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            <line x1="400" y1="240" x2="670" y2="390" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+          </svg>
+        </div>
+
+        <div class="pillars-hub-center" aria-hidden="true">
+          <img src="assets/img/icon_facil.png" alt="" />
+        </div>
+
+        <div class="pillars-hub-grid">
+          <div class="pillar-node" data-color="blue">
+            <span id="pillar-icon-1" class="pillar-icon"></span>
+            <strong>Catalogue centralisé</strong>
+            <span>850+ services fiscaux + 28 types de déclarations (IVA, IRPF, retenciones, petroliferos).</span>
+          </div>
+          <div class="pillar-node" data-color="green">
+            <span id="pillar-icon-2" class="pillar-icon"></span>
+            <strong>Inspection terrain</strong>
+            <span>App mobile + tablet inspector avec collecte de paiement et sync offline.</span>
+          </div>
+          <div class="pillar-node" data-color="orange">
+            <span id="pillar-icon-3" class="pillar-icon"></span>
+            <strong>Paiement multi-canal</strong>
+            <span>BANGE Mobile Money + USSD GETESA / MUNI + cartes + virements + cash.</span>
+          </div>
+          <div class="pillar-node" data-color="purple">
+            <span id="pillar-icon-4" class="pillar-icon"></span>
+            <strong>Chatbot IA</strong>
+            <span>Vertex AI Gemini RAG, 24/7, multilingue ES / FR / EN.</span>
+          </div>
+          <div class="pillar-node" data-color="pink">
+            <span id="pillar-icon-5" class="pillar-icon"></span>
+            <strong>OCR + observabilité</strong>
+            <span>Gemini extraction documents + Grafana Cloud production-grade.</span>
+          </div>
+          <div class="pillar-node" data-color="yellow">
+            <span id="pillar-icon-6" class="pillar-icon"></span>
+            <strong>App mobile citoyen</strong>
+            <span>Application native iOS / Android (Expo) avec notifications push, mode offline et accès USSD.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-grid">
+      <div>
+        <h4>Documents source (Markdown)</h4>
+        <ul>
+          <li><a href="../02-PRD.md">02-PRD.md</a></li>
+          <li><a href="../03-BPMN_PROCESSES.md">03-BPMN_PROCESSES.md</a></li>
+          <li><a href="../bpmn/">Diagrammes Mermaid (17 .mmd)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul>
+          <li><a href="prd.html">PRD interactif</a></li>
+          <li><a href="bpmn.html">BPMN visuel</a></li>
+          <li><a href="prd-bpmn.html">Vue couplée</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>KOUEMOU SAH JEAN EMAC</li>
+          <li>kouemou.sah@gmail.com</li>
+          <li>Audience : produit, technique, partenaires gov, bailleurs</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Version</h4>
+        <ul>
+          <li>PRD v1.0 — 2026-05-11</li>
+          <li>BPMN v2 — 2026-05-11</li>
+          <li>Web v2 Miro-style — 2026-05-13</li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+  <div class="copyright" role="contentinfo" style="text-align:center; padding:14px 24px; border-top:1px solid var(--color-border); color: var(--color-text-muted); font-size:13px;">&copy; 2026 <strong>Facil</strong> — KOUEMOU SAH JEAN EMAC. Tous droits réservés.</div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/prd-data.js"></script>
+  <script src="assets/bpmn-data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      markActiveNav('index.html');
+
+      // Inject icons into placeholders
+      function setIcon(id, name, opts) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = icon(name, opts || {});
+      }
+      setIcon('hero-pill-icon', 'sparkles', { size: 14 });
+      setIcon('card-icon-prd', 'file-text', { size: 32 });
+      setIcon('card-icon-bpmn', 'workflow', { size: 32 });
+      setIcon('card-icon-coupled', 'layers', { size: 32 });
+      setIcon('arrow-prd', 'arrow-right', { size: 14 });
+      setIcon('arrow-bpmn', 'arrow-right', { size: 14 });
+      setIcon('arrow-coupled', 'arrow-right', { size: 14 });
+
+      // Info items icons
+      setIcon('info-icon-1', 'rocket', { size: 24 });
+      setIcon('info-icon-2', 'box', { size: 24 });
+      setIcon('info-icon-3', 'smartphone', { size: 24 });
+      setIcon('info-icon-4', 'gauge', { size: 24 });
+      setIcon('info-icon-5', 'flag', { size: 24 });
+      setIcon('info-icon-6', 'globe', { size: 24 });
+
+      // Pillars icons (6 piliers — hub-and-spoke)
+      setIcon('pillar-icon-1', 'book-open', { size: 28 });
+      setIcon('pillar-icon-2', 'map-pin', { size: 28 });
+      setIcon('pillar-icon-3', 'credit-card', { size: 28 });
+      setIcon('pillar-icon-4', 'message-circle', { size: 28 });
+      setIcon('pillar-icon-5', 'sparkles', { size: 28 });
+      setIcon('pillar-icon-6', 'smartphone', { size: 28 });
+    });
+  </script>
+</body>
+</html>

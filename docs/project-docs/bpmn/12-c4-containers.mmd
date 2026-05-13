@@ -1,0 +1,155 @@
+%% C4 — Niveau 2 (Containers) — Facil
+%% Référence : https://c4model.com — containers = unités déployables indépendamment
+%% Audience : architectes, équipes intégration, DevOps
+
+flowchart TB
+    %% Personas (résumés)
+    User["👤 Utilisateurs<br/>Citoyens / Business / Agents / Admin"]
+    AgentField["📱 Agent terrain<br/>+ Inspecteur"]
+
+    %% Frontaux applicatifs
+    subgraph Frontends["Frontaux applicatifs"]
+        WebApp["🌐 Web Citizen App<br/><b>Next.js 14 + React 18</b><br/>TypeScript + Tailwind + Shadcn/UI<br/>i18n es/fr/en — App Router"]
+        WebAdmin["⚙️ Web Admin / Agent Console<br/><b>Next.js 14</b><br/>42 modules frontend<br/>Dashboards par rôle"]
+        MobileApp["📱 Mobile Citizen App<br/><b>Expo / React Native</b><br/>i18n + push FCM/APNs<br/>(Play Store rejected gov 2026-05-08)"]
+        InspectorApp["📲 Inspector Tablet App<br/><b>Expo native</b><br/>Mission terrain offline<br/>+ field receipt printing"]
+        ChatbotWidget["💬 Chatbot Widget<br/>Embeddable React<br/>RAG Gemini + pgvector"]
+    end
+
+    %% Backend FastAPI
+    subgraph BackendLayer["Backend applicatif (Cloud Run, stateless)"]
+        APIGateway["🚦 FastAPI API Gateway<br/><b>app/main.py</b><br/>31 routers + CORS + middleware<br/>Pure ASGI request_telemetry"]
+        WorkflowEngine["⚙️ Workflow Engine<br/>28 workflows + state machines<br/>workflow_transitions append"]
+        Backend["🐍 Backend Services<br/><b>Python 3.11 + asyncpg</b><br/>31 modules métier (3-tier)<br/>Pydantic v2 strict"]
+        Scheduler["⏰ Cron Scheduler<br/><b>app/core/scheduler.py</b><br/>10+ crons enregistrés<br/>pg_advisory_lock"]
+        EventBus["📡 EventBus interne<br/>fire-and-forget asyncio.create_task<br/>+ WeakSet tracking"]
+        AIRuntime["🧠 AI Runtime Wrapper<br/><b>app/core/ai_telemetry.py</b><br/>traced_generate_sync<br/>+ circuit breaker Vertex"]
+        AISecurity["🛡️ AI Security Filter<br/><b>app/core/ai_security.py</b><br/>14 patterns injection<br/>EN/FR/ES + base64 decode"]
+    end
+
+    %% Data tier
+    subgraph DataTier["Couche données (managée Supabase)"]
+        Postgres["🗄️ PostgreSQL 15<br/><b>Supabase</b><br/>77 tables + 25 enums<br/>pg_advisory_lock + RLS<br/>pgvector RAG"]
+        Storage["📁 Supabase Storage<br/>Uploads citoyens<br/>(quarantine + scan)"]
+        Migrations["🧬 Migrations versionnées<br/>packages/backend/database/migrations<br/>schema_migrations + pg_advisory_lock"]
+    end
+
+    %% Cache + sessions
+    subgraph CacheTier["Cache + temps réel"]
+        Redis["⚡ Upstash Redis (TLS)<br/>HybridCache 5 instances<br/>+ rate limit + preview_cache"]
+        InMemFallback["💾 In-Memory Fallback<br/>LRU TTL 4096 cap<br/>(si Redis down)"]
+    end
+
+    %% Documents
+    subgraph DocsTier["Documents générés"]
+        FirebaseStorage["☁️ Firebase Storage<br/>PDFs reçus + certificats<br/>+ register_document_in_vault"]
+        Vault["🔒 Documents Vault<br/>verify_token + QR<br/>user_documents table"]
+    end
+
+    %% Observabilité
+    subgraph ObsTier["Observabilité production"]
+        Grafana["📊 Grafana Cloud<br/>Stack Loki + Tempo + Prometheus<br/>OTLP gateway EU west 3"]
+        Sentry["🐞 Sentry bridge<br/>(via OTLP)<br/>Erreurs front + back"]
+        AlertManager["🚨 Alertmanager<br/>5 alertes IA + 3 alertes Sécurité<br/>+ deploy/health"]
+    end
+
+    %% Intégrations externes
+    subgraph ExtPayment["Intégrations paiement"]
+        BANGEGw["BANGE Mobile Money"]
+        EcobankGw["Ecobank Pay"]
+        MCGw["Mastercard Gateway"]
+        USSDGw["USSD GETESA / MUNI"]
+    end
+
+    subgraph ExtAI["Intégrations IA Google"]
+        Vertex["Vertex AI Gemini 2.0"]
+        VertexEmb["Vertex AI Embeddings"]
+    end
+
+    subgraph ExtComm["Intégrations communication"]
+        SMTPExt["SMTP Provider"]
+        SMSExt["SMS Gateway"]
+        FCMExt["FCM / APNs"]
+        WAExt["WhatsApp Business"]
+    end
+
+    %% Connexions utilisateurs
+    User --> WebApp
+    User --> WebAdmin
+    User --> MobileApp
+    User --> ChatbotWidget
+    AgentField --> InspectorApp
+
+    %% Frontends → Backend
+    WebApp -->|"HTTPS REST<br/>+ JWT bearer"| APIGateway
+    WebAdmin -->|"HTTPS REST<br/>+ permission_required"| APIGateway
+    MobileApp -->|"HTTPS REST<br/>+ device_tokens FCM"| APIGateway
+    InspectorApp -->|"HTTPS REST<br/>+ offline queue sync"| APIGateway
+    ChatbotWidget -->|"WebSocket + REST<br/>(RAG calls)"| APIGateway
+
+    %% API Gateway interne
+    APIGateway --> Backend
+    APIGateway --> WorkflowEngine
+    APIGateway --> AIRuntime
+    APIGateway --> AISecurity
+    Backend --> WorkflowEngine
+    Backend --> EventBus
+    AIRuntime --> AISecurity
+    Scheduler -.->|"cron trigger<br/>+ pg_advisory_lock"| Backend
+
+    %% Backend → data
+    Backend -->|"asyncpg pool<br/>+ parameterized $1...$N"| Postgres
+    Backend -->|"redis-py TLS"| Redis
+    Redis -.->|"fallback"| InMemFallback
+    Backend -->|"PUT signed URL"| Storage
+    Backend -->|"firebase-admin<br/>+ atomicity PDF+vault"| FirebaseStorage
+    FirebaseStorage --> Vault
+    Migrations -.->|"CI deploy<br/>schema_migrations tracking"| Postgres
+
+    %% Backend → IA
+    AIRuntime --> Vertex
+    AIRuntime --> VertexEmb
+    Backend --> AIRuntime
+
+    %% Backend → comm
+    Backend --> SMTPExt
+    Backend --> SMSExt
+    Backend --> FCMExt
+    Backend --> WAExt
+
+    %% Backend → paiement
+    Backend --> BANGEGw
+    Backend -.-> EcobankGw
+    Backend -.-> MCGw
+    Backend --> USSDGw
+
+    %% Webhooks entrants
+    BANGEGw -.->|"webhook HMAC SHA-256<br/>+ idempotency"| APIGateway
+    EcobankGw -.->|"webhook signed"| APIGateway
+    WAExt -.->|"webhook events"| APIGateway
+
+    %% Observabilité
+    Backend -->|"OTLP traces<br/>spans + metrics"| Grafana
+    APIGateway -->|"request_telemetry<br/>sampling adaptatif"| Grafana
+    AIRuntime -->|"ai_call_metrics<br/>cost XAF + p95"| Grafana
+    Grafana --> AlertManager
+    AlertManager -.->|"webhook ops"| Backend
+    Backend -.->|"errors"| Sentry
+    Sentry --> Grafana
+
+    %% Styling
+    classDef frontend fill:#62A5C0,stroke:#3B7A93,color:#fff
+    classDef backend fill:#1168BD,stroke:#0B4884,color:#fff
+    classDef datalayer fill:#438DD5,stroke:#2E6295,color:#fff
+    classDef cache fill:#F2A23B,stroke:#C57E1F,color:#fff
+    classDef obs fill:#9B6CCC,stroke:#6F4A99,color:#fff
+    classDef ext fill:#999999,stroke:#666666,color:#fff
+    classDef ai fill:#E6E6FA,stroke:#9B6CCC,color:#333
+
+    class WebApp,WebAdmin,MobileApp,InspectorApp,ChatbotWidget frontend
+    class APIGateway,Backend,WorkflowEngine,Scheduler,EventBus backend
+    class Postgres,Storage,Migrations,FirebaseStorage,Vault datalayer
+    class Redis,InMemFallback cache
+    class Grafana,Sentry,AlertManager obs
+    class AIRuntime,AISecurity ai
+    class BANGEGw,EcobankGw,MCGw,USSDGw,Vertex,VertexEmb,SMTPExt,SMSExt,FCMExt,WAExt ext

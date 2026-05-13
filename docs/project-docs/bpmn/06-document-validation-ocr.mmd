@@ -1,0 +1,84 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Validation document avec OCR + Gemini AI
+%% Statut: IMPLEMENTÉ (Tesseract + Gemini Document Processor + preview cache)
+%% Référence code:
+%%   - packages/backend/app/modules/documents/services/ocr_service.py
+%%   - packages/backend/app/modules/service_requests/services/gemini_document_processor.py
+%%   - packages/backend/app/modules/service_requests/services/preview_cache.py
+%% Tables: uploaded_files, document_processing_queue, ocr_extraction_results
+%% Pattern: PREVIEW puis VALIDATE — extraction avant upload Firebase
+%% ==========================================================================
+flowchart TD
+    Start([Citoyen upload document]) --> Validate
+
+    subgraph Frontend
+      Validate[Validation côté client: type, taille max 10MB]
+      Validate --> Send[POST /service-requests/id/documents/preview multipart]
+    end
+
+    subgraph Backend_Préprocessing
+      Send --> CheckOwner[Vérification ownership service_request]
+      CheckOwner --> CheckMime[Validation MIME type allowed PDF/JPG/PNG/WEBP]
+      CheckMime --> CheckMagic[Validation magic bytes vs MIME déclaré]
+      CheckMagic -->|Mismatch| Err1[400 Bad Request — fichier corrompu]
+      CheckMagic -->|OK| GetSchema[Récupération extraction_schema_key depuis workflow]
+    end
+
+    subgraph Extraction_Pipeline
+      GetSchema --> SchemaExist{Schema défini pour ce doc?}
+      SchemaExist -->|Non| OCROnly[OCR Tesseract seul — texte brut]
+      SchemaExist -->|Oui| Gemini[gemini_document_processor.process]
+
+      Gemini --> GemConfig[GenerationConfig: response_mime_type=application/json]
+      GemConfig --> GemCall[Vertex AI Gemini 2.0 Flash + traced_generate_sync]
+      GemCall --> GemValid{JSON valide + schema match?}
+      GemValid -->|Non| Retry[Retry max 2x avec prompt variant]
+      Retry -->|Échec| Fallback[Fallback OCR Tesseract]
+      GemValid -->|Oui| Extract[Champs extraits + confidence par champ]
+      Retry -->|Succès| Extract
+      Fallback --> Extract
+
+      Extract --> Risk[Risk analysis cross-document si frontend_extractions]
+      Risk --> ConfCheck{Confidence > seuil?}
+      ConfCheck -->|Oui auto| StatusOK[extraction_status = success]
+      ConfCheck -->|Non| StatusReview[extraction_status = manual_review]
+      StatusOK --> Cache
+      StatusReview --> Cache
+    end
+
+    subgraph Preview_Cache
+      Cache[Stockage preview_cache Redis ou in-memory + token]
+      Cache --> Resp[Réponse: extraction + confidence + needs_review]
+      Resp --> CitReview[Citoyen révise champs extraits]
+      CitReview --> Edit{Modifications nécessaires?}
+      Edit -->|Oui| EditFields[Édition manuelle des champs]
+      Edit -->|Non| ConfirmOK[Confirmation finale]
+      EditFields --> ConfirmOK
+    end
+
+    subgraph Validate_Upload
+      ConfirmOK --> SendV[POST /service-requests/id/documents/validate]
+      SendV --> Firebase[Upload Firebase Storage user_documents/...]
+      Firebase --> InsertDoc[INSERT uploaded_files + record document]
+      InsertDoc --> InsertExt[INSERT ocr_extraction_results JSONB]
+      InsertExt --> Audit[audit_logs DOCUMENT_UPLOADED]
+      Audit --> CheckAll[_check_completion: tous documents requis fournis?]
+      CheckAll -->|Oui| StatusUpdate[service_request.status=SUBMITTED]
+      CheckAll -->|Non| Wait[status=DOCUMENTS_REQUIRED]
+    end
+
+    StatusUpdate --> End([Fin — document validé])
+    Wait --> End2([Fin — attente autres documents])
+    Err1 --> EndErr([Fin erreur])
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style End2 fill:#FFD700
+    style EndErr fill:#FF6B6B
+    style SchemaExist fill:#FFA500
+    style GemValid fill:#FFA500
+    style ConfCheck fill:#FFA500
+    style Edit fill:#FFA500
+    style CheckAll fill:#FFA500
+    style Gemini fill:#E6E6FA
+    style GemCall fill:#E6E6FA

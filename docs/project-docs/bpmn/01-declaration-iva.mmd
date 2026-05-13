@@ -1,0 +1,66 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Déclaration fiscale IVA (Impuesto sobre el Valor Añadido)
+%% Statut: IMPLEMENTÉ (90% du volume déclarations)
+%% Référence code: packages/backend/app/modules/declarations/
+%%   - services/declaration_service.py
+%%   - models/declaration.py (DeclarationStatus, DeclarationType)
+%%   - api/declaration_routes.py
+%% Tables: tax_declarations, declaration_iva_details
+%% ==========================================================================
+flowchart TD
+    Start([Début — fin de période fiscale]) --> Choix{Type contribuable}
+
+    subgraph Citoyen_Business
+      Choix -->|Personne physique| Connect1[Connexion + 2FA]
+      Choix -->|Entreprise / Comptable| Connect2[Connexion + 2FA + sélection société]
+      Connect1 --> Form[Saisie formulaire IVA]
+      Connect2 --> Form
+      Form --> Type{Type IVA?}
+      Type -->|IVA Destajo| Destajo[Saisie chiffre affaires forfaitaire]
+      Type -->|IVA Real| Real[Saisie ventes + achats détaillés]
+      Destajo --> Calcul
+      Real --> Calcul
+    end
+
+    subgraph Système_Facil
+      Calcul[Calcul automatique base imposable + TVA]
+      Calcul --> Save[Sauvegarde brouillon - status=DRAFT]
+      Save --> Submit{Soumettre?}
+      Submit -->|Non| End1([Reste en DRAFT])
+      Submit -->|Oui| Validate[Validation Pydantic + règles fiscales]
+      Validate -->|Erreur| FormError[Retour erreurs au formulaire]
+      FormError --> Form
+      Validate -->|OK| StatusSub[status=SUBMITTED + audit_log]
+      StatusSub --> Auto[Auto-assignment via assignment_service]
+      Auto --> Notif[Notification multi-canal email + push]
+    end
+
+    subgraph Agent_DGI
+      Notif --> AssignAgent[Agent reçoit dans agent_work_queue]
+      AssignAgent --> Lock[Lock dossier via assignments table]
+      Lock --> Status1[status=PROCESSING]
+      Status1 --> Review[Review déclaration + pièces jointes]
+      Review --> Decision{Décision?}
+      Decision -->|Conforme| Accept[status=ACCEPTED]
+      Decision -->|Non conforme| Reject[status=REJECTED + motif]
+      Decision -->|Demande correction| Corr[status=AMENDED + commentaires]
+    end
+
+    subgraph Système_Post
+      Accept --> NotifAccept[Notif citoyen + génération avis paiement]
+      Reject --> NotifReject[Notif citoyen + recours possible]
+      Corr --> NotifCorr[Notif citoyen pour amendement]
+      NotifAccept --> AuditFinal[audit_logs append append-only]
+      NotifReject --> AuditFinal
+      NotifCorr --> AuditFinal
+    end
+
+    AuditFinal --> End2([Fin processus déclaration])
+
+    style Start fill:#90EE90
+    style End1 fill:#FFD700
+    style End2 fill:#FF6B6B
+    style Decision fill:#FFA500
+    style Type fill:#FFA500
+    style Submit fill:#FFA500
+    style Choix fill:#FFA500

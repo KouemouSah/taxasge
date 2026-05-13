@@ -1,0 +1,59 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Paiement via BANGE Mobile Money (Bank of Africa Equatorial Guinea)
+%% Statut: IMPLEMENTÉ (gateway BANGE + processor + webhook handler)
+%% Référence code: packages/backend/app/modules/payments/services/
+%%   - bange_service.py (wrapper)
+%%   - gateways/bange_gateway.py
+%%   - processors/bange_processor.py
+%% Tables: payments, service_payments, bank_transactions, payment_receipts
+%% ==========================================================================
+sequenceDiagram
+    autonumber
+    actor Citoyen
+    participant Frontend as Frontend Next.js
+    participant Backend as Backend FastAPI
+    participant DB as PostgreSQL
+    participant BANGE as BANGE Gateway externe
+    participant Webhook as Webhook handler
+    participant PDF as PDF Receipt Service
+
+    Citoyen->>Frontend: Choisit BANGE Mobile Money
+    Frontend->>Backend: POST /api/v1/payments avec service_request_id
+    Backend->>DB: SELECT service_request + montant
+    Backend->>DB: INSERT payments status=pending
+    Backend->>DB: INSERT service_payments workflow_status=submitted
+    Backend->>BANGE: BANGEGateway.create_payment amount, ref, callback_url
+    BANGE-->>Backend: payment_url + external_id
+    Backend->>DB: UPDATE payments external_id
+    Backend-->>Frontend: payment_url
+    Frontend-->>Citoyen: Redirect vers BANGE app/USSD
+
+    Citoyen->>BANGE: Saisit PIN mobile money
+    BANGE->>BANGE: Débit compte mobile money
+    BANGE->>Webhook: POST /api/v1/webhooks/bange signature HMAC
+    Webhook->>Webhook: verify_webhook_signature HMAC SHA256
+    alt Signature invalide
+        Webhook-->>BANGE: 401 Unauthorized
+    end
+    Webhook->>DB: SELECT payment WHERE external_id
+    alt Payment introuvable ou déjà traité
+        Webhook-->>BANGE: 200 OK idempotent
+    end
+    Webhook->>DB: UPDATE payments status=completed
+    Webhook->>DB: UPDATE service_payments workflow_status=auto_approved
+    Webhook->>DB: INSERT bank_transactions
+    Webhook->>DB: UPDATE service_requests status=PAID
+    Webhook->>PDF: generate_and_store_receipt
+    PDF->>PDF: PDF + QR code + verification token
+    PDF->>DB: INSERT payment_receipts
+    PDF->>DB: register_document_in_vault
+    Webhook->>Backend: EventBus.PAYMENT_COMPLETED
+    Backend->>Backend: Email avec reçu PJ + push mobile
+    Backend->>Backend: AutoAssignmentService.assign_to_next_step
+    Webhook-->>BANGE: 200 OK
+
+    Citoyen->>Frontend: Retour return_url
+    Frontend->>Backend: GET /api/v1/payments/id/status
+    Backend->>DB: SELECT payment status
+    Backend-->>Frontend: status=completed + receipt_url
+    Frontend-->>Citoyen: Confirmation + lien reçu PDF

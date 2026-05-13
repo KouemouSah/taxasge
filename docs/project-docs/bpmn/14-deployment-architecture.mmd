@@ -1,0 +1,106 @@
+%% Déploiement multi-environnement Facil
+%% CI/CD GitHub Actions → Cloud Run / Firebase / Supabase / Grafana Cloud
+%% Source : .github/workflows/ + CLAUDE.md règle #1 (NEVER manual gcloud)
+
+flowchart LR
+    %% Source control
+    Dev["👨‍💻 Développeur<br/>solo @ libressai@gmail.com"]
+    GitHub["🐙 GitHub Repo<br/>taxasge / develop branch<br/>+ feature/** + main"]
+
+    %% CI Pipeline
+    subgraph CICD["GitHub Actions CI/CD"]
+        CILint["🧹 CI Lint + Type-check<br/>flake8 / mypy strict / black<br/>tsc --noEmit / eslint"]
+        CITest["🧪 CI Tests<br/>pytest backend<br/>+ jest frontend + e2e"]
+        CIBuild["📦 CI Build<br/>Docker backend<br/>+ Next.js frontend"]
+        CIDeploy["🚀 CI Deploy<br/>Cloud Run (backend)<br/>+ Firebase Hosting (web)"]
+        CIMobile["📱 EAS Mobile Build<br/>preview / production<br/>(.aab + .ipa)"]
+        CIOpenAPI["🔍 OpenAPI drift<br/>openapi-types check<br/>auto-fail si désync"]
+    end
+
+    %% Environments
+    subgraph EnvDev["Environment : DEV (local)"]
+        DevDocker["🐳 docker-local stack<br/>FastAPI + Postgres + Redis<br/>deploy/init.py wizard"]
+        DevDB["🗄️ Postgres local<br/>ou Supabase dev project"]
+    end
+
+    subgraph EnvStaging["Environment : STAGING"]
+        StgBackend["☁️ Cloud Run<br/>taxasge-backend-staging<br/>scale 0..N + 1G RAM"]
+        StgWeb["🌐 Firebase Hosting<br/>taxasge-staging<br/>+ preview channels"]
+        StgDB["🗄️ Supabase Staging<br/>schema_migrations sync"]
+        StgRedis["⚡ Upstash Redis (staging)"]
+    end
+
+    subgraph EnvProd["Environment : PRODUCTION (MVP avancé pre-launch)"]
+        ProdBackend["☁️ Cloud Run<br/>taxasge-backend-prod<br/>+ --set-secrets pattern"]
+        ProdWeb["🌐 Firebase Hosting<br/>taxasge-prod<br/>+ CSP middleware + next.config"]
+        ProdDB["🗄️ Supabase Production<br/>+ pg_advisory_lock + RLS"]
+        ProdRedis["⚡ Upstash Redis (prod TLS)"]
+        ProdFCM["🔔 Firebase Cloud Messaging<br/>+ APNs natifs prod"]
+    end
+
+    %% Cross-environment infra
+    subgraph SharedInfra["Infra partagée"]
+        SecretMgr["🔐 Google Secret Manager<br/>tokens rotation auditée<br/>roles/secretmanager.secretAccessor"]
+        ArtifactReg["📦 Artifact Registry<br/>Docker images backend"]
+        GrafanaCld["📊 Grafana Cloud (EU west 3)<br/>Loki + Tempo + Mimir<br/>OTLP gateway + 5 dashboards"]
+        VertexAI["🧠 Vertex AI (europe-west)<br/>Gemini 2.0 Flash + embedding-005<br/>+ Sentry bridge"]
+    end
+
+    %% Flux dev → git
+    Dev -->|"git push develop<br/>JAMAIS build manuel gcloud"| GitHub
+    GitHub --> CILint
+    CILint --> CITest
+    CITest --> CIBuild
+    CIBuild --> CIOpenAPI
+    CIBuild --> CIDeploy
+    CIBuild --> CIMobile
+
+    %% Deploy targets
+    CIDeploy -->|"if branch == develop<br/>+ packages/backend changes"| StgBackend
+    CIDeploy -->|"if branch == develop<br/>+ packages/web changes"| StgWeb
+    CIDeploy -->|"manual approve<br/>+ tag release"| ProdBackend
+    CIDeploy -->|"manual approve<br/>+ tag release"| ProdWeb
+
+    %% Backend → Data
+    StgBackend --> StgDB
+    StgBackend --> StgRedis
+    ProdBackend --> ProdDB
+    ProdBackend --> ProdRedis
+    ProdBackend --> ProdFCM
+
+    %% Secrets injection
+    SecretMgr -.->|"--set-secrets"| StgBackend
+    SecretMgr -.->|"--set-secrets"| ProdBackend
+    ArtifactReg -.->|"image pull"| StgBackend
+    ArtifactReg -.->|"image pull"| ProdBackend
+
+    %% Migrations
+    CIDeploy -->|"schema_migrations<br/>+ pg_advisory_lock<br/>migrations refacto Phase A→H"| StgDB
+    CIDeploy -->|"schema_migrations<br/>(production guarded)"| ProdDB
+
+    %% Observabilité
+    StgBackend -->|"OTLP"| GrafanaCld
+    ProdBackend -->|"OTLP"| GrafanaCld
+    StgWeb -.->|"Sentry frontend"| GrafanaCld
+    ProdWeb -.->|"Sentry frontend"| GrafanaCld
+
+    %% AI calls
+    StgBackend -->|"AI traced calls"| VertexAI
+    ProdBackend -->|"AI traced calls"| VertexAI
+
+    %% Dev local
+    DevDocker --> DevDB
+    Dev --> DevDocker
+
+    %% Styling
+    classDef dev fill:#62A5C0,stroke:#3B7A93,color:#fff
+    classDef ci fill:#F2A23B,stroke:#C57E1F,color:#fff
+    classDef staging fill:#9B6CCC,stroke:#6F4A99,color:#fff
+    classDef prod fill:#C25450,stroke:#823633,color:#fff
+    classDef shared fill:#2D936C,stroke:#1A6048,color:#fff
+
+    class Dev,DevDocker,DevDB dev
+    class CILint,CITest,CIBuild,CIDeploy,CIMobile,CIOpenAPI ci
+    class StgBackend,StgWeb,StgDB,StgRedis staging
+    class ProdBackend,ProdWeb,ProdDB,ProdRedis,ProdFCM prod
+    class SecretMgr,ArtifactReg,GrafanaCld,VertexAI shared

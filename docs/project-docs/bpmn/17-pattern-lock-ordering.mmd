@@ -1,0 +1,88 @@
+%% Pattern transverse : Lock ordering pour 100+ agents concurrents
+%% Source : CLAUDE.md « Lock Ordering — Bundle / Field Payment »
+%% Référence code : packages/backend/app/modules/inspections/services/collection_service.py
+%% Plan : .claude/plans/INSPECTION_BUNDLE_P1_DETAIL.md
+
+sequenceDiagram
+    autonumber
+
+    participant A1 as 👮 Agent A<br/>(terrain)
+    participant A2 as 👮 Agent B<br/>(terrain)
+    participant API as 🚦 FastAPI
+    participant TX as 🔄 Transaction<br/>asyncpg
+    participant CL as 🗄️ commercial_licenses
+    participant SR as 🗄️ service_requests
+    participant LO as 🗄️ license_obligations
+    participant SP as 🗄️ service_payments
+    participant EB as 📡 EventBus
+    participant AL as 📜 audit_logs
+
+    Note over A1,AL: Scénario : 2 agents tentent de collecter le paiement<br/>de la MÊME commercial_license simultanément
+
+    %% Agent A initie
+    A1->>API: POST /inspections/collect-field-payment<br/>(license_id=42, amount=350000)
+    API->>TX: BEGIN TRANSACTION
+    TX->>TX: SET LOCAL lock_timeout = '3s'
+    TX->>TX: SET LOCAL statement_timeout = '5s'
+
+    Note over TX: 🔒 LOCK 1 — ROOT lock<br/>(seul lock explicite)
+    TX->>CL: SELECT * FROM commercial_licenses<br/>WHERE id = 42 FOR UPDATE
+    CL-->>TX: ✅ Lock acquis par A
+
+    %% Agent B essaie en parallèle
+    A2->>API: POST /inspections/collect-field-payment<br/>(license_id=42, amount=350000)
+    API->>TX: BEGIN TRANSACTION (B)
+    Note over TX: SET LOCAL lock_timeout = '3s'
+    TX->>CL: SELECT * FROM commercial_licenses<br/>WHERE id = 42 FOR UPDATE
+    Note over CL: ⏳ Agent B attend...<br/>(lock détenu par A)
+
+    %% Agent A continue
+    Note over TX: 🔒 LOCK 2 — INSERT optimistic
+    TX->>SR: INSERT INTO service_requests<br/>(commercial_license_id=42, ...)
+    Note over SR: Partial UNIQUE index<br/>idx_sr_commercial_license_unique<br/>(pas de FOR UPDATE)
+    SR-->>TX: ✅ INSERT OK (id=789)
+
+    Note over TX: 🔒 LOCK 3 — UPDATE batch
+    TX->>LO: UPDATE license_obligations<br/>SET status='payment_pending'<br/>WHERE license_id=42 AND status='due'
+    LO-->>TX: ✅ 5 obligations lockées + updated
+
+    Note over TX: 🔒 LOCK 4 — INSERT final
+    TX->>SP: INSERT INTO service_payments<br/>(service_request_id=789, ...)<br/>workflow_status='field_collected'
+    SP-->>TX: ✅ INSERT OK (id=1234)
+
+    TX->>TX: COMMIT
+    TX->>API: ✅ Transaction A committed
+    API->>A1: 200 OK + receipt PDF
+    Note over TX: 🔓 Locks libérés
+
+    %% Effets post-transaction
+    par Audit + EventBus (fire-and-forget)
+        API->>AL: INSERT audit_logs<br/>(PAYMENT_VALIDATED, agent_id=A)
+        API->>EB: publish(payment.collected)<br/>asyncio.create_task
+        EB-->>API: routing ministères + notifications
+    end
+
+    %% Agent B reprend
+    Note over CL: Agent B reçoit le lock<br/>(libéré par A)
+    CL-->>TX: ✅ Lock acquis par B
+
+    %% Agent B essaie INSERT service_requests
+    TX->>SR: INSERT INTO service_requests<br/>(commercial_license_id=42, ...)
+    Note over SR: ❌ UniqueViolationError<br/>idx_sr_commercial_license_unique
+    SR-->>TX: 23505 unique_violation
+
+    %% Recovery déterministe (PAS de retry/backoff)
+    Note over TX,SR: Recovery pattern :<br/>try/except UniqueViolationError
+    TX->>SR: SELECT id FROM service_requests<br/>WHERE commercial_license_id = 42<br/>LIMIT 1
+    SR-->>TX: id=789 (existant créé par A)
+
+    Note over TX: 🔒 LOCK 3 — UPDATE batch (B retry)
+    TX->>LO: UPDATE license_obligations<br/>SET status='payment_pending'<br/>WHERE license_id=42 AND status='due'
+    LO-->>TX: ✅ 0 rows (déjà updated par A)
+
+    TX->>TX: Check : 0 obligations updated
+    TX->>TX: ROLLBACK ou COMMIT (idempotent)
+    TX->>API: ⚠️ Already collected by A
+    API->>A2: 409 Conflict<br/>"Payment already collected"
+
+    Note over A1,AL: ✅ Aucune race condition<br/>✅ Aucun double paiement<br/>✅ Lock libéré rapidement (lock_timeout=3s)<br/>✅ Recovery déterministe sans retry/backoff

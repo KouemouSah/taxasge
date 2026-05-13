@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PRD interactif Facil — 32 user stories filtrables par persona, statut, priorité. Recherche en direct. Cross-links vers workflows BPMN." />
+  <meta name="theme-color" content="#1F4E79" />
+  <title>PRD interactif — Facil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="assets/miro.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <header class="site-header" role="banner">
+    <button class="sidebar-toggle" aria-label="Ouvrir la navigation latérale" aria-expanded="false" aria-controls="sidebar">Menu</button>
+    <a href="index.html" class="logo" aria-label="Accueil Facil">
+      <img src="assets/img/logo.png" alt="Facil" class="logo-img" />
+    </a>
+    <nav role="navigation" aria-label="Navigation principale">
+      <a href="index.html">Accueil</a>
+      <a href="prd.html">PRD</a>
+      <a href="bpmn.html">BPMN</a>
+      <a href="prd-bpmn.html">Vue couplée</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navigation PRD">
+      <h2>Docs PROJET</h2>
+      <ul>
+        <li><a href="index.html">Accueil</a></li>
+        <li><a href="prd.html" aria-current="page">PRD interactif</a></li>
+        <li><a href="bpmn.html">BPMN visuel</a></li>
+        <li><a href="prd-bpmn.html">Vue couplée</a></li>
+      </ul>
+      <h2>Sections PRD</h2>
+      <ul id="prd-sections">
+        <li><a href="#executive-summary">1. Executive Summary</a></li>
+        <li><a href="#vision">2. Vision et stratégie</a></li>
+        <li><a href="#personas">3. Personas (6)</a></li>
+        <li><a href="#features">4. Fonctionnalités</a></li>
+        <li><a href="#user-stories">5. User Stories (32)</a></li>
+        <li><a href="#nfr">6. NFR (Exigences non fonctionnelles)</a></li>
+        <li><a href="#roadmap">7. Roadmap 12-24 mois</a></li>
+        <li><a href="#metrics">8. Métriques succès</a></li>
+        <li><a href="#risks">9. Risques (13)</a></li>
+        <li><a href="#out-of-scope">10. Out of scope V1</a></li>
+      </ul>
+      <h2>Filtres user stories</h2>
+      <ul>
+        <li><a href="#user-stories" onclick="document.getElementById('user-stories').scrollIntoView();">Tous les filtres</a></li>
+      </ul>
+    </aside>
+
+    <main class="main" id="main">
+      <h1>Product Requirements Document — Facil</h1>
+      <p><strong>Version</strong> 1.0 — 2026-05-11. <strong>Audience</strong> : équipe produit, technique, partenaires institutionnels, advisors. <strong>Maturité</strong> : MVP avancé pre-launch.</p>
+
+      <section id="executive-summary" aria-labelledby="h-exec">
+        <h2 id="h-exec">1. Executive Summary</h2>
+        <h3>Pitch</h3>
+        <blockquote>Facil est la plateforme native souveraine de transformation digitale fiscale pour les administrations publiques émergentes — première instance déployée en Guinée Équatoriale, conçue pour s'étendre à la région CEMAC / UEMOA / OHADA.</blockquote>
+        <h3>Statut actuel</h3>
+        <ul>
+          <li><strong>OK</strong> : MVP avancé — 31 modules backend (en code), 42 modules frontend, 77 tables PostgreSQL, 25 enums, 300+ migrations</li>
+          <li><strong>OK</strong> : Observabilité production (Grafana Cloud + AI + Security Observability)</li>
+          <li><strong>OK</strong> : Code production-ready, infrastructure Cloud Run + Firebase + Supabase opérationnelle</li>
+        </ul>
+        <h3>Métriques cibles 12-24 mois</h3>
+        <table>
+          <thead><tr><th>Métrique</th><th>Cible 12 mois</th><th>Cible 24 mois</th></tr></thead>
+          <tbody>
+            <tr><td>Pilote actif</td><td>1 (GE)</td><td>2-3 (GE + CEMAC)</td></tr>
+            <tr><td>Agents publics actifs</td><td>50-100</td><td>500-1 000</td></tr>
+            <tr><td>Citoyens actifs (DAU)</td><td>500-2 000</td><td>10 000-30 000</td></tr>
+            <tr><td>Déclarations traitées</td><td>1 000-5 000</td><td>50 000-200 000</td></tr>
+            <tr><td>Uptime</td><td>99,5 %</td><td>99,5 %</td></tr>
+            <tr><td>NPS contribuables</td><td>&gt;40</td><td>&gt;50</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="vision" aria-labelledby="h-vision">
+        <h2 id="h-vision">2. Vision et stratégie</h2>
+        <h3>5 défis structurels</h3>
+        <ol>
+          <li>Mobilisation des recettes fiscales sous-optimale (procédures papier, files d'attente)</li>
+          <li>Fragmentation des systèmes (chaque ministère cloisonné)</li>
+          <li>Absence de traçabilité numérique (pas d'audit trail immuable)</li>
+          <li>Faible inclusion financière (80%+ sans compte bancaire mais 60%+ mobile money)</li>
+          <li>Charges opérationnelles administratives élevées</li>
+        </ol>
+
+        <h3>6 piliers Facil — schéma hub-and-spoke</h3>
+        <div class="pillars-hub" role="img" aria-label="Schéma des 6 piliers Facil organisés autour du cœur produit">
+          <div class="pillars-hub-svg-bg" aria-hidden="true">
+            <svg viewBox="0 0 800 480" preserveAspectRatio="none" width="100%" height="100%">
+              <defs>
+                <radialGradient id="hubGradient2" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#1F4E79" stop-opacity="0.10"/>
+                  <stop offset="70%" stop-color="#1F4E79" stop-opacity="0.02"/>
+                  <stop offset="100%" stop-color="#1F4E79" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <circle cx="400" cy="240" r="200" fill="url(#hubGradient2)"/>
+              <line x1="400" y1="240" x2="130" y2="90"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+              <line x1="400" y1="240" x2="400" y2="80"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+              <line x1="400" y1="240" x2="670" y2="90"  stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+              <line x1="400" y1="240" x2="130" y2="390" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+              <line x1="400" y1="240" x2="400" y2="400" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+              <line x1="400" y1="240" x2="670" y2="390" stroke="#C9A227" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.6"/>
+            </svg>
+          </div>
+
+          <div class="pillars-hub-center" aria-hidden="true">
+            <img src="assets/img/icon_facil.png" alt="" />
+          </div>
+
+          <div class="pillars-hub-grid">
+            <div class="pillar-node" data-color="blue">
+              <span id="prd-pillar-icon-1" class="pillar-icon"></span>
+              <strong>Catalogue centralisé</strong>
+              <span>850+ services fiscaux + 28 types de déclarations.</span>
+            </div>
+            <div class="pillar-node" data-color="green">
+              <span id="prd-pillar-icon-2" class="pillar-icon"></span>
+              <strong>Inspection terrain</strong>
+              <span>App mobile + tablet inspector avec collecte de paiement et sync offline.</span>
+            </div>
+            <div class="pillar-node" data-color="orange">
+              <span id="prd-pillar-icon-3" class="pillar-icon"></span>
+              <strong>Paiement multi-canal</strong>
+              <span>BANGE Mobile Money + USSD GETESA / MUNI + cartes + virements + cash.</span>
+            </div>
+            <div class="pillar-node" data-color="purple">
+              <span id="prd-pillar-icon-4" class="pillar-icon"></span>
+              <strong>Chatbot IA</strong>
+              <span>Vertex AI Gemini RAG, 24/7, multilingue ES / FR / EN.</span>
+            </div>
+            <div class="pillar-node" data-color="pink">
+              <span id="prd-pillar-icon-5" class="pillar-icon"></span>
+              <strong>OCR + observabilité</strong>
+              <span>Gemini extraction documents + Grafana Cloud production-grade.</span>
+            </div>
+            <div class="pillar-node" data-color="yellow">
+              <span id="prd-pillar-icon-6" class="pillar-icon"></span>
+              <strong>App mobile citoyen</strong>
+              <span>Application native iOS / Android (Expo) avec notifications push, mode offline et accès USSD.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="personas" aria-labelledby="h-personas">
+        <div class="miro-section-header">
+          <span id="personas-icon" aria-hidden="true"></span>
+          <h2 id="h-personas">3. Personas (6)</h2>
+        </div>
+        <p class="miro-section-desc">6 rôles utilisateurs principaux. Chaque persona est color-coded par défaut dans les user stories ci-dessous. <em>Note : la persona « comptable » est différée V1.1.</em></p>
+        <div id="personas-grid" class="miro-persona-grid"></div>
+      </section>
+
+      <section id="features" aria-labelledby="h-features">
+        <h2 id="h-features">4. Fonctionnalités existantes (V1 MVP)</h2>
+        <p>Statut vérifié <code>packages/backend/app/modules/</code> et <code>packages/web/src/modules/</code> au 2026-05-11. Légende : OK = implémenté / Partiel = en stabilisation / Planifié = V1.1+.</p>
+        <p><strong>Backend</strong> : 31 modules — auth, users, permissions, fiscal_services, declarations, service_requests, payments, chatbot, documents, communications, webhooks, support, companies, dashboards, agents, assignment, inspections, treasury, bundle_payment, menu_config, homepage, translations, audit_logs, enrichment, verified_identifiers, cities, entity_locations, accountant, funcionario, admin, legal, batch_requests, user_documents.</p>
+        <p><strong>Frontend</strong> : 42 modules Next.js 14 + Expo mobile. Détail dans la <a href="bpmn.html">vue BPMN</a> Partie III/IV.</p>
+      </section>
+
+      <section id="user-stories" aria-labelledby="h-us">
+        <div class="miro-section-header">
+          <span id="us-icon" aria-hidden="true"></span>
+          <h2 id="h-us">5. User Stories (<span id="us-count">32</span>)</h2>
+        </div>
+        <p class="miro-section-desc">Vue sticky-notes color-coded par persona. Recherche en direct, filtres combinables. Cliquez sur le bouton « + » d'une carte pour voir les critères d'acceptation détaillés.</p>
+
+        <div class="miro-toolbar" role="search">
+          <span id="search-icon" aria-hidden="true"></span>
+          <input type="search" id="search-us" placeholder="Rechercher…" aria-label="Recherche en direct des user stories" />
+          <label for="filter-status">Statut</label>
+          <select id="filter-status" aria-label="Filtrer par statut">
+            <option value="">Tous</option>
+            <option value="implemented">Implémenté</option>
+            <option value="partial">Partiel</option>
+            <option value="planned">Planifié</option>
+          </select>
+          <label for="filter-priority">Priorité</label>
+          <select id="filter-priority" aria-label="Filtrer par priorité">
+            <option value="">Toutes</option>
+            <option value="P0">P0 (critique)</option>
+            <option value="P1">P1 (élevée)</option>
+            <option value="P2">P2 (moyenne)</option>
+          </select>
+        </div>
+
+        <div id="persona-chips" class="miro-chips" role="group" aria-label="Filtrer par persona"></div>
+
+        <div class="miro-stats" aria-live="polite">
+          <span class="miro-stat"><strong id="us-stat-total">32</strong> total</span>
+          <span class="miro-stat"><strong id="us-stat-impl">0</strong> implémentés</span>
+          <span class="miro-stat"><strong id="us-stat-partial">0</strong> partiels</span>
+          <span class="miro-stat"><strong id="us-stat-planned">0</strong> planifiés</span>
+        </div>
+
+        <div class="miro-stories-canvas">
+          <div id="us-list" class="miro-stories-grid" aria-live="polite"></div>
+          <p id="us-empty" class="miro-empty" hidden>Aucune user story ne correspond aux filtres sélectionnés.</p>
+        </div>
+      </section>
+
+      <section id="nfr" aria-labelledby="h-nfr">
+        <h2 id="h-nfr">6. Exigences non fonctionnelles (NFR)</h2>
+        <div id="nfr-list"></div>
+      </section>
+
+      <section id="roadmap" aria-labelledby="h-roadmap">
+        <h2 id="h-roadmap">7. Roadmap 12-24 mois</h2>
+        <div id="roadmap-list"></div>
+      </section>
+
+      <section id="metrics" aria-labelledby="h-metrics">
+        <h2 id="h-metrics">8. Métriques de succès</h2>
+        <h3>Métriques produit</h3>
+        <table>
+          <thead><tr><th>Métrique</th><th>Cible 12 mois</th></tr></thead>
+          <tbody>
+            <tr><td>DAU citoyens</td><td>500-2 000</td></tr>
+            <tr><td>MAU citoyens</td><td>5 000-20 000</td></tr>
+            <tr><td>Taux complétion déclaration</td><td>&gt;70 %</td></tr>
+            <tr><td>NPS contribuables</td><td>&gt;40</td></tr>
+            <tr><td>% usage mobile vs web</td><td>&gt;60 %</td></tr>
+            <tr><td>Taux chatbot resolution sans escalation</td><td>&gt;50 %</td></tr>
+          </tbody>
+        </table>
+        <h3>Métriques techniques</h3>
+        <table>
+          <thead><tr><th>Métrique</th><th>Cible</th></tr></thead>
+          <tbody>
+            <tr><td>Uptime</td><td>&gt;99,5 %</td></tr>
+            <tr><td>API latency p95</td><td>&lt;300 ms</td></tr>
+            <tr><td>Error rate</td><td>&lt;0,5 %</td></tr>
+            <tr><td>MTTR</td><td>&lt;1 h</td></tr>
+            <tr><td>Test coverage backend</td><td>&gt;70 %</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="risks" aria-labelledby="h-risks">
+        <h2 id="h-risks">9. Risques (13)</h2>
+        <div id="risks-list"></div>
+      </section>
+
+      <section id="out-of-scope" aria-labelledby="h-out">
+        <h2 id="h-out">10. Out of scope V1</h2>
+        <p>Ce qu'on ne fait PAS pour rester focus (planifié V1.1+ via Facil Framework) :</p>
+        <ul>
+          <li>Blockchain Hyperledger Fabric — palliatif Postgres+Trillian+Rekor (V1.1 Phase P)</li>
+          <li>Sage X3 connector — V2 via V1.1 Phase O</li>
+          <li>eIDAS qualifié national — V2 via V1.1 N.5 ext</li>
+          <li>ISO 20022 banking gateway — V2 via V1.1 Phase R</li>
+          <li>Active Directory direct — V2 via V1.1 J ext (SAML disponible V1)</li>
+          <li>Keycloak intégré — V2 optionnel via V1.1 J Keycloak ext</li>
+          <li>Biométrie passeport / KYC renforcé — V2 si demande client</li>
+          <li>Marketplace de services tiers — V2+</li>
+          <li>Multi-tenant strict — V2 via Facil multi-tenant</li>
+          <li>Certification formelle ISO 27001 / SOC 2 — V2 (chantier 12-18 mois)</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-grid">
+      <div><h4>Source</h4><ul><li><a href="../02-PRD.md">02-PRD.md</a> (Markdown vivant)</li></ul></div>
+      <div><h4>Voir aussi</h4><ul><li><a href="bpmn.html">BPMN visuel</a></li><li><a href="prd-bpmn.html">Vue couplée</a></li></ul></div>
+      <div><h4>Print</h4><ul><li>Utilisez l'impression navigateur (Ctrl+P) — sidebar et toolbar masqués.</li></ul></div>
+    </div>
+  </footer>
+  <div class="copyright" role="contentinfo" style="text-align:center; padding:14px 24px; border-top:1px solid var(--color-border); color: var(--color-text-muted); font-size:13px;">&copy; 2026 <strong>Facil</strong> — KOUEMOU SAH JEAN EMAC. Tous droits réservés.</div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/prd-data.js"></script>
+  <script src="assets/bpmn-data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      markActiveNav('prd.html');
+      initSidebarToggle();
+      loadPRD().then(renderPRD).catch(function (err) {
+        qs('#us-list').innerHTML = '<div class="empty-state">Erreur de chargement : ' + (err.message || err) + '</div>';
+      });
+    });
+
+    var STATE = {
+      data: null,
+      activePersonas: new Set(), // empty = all
+      activeStatus: '',
+      activePriority: '',
+      activeSearch: ''
+    };
+
+    function renderPRD(data) {
+      STATE.data = data;
+
+      // Inject section header icons
+      qs('#personas-icon').innerHTML = icon('users', { size: 24 });
+      qs('#us-icon').innerHTML = icon('sticky-note', { size: 24 });
+      qs('#search-icon').innerHTML = icon('search', { size: 16, className: 'search-icon-svg' });
+
+      // Inject pillar icons (6 piliers hub-and-spoke schema)
+      var pillarIcons = [
+        ['prd-pillar-icon-1', 'book-open'],
+        ['prd-pillar-icon-2', 'map-pin'],
+        ['prd-pillar-icon-3', 'credit-card'],
+        ['prd-pillar-icon-4', 'message-circle'],
+        ['prd-pillar-icon-5', 'sparkles'],
+        ['prd-pillar-icon-6', 'smartphone']
+      ];
+      pillarIcons.forEach(function (pair) {
+        var elt = document.getElementById(pair[0]);
+        if (elt) elt.innerHTML = icon(pair[1], { size: 28 });
+      });
+
+      // Personas grid (Miro sticky-note style, compact)
+      // Exclude 'transverse' (cross-cutting) and 'accountant' (deferred V1.1)
+      var pgrid = qs('#personas-grid');
+      data.personas.filter(function (p) { return p.id !== 'transverse' && p.id !== 'accountant'; }).forEach(function (p) {
+        var card = el('div', { className: 'miro-persona', 'data-persona': p.id, tabIndex: 0, 'aria-label': 'Persona ' + p.name });
+        var head = el('div', { className: 'miro-persona-head' });
+        var iconWrap = document.createElement('span');
+        iconWrap.innerHTML = iconForPersona(p.id, { size: 28 });
+        head.appendChild(iconWrap.firstChild);
+        head.appendChild(el('span', { className: 'miro-persona-name', text: p.name }));
+        card.appendChild(head);
+        card.appendChild(el('p', { className: 'miro-persona-pain', text: p.description || p.pain || '' }));
+        if (p.icon) {
+          card.appendChild(el('span', { className: 'miro-persona-kpi', text: p.icon }));
+        }
+        pgrid.appendChild(card);
+      });
+
+      // Persona chips (color-coded by sticky) — same filter as grid
+      var chipsContainer = qs('#persona-chips');
+      data.personas.filter(function (p) { return p.id !== 'transverse' && p.id !== 'accountant'; }).forEach(function (p) {
+        var count = data.user_stories.filter(function (us) { return us.persona === p.id; }).length;
+        var chip = el('button', {
+          className: 'miro-chip',
+          'data-persona': p.id,
+          'aria-pressed': 'false',
+          'aria-label': 'Filtrer par persona ' + p.name + ' (' + count + ' user stories)',
+          type: 'button'
+        });
+        var chipIcon = document.createElement('span');
+        chipIcon.innerHTML = iconForPersona(p.id, { size: 14 });
+        chip.appendChild(chipIcon.firstChild);
+        chip.appendChild(document.createTextNode(p.name));
+        chip.appendChild(el('span', { className: 'miro-chip-count', text: count }));
+        chip.addEventListener('click', function () {
+          if (STATE.activePersonas.has(p.id)) {
+            STATE.activePersonas.delete(p.id);
+            chip.setAttribute('aria-pressed', 'false');
+          } else {
+            STATE.activePersonas.add(p.id);
+            chip.setAttribute('aria-pressed', 'true');
+          }
+          renderStories();
+        });
+        chipsContainer.appendChild(chip);
+      });
+
+      // Stats
+      var total = data.user_stories.length;
+      var impl = data.user_stories.filter(function (u) { return u.status === 'implemented'; }).length;
+      var partial = data.user_stories.filter(function (u) { return u.status === 'partial'; }).length;
+      var planned = data.user_stories.filter(function (u) { return u.status === 'planned'; }).length;
+      qs('#us-stat-total').textContent = total;
+      qs('#us-stat-impl').textContent = impl;
+      qs('#us-stat-partial').textContent = partial;
+      qs('#us-stat-planned').textContent = planned;
+
+      // Search and filters
+      qs('#search-us').addEventListener('input', function (e) {
+        STATE.activeSearch = e.target.value.toLowerCase();
+        renderStories();
+      });
+      qs('#filter-status').addEventListener('change', function (e) {
+        STATE.activeStatus = e.target.value;
+        renderStories();
+      });
+      qs('#filter-priority').addEventListener('change', function (e) {
+        STATE.activePriority = e.target.value;
+        renderStories();
+      });
+
+      renderStories();
+
+      // NFR
+      var nfrEl = qs('#nfr-list');
+      var nfrByCat = {};
+      data.non_functional_requirements.forEach(function (n) {
+        nfrByCat[n.category] = nfrByCat[n.category] || [];
+        nfrByCat[n.category].push(n);
+      });
+      Object.keys(nfrByCat).forEach(function (cat) {
+        nfrEl.appendChild(el('h3', { text: cat }));
+        var ul = el('ul');
+        nfrByCat[cat].forEach(function (n) {
+          ul.appendChild(el('li', null, [
+            el('code', { text: n.id }),
+            document.createTextNode(' — ' + n.requirement)
+          ]));
+        });
+        nfrEl.appendChild(ul);
+      });
+
+      // Roadmap
+      var rmEl = qs('#roadmap-list');
+      var rmTable = el('table');
+      rmTable.appendChild(el('thead', null, el('tr', null, [
+        el('th', { text: 'Trimestre' }),
+        el('th', { text: 'Objectif' })
+      ])));
+      var rmBody = el('tbody');
+      data.roadmap.forEach(function (r) {
+        rmBody.appendChild(el('tr', null, [
+          el('td', null, el('strong', { text: r.quarter })),
+          el('td', { text: r.objective })
+        ]));
+      });
+      rmTable.appendChild(rmBody);
+      rmEl.appendChild(rmTable);
+
+      // Risks
+      var rEl = qs('#risks-list');
+      var rTable = el('table');
+      rTable.appendChild(el('thead', null, el('tr', null, [
+        el('th', { text: 'ID' }),
+        el('th', { text: 'Risque' }),
+        el('th', { text: 'Probabilité' }),
+        el('th', { text: 'Impact' }),
+        el('th', { text: 'Mitigation' })
+      ])));
+      var rBody = el('tbody');
+      data.risks.forEach(function (r) {
+        rBody.appendChild(el('tr', null, [
+          el('td', null, el('code', { text: r.id })),
+          el('td', { text: r.risk }),
+          el('td', { text: r.probability }),
+          el('td', { text: r.impact }),
+          el('td', { text: r.mitigation })
+        ]));
+      });
+      rTable.appendChild(rBody);
+      rEl.appendChild(rTable);
+    }
+
+    function renderStories() {
+      var list = qs('#us-list');
+      var data = STATE.data;
+      if (!data) return;
+      list.innerHTML = '';
+
+      var filtered = data.user_stories.filter(function (us) {
+        if (STATE.activePersonas.size > 0 && !STATE.activePersonas.has(us.persona)) return false;
+        if (STATE.activeStatus && us.status !== STATE.activeStatus) return false;
+        if (STATE.activePriority && us.priority !== STATE.activePriority) return false;
+        if (STATE.activeSearch) {
+          var hay = [us.id, us.title, us.as_a, us.i_want, us.so_that].join(' ').toLowerCase()
+            + ' ' + (us.acceptance_criteria || []).join(' ').toLowerCase();
+          if (hay.indexOf(STATE.activeSearch) === -1) return false;
+        }
+        return true;
+      });
+
+      qs('#us-count').textContent = filtered.length + ' / ' + data.user_stories.length;
+      qs('#us-empty').hidden = filtered.length > 0;
+
+      filtered.forEach(function (us) {
+        var card = el('article', { className: 'miro-story', 'data-persona': us.persona, 'data-id': us.id });
+
+        // Top row : persona icon + ID + priority
+        var top = el('div', { className: 'miro-story-top' });
+        var personaIconWrap = document.createElement('span');
+        personaIconWrap.innerHTML = iconForPersona(us.persona, { size: 18 });
+        top.appendChild(personaIconWrap.firstChild);
+        top.appendChild(el('span', { className: 'miro-story-id', text: us.id }));
+        if (us.priority) {
+          top.appendChild(el('span', { className: 'miro-story-priority', 'data-priority': us.priority, text: us.priority }));
+        }
+        card.appendChild(top);
+
+        // Title
+        card.appendChild(el('h3', { className: 'miro-story-title', text: us.title }));
+
+        // I want (key gist of the story)
+        card.appendChild(el('p', { className: 'miro-story-i-want', text: us.i_want || us.so_that || '' }));
+
+        // Meta row : status + workflow link
+        var meta = el('div', { className: 'miro-story-meta' });
+        var statusWrap = el('span', { className: 'miro-story-status' });
+        var sIcon = document.createElement('span');
+        sIcon.innerHTML = iconForStatus(us.status, { size: 14 });
+        statusWrap.appendChild(sIcon.firstChild);
+        var statusLabels = { implemented: 'Implémenté', partial: 'Partiel', planned: 'Planifié' };
+        statusWrap.appendChild(document.createTextNode(statusLabels[us.status] || us.status || ''));
+        meta.appendChild(statusWrap);
+        if (us.acceptance_criteria && us.acceptance_criteria.length) {
+          meta.appendChild(el('span', { className: 'miro-story-acceptance-count', text: us.acceptance_criteria.length + ' critères' }));
+        }
+        if (us.linked_workflows && us.linked_workflows.length) {
+          var firstWf = us.linked_workflows[0];
+          var linkA = el('a', {
+            className: 'miro-story-workflow-link',
+            href: 'prd-bpmn.html?us=' + encodeURIComponent(us.id) + '&wf=' + encodeURIComponent(firstWf),
+            'aria-label': 'Voir le workflow BPMN ' + firstWf + ' lié à ' + us.id
+          });
+          linkA.appendChild(document.createTextNode('BPMN'));
+          var arr = document.createElement('span');
+          arr.innerHTML = icon('arrow-right', { size: 12 });
+          linkA.appendChild(arr.firstChild);
+          meta.appendChild(linkA);
+        }
+        card.appendChild(meta);
+
+        // Expandable detail (acceptance criteria + As a / So that)
+        var detail = el('div', { className: 'miro-story-detail' });
+        if (us.as_a) {
+          detail.appendChild(el('div', null, [el('strong', { text: 'As a ' }), document.createTextNode(us.as_a)]));
+        }
+        if (us.so_that) {
+          detail.appendChild(el('div', null, [el('strong', { text: 'So that ' }), document.createTextNode(us.so_that)]));
+        }
+        if (us.acceptance_criteria && us.acceptance_criteria.length) {
+          detail.appendChild(el('h4', { text: 'Critères d’acceptation' }));
+          var ul = el('ul');
+          us.acceptance_criteria.forEach(function (c) { ul.appendChild(el('li', { text: c })); });
+          detail.appendChild(ul);
+        }
+        if (us.linked_workflows && us.linked_workflows.length > 1) {
+          detail.appendChild(el('h4', { text: 'Tous les workflows liés' }));
+          var wfUl = el('ul');
+          us.linked_workflows.forEach(function (wfId) {
+            var li = el('li');
+            var a = el('a', {
+              href: 'prd-bpmn.html?us=' + encodeURIComponent(us.id) + '&wf=' + encodeURIComponent(wfId),
+              text: wfId
+            });
+            li.appendChild(a);
+            wfUl.appendChild(li);
+          });
+          detail.appendChild(wfUl);
+        }
+        card.appendChild(detail);
+
+        // Toggle button (expand/collapse)
+        var toggle = el('button', {
+          className: 'miro-story-toggle',
+          type: 'button',
+          'aria-label': 'Afficher / masquer les détails de ' + us.id,
+          'aria-expanded': 'false'
+        });
+        var tIcon = document.createElement('span');
+        tIcon.innerHTML = icon('arrow-down', { size: 14 });
+        toggle.appendChild(tIcon.firstChild);
+        toggle.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var expanded = card.classList.toggle('expanded');
+          toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        });
+        card.appendChild(toggle);
+
+        list.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>

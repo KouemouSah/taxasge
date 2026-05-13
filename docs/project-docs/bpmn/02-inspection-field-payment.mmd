@@ -1,0 +1,86 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Inspection terrain + Paiement collecte sur place
+%% Statut: IMPLEMENTÉ (workflow le plus complexe — bundle commercial license)
+%% Référence code: packages/backend/app/modules/inspections/services/collection_service.py
+%% Lock ordering canonique (CLAUDE.md):
+%%   1. commercial_licenses (FOR UPDATE — root)
+%%   2. service_requests (INSERT optimiste, partial UNIQUE index)
+%%   3. license_obligations (UPDATE batch)
+%%   4. service_payments (INSERT)
+%% Timeouts transaction: lock_timeout=3s, statement_timeout=5s
+%% ==========================================================================
+flowchart TD
+    Start([Début — agent en mission terrain]) --> Auth
+
+    subgraph Agent_Inspector_Mobile
+      Auth[Authentification + 2FA + scope OMS]
+      Auth --> SelectMission[Sélection mission assignée]
+      SelectMission --> SelectCompany[Sélection commerce inspecté]
+      SelectCompany --> ScanLicense[Scan/saisie licence + cycle fiscal]
+      ScanLicense --> ListObl[Affichage obligations license_obligations]
+      ListObl --> SelectObl[Sélection obligations à payer]
+      SelectObl --> Method{Méthode?}
+      Method -->|Mobile Money| Phone[Saisie numéro téléphone]
+      Method -->|Cash| Receipt[Préparation reçu papier]
+      Phone --> Confirm[Confirmation montant total]
+      Receipt --> Confirm
+      Confirm --> Submit[POST /inspections/collect]
+    end
+
+    subgraph Système_Facil_Transaction
+      Submit --> ValOwn[OWASP A01: agent_id == inspection.agent_id?]
+      ValOwn -->|Non| Err1[403 Forbidden]
+      ValOwn -->|Oui| ValDouble[OWASP A04: payment_collected déjà true?]
+      ValDouble -->|Oui| Err2[Erreur double paiement]
+      ValDouble -->|Non| TxStart[BEGIN TRANSACTION]
+      TxStart --> SetTimeout[SET LOCAL lock_timeout=3s, statement_timeout=5s]
+      SetTimeout --> ValObl[Validation obligations payable + scope OMS]
+      ValObl --> ValAmount[OWASP A03: somme amount + penalty == reçu?]
+      ValAmount -->|Non| Rollback1[ROLLBACK + erreur]
+      ValAmount -->|Oui| Lock1[1 SELECT commercial_licenses FOR UPDATE]
+      Lock1 --> FindOwner[Recherche company_owner via user_company_roles]
+      FindOwner --> Lazy[2 INSERT or REUSE service_request 1:1]
+      Lazy -->|UniqueViolation| Recovery[SELECT existing par commercial_license_id]
+      Lazy -->|OK| InsertSP[3 INSERT service_payment workflow_status=field_collected]
+      Recovery --> InsertSP
+      InsertSP --> UpdObl[4 UPDATE license_obligations SET status=payment_pending]
+      UpdObl --> UpdInsp[UPDATE field_inspections payment_collected=true]
+      UpdInsp --> Audit[INSERT license_compliance_events event=payment_initiated]
+      Audit --> Commit[COMMIT TRANSACTION]
+    end
+
+    subgraph Post_Transaction
+      Commit --> EventBus[EventBus.PAYMENT_CASH_PENDING fire-and-forget]
+      EventBus --> AuditLog[INSERT audit_logs FIELD_COLLECTION best-effort]
+      AuditLog --> NotifSup[Notification supervisor pour validation]
+    end
+
+    subgraph Supervisor
+      NotifSup --> SupReview[Supervisor review reçu + matching]
+      SupReview --> SupDec{Validation?}
+      SupDec -->|Approuvé| Validate[POST /inspections/reconcile/supervisor/id/validate]
+      SupDec -->|Rejeté| Reject[Rollback obligations vers pending]
+      Validate --> OnPaid[LicenseService.on_payment_completed]
+      OnPaid --> ObPaid[license_obligations.status=paid]
+      ObPaid --> RouteMin[Routing montants vers ministères concernés]
+    end
+
+    RouteMin --> End1([Fin — paiement validé])
+    Reject --> End2([Fin — paiement rejeté])
+    Err1 --> EndErr([Fin erreur])
+    Err2 --> EndErr
+    Rollback1 --> EndErr
+
+    style Start fill:#90EE90
+    style End1 fill:#90EE90
+    style End2 fill:#FFD700
+    style EndErr fill:#FF6B6B
+    style Lock1 fill:#FFB6C1
+    style Lazy fill:#FFB6C1
+    style InsertSP fill:#FFB6C1
+    style UpdObl fill:#FFB6C1
+    style ValOwn fill:#FFA500
+    style ValAmount fill:#FFA500
+    style ValDouble fill:#FFA500
+    style Method fill:#FFA500
+    style SupDec fill:#FFA500

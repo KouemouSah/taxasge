@@ -1,0 +1,99 @@
+%% C4 — Niveau 1 (Context) — Facil
+%% Référence : C4 model de Simon Brown — https://c4model.com
+%% Audience : décideurs, bailleurs, intégrateurs externes
+%% Convention : Facil au centre, acteurs externes en périphérie, intégrations tierces étiquetées par protocole
+
+flowchart TB
+    %% Personas (acteurs humains)
+    Citoyen["👤 Citoyen / Contribuable<br/>Personne physique GE<br/>(es / fr / en)"]
+    Business["🏢 Business / Comptable<br/>Représentant entreprise<br/>ou cabinet comptable"]
+    AgentTerrain["🛂 Agent Inspector<br/>Mobile Android tablet<br/>Mission terrain Ayuntamiento / MIN_*"]
+    AgentEntite["🏛️ Agent Entité Administrative<br/>CNEDOGE / EXTRANJERIA / DGT /<br/>ONRC / MINFP / MIN_*"]
+    AgentTresor["💰 Agent Trésor public<br/>DGT — Réconciliation<br/>+ analyse anomalies"]
+    Superviseur["👁️ Superviseur<br/>Validation 2e niveau<br/>+ reassignment"]
+    Admin["⚙️ Admin Plateforme<br/>RBAC + menus + observabilité"]
+
+    %% Système central
+    Facil(["🏛️ Facil<br/>Plateforme de transformation<br/>digitale fiscale GE<br/>(MVP avancé pre-launch)"])
+
+    %% Systèmes externes — Paiement
+    BANGE["💳 BANGE<br/>Mobile Money Gateway<br/>(webhook HMAC SHA-256)"]
+    Ecobank["💳 Ecobank Pay<br/>Gateway carte / virement<br/>(à valider sandbox)"]
+    Mastercard["💳 Mastercard Gateway<br/>3DS authentication<br/>(à valider sandbox)"]
+    GETESA["📱 GETESA USSD<br/>Opérateur GE *123#<br/>(canal sans data)"]
+    MUNI["📱 MUNI USSD<br/>Opérateur GE *456#<br/>(canal sans data)"]
+
+    %% Systèmes externes — IA
+    Gemini["🧠 Vertex AI Gemini 2.0 Flash<br/>RAG + OCR + classification<br/>(traced_generate_sync)"]
+    Embedding["🔡 Vertex AI Embeddings<br/>text-embedding-005<br/>(pgvector RAG chatbot)"]
+
+    %% Systèmes externes — Infrastructure
+    Supabase["🗄️ Supabase / PostgreSQL<br/>77 tables + 25 enums<br/>+ Storage documents"]
+    Upstash["⚡ Upstash Redis<br/>HybridCache TLS<br/>(5 instances + ratelimit)"]
+    Firebase["🌐 Firebase Hosting<br/>+ Firebase Storage<br/>(PDFs reçus signés)"]
+    CloudRun["☁️ Google Cloud Run<br/>FastAPI backend stateless<br/>(scale-to-zero)"]
+    GrafanaCloud["📊 Grafana Cloud<br/>Loki + Tempo + Prometheus<br/>+ AI + Security Observability"]
+    GoogleSecretMgr["🔐 Google Secret Manager<br/>Tokens / API keys<br/>(rotation auditée)"]
+
+    %% Systèmes externes — Communication
+    SMTP["📧 SMTP Provider<br/>SendGrid / Mailgun<br/>(emails templates)"]
+    SMSGw["📲 SMS Gateway<br/>Segments 160 char<br/>(via opérateurs locaux)"]
+    FCM["🔔 Firebase Cloud Messaging<br/>+ APNs natifs<br/>(push mobile data-only)"]
+    WhatsApp["💬 WhatsApp Business API<br/>(webhook_configurations)"]
+
+    %% Systèmes externes — Gouvernement / partenaires futurs
+    SYDONIA["🛃 SYDONIA Douanes<br/>(intégration future V1.1)"]
+    BOE["📜 BOE Journal Officiel GE<br/>(référencement V1.1)"]
+    CUT["💼 CUT — Cuenta Única del Tesoro<br/>(intégration future V1.1)"]
+    ADIGE["🇬🇶 ADIGE Agenda Digital GE<br/>(brique d'exécution V1.1)"]
+
+    %% Connexions humains → Facil
+    Citoyen -->|"HTTPS / Next.js<br/>+ JWT + 2FA TOTP"| Facil
+    Business -->|"HTTPS / Web SSO<br/>+ user_company_roles"| Facil
+    AgentTerrain -->|"HTTPS / Expo mobile<br/>+ JWT 30min + offline sync"| Facil
+    AgentEntite -->|"HTTPS / Web admin<br/>+ permission_required"| Facil
+    AgentTresor -->|"HTTPS / Web admin<br/>+ dashboard analyste"| Facil
+    Superviseur -->|"HTTPS / Web admin<br/>+ supervisor role"| Facil
+    Admin -->|"HTTPS / Web admin<br/>+ admin role"| Facil
+
+    %% Connexions Facil → systèmes externes paiement
+    Facil -->|"REST API + webhook HMAC<br/>(idempotency external_id)"| BANGE
+    Facil -.->|"REST API (gateway prêt)"| Ecobank
+    Facil -.->|"REST API (gateway prêt)"| Mastercard
+    Facil -->|"USSD push session"| GETESA
+    Facil -->|"USSD push session"| MUNI
+
+    %% Connexions Facil → IA
+    Facil -->|"gRPC + REST<br/>response_mime_type=JSON<br/>+ retry 2x"| Gemini
+    Facil -->|"REST embeddings<br/>+ pgvector cosine"| Embedding
+
+    %% Connexions Facil → infrastructure
+    Facil -->|"asyncpg pool<br/>+ pg_advisory_lock"| Supabase
+    Facil -->|"redis-py TLS<br/>+ in-memory fallback"| Upstash
+    Facil -->|"PDFs reçus<br/>+ firebase-admin SDK"| Firebase
+    CloudRun ==> Facil
+    Facil -->|"OTLP gateway EU<br/>+ Sentry bridge"| GrafanaCloud
+    Facil -->|"--set-secrets pattern"| GoogleSecretMgr
+
+    %% Connexions Facil → communication
+    Facil -->|"SMTP TLS"| SMTP
+    Facil -->|"HTTP API"| SMSGw
+    Facil -->|"FCM data-only<br/>+ APNs natifs"| FCM
+    Facil -->|"webhook signed"| WhatsApp
+
+    %% Connexions Facil → gouvernement (futurs V1.1)
+    Facil -.->|"Roadmap V1.1<br/>Phase douanes"| SYDONIA
+    Facil -.->|"Roadmap V1.1<br/>Phase BOE"| BOE
+    Facil -.->|"Roadmap V1.1<br/>Agrégation flux"| CUT
+    Facil -.->|"Roadmap V1.1<br/>Brique exécution"| ADIGE
+
+    %% Styling
+    classDef person fill:#08427B,stroke:#052E56,color:#fff
+    classDef system fill:#1168BD,stroke:#0B4884,color:#fff
+    classDef external fill:#999999,stroke:#666666,color:#fff
+    classDef future fill:#cccccc,stroke:#999999,color:#333,stroke-dasharray: 5 5
+
+    class Citoyen,Business,AgentTerrain,AgentEntite,AgentTresor,Superviseur,Admin person
+    class Facil system
+    class BANGE,Ecobank,Mastercard,GETESA,MUNI,Gemini,Embedding,Supabase,Upstash,Firebase,CloudRun,GrafanaCloud,GoogleSecretMgr,SMTP,SMSGw,FCM,WhatsApp external
+    class SYDONIA,BOE,CUT,ADIGE future

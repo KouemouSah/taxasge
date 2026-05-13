@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Vue couplée Facil — user stories PRD ↔ workflows BPMN. Navigation bidirectionnelle split-screen." />
+  <meta name="theme-color" content="#1F4E79" />
+  <title>Vue couplée PRD ↔ BPMN — Facil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <header class="site-header" role="banner">
+    <a href="index.html" class="logo" aria-label="Accueil Facil">
+      <img src="assets/img/logo.png" alt="Facil" class="logo-img" />
+    </a>
+    <nav role="navigation" aria-label="Navigation principale">
+      <a href="index.html">Accueil</a>
+      <a href="prd.html">PRD</a>
+      <a href="bpmn.html">BPMN</a>
+      <a href="prd-bpmn.html">Vue couplée</a>
+    </nav>
+  </header>
+
+  <main id="main" class="main" style="max-width: 1400px; margin: 0 auto;">
+    <h1>Vue couplée : User Story ↔ Workflow BPMN</h1>
+    <p>Sélectionnez une user story <strong>ou</strong> un workflow. La vue couplée affiche automatiquement l'élément correspondant. Cross-links bidirectionnels.</p>
+
+    <div class="toolbar" role="group" aria-label="Sélection couplée">
+      <label for="select-us" style="font-weight:600; font-size:14px;">User Story :</label>
+      <select id="select-us" aria-label="Sélection user story" style="min-width:280px;">
+        <option value="">— Choisir une user story —</option>
+      </select>
+      <label for="select-wf" style="font-weight:600; font-size:14px;">Workflow BPMN :</label>
+      <select id="select-wf" aria-label="Sélection workflow" style="min-width:280px;">
+        <option value="">— Choisir un workflow —</option>
+      </select>
+      <button id="reset-btn" class="chip" type="button" aria-label="Réinitialiser la sélection">Réinitialiser</button>
+    </div>
+
+    <div class="split-view" id="split-view" aria-live="polite">
+      <section class="split-pane" id="pane-us" aria-labelledby="h-us-pane">
+        <h3 id="h-us-pane">User Story (PRD)</h3>
+        <div id="us-content">
+          <p class="empty-state">Aucune user story sélectionnée. Choisissez-en une dans le sélecteur ci-dessus, ou un workflow pour afficher automatiquement les user stories liées.</p>
+        </div>
+      </section>
+
+      <section class="split-pane" id="pane-wf" aria-labelledby="h-wf-pane">
+        <h3 id="h-wf-pane">Workflow BPMN</h3>
+        <div id="wf-content">
+          <p class="empty-state">Aucun workflow sélectionné. Choisissez-en un dans le sélecteur ci-dessus, ou une user story pour afficher automatiquement le workflow lié.</p>
+        </div>
+      </section>
+    </div>
+
+    <section style="margin-top: 40px;">
+      <h2>Comment ça marche</h2>
+      <ul>
+        <li><strong>Sélection user story</strong> → affiche les détails et le premier workflow BPMN lié rendu inline.</li>
+        <li><strong>Sélection workflow</strong> → affiche le diagramme Mermaid et la liste des user stories liées.</li>
+        <li><strong>Cross-links</strong> dans chaque panneau pour basculer rapidement vers l'autre.</li>
+        <li><strong>URL deep-link</strong> : <code>prd-bpmn.html?us=US-002&amp;wf=01-declaration-iva</code> ouvre directement la paire.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-grid">
+      <div><h4>Source</h4><ul><li><a href="../02-PRD.md">02-PRD.md</a></li><li><a href="../03-BPMN_PROCESSES.md">03-BPMN_PROCESSES.md</a></li></ul></div>
+      <div><h4>Voir aussi</h4><ul><li><a href="prd.html">PRD interactif</a></li><li><a href="bpmn.html">BPMN visuel</a></li></ul></div>
+      <div><h4>Innovation</h4><ul><li>Navigation bidirectionnelle US ↔ BPMN — réduit l'effort de traçabilité pour audit et bailleurs.</li></ul></div>
+    </div>
+  </footer>
+  <div class="copyright" role="contentinfo" style="text-align:center; padding:14px 24px; border-top:1px solid var(--color-border); color: var(--color-text-muted); font-size:13px;">&copy; 2026 <strong>Facil</strong> — KOUEMOU SAH JEAN EMAC. Tous droits réservés.</div>
+
+  <script src="assets/mermaid.min.js" defer></script>
+  <script src="assets/prd-data.js"></script>
+  <script src="assets/bpmn-data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    var STATE = { prd: null, bpmn: null, currentUS: null, currentWF: null };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      markActiveNav('prd-bpmn.html');
+
+      function ensureMermaid(cb) {
+        if (window.mermaid) { initMermaid(); cb(); }
+        else setTimeout(function () { ensureMermaid(cb); }, 80);
+      }
+
+      ensureMermaid(function () {
+        Promise.all([loadPRD(), loadBPMN()]).then(function (results) {
+          STATE.prd = results[0];
+          STATE.bpmn = results[1];
+          buildSelectors();
+          handleQueryString();
+        }).catch(function (err) {
+          qs('#us-content').innerHTML = '<div class="empty-state">Erreur : ' + err.message + '</div>';
+        });
+      });
+    });
+
+    function buildSelectors() {
+      var selUs = qs('#select-us');
+      STATE.prd.user_stories.forEach(function (us) {
+        var opt = document.createElement('option');
+        opt.value = us.id;
+        opt.textContent = us.id + ' — ' + us.title;
+        selUs.appendChild(opt);
+      });
+      var selWf = qs('#select-wf');
+      STATE.bpmn.workflows.forEach(function (wf) {
+        var opt = document.createElement('option');
+        opt.value = wf.id;
+        opt.textContent = wf.number + '. ' + wf.name;
+        selWf.appendChild(opt);
+      });
+
+      selUs.addEventListener('change', function (e) {
+        if (e.target.value) selectUS(e.target.value);
+      });
+      selWf.addEventListener('change', function (e) {
+        if (e.target.value) selectWF(e.target.value);
+      });
+      qs('#reset-btn').addEventListener('click', function () {
+        selUs.value = '';
+        selWf.value = '';
+        STATE.currentUS = null;
+        STATE.currentWF = null;
+        qs('#us-content').innerHTML = '<p class="empty-state">Aucune user story sélectionnée.</p>';
+        qs('#wf-content').innerHTML = '<p class="empty-state">Aucun workflow sélectionné.</p>';
+        history.replaceState(null, '', 'prd-bpmn.html');
+      });
+    }
+
+    function handleQueryString() {
+      var params = new URLSearchParams(window.location.search);
+      var usId = params.get('us');
+      var wfId = params.get('wf');
+      if (usId) selectUS(usId, wfId);
+      else if (wfId) selectWF(wfId);
+    }
+
+    function selectUS(usId, preferredWfId) {
+      var us = STATE.prd.user_stories.find(function (u) { return u.id === usId; });
+      if (!us) return;
+      STATE.currentUS = us;
+      qs('#select-us').value = usId;
+      renderUS(us);
+
+      // Auto-load linked workflow
+      var wfId = preferredWfId && us.linked_workflows.indexOf(preferredWfId) !== -1
+        ? preferredWfId
+        : (us.linked_workflows[0] || null);
+      if (wfId) {
+        var wf = STATE.bpmn.workflows.find(function (w) { return w.id === wfId; });
+        if (wf) {
+          STATE.currentWF = wf;
+          qs('#select-wf').value = wfId;
+          renderWF(wf);
+        }
+      } else {
+        qs('#wf-content').innerHTML = '<p class="empty-state">Cette user story n’a pas de workflow BPMN directement lié.</p>';
+      }
+      updateUrl();
+    }
+
+    function selectWF(wfId) {
+      var wf = STATE.bpmn.workflows.find(function (w) { return w.id === wfId; });
+      if (!wf) return;
+      STATE.currentWF = wf;
+      qs('#select-wf').value = wfId;
+      renderWF(wf);
+
+      // Auto-load linked user stories list
+      renderLinkedUSList(wf);
+      updateUrl();
+    }
+
+    function renderUS(us) {
+      var c = qs('#us-content');
+      c.innerHTML = '';
+      var card = el('article', { className: 'story-card', 'data-persona': us.persona });
+      var header = el('div', { className: 'story-header' });
+      header.appendChild(el('span', { className: 'story-id', text: us.id }));
+      header.appendChild(personaBadge(us.persona, STATE.prd.personas));
+      header.appendChild(el('span', { className: 'badge', 'data-persona': 'transverse', text: us.priority }));
+      header.appendChild(statusBadge(us.status));
+      card.appendChild(header);
+      card.appendChild(el('h3', { text: us.title }));
+
+      var body = el('div', { className: 'story-body' });
+      body.appendChild(el('div', null, [el('strong', { text: 'As a ' }), document.createTextNode(us.as_a)]));
+      body.appendChild(el('div', null, [el('strong', { text: 'I want ' }), document.createTextNode(us.i_want)]));
+      body.appendChild(el('div', null, [el('strong', { text: 'So that ' }), document.createTextNode(us.so_that)]));
+      card.appendChild(body);
+
+      if (us.acceptance_criteria && us.acceptance_criteria.length) {
+        card.appendChild(el('strong', { text: 'Critères d’acceptation :' }));
+        var ul = el('ul');
+        us.acceptance_criteria.forEach(function (cc) { ul.appendChild(el('li', { text: cc })); });
+        card.appendChild(ul);
+      }
+
+      if (us.linked_workflows && us.linked_workflows.length) {
+        card.appendChild(el('strong', { text: 'Workflows BPMN liés :' }));
+        var actions = el('div', { className: 'actions' });
+        us.linked_workflows.forEach(function (wfId) {
+          var wf = STATE.bpmn.workflows.find(function (w) { return w.id === wfId; });
+          var label = wf ? (wf.number + '. ' + wf.name) : wfId;
+          var btn = el('button', {
+            className: 'link-btn',
+            type: 'button',
+            text: label,
+            'aria-label': 'Charger le workflow ' + label
+          });
+          btn.addEventListener('click', function () { selectWF(wfId); });
+          actions.appendChild(btn);
+        });
+        card.appendChild(actions);
+      }
+      c.appendChild(card);
+    }
+
+    function renderWF(wf) {
+      var c = qs('#wf-content');
+      c.innerHTML = '';
+      var card = el('article', { className: 'workflow-card' });
+      var h = el('h2');
+      h.appendChild(document.createTextNode(wf.number + '. ' + wf.name + ' '));
+      h.appendChild(statusBadge(wf.status));
+      card.appendChild(h);
+
+      card.appendChild(el('p', { text: wf.objective }));
+
+      var meta = el('div', { className: 'workflow-meta' });
+      meta.appendChild(metaItem('Acteurs', (wf.actor_labels || wf.actors).join(' / ')));
+      meta.appendChild(metaItem('SLA cible', wf.sla || '—'));
+      meta.appendChild(metaItem('Volume', wf.volume || '—'));
+      card.appendChild(meta);
+
+      var diag = el('div', { className: 'diagram-container' });
+      diag.innerHTML = '<div class="empty-state">Chargement du diagramme…</div>';
+      card.appendChild(diag);
+      c.appendChild(card);
+      loadMermaid(wf, diag);
+
+      renderLinkedUSList(wf);
+    }
+
+    function renderLinkedUSList(wf) {
+      var card = qs('#wf-content').querySelector('.workflow-card');
+      if (!card) return;
+      // Remove existing linked list
+      var prev = card.querySelector('.linked-us-list');
+      if (prev) prev.remove();
+
+      var section = el('div', { className: 'linked-us-list' });
+      if (wf.linked_user_stories && wf.linked_user_stories.length) {
+        section.appendChild(el('strong', { text: 'User stories liées (PRD) :' }));
+        var actions = el('div', { className: 'actions' });
+        wf.linked_user_stories.forEach(function (usId) {
+          var us = STATE.prd.user_stories.find(function (u) { return u.id === usId; });
+          var label = us ? (usId + ' — ' + us.title) : usId;
+          var btn = el('button', {
+            className: 'link-btn',
+            type: 'button',
+            text: label,
+            'aria-label': 'Charger la user story ' + label
+          });
+          btn.addEventListener('click', function () { selectUS(usId, wf.id); });
+          actions.appendChild(btn);
+        });
+        section.appendChild(actions);
+      } else {
+        section.appendChild(el('p', { className: 'empty-state', text: 'Aucune user story directement liée (workflow architecture ou pattern).' }));
+      }
+      card.appendChild(section);
+    }
+
+    function metaItem(label, value) {
+      var m = el('div', { className: 'meta' });
+      m.appendChild(el('strong', { text: label }));
+      m.appendChild(document.createTextNode(value));
+      return m;
+    }
+
+    function updateUrl() {
+      var p = new URLSearchParams();
+      if (STATE.currentUS) p.set('us', STATE.currentUS.id);
+      if (STATE.currentWF) p.set('wf', STATE.currentWF.id);
+      var qsStr = p.toString();
+      history.replaceState(null, '', 'prd-bpmn.html' + (qsStr ? ('?' + qsStr) : ''));
+    }
+  </script>
+</body>
+</html>

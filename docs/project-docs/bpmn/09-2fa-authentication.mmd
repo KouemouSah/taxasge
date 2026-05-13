@@ -1,0 +1,85 @@
+%% ==========================================================================
+%% PROCESSUS BPMN — Authentification 2FA TOTP (RFC 6238)
+%% Statut: IMPLEMENTÉ (TwoFactorService — pyotp + Fernet encryption)
+%% Référence code: packages/backend/app/modules/auth/services/
+%%   - two_factor_service.py
+%%   - auth_service.py
+%%   - jwt_service.py
+%%   - session_service.py
+%% Tables: users.totp_secret_encrypted, users.totp_enabled, sessions, refresh_tokens
+%% ==========================================================================
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as Frontend Next.js
+    participant API as Backend FastAPI
+    participant DB as PostgreSQL
+    participant Auth as Authenticator App Google/Authy
+    participant Email as Email Service
+    participant Audit as audit_logs
+
+    Note over User,Audit: PHASE A — Login initial avec mot de passe
+    User->>Web: Saisit email + mot de passe
+    Web->>API: POST /api/v1/auth/login
+    API->>DB: SELECT users WHERE email
+    API->>API: bcrypt.verify password 12 rounds
+    alt Mot de passe invalide
+        API->>Audit: LOGIN_FAILED + IP + UA
+        API-->>Web: 401 Unauthorized
+    end
+    API->>DB: SELECT totp_enabled WHERE user_id
+    alt 2FA non activé
+        API->>API: jwt_service.create_access_token 30min
+        API->>API: create_refresh_token 30j
+        API->>DB: INSERT sessions + refresh_tokens
+        API->>Audit: LOGIN_SUCCESS
+        API-->>Web: access_token + refresh_token
+    else 2FA activé
+        API->>API: Génère challenge_token courte durée 5min
+        API-->>Web: requires_2fa=true + challenge_token
+        Web-->>User: Affiche écran code TOTP 6 chiffres
+
+        Note over User,Auth: PHASE B — Validation code TOTP
+        User->>Auth: Ouvre app authenticator
+        Auth-->>User: Affiche code 6 chiffres TTL 30s
+        User->>Web: Saisit code + valide
+        Web->>API: POST /api/v1/auth/2fa/verify avec challenge_token + code
+        API->>API: jwt_service.verify challenge_token
+        API->>DB: SELECT totp_secret_encrypted
+        API->>API: Fernet.decrypt secret
+        API->>API: pyotp.TOTP.verify code, valid_window=1
+        alt Code invalide
+            API->>Audit: 2FA_FAILED
+            API-->>Web: 401 + remaining_attempts
+        else Code valide
+            API->>API: jwt_service.create_access_token 30min
+            API->>API: create_refresh_token 30j
+            API->>DB: INSERT sessions + refresh_tokens
+            API->>Audit: LOGIN_SUCCESS_2FA
+            API-->>Web: access_token + refresh_token
+            Web-->>User: Redirect dashboard
+        end
+    end
+
+    Note over User,Audit: PHASE C — Setup initial 2FA optionnel après login
+    User->>Web: Settings — Activer 2FA
+    Web->>API: POST /api/v1/auth/2fa/setup
+    API->>API: pyotp.random_base32 secret
+    API->>API: Génère QR code SVG otpauth://totp/Facil:user@email?secret=...
+    API->>API: Fernet.encrypt secret avec TOTP_ENCRYPTION_KEY
+    API->>DB: UPDATE users SET totp_secret_encrypted, totp_enabled=false en attente confirmation
+    API-->>Web: qr_code_svg + manual_secret
+    Web-->>User: Affiche QR + secret texte
+    User->>Auth: Scan QR ou saisie manuelle
+    User->>Web: Saisit code de confirmation
+    Web->>API: POST /api/v1/auth/2fa/enable + code
+    API->>API: pyotp.TOTP.verify code
+    alt Code valide
+        API->>DB: UPDATE users SET totp_enabled=true
+        API->>API: Génère 10 backup_codes hashés bcrypt
+        API->>DB: INSERT users.backup_codes_hashed
+        API->>Email: Envoi email confirmation 2FA activé
+        API->>Audit: 2FA_ENABLED
+        API-->>Web: success + backup_codes affichés une seule fois
+        Web-->>User: Affiche codes de récupération à imprimer
+    end
