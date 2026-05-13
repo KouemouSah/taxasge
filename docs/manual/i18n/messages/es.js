@@ -4686,7 +4686,11 @@ window.__I18N__.es = {
       "l1": "Selecciona los establecimientos a visitar (programación previa, ruta del día, o empresas con obligaciones vencidas detectadas por el sistema)",
       "l2": "Pre-descarga los datos de las licencias bundle en su tablet/smartphone (modo offline activado, cifrado MMKV)",
       "l3": "Verifica que la batería del terminal está al máximo (los días de inspección son largos)",
-      "l4": "Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal"
+      "l4": "Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal",
+      "fig": {
+        "alt": "Dashboard mobile inspecciones del día",
+        "caption": "Dashboard mobile del agente con las inspecciones del día (programadas + en curso)."
+      }
     },
     "s2": {
       "title": "2. Llegada al establecimiento: escaneo del QR de la licencia",
@@ -4694,6 +4698,14 @@ window.__I18N__.es = {
       "info": {
         "title": "Si el QR está deteriorado o ausente",
         "body": "El agente puede buscar manualmente el establecimiento por NIF o por nombre comercial. La ausencia o ilegibilidad del QR en sí misma constituye una infracción registrable en el rapport de inspección."
+      },
+      "fig": {
+        "alt": "Iniciar una inspección scan QR o búsqueda NIF",
+        "caption": "Pantalla mobile iniciar inspección: scan QR licencia o búsqueda NIF manual."
+      },
+      "security": {
+        "title": "Protección capture d'écran",
+        "body": "La aplicación mobile activa <code>FLAG_SECURE</code> (Android) et l'équivalent iOS en los écrans sensibles : tomar una capture d'écran o un enregistrement vidéo affichera un écran noir. Implémenté via le hook <code>useScreenProtection</code> dans <code>packages/mobile/src/core/security/use-screen-protection.ts</code>, basé sur <code>expo-screen-capture</code>. Raison : éviter la fuite de données personnelles des commerçants (DIP, montants obligaciones, photos d'identité) si le téléphone d'un agente est compromis o photographié à l'insu de l'agente."
       }
     },
     "s3": {
@@ -4740,7 +4752,15 @@ window.__I18N__.es = {
           "c3": "Notificación al ministerio sectorial"
         }
       },
-      "body": "El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran)."
+      "body": "El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran).",
+      "fig1": {
+        "alt": "Rellenar la ficha de inspección mobile",
+        "caption": "Rellenar la ficha de inspección: checklist + observaciones."
+      },
+      "fig2": {
+        "alt": "Acciones disponibles tras la ficha",
+        "caption": "Acciones disponibles tras la ficha (collectar paiement, emitir MED, proponer scellement)."
+      }
     },
     "s4": {
       "title": "4. Collection de obligaciones en el terreno",
@@ -4750,11 +4770,46 @@ window.__I18N__.es = {
       "warn": {
         "title": "Lock ordering strict (CLAUDE.md)",
         "body": "La transaction de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agents simultáneos) : <code>commercial_licenses</code> (FOR UPDATE) → <code>service_requests</code> (INSERT optimista via partial UNIQUE index) → <code>license_obligations</code> (UPDATE batch) → <code>service_payments</code> (INSERT). Timeouts : <code>lock_timeout=3s</code>, <code>statement_timeout=5s</code>. Implementación en <code>collection_service.py::CollectionService.collect_field_payment</code>."
+      },
+      "fig": {
+        "alt": "Encaissement du paiement mobile",
+        "caption": "Pantalla collectar paiement: Mobile Money BANGE o cash, importe pre-calculado."
+      }
+    },
+    "s4b": {
+      "title": "4 bis. Si obligaciones vencidas sin paiement: emitir MED (Mise en Demeure)",
+      "body": "Si el comerciante <strong>refuse de payer</strong> o no tiene los fonds nécessaires, el agente emite una <strong>Mise en Demeure</strong> (MED) con un délai légal de 72h por défaut. Endpoint backend : <code>POST /inspections/{id}/mise-en-demeure</code>, permission <code>inspection.mise_en_demeure</code>. Una MED génère :",
+      "l1": "Cambio de estado de la inspección : <code>in_progress</code> → <code>mise_en_demeure</code>",
+      "l2": "Génération d'un PDF MED firmado oficialmente",
+      "l3": "Upload Firebase Storage + registro en el vault de la empresa",
+      "l4": "Email + push al <em>owner</em> de la empresa via EventBus",
+      "l5": "Listado de las obligaciones señaladas (<code>mise_en_demeure_obligations</code> JSONB)",
+      "l6": "Deadline TIMESTAMPTZ stockée (<code>mise_en_demeure_deadline</code>)",
+      "fig": {
+        "alt": "Emitir MED mobile",
+        "caption": "Pantalla emitir MED: seleccionar obligaciones vencidas, fijar deadline (72h por défaut), notas justificativas."
+      }
+    },
+    "s4c": {
+      "title": "4 ter. Si la MED expire sin paiement: proponer scellement",
+      "body": "72h après l'émission de la MED, si le commerçant n'a toujours pas réglé, l'agent peut <strong>proposer le scellement</strong> du commerce (<code>POST /inspections/{id}/seal</code>, permission <code>inspection.seal_propose</code>). Cette acción <strong>requiere validation supervisor</strong> — l'agent ne peut PAS sceller seul. Le backend vérifie automatiquement la condition « MED expirée » avant d'accepter la proposition (raison <code>non_paiement_apres_med</code>).",
+      "body2": "8 razones légales de scellement disponibles (enum <code>SealReason</code>) : <code>non_paiement_apres_med</code>, <code>activite_non_autorisee</code>, <code>fraude_fiscale</code>, <code>faux_documents</code>, <code>refus_controle</code>, <code>non_conformite_grave</code>, <code>decision_judiciaire</code>, <code>ordre_ministeriel</code>. Détail complet et workflow supervisor en <a href=\"74-supervisor-inspecciones.html\">página 74 §2-§3</a>.",
+      "fig": {
+        "alt": "Proponer scellement mobile",
+        "caption": "Pantalla proponer scellement: seleccionar razón (8 enum), foto obligatoria, notas. Estado pasa a <code>seal_proposed</code> en espera de aprobación supervisor."
+      }
+    },
+    "s4d": {
+      "title": "4 quater. Finalizar la ficha y firmar",
+      "body": "Una vez completadas todas las acciones (checklist, collection ou MED, scellement éventuel), el agente <strong>firma electrónicamente</strong> la ficha y la finaliza. Endpoint <code>POST /inspections/{id}/complete</code>. La firma est horodatée et stockée comme preuve juridique.",
+      "fig": {
+        "alt": "Finalizar y firmar ficha de inspección mobile",
+        "caption": "Pantalla finalizar y firmar: el agente trace su firma + valide."
       }
     },
     "s5": {
       "title": "5. Mode offline: cómo trabaja la sincronización",
-      "diagram": "\n┌───────────────────────────────────────────────────────────────────────┐\n│ Mode offline OMS — sincronización al regreso                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  En la oficina (con red)                                              │\n│        │                                                              │\n│        │ Pre-download datos: licencias bundle, obligations,           │\n│        │  checklists, fotos. Cifrado MMKV AES-256                     │\n│        ▼                                                              │\n│  En el terreno (sin red)                                              │\n│        │                                                              │\n│        ├─ Scan QR licencia            → leer desde cache              │\n│        ├─ Marcar checklist             → escribir en cache (queue)    │\n│        ├─ Tomar fotos                  → cifradas + queue local       │\n│        ├─ Collectar obligaciones cash  → eventos en queue             │\n│        ▼                                                              │\n│  Regreso a la oficina (red recuperada)                                │\n│        │                                                              │\n│        │ Detección automática de conexión                             │\n│        │ Sincronización automática de la queue:                       │\n│        │  • Inspecciones realizadas → service_requests                │\n│        │  • Fotos → Firebase Storage cifrado                          │\n│        │  • Collections cash → bank_transactions con flag «field»     │\n│        │  • Eventos audit → audit_logs                                │\n│        ▼                                                              │\n│  Reconciliación caja                                                  │\n│        │                                                              │\n│        │ Comparación: total eventos collection = efectivo en caja      │\n│        │  • Si igual: validación auto + recibos oficiales generados   │\n│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │\n│        ▼                                                              │\n│  Estado final: jornada cerrada, recibos oficiales emitidos             │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘\n"
+      "diagram": "┌───────────────────────────────────────────────────────────────────────┐\n│ Mode offline OMS — sincronización al regreso                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  En la oficina (con red)                                              │\n│        │                                                              │\n│        │ Pre-download datos: licencias bundle, obligations,           │\n│        │  checklists, fotos. Cifrado MMKV AES-256                     │\n│        ▼                                                              │\n│  En el terreno (sin red)                                              │\n│        │                                                              │\n│        ├─ Scan QR licencia            → leer desde cache              │\n│        ├─ Marcar checklist             → escribir en cache (queue)    │\n│        ├─ Tomar fotos                  → cifradas + queue local       │\n│        ├─ Collectar obligaciones cash  → eventos en queue             │\n│        ▼                                                              │\n│  Regreso a la oficina (red recuperada)                                │\n│        │                                                              │\n│        │ Detección automática de conexión                             │\n│        │ Sincronización automática de la queue:                       │\n│        │  • Inspecciones realizadas → service_requests                │\n│        │  • Fotos → Firebase Storage cifrado                          │\n│        │  • Collections cash → bank_transactions con flag «field»     │\n│        │  • Eventos audit → audit_logs                                │\n│        ▼                                                              │\n│  Reconciliación caja                                                  │\n│        │                                                              │\n│        │ Comparación: total eventos collection = efectivo en caja      │\n│        │  • Si igual: validación auto + recibos oficiales generados   │\n│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │\n│        ▼                                                              │\n│  Estado final: jornada cerrada, recibos oficiales emitidos             │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘"
     },
     "s6": {
       "title": "6. Reconciliación al regreso (procedimiento administrativo)",
@@ -5097,35 +5152,142 @@ window.__I18N__.es = {
     },
     "page74": {
     "html_title": "Supervisor Inspecciones — Manual Facil",
-    "title": "Supervisor Inspecciones OMS",
-    "description": "El supervisor de Inspecciones OMS encadre los agentes que realizan inspecciones <strong>comerciales bundle</strong> en el terreno (página 69) y valida los casos sensibles: sanciones importantes (más de 500.000 XAF) por incumplimiento de obligaciones bundle, suspensiones temporales de licencia, recursos del comerciante. Trabaja en estrecha colaboración con los agentes que escanean los QR de licencias en el terreno y necesita visibilidad real-time sobre los cobros en efectivo para detectar anomalías rápidamente. <em>OMS = Obligation Management System — no tiene relación con la salud.</em>",
+    "title": "Supervisor Inspecciones OMS: MED, scellement et validación de paiements terreno",
+    "description": "El supervisor de Inspecciones OMS (Obligation Management System) encadre los agentes que realizan inspecciones <strong>comerciales bundle</strong> en el terreno (ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) y trata tres workflows críticos definidos en el backend <code>app/modules/inspections/</code>: aprobar/rechazar las <strong>propuestas de scellement</strong> emitidas por los agentes (<code>approve_seal</code>), validar las <strong>reconciliaciones de paiements</strong> collectados en el terreno (<code>/reconcile/supervisor/{payment_id}/validate</code>), monitorear el live-status de los agentes en mission. <em>OMS no tiene relación con la salud — refiere al sistema de gestión de obligaciones bundle.</em>",
     "s1": {
-      "title": "1. Responsabilidades específicas",
-      "l1": "<strong>Validar las sanciones &gt; 500.000 XAF</strong> — sobre ese umbral, el agente terreno no puede cobrar sin la validación del supervisor. La validación se hace por la app en menos de 5 minutos (notificación push al supervisor con el dossier del establecimiento + foto de la infracción).",
-      "l2": "<strong>Decidir suspensiones temporales de licencia</strong> — si un comerciante acumula obligaciones bundle vencidas (más de 3 meses, importe &gt; umbral configurable) o se detecta una incoherencia mayor (actividad declarada ≠ actividad real, NIF suspendido), el agente terreno escala. El supervisor confirma vía la app y emite la orden de suspensión electrónica de la licencia.",
-      "l3": "<strong>Tratar los recurros</strong> — si el comerciante impugna una sanción (vía soporte o vía correo), el supervisor revisa el expediente (fotos, checklist), eventualmente cita al comerciante en la oficina, decide el mantenimiento o la anulación.",
-      "l4": "<strong>Monitorear los cobros en efectivo en tiempo real</strong> — dashboard con todos los agentes en el terreno, sus cobros del día, su consonancia con los importes esperados. Alerta automática si una diferencia &gt; 50.000 XAF aparece.",
-      "l5": "<strong>Validar las reconciliaciones de fin de jornada</strong> — cada agente regresa con su efectivo y declara su reconciliación. El supervisor valida o solicita explicación si hay diferencia."
+      "title": "1. Estados reales del flujo inspección (InspectionStatus)",
+      "body": "El backend define 7 estados (<code>InspectionStatus</code> enum en <code>inspection.py</code>). El supervisor interviene principalmente sobre <code>seal_proposed</code> et <code>reconcile</code>.",
+      "t": {
+        "h1": "Estado",
+        "h2": "Significado",
+        "h3": "Quién interviene",
+        "r1": {
+          "c2": "Inspección iniciada por el agente en el terreno",
+          "c3": "Agente"
+        },
+        "r2": {
+          "c2": "Inspección finalizada sin acción correctiva",
+          "c3": "Agente"
+        },
+        "r3": {
+          "c2": "MED emitida (deadline 72h por defecto)",
+          "c3": "Agente (con permiso <code>inspection.mise_en_demeure</code>)"
+        },
+        "r4": {
+          "c2": "Agente propide el scellement del comercio",
+          "c3": "Agente propose, <strong>Supervisor valida</strong>"
+        },
+        "r5": {
+          "c2": "Scellement aprobado por el supervisor",
+          "c3": "Supervisor"
+        },
+        "r6": {
+          "c2": "Scellement rechazado por el supervisor (decisión motivada)",
+          "c3": "Supervisor"
+        },
+        "r7": {
+          "c2": "Inspección cancelada (error agente, doble enregistrement)",
+          "c3": "Agente o Supervisor"
+        }
+      }
     },
     "s2": {
-      "title": "2. Por qué no hay captures específicas en esta página",
-      "info": {
-        "title": "Reutilización de las pantallas OMS",
-        "body": "El supervisor de Inspecciones utiliza las mismas pantallas que los agentes OMS (página 66) con permisos extendidos. No hay back-office dedicado distinto: la diferenciación se hace por los permisos. El supervisor ve un menú suplementario <em>«Validaciones supervisor»</em> y <em>«Cierres temporales»</em> que no aparece para los agentes simples. Las pantallas básicas (dashboard, lista de licencias, detalle inspección) son visualmente idénticas a las de la página 66, simplemente con datos extendidos y botones de acción adicionales."
+      "title": "2. Las 8 razones legales de scellement",
+      "intro": "Cuando el agente propide un scellement (<code>propose_seal</code>), debe elegir UNA de las 8 razones legales definidas en <code>SealReason</code> enum (<code>inspection.py</code>). Esta liste cerrada garantiza el cadre juridique de la décision.",
+      "t": {
+        "h1": "Código",
+        "h2": "Cuándo se aplica",
+        "h3": "Condición particular",
+        "r1": {
+          "c2": "Comerciante no ha pagado las obligaciones señaladas en la MED después del deadline",
+          "c3": "MED expirada obligatoria (controlado por el backend)"
+        },
+        "r2": {
+          "c2": "Actividad observada en el terreno no coincide con la licencia (ej: bar declarado en boutique)",
+          "c3": "Foto obligatoria"
+        },
+        "r3": {
+          "c2": "Fraude fiscal detectado (importes minorés, registres falseados)",
+          "c3": "Justificantes obligatorios + escalation potentielle Tesoro"
+        },
+        "r4": {
+          "c2": "Licencia, NIF, o autorisations présentés son falsos",
+          "c3": "Foto obligatoria + transmisión Extranjería si aplicable"
+        },
+        "r5": {
+          "c2": "Comerciante rechaza la inspección o impide el acceso al local",
+          "c3": "Notes obligatorias (descripción del incidente)"
+        },
+        "r6": {
+          "c2": "Incumplimiento grave detectado (acumulación obligaciones, faltas reiteradas)",
+          "c3": "Histórico de la empresa adjunto"
+        },
+        "r7": {
+          "c2": "Decisión judicial ordena el scellement (sentence, mandato)",
+          "c3": "Référence du jugement obligatoire"
+        },
+        "r8": {
+          "c2": "Orden ministerial directa (decreto, circular ad hoc)",
+          "c3": "Référence du décret obligatoria"
+        }
       }
     },
     "s3": {
-      "title": "3. Workflow validación sanción &gt; 500.000 XAF (obligación bundle)",
-      "diagram": "\n┌─────────────────────────────────────────────────────────────────────┐\n│ Flujo escalación sanción terreno OMS (obligación bundle)            │\n├─────────────────────────────────────────────────────────────────────┤\n│                                                                     │\n│  Agente terreno: detecta obligación vencida grave (> 500K XAF)      │\n│         │                                                           │\n│         │ Llena checklist + tomas fotos                              │\n│         │ App calcula importe automático                              │\n│         │ Botón \"Aplicar sanción\" → BLOQUEADO si importe > 500K     │\n│         ▼                                                           │\n│  App: \"Sanción superior al umbral, requiere validación supervisor\"  │\n│         │                                                           │\n│         │ Notificación push supervisor + dossier en línea (fotos,   │\n│         │ checklist, datos comerciante, importes calculados)         │\n│         ▼                                                           │\n│  Supervisor: recibe en su móvil (puede estar en oficina o terreno)  │\n│         │                                                           │\n│         │ Revisa fotos, eventualmente llama al agente               │\n│         │ por telecom interno integrado                              │\n│         ▼                                                           │\n│       Decisión                                                       │\n│         ├─ Validar → sanción autorizada, agente puede cobrar         │\n│         ├─ Modificar importe → propone otra cifra (justificada)      │\n│         ├─ Rechazar → infracción no calificada, agente anota         │\n│         │   warning solamente                                        │\n│         └─ Diferir → caso complejo, citará al comerciante en oficina │\n│         ▼                                                           │\n│  Trazabilidad : audit log con doble firma (agente + supervisor)      │\n│                                                                     │\n└─────────────────────────────────────────────────────────────────────┘\n"
+      "title": "3. Flujo real Mise en demeure → Scellement → Aprobación supervisor",
+      "diagram": "┌──────────────────────────────────────────────────────────────────────────┐\n│ Workflow real inspection (vérifié contre app/modules/inspections/)       │\n├──────────────────────────────────────────────────────────────────────────┤\n│                                                                          │\n│  AGENTE (mobile terreno)                                                 │\n│    │                                                                     │\n│    ▼                                                                     │\n│  1. POST /inspections/  →  inspection.status = in_progress               │\n│    │   Foto, GPS, NIF, licencia, obligaciones                            │\n│    ▼                                                                     │\n│  2. Marca checklist + actividad declarada vs observada                   │\n│    │                                                                     │\n│    ▼                                                                     │\n│  3. POST /inspections/{id}/collect (opcional)                            │\n│    │   Collectar paiement Mobile Money ou cash                           │\n│    │   permission: inspection.collect_payment                            │\n│    │                                                                     │\n│    ▼                                                                     │\n│  4. POST /inspections/{id}/mise-en-demeure (si obligaciones vencidas)    │\n│    │   deadline_hours = 72 por défaut (configurable)                     │\n│    │   permission: inspection.mise_en_demeure                            │\n│    │   → status = mise_en_demeure                                        │\n│    │   → genera MED PDF + email a owner empresa via EventBus             │\n│    ▼                                                                     │\n│  ── 72h écoulées sans paiement ──                                        │\n│    │                                                                     │\n│    ▼                                                                     │\n│  5. POST /inspections/{id}/seal (propuesta scellement)                   │\n│    │   reason: una de las 8 (ver §2)                                     │\n│    │   notes + photo obligatorios                                        │\n│    │   permission: inspection.seal_propose                               │\n│    │   → status = seal_proposed                                          │\n│    │   → notificación a TODOS los supervisores de la entidad (EventBus)  │\n│    ▼                                                                     │\n│  ─────────────────────────────────────────────────                        │\n│                                                                          │\n│  SUPERVISOR (web back-office)                                            │\n│    │                                                                     │\n│    ▼                                                                     │\n│  6. Recibe notification email + push                                     │\n│    │   Abre /supervisor/dashboard → panel pending_seals                  │\n│    ▼                                                                     │\n│  7. Revisa el dossier completo                                           │\n│    │   • Histórico de la empresa (obligaciones, MED, audit)              │\n│    │   • Foto del agente                                                 │\n│    │   • Razón invoquée + notes                                          │\n│    │   • Si non_paiement_apres_med: verifica MED expirée                 │\n│    ▼                                                                     │\n│  8. POST /inspections/{id}/seal/approve  (approved: true/false)          │\n│    │   permission: inspection.seal_approve                               │\n│    │   ┌─ approved=true  → status = seal_approved                        │\n│    │   │   • Cierre temporal officiel del comercio                       │\n│    │   │   • Notification owner + commerce association                   │\n│    │   └─ approved=false → status = seal_rejected                        │\n│    │       • notes obligatorias (motivo)                                 │\n│    │       • Agente debe reabrir la inspección si necesario              │\n│    ▼                                                                     │\n│  9. AUTO-FALLBACK: si supervisor inactivo > 24h sur seal_proposed        │\n│    │   POST /inspections/cron/auto-approve-seals (cron daily)            │\n│    │   → status passe à seal_approved automáticamente                    │\n│    │   → notification renforcée à toda la chaîne hiérarchique            │\n│                                                                          │\n└──────────────────────────────────────────────────────────────────────────┘"
     },
     "s4": {
-      "title": "4. Reconciliación de caja: el control crítico",
-      "body": "El momento más sensible es la reconciliación de fin de jornada del agente terreno. El supervisor valida el rapport de reconciliación y firma electrónicamente. Si hay una diferencia entre los cobros declarados en la app y el efectivo presentado, el supervisor debe :",
-      "l1": "Verificar las firmas del comerciante en cada recibo cobrado (presencia obligatoria en el momento del cobro)",
-      "l2": "Recontar el efectivo en presencia del agente",
-      "l3": "Solicitar explicación escrita si la diferencia persiste",
-      "l4": "Bloquear la sincronización de la jornada hasta resolución",
-      "l5": "Escalar al director si la diferencia &gt; 100.000 XAF o repetida 2 veces en el mes"
+      "title": "4. Endpoints supervisor (back-office web)",
+      "t": {
+        "h1": "Endpoint",
+        "h2": "Función",
+        "h3": "Permiso",
+        "r1": {
+          "c2": "KPIs, alertas, pending seals, live agents"
+        },
+        "r2": {
+          "c2": "Status temps réel de los agentes en mission (GPS, batterie, dernière action)"
+        },
+        "r3": {
+          "c2": "Aprobar o rechazar un seal_proposed"
+        },
+        "r4": {
+          "c2": "Listar reconciliaciones de paiements terreno en espera de validación"
+        },
+        "r5": {
+          "c2": "Validar (o rechazar) la reconciliación de un paiement collected en cash terreno"
+        },
+        "r6": {
+          "c2": "Cron interne — auto-aprueba seals_proposed sans action supervisor > 24h",
+          "c3": "Sistema (no human-callable)"
+        }
+      }
+    },
+    "s5": {
+      "title": "5. Decisión seal/approve: las 4 alternativas del supervisor",
+      "intro": "Al examinar un <code>seal_proposed</code>, el supervisor dispone de 4 acciones concretas (implementadas en <code>approve_seal</code>):",
+      "l1": "<strong>Aprobar (approved=true)</strong> — el scellement entra en vigor. El comercio queda cerrado oficialmente hasta levée. Owner notificado.",
+      "l2": "<strong>Rechazar (approved=false)</strong> — el supervisor estima que el caso no justifica el scellement. Devuelve al agente con notes motivadas. La inspección queda en <code>seal_rejected</code>; el agente puede emitir une nueva MED o cerrar el dossier.",
+      "l3": "<strong>Ne rien faire</strong> — si más de 24h passent sin acción, el cron <code>auto-approve-seals</code> aprouve automáticamente (filet de sécurité para évitar el blocage des dossiers).",
+      "l4": "<strong>Escalar al director</strong> (informal, hors backend) — para los cas complexes (decisión judicial, ordre ministériel), el supervisor consulte el director avant d'aprouver. La trazabilité se hace via les notes de l'inspection."
+    },
+    "s6": {
+      "title": "6. Validación de la reconciliación de paiements terreno",
+      "body": "Cuando un agente collectó un paiement en cash sur le terrain (<code>collect_field_payment</code>), el paiement entra en una cola de reconciliación pour validation par le supervisor. La pantalla <code>/reconcile/supervisor</code> liste los paiements en espera, agrupados por agente, con el importe declarado vs el efectivo presentado. El supervisor verifica los <strong>recibos firmados</strong> del comerçant, recompte el efectivo en présence del agente, valida o rechaza. La trazabilité respecte el lock ordering canónico (commercial_licenses FOR UPDATE → service_payments INSERT) implémenté dans <code>collection_service.py</code>."
+    },
+    "s7": {
+      "title": "7. Protección capture d'écran sobre l'app mobile agente",
+      "warn": {
+        "title": "FLAG_SECURE activé en los écrans sensibles",
+        "body": "La aplicación mobile de los agentes (utilizada para las inspecciones terreno, ver <a href=\"69-trabajo-terreno-oms.html\">página 69</a>) activa <code>FLAG_SECURE</code> sobre Android (et l'équivalent iOS) en tous les écrans sensibles : profil, détail des solicitudes, settings, wizard, app-lock. Ce mécanisme bloque les screenshots et l'enregistrement vidéo de l'écran. Raison : éviter la fuite de données personnelles des commerçants (DIP, NIF, photos d'identité, montants des obligations) si le téléphone d'un agent est compromis ou photographié à l'insu de l'agent. Implémentation : hook <code>useScreenProtection</code> dans <code>packages/mobile/src/core/security/use-screen-protection.ts</code>, base sur <code>expo-screen-capture</code>."
+      }
+    },
+    "s8": {
+      "title": "8. Por qué pas de captures dédiées",
+      "info": {
+        "title": "Réutilisation des écrans agents OMS",
+        "body": "El supervisor utilise les mêmes écrans que les agents OMS (page 66) con permissions étendues. Pas de back-office dédié distinct — la différenciation est par permission. Les écrans <em>«Validaciones supervisor»</em>, <em>«Aprobar seals»</em>, <em>«Reconcile pending»</em> ne apparaissent que si le rol contient le permiso correspondant. Las pantallas básicas (dashboard, licences, détail inspection) sont visuellement identiques à celles de la page 66 mais con datos étendus et botones d'acción adicionales."
+      }
     },
     "prev": "← Anterior: Supervisor Ayuntamiento+Cámara",
     "next": "Siguiente: Rol Admin →"

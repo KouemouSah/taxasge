@@ -154,6 +154,10 @@
             <li data-i18n="page69.s1.l3">Verifica que la batería del terminal está al máximo (los días de inspección son largos)</li>
             <li data-i18n="page69.s1.l4">Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal</li>
           </ul>
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection_dashbord.png" alt="Dashboard mobile inspecciones del día" data-i18n-attr-alt="page69.s1.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s1.fig.caption">Dashboard mobile del agente con las inspecciones del día (programadas + en curso).</figcaption>
+          </figure>
         </section>
 
         <section>
@@ -163,6 +167,15 @@
           <div class="callout callout-info">
             <h3 class="callout-title" data-i18n="page69.s2.info.title">Si el QR está deteriorado o ausente</h3>
             <p data-i18n="page69.s2.info.body">El agente puede buscar manualmente el establecimiento por NIF o por nombre comercial. La ausencia o ilegibilidad del QR en sí misma constituye una infracción registrable en el rapport de inspección.</p>
+          </div>
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection_lancer_une_inspection.png" alt="Iniciar una inspección scan QR o búsqueda NIF" data-i18n-attr-alt="page69.s2.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s2.fig.caption">Pantalla mobile iniciar inspección: scan QR licencia o búsqueda NIF manual.</figcaption>
+          </figure>
+
+          <div class="callout callout-warning">
+            <h3 class="callout-title" data-i18n="page69.s2.security.title">Protección capture d'écran</h3>
+            <p data-i18n-html="page69.s2.security.body">La aplicación mobile activa <code>FLAG_SECURE</code> (Android) et l'équivalent iOS en los écrans sensibles : tomar una capture d'écran o un enregistrement vidéo affichera un écran noir. Implémenté via le hook <code>useScreenProtection</code> dans <code>packages/mobile/src/core/security/use-screen-protection.ts</code>, basé sur <code>expo-screen-capture</code>. Raison : éviter la fuite de données personnelles des commerçants (DIP, montants obligaciones, photos d'identité) si le téléphone d'un agente est compromis o photographié à l'insu de l'agente.</p>
           </div>
         </section>
 
@@ -193,6 +206,17 @@
           </div>
 
           <p data-i18n="page69.s3.body">El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran).</p>
+
+          <div class="figure-pair">
+            <figure>
+              <img src="_assets/screenshots/mobile/inspection/inspection_remplir _la_fiche_inspection.png" alt="Rellenar la ficha de inspección mobile" data-i18n-attr-alt="page69.s3.fig1.alt" loading="lazy">
+              <figcaption data-i18n="page69.s3.fig1.caption">Rellenar la ficha de inspección: checklist + observaciones.</figcaption>
+            </figure>
+            <figure>
+              <img src="_assets/screenshots/mobile/inspection/inspection_remplir_fiches_et_action.png" alt="Acciones disponibles tras la ficha" data-i18n-attr-alt="page69.s3.fig2.alt" loading="lazy">
+              <figcaption data-i18n="page69.s3.fig2.caption">Acciones disponibles tras la ficha (collectar paiement, emitir MED, proponer scellement).</figcaption>
+            </figure>
+          </div>
         </section>
 
         <section>
@@ -207,6 +231,47 @@
             <h3 class="callout-title" data-i18n="page69.s4.warn.title">Lock ordering strict (CLAUDE.md)</h3>
             <p data-i18n="page69.s4.warn.body">La transaction de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agents simultáneos) : <code>commercial_licenses</code> (FOR UPDATE) → <code>service_requests</code> (INSERT optimista via partial UNIQUE index) → <code>license_obligations</code> (UPDATE batch) → <code>service_payments</code> (INSERT). Timeouts : <code>lock_timeout=3s</code>, <code>statement_timeout=5s</code>. Implementación en <code>collection_service.py::CollectionService.collect_field_payment</code>.</p>
           </div>
+
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection_action_encaisser_le_paiement.png" alt="Encaissement du paiement mobile" data-i18n-attr-alt="page69.s4.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s4.fig.caption">Pantalla collectar paiement: Mobile Money BANGE o cash, importe pre-calculado.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page69.s4b.title">4 bis. Si obligaciones vencidas sin paiement: emitir MED (Mise en Demeure)</h2>
+          <p data-i18n-html="page69.s4b.body">Si el comerciante <strong>refuse de payer</strong> o no tiene los fonds nécessaires, el agente emite una <strong>Mise en Demeure</strong> (MED) con un délai légal de 72h por défaut. Endpoint backend : <code>POST /inspections/{id}/mise-en-demeure</code>, permission <code>inspection.mise_en_demeure</code>. Una MED génère :</p>
+          <ul>
+            <li data-i18n="page69.s4b.l1">Cambio de estado de la inspección : <code>in_progress</code> → <code>mise_en_demeure</code></li>
+            <li data-i18n="page69.s4b.l2">Génération d'un PDF MED firmado oficialmente</li>
+            <li data-i18n="page69.s4b.l3">Upload Firebase Storage + registro en el vault de la empresa</li>
+            <li data-i18n="page69.s4b.l4">Email + push al <em>owner</em> de la empresa via EventBus</li>
+            <li data-i18n="page69.s4b.l5">Listado de las obligaciones señaladas (<code>mise_en_demeure_obligations</code> JSONB)</li>
+            <li data-i18n="page69.s4b.l6">Deadline TIMESTAMPTZ stockée (<code>mise_en_demeure_deadline</code>)</li>
+          </ul>
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection_mise_en_demeure.png" alt="Emitir MED mobile" data-i18n-attr-alt="page69.s4b.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s4b.fig.caption">Pantalla emitir MED: seleccionar obligaciones vencidas, fijar deadline (72h por défaut), notas justificativas.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page69.s4c.title">4 ter. Si la MED expire sin paiement: proponer scellement</h2>
+          <p data-i18n-html="page69.s4c.body">72h après l'émission de la MED, si le commerçant n'a toujours pas réglé, l'agent peut <strong>proposer le scellement</strong> du commerce (<code>POST /inspections/{id}/seal</code>, permission <code>inspection.seal_propose</code>). Cette acción <strong>requiere validation supervisor</strong> — l'agent ne peut PAS sceller seul. Le backend vérifie automatiquement la condition « MED expirée » avant d'accepter la proposition (raison <code>non_paiement_apres_med</code>).</p>
+          <p data-i18n-html="page69.s4c.body2">8 razones légales de scellement disponibles (enum <code>SealReason</code>) : <code>non_paiement_apres_med</code>, <code>activite_non_autorisee</code>, <code>fraude_fiscale</code>, <code>faux_documents</code>, <code>refus_controle</code>, <code>non_conformite_grave</code>, <code>decision_judiciaire</code>, <code>ordre_ministeriel</code>. Détail complet et workflow supervisor en <a href="74-supervisor-inspecciones.html">página 74 §2-§3</a>.</p>
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection6_sceler.png" alt="Proponer scellement mobile" data-i18n-attr-alt="page69.s4c.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s4c.fig.caption">Pantalla proponer scellement: seleccionar razón (8 enum), foto obligatoria, notas. Estado pasa a <code>seal_proposed</code> en espera de aprobación supervisor.</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h2 data-i18n="page69.s4d.title">4 quater. Finalizar la ficha y firmar</h2>
+          <p data-i18n="page69.s4d.body">Una vez completadas todas las acciones (checklist, collection ou MED, scellement éventuel), el agente <strong>firma electrónicamente</strong> la ficha y la finaliza. Endpoint <code>POST /inspections/{id}/complete</code>. La firma est horodatée et stockée comme preuve juridique.</p>
+          <figure>
+            <img src="_assets/screenshots/mobile/inspection/inspection_finaliser_la_fiche_signer_action.png" alt="Finalizar y firmar ficha de inspección mobile" data-i18n-attr-alt="page69.s4d.fig.alt" loading="lazy">
+            <figcaption data-i18n="page69.s4d.fig.caption">Pantalla finalizar y firmar: el agente trace su firma + valide.</figcaption>
+          </figure>
         </section>
 
         <section>

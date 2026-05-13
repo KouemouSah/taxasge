@@ -682,8 +682,8 @@ window.__I18N__.en = {
   },
   "page69": {
     "html_title": "OMS field work — Facil Manual",
-    "title": "OMS field work: commercial bundle inspection + payment collection + offline mode",
-    "description": "Commercial (not sanitary) inspections to verify merchants' bundle obligations and collect outstanding payments. QR license scan, 7-point commercial/fiscal checklist, BANGE Mobile Money or cash payment, AES-256 MMKV offline mode, sync on return. Strict lock ordering (CLAUDE.md).",
+    "title": "OMS field work: commercial bundle inspection + MED→Sealing workflow + offline mode",
+    "description": "Real field_inspections workflow: QR license scan + 7-point checklist + Mobile Money/cash payment collection OR Mise en Demeure (72h) → sealing proposal (8 legal reasons, supervisor validation). AES-256 MMKV offline mode. Android FLAG_SECURE active on sensitive screens. Strict lock ordering.",
     "prev": "← Previous: Verify Functions",
     "next": "Next: Agent AI Assistant →"
   },
@@ -711,8 +711,8 @@ window.__I18N__.en = {
   },
   "page74": {
     "html_title": "Inspections Supervisor — Facil Manual",
-    "title": "OMS Inspections Supervisor (Obligation Management System)",
-    "description": "Manages agents performing commercial bundle field inspections (not sanitary): validates sanctions > 500K XAF for overdue obligations, temporary license suspensions, merchant appeals, real-time cash monitoring, end-of-day reconciliation.",
+    "title": "OMS Inspections Supervisor: MED, sealing and field payment validation",
+    "description": "Real workflow based on app/modules/inspections/: 7 InspectionStatus, 8 legal SealReason values (non_paiement_apres_med, fraude_fiscale, ordre_ministeriel, etc.), supervisor approve_seal, reconcile/validate field payments, dashboard + live-status, 24h auto-approve cron. FLAG_SECURE on mobile.",
     "prev": "← Previous: Ayuntamiento + Cámara Supervisor",
     "next": "Next: Admin Role →"
   },

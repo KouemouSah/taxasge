@@ -682,8 +682,8 @@ window.__I18N__.fr = {
   },
   "page69": {
     "html_title": "Travail terrain OMS — Manuel Facil",
-    "title": "Travail terrain OMS : inspection commerciale bundle + collection paiements + mode offline",
-    "description": "Inspections commerciales (non sanitaires) pour vérifier les obligations bundle des commerçants et collecter les paiements en attente. Scan QR licence, checklist 7 points commerciale/fiscale, paiement BANGE Mobile Money ou cash, mode offline MMKV AES-256, sync au retour. Lock ordering strict (CLAUDE.md).",
+    "title": "Travail terrain OMS : inspection commerciale bundle + workflow MED→Scellement + mode offline",
+    "description": "Workflow réel inspection field_inspections : scan QR licence + checklist 7 points + collection paiement Mobile Money/cash OU Mise en Demeure (72h) → proposition scellement (8 raisons légales, validation supervisor). Mode offline MMKV AES-256. FLAG_SECURE Android activé sur les écrans sensibles. Lock ordering strict.",
     "prev": "← Précédent : Fonctions Verify",
     "next": "Suivant : Assistant IA Agent →"
   },
@@ -711,8 +711,8 @@ window.__I18N__.fr = {
   },
   "page74": {
     "html_title": "Superviseur Inspections — Manuel Facil",
-    "title": "Superviseur Inspections OMS (Obligation Management System)",
-    "description": "Encadre les agents inspections commerciales bundle terreno (non sanitaires) : valide sanctions > 500K XAF pour obligations vencidas, suspensions temporaires de licence, recours commerçants, monitoring cash temps réel, réconciliation fin de journée.",
+    "title": "Superviseur Inspections OMS : MED, scellement et validation paiements terrain",
+    "description": "Workflow réel basé sur app/modules/inspections/ : 7 InspectionStatus, 8 SealReason légales (non_paiement_apres_med, fraude_fiscale, ordre_ministeriel, etc.), approve_seal supervisor, reconcile/validate paiements terrain, dashboard + live-status, cron auto-approve 24h. FLAG_SECURE sur mobile.",
     "prev": "← Précédent : Superviseur Ayuntamiento + Cámara",
     "next": "Suivant : Rôle Admin →"
   },
