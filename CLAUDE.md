@@ -80,7 +80,7 @@ packages/backend/app/
 ├── main.py                # FastAPI app entry
 ├── database/connection.py # asyncpg connection pool
 ├── core/secrets.py        # Google Cloud Secret Manager
-└── modules/               # 18 feature modules
+└── modules/               # 31 feature modules (vérifié 2026-05-11 via Glob)
     └── {module}/
         ├── api/{module}_routes.py       # FastAPI router
         ├── models/{module}.py           # Pydantic models
@@ -88,9 +88,13 @@ packages/backend/app/
         └── services/{module}_service.py # Business logic
 ```
 
-**Key modules**: auth, users, fiscal_services (850+ services), declarations (28 types), payments (BANGE Mobile Money), chatbot (RAG + Gemini), permissions (RBAC), communications, documents, webhooks, support
+**Modules backend complets (31)** :
+- **Core** : auth, users, permissions, communications, documents, shared (utilities)
+- **Government services** : fiscal_services (850+), declarations (28 types), service_requests, assignment, payments, companies, menu_config, homepage, dashboards, support, chatbot (RAG Gemini), translations, cities, entity_locations
+- **Treasury/Workflow** : treasury (reconciliation + analytics + anomaly detection), inspections (field collection lock ordering), agents (auto-assignment 5-criteria scoring), accountant, funcionario, admin (endpoints spécialisés par rôle)
+- **Identity/Documents** : verified_identifiers, user_documents, webhooks, enrichment, batch_requests, legal
 
-**API**: 31 routers registered in `main.py` - See `Documentations/PROJECT_CONTEXT.md` for full list
+**API**: 31+ routers registered in `main.py` - See `Documentations/PROJECT_CONTEXT.md` for full list
 
 ### Redis Cache (Upstash)
 ```
@@ -131,7 +135,7 @@ packages/web/src/
 │   ├── (dashboard)/       # Protected dashboard
 │   └── (public)/          # Public pages
 ├── components/ui/         # Shadcn/UI components
-├── modules/               # 26 feature modules
+├── modules/               # 42 feature modules (vérifié 2026-05-11 via Glob)
 │   └── {module}/
 │       ├── components/
 │       ├── hooks/
@@ -140,6 +144,16 @@ packages/web/src/
 ├── core/api/client.ts     # Axios with interceptors
 └── i18n/messages/         # Translations (es.json, fr.json, en.json)
 ```
+
+**Modules frontend complets (42)** :
+- **Auth & users** : auth, users, users-admin, user-permissions-admin
+- **Citizen-facing** : dashboard, declarations, payments, service-requests, support, chatbot, fiscal-services, user-documents, entity-locations
+- **Agent-facing** : agent-dashboard, agents, agents-admin, assignment, assignments-admin, service-requests-admin
+- **Admin** : admin, audit-logs-admin, dashboards-admin, permissions, permissions-admin, roles-admin, communications, documents, webhooks, translations, cities, batch-requests, templates
+- **Specialized roles** : accountant, funcionario, inspections (inspector tablet), oms (Operations Management System)
+- **Treasury/Bundle** : treasury, bundle-workflow
+- **Companies** : companies, verified-identifiers, enrichment
+- **Public** : homepage
 
 ## Database (PostgreSQL/Supabase)
 
