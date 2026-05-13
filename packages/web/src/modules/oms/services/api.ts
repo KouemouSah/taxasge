@@ -58,6 +58,34 @@ export const omsQueueApi = {
 }
 
 // ========== Licenses API ==========
+//
+// Cold-start tolerance (Bug 2 fix 2026-05-13):
+// `Licencias > Vista General` was reporting "error al cargar licencias"
+// after redeploys. Same root cause as the homepage cold-start issue:
+// Cloud Run scales to zero on staging during quiet windows, the first
+// hit after idle takes 5-15s to boot, and the default 30s axios timeout
+// races the boot. Read endpoints are idempotent — safe to retry.
+const LICENSES_TIMEOUT_MS = 45_000;
+const LICENSES_RETRY_DELAYS = [2_000, 5_000];
+
+function isAxiosTimeout(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; message?: string };
+  return e.code === 'ECONNABORTED' || (e.message?.includes('timeout') ?? false);
+}
+
+async function withRetryOnTimeout<T>(attempt: () => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= LICENSES_RETRY_DELAYS.length; i++) {
+    try { return await attempt(); }
+    catch (err) {
+      lastErr = err;
+      if (i >= LICENSES_RETRY_DELAYS.length || !isAxiosTimeout(err)) throw err;
+      await new Promise(r => setTimeout(r, LICENSES_RETRY_DELAYS[i]));
+    }
+  }
+  throw lastErr;
+}
 
 export const omsLicensesApi = {
   list: (params?: { company_id?: string; bundle_id?: string; fiscal_year?: number; status?: string; search?: string; page?: number; page_size?: number }) => {
@@ -70,12 +98,20 @@ export const omsLicensesApi = {
     if (params?.page) sp.set('page', String(params.page))
     if (params?.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
-    return apiClient.get<LicenseListResponse>(`/licenses${q ? `?${q}` : ''}`).then(r => r.data)
+    return withRetryOnTimeout(() =>
+      apiClient.get<LicenseListResponse>(`/licenses${q ? `?${q}` : ''}`, {
+        timeout: LICENSES_TIMEOUT_MS,
+      })
+    ).then(r => r.data)
   },
 
   getStats: (fiscal_year?: number) => {
     const q = fiscal_year ? `?fiscal_year=${fiscal_year}` : ''
-    return apiClient.get<LicenseStats>(`/licenses/stats${q}`).then(r => r.data)
+    return withRetryOnTimeout(() =>
+      apiClient.get<LicenseStats>(`/licenses/stats${q}`, {
+        timeout: LICENSES_TIMEOUT_MS,
+      })
+    ).then(r => r.data)
   },
 
   get: (id: string) =>
@@ -104,5 +140,10 @@ export const omsLicensesApi = {
     apiClient.post<LicenseResponse>(`/licenses/${id}/renew`, data).then(r => r.data),
 
   getComplianceSummary: (fiscal_year: number) =>
-    apiClient.get<ComplianceSummaryResponse>(`/licenses/compliance-summary?fiscal_year=${fiscal_year}`).then(r => r.data),
+    withRetryOnTimeout(() =>
+      apiClient.get<ComplianceSummaryResponse>(
+        `/licenses/compliance-summary?fiscal_year=${fiscal_year}`,
+        { timeout: LICENSES_TIMEOUT_MS },
+      )
+    ).then(r => r.data),
 }

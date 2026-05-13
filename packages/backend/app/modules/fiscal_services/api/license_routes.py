@@ -219,10 +219,17 @@ async def get_compliance_summary(
         LicenseRepository,
     )
 
+    # Bug 3 fix (2026-05-13): scope.ministry_id was being dropped, so a
+    # MIN_COMERCIO supervisor was seeing TESORO + AYUNTAMIENTO compliance
+    # rows in the same panel. The repository already accepts ministry_id;
+    # we simply forward it. INDEPENDENT supervisors (ayuntamiento, camara)
+    # have ministry_id=None and rely on fee_type instead — same call works
+    # for both shapes.
     result = await LicenseRepository.get_compliance_summary(
         db, fiscal_year,
         city_id=scope.city_id,
         fee_type=scope.fee_type,
+        ministry_id=scope.ministry_id,
     )
     return {"items": result, "fiscal_year": fiscal_year}
 
