@@ -4103,65 +4103,89 @@ window.__I18N__.es = {
     "next": "Siguiente: Agente CNEDOGE →"
   },
   "page62": {
-    "html_title": "Agente CNEDOGE — Manual Facil",
-    "title": "Agente CNEDOGE: validación de pasaportes",
-    "description": "Los agentes del Centro Nacional de Documentación Ecuatoguineana (CNEDOGE) tratan las solicitudes de pasaportes (expedición y renovación). Su trabajo es triple: verificar la conformidad documental (DIP en curso de validez, foto reciente, documento de filiación), realizar el control biométrico cuando el ciudadano se presenta físicamente, generar el pasaporte oficial PDF firmado. Esta página describe el workflow completo. Los conceptos comunes (cola, lock_for_review, acciones, audit log) están en la <a href=\"61-rol-agente.html\">página 61</a>.",
+    "html_title": "Patrón agentes workflows simples — Manual Facil",
+    "title": "Patrón común agentes workflows simples (CNEDOGE / DGT / Extranjería)",
+    "description": "Los agentes de las entidades CNEDOGE (pasaporte), DGT (licencia de conducir) y Extranjería (residencia y visado) comparten <strong>exactamente las mismas acciones, la misma UI y los mismos endpoints</strong> backend (<code>app/modules/service_requests/api/agent_routes.py</code>). La única diferencia es el workflow Python concreto ejecutado (<code>pasaporte_workflow_v2.py</code> vs <code>conducir_workflow.py</code> vs <code>residencia_workflow.py</code> / <code>tramites_visado_workflow.py</code>) qui determina los documentos requeridos, las validaciones específicas y los pasos del wizard ciudadano. Esta página describe el <strong>patrón común</strong>, ilustrado con el ejemplo detallado de la licencia de conducir (DGT), y proporciona 3 mini-fichas de especificidad por entidad al final.",
     "s1": {
-      "title": "1. Tipos de solicitud tratados",
-      "t": {
-        "h1": "Tipo",
-        "h2": "Documentos exigidos",
-        "h3": "SLA legal",
-        "r1": {
-          "c1": "Expedición de pasaporte (primera solicitud)",
-          "c2": "DIP, certificado de nacimiento, foto carnet 35×45 mm fondo blanco, prueba de domicilio",
-          "c3": "10 días hábiles"
-        },
-        "r2": {
-          "c1": "Renovación (pasaporte caducado o por caducar)",
-          "c2": "DIP, pasaporte anterior (incluso caducado), foto carnet",
-          "c3": "5 días hábiles"
-        },
-        "r3": {
-          "c1": "Pérdida o robo (con declaración a la policía)",
-          "c2": "DIP, declaración policía firmada, foto carnet, justificante de pago de tasa adicional",
-          "c3": "15 días hábiles"
-        },
-        "r4": {
-          "c1": "Pasaporte de menor (menos de 18 años)",
-          "c2": "Acta nacimiento, DIP de los dos padres, autorización notarial firmada por ambos, foto carnet",
-          "c3": "10 días hábiles"
-        }
-      }
+      "title": "1. El patrón común: estados y ciclo de vida",
+      "body": "Toda solicitud workflow simple sigue el mismo ciclo. El agente actúa sobre las solicitudes en estado <code>pending_agent_review</code> de su cola (filtrado por <code>entity_code</code> + <code>workflow_code</code> de los workflows que la entidad maneja, ver <a href=\"89-admin-workflow-config.html\">página 89</a>). Estados clave :",
+      "diagram": "┌─────────────────────────────────────────────────────────────────────┐\n│  Patrón común agente workflows simples                              │\n├─────────────────────────────────────────────────────────────────────┤\n│                                                                     │\n│  pending_agent_review (cola entidad)                                │\n│         │                                                           │\n│         ▼  lock_for_review                                          │\n│  locked_by_agent                                                    │\n│         │                                                           │\n│         │  El agente revisa la solicitud :                          │\n│         │  - documentos OCR-extraídos (schemas correspondientes)    │\n│         │  - resultados validate_step del workflow                  │\n│         │  - cita programada (si requires_appointment)              │\n│         │                                                           │\n│         ├─ request_documents → waiting_documents                    │\n│         │  (ciudadano completa el dossier)                          │\n│         │                                                           │\n│         ├─ escalate → escalated_supervisor                          │\n│         │  (caso ambiguo o monto sensible)                          │\n│         │                                                           │\n│         ├─ reject → rejected (motivo obligatorio)                   │\n│         │                                                           │\n│         └─ approve → approved_by_agent                              │\n│                  → (workflow continúa: payment, cita, completado)   │\n│                                                                     │\n└─────────────────────────────────────────────────────────────────────┘"
     },
     "s2": {
-      "title": "2. Workflow de validación CNEDOGE (8 pasos)",
-      "diagram": "\n┌─────────────────────────────────────────────────────────────────────────┐\n│                                                                         │\n│  1. Solicitud entra en cola CNEDOGE (state: pending_agent_review)       │\n│         │                                                               │\n│         ▼                                                               │\n│  2. Agente abre desde la cola → lock_for_review (locked_by_agent)       │\n│         │                                                               │\n│         ▼                                                               │\n│  3. Verificación documental                                             │\n│     • DIP en curso de validez (control fecha + autenticidad sello)      │\n│     • Foto carnet conforme (fondo blanco, sin sombras, frontal)         │\n│     • Acta nacimiento (control coherencia datos)                        │\n│     • Para menores: autorización notarial de los 2 padres               │\n│         │                                                               │\n│         ├─ Falta algo o doc dudoso ──▶ request_documents                │\n│         │     (ciudadano tiene 30 días para enviar)                     │\n│         ▼                                                               │\n│  4. Convocatoria del ciudadano (cita biométrica)                        │\n│     • Email + SMS con fecha/hora propuesta (sistema de citas)           │\n│     • Ciudadano puede reagendar 1 vez sin justificación                 │\n│         │                                                               │\n│         ▼                                                               │\n│  5. Día de cita: control biométrico in situ                             │\n│     • Foto frontal con cámara CNEDOGE                                   │\n│     • Toma de huellas dactilares (10 dedos)                             │\n│     • Verificación cara-DIP por agente                                  │\n│         │                                                               │\n│         ├─ Fraude detectado ──▶ reject (motivo obligatorio)             │\n│         │                  ──▶ informe a Extranjería si extranjero      │\n│         ▼                                                               │\n│  6. approve → generación PDF pasaporte                                  │\n│     • Datos extraidos de DIP + foto biométrica                          │\n│     • Firma del agente + sello CNEDOGE                                  │\n│     • QR de verificación (página 57)                                    │\n│         │                                                               │\n│         ▼                                                               │\n│  7. Notificación al ciudadano                                           │\n│     • Email con PDF en pieza adjunta                                    │\n│     • Push (móvil) y notificación in-app                                │\n│     • PDF disponible en el vault del ciudadano (página 25)              │\n│         │                                                               │\n│         ▼                                                               │\n│  8. completed (state final)                                             │\n│                                                                         │\n└─────────────────────────────────────────────────────────────────────────┘\n"
+      "title": "2. Las 5 acciones disponibles del agente",
+      "body": "El campo <code>decision</code> del payload acepta exactamente uno de los tres valores: <code>approve</code>, <code>reject</code> o <code>request_documents</code> (regex backend : <code>^(approve|reject|request_documents)$</code>). El endpoint <code>escalate</code> está separado para tracking distinto.",
+      "t": {
+        "h1": "Acción",
+        "h2": "Endpoint backend",
+        "h3": "Permiso",
+        "h4": "Efecto",
+        "r1": { "c4": "Estado → <code>locked_by_agent</code>; previene que otro agente trabaje en paralelo" },
+        "r2": { "c4": "Estado → <code>approved_by_agent</code>; el workflow avanza al paso siguiente (típicamente pago o cita)" },
+        "r3": { "c4": "Estado → <code>rejected</code>; <code>rejection_reason</code> obligatorio (max 500 chars). Notificación al ciudadano." },
+        "r4": { "c4": "Estado → <code>waiting_documents</code>; lista de documentos faltantes ; el ciudadano puede recargar y resoumettre" },
+        "r5": { "c4": "Estado → <code>escalated_supervisor</code>; el supervisor de la entidad toma el relais (ver <a href=\"71-rol-supervisor.html\">página 71</a>)" }
+      }
     },
     "s3": {
-      "title": "3. Citas biométricas: gestión del calendario",
-      "body": "A diferencia de los otros agentes, CNEDOGE depende de una citoyen en presencia para la toma biométrica. La página de gestión de citas muestra un calendario semanal con los slots disponibles (típicamente 8h-12h y 14h-17h, lunes a viernes, 15 min por cita). El agente puede :",
-      "l1": "Confirmar la cita propuesta automáticamente por el sistema",
-      "l2": "Reagendar a petición del ciudadano (botón <em>«Reprogramar»</em>)",
-      "l3": "Marcar <em>«Ausente»</em> si el ciudadano no se presenta (3 ausencias = cancelación automática)",
-      "l4": "Bloquear un slot para mantenimiento del equipo biométrico"
+      "title": "3. Ejemplo detallado: ConducirWorkflow (DGT)",
+      "intro": "La licencia de conducir DGT es un buen exemplo car ses étapes sont representativas de tous los workflows simples. Workflow class : <code>ConducirWorkflow</code> en <code>app/modules/service_requests/workflows/conducir_workflow.py</code>. Entidad : <code>DGT</code> (Dirección General de Tráfico Rodado y Seguridad Vial). <code>requires_appointment=True</code> (examen práctico ou retrait), <code>requires_nota_ingreso=False</code> (pago directo Mobile Money).",
+      "codes": {
+        "title": "5 códigos workflow (1 clase Python, 5 workflow_codes)",
+        "h1": "workflow_code",
+        "h2": "Caso de uso",
+        "h3": "Solicitud type",
+        "r1": { "c2": "Primera solicitud (incluye examen práctico)" },
+        "r2": { "c2": "Conversión de licencia extranjera (solo RESIDENT)" },
+        "r3": { "c2": "Renovación de certificado caducado o por caducar" },
+        "r4": { "c2": "Duplicado por pérdida, robo o deterioro (motivo obligatorio)" },
+        "r5": { "c2": "Extensión a una nueva clase (no requiere nuevo examen)" }
+      },
+      "classes": {
+        "title": "7 clases de licencia con edad mínima",
+        "body": "Definidas en el enum <code>LicenseClass</code>: <code>A</code> motos (18+), <code>B</code> vehículos ligeros &lt;3.5T (18+), <code>B+</code> ligeros + remolque (18+), <code>C</code> pesados &gt;3.5T (21+), <code>D</code> pasajeros &gt;9 plazas (21+), <code>E</code> articulados (21+), <code>F</code> especiales/agrícolas (18+). La clase AM (16+) está diferida a Phase 2. La clase COPIA_ADICIONAL no es gestionada por DGT (gestión Comisaría Policía)."
+      },
+      "steps": {
+        "title": "Steps del wizard (visibles también para el agente)",
+        "l1": "<strong>Step 0 selection</strong> — tipo de solicitud (NUEVO/CANJE/RENOVACION/DUPLICADO/EXTENSION) + applicant_type (CITIZEN_GQ con DIP o RESIDENT con NIE) + clases solicitadas.",
+        "l2": "<strong>Step 1 upload_documents</strong> — documentos según el tipo: DIP/NIE, foto carnet, certificado médico, eventualmente licencia anterior (renovación/duplicado), certificado país origen (canje).",
+        "l3": "<strong>Step 2 form_review_1</strong> — datos personales extraídos del DIP/NIE por OCR; el ciudadano verifica y corrige.",
+        "l4": "<strong>Step 3 form_review_2</strong> — datos de la solicitud: tipo, clases, motivo (duplicado), país de origen (canje).",
+        "l5": "<strong>Step 4 form_review_3</strong> — verificación de documentos justificativos (secciones condicionales). Cross-validation del nombre para canje (matching licencia extranjera ↔ DIP/NIE).",
+        "l6": "<strong>Step 5 appointment</strong> — RDV para examen práctico (NUEVO) o retrait (otros).",
+        "l7": "<strong>Step 6 payment</strong> — pago directo Mobile Money BANGE (no hay Nota de Ingreso intermedia para DGT). Tarifa según tipo + clases.",
+        "l8": "<strong>Step 7 confirmation</strong> — resumen + agent_checklist. El agente revisa antes de aprobar."
+      }
     },
     "s4": {
-      "title": "4. Casos especiales",
-      "warn": {
-        "title": "Pasaporte de un menor",
-        "body": "El control es más estricto: la autorización notarial de los DOS padres es obligatoria. En caso de divorcio o de padre/madre soltero/a, se acepta una decisión judicial (custodia exclusiva). Si solo un padre firma sin justificación, la solicitud debe ser <code>escalate</code> al supervisor para evitar conflictos familiares."
+      "title": "4. Especificidades por entidad (mini-fichas)",
+      "cnedoge": {
+        "title": "4.1 CNEDOGE — pasaporte",
+        "body": "Workflow class : <code>PasaporteWorkflow</code> (4 códigos : <code>PASAPORTE_EXPEDICION</code>, <code>PASAPORTE_RENOVACION</code>, <code>PASAPORTE_PERDIDA</code>, <code>PASAPORTE_DETERIORO</code>). Documentos típicos : DIP, foto carnet, certificado de nacimiento, eventualmente declaración policía (pérdida/robo). Especificidad clave : <code>requires_appointment=True</code> + <strong>cita biométrica presencial</strong> obligatoria en oficina CNEDOGE — el ciudadano se presenta físicamente para captura de huellas y foto biométricas (datos directos para producción del pasaporte). <strong>No hay matching facial automatizado por algoritmo</strong> — la verificación de identidad es visual y firmada por el agente. El PDF del pasaporte se genera tras el RDV. <code>requires_nota_ingreso=True</code> para algunos sub_types (validación OCR del Nota antes del pago principal)."
       },
-      "info": {
-        "title": "Pérdida durante un viaje al extranjero",
-        "body": "Si la pérdida o robo se produce fuera del país, el ciudadano debe primero contactar la embajada de Guinea Ecuatorial del país de residencia para obtener un salvoconducto de regreso. Una vez en el país, presenta su solicitud en Facil con la declaración de la embajada. El agente debe verificar la autenticidad del documento de la embajada antes de validar."
+      "dgt": {
+        "title": "4.2 DGT — licencia de conducir",
+        "body": "Cubierta en detalle en la sección 3 más arriba. Especificidad clave : <strong>examen práctico obligatorio</strong> para <code>CONDUCIR_NUEVO</code> (paso real fuera de la plataforma, programado vía el step appointment). 7 clases (A-F, sin AM/COPIA_ADICIONAL). Pago directo Mobile Money (sin Nota de Ingreso intermedia)."
+      },
+      "extranjeria": {
+        "title": "4.3 Extranjería — residencia + visado",
+        "body": "Detalle completo : <a href=\"67-agente-extranjeria.html\">página 67</a>. Especificidad clave : <strong>dos workflows distintos</strong>. <code>ResidenciaWorkflow</code> (2 códigos : <code>RESIDENCIA_PRIMERA_VEZ</code> + <code>RESIDENCIA_RENOVACION</code>) en <strong>2 phases</strong> (Phase 1 dossier + stamps 2 500 XAF → Nota de Ingreso oficial papier → Phase 2 nota + pago 200K/100K + cita CNEDOGE para entrega física). <code>TramitesVisadoWorkflow</code> (4 sub_types : Prórroga 20K, Alternativo 20-600K tiered selon durée, Permanencia 50K/mes, Salida Vencido 30K/mes auto-calculado). Validation CEMAC (6 países sin visa) + 12 schemas OCR + 11 reglas validate_step."
       }
     },
     "s5": {
-      "title": "5. Indicadores específicos CNEDOGE",
-      "l1": "<strong>Tasa de citas honradas</strong> — porcentaje de ciudadanos que se presentan a su cita; objetivo &gt; 90%",
-      "l2": "<strong>Tasa de fraude detectado</strong> — número de rechazos por documento falso / total tratado; un pico es señal de organización fraudulenta",
-      "l3": "<strong>Plazo medio de tratamiento</strong> — desde el depósito hasta la generación del PDF; objetivo &lt; 5 días para renovaciones, &lt; 10 días para nuevas expediciones"
+      "title": "5. Permissions del rol agente",
+      "intro": "Las permissions del agente se rattachent au rôle (<code>agent_cnedoge_pasaporte</code>, <code>agent_dgt</code>, <code>agent_extranjeria</code>, etc.), no a la entidad directamente. Permisos comunes :",
+      "l1": "<code>service_request.view_assigned</code> — ver la cola de solicitudes asignadas",
+      "l2": "<code>service_request.lock</code> — lock_for_review",
+      "l3": "<code>service_request.approve</code> — decisión approve/reject/request_documents",
+      "l4": "<code>service_request.escalate</code> — escalada al supervisor",
+      "l5": "<code>service_request.verify_manually</code> — verificar identificadores (DIP, NIF) — usado por <a href=\"68-funciones-verify-agente.html\">Verify identidad</a>"
+    },
+    "s6": {
+      "title": "6. Aviso honestidad documental",
+      "info": {
+        "title": "Lo que NO existe en el código (mayo 2026)",
+        "body": "A diferencia de descripciones genéricas previas en este manual, el patrón agentes workflows simples <strong>no incluye actualmente</strong>: reconocimiento facial automatizado o matching biométrico foto-DIP por algoritmo (la captura biométrica CNEDOGE es física, sin scoring auto), verificación INTERPOL automatizada, anulación automática de cita tras N ausencias del ciudadano (no hay lógica de tracking de absences en el código), naturalización gestionada por Facil (decreto presidencial hors scope). El patrón es genérico y simple : revisión documental + decisión humana + acciones backend estándar."
+      }
     },
     "prev": "← Anterior: Rol Agente",
     "next": "Siguiente: Agente DGT →"

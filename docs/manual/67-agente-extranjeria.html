@@ -142,64 +142,57 @@
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page67.title">Agente Extranjería: workflows reales residencia y trámites de visado</h1>
-        <p class="page-description" data-i18n="page67.description">La Dirección General de Extranjería y Fronteras (entidad <code>EXTRANJERIA</code>) gestiona dos familias de trámites en Facil, basadas en la Orden Ministerial 01/2021: <strong>Permisos de Residencia para Extranjeros</strong> (Art. 3 Sección A — 2 sub_types: Primera Vez y Renovación) y <strong>Trámites de Visado</strong> (Art. 3 Sección B — 4 sub_types: Prórroga, Alternativo, Permanencia, Salida con visado vencido). El sistema NO emite el permiso físico (carnet de residencia o sello de visa), ese paso es presencial en la oficina; Facil genera el <em>comprobante de validación de la solicitud</em> y, para residencia, programa la cita en CNEDOGE para la entrega física.</p>
+        <h1 class="page-title" data-i18n="page67.title">Agente Extranjería: residencia y trámites de visado (resumen)</h1>
+        <p class="page-description" data-i18n-html="page67.description">El agente Extranjería sigue el <strong>patrón común agentes workflows simples</strong> descrito en la <a href="62-agente-cnedoge.html">página 62</a> (acciones approve/reject/escalate/request_documents, mismos endpoints backend). Esta página conserva las especificidades concretas de Extranjería : 2 workflows distintos (residencia en 2 fases, trámites de visado con 4 sub_types) basados en la Orden Ministerial 01/2021.</p>
 
         <section>
           <h2 data-i18n="page67.s1.title">1. Workflows reales gestionados por EXTRANJERIA</h2>
-          <p data-i18n="page67.s1.intro">Dos clases Python concretas implementan estos trámites, registradas en <code>app/modules/service_requests/workflows/extranjeria/</code>:</p>
+          <p data-i18n-html="page67.s1.intro">Dos clases Python concretas, registradas en <code>app/modules/service_requests/workflows/extranjeria/</code> :</p>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
                   <th data-i18n="page67.s1.t.h1">Workflow</th>
                   <th data-i18n="page67.s1.t.h2">sub_types / códigos</th>
-                  <th data-i18n="page67.s1.t.h3">Documentos</th>
-                  <th data-i18n="page67.s1.t.h4">Tarifa principal</th>
-                  <th data-i18n="page67.s1.t.h5">Cita requerida</th>
+                  <th data-i18n="page67.s1.t.h3">Tarifa principal</th>
+                  <th data-i18n="page67.s1.t.h4">Cita</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td data-i18n-html="page67.s1.t.r1.c1"><code>ResidenciaWorkflow</code> (Primera Vez)</td>
+                  <td data-i18n-html="page67.s1.t.r1.c1"><code>ResidenciaWorkflow</code> Primera Vez</td>
                   <td><code>RESIDENCIA_PRIMERA_VEZ</code></td>
-                  <td data-i18n="page67.s1.t.r1.c3">13-14 documentos (varía persona física/jurídica)</td>
-                  <td data-i18n-html="page67.s1.t.r1.c4">200 000 XAF (Fase 2, vía Nota de Ingreso) + 2 500 XAF stamps (Fase 1: Cédula 1 500 + Póliza 1 000)</td>
+                  <td data-i18n-html="page67.s1.t.r1.c4">200 000 XAF + 2 500 XAF stamps</td>
                   <td data-i18n="page67.s1.t.r1.c5">Sí (CNEDOGE)</td>
                 </tr>
                 <tr>
-                  <td data-i18n-html="page67.s2.t.r2.c1"><code>ResidenciaWorkflow</code> (Renovación)</td>
+                  <td data-i18n-html="page67.s1.t.r2.c1"><code>ResidenciaWorkflow</code> Renovación</td>
                   <td><code>RESIDENCIA_RENOVACION</code></td>
-                  <td data-i18n="page67.s1.t.r2.c3">11-12 documentos</td>
-                  <td data-i18n-html="page67.s1.t.r2.c4">100 000 XAF × años (1, 2 o 5) + 2 500 XAF stamps</td>
+                  <td data-i18n-html="page67.s1.t.r2.c4">100 000 XAF × años + 2 500 stamps</td>
                   <td data-i18n="page67.s1.t.r2.c5">Sí (CNEDOGE)</td>
                 </tr>
                 <tr>
-                  <td data-i18n-html="page67.s1.t.r3.c1"><code>TramitesVisadoWorkflow</code> — Prórroga</td>
+                  <td data-i18n-html="page67.s1.t.r3.c1"><code>TramitesVisadoWorkflow</code> Prórroga</td>
                   <td><code>PRORROGA_VISADO</code></td>
-                  <td data-i18n="page67.s1.t.r3.c3">4 documentos (instancia + 3 páginas pasaporte)</td>
-                  <td data-i18n-html="page67.s1.t.r3.c4">20 000 XAF (1 mes fijo, solo visa LIMITADO en vigor)</td>
+                  <td data-i18n-html="page67.s1.t.r3.c4">20 000 XAF (1 mes fijo)</td>
                   <td data-i18n="page67.s1.t.r3.c5">No</td>
                 </tr>
                 <tr>
-                  <td data-i18n-html="page67.s1.t.r4.c1"><code>TramitesVisadoWorkflow</code> — Alternativo</td>
+                  <td data-i18n-html="page67.s1.t.r4.c1"><code>TramitesVisadoWorkflow</code> Alternativo</td>
                   <td><code>VISADO_ALTERNATIVO</code></td>
-                  <td data-i18n="page67.s1.t.r4.c3">4 documentos</td>
-                  <td data-i18n-html="page67.s1.t.r4.c4">20 000 / 40 000 / 80 000 / 600 000 XAF según 3/6/12/24 meses</td>
+                  <td data-i18n-html="page67.s1.t.r4.c4">20K / 40K / 80K / 600K según 3/6/12/24 meses</td>
                   <td data-i18n="page67.s1.t.r4.c5">No</td>
                 </tr>
                 <tr>
-                  <td data-i18n-html="page67.s1.t.r5.c1"><code>TramitesVisadoWorkflow</code> — Permanencia</td>
+                  <td data-i18n-html="page67.s1.t.r5.c1"><code>TramitesVisadoWorkflow</code> Permanencia</td>
                   <td><code>PERMANENCIA_EXTRANJERIA</code></td>
-                  <td data-i18n="page67.s1.t.r5.c3">4 documentos</td>
-                  <td data-i18n-html="page67.s1.t.r5.c4">50 000 XAF × número de meses (máx. 12)</td>
+                  <td data-i18n-html="page67.s1.t.r5.c4">50 000 XAF × meses (máx. 12)</td>
                   <td data-i18n="page67.s1.t.r5.c5">No</td>
                 </tr>
                 <tr>
-                  <td data-i18n-html="page67.s1.t.r6.c1"><code>TramitesVisadoWorkflow</code> — Salida Vencido</td>
+                  <td data-i18n-html="page67.s1.t.r6.c1"><code>TramitesVisadoWorkflow</code> Salida Vencido</td>
                   <td><code>SALIDA_VISADO_VENCIDO</code></td>
-                  <td data-i18n="page67.s1.t.r6.c3">4 documentos</td>
-                  <td data-i18n-html="page67.s1.t.r6.c4">30 000 XAF × mes de estancia irregular (auto-calculado, penalidad)</td>
+                  <td data-i18n-html="page67.s1.t.r6.c4">30 000 XAF × mes (penalidad auto)</td>
                   <td data-i18n="page67.s1.t.r6.c5">No</td>
                 </tr>
               </tbody>
@@ -209,96 +202,56 @@
 
         <section>
           <h2 data-i18n="page67.s2.title">2. ResidenciaWorkflow: las 2 fases reales</h2>
-          <p data-i18n-html="page67.s2.intro">El workflow de residencia se divide en dos fases consecutivas, separadas por el control administrativo en Extranjería. El campo <code>con_nota_ingreso</code> (definido en el step 0 SELECTION) determina la fase activa. La Nota de Ingreso es el documento oficial emitido por Extranjería <strong>tras validar la Fase 1</strong>, que autoriza el pago principal en Fase 2.</p>
+          <p data-i18n-html="page67.s2.intro">El workflow de residencia se divide en dos fases consecutivas, separadas por el control administrativo en Extranjería. El campo <code>con_nota_ingreso</code> (paso 0 SELECTION) determina la fase. La Nota de Ingreso es el documento oficial papier emitido por Extranjería <strong>tras validar la Fase 1</strong>, que autoriza el pago principal en Fase 2.</p>
           <pre data-i18n-html="page67.s2.diagram">
-┌─────────────────────────────────────────────────────────────────────────┐
-│ ResidenciaWorkflow — flujo real (2 fases, vérifié contra residencia_*) │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  FASE 1 (con_nota_ingreso=false): Dossier completo → stamps             │
-│                                                                         │
-│  Step 0  selection: solicitud_type (EXPEDICION/RENOVACION) +            │
-│                     persona_type (física/jurídica) + con_nota=false     │
-│  Step 1  upload_documents: 13-14 docs (CEMAC condition aplicada)        │
-│  Step 2  form_review_1: pasaporte + sello entrada o residencia previa   │
-│  Step 3  form_review_2: datos profesionales/empresa (persona jurídica)  │
-│  Step 4  form_review_3: buena_conducta, antecedentes, NIF/autorización  │
-│  Step 5  appointment: cita en Extranjería                               │
-│  Step 6  stamp_payment: Cédula Personal 1 500 + Póliza 1 000 = 2 500    │
-│  Step 7  payment: Fase 1 stamps payment                                 │
-│                       │                                                 │
-│                       ▼                                                 │
-│              Validación Extranjería (off-platform)                      │
-│                       │                                                 │
-│                       ▼                                                 │
-│              Emisión de la Nota de Ingreso (papel oficial)              │
-│                                                                         │
-│  ─────────────────────────────────────────────────────                  │
-│                                                                         │
-│  FASE 2 (con_nota_ingreso=true): Nota + identidad → pago CNEDOGE        │
-│                                                                         │
-│  Step 8   upload_nota: Nota de Ingreso (scan) + documento identidad     │
-│  Step 9   form_review_nota: verificación OCR del importe Nota           │
-│  Step 10  appointment_cnedoge: cita CNEDOGE (entrega presencial)        │
-│  Step 11  payment_phase2: 200 000 XAF (EXPEDICION) o                    │
-│                          100 000 × años (RENOVACION)                    │
-│  Step 12  confirmation: resumen + agent_checklist                       │
-│                       │                                                 │
-│                       ▼                                                 │
-│              Comprobante de validación de solicitud (PDF Facil)         │
-│                       │                                                 │
-│                       ▼                                                 │
-│              Cita presencial CNEDOGE → entrega física del permiso       │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ ResidenciaWorkflow — 2 fases (vérifié contre residencia_workflow.py) │
+├──────────────────────────────────────────────────────────────────────┤
+│ FASE 1 (con_nota=false) : Dossier completo → stamps 2 500 XAF        │
+│   Step 0 selection (EXPEDICION/RENOVACION + persona)                 │
+│   Step 1 upload_documents (13-14 docs, condition CEMAC)              │
+│   Step 2-4 form_review_1/2/3 (pasaporte, empresa, justificantes)     │
+│   Step 5 appointment (cita Extranjería)                              │
+│   Step 6 stamp_payment (Cédula 1 500 + Póliza 1 000)                 │
+│   Step 7 payment                                                     │
+│         │                                                            │
+│         ▼  (off-platform : validation Extranjería + emisión Nota)    │
+│                                                                      │
+│ FASE 2 (con_nota=true) : Nota + identidad → pago CNEDOGE             │
+│   Step 8 upload_nota (Nota Ingreso + pieza identidad)                │
+│   Step 9 form_review_nota (OCR verificación importe)                 │
+│   Step 10 appointment_cnedoge (cita CNEDOGE entrega)                 │
+│   Step 11 payment_phase2 (200K EXPEDICION / 100K × años RENOVACION)  │
+│   Step 12 confirmation                                               │
+│         │                                                            │
+│         ▼  Comprobante de validación (PDF Facil)                     │
+│         ▼  Cita presencial CNEDOGE → entrega física del permiso      │
+└──────────────────────────────────────────────────────────────────────┘
 </pre>
         </section>
 
         <section>
-          <h2 data-i18n="page67.s3.title">3. Reglas CEMAC: documentos exigibles según nacionalidad</h2>
-          <p data-i18n-html="page67.s3.intro">La constante <code>CEMAC_COUNTRY_CODES</code> del workflow contiene 6 países (Comunidad Económica y Monetaria de África Central): Camerún (CMR), República Centroafricana (CAF), Congo Brazzaville (COG), Gabón (GAB), Guinea Ecuatorial (GNQ — excluido por regla <code>nacionalidad_extranjero</code>) y Chad (TCD). Sus nacionales <strong>no necesitan visado</strong> pero su entrada debe ser inferior a 90 días (regla <code>cemac_90_dias</code>, warning si excede). Los no-CEMAC <strong>deben aportar un visado válido</strong> (<code>VISADO_GQ_V1</code>) — solo aplicable para EXPEDICION (primera vez).</p>
+          <h2 data-i18n="page67.s3.title">3. Reglas CEMAC + validaciones del workflow</h2>
+          <p data-i18n-html="page67.s3.intro">La constante <code>CEMAC_COUNTRY_CODES</code> contiene 6 países : Camerún (CMR), República Centroafricana (CAF), Congo Brazzaville (COG), Gabón (GAB), Guinea Ecuatorial (GNQ — excluido por <code>nacionalidad_extranjero</code>) y Chad (TCD). Sus nacionales <strong>no necesitan visado</strong> pero su entrada debe ser inferior a 90 días. Los no-CEMAC <strong>deben aportar un visado válido</strong> (<code>VISADO_GQ_V1</code>) para EXPEDICION.</p>
           <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page67.s3.info.title">Validaciones del workflow (11 reglas reales)</h3>
-            <p data-i18n-html="page67.s3.info.body">Las reglas verifican: <code>entrada_legal_fecha</code> (fecha extraída del sello), <code>cemac_90_dias</code>, <code>visado_requerido</code> (no-CEMAC), <code>nacionalidad_extranjero</code>, <code>residencia_renovable</code> (vence en &lt;90 días para RENOVACION), <code>nombres_coherentes</code> (matching pasaporte vs residencia anterior, distancia Levenshtein), <code>solvencia_resultado</code> (warning si NO_SOLVENTE), <code>buena_conducta_resultado</code>, <code>antecedentes_resultado</code> (error si POSITIVO/HAS_CONVICTIONS), <code>nota_amount_coherent</code> (Fase 2), <code>nota_expired</code>.</p>
+            <h3 class="callout-title" data-i18n="page67.s3.info.title">11 validaciones reales</h3>
+            <p data-i18n-html="page67.s3.info.body"><code>entrada_legal_fecha</code>, <code>cemac_90_dias</code>, <code>visado_requerido</code> (no-CEMAC), <code>nacionalidad_extranjero</code>, <code>residencia_renovable</code>, <code>nombres_coherentes</code> (Levenshtein), <code>solvencia_resultado</code>, <code>buena_conducta_resultado</code>, <code>antecedentes_resultado</code> (error si POSITIVO), <code>nota_amount_coherent</code> (Fase 2), <code>nota_expired</code>.</p>
           </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page67.s4.title">4. Schemas OCR utilizados (12 documentos vérifiables)</h2>
-          <p data-i18n-html="page67.s4.body">Los documentos del expediente se validan con schemas OCR en <code>app/modules/service_requests/schemas/</code>: <code>PASAPORTE_INTERNATIONAL_V1</code>, <code>SELLO_ENTRADA_GQ_V1</code> (página de sello con fecha y aeropuerto), <code>PERMISO_RESIDENCIA_GQ_V1</code> (renovación), <code>CERTIFICADO_NIF_GQ_V1</code> (persona jurídica), <code>AUTORIZACION_GUBERNATIVA_GQ_V1</code>, <code>CERTIFICADO_BUENA_CONDUCTA_GQ_V1</code>, <code>EXTRAIT_CASIER_JUDICIAIRE_INTERNATIONAL_V1</code> (primera vez), <code>ANTECEDENTES_PENALES_GQ_V1</code> (renovación), <code>SOLVENCIA_TRIBUTARIA_GQ_V1</code>, <code>ATESTACION_BANCARIA_GQ_V1</code>, <code>PERMISO_TRABAJO_GQ_V1</code>, <code>VISADO_GQ_V1</code> (no-CEMAC).</p>
         </section>
 
         <section>
           <h2 data-i18n="page67.s5.title">5. Lo que Facil genera (y lo que NO genera)</h2>
           <div class="callout callout-warning">
             <h3 class="callout-title" data-i18n="page67.s5.warn.title">Facil NO emite el permiso físico</h3>
-            <p data-i18n-html="page67.s5.warn.body">Contrariamente a una impresión frecuente, el sistema <strong>no genera el carnet de residencia</strong> ni el sello físico del visado. Esos documentos se entregan presencialmente en la oficina de Extranjería o CNEDOGE el día de la cita programada. Lo que Facil emite son <em>comprobantes electrónicos de trámite</em> que el solicitante presenta en su cita (y conserva como prueba del depósito).</p>
+            <p data-i18n-html="page67.s5.warn.body">El sistema <strong>no genera el carnet de residencia</strong> ni el sello físico del visado. Esos documentos se entregan presencialmente en la oficina de Extranjería o CNEDOGE el día de la cita. Lo que Facil emite son <em>comprobantes electrónicos de trámite</em> (Comprobante de validación, recibo de stamps, recibo principal, convocatoria de cita).</p>
           </div>
-          <p data-i18n-html="page67.s5.body">Documentos generados automáticamente por Facil (vía <code>summary_pdf_service.py</code>):</p>
-          <ul>
-            <li data-i18n-html="page67.s5.l1"><strong>Comprobante de validación de la solicitud</strong> (PDF) — al final del workflow, contiene número de solicitud (<code>SRV-2026-XXXXX</code>), datos del solicitante, sub_type, documentos depositados, fecha y código de verificación QR. Sirve como <em>justificante de depósito</em>.</li>
-            <li data-i18n-html="page67.s5.l2"><strong>Recibo del pago de stamps</strong> (Fase 1 residencia, 2 500 XAF) — formato <code>REC-2026-XXXXX</code>, generado tras el pago BANGE Mobile Money o cash.</li>
-            <li data-i18n-html="page67.s5.l3"><strong>Recibo del pago principal</strong> (Fase 2 residencia 200K/100K, o trámite de visado) — mismo formato, separado del stamps.</li>
-            <li data-i18n-html="page67.s5.l4"><strong>Convocatoria de cita</strong> (residencia: Fase 1 en Extranjería, Fase 2 en CNEDOGE) — email + SMS automáticos con fecha, hora y dirección.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 data-i18n="page67.s6.title">6. Acciones disponibles para el agente Extranjería</h2>
-          <p data-i18n-html="page67.s6.intro">El agente Extranjería accede a la cola de solicitudes en estado <code>pending_agent_review</code> de los workflows mencionados. Las acciones genéricas (<code>lock_for_review</code>, <code>approve</code>, <code>reject</code>, <code>request_documents</code>, <code>escalate</code>) están documentadas en la <a href="61-rol-agente.html">página 61</a>. Las particularidades de Extranjería:</p>
-          <ul>
-            <li data-i18n-html="page67.s6.l1"><strong>Validación condicional</strong> — antes de <code>approve</code>, el agente revisa los resultados OCR de los 12 schemas (algunos opcionales según persona física/jurídica y CEMAC/no-CEMAC).</li>
-            <li data-i18n-html="page67.s6.l2"><strong>Rechazo motivado</strong> — los motivos válidos (campo <code>rejection_reason</code>) son: documento ilegible, datos incoherentes, antecedentes positivos, solvencia negativa (persona jurídica), nota de ingreso expirada, importe nota incoherente con tarifa.</li>
-            <li data-i18n-html="page67.s6.l3"><strong>Doble cita (residencia)</strong> — Fase 1 implica una primera cita en Extranjería para validación de originales y entrega de la Nota; Fase 2 implica una segunda cita en CNEDOGE para entrega del carnet.</li>
-            <li data-i18n-html="page67.s6.l4"><strong>Trámites de visado sin cita</strong> — los 4 sub_types de <code>TramitesVisadoWorkflow</code> (<code>requires_appointment=False</code>) no requieren cita presencial; la regularización ocurre por correspondencia con la entidad.</li>
-          </ul>
         </section>
 
         <section>
           <h2 data-i18n="page67.s7.title">7. Aviso honestidad documental</h2>
           <div class="callout callout-info">
             <h3 class="callout-title" data-i18n="page67.s7.info.title">Lo que NO existe en el código (mayo 2026)</h3>
-            <p data-i18n-html="page67.s7.info.body">A diferencia de descripciones genéricas circulando sobre la plataforma, el workflow real de Extranjería <strong>no contempla actualmente</strong>: verificación INTERPOL automatizada, naturalización (decreto presidencial fuera del scope Facil), categorías «residencia temporal» vs «residencia permanente» (el código solo distingue PRIMERA_VEZ y RENOVACION según Art. 3.A.1 y Art. 3.A.2), reagrupación familiar como sub_type distinto, ni lista de países sancionados gestionada por Facil. Si alguno de estos puntos se añade en una versión futura, esta página será actualizada conforme al código.</p>
+            <p data-i18n-html="page67.s7.info.body">El workflow real de Extranjería <strong>no contempla actualmente</strong> : verificación INTERPOL automatizada, naturalización (decreto presidencial hors scope Facil), categorías « residencia temporal » vs « permanente » (el código solo distingue PRIMERA_VEZ y RENOVACION según Art. 3.A.1 y Art. 3.A.2), reagrupación familiar como sub_type distinto, ni lista de países sancionados gestionada por Facil. Para las acciones y el patrón general agente, ver <a href="62-agente-cnedoge.html">página 62</a>.</p>
           </div>
         </section>
 

@@ -142,107 +142,15 @@
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page63.title">Agente DGT: validación de permisos de conducir</h1>
-        <p class="page-description" data-i18n="page63.description">Los agentes de la Dirección General de Tráfico (DGT) tratan los permisos de conducir: expedición primera vez, renovación, duplicados, conversión de permisos extranjeros. Trabajan con un calendario de citas para los exámenes prácticos y emiten el carnet definitivo tras validación. Esta página describe la pantalla concreta de un agente DGT con capturas reales del back-office.</p>
+        <h1 class="page-title" data-i18n="page63.title">Agente DGT: licencia de conducir (factorizado)</h1>
+        <p class="page-description" data-i18n-html="page63.description">El agente DGT (Dirección General de Tráfico Rodado y Seguridad Vial) sigue el <strong>patrón común agentes workflows simples</strong> descrito en detalle en la <a href="62-agente-cnedoge.html">página 62</a>, donde la licencia de conducir es justamente <strong>el ejemplo detallado</strong> elegido para ilustrar el patrón. Esta página resume la especificidad DGT y remite a la página 62 para el patrón completo, las acciones, las permisos y las claves del workflow.</p>
 
         <section>
-          <h2 data-i18n="page63.s1.title">1. Dashboard del agente DGT</h2>
-          <p data-i18n="page63.s1.body">La pantalla de inicio del agente DGT muestra los KPI clave de su jornada: número de solicitudes en cola, citas del día, tasa SLA respetada de los últimos 30 días, y horarios de cita disponibles. El submenu lateral <em>«Permisos de Conducir»</em> da acceso directo a las acciones específicas (Validación rápida, Citas, Historial).</p>
-          <figure>
-            <img src="_assets/screenshots/web/agent-dgt/2.png" alt="Dashboard DGT con submenu Permisos de Conducir expandido" data-i18n-attr-alt="page63.fig1.alt" loading="lazy">
-            <figcaption data-i18n="page63.fig1.caption">Dashboard DGT con KPIs (solicitudes pendientes, citas hoy, tasa SLA) y menú lateral expandido.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 data-i18n="page63.s2.title">2. Cola de solicitudes pendientes</h2>
-          <p data-i18n="page63.s2.body">La cola lista todas las solicitudes asignadas a la entidad DGT, ordenadas por prioridad SLA. Al hacer clic en una entrada, se abre el panel lateral derecho con un resumen y un botón <em>«Validación rápida»</em> que activa el lock_for_review (ver <a href="61-rol-agente.html">página 61</a>).</p>
-          <figure>
-            <img src="_assets/screenshots/web/agent-dgt/3.png" alt="Lista dossiers pendientes con detalle CON-2026-00001" data-i18n-attr-alt="page63.fig2.alt" loading="lazy">
-            <figcaption data-i18n="page63.fig2.caption">Cola de solicitudes con panel lateral de detalle y botón <em>Validación rápida</em>.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 data-i18n="page63.s3.title">3. Detalle de una solicitud (3 pestañas)</h2>
-          <p data-i18n="page63.s3.intro">Tras hacer lock, el agente accede a la pantalla de detalle dividida en 3 pestañas: Resumen (datos personales y tipo de permiso), Documentos (verificación de los archivos subidos) e Historial (timeline cronológico de las acciones).</p>
-
-          <h3 data-i18n="page63.s3.sub1.title">Pestaña Resumen — datos del solicitante</h3>
-          <figure>
-            <img src="_assets/screenshots/web/agent-dgt/4.png" alt="Detalle solicitud renovación licencia con datos personales" data-i18n-attr-alt="page63.fig3.alt" loading="lazy">
-            <figcaption data-i18n="page63.fig3.caption">Resumen del expediente: tipo de servicio, datos del solicitante, importe, estado, plazo SLA restante.</figcaption>
-          </figure>
-
-          <h3 data-i18n="page63.s3.sub2.title">Pestaña Documentos — verificación documental</h3>
-          <p data-i18n="page63.s3.sub2.body">Cada documento se previsualiza in situ (zoom, rotación, descarga). El agente marca explícitamente <em>«Conforme»</em> o <em>«No conforme»</em>. Si un documento está marcado <em>«No conforme»</em>, debe especificar el motivo (foto borrosa, fecha caducada, sello ilegible) — esta información se transmite al ciudadano si la decisión final es <code>request_documents</code>.</p>
-          <figure>
-            <img src="_assets/screenshots/web/agent-dgt/5.png" alt="Pestaña Documentos con permiso residencia y carnet" data-i18n-attr-alt="page63.fig4.alt" loading="lazy">
-            <figcaption data-i18n="page63.fig4.caption">Verificación documental: previsualización de cada archivo + botones Conforme/No conforme + campo motivo.</figcaption>
-          </figure>
-
-          <h3 data-i18n="page63.s3.sub3.title">Pestaña Historial — timeline cronológico</h3>
-          <figure>
-            <img src="_assets/screenshots/web/agent-dgt/6.png" alt="Timeline con cambios de estado y asignaciones" data-i18n-attr-alt="page63.fig5.alt" loading="lazy">
-            <figcaption data-i18n="page63.fig5.caption">Timeline de acciones: depósito, asignación, lock, decisión. Cada evento con timestamp + autor.</figcaption>
-          </figure>
-        </section>
-
-        <section>
-          <h2 data-i18n="page63.s4.title">4. Historial de solicitudes (vista global)</h2>
-          <p data-i18n="page63.s4.body">Para auditar su propia actividad y consultar casos pasados, el agente dispone de una pantalla <em>«Historial de Solicitudes»</em> con todos los expedientes que ha tratado, filtrable por fecha, estado, tipo de servicio. El panel lateral derecho muestra el timeline detallado del expediente seleccionado y permite exportarlo en PDF para archivos.</p>
-          <div class="figure-pair">
-            <figure>
-              <img src="_assets/screenshots/web/agent-dgt/7.png" alt="Página Historial de Solicitudes con tabla acciones" data-i18n-attr-alt="page63.fig6.alt" loading="lazy">
-              <figcaption data-i18n="page63.fig6.caption">Vista global del historial filtrable.</figcaption>
-            </figure>
-            <figure>
-              <img src="_assets/screenshots/web/agent-dgt/8.png" alt="Timeline detallado solicitud panel lateral exportable" data-i18n-attr-alt="page63.fig7.alt" loading="lazy">
-              <figcaption data-i18n="page63.fig7.caption">Panel lateral con timeline detallado + botón <em>Exportar PDF</em>.</figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page63.s5.title">5. Gestión de citas para examen práctico</h2>
-          <p data-i18n="page63.s5.body">A diferencia de la mayoría de los agentes, el DGT necesita organizar exámenes prácticos en pista o en circuito real para los nuevos permisos. La gestión de citas se hace desde un calendario semanal donde el agente:</p>
-          <ul>
-            <li data-i18n="page63.s5.l1">Visualiza los slots ya reservados (verde: confirmados, naranja: pendientes confirmación)</li>
-            <li data-i18n="page63.s5.l2">Hace clic en un slot ocupado para abrir el panel lateral con datos del ciudadano</li>
-            <li data-i18n="page63.s5.l3">Reagenda con un drag-and-drop o botón <em>«Reprogramar»</em></li>
-            <li data-i18n="page63.s5.l4">Marca el resultado tras el examen: aprobado (genera el carnet) o suspendido (puede volver a presentarse en 30 días)</li>
-          </ul>
-          <div class="figure-pair">
-            <figure>
-              <img src="_assets/screenshots/web/agent-dgt/9.png" alt="Calendario semanal de citas con cita confirmada" data-i18n-attr-alt="page63.fig8.alt" loading="lazy">
-              <figcaption data-i18n="page63.fig8.caption">Calendario semanal: slots disponibles, ocupados, bloqueados.</figcaption>
-            </figure>
-            <figure>
-              <img src="_assets/screenshots/web/agent-dgt/10.png" alt="Detalle cita lateral con datos ciudadano y reprogramar" data-i18n-attr-alt="page63.fig9.alt" loading="lazy">
-              <figcaption data-i18n="page63.fig9.caption">Detalle de una cita con datos completos del ciudadano + botón Reprogramar.</figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page63.s6.title">6. Tipos de permisos tratados</h2>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="page63.s6.t.h1">Categoría</th>
-                  <th data-i18n="page63.s6.t.h2">Vehículos autorizados</th>
-                  <th data-i18n="page63.s6.t.h3">Edad mínima</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>A1</td><td data-i18n="page63.s6.t.r1.c2">Motocicletas hasta 125 cc</td><td>16</td></tr>
-                <tr><td>A</td><td data-i18n="page63.s6.t.r2.c2">Motocicletas sin restricción</td><td>21</td></tr>
-                <tr><td>B</td><td data-i18n="page63.s6.t.r3.c2">Vehículos turismos hasta 3.500 kg</td><td>18</td></tr>
-                <tr><td>C</td><td data-i18n="page63.s6.t.r4.c2">Camiones más de 3.500 kg</td><td>21</td></tr>
-                <tr><td>D</td><td data-i18n="page63.s6.t.r5.c2">Autobuses, transporte de pasajeros</td><td>24</td></tr>
-                <tr><td>E</td><td data-i18n="page63.s6.t.r6.c2">Combinaciones con remolque pesado</td><td>21</td></tr>
-              </tbody>
-            </table>
+          <h2 data-i18n="page63.s1.title">1. Resumen de la especificidad DGT</h2>
+          <p data-i18n-html="page63.s1.body">Workflow Python : <code>ConducirWorkflow</code> (<code>app/modules/service_requests/workflows/conducir_workflow.py</code>). Entidad : <code>DGT</code>. 5 workflow_codes : <code>CONDUCIR_NUEVO</code>, <code>CONDUCIR_CANJE</code>, <code>CONDUCIR_RENOVACION</code>, <code>CONDUCIR_DUPLICADO</code>, <code>CONDUCIR_EXTENSION</code>. 7 clases de licencia (A, B, B+, C, D, E, F) con edades mínimas (18 o 21 años según la clase). Pago directo Mobile Money (sin Nota de Ingreso intermedia). RDV obligatorio para <code>CONDUCIR_NUEVO</code> (examen práctico) o para el retrait del carnet en otros casos.</p>
+          <div class="callout callout-info">
+            <h3 class="callout-title" data-i18n="page63.s1.info.title">Página factorizada</h3>
+            <p data-i18n-html="page63.s1.info.body">El contenu détaillé qui était précédemment ici a été déplacé vers la <a href="62-agente-cnedoge.html">page 62</a> (section 3 « Ejemplo detallado : ConducirWorkflow »). Cette page reste accessible pour préserver les liens existants vers <code>63-agente-dgt.html</code>, mais son contenu se limite désormais à un résumé et un renvoi.</p>
           </div>
         </section>
 
