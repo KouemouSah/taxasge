@@ -522,6 +522,8 @@ Facil is designed to serve **millions of citizens** and **100+ concurrent govern
 | Resource | Description | Link |
 |----------|-------------|------|
 | Technical Documentation | Architecture, modules, API, database, workflows, security (12 pages) | [Documentation Site](https://kouemousah.github.io/taxasge/documentation/) |
+| User Manual | Multilingual user guide (ES/FR/EN), 68 pages, 7 personas, full-text Pagefind search | [Manual Site](https://kouemousah.github.io/taxasge/manual/) |
+| Product Docs | PRD (32 user stories), BPMN (17 workflows), technical presentation — interactive web view | [Product Docs Site](https://kouemousah.github.io/taxasge/project-docs/web/) |
 | Project Dashboard | Live metrics, CI/CD status, milestones, activity | [Dashboard](https://kouemousah.github.io/taxasge/) |
 | API Reference | Swagger UI — 31 routers, interactive testing | [Swagger UI](https://taxasge-backend-staging-392159428433.us-central1.run.app/docs) |
 | Wiki | Architecture, deployment, i18n guides | [Wiki](https://github.com/KouemouSah/taxasge/wiki) |
