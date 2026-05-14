@@ -171,7 +171,7 @@
 
         <section>
           <h2 data-i18n="page87.s2.title">2. Cadena de hash : integridad infalsificable</h2>
-          <p data-i18n="page87.s2.body">Cada entrada del log lleva un campo adicional <code>chain_hash</code> calculado como : <code>SHA-256(prev_chain_hash || row_data)</code>. La primera entrada usa un hash de génesis. Esta cadena garantiza la integridad : si una entrada es modificada o suprimida posteriormente, todas las entradas siguientes tienen un hash incoherente, lo que se detecta automáticamente.</p>
+          <p data-i18n-html="page87.s2.body">Cada entrada del log lleva un campo adicional <code>chain_hash</code> calculado como : <code>SHA-256(prev_chain_hash || row_data)</code>. La primera entrada usa un hash de génesis. Esta cadena garantiza la integridad : si una entrada es modificada o suprimida posteriormente, todas las entradas siguientes tienen un hash incoherente, lo que se detecta automáticamente.</p>
           <pre data-i18n-html="page87.s2.diagram">
 ┌─────────────────────────────────────────────────────────────────┐
 │ Cadena de hash de los audit logs                                │
@@ -256,7 +256,7 @@
 
         <section>
           <h2 data-i18n="page87.s5.title">5. Export y conformidad RGPD</h2>
-          <p data-i18n="page87.s5.body">Ciudadanos y empresas pueden solicitar (en virtud del derecho de acceso) un export de las acciones que les conciernen. El admin tramita la solicitud desde la pantalla Audit Logs con el filtro <em>«entity_id = [identificador del solicitante]»</em>. El export se genera en formato JSON estructurado + PDF lisible. Plazo máximo: 30 días (obligación legal). El export queda registrado en el log lui-même (méta-action : <code>data_access_request</code>).</p>
+          <p data-i18n-html="page87.s5.body">Ciudadanos y empresas pueden solicitar (en virtud del derecho de acceso) un export de las acciones que les conciernen. El admin tramita la solicitud desde la pantalla Audit Logs con el filtro <em>«entity_id = [identificador del solicitante]»</em>. El export se genera en formato JSON estructurado + PDF lisible. Plazo máximo: 30 días (obligación legal). El export queda registrado en el log lui-même (méta-action : <code>data_access_request</code>).</p>
         </section>
 
         <section>

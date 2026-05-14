@@ -143,16 +143,16 @@
 
       <div class="content-body">
         <h1 class="page-title" data-i18n="page69.title">Trabajo terreno OMS: inspección comercial bundle + collection de paiements + flujo MED/scellement</h1>
-        <p class="page-description" data-i18n="page69.description">Los agentes OMS realizan inspecciones <strong>comerciales</strong> en los establecimientos titulares de licencias bundle. El objetivo no es sanitario — es verificar que el comerciante está al día de sus <strong>obligaciones</strong> bundle (los 3 fee_types : <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) y eventualmente cobrar los pagos pendientes directamente en el terreno (Mobile Money via BANGE o cash). Para este trabajo terreno los agentes inspectors utilizan la <strong>app nativa <code>@facil/inspector</code></strong> (Expo/React Native, paquete <code>packages/inspector/</code>) distinta de la app ciudadana <code>@facil/mobile</code>. La app inspector ofrece scan QR de licencia (<code>expo-camera</code>), checklist comercial, captura de fotos geo-etiquetadas (EXIF GPS), formulario MED + propuesta de scellement, firma SignaturePad horodatée con hash SHA-256. La implementación backend de la collection terrain está en <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.</p>
+        <p class="page-description" data-i18n-html="page69.description">Los agentes OMS realizan inspecciones <strong>comerciales</strong> en los establecimientos titulares de licencias bundle. El objetivo no es sanitario — es verificar que el comerciante está al día de sus <strong>obligaciones</strong> bundle (los 3 fee_types : <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) y eventualmente cobrar los pagos pendientes directamente en el terreno (Mobile Money via BANGE o cash). Para este trabajo terreno los agentes inspectors utilizan la <strong>app nativa <code>@facil/inspector</code></strong> (Expo/React Native, paquete <code>packages/inspector/</code>) distinta de la app ciudadana <code>@facil/mobile</code>. La app inspector ofrece scan QR de licencia (<code>expo-camera</code>), checklist comercial, captura de fotos geo-etiquetadas (EXIF GPS), formulario MED + propuesta de scellement, firma SignaturePad horodatée con hash SHA-256. La implementación backend de la collection terrain está en <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.</p>
 
         <section>
           <h2 data-i18n="page69.s1.title">1. Preparación de la jornada (oficina, antes de salir)</h2>
-          <p data-i18n="page69.s1.body">Antes de salir, el agente prepara su jornada desde el back-office Web (ver <a href="66-agente-min-oms.html">página 66</a>) :</p>
+          <p data-i18n-html="page69.s1.body">Antes de salir, el agente prepara su jornada desde el back-office Web (ver <a href="66-agente-min-oms.html">página 66</a>) :</p>
           <ul>
             <li data-i18n="page69.s1.l1">Selecciona los establecimientos a visitar (programación previa, ruta del día, o empresas con obligaciones vencidas detectadas por el sistema)</li>
-            <li data-i18n="page69.s1.l2">Conecta la app inspector con sus credenciales (la clave MMKV de la app se genera aleatoriamente al primer uso y se almacena en el keychain del SO vía <code>expo-secure-store</code>)</li>
+            <li data-i18n-html="page69.s1.l2">Conecta la app inspector con sus credenciales (la clave MMKV de la app se genera aleatoriamente al primer uso y se almacena en el keychain del SO vía <code>expo-secure-store</code>)</li>
             <li data-i18n="page69.s1.l3">Verifica que la batería del terminal está al máximo (los días de inspección son largos)</li>
-            <li data-i18n="page69.s1.l4">Verifica la conectividad antes de iniciar : la collection de pagos en terreno requiere <strong>red activa</strong> (no hay queue offline para cash en la versión actual)</li>
+            <li data-i18n-html="page69.s1.l4">Verifica la conectividad antes de iniciar : la collection de pagos en terreno requiere <strong>red activa</strong> (no hay queue offline para cash en la versión actual)</li>
           </ul>
           <figure>
             <img src="_assets/screenshots/mobile/inspection/inspection_dashbord.png" alt="Dashboard mobile inspecciones del día" data-i18n-attr-alt="page69.s1.fig.alt" loading="lazy">
@@ -162,7 +162,7 @@
 
         <section>
           <h2 data-i18n="page69.s2.title">2. Llegada al establecimiento: escaneo del QR de la licencia</h2>
-          <p data-i18n="page69.s2.body">Cada establecimiento titular de una licencia comercial bundle tiene su QR code único pegado en una pared visible. El agente abre la app Facil terreno y escanea este QR. La app abre directamente la ficha de inspección preparada con los datos del establecimiento: nombre comercial, NIF, historial bundle, <strong>obligaciones pendientes y sus importes</strong>, observaciones precedentes.</p>
+          <p data-i18n-html="page69.s2.body">Cada establecimiento titular de una licencia comercial bundle tiene su QR code único pegado en una pared visible. El agente abre la app Facil terreno y escanea este QR. La app abre directamente la ficha de inspección preparada con los datos del establecimiento: nombre comercial, NIF, historial bundle, <strong>obligaciones pendientes y sus importes</strong>, observaciones precedentes.</p>
 
           <div class="callout callout-info">
             <h3 class="callout-title" data-i18n="page69.s2.info.title">Si el QR está deteriorado o ausente</h3>
@@ -181,7 +181,7 @@
 
         <section>
           <h2 data-i18n="page69.s3.title">3. Checklist comercial bundle</h2>
-          <p data-i18n="page69.s3.intro">A diferencia de un control sanitario, la checklist OMS verifica la conformidad <strong>comercial y fiscal</strong> del establecimiento:</p>
+          <p data-i18n-html="page69.s3.intro">A diferencia de un control sanitario, la checklist OMS verifica la conformidad <strong>comercial y fiscal</strong> del establecimiento:</p>
 
           <div class="table-wrapper">
             <table>
@@ -195,17 +195,17 @@
               </thead>
               <tbody>
                 <tr><td>1</td><td data-i18n="page69.s3.t.r1.c1">Licencia comercial visible</td><td data-i18n="page69.s3.t.r1.c2">QR pegado en pared accesible al público</td><td data-i18n="page69.s3.t.r1.c3">Observación obligatoria en la ficha + foto. Si no aparece la licencia, escalación al supervisor o emisión MED.</td></tr>
-                <tr><td>2</td><td data-i18n="page69.s3.t.r2.c1">Obligaciones Tesoro al día</td><td data-i18n="page69.s3.t.r2.c2">No obligaciones <code>fee_type=tesoro</code> vencidas sin pagar</td><td data-i18n="page69.s3.t.r2.c3">Collection inmediata Mobile Money o cash (requiere red)</td></tr>
-                <tr><td>3</td><td data-i18n="page69.s3.t.r3.c1">Obligaciones Municipal al día</td><td data-i18n="page69.s3.t.r3.c2">No obligaciones <code>fee_type=municipal</code> vencidas (tasas Ayuntamiento)</td><td data-i18n="page69.s3.t.r3.c3">Collection inmediata o emisión MED</td></tr>
-                <tr><td>4</td><td data-i18n="page69.s3.t.r4.c1">Obligaciones Chamber al día</td><td data-i18n="page69.s3.t.r4.c2">Cuotas anuales Cámara <code>fee_type=chamber</code> al día</td><td data-i18n="page69.s3.t.r4.c3">Collection o emisión MED</td></tr>
-                <tr><td>5</td><td data-i18n="page69.s3.t.r5.c1">Actividad declarada = actividad real</td><td data-i18n="page69.s3.t.r5.c2">El tipo de comercio observado in situ coincide con la categoría declarada en la licencia</td><td data-i18n="page69.s3.t.r5.c3">Propuesta de scellement con razón <code>activite_non_autorisee</code> (sujeta a aprobación supervisor)</td></tr>
+                <tr><td>2</td><td data-i18n="page69.s3.t.r2.c1">Obligaciones Tesoro al día</td><td data-i18n-html="page69.s3.t.r2.c2">No obligaciones <code>fee_type=tesoro</code> vencidas sin pagar</td><td data-i18n="page69.s3.t.r2.c3">Collection inmediata Mobile Money o cash (requiere red)</td></tr>
+                <tr><td>3</td><td data-i18n="page69.s3.t.r3.c1">Obligaciones Municipal al día</td><td data-i18n-html="page69.s3.t.r3.c2">No obligaciones <code>fee_type=municipal</code> vencidas (tasas Ayuntamiento)</td><td data-i18n="page69.s3.t.r3.c3">Collection inmediata o emisión MED</td></tr>
+                <tr><td>4</td><td data-i18n="page69.s3.t.r4.c1">Obligaciones Chamber al día</td><td data-i18n-html="page69.s3.t.r4.c2">Cuotas anuales Cámara <code>fee_type=chamber</code> al día</td><td data-i18n="page69.s3.t.r4.c3">Collection o emisión MED</td></tr>
+                <tr><td>5</td><td data-i18n="page69.s3.t.r5.c1">Actividad declarada = actividad real</td><td data-i18n="page69.s3.t.r5.c2">El tipo de comercio observado in situ coincide con la categoría declarada en la licencia</td><td data-i18n-html="page69.s3.t.r5.c3">Propuesta de scellement con razón <code>activite_non_autorisee</code> (sujeta a aprobación supervisor)</td></tr>
                 <tr><td>6</td><td data-i18n="page69.s3.t.r6.c1">Registro mercantil válido</td><td data-i18n="page69.s3.t.r6.c2">Empresa registrada en el registro Cámara, NIF activo</td><td data-i18n="page69.s3.t.r6.c3">Escalación al supervisor para verificación</td></tr>
                 <tr><td>7</td><td data-i18n="page69.s3.t.r7.c1">Obligación ministerial (fee_type=tesoro filtrada por ministry_id)</td><td data-i18n="page69.s3.t.r7.c2">Impuesto sectorial específico imputado al ministerio competente al día</td><td data-i18n="page69.s3.t.r7.c3">Notificación al agente ministerial (ver página 66 §9)</td></tr>
               </tbody>
             </table>
           </div>
 
-          <p data-i18n="page69.s3.body">El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran).</p>
+          <p data-i18n-html="page69.s3.body">El agente recorre la checklist marcando cada punto: <em>conforme / no conforme / no aplicable</em>. Para los <em>no conforme</em>, puede tomar fotos directamente desde la app (las fotos se geo-localizan automáticamente y se cifran).</p>
 
           <div class="figure-pair">
             <figure>
@@ -221,7 +221,7 @@
 
         <section>
           <h2 data-i18n="page69.s4.title">4. Collection de obligaciones en el terreno</h2>
-          <p data-i18n="page69.s4.body">Si la inspección revela obligaciones bundle no pagadas, el agente puede cobrar inmediatamente en el lugar. La app calcula automáticamente el total a cobrar (suma de las obligaciones vencidas seleccionadas) y propone 2 métodos de pago — el endpoint backend es <code>POST /inspections/{id}/collect-payment</code> con campo <code>method</code> :</p>
+          <p data-i18n-html="page69.s4.body">Si la inspección revela obligaciones bundle no pagadas, el agente puede cobrar inmediatamente en el lugar. La app calcula automáticamente el total a cobrar (suma de las obligaciones vencidas seleccionadas) y propone 2 métodos de pago — el endpoint backend es <code>POST /inspections/{id}/collect-payment</code> con campo <code>method</code> :</p>
           <ul>
             <li data-i18n-html="page69.s4.l1"><strong>Mobile Money (<code>method=mobile_money</code>)</strong> — el agente captura el número de teléfono del comerciante (validación regex <code>+240[0-9]{9}</code>). La app envía solamente la método + número al backend ; la orquestación PIN SMS y la confirmación BANGE están gestionadas por el backend (no hay PIN local en la app inspector). Webhook BANGE confirma al backend cuando el pago llega. Solución preferida (trazabilidad total, sin manipulación de cash).</li>
             <li data-i18n-html="page69.s4.l2"><strong>Cash (<code>method=cash</code>)</strong> — el agente cobra el efectivo y registra el importe en la app. El pago se inserta en <code>service_payments</code> con <code>collection_type='field'</code> y <code>workflow_status='field_collected'</code>. <strong>Atención :</strong> no hay impresión de recibo provisional en el sitio en la versión actual ; el recibo oficial <code>REC-{año}-{6 dígitos}</code> es generado por el backend tras la validación supervisor (ver §6 abajo y página 66 §6).</li>
@@ -229,12 +229,12 @@
 
           <div class="callout callout-warning">
             <h3 class="callout-title" data-i18n="page69.s4.warn.title">Conexión requerida para la collection</h3>
-            <p data-i18n="page69.s4.warn.body">La app inspector <strong>bloquea explícitamente la collection cuando no hay red</strong> (<code>useNetwork().isConnected</code> en <code>payment.tsx</code>). No existe una queue offline para los pagos terrain en la versión actual : el agente debe esperar el restablecimiento de la conectividad antes de validar el cobro. La lectura de la ficha de inspección y la marca de la checklist sí funcionan en cache (React Query <code>refetchOnReconnect=true</code> resincroniza al volver la red).</p>
+            <p data-i18n-html="page69.s4.warn.body">La app inspector <strong>bloquea explícitamente la collection cuando no hay red</strong> (<code>useNetwork().isConnected</code> en <code>payment.tsx</code>). No existe una queue offline para los pagos terrain en la versión actual : el agente debe esperar el restablecimiento de la conectividad antes de validar el cobro. La lectura de la ficha de inspección y la marca de la checklist sí funcionan en cache (React Query <code>refetchOnReconnect=true</code> resincroniza al volver la red).</p>
           </div>
 
           <div class="callout callout-warning">
             <h3 class="callout-title" data-i18n="page69.s4.lock.title">Lock ordering canónico (CLAUDE.md)</h3>
-            <p data-i18n="page69.s4.lock.body">La transacción backend de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agentes simultáneos) : <code>commercial_licenses</code> (<code>FOR UPDATE</code> — root lock) → <code>service_requests</code> (INSERT optimista vía partial UNIQUE index <code>idx_sr_commercial_license_unique</code>) → <code>service_payments</code> (INSERT con <code>collection_type='field'</code>) → <code>license_obligations</code> (UPDATE batch a <code>payment_pending</code>). Timeouts transaction-scoped : <code>SET LOCAL lock_timeout = '3s'</code>, <code>SET LOCAL statement_timeout = '5s'</code>. Implementación en <code>CollectionService.collect_field_payment</code> (<code>app/modules/inspections/services/collection_service.py</code>).</p>
+            <p data-i18n-html="page69.s4.lock.body">La transacción backend de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agentes simultáneos) : <code>commercial_licenses</code> (<code>FOR UPDATE</code> — root lock) → <code>service_requests</code> (INSERT optimista vía partial UNIQUE index <code>idx_sr_commercial_license_unique</code>) → <code>service_payments</code> (INSERT con <code>collection_type='field'</code>) → <code>license_obligations</code> (UPDATE batch a <code>payment_pending</code>). Timeouts transaction-scoped : <code>SET LOCAL lock_timeout = '3s'</code>, <code>SET LOCAL statement_timeout = '5s'</code>. Implementación en <code>CollectionService.collect_field_payment</code> (<code>app/modules/inspections/services/collection_service.py</code>).</p>
           </div>
 
           <figure>
@@ -247,12 +247,12 @@
           <h2 data-i18n="page69.s4b.title">4 bis. Si obligaciones vencidas sin paiement: emitir MED (Mise en Demeure)</h2>
           <p data-i18n-html="page69.s4b.body">Si el comerciante <strong>refuse de payer</strong> o no tiene los fonds nécessaires, el agente emite una <strong>Mise en Demeure</strong> (MED) con un délai légal de 72h por défaut. Endpoint backend : <code>POST /inspections/{id}/mise-en-demeure</code>, permission <code>inspection.mise_en_demeure</code>. Una MED génère :</p>
           <ul>
-            <li data-i18n="page69.s4b.l1">Cambio de estado de la inspección : <code>in_progress</code> → <code>mise_en_demeure</code></li>
+            <li data-i18n-html="page69.s4b.l1">Cambio de estado de la inspección : <code>in_progress</code> → <code>mise_en_demeure</code></li>
             <li data-i18n="page69.s4b.l2">Génération d'un PDF MED firmado oficialmente</li>
             <li data-i18n="page69.s4b.l3">Upload Firebase Storage + registro en el vault de la empresa</li>
-            <li data-i18n="page69.s4b.l4">Email + push al <em>owner</em> de la empresa via EventBus</li>
-            <li data-i18n="page69.s4b.l5">Listado de las obligaciones señaladas (<code>mise_en_demeure_obligations</code> JSONB)</li>
-            <li data-i18n="page69.s4b.l6">Deadline TIMESTAMPTZ stockée (<code>mise_en_demeure_deadline</code>)</li>
+            <li data-i18n-html="page69.s4b.l4">Email + push al <em>owner</em> de la empresa via EventBus</li>
+            <li data-i18n-html="page69.s4b.l5">Listado de las obligaciones señaladas (<code>mise_en_demeure_obligations</code> JSONB)</li>
+            <li data-i18n-html="page69.s4b.l6">Deadline TIMESTAMPTZ stockée (<code>mise_en_demeure_deadline</code>)</li>
           </ul>
           <figure>
             <img src="_assets/screenshots/mobile/inspection/inspection_mise_en_demeure.png" alt="Emitir MED mobile" data-i18n-attr-alt="page69.s4b.fig.alt" loading="lazy">
@@ -266,7 +266,7 @@
           <p data-i18n-html="page69.s4c.body2">8 razones légales de scellement disponibles (enum <code>SealReason</code>) : <code>non_paiement_apres_med</code>, <code>activite_non_autorisee</code>, <code>fraude_fiscale</code>, <code>faux_documents</code>, <code>refus_controle</code>, <code>non_conformite_grave</code>, <code>decision_judiciaire</code>, <code>ordre_ministeriel</code>. Détail complet et workflow supervisor en <a href="74-supervisor-inspecciones.html">página 74 §2-§3</a>.</p>
           <figure>
             <img src="_assets/screenshots/mobile/inspection/inspection6_sceler.png" alt="Proponer scellement mobile" data-i18n-attr-alt="page69.s4c.fig.alt" loading="lazy">
-            <figcaption data-i18n="page69.s4c.fig.caption">Pantalla proponer scellement: seleccionar razón (8 enum), foto obligatoria, notas. Estado pasa a <code>seal_proposed</code> en espera de aprobación supervisor.</figcaption>
+            <figcaption data-i18n-html="page69.s4c.fig.caption">Pantalla proponer scellement: seleccionar razón (8 enum), foto obligatoria, notas. Estado pasa a <code>seal_proposed</code> en espera de aprobación supervisor.</figcaption>
           </figure>
         </section>
 

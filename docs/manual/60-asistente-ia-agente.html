@@ -159,31 +159,31 @@
               </thead>
               <tbody>
                 <tr>
-                  <td data-i18n="page60.s1.t.r1.c1"><strong>Acceso</strong></td>
+                  <td data-i18n-html="page60.s1.t.r1.c1"><strong>Acceso</strong></td>
                   <td data-i18n="page60.s1.t.r1.c2">Sin login</td>
                   <td data-i18n="page60.s1.t.r1.c3">Login + contexto personal</td>
                   <td data-i18n="page60.s1.t.r1.c4">Login agente + contexto profesional</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page60.s1.t.r2.c1"><strong>Datos accesibles</strong></td>
+                  <td data-i18n-html="page60.s1.t.r2.c1"><strong>Datos accesibles</strong></td>
                   <td data-i18n="page60.s1.t.r2.c2">Solo catálogo público</td>
                   <td data-i18n="page60.s1.t.r2.c3">Catálogo + datos del usuario</td>
                   <td data-i18n="page60.s1.t.r2.c4">Catálogo + jurisprudencia + casos pasados (anonimizados)</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page60.s1.t.r3.c1"><strong>Idiomas</strong></td>
+                  <td data-i18n-html="page60.s1.t.r3.c1"><strong>Idiomas</strong></td>
                   <td data-i18n="page60.s1.t.r3.c2">ES / FR / EN</td>
                   <td data-i18n="page60.s1.t.r3.c3">ES / FR / EN</td>
                   <td data-i18n="page60.s1.t.r3.c4">ES (lengua oficial administrativa) por defecto</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page60.s1.t.r4.c1"><strong>Limit de queries</strong></td>
+                  <td data-i18n-html="page60.s1.t.r4.c1"><strong>Limit de queries</strong></td>
                   <td data-i18n="page60.s1.t.r4.c2">10 / hora / IP</td>
                   <td data-i18n="page60.s1.t.r4.c3">100 / día</td>
                   <td data-i18n="page60.s1.t.r4.c4">Sin límite (uso profesional)</td>
                 </tr>
                 <tr>
-                  <td data-i18n="page60.s1.t.r5.c1"><strong>Audit log</strong></td>
+                  <td data-i18n-html="page60.s1.t.r5.c1"><strong>Audit log</strong></td>
                   <td data-i18n="page60.s1.t.r5.c2">Mínimo</td>
                   <td data-i18n="page60.s1.t.r5.c3">Estándar</td>
                   <td data-i18n="page60.s1.t.r5.c4">Completo + retention 7 años</td>
@@ -200,13 +200,13 @@
           <p data-i18n="page60.s2.uc1.body">Antes de tomar una decisión sobre un caso ambiguo, el agente puede preguntar al IA: «¿Cuántos casos similares han sido tratados los últimos 12 meses? ¿Qué decisión se tomó en mayoría?». El IA busca en la base anonimizada de casos pasados (sin datos personales identificables) y retorna la decisión mayoritaria con porcentaje de coincidencia. Esto reduce las disparidades entre agentes.</p>
 
           <h3 data-i18n="page60.s2.uc2.title">Generar un motivo de rechazo</h3>
-          <p data-i18n="page60.s2.uc2.body">Cuando el agente decide rechazar (acción <code>reject</code>, ver <a href="61-rol-agente.html">página 61</a>), el motivo es obligatorio (mínimo 50 caracteres, redacción precisa). El IA puede generar un primer borrador del motivo basado en los puntos no conformes detectados durante la verificación documental. El agente revisa, corrige, valida. Esto ahorra 2-3 minutos por rechazo y mejora la calidad redactional.</p>
+          <p data-i18n-html="page60.s2.uc2.body">Cuando el agente decide rechazar (acción <code>reject</code>, ver <a href="61-rol-agente.html">página 61</a>), el motivo es obligatorio (mínimo 50 caracteres, redacción precisa). El IA puede generar un primer borrador del motivo basado en los puntos no conformes detectados durante la verificación documental. El agente revisa, corrige, valida. Esto ahorra 2-3 minutos por rechazo y mejora la calidad redactional.</p>
 
           <h3 data-i18n="page60.s2.uc3.title">Consultar la jurisprudencia interna</h3>
           <p data-i18n="page60.s2.uc3.body">Para los casos complejos (interpretación de un texto legal, conflicto de jurisprudencia entre dos circulares), el IA tiene acceso al corpus de circulares ministeriales y consultas jurídicas pasadas. Pregunta tipo: «¿Cómo interpreta la circular del 12 de marzo 2024 sobre las solicitudes de pasaporte de menores?». El IA cita las fuentes (circular CN-2024-042, p. 3) lo que permite al agente verificar.</p>
 
           <h3 data-i18n="page60.s2.uc4.title">Detectar patterns de fraude</h3>
-          <p data-i18n="page60.s2.uc4.body">Si el agente nota anomalías (NIF que no coincide con el nombre, mismo tutor para muchos menores, dirección sospechosa) puede pedir al IA: «¿Hay otros casos con esta dirección o este NIF en los últimos 6 meses?». Si el IA detecta clusters anómalos, alerta al agente que escala (acción <code>escalate</code>) hacia el supervisor con el reporte adjunto.</p>
+          <p data-i18n-html="page60.s2.uc4.body">Si el agente nota anomalías (NIF que no coincide con el nombre, mismo tutor para muchos menores, dirección sospechosa) puede pedir al IA: «¿Hay otros casos con esta dirección o este NIF en los últimos 6 meses?». Si el IA detecta clusters anómalos, alerta al agente que escala (acción <code>escalate</code>) hacia el supervisor con el reporte adjunto.</p>
         </section>
 
         <section>
@@ -225,7 +225,7 @@
 
           <div class="callout callout-warning">
             <h3 class="callout-title" data-i18n="page60.s4.warn1.title">El IA no toma la decisión</h3>
-            <p data-i18n="page60.s4.warn1.body">El asistente IA es una <em>ayuda a la decisión</em>, no un decisor. La decisión final (validar, rechazar, escalar) corresponde al agente y solo al agente. La firma del agente es la única que cuenta legalmente. Si el agente sigue ciegamente la sugerencia del IA sin verificar, asume la responsabilidad de cualquier error.</p>
+            <p data-i18n-html="page60.s4.warn1.body">El asistente IA es una <em>ayuda a la decisión</em>, no un decisor. La decisión final (validar, rechazar, escalar) corresponde al agente y solo al agente. La firma del agente es la única que cuenta legalmente. Si el agente sigue ciegamente la sugerencia del IA sin verificar, asume la responsabilidad de cualquier error.</p>
           </div>
 
           <div class="callout callout-warning">

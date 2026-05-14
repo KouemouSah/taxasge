@@ -217,12 +217,12 @@
             <li data-i18n-html="page61.s2.l3"><strong>Complejidad</strong> — las solicitudes con muchas piezas justificativas o flagged por la IA (anomalías documentales, mismatch nombre, etc.) tienen un score más alto.</li>
           </ul>
 
-          <p data-i18n="page61.s2.body2">El agente no puede saltar manualmente una entrada de la cola; debe tratar las solicitudes en el orden propuesto. Si una solicitud necesita un especialista (por ejemplo un caso médico complejo en OMS), la opción <em>«asignar a un colega»</em> permite transferirla con un mensaje justificativo (ver sección 4).</p>
+          <p data-i18n-html="page61.s2.body2">El agente no puede saltar manualmente una entrada de la cola; debe tratar las solicitudes en el orden propuesto. Si una solicitud necesita un especialista (por ejemplo un caso médico complejo en OMS), la opción <em>«asignar a un colega»</em> permite transferirla con un mensaje justificativo (ver sección 4).</p>
         </section>
 
         <section>
           <h2 data-i18n="page61.s3.title">3. El bloqueo pesimista: lock_for_review</h2>
-          <p data-i18n="page61.s3.intro">Cuando dos agentes trabajan en la misma entidad, el riesgo es que ambos abran la misma solicitud y emitan decisiones contradictorias. Facil resuelve este problema con un bloqueo pesimista: solo un agente puede tener una solicitud en estado <em>«locked_by_agent»</em> a la vez.</p>
+          <p data-i18n-html="page61.s3.intro">Cuando dos agentes trabajan en la misma entidad, el riesgo es que ambos abran la misma solicitud y emitan decisiones contradictorias. Facil resuelve este problema con un bloqueo pesimista: solo un agente puede tener una solicitud en estado <em>«locked_by_agent»</em> a la vez.</p>
 
           <pre data-i18n-html="page61.s3.diagram">
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -251,7 +251,7 @@
 
         <section>
           <h2 data-i18n="page61.s4.title">4. Las 7 acciones del agente</h2>
-          <p data-i18n="page61.s4.intro">Una vez bloqueada una solicitud, el agente dispone de 7 acciones (definidas en el enum <code>agent_action_type</code> del backend). No todas son aplicables a la vez; el botón está activo solo si el contexto lo permite.</p>
+          <p data-i18n-html="page61.s4.intro">Una vez bloqueada una solicitud, el agente dispone de 7 acciones (definidas en el enum <code>agent_action_type</code> del backend). No todas son aplicables a la vez; el botón está activo solo si el contexto lo permite.</p>
 
           <div class="table-wrapper">
             <table>
@@ -266,7 +266,7 @@
                 <tr>
                   <td><code>lock_for_review</code></td>
                   <td data-i18n="page61.s4.t.r1.c2">Al hacer clic en una solicitud de la cola</td>
-                  <td data-i18n="page61.s4.t.r1.c3">La solicitud cambia a <code>locked_by_agent</code>, ningún otro agente puede abrirla</td>
+                  <td data-i18n-html="page61.s4.t.r1.c3">La solicitud cambia a <code>locked_by_agent</code>, ningún otro agente puede abrirla</td>
                 </tr>
                 <tr>
                   <td><code>approve</code></td>
@@ -281,12 +281,12 @@
                 <tr>
                   <td><code>request_documents</code></td>
                   <td data-i18n="page61.s4.t.r4.c2">Falta una pieza, foto borrosa, fecha caducada</td>
-                  <td data-i18n="page61.s4.t.r4.c3">Estado <code>requires_documents</code>. Notificación al ciudadano con la lista exacta de lo que falta. Plazo 30 días, luego rechazo automático</td>
+                  <td data-i18n-html="page61.s4.t.r4.c3">Estado <code>requires_documents</code>. Notificación al ciudadano con la lista exacta de lo que falta. Plazo 30 días, luego rechazo automático</td>
                 </tr>
                 <tr>
                   <td><code>escalate</code></td>
                   <td data-i18n="page61.s4.t.r5.c2">Caso ambiguo, sospecha de fraude organizado, decisión más allá del nivel</td>
-                  <td data-i18n="page61.s4.t.r5.c3">Estado <code>escalated_supervisor</code>. La solicitud sale de la cola del agente y entra en la del supervisor de la entidad</td>
+                  <td data-i18n-html="page61.s4.t.r5.c3">Estado <code>escalated_supervisor</code>. La solicitud sale de la cola del agente y entra en la del supervisor de la entidad</td>
                 </tr>
                 <tr>
                   <td><code>unlock_release</code></td>
@@ -305,12 +305,12 @@
 
         <section>
           <h2 data-i18n="page61.s5.title">5. Audit log: cada acción es trazada</h2>
-          <p data-i18n="page61.s5.body">Toda acción del agente queda registrada en un log de auditoría con: <em>quién</em> (email del agente), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>antes/después</em> (estado anterior y nuevo), <em>motivo</em> (campo obligatorio en rechazo y escalación), <em>IP + user-agent</em>. Este log está visible para el supervisor de la entidad y para el administrador. Se conserva 7 años (obligación legal de archivo administrativo). El ciudadano puede solicitar una copia del log de su solicitud en virtud del derecho de acceso (página 58 — Legal).</p>
+          <p data-i18n-html="page61.s5.body">Toda acción del agente queda registrada en un log de auditoría con: <em>quién</em> (email del agente), <em>cuándo</em> (timestamp UTC), <em>qué</em> (acción), <em>antes/después</em> (estado anterior y nuevo), <em>motivo</em> (campo obligatorio en rechazo y escalación), <em>IP + user-agent</em>. Este log está visible para el supervisor de la entidad y para el administrador. Se conserva 7 años (obligación legal de archivo administrativo). El ciudadano puede solicitar una copia del log de su solicitud en virtud del derecho de acceso (página 58 — Legal).</p>
         </section>
 
         <section>
           <h2 data-i18n="page61.s6.title">6. Estados del workflow (los 17 estados)</h2>
-          <p data-i18n="page61.s6.intro">El workflow completo de una solicitud cuenta 17 estados (definidos en el enum <code>payment_workflow_status</code> del backend). Un agente trabaja típicamente sobre los estados marcados con ★.</p>
+          <p data-i18n-html="page61.s6.intro">El workflow completo de una solicitud cuenta 17 estados (definidos en el enum <code>payment_workflow_status</code> del backend). Un agente trabaja típicamente sobre los estados marcados con ★.</p>
 
           <div class="table-wrapper">
             <table>

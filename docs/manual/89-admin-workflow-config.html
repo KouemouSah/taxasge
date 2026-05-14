@@ -143,11 +143,11 @@
 
       <div class="content-body">
         <h1 class="page-title" data-i18n="page89.title">Configuración Workflows, Citas, Entidades y Menús</h1>
-        <p class="page-description" data-i18n="page89.description">Esta sección agrupa la configuración alrededor del flujo operacional de los servicios. Importante : los workflows en Facil son <strong>predefinidos en el código</strong> (no hay designer visuel drag-drop) — <strong>37 workflow_codes</strong> cubren todos los casos actuales (pasaportes, residencia, vehículos, contratos, bundle, inspecciones terreno, etc.), enumerados en la seed <code>034_valid_workflow_codes.sql</code>. El admin configura aquí los parámetros : tarifas suplementarias, citas (horarios y reglas), entidades administrativas, ciudades y ubicaciones, además del menú dinámico por rol.</p>
+        <p class="page-description" data-i18n-html="page89.description">Esta sección agrupa la configuración alrededor del flujo operacional de los servicios. Importante : los workflows en Facil son <strong>predefinidos en el código</strong> (no hay designer visuel drag-drop) — <strong>37 workflow_codes</strong> cubren todos los casos actuales (pasaportes, residencia, vehículos, contratos, bundle, inspecciones terreno, etc.), enumerados en la seed <code>034_valid_workflow_codes.sql</code>. El admin configura aquí los parámetros : tarifas suplementarias, citas (horarios y reglas), entidades administrativas, ciudades y ubicaciones, además del menú dinámico por rol.</p>
 
         <section>
           <h2 data-i18n="page89.s1.title">1. Catálogo de los 37 workflow_codes predefinidos</h2>
-          <p data-i18n="page89.s1.body">Los workflows están definidos por el código backend (módulo <code>workflows</code> + tabla <code>workflow_definitions</code>, validados contra el CHECK constraint generado por la seed <code>034_valid_workflow_codes.sql</code>) y representan el ciclo de vida completo de cada tipo de servicio fiscal. El admin los visualiza en lectura sola; las modificaciones requieren un release backend.</p>
+          <p data-i18n-html="page89.s1.body">Los workflows están definidos por el código backend (módulo <code>workflows</code> + tabla <code>workflow_definitions</code>, validados contra el CHECK constraint generado por la seed <code>034_valid_workflow_codes.sql</code>) y representan el ciclo de vida completo de cada tipo de servicio fiscal. El admin los visualiza en lectura sola; las modificaciones requieren un release backend.</p>
           <div class="table-wrapper">
             <table>
               <thead>
@@ -183,7 +183,7 @@
 
         <section>
           <h2 data-i18n="page89.s2.title">2. Tarifas: base (workflow_tariffs) + suplementarias (tariff_supplements)</h2>
-          <p data-i18n="page89.s2.body">El sistema distingue dos capas de tarifas: la <strong>tarifa base por workflow</strong> (tabla <code>workflow_tariffs</code>, 31 entradas seedeadas para los 37 workflows) y los <strong>suplementos transversales</strong> (tabla <code>tariff_supplements</code>) aplicables según el caso. Hay actualmente <strong>3 suplementos seedeados</strong> que el admin puede activar o editar :</p>
+          <p data-i18n-html="page89.s2.body">El sistema distingue dos capas de tarifas: la <strong>tarifa base por workflow</strong> (tabla <code>workflow_tariffs</code>, 31 entradas seedeadas para los 37 workflows) y los <strong>suplementos transversales</strong> (tabla <code>tariff_supplements</code>) aplicables según el caso. Hay actualmente <strong>3 suplementos seedeados</strong> que el admin puede activar o editar :</p>
           <div class="table-wrapper">
             <table>
               <thead>
@@ -200,7 +200,7 @@
               </tbody>
             </table>
           </div>
-          <p data-i18n="page89.s2.body2">Cada suplemento se asocia a uno o varios workflows; el motor de cálculo de tarifas (<code>fiscal_services</code>) lo añade a la tarifa base al momento de crear la solicitud.</p>
+          <p data-i18n-html="page89.s2.body2">Cada suplemento se asocia a uno o varios workflows; el motor de cálculo de tarifas (<code>fiscal_services</code>) lo añade a la tarifa base al momento de crear la solicitud.</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/admin/Config/FLUJO_DE_TRABAJO/TARIFAS2.png" alt="Lista suplementos tarifas" data-i18n-attr-alt="page89.fig2.alt" loading="lazy">
@@ -215,7 +215,7 @@
 
         <section>
           <h2 data-i18n="page89.s3.title">3. Gestión de las citas (slot configs + delay rules)</h2>
-          <p data-i18n="page89.s3.intro">Para los servicios que requieren una cita en persona (CNEDOGE biométrico, DGT examen práctico, Extranjería retiro de carnet), el admin configura los horarios de oficina por entidad + ciudad (tabla <code>appointment_slot_configs</code>, <strong>15 configuraciones</strong> seedeadas: 5 días × 3 entidades), las fechas bloqueadas (feriados nacionales) y las reglas de espera por prioridad (tabla <code>appointment_delay_rules</code>, <strong>15 reglas</strong> con niveles <code>URGENT</code> 1–2 días, <code>NORMAL</code> 2–5 días, <code>LOW</code> 4–7 días según entidad). Los slots tienen una duración por defecto de 30 minutos con 2 plazas/slot (1 plaza los miércoles).</p>
+          <p data-i18n-html="page89.s3.intro">Para los servicios que requieren una cita en persona (CNEDOGE biométrico, DGT examen práctico, Extranjería retiro de carnet), el admin configura los horarios de oficina por entidad + ciudad (tabla <code>appointment_slot_configs</code>, <strong>15 configuraciones</strong> seedeadas: 5 días × 3 entidades), las fechas bloqueadas (feriados nacionales) y las reglas de espera por prioridad (tabla <code>appointment_delay_rules</code>, <strong>15 reglas</strong> con niveles <code>URGENT</code> 1–2 días, <code>NORMAL</code> 2–5 días, <code>LOW</code> 4–7 días según entidad). Los slots tienen una duración por defecto de 30 minutos con 2 plazas/slot (1 plaza los miércoles).</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/admin/Config/FLUJO_DE_TRABAJO/CITA1.png" alt="Configuración horarios entidad ciudad" data-i18n-attr-alt="page89.fig4.alt" loading="lazy">
@@ -250,7 +250,7 @@
 
         <section>
           <h2 data-i18n="page89.s4.title">4. Entidades administrativas (20 entidades)</h2>
-          <p data-i18n="page89.s4.body">Las entidades son las <strong>20 administraciones públicas</strong> seedeadas en Facil (tabla <code>entities</code>, seed <code>014_entities.sql</code>) : MINFP, POLICIA, TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, MIN_HACIENDA, MIN_COMERCIO, MIN_INFORMACION, MIN_TURISMO, MIN_AGRICULTURA, MIN_ELECTRICIDAD, CNEDOGE_PASAPORTE, ONRC, OFIVE, DGT, COMISARIA, EXTRANJERIA, CNEDOGE, CNEDOGE_RESIDENCIA, ITV. Cada entidad tiene un código, un nombre, un tipo padre (ministerio o municipio), y los <code>workflow_codes</code> que gestiona (columna JSONB <code>workflow_codes</code>).</p>
+          <p data-i18n-html="page89.s4.body">Las entidades son las <strong>20 administraciones públicas</strong> seedeadas en Facil (tabla <code>entities</code>, seed <code>014_entities.sql</code>) : MINFP, POLICIA, TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, MIN_HACIENDA, MIN_COMERCIO, MIN_INFORMACION, MIN_TURISMO, MIN_AGRICULTURA, MIN_ELECTRICIDAD, CNEDOGE_PASAPORTE, ONRC, OFIVE, DGT, COMISARIA, EXTRANJERIA, CNEDOGE, CNEDOGE_RESIDENCIA, ITV. Cada entidad tiene un código, un nombre, un tipo padre (ministerio o municipio), y los <code>workflow_codes</code> que gestiona (columna JSONB <code>workflow_codes</code>).</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/admin/Config/FLUJO_DE_TRABAJO/ENTIDADE.png" alt="Lista entidades 20 administraciones" data-i18n-attr-alt="page89.fig10.alt" loading="lazy">
@@ -265,7 +265,7 @@
 
         <section>
           <h2 data-i18n="page89.s5.title">5. Ciudades (17) y ubicaciones físicas (34)</h2>
-          <p data-i18n="page89.s5.body"><strong>17 ciudades</strong> de Guinea Ecuatorial registradas (seed <code>013_cities.sql</code>) : Bata, Ebebiyin, Evinayong, Mongomo, Oyala, Malabo, Baney, Luba, San Antonio de Pale, Mbini, Niefang, Micomeseng, Anisok, Riaba, Cogo, Akurenam, Nsork. Cada una con su región (Insular o Continental) y su mención de capital eventual. Las <strong>34 ubicaciones físicas</strong> (tabla <code>entity_locations</code>, seed <code>015_entity_locations.sql</code>) vinculan una entidad a una ciudad con su dirección y mención de sede principal (oficina central de la entidad).</p>
+          <p data-i18n-html="page89.s5.body"><strong>17 ciudades</strong> de Guinea Ecuatorial registradas (seed <code>013_cities.sql</code>) : Bata, Ebebiyin, Evinayong, Mongomo, Oyala, Malabo, Baney, Luba, San Antonio de Pale, Mbini, Niefang, Micomeseng, Anisok, Riaba, Cogo, Akurenam, Nsork. Cada una con su región (Insular o Continental) y su mención de capital eventual. Las <strong>34 ubicaciones físicas</strong> (tabla <code>entity_locations</code>, seed <code>015_entity_locations.sql</code>) vinculan una entidad a una ciudad con su dirección y mención de sede principal (oficina central de la entidad).</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/admin/Config/FLUJO_DE_TRABAJO/CIUDAD.png" alt="Lista 17 ciudades Bata Malabo Mongomo" data-i18n-attr-alt="page89.fig12.alt" loading="lazy">
@@ -290,7 +290,7 @@
 
         <section id="menu">
           <h2 data-i18n="page89.s6.title">6. Configuración dinámica de los menús (Menu Config)</h2>
-          <p data-i18n="page89.s6.body">Cada rol tiene su menú propio adaptado a sus permisos. Dos modos de configuración disponibles : <strong>workflow-based</strong> (automático, basado en los <code>workflow_codes</code> de la entidad + tabla <code>workflow_menu_mapping</code> con <strong>12 mappings</strong> seedeados en <code>036_workflow_menu_mapping.sql</code>) o <strong>module-based</strong> (manual, JSON explícito en <code>roles.menu_config</code>). El admin gestiona el mapping workflow → menu desde la pantalla <code>/dashboard/admin/menu-config</code>, vía los endpoints CRUD <code>GET/POST/PUT/DELETE /menu-config/workflow-mappings</code>.</p>
+          <p data-i18n-html="page89.s6.body">Cada rol tiene su menú propio adaptado a sus permisos. Dos modos de configuración disponibles : <strong>workflow-based</strong> (automático, basado en los <code>workflow_codes</code> de la entidad + tabla <code>workflow_menu_mapping</code> con <strong>12 mappings</strong> seedeados en <code>036_workflow_menu_mapping.sql</code>) o <strong>module-based</strong> (manual, JSON explícito en <code>roles.menu_config</code>). El admin gestiona el mapping workflow → menu desde la pantalla <code>/dashboard/admin/menu-config</code>, vía los endpoints CRUD <code>GET/POST/PUT/DELETE /menu-config/workflow-mappings</code>.</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/admin/Config/MENU/0.png" alt="Menu config workflow mapping" data-i18n-attr-alt="page89.fig16.alt" loading="lazy">
@@ -307,7 +307,7 @@
           <h2 data-i18n="page89.s7.title">7. ¿Por qué no hay Workflow Designer drag-drop?</h2>
           <div class="callout callout-info">
             <h3 class="callout-title" data-i18n="page89.s7.info.title">Workflows predefinidos por seguridad</h3>
-            <p data-i18n="page89.s7.info.body">Los 37 workflows en Facil cubren los servicios fiscales oficiales de Guinea Ecuatorial. Una modificación visual ad-hoc desde la UI introduciría riesgos importantes : un workflow mal configurado podría dejar pasar fraudes, perder solicitudes, o generar inconsistencias con la legislación. Por eso, los workflows están definidos por el código (probados, auditados, versionados) y validados por el CHECK constraint generado a partir de <code>034_valid_workflow_codes.sql</code>. Solo los <em>parámetros</em> (tarifas base + 3 suplementos, horarios y reglas de citas, entidades, ubicaciones, menús) son configurables por el admin. Si una nueva ley introduce un nuevo tipo de servicio, el equipo técnico desarrolla el workflow correspondiente, actualiza la seed <code>034_valid_workflow_codes.sql</code>, y lo despliega con un release.</p>
+            <p data-i18n-html="page89.s7.info.body">Los 37 workflows en Facil cubren los servicios fiscales oficiales de Guinea Ecuatorial. Una modificación visual ad-hoc desde la UI introduciría riesgos importantes : un workflow mal configurado podría dejar pasar fraudes, perder solicitudes, o generar inconsistencias con la legislación. Por eso, los workflows están definidos por el código (probados, auditados, versionados) y validados por el CHECK constraint generado a partir de <code>034_valid_workflow_codes.sql</code>. Solo los <em>parámetros</em> (tarifas base + 3 suplementos, horarios y reglas de citas, entidades, ubicaciones, menús) son configurables por el admin. Si una nueva ley introduce un nuevo tipo de servicio, el equipo técnico desarrolla el workflow correspondiente, actualiza la seed <code>034_valid_workflow_codes.sql</code>, y lo despliega con un release.</p>
           </div>
         </section>
 

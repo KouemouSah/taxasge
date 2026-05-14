@@ -184,7 +184,7 @@
 
         <section>
           <h2 data-i18n="page65.s4.title">4. Vista completa de un pago + 3 acciones disponibles</h2>
-          <p data-i18n="page65.s4.body">Si la información del panel lateral es insuficiente, el agente abre la vista completa con el botón <em>«Ver detalle»</em>. La pantalla muestra todos los datos: histórico de transacciones BANGE para esa cuenta, capturas del recibo de pago, datos del ciudadano. Tres botones: <em>«Validar»</em> (apruebe el pago, genere el recibo), <em>«Rechazar»</em> (motivo obligatorio: importe incorrecto, fraude, doble pago), <em>«Escalar»</em> (caso ambiguo, transmite al supervisor del Tesoro).</p>
+          <p data-i18n-html="page65.s4.body">Si la información del panel lateral es insuficiente, el agente abre la vista completa con el botón <em>«Ver detalle»</em>. La pantalla muestra todos los datos: histórico de transacciones BANGE para esa cuenta, capturas del recibo de pago, datos del ciudadano. Tres botones: <em>«Validar»</em> (apruebe el pago, genere el recibo), <em>«Rechazar»</em> (motivo obligatorio: importe incorrecto, fraude, doble pago), <em>«Escalar»</em> (caso ambiguo, transmite al supervisor del Tesoro).</p>
           <figure>
             <img src="_assets/screenshots/web/agent-tesoro/5.png" alt="Detalle pago con acciones validar rechazar escalar" data-i18n-attr-alt="page65.fig6.alt" loading="lazy">
             <figcaption data-i18n="page65.fig6.caption">Vista detallada con los 3 botones de acción y todos los datos del pago.</figcaption>
@@ -193,7 +193,7 @@
 
         <section>
           <h2 data-i18n="page65.s5.title">5. Generación del recibo Tesoro Público</h2>
-          <p data-i18n="page65.s5.body">Tras la validación, el sistema genera el recibo oficial del Tesoro Público (formato distinto del Ayuntamiento o Cámara). Este recibo es legalmente vinculante: prueba que el ciudadano ha pagado las tasas debidas al Estado. Lleva el número único <code>REC-2026-NNNNNN</code>, la firma electrónica del Tesoro, un QR de verificación (página 57) y la mención <em>«Recibo válido para todas las administraciones de Guinea Ecuatorial»</em>.</p>
+          <p data-i18n-html="page65.s5.body">Tras la validación, el sistema genera el recibo oficial del Tesoro Público (formato distinto del Ayuntamiento o Cámara). Este recibo es legalmente vinculante: prueba que el ciudadano ha pagado las tasas debidas al Estado. Lleva el número único <code>REC-2026-NNNNNN</code>, la firma electrónica del Tesoro, un QR de verificación (página 57) y la mención <em>«Recibo válido para todas las administraciones de Guinea Ecuatorial»</em>.</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/agent-tesoro/6.png" alt="Modal éxito recibo REC-2026-000013 generado" data-i18n-attr-alt="page65.fig7.alt" loading="lazy">
@@ -208,7 +208,7 @@
 
         <section>
           <h2 data-i18n="page65.s6.title">6. Mis transacciones (auditoría agente)</h2>
-          <p data-i18n="page65.s6.body">El menu <em>«Mis Transacciones»</em> reúne todos los pagos que el agente ha tratado, con filtros (fecha, tipo de servicio, importe, modo de pago) y métricas agregadas: importe total validado del mes, número medio de validaciones por día, tasa de rechazo. Útil para el cierre semanal de actividad del agente.</p>
+          <p data-i18n-html="page65.s6.body">El menu <em>«Mis Transacciones»</em> reúne todos los pagos que el agente ha tratado, con filtros (fecha, tipo de servicio, importe, modo de pago) y métricas agregadas: importe total validado del mes, número medio de validaciones por día, tasa de rechazo. Útil para el cierre semanal de actividad del agente.</p>
           <figure>
             <img src="_assets/screenshots/web/agent-tesoro/8.png" alt="Historial de Transacciones con filtros y métricas" data-i18n-attr-alt="page65.fig9.alt" loading="lazy">
             <figcaption data-i18n="page65.fig9.caption">Historial transacciones del agente Tesoro con filtros y métricas agregadas.</figcaption>
@@ -217,8 +217,8 @@
 
         <section>
           <h2 data-i18n="page65.s7.title">7. Reconciliación bancaria automática</h2>
-          <p data-i18n="page65.s7.body">La mayoría de los pagos vía BANGE Mobile Money son validados automáticamente por el sistema gracias al webhook BANGE: cuando un ciudadano confirma su pago con el PIN, BANGE envía una notificación a Facil que valida el pago en menos de 5 segundos. Estos pagos pasan directamente al estado <code>auto_approved</code> sin intervención del agente. El agente Tesoro interviene solo en los casos no automáticos: pagos en efectivo en la oficina, transferencias clásicas con extracto bancario, casos donde el webhook ha fallado y debe ser reconciliado manualmente.</p>
-          <p data-i18n="page65.s7.body2">Las funciones <em>Verify Treasury</em> permiten al agente buscar manualmente una transacción por su identificador BANGE para resolver discrepancias (ver <a href="68-funciones-verify-agente.html">página 68</a>).</p>
+          <p data-i18n-html="page65.s7.body">La mayoría de los pagos vía BANGE Mobile Money son validados automáticamente por el sistema gracias al webhook BANGE: cuando un ciudadano confirma su pago con el PIN, BANGE envía una notificación a Facil que valida el pago en menos de 5 segundos. Estos pagos pasan directamente al estado <code>auto_approved</code> sin intervención del agente. El agente Tesoro interviene solo en los casos no automáticos: pagos en efectivo en la oficina, transferencias clásicas con extracto bancario, casos donde el webhook ha fallado y debe ser reconciliado manualmente.</p>
+          <p data-i18n-html="page65.s7.body2">Las funciones <em>Verify Treasury</em> permiten al agente buscar manualmente una transacción por su identificador BANGE para resolver discrepancias (ver <a href="68-funciones-verify-agente.html">página 68</a>).</p>
         </section>
 
       </div>

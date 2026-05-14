@@ -159,10 +159,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td data-i18n="page43.s1.t.r1.c1"><strong>Objetivo</strong></td><td data-i18n="page43.s1.t.r1.c2">Crear varias <em>nuevas</em> solicitudes del mismo tipo</td><td data-i18n="page43.s1.t.r1.c3">Pagar varias obligaciones <em>existentes</em> de la empresa</td></tr>
-                <tr><td data-i18n="page43.s1.t.r2.c1"><strong>Tipo</strong></td><td data-i18n="page43.s1.t.r2.c2">Mismo workflow para todos (ej. todos pasaportes)</td><td data-i18n="page43.s1.t.r2.c3">Cualquier mezcla (licencia + IVA + Cámara)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r3.c1"><strong>Beneficiarios</strong></td><td data-i18n="page43.s1.t.r3.c2">Varias personas o establecimientos</td><td data-i18n="page43.s1.t.r3.c3">Una sola entidad (la empresa activa)</td></tr>
-                <tr><td data-i18n="page43.s1.t.r4.c1"><strong>Ejemplo</strong></td><td data-i18n="page43.s1.t.r4.c2">50 pasaportes para empleados</td><td data-i18n="page43.s1.t.r4.c3">Saldar todas las obligaciones del 2T 2026</td></tr>
+                <tr><td data-i18n-html="page43.s1.t.r1.c1"><strong>Objetivo</strong></td><td data-i18n-html="page43.s1.t.r1.c2">Crear varias <em>nuevas</em> solicitudes del mismo tipo</td><td data-i18n-html="page43.s1.t.r1.c3">Pagar varias obligaciones <em>existentes</em> de la empresa</td></tr>
+                <tr><td data-i18n-html="page43.s1.t.r2.c1"><strong>Tipo</strong></td><td data-i18n="page43.s1.t.r2.c2">Mismo workflow para todos (ej. todos pasaportes)</td><td data-i18n="page43.s1.t.r2.c3">Cualquier mezcla (licencia + IVA + Cámara)</td></tr>
+                <tr><td data-i18n-html="page43.s1.t.r3.c1"><strong>Beneficiarios</strong></td><td data-i18n="page43.s1.t.r3.c2">Varias personas o establecimientos</td><td data-i18n="page43.s1.t.r3.c3">Una sola entidad (la empresa activa)</td></tr>
+                <tr><td data-i18n-html="page43.s1.t.r4.c1"><strong>Ejemplo</strong></td><td data-i18n="page43.s1.t.r4.c2">50 pasaportes para empleados</td><td data-i18n="page43.s1.t.r4.c3">Saldar todas las obligaciones del 2T 2026</td></tr>
               </tbody>
             </table>
           </div>
@@ -246,7 +246,7 @@ Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
           <div class="callout callout-tip">
             <h3 data-i18n="page43.s3.tip.title">Trucos para mejorar la clasificación IA</h3>
             <ul>
-              <li data-i18n="page43.s3.tip.l1">Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.</li>
+              <li data-i18n-html="page43.s3.tip.l1">Nombrar los archivos con el nombre del beneficiario (ej. <code>juan_perez_dip.jpg</code>) — aumenta la precisión al 99%.</li>
               <li data-i18n="page43.s3.tip.l2">Subir documentos legibles (300 dpi mínimo, no fotos en penumbra). El IA pide reescaneo si la calidad es insuficiente.</li>
               <li data-i18n="page43.s3.tip.l3">Subir todos los documentos del mismo tipo juntos (todos los DIP, luego todas las fotos). Útil cuando los archivos vienen del scaner del fotocopiador.</li>
             </ul>
@@ -256,7 +256,7 @@ Ricardo Mba Nguema,EMP-2024-042,internal,ricardo.mba@example.gq
           <p data-i18n="page43.s3.step4.body">En el estado REVIEW, cada beneficiario tiene una marca verde (✓ documentos completos) o ámbar (— faltan documentos). Para los ámbar, hay dos opciones: volver a UPLOADING para añadir los documentos que faltan, o excluir al beneficiario del lote (estado EXCLUDED). Los excluidos no entran en el pago final y se podrán retomar más tarde en otro lote.</p>
 
           <h3 data-i18n="page43.s3.step5.title">Paso 5 — Pago consolidado</h3>
-          <p data-i18n="page43.s3.step5.body">El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href="34-mis-pagos-mobile.html">Mis pagos</a> para el flujo BANGE.</p>
+          <p data-i18n-html="page43.s3.step5.body">El sistema calcula el coste total: tasa por solicitud × número de beneficiarios incluidos. El propietario o un administrador autoriza el pago BANGE Mobile Money — un único PIN, un único reçu. Detallado en la página <a href="34-mis-pagos-mobile.html">Mis pagos</a> para el flujo BANGE.</p>
 
           <h3 data-i18n="page43.s3.step6.title">Paso 6 — Seguimiento por beneficiario</h3>
           <p data-i18n="page43.s3.step6.body">Una vez en IN_PROGRESS, cada solicitud individual se trata por separado en el lado de los agentes públicos. Su estado evoluciona independientemente (uno puede estar en validación documentaria mientras otro está esperando un control biométrico). La página de detalle del lote muestra una lista con un mini-stepper por beneficiario, lo que permite ver de un vistazo dónde están los retrasos.</p>

@@ -143,11 +143,11 @@
 
       <div class="content-body">
         <h1 class="page-title" data-i18n="page74.title">Supervisor Inspecciones OMS: MED, scellement et validación de paiements terreno</h1>
-        <p class="page-description" data-i18n="page74.description">El supervisor de Inspecciones OMS (Obligation Management System) encadre los agentes que realizan inspecciones <strong>comerciales bundle</strong> en el terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) y trata tres workflows críticos definidos en el backend <code>app/modules/inspections/</code>: aprobar/rechazar las <strong>propuestas de scellement</strong> emitidas por los agentes (<code>approve_seal</code>), validar las <strong>reconciliaciones de paiements</strong> collectados en el terreno (<code>/reconcile/supervisor/{payment_id}/validate</code>), monitorear el live-status de los agentes en mission. <em>OMS no tiene relación con la salud — refiere al sistema de gestión de obligaciones bundle.</em></p>
+        <p class="page-description" data-i18n-html="page74.description">El supervisor de Inspecciones OMS (Obligation Management System) encadre los agentes que realizan inspecciones <strong>comerciales bundle</strong> en el terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) y trata tres workflows críticos definidos en el backend <code>app/modules/inspections/</code>: aprobar/rechazar las <strong>propuestas de scellement</strong> emitidas por los agentes (<code>approve_seal</code>), validar las <strong>reconciliaciones de paiements</strong> collectados en el terreno (<code>/reconcile/supervisor/{payment_id}/validate</code>), monitorear el live-status de los agentes en mission. <em>OMS no tiene relación con la salud — refiere al sistema de gestión de obligaciones bundle.</em></p>
 
         <section>
           <h2 data-i18n="page74.s1.title">1. Estados reales del flujo inspección (InspectionStatus)</h2>
-          <p data-i18n="page74.s1.body">El backend define 7 estados (<code>InspectionStatus</code> enum en <code>inspection.py</code>). El supervisor interviene principalmente sobre <code>seal_proposed</code> et <code>reconcile</code>.</p>
+          <p data-i18n-html="page74.s1.body">El backend define 7 estados (<code>InspectionStatus</code> enum en <code>inspection.py</code>). El supervisor interviene principalmente sobre <code>seal_proposed</code> et <code>reconcile</code>.</p>
 
           <div class="table-wrapper">
             <table>
@@ -161,8 +161,8 @@
               <tbody>
                 <tr><td><code>in_progress</code></td><td data-i18n="page74.s1.t.r1.c2">Inspección iniciada por el agente en el terreno</td><td data-i18n="page74.s1.t.r1.c3">Agente</td></tr>
                 <tr><td><code>completed</code></td><td data-i18n="page74.s1.t.r2.c2">Inspección finalizada sin acción correctiva</td><td data-i18n="page74.s1.t.r2.c3">Agente</td></tr>
-                <tr><td><code>mise_en_demeure</code></td><td data-i18n="page74.s1.t.r3.c2">MED emitida (deadline 72h por defecto)</td><td data-i18n="page74.s1.t.r3.c3">Agente (con permiso <code>inspection.mise_en_demeure</code>)</td></tr>
-                <tr><td><code>seal_proposed</code></td><td data-i18n="page74.s1.t.r4.c2">Agente propide el scellement del comercio</td><td data-i18n="page74.s1.t.r4.c3">Agente propose, <strong>Supervisor valida</strong></td></tr>
+                <tr><td><code>mise_en_demeure</code></td><td data-i18n="page74.s1.t.r3.c2">MED emitida (deadline 72h por defecto)</td><td data-i18n-html="page74.s1.t.r3.c3">Agente (con permiso <code>inspection.mise_en_demeure</code>)</td></tr>
+                <tr><td><code>seal_proposed</code></td><td data-i18n="page74.s1.t.r4.c2">Agente propide el scellement del comercio</td><td data-i18n-html="page74.s1.t.r4.c3">Agente propose, <strong>Supervisor valida</strong></td></tr>
                 <tr><td><code>seal_approved</code></td><td data-i18n="page74.s1.t.r5.c2">Scellement aprobado por el supervisor</td><td data-i18n="page74.s1.t.r5.c3">Supervisor</td></tr>
                 <tr><td><code>seal_rejected</code></td><td data-i18n="page74.s1.t.r6.c2">Scellement rechazado por el supervisor (decisión motivada)</td><td data-i18n="page74.s1.t.r6.c3">Supervisor</td></tr>
                 <tr><td><code>cancelled</code></td><td data-i18n="page74.s1.t.r7.c2">Inspección cancelada (error agente, doble enregistrement)</td><td data-i18n="page74.s1.t.r7.c3">Agente o Supervisor</td></tr>
@@ -173,7 +173,7 @@
 
         <section>
           <h2 data-i18n="page74.s2.title">2. Las 8 razones legales de scellement</h2>
-          <p data-i18n="page74.s2.intro">Cuando el agente propide un scellement (<code>propose_seal</code>), debe elegir UNA de las 8 razones legales definidas en <code>SealReason</code> enum (<code>inspection.py</code>). Esta liste cerrada garantiza el cadre juridique de la décision.</p>
+          <p data-i18n-html="page74.s2.intro">Cuando el agente propide un scellement (<code>propose_seal</code>), debe elegir UNA de las 8 razones legales definidas en <code>SealReason</code> enum (<code>inspection.py</code>). Esta liste cerrada garantiza el cadre juridique de la décision.</p>
 
           <div class="table-wrapper">
             <table>
@@ -316,7 +316,7 @@
 
         <section>
           <h2 data-i18n="page74.s5.title">5. Decisión seal/approve: las 4 alternativas del supervisor</h2>
-          <p data-i18n="page74.s5.intro">Al examinar un <code>seal_proposed</code>, el supervisor dispone de 4 acciones concretas (implementadas en <code>approve_seal</code>):</p>
+          <p data-i18n-html="page74.s5.intro">Al examinar un <code>seal_proposed</code>, el supervisor dispone de 4 acciones concretas (implementadas en <code>approve_seal</code>):</p>
           <ul>
             <li data-i18n-html="page74.s5.l1"><strong>Aprobar (approved=true)</strong> — el scellement entra en vigor. El comercio queda cerrado oficialmente hasta levée. Owner notificado.</li>
             <li data-i18n-html="page74.s5.l2"><strong>Rechazar (approved=false)</strong> — el supervisor estima que el caso no justifica el scellement. Devuelve al agente con notes motivadas. La inspección queda en <code>seal_rejected</code>; el agente puede emitir une nueva MED o cerrar el dossier.</li>
@@ -327,7 +327,7 @@
 
         <section>
           <h2 data-i18n="page74.s6.title">6. Validación de la reconciliación de paiements terreno</h2>
-          <p data-i18n="page74.s6.body">Cuando un agente collectó un paiement en cash sur le terrain (<code>collect_field_payment</code>), el paiement entra en una cola de reconciliación pour validation par le supervisor. La pantalla <code>/reconcile/supervisor</code> liste los paiements en espera, agrupados por agente, con el importe declarado vs el efectivo presentado. El supervisor verifica los <strong>recibos firmados</strong> del comerçant, recompte el efectivo en présence del agente, valida o rechaza. La trazabilité respecte el lock ordering canónico (commercial_licenses FOR UPDATE → service_payments INSERT) implémenté dans <code>collection_service.py</code>.</p>
+          <p data-i18n-html="page74.s6.body">Cuando un agente collectó un paiement en cash sur le terrain (<code>collect_field_payment</code>), el paiement entra en una cola de reconciliación pour validation par le supervisor. La pantalla <code>/reconcile/supervisor</code> liste los paiements en espera, agrupados por agente, con el importe declarado vs el efectivo presentado. El supervisor verifica los <strong>recibos firmados</strong> del comerçant, recompte el efectivo en présence del agente, valida o rechaza. La trazabilité respecte el lock ordering canónico (commercial_licenses FOR UPDATE → service_payments INSERT) implémenté dans <code>collection_service.py</code>.</p>
         </section>
 
         <section>
@@ -342,7 +342,7 @@
           <h2 data-i18n="page74.s8.title">8. Por qué pas de captures dédiées</h2>
           <div class="callout callout-info">
             <h3 class="callout-title" data-i18n="page74.s8.info.title">Réutilisation des écrans agents OMS</h3>
-            <p data-i18n="page74.s8.info.body">El supervisor utilise les mêmes écrans que les agents OMS (page 66) con permissions étendues. Pas de back-office dédié distinct — la différenciation est par permission. Les écrans <em>«Validaciones supervisor»</em>, <em>«Aprobar seals»</em>, <em>«Reconcile pending»</em> ne apparaissent que si le rol contient le permiso correspondant. Las pantallas básicas (dashboard, licences, détail inspection) sont visuellement identiques à celles de la page 66 mais con datos étendus et botones d'acción adicionales.</p>
+            <p data-i18n-html="page74.s8.info.body">El supervisor utilise les mêmes écrans que les agents OMS (page 66) con permissions étendues. Pas de back-office dédié distinct — la différenciation est par permission. Les écrans <em>«Validaciones supervisor»</em>, <em>«Aprobar seals»</em>, <em>«Reconcile pending»</em> ne apparaissent que si le rol contient le permiso correspondant. Las pantallas básicas (dashboard, licences, détail inspection) sont visuellement identiques à celles de la page 66 mais con datos étendus et botones d'acción adicionales.</p>
           </div>
         </section>
 

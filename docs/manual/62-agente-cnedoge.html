@@ -195,31 +195,31 @@
                   <td><code>lock_for_review</code></td>
                   <td><code>POST /service-requests/{id}/lock</code></td>
                   <td><code>service_request.lock</code></td>
-                  <td data-i18n="page62.s2.t.r1.c4">Estado → <code>locked_by_agent</code>; previene que otro agente trabaje en paralelo</td>
+                  <td data-i18n-html="page62.s2.t.r1.c4">Estado → <code>locked_by_agent</code>; previene que otro agente trabaje en paralelo</td>
                 </tr>
                 <tr>
                   <td><code>approve</code></td>
                   <td><code>POST /service-requests/{id}/decision</code></td>
                   <td><code>service_request.approve</code></td>
-                  <td data-i18n="page62.s2.t.r2.c4">Estado → <code>approved_by_agent</code>; el workflow avanza al paso siguiente (típicamente pago o cita)</td>
+                  <td data-i18n-html="page62.s2.t.r2.c4">Estado → <code>approved_by_agent</code>; el workflow avanza al paso siguiente (típicamente pago o cita)</td>
                 </tr>
                 <tr>
                   <td><code>reject</code></td>
                   <td><code>POST /service-requests/{id}/decision</code></td>
                   <td><code>service_request.approve</code></td>
-                  <td data-i18n="page62.s2.t.r3.c4">Estado → <code>rejected</code>; <code>rejection_reason</code> obligatorio (max 500 chars). Notificación al ciudadano.</td>
+                  <td data-i18n-html="page62.s2.t.r3.c4">Estado → <code>rejected</code>; <code>rejection_reason</code> obligatorio (max 500 chars). Notificación al ciudadano.</td>
                 </tr>
                 <tr>
                   <td><code>request_documents</code></td>
                   <td><code>POST /service-requests/{id}/decision</code></td>
                   <td><code>service_request.approve</code></td>
-                  <td data-i18n="page62.s2.t.r4.c4">Estado → <code>waiting_documents</code>; lista de documentos faltantes ; el ciudadano puede recargar y resoumettre</td>
+                  <td data-i18n-html="page62.s2.t.r4.c4">Estado → <code>waiting_documents</code>; lista de documentos faltantes ; el ciudadano puede recargar y resoumettre</td>
                 </tr>
                 <tr>
                   <td><code>escalate</code></td>
                   <td><code>POST /service-requests/{id}/escalate</code></td>
                   <td><code>service_request.escalate</code></td>
-                  <td data-i18n="page62.s2.t.r5.c4">Estado → <code>escalated_supervisor</code>; el supervisor de la entidad toma el relais (ver <a href="71-rol-supervisor.html">página 71</a>)</td>
+                  <td data-i18n-html="page62.s2.t.r5.c4">Estado → <code>escalated_supervisor</code>; el supervisor de la entidad toma el relais (ver <a href="71-rol-supervisor.html">página 71</a>)</td>
                 </tr>
               </tbody>
             </table>

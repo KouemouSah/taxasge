@@ -179,7 +179,7 @@
                 </tr>
                 <tr>
                   <td><code>GET /api/v1/verify/certificate/{cert_number}?t=...&amp;lid=...</code></td>
-                  <td data-i18n="page68.s1.t.r4.c2">Verificar un certificado de licencia (HMAC reforzado, solo si <code>status='complete'</code>)</td>
+                  <td data-i18n-html="page68.s1.t.r4.c2">Verificar un certificado de licencia (HMAC reforzado, solo si <code>status='complete'</code>)</td>
                   <td data-i18n-html="page68.s1.t.r4.c3"><code>certificate_number</code> + token (24 hex) + UUID de licencia</td>
                   <td data-i18n-html="page68.s1.t.r4.c4">company_name, representante_legal, registration_number, commerce_type, zone_code, city_name, fiscal_year, total_amount, completed_at</td>
                 </tr>
@@ -203,7 +203,7 @@
           <h3 data-i18n="page68.s3.input.title">Input</h3>
           <p data-i18n-html="page68.s3.input.body">El agente fournit <strong>uno</strong> de los tres identificadores (mutuamente exclusivos): <code>license_id</code> (UUID, lectura QR licencia), <code>nif</code> (formato <code>GExxxxx</code>) o <code>registration_number</code> (formato <code>PE-xxxxxx</code>). Es así cuando el QR del establecimiento está deteriorado, el agente puede buscar manualmente por NIF.</p>
           <h3 data-i18n="page68.s3.output.title">Output</h3>
-          <p data-i18n="page68.s3.output.body">Datos enriquecidos de la licencia bundle: la empresa, su tier de obligaciones (Tesoro/Municipal/Cámara/Sectorial), todas las obligaciones de la licencia (incluso las ya pagadas), los importes calculados, y para cada obligación: si el agente puede collectarla en el terreno o no (regla controlada por <code>verify_license_for_agent</code>).</p>
+          <p data-i18n-html="page68.s3.output.body">Datos enriquecidos de la licencia bundle: la empresa, su tier de obligaciones (Tesoro/Municipal/Cámara/Sectorial), todas las obligaciones de la licencia (incluso las ya pagadas), los importes calculados, y para cada obligación: si el agente puede collectarla en el terreno o no (regla controlada por <code>verify_license_for_agent</code>).</p>
         </section>
 
         <section>
