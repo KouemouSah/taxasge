@@ -6605,6 +6605,369 @@ window.__I18N__.fr = {
       "caption": "Éditer un mapping avec pattern workflow + sub-entries."
     },
     "prev": "← Précédent : Admin Traductions",
+    "next": "Suivant : Glossaire →"
+  },
+
+  // ---- page91 — Glossaire trilingue ----
+  "page91": {
+    "html_title": "Glossaire trilingue — Manuel Facil",
+    "title": "Glossaire trilingue ES / FR / EN",
+    "description": "Ce glossaire définit les 36 termes clés utilisés dans le manuel utilisateur Facil, dans ses trois langues officielles : espagnol (langue de référence), français et anglais. C'est la source unique de vérité : toute modification d'un terme ici doit être propagée aux 3 traductions (<code>messages/es.js</code>, <code>fr.js</code>, <code>en.js</code>) et à la documentation technique (<code>docs/documentation/</code>).",
+    "s1": {
+      "title": "1. Termes clés du manuel",
+      "intro": "Tableau classé selon l'ordre d'apparition logique dans le manuel : plateforme, démarches, organismes émetteurs, fiscalité, authentification, rôles, technologies.",
+      "t": {
+        "h1": "Terme ES",
+        "h2": "Terme FR",
+        "h3": "Terme EN",
+        "h4": "Définition FR",
+        "r1": { "def": "Plateforme numérique de la Fonction Publique en Guinée Équatoriale. Marque, ne pas traduire." },
+        "r2": { "def": "Procédure administrative (passeport, licence, etc.). Synonymes ES : solicitud, gestión." },
+        "r3": { "def": "Instance concrète d'une démarche initiée par un utilisateur. États : brouillon, envoyée, en cours, validée, rejetée." },
+        "r4": { "def": "Procédure du catalogue (873 disponibles). Chacun a son tarif, ses documents requis, ses procédures." },
+        "r5": { "def": "Montant à payer à l'État pour une démarche. Calculé selon le type de commerce, la zone, etc." },
+        "r6": { "def": "Centro Nacional de Documentos Generales. Organisme émetteur des passeports." },
+        "r7": { "def": "Dirección General de Tráfico. Organisme émetteur des permis de conduire." },
+        "r8": { "def": "Organisme central d'encaissement et de validation des paiements. Acronyme : TESORO." },
+        "r9": { "def": "Service de l'immigration et des permis de résidence. Ne pas traduire officiellement." },
+        "r10": { "def": "Mairie émettrice des licences commerciales. Niveaux A/B/C/D selon la zone." },
+        "r11": { "def": "Organisme émetteur des cotisations commerciales. Acronyme : CAMARA_COMERCIO." },
+        "r12": { "def": "Ministère + Organisation Mondiale de la Santé (entité mixte). Inspections sanitaires." },
+        "r13": { "def": "Dirección General de Impuestos. Impôts (IRPF, IVA, IS)." },
+        "r14": { "def": "Numéro d'Identification Fiscale. Identifiant unique d'entreprise." },
+        "r15": { "def": "Méthode de paiement mobile de la banque BANGE. Pour citoyens sans compte bancaire." },
+        "r16": { "def": "Franc CFA Central (monnaie). Symbole monétaire officiel de la Guinée Équatoriale." },
+        "r17": { "def": "Authentification à deux facteurs avec mot de passe temporaire. Apps recommandées : Google Authenticator, Authy." },
+        "r18": { "def": "JSON Web Token (session sécurisée). Accès 30 min, refresh 30 jours." },
+        "r19": { "def": "Contrôle d'accès basé sur les rôles. 47 rôles, 337 permissions." },
+        "r20": { "def": "Reconnaissance optique de caractères. Extraction automatique de données depuis documents." },
+        "r21": { "def": "Fonction de validation publique des reçus via QR. Sans nécessité de se connecter." },
+        "r22": { "def": "Impôt sur le revenu des personnes physiques. 6 tranches (0% à 35%)." },
+        "r23": { "def": "Taxe sur la valeur ajoutée. 15% standard en Guinée Équatoriale." },
+        "r24": { "def": "Impôt sur les sociétés. 35% taux unique." },
+        "r25": { "def": "Paiement de plusieurs obligations en une seule transaction. Réduit les frais bancaires." },
+        "r26": { "def": "Assistant de création de demande pas-à-pas. 6 étapes typiques." },
+        "r27": { "def": "Identité personnelle dans Facil. Contient profil, sessions, documents." },
+        "r28": { "def": "Entité juridique enregistrée. Peut avoir plusieurs membres avec rôles distincts." },
+        "r29": { "def": "Fonctionnaire qui valide les demandes dans Facil. 47 rôles distincts selon l'entité." },
+        "r30": { "def": "Agent avec permissions étendues sur son équipe. Gère escalades, répartition, KPI." },
+        "r31": { "def": "Gestionnaire technique de la plateforme Facil. Accès aux configurations, RBAC, logs." },
+        "r32": { "def": "Document PDF généré après paiement validé. Comporte un QR de vérification publique." },
+        "r33": { "def": "Alerte envoyée à l'application mobile de l'utilisateur. Nécessite l'autorisation système." },
+        "r34": { "def": "Authentification par empreinte ou reconnaissance faciale. Mobile uniquement." },
+        "r35": { "def": "Verrouillage local de l'application avec PIN ou biométrie. Mobile uniquement." },
+        "r36": { "def": "Fonctionnalités disponibles sans réseau. Mobile uniquement — se synchronise à la reconnexion." }
+      }
+    },
+    "s2": {
+      "title": "2. Notes pour traducteurs",
+      "tip": {
+        "title": "Règles à suivre",
+        "l1": "<strong>Ne pas traduire</strong> les acronymes officiels (CNEDOGE, DGT, DGI, NIF, JWT, OCR, RBAC).",
+        "l2": "<strong>Adapter culturellement</strong> les termes génériques (ex : « town hall » plutôt que « ayuntamiento » en EN).",
+        "l3": "<strong>Conserver</strong> dans leurs 3 langues les termes légaux à valeur juridique (Tesoro Público, Extranjería).",
+        "l4": "En cas de doute, <strong>préférer le terme officiel gouvernemental</strong> à la traduction littérale."
+      }
+    },
+    "prev": "← Précédent : Workflow + Menu Config",
+    "next": "Suivant : Questions fréquentes →"
+  },
+
+  // ---- page92 — FAQ ----
+  "page92": {
+    "html_title": "Questions fréquentes — Manuel Facil",
+    "title": "Questions fréquentes (FAQ)",
+    "description": "Cette page rassemble les questions et clarifications les plus fréquentes extraites des notes informatives (« Information ») disséminées tout au long du manuel. Les réponses sont organisées par type d'utilisateur : citoyen, entreprise/comptable, agent public, superviseur et administrateur. Pour chaque question, un lien renvoie vers la page détaillée du manuel.",
+    "s1": {
+      "title": "1. Citoyen (compte, session, sécurité)",
+      "q1": {
+        "q": "Pourquoi l'onboarding mobile n'apparaît-il que la première fois ?",
+        "a": "L'onboarding ne s'affiche qu'à la première ouverture de l'application mobile. Ensuite, l'application ouvre directement l'écran d'accueil standard. Pour revoir l'onboarding, il faut désinstaller et réinstaller l'application. Détails : <a href=\"01-bienvenida.html\">page 01</a>."
+      },
+      "q2": {
+        "q": "Je gère plusieurs entreprises — dois-je créer plusieurs comptes ?",
+        "a": "Non. Commencez par créer votre compte personnel (type Citoyen) puis ajoutez les entreprises via <a href=\"42-gestion-empresas.html\">Gestion des entreprises</a>. Cela vous permet de basculer entre vos différents rôles depuis la même connexion. Détails : <a href=\"11-crear-cuenta.html\">page 11</a>."
+      },
+      "q3": {
+        "q": "Puis-je désactiver la biométrie après l'avoir activée ?",
+        "a": "Oui, à tout moment depuis <a href=\"16-seguridad.html\">Sécurité</a>. En cas de défaillance (empreinte sale, lunettes qui perturbent Face ID), vous pouvez toujours revenir à la connexion classique email + mot de passe. Détails : <a href=\"12-iniciar-sesion.html\">page 12</a>."
+      },
+      "q4": {
+        "q": "Pourquoi TOTP est-il recommandé plutôt que SMS pour le 2FA ?",
+        "a": "Évitez les SMS pour le 2FA — ils sont interceptables (attaques SIM swap). Le TOTP fonctionne offline, ne dépend pas du réseau mobile, et est nettement plus sûr. Détails : <a href=\"14-2fa.html\">page 14</a>."
+      },
+      "q5": {
+        "q": "Puis-je désactiver toutes les notifications ?",
+        "a": "Non. Certaines notifications sont <strong>obligatoires</strong> et ne peuvent pas être désactivées : alertes de sécurité (changement de mot de passe, connexion suspecte, activation 2FA), validations de paiement. Seules les notifications marketing et promotionnelles sont optionnelles. Détails : <a href=\"15-perfil.html\">page 15</a>."
+      },
+      "q6": {
+        "q": "Si je prête mon téléphone, quelqu'un peut-il entrer dans mon compte ?",
+        "a": "Si cette personne a son empreinte digitale ou son visage enregistré sur l'appareil, oui elle pourra se connecter à votre compte Facil. Soyez prudent avec les téléphones partagés — désactivez la biométrie dans ce cas. Détails : <a href=\"16-seguridad.html\">page 16</a>."
+      },
+      "q7": {
+        "q": "Après suppression de mon compte, toutes mes données sont-elles immédiatement effacées ?",
+        "a": "Non. La conservation de certaines données est <strong>obligatoire par la loi</strong> — nous ne pouvons pas en supprimer davantage, même à votre demande explicite. Après 10 ans, toutes les données restantes sont détruites automatiquement. Détails : <a href=\"17-eliminar-cuenta.html\">page 17</a>."
+      },
+      "q8": {
+        "q": "L'export de mes données a-t-il un coût ou une limite ?",
+        "a": "L'export est <strong>gratuit</strong> et possible <strong>sans limite</strong> de fréquence. Vos données ne quittent pas la plateforme — l'export est pour vous seulement. Pour plus de détails RGPD, consultez <a href=\"58-legal.html\">Mentions légales</a>. Détails : <a href=\"16-seguridad.html\">page 16</a>."
+      }
+    },
+    "s2": {
+      "title": "2. Citoyen (démarches, paiements, documents)",
+      "q1": {
+        "q": "Dois-je créer un compte juste pour consulter les services ?",
+        "a": "Il n'est pas nécessaire de créer un compte pour explorer le catalogue. Vous ne devez vous connecter que lorsque vous voulez effectuer une démarche réelle. Détails : <a href=\"51-explorar-servicios.html\">page 51</a>."
+      },
+      "q2": {
+        "q": "Où sont sauvegardés les documents générés à la fin d'une démarche ?",
+        "a": "Les documents générés sont sauvegardés automatiquement dans votre <a href=\"25-mis-documentos-web.html\">coffre-fort numérique</a> (section « Générés »). Vous recevrez également un email avec les PDF en pièces jointes. Détails : <a href=\"22-iniciar-tramite-web.html\">page 22</a>."
+      },
+      "q3": {
+        "q": "La calculatrice applique-t-elle la TVA 15% à tous les produits ?",
+        "a": "Certains produits sont <strong>exonérés</strong> (produits alimentaires de base, santé, éducation). La calculatrice applique 15% par défaut — vérifiez avec votre comptable si votre produit/service est exonéré. Détails : <a href=\"52-calculadora.html\">page 52</a>."
+      },
+      "q4": {
+        "q": "N'importe qui peut-il voir le chiffre d'affaires de mon entreprise dans le directorio ?",
+        "a": "Non. Les données sensibles (chiffre d'affaires, dettes fiscales, sanctions) NE sont PAS publiques. Seul le représentant légal et les agents autorisés peuvent y accéder après authentification. Détails : <a href=\"53-directorio.html\">page 53</a>."
+      },
+      "q5": {
+        "q": "Que suppose le passage à un tier de licence C ou supérieur ?",
+        "a": "À partir du tier C, la <strong>Cámara de Comercio</strong> ajoute une cotisation annuelle obligatoire. Les tiers A et B requièrent également un certificat d'inspection sanitaire pour certaines catégories (restaurants, cliniques). Détails : <a href=\"54-licencias-comerciales.html\">page 54</a>."
+      },
+      "q6": {
+        "q": "Les formulaires fiscaux sont-ils les formulaires officiels du Ministère ?",
+        "a": "Oui. Les formulaires sont les <strong>officiels du Ministère des Finances</strong>. Si vous les remplissez sur papier, scannez-les en bonne qualité avant de les uploader. La <a href=\"52-calculadora.html\">calculatrice fiscale</a> aide à calculer les montants avant de remplir. Détails : <a href=\"56-guia.html\">page 56</a>."
+      },
+      "q7": {
+        "q": "Quelle est la différence entre la version Web et la version Mobile ?",
+        "a": "La version Web est la <strong>plus complète</strong> en fonctionnalités visuelles (preview PDF, kanban, dialog d'impression natif). La version Mobile compense avec des fonctionnalités exclusives (partage natif, mode offline, biométrie après login). Détails : <a href=\"59-vista-web-publica.html\">page 59</a>."
+      }
+    },
+    "s3": {
+      "title": "3. Entreprise et comptable",
+      "q1": {
+        "q": "Quels sont les cas typiques du rôle Entreprise ?",
+        "a": "Une entreprise renouvelle sa licence commerciale annuelle pour un ou plusieurs établissements. Une société déclare la TVA mensuelle ou trimestrielle. L'entreprise gère ses inspections, ses déclarations, les paiements associés, et éventuellement les demandes en lot pour multi-établissements. Détails : <a href=\"41-rol-empresa.html\">page 41</a>."
+      },
+      "q2": {
+        "q": "Pourquoi le changement de propriétaire entreprise est-il si formel et long ?",
+        "a": "Changer de propriétaire équivaut, en droit, à un changement de représentant légal. La DGI vérifie les justificatifs pour éviter les prises de contrôle frauduleuses de comptes entreprise. La durée (24-72 h) correspond au temps d'instruction du dossier, pas à un délai technique. Détails : <a href=\"42-gestion-empresas.html\">page 42</a>."
+      },
+      "q3": {
+        "q": "Un cabinet comptable peut-il gérer beaucoup d'entreprises avec un seul compte ?",
+        "a": "Oui. Un cabinet avec 30 clients peut inviter le même comptable au rôle comptable dans les 30 entreprises. Depuis son unique compte personnel, il voit la liste complète, navigue d'un client à l'autre et prépare les déclarations. Les actions sont tracées avec son email ; le client sait qui a fait quoi. Détails : <a href=\"44-rol-contable.html\">page 44</a>."
+      },
+      "q4": {
+        "q": "Comment l'entreprise reçoit-elle les résultats d'inspection OMS ?",
+        "a": "Les inspections terrain OMS sont détaillées dans le manuel <a href=\"69-trabajo-terreno-oms.html\">Travail terrain OMS</a> (côté agent). Côté entreprise, elle ne reçoit que les résultats. Détails : <a href=\"27-mis-empresas-web.html\">page 27</a>."
+      }
+    },
+    "s4": {
+      "title": "4. Agent public",
+      "q1": {
+        "q": "Y a-t-il une reconnaissance faciale automatisée dans les workflows CNEDOGE ?",
+        "a": "Non. Le pattern agents workflows simples <strong>n'inclut pas actuellement</strong> de reconnaissance faciale automatisée ni de matching biométrique photo-DIP par algorithme. La capture biométrique CNEDOGE est physique, sans scoring auto. Le pattern est générique et simple : revue documentaire + décision humaine + actions backend standard. Détails : <a href=\"62-agente-cnedoge.html\">page 62</a>."
+      },
+      "q2": {
+        "q": "Quelles sont les validations réelles appliquées par l'agent Extranjería ?",
+        "a": "11 validations réelles : <code>entrada_legal_fecha</code>, <code>cemac_90_dias</code>, <code>visado_requerido</code> (non-CEMAC), <code>nacionalidad_extranjero</code>, <code>residencia_renovable</code>, <code>nombres_coherentes</code> (Levenshtein), <code>solvencia_resultado</code>, <code>buena_conducta_resultado</code>, <code>antecedentes_resultado</code> (erreur si POSITIVO), <code>nota_amount_coherent</code>, <code>nota_expired</code>. Détails : <a href=\"67-agente-extranjeria.html\">page 67</a>."
+      },
+      "q3": {
+        "q": "Comment les obligations OMS sont-elles associées à leurs agents selon le ministère ?",
+        "a": "Les rôles qui traitent les obligations OMS sont énumérés dans la constante <code>OMS_PROCESSOR_ROLES</code> (<code>app/modules/fiscal_services/services/oms_agent_service.py</code>). Chaque rôle a son pendant superviseur. Par exemple, <code>agent_oms_polyvalent</code> traite <code>consolidated</code> (un seul agent traite toutes les obligations du bundle). Détails : <a href=\"66-agente-min-oms.html\">page 66</a>."
+      },
+      "q4": {
+        "q": "Si le QR de la licence est détérioré, comment procède l'agent OMS ?",
+        "a": "L'agent peut rechercher manuellement l'établissement par NIF ou par nom commercial. L'absence ou l'illisibilité du QR constitue en soi une infraction enregistrable dans le rapport d'inspection. Détails : <a href=\"69-trabajo-terreno-oms.html\">page 69</a>."
+      },
+      "q5": {
+        "q": "Comment Verify empêche-t-il l'énumération des reçus alors qu'il est public ?",
+        "a": "Comme les 4 endpoints Verify sont publics, leur seul contrôle est le token HMAC du QR. Sans QR (ou sans token correct), la réponse est toujours <code>valid: false</code>. Un attaquant ne peut pas itérer <code>REC-2026-00001</code>, <code>00002</code>... pour découvrir des reçus valides, car chacun requiert son propre token spécifique calculé avec le secret serveur. Détails : <a href=\"68-funciones-verify-agente.html\">page 68</a>."
+      },
+      "q6": {
+        "q": "Le rendez-vous biométrique CNEDOGE est-il un contrôle automatisé par algorithme ?",
+        "a": "Non. Les workflows passeport ou carnet de fonctionnaire incluent un step « rendez-vous biométrique » où le citoyen doit se présenter physiquement pour que son document soit produit avec ses données biométriques réelles (empreintes + photo). <strong>Ce n'est pas un contrôle d'identité par reconnaissance faciale automatisée.</strong> La validation de l'identité reste manuelle et présentielle. Détails : <a href=\"68-funciones-verify-agente.html\">page 68</a>."
+      }
+    },
+    "s5": {
+      "title": "5. Superviseur",
+      "q1": {
+        "q": "Quelle est la différence entre superviseur et administrateur ?",
+        "a": "Le superviseur opère au sein d'une entité concrète (Tesoro, OMS, etc.) ; l'admin opère au-dessus de toutes les entités. Le superviseur ne peut pas créer de nouveaux services fiscaux, modifier le workflow d'une démarche, configurer les providers SMS/email, ni changer les rôles du système. Ces actions requièrent le rôle Admin (pages 81-89). En revanche, le superviseur a une vue opérationnelle dont l'admin n'a pas besoin au quotidien. Détails : <a href=\"71-rol-supervisor.html\">page 71</a>."
+      },
+      "q2": {
+        "q": "Comment valide-t-on les paiements encaissés sur le terrain (field-collected) ?",
+        "a": "Les paiements encaissés sur le terrain par les agents OMS arrivent au Tesoro avec <code>collection_type='field'</code> et <code>workflow_status='field_collected'</code>. Pour les valider définitivement et déclencher l'émission du reçu officiel, le superviseur Tesoro appelle l'endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permission <code>inspection.reconcile_validate</code>). Détails : <a href=\"72-supervisor-tesoro.html\">page 72</a>."
+      },
+      "q3": {
+        "q": "Le superviseur d'inspections a-t-il une interface différente de celle de l'agent ?",
+        "a": "Non. Le superviseur utilise les mêmes écrans que les agents OMS (page 66) avec des permissions étendues. Il n'y a pas de back-office dédié distinct — la différenciation se fait par permission. Les écrans « Validations superviseur », « Approuver seals », « Reconcile pending » n'apparaissent que si le rôle contient la permission correspondante. Détails : <a href=\"74-supervisor-inspecciones.html\">page 74</a>."
+      }
+    },
+    "s6": {
+      "title": "6. Administrateur",
+      "q1": {
+        "q": "Pourquoi les 37 workflows ne peuvent-ils pas être modifiés visuellement depuis l'UI ?",
+        "a": "Les 37 workflows dans Facil couvrent les services fiscaux officiels de la Guinée Équatoriale. Une modification visuelle ad-hoc depuis l'UI introduirait des risques importants : un workflow mal configuré pourrait laisser passer des fraudes, perdre des demandes, ou générer des incohérences avec la législation. C'est pourquoi les workflows sont définis par le code (testés, audités, versionnés). Seuls les paramètres (tarifs base + 3 suppléments, horaires, entités, lieux, menus) sont configurables par l'admin. Détails : <a href=\"89-admin-workflow-config.html\">page 89</a>."
+      }
+    },
+    "prev": "← Précédent : Glossaire",
+    "next": "Suivant : Résolution de problèmes →"
+  },
+
+  // ---- page93 — Résolution de problèmes ----
+  "page93": {
+    "html_title": "Résolution de problèmes — Manuel Facil",
+    "title": "Résolution de problèmes",
+    "description": "Cette page rassemble les scénarios d'erreur et les points de vigilance extraits des avertissements (« Attention ») disséminés dans le manuel. Pour chaque situation, nous indiquons le symptôme observé, la cause probable et l'action recommandée. Lorsqu'une alerte suggère que votre compte peut être compromis, l'action corrective doit être effectuée immédiatement.",
+    "s1": {
+      "title": "1. Compte, session et sécurité",
+      "t": {
+        "h1": "Symptôme",
+        "h2": "Cause probable",
+        "h3": "Action",
+        "r1": {
+          "c1": "L'email de vérification n'arrive pas après la création du compte (plus de 5 minutes).",
+          "c2": "Email mal écrit, courriel en spam, ou quota de renvois atteint (3 / 15 min).",
+          "c3": "(1) Vérifiez l'orthographe de l'email ; (2) consultez le spam/courrier indésirable ; (3) cliquez « Renvoyer le code ». Détails : <a href=\"11-crear-cuenta.html\">page 11</a>."
+        },
+        "r2": {
+          "c1": "Compte bloqué après plusieurs tentatives échouées.",
+          "c2": "5 tentatives échouées = blocage 15 min. 10 échecs en 24 h = email d'alerte + blocage 1 h.",
+          "c3": "Attendre la fin du blocage. Si vous recevez l'alerte sans avoir tenté de vous connecter, votre compte est la cible d'une attaque — changez votre mot de passe immédiatement. Détails : <a href=\"12-iniciar-sesion.html\">page 12</a>."
+        },
+        "r3": {
+          "c1": "Le lien de récupération de mot de passe n'arrive pas.",
+          "c2": "Email mal écrit, courriel en spam, ou renvoi trop rapide (moins de 30 s).",
+          "c3": "(1) Vérifier le dossier spam ; (2) vérifier l'email saisi ; (3) demander un nouveau lien 30 secondes après le précédent. Détails : <a href=\"13-recuperar-contrasena.html\">page 13</a>."
+        },
+        "r4": {
+          "c1": "Email de confirmation de désactivation du 2FA reçu sans avoir agi.",
+          "c2": "Votre compte est compromis — quelqu'un a obtenu un accès suffisant pour désactiver le 2FA.",
+          "c3": "Changez votre mot de passe immédiatement et réactivez le 2FA. Détails : <a href=\"14-2fa.html\">page 14</a>."
+        },
+        "r5": {
+          "c1": "Demandes rejetées de façon inattendue après modification du profil.",
+          "c2": "Vous avez modifié <strong>nom, prénoms ou DIP</strong> alors que vous aviez des demandes actives ; les données OCR ne correspondent plus.",
+          "c3": "Terminer les demandes en cours <em>avant</em> de modifier ces champs. Détails : <a href=\"15-perfil.html\">page 15</a>."
+        },
+        "r6": {
+          "c1": "Session inconnue visible dans « Sessions actives » (appareil étrange, ville lointaine, date suspecte).",
+          "c2": "Votre compte est compromis — quelqu'un a un accès.",
+          "c3": "Fermer cette session immédiatement, changer le mot de passe et activer le 2FA si ce n'est pas déjà fait. Détails : <a href=\"16-seguridad.html\">page 16</a>."
+        }
+      }
+    },
+    "s2": {
+      "title": "2. Démarches, paiements et support",
+      "t": {
+        "h1": "Symptôme",
+        "h2": "Cause probable",
+        "h3": "Action",
+        "r1": {
+          "c1": "Demande rejetée automatiquement pour inaction.",
+          "c2": "Les demandes avec « actions requises » ont un délai. Si vous ne répondez pas dans le temps imparti, la demande peut être rejetée et vous devez la relancer (avec perte du paiement dans certains cas).",
+          "c3": "Répondre dans le délai indiqué dans le dashboard. Détails : <a href=\"21-dashboard-web.html\">page 21</a>."
+        },
+        "r2": {
+          "c1": "Calcul d'IS avec la calculatrice apparemment bas (même en perte).",
+          "c2": "La calculatrice estime un IS approximatif. Il existe une <strong>cotisation minimale</strong> applicable même en cas de perte, et la déclaration réelle requiert une comptabilité officielle certifiée.",
+          "c3": "Consulter un comptable autorisé avant la déclaration réelle. Détails : <a href=\"52-calculadora.html\">page 52</a>."
+        },
+        "r3": {
+          "c1": "Ticket de support fermé par erreur, problème non résolu.",
+          "c2": "Une fois fermé, un ticket NE peut PAS être rouvert.",
+          "c3": "Créer un nouveau ticket en référençant le SUP- précédent dans la description pour conserver le contexte. Si vous devez escalader, indiquez-le dans le message. Détails : <a href=\"29-soporte-web.html\">page 29</a>, <a href=\"38-soporte-mobile.html\">page 38</a>."
+        },
+        "r4": {
+          "c1": "Invitation d'entreprise à un collaborateur n'arrive pas.",
+          "c2": "Email avec typo ou domaine incorrect — l'invitation reste en attente sans alerte jusqu'à expiration (7 jours).",
+          "c3": "Vérifiez l'email avant l'envoi. Préférez l'email professionnel lié à l'entreprise si le destinataire en a plusieurs. Détails : <a href=\"42-gestion-empresas.html\">page 42</a>."
+        },
+        "r5": {
+          "c1": "L'ancien comptable continue de voir les brouillons après changement de cabinet.",
+          "c2": "Le propriétaire n'a pas encore retiré le rôle Comptable à l'ancien comptable.",
+          "c3": "Le propriétaire retire le rôle Comptable à l'ancien cabinet (page 42, section 5). L'historique reste accessible (audit 7 ans) mais il ne peut plus voir ni modifier quoi que ce soit de nouveau. Détails : <a href=\"44-rol-contable.html\">page 44</a>."
+        }
+      }
+    },
+    "s3": {
+      "title": "3. Vérification (Verify) et agents",
+      "t": {
+        "h1": "Symptôme",
+        "h2": "Cause probable",
+        "h3": "Action",
+        "r1": {
+          "c1": "« Mon reçu apparaît comme non valide dans Verify. »",
+          "c2": "L'URL de vérification ne comporte pas le <strong>token signé</strong> (paramètre <code>?t=...</code>) ou le QR a été scanné partiellement.",
+          "c3": "Scanner le code QR complet (pas seulement le numéro de reçu). Le token HMAC <code>t</code> est dans le QR ; sans lui la vérification échoue toujours. Détails : <a href=\"57-verificar.html\">page 57</a>, <a href=\"68-funciones-verify-agente.html\">page 68</a>."
+        },
+        "r2": {
+          "c1": "« L'agent OMS ne trouve pas ma licence avec le NIF. »",
+          "c2": "Le NIF doit respecter exactement le format <code>GExxxxx</code> ou le registre <code>PE-xxxxxx</code>. Espaces ou typos provoquent « not found ».",
+          "c3": "Demander au citoyen de montrer son QR de licence ou de confirmer le format exact. Détails : <a href=\"68-funciones-verify-agente.html\">page 68</a>."
+        },
+        "r3": {
+          "c1": "Paiement élevé en espèces sans justificatif d'origine des fonds.",
+          "c2": "Règle externe CEMAC contre le blanchiment de capitaux (non codée dans le workflow).",
+          "c3": "Si le client ne peut pas justifier l'origine, l'agent peut initier un <code>escalate</code> vers le superviseur via l'action standard. Détails : <a href=\"64-agente-ayuntamiento-camara.html\">page 64</a>."
+        },
+        "r4": {
+          "c1": "Le citoyen s'attend à recevoir le carnet de résidence ou le tampon de visa via Facil.",
+          "c2": "Confusion sur le périmètre : Facil <strong>ne génère ni le carnet ni le tampon physique</strong> ; il n'émet que des justificatifs électroniques de démarche.",
+          "c3": "Expliquer que les documents physiques sont remis en présentiel au bureau de Extranjería ou CNEDOGE le jour du rendez-vous. Détails : <a href=\"67-agente-extranjeria.html\">page 67</a>."
+        },
+        "r5": {
+          "c1": "Suggestion erronée de l'assistant IA agent conduit à une validation incorrecte.",
+          "c2": "L'agent a suivi aveuglément la suggestion de l'IA sans vérifier ; l'IA est une aide à la décision, pas un décideur.",
+          "c3": "La décision finale (valider, rejeter, escalader) revient à l'agent et à lui seul. La signature de l'agent est la seule qui compte légalement. Détails : <a href=\"60-asistente-ia-agente.html\">page 60</a>."
+        },
+        "r6": {
+          "c1": "Agent OMS ne peut pas encaisser sur le terrain (bouton Encaisser bloqué).",
+          "c2": "L'app inspector bloque explicitement la collection lorsqu'il n'y a pas de réseau (<code>useNetwork().isConnected</code> dans <code>payment.tsx</code>). Il n'existe pas de queue offline pour les paiements terrain dans la version actuelle.",
+          "c3": "Attendre le rétablissement de la connectivité avant de valider l'encaissement. La lecture de la fiche et la coche de la checklist fonctionnent en cache. Détails : <a href=\"69-trabajo-terreno-oms.html\">page 69</a>."
+        },
+        "r7": {
+          "c1": "Écran noir en tentant de capturer image ou vidéo dans l'app inspector.",
+          "c2": "L'app inspector active <code>FLAG_SECURE</code> globalement — la capture d'écran et l'enregistrement vidéo affichent un écran noir. C'est un comportement de sécurité volontaire, pas un bug.",
+          "c3": "Ne pas tenter de capturer l'écran — comportement attendu pour éviter la fuite de données personnelles. Détails : <a href=\"69-trabajo-terreno-oms.html\">page 69</a>, <a href=\"74-supervisor-inspecciones.html\">page 74</a>."
+        }
+      }
+    },
+    "s4": {
+      "title": "4. Administration",
+      "t": {
+        "h1": "Symptôme",
+        "h2": "Cause probable",
+        "h3": "Action",
+        "r1": {
+          "c1": "Action admin sensible rapportée sans traçabilité apparente.",
+          "c2": "Toute action admin est enregistrée DEUX fois : dans l'audit log général (page 87) ET dans une table dédiée <code>admin_actions_log</code> avec rétention permanente (jamais purgée).",
+          "c3": "Rechercher l'événement dans <code>admin_actions_log</code> même si le log général a été manipulé. Détails : <a href=\"81-rol-admin.html\">page 81</a>."
+        },
+        "r2": {
+          "c1": "Utilisateur rapporte avoir reçu email + SMS de reset 2FA qu'il n'a pas demandé.",
+          "c2": "Reset MFA effectué par un admin — la prochaine connexion forcera la reconfiguration 2FA. Si l'utilisateur ne reconnaît pas le reset, il n'est pas légitime.",
+          "c3": "L'utilisateur doit contacter immédiatement le support. Détails : <a href=\"82-admin-usuarios-roles.html\">page 82</a>."
+        },
+        "r3": {
+          "c1": "Compte utilisateur inaccessible (« Compte suspendu »).",
+          "c2": "Suspension par admin avec motif obligatoire (suspicion de fraude, décision hiérarchique, demande judiciaire). Données préservées.",
+          "c3": "L'utilisateur est notifié par email du motif. La réactivation requiert une action admin explicite. Détails : <a href=\"82-admin-usuarios-roles.html\">page 82</a>."
+        },
+        "r4": {
+          "c1": "Utilisateurs voient une page « Système en maintenance, revenez dans X minutes ».",
+          "c2": "Mode maintenance activé par l'admin technique avant une migration ou mise à jour backend.",
+          "c3": "Attendre la durée indiquée. Les demandes en cours sont préservées ; les nouvelles sont temporairement bloquées. Détails : <a href=\"86-admin-config-sistema.html\">page 86</a>."
+        }
+      }
+    },
+    "s5": {
+      "title": "5. Si rien de ce qui précède ne fonctionne",
+      "body": "Si votre problème ne figure pas sur cette page ou si les étapes suggérées ne le résolvent pas, ouvrez un ticket de support (page <a href=\"29-soporte-web.html\">29 Web</a> ou <a href=\"38-soporte-mobile.html\">38 Mobile</a>) en décrivant : (1) le symptôme exact observé, (2) les étapes pour le reproduire, (3) le moment et l'écran concerné, (4) des captures d'écran si possible. Pour une alerte de sécurité suspecte (session inconnue, email 2FA non sollicité), n'attendez pas — agissez immédiatement comme indiqué dans les sections 1 et 4 de cette page."
+    },
+    "prev": "← Précédent : Questions fréquentes",
     "next": "Retour à l'accueil →"
   }
 };

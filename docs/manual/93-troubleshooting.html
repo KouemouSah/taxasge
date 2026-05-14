@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es" data-i18n-title="page93.html_title">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Resolución de problemas — síntomas, causas probables y acciones extraídas de las advertencias del manual Facil.">
+  <title>Resolución de problemas — Manual Facil</title>
+  <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="i18n/i18n.js" defer></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><img src="_assets/icons/logo.png" alt="Facil" class="sidebar-logo"><div class="sidebar-subtitle" data-i18n="common.sidebar.subtitle">Manual de usuario</div></div>
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.intro">Introducción</div>
+          <a href="index.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#127968;</span> <span data-i18n="nav.link.home">Inicio</span>
+          </a>
+          <a href="01-bienvenida.html" class="sidebar-link">
+            <span class="sidebar-link-icon">&#128075;</span> <span data-i18n="nav.link.welcome">Bienvenida</span>
+          </a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.public">Acceso público</div>
+          <a href="51-explorar-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.explore_services">Explorar servicios</span></a>
+          <a href="52-calculadora.html" class="sidebar-link"><span class="sidebar-link-icon">&#129518;</span> <span data-i18n="nav.link.calculator">Calculadora fiscal</span></a>
+          <a href="53-directorio.html" class="sidebar-link"><span class="sidebar-link-icon">&#128221;</span> <span data-i18n="nav.link.directory">Directorio de empresas</span></a>
+          <a href="54-licencias-comerciales.html" class="sidebar-link"><span class="sidebar-link-icon">&#127978;</span> <span data-i18n="nav.link.license_simulator">Simulador de licencias</span></a>
+          <a href="55-asistente-ia-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_public">Asistente IA</span></a>
+          <a href="56-guia.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.guide">Guía</span></a>
+          <a href="57-verificar.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify">Verificar un recibo</span></a>
+          <a href="58-legal.html" class="sidebar-link"><span class="sidebar-link-icon">&#128220;</span> <span data-i18n="nav.link.legal">Legal</span></a>
+          <a href="59-vista-web-publica.html" class="sidebar-link"><span class="sidebar-link-icon">&#128187;</span> <span data-i18n="nav.link.web_public_view">Vista Web del sitio público</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.account">Su cuenta</div>
+          <a href="11-crear-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.create_account">Crear cuenta</span></a>
+          <a href="12-iniciar-sesion.html" class="sidebar-link"><span class="sidebar-link-icon">&#128272;</span> <span data-i18n="nav.link.sign_in">Iniciar sesión</span></a>
+          <a href="13-recuperar-contrasena.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.recover_password">Recuperar contraseña</span></a>
+          <a href="14-2fa.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.two_factor">Autenticación 2FA</span></a>
+          <a href="15-perfil.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.profile">Su perfil</span></a>
+          <a href="16-seguridad.html" class="sidebar-link"><span class="sidebar-link-icon">&#128737;</span> <span data-i18n="nav.link.security">Seguridad</span></a>
+          <a href="17-eliminar-cuenta.html" class="sidebar-link"><span class="sidebar-link-icon">&#10060;</span> <span data-i18n="nav.link.delete_account">Eliminar cuenta</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_web">Ciudadano · Web</div>
+          <a href="21-dashboard-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128202;</span> <span data-i18n="nav.link.dashboard_web">Panel principal</span></a>
+          <a href="22-iniciar-tramite-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_web">Iniciar trámite</span></a>
+          <a href="23-mis-solicitudes-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_web">Mis solicitudes</span></a>
+          <a href="24-mis-pagos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_web">Mis pagos</span></a>
+          <a href="25-mis-documentos-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_web">Mis documentos</span></a>
+          <a href="26-bundle-payment.html" class="sidebar-link"><span class="sidebar-link-icon">&#128230;</span> <span data-i18n="nav.link.bundle_payment">Pago agrupado</span></a>
+          <a href="27-mis-empresas-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_web">Mis empresas</span></a>
+          <a href="28-notificaciones-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128276;</span> <span data-i18n="nav.link.notifications_web">Notificaciones</span></a>
+          <a href="29-soporte-web.html" class="sidebar-link"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_web">Soporte</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.citizen_mobile">Ciudadano · Móvil</div>
+          <a href="31-dashboard-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128241;</span> <span data-i18n="nav.link.dashboard_mobile">Panel principal</span></a>
+          <a href="32-iniciar-tramite-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.start_request_mobile">Iniciar trámite</span></a>
+          <a href="33-mis-solicitudes-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128196;</span> <span data-i18n="nav.link.my_requests_mobile">Mis solicitudes</span></a>
+          <a href="34-mis-pagos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.my_payments_mobile">Mis pagos</span></a>
+          <a href="35-mis-documentos-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128193;</span> <span data-i18n="nav.link.my_documents_mobile">Mis documentos</span></a>
+          <a href="36-mis-empresas-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.my_companies_mobile">Mis empresas</span></a>
+          <a href="37-asistente-ia-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#129302;</span> <span data-i18n="nav.link.ai_assistant_mobile">Asistente IA</span></a>
+          <a href="38-soporte-mobile.html" class="sidebar-link"><span class="sidebar-link-icon">&#128172;</span> <span data-i18n="nav.link.support_mobile">Soporte</span></a>
+          <a href="39-mobile-exclusivos.html" class="sidebar-link"><span class="sidebar-link-icon">&#128274;</span> <span data-i18n="nav.link.mobile_exclusive">Funciones exclusivas</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.business">Empresas y contables</div>
+          <a href="41-rol-empresa.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.business_role">Rol Empresa</span></a>
+          <a href="42-gestion-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.manage_companies">Gestionar empresas</span></a>
+          <a href="43-batch-requests.html" class="sidebar-link"><span class="sidebar-link-icon">&#128290;</span> <span data-i18n="nav.link.batch_requests">Solicitudes en lote</span></a>
+          <a href="44-rol-contable.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.accountant_role">Rol Contable</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.agent">Agentes públicos</div>
+          <a href="61-rol-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#128104;&#8205;&#9878;&#65039;</span> <span data-i18n="nav.link.agent_role">Rol Agente</span></a>
+          <a href="62-agente-cnedoge.html" class="sidebar-link"><span class="sidebar-link-icon">&#128214;</span> <span data-i18n="nav.link.agent_cnedoge">Agente CNEDOGE</span></a>
+          <a href="63-agente-dgt.html" class="sidebar-link"><span class="sidebar-link-icon">&#128663;</span> <span data-i18n="nav.link.agent_dgt">Agente DGT</span></a>
+          <a href="64-agente-ayuntamiento-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.agent_ayuntamiento">Ayuntamiento+Cámara</span></a>
+          <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
+          <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.agent_oms">Agente OMS (Obligaciones)</span></a>
+          <a href="67-agente-extranjeria.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="69-trabajo-terreno-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.supervisor">Supervisores</div>
+          <a href="71-rol-supervisor.html" class="sidebar-link"><span class="sidebar-link-icon">&#128100;</span> <span data-i18n="nav.link.supervisor_role">Rol Supervisor</span></a>
+          <a href="72-supervisor-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128181;</span> <span data-i18n="nav.link.supervisor_tesoro">Supervisor Tesoro</span></a>
+          <a href="73-supervisor-ayu-camara.html" class="sidebar-link"><span class="sidebar-link-icon">&#127963;</span> <span data-i18n="nav.link.supervisor_ayu_camara">Supervisor Ayu+Cámara</span></a>
+          <a href="74-supervisor-inspecciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="nav.link.supervisor_inspections">Inspecciones</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.admin">Administradores</div>
+          <a href="81-rol-admin.html" class="sidebar-link"><span class="sidebar-link-icon">&#9881;</span> <span data-i18n="nav.link.admin_role">Rol Admin</span></a>
+          <a href="82-admin-usuarios-roles.html" class="sidebar-link"><span class="sidebar-link-icon">&#128101;</span> <span data-i18n="nav.link.admin_users_roles">Usuarios y roles</span></a>
+          <a href="83-admin-servicios.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.admin_services">Catálogo de servicios</span></a>
+          <a href="84-admin-comunicaciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#128231;</span> <span data-i18n="nav.link.admin_communications">Comunicaciones</span></a>
+          <a href="85-admin-empresas.html" class="sidebar-link"><span class="sidebar-link-icon">&#127970;</span> <span data-i18n="nav.link.admin_companies">Empresas</span></a>
+          <a href="86-admin-config-sistema.html" class="sidebar-link"><span class="sidebar-link-icon">&#128295;</span> <span data-i18n="nav.link.admin_system_config">Configuración</span></a>
+          <a href="87-admin-audit-logs.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.admin_audit_logs">Auditoría</span></a>
+          <a href="88-admin-traducciones.html" class="sidebar-link"><span class="sidebar-link-icon">&#127760;</span> <span data-i18n="nav.link.admin_translations">Traducciones</span></a>
+          <a href="89-admin-workflow-config.html" class="sidebar-link"><span class="sidebar-link-icon">&#128260;</span> <span data-i18n="nav.link.admin_workflow_config">Flujos</span></a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
+          <a href="91-glosario.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
+        </div>
+
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div class="breadcrumb">
+          <a href="index.html" data-i18n="common.nav.home">Inicio</a>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="nav.section.annexes">Anexos</span>
+          <span class="breadcrumb-sep">/</span>
+          <span data-i18n="page93.title">Resolución de problemas</span>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <h1 class="page-title" data-i18n="page93.title">Resolución de problemas</h1>
+        <p class="page-description" data-i18n="page93.description">Esta página recopila los escenarios de error y los puntos de vigilancia extraídos de las advertencias («Atención») dispersas en el manual. Para cada situación, indicamos el síntoma observado, la causa probable y la acción recomendada. Cuando una alerta sugiere que su cuenta puede estar comprometida, la acción correctiva debe efectuarse inmediatamente.</p>
+
+        <section>
+          <h2 data-i18n="page93.s1.title">1. Cuenta, sesión y seguridad</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page93.s1.t.h1">Síntoma</th>
+                  <th data-i18n="page93.s1.t.h2">Causa probable</th>
+                  <th data-i18n="page93.s1.t.h3">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page93.s1.t.r1.c1">El email de verificación no llega tras la creación de cuenta (más de 5 minutos).</td>
+                  <td data-i18n="page93.s1.t.r1.c2">Email mal escrito, correo en spam, o cuota de reenvíos alcanzada (3 / 15 min).</td>
+                  <td data-i18n-html="page93.s1.t.r1.c3">(1) Verifique la ortografía del email; (2) consulte el spam/correo no deseado; (3) pulse « Reenviar el código ». Detalles : <a href="11-crear-cuenta.html">página 11</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s1.t.r2.c1">Cuenta bloqueada tras varios intentos fallidos.</td>
+                  <td data-i18n="page93.s1.t.r2.c2">5 intentos fallidos = bloqueo 15 min. 10 fallidos en 24 h = email de alerta + bloqueo 1 h.</td>
+                  <td data-i18n-html="page93.s1.t.r2.c3">Esperar el final del bloqueo. Si recibe la alerta sin haber intentado conectarse, su cuenta es objetivo de un ataque — cambie su contraseña inmediatamente. Detalles : <a href="12-iniciar-sesion.html">página 12</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s1.t.r3.c1">El enlace de recuperación de contraseña no llega.</td>
+                  <td data-i18n="page93.s1.t.r3.c2">Email mal escrito, correo en spam, o reenvío demasiado rápido (menos de 30 s).</td>
+                  <td data-i18n-html="page93.s1.t.r3.c3">(1) Revisar la carpeta de spam; (2) verificar el email introducido; (3) solicitar un nuevo enlace 30 segundos después del anterior. Detalles : <a href="13-recuperar-contrasena.html">página 13</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s1.t.r4.c1">Email de confirmación de desactivación del 2FA recibido sin haber actuado.</td>
+                  <td data-i18n="page93.s1.t.r4.c2">Su cuenta está comprometida — alguien ha obtenido acceso suficiente para desactivar el 2FA.</td>
+                  <td data-i18n-html="page93.s1.t.r4.c3">Cambie su contraseña inmediatamente y reactive el 2FA. Detalles : <a href="14-2fa.html">página 14</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s1.t.r5.c1">Solicitudes rechazadas inesperadamente tras modificar el perfil.</td>
+                  <td data-i18n="page93.s1.t.r5.c2">Modificó <strong>nombre, apellidos o DIP</strong> mientras tenía solicitudes activas; los datos OCR ya no coinciden.</td>
+                  <td data-i18n-html="page93.s1.t.r5.c3">Termine las solicitudes en curso <em>antes</em> de modificar estos campos. Detalles : <a href="15-perfil.html">página 15</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s1.t.r6.c1">Sesión desconocida visible en « Sesiones activas » (dispositivo extraño, ciudad lejana, fecha sospechosa).</td>
+                  <td data-i18n="page93.s1.t.r6.c2">Su cuenta está comprometida — alguien tiene acceso.</td>
+                  <td data-i18n-html="page93.s1.t.r6.c3">Cerrar esta sesión inmediatamente, cambiar la contraseña y activar el 2FA si aún no está hecho. Detalles : <a href="16-seguridad.html">página 16</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page93.s2.title">2. Trámites, pagos y soporte</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page93.s2.t.h1">Síntoma</th>
+                  <th data-i18n="page93.s2.t.h2">Causa probable</th>
+                  <th data-i18n="page93.s2.t.h3">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page93.s2.t.r1.c1">Solicitud rechazada automáticamente por inacción.</td>
+                  <td data-i18n="page93.s2.t.r1.c2">Las solicitudes con « acciones requeridas » tienen un plazo. Si no responde en el tiempo establecido, la solicitud puede ser rechazada y debe iniciarla de nuevo (con pérdida del pago en algunos casos).</td>
+                  <td data-i18n-html="page93.s2.t.r1.c3">Responder dentro del plazo indicado en el dashboard. Detalles : <a href="21-dashboard-web.html">página 21</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s2.t.r2.c1">Cálculo de IS con la calculadora aparentemente bajo (incluso en pérdida).</td>
+                  <td data-i18n="page93.s2.t.r2.c2">La calculadora estima un IS aproximado. Existe una <strong>cuota mínima</strong> aplicable incluso en caso de pérdida, y la declaración real requiere contabilidad oficial certificada.</td>
+                  <td data-i18n-html="page93.s2.t.r2.c3">Consultar con un contable autorizado antes de la declaración real. Detalles : <a href="52-calculadora.html">página 52</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s2.t.r3.c1">Ticket de soporte cerrado por error, problema no resuelto.</td>
+                  <td data-i18n="page93.s2.t.r3.c2">Una vez cerrado, un ticket NO puede ser reabierto.</td>
+                  <td data-i18n-html="page93.s2.t.r3.c3">Crear un nuevo ticket haciendo referencia al SUP- anterior en la descripción para conservar el contexto. Si necesita escalar, indíquelo en el mensaje. Detalles : <a href="29-soporte-web.html">página 29</a>, <a href="38-soporte-mobile.html">página 38</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s2.t.r4.c1">Invitación de empresa a un colaborador no llega.</td>
+                  <td data-i18n="page93.s2.t.r4.c2">Email con typo o dominio incorrecto — la invitación queda pendiente sin alerta hasta expirar (7 días).</td>
+                  <td data-i18n-html="page93.s2.t.r4.c3">Verifique el email antes de enviar. Prefiera el email profesional vinculado a la empresa si el destinatario tiene varios. Detalles : <a href="42-gestion-empresas.html">página 42</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s2.t.r5.c1">El antiguo contable sigue viendo borradores tras cambio de gabinete.</td>
+                  <td data-i18n="page93.s2.t.r5.c2">El propietario aún no ha retirado el rol Contable al antiguo contable.</td>
+                  <td data-i18n-html="page93.s2.t.r5.c3">El propietario retira el rol Contable al antiguo gabinete (página 42, sección 5). El historial queda accesible (auditoría 7 años) pero ya no puede ver ni modificar nada nuevo. Detalles : <a href="44-rol-contable.html">página 44</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page93.s3.title">3. Verificación (Verify) y agentes</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page93.s3.t.h1">Síntoma</th>
+                  <th data-i18n="page93.s3.t.h2">Causa probable</th>
+                  <th data-i18n="page93.s3.t.h3">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page93.s3.t.r1.c1">« Mi recibo aparece como no válido en Verify. »</td>
+                  <td data-i18n-html="page93.s3.t.r1.c2">La URL de verificación no incluye el <strong>token firmado</strong> (parámetro <code>?t=...</code>) o el QR fue escaneado parcialmente.</td>
+                  <td data-i18n-html="page93.s3.t.r1.c3">Escanear el código QR completo (no solo el número de recibo). El token HMAC <code>t</code> está en el QR; sin él la verificación falla siempre. Detalles : <a href="57-verificar.html">página 57</a>, <a href="68-funciones-verify-agente.html">página 68</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r2.c1">« El agente OMS no encuentra mi licencia con el NIF. »</td>
+                  <td data-i18n-html="page93.s3.t.r2.c2">El NIF debe respetar exactamente el formato <code>GExxxxx</code> o el registro <code>PE-xxxxxx</code>. Espacios o typos causan « not found ».</td>
+                  <td data-i18n-html="page93.s3.t.r2.c3">Pedir al ciudadano que muestre su QR de licencia o que confirme el formato exacto. Detalles : <a href="68-funciones-verify-agente.html">página 68</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r3.c1">Pago elevado en efectivo sin justificante de origen de fondos.</td>
+                  <td data-i18n="page93.s3.t.r3.c2">Regla externa CEMAC contra el blanqueo de capitales (no codificada en el workflow).</td>
+                  <td data-i18n-html="page93.s3.t.r3.c3">Si el cliente no puede justificar el origen, el agente puede iniciar un <code>escalate</code> al supervisor mediante la acción estándar. Detalles : <a href="64-agente-ayuntamiento-camara.html">página 64</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r4.c1">El ciudadano espera recibir el carnet de residencia o el sello de visado por Facil.</td>
+                  <td data-i18n="page93.s3.t.r4.c2">Confusión sobre el alcance : Facil <strong>no genera el carnet ni el sello físico</strong> ; solo emite comprobantes electrónicos de trámite.</td>
+                  <td data-i18n-html="page93.s3.t.r4.c3">Explicar que los documentos físicos se entregan presencialmente en la oficina de Extranjería o CNEDOGE el día de la cita. Detalles : <a href="67-agente-extranjeria.html">página 67</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r5.c1">Sugerencia errónea del asistente IA agente conduce a una validación incorrecta.</td>
+                  <td data-i18n="page93.s3.t.r5.c2">El agente siguió ciegamente la sugerencia del IA sin verificar; el IA es una ayuda a la decisión, no un decisor.</td>
+                  <td data-i18n-html="page93.s3.t.r5.c3">La decisión final (validar, rechazar, escalar) corresponde al agente y solo al agente. La firma del agente es la única que cuenta legalmente. Detalles : <a href="60-asistente-ia-agente.html">página 60</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r6.c1">Agente OMS no puede cobrar en terreno (botón Cobrar bloqueado).</td>
+                  <td data-i18n-html="page93.s3.t.r6.c2">La app inspector bloquea explícitamente la collection cuando no hay red (<code>useNetwork().isConnected</code> en <code>payment.tsx</code>). No existe queue offline para los pagos terreno en la versión actual.</td>
+                  <td data-i18n-html="page93.s3.t.r6.c3">Esperar el restablecimiento de la conectividad antes de validar el cobro. La lectura de la ficha y la marca de la checklist sí funcionan en cache. Detalles : <a href="69-trabajo-terreno-oms.html">página 69</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s3.t.r7.c1">Pantalla negra al intentar capturar imagen o vídeo en la app inspector.</td>
+                  <td data-i18n-html="page93.s3.t.r7.c2">La app inspector activa <code>FLAG_SECURE</code> globalmente — captura de pantalla y grabación de vídeo muestran una pantalla negra. Es un comportamiento de seguridad voluntario, no un bug.</td>
+                  <td data-i18n-html="page93.s3.t.r7.c3">No intentar capturar la pantalla — comportamiento esperado para evitar fuga de datos personales. Detalles : <a href="69-trabajo-terreno-oms.html">página 69</a>, <a href="74-supervisor-inspecciones.html">página 74</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page93.s4.title">4. Administración</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page93.s4.t.h1">Síntoma</th>
+                  <th data-i18n="page93.s4.t.h2">Causa probable</th>
+                  <th data-i18n="page93.s4.t.h3">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-i18n="page93.s4.t.r1.c1">Acción admin sensible reportada sin trazabilidad aparente.</td>
+                  <td data-i18n-html="page93.s4.t.r1.c2">Toda acción admin está registrada DOS veces : en el audit log general (página 87) Y en una tabla dedicada <code>admin_actions_log</code> con retención permanente (jamás purgada).</td>
+                  <td data-i18n-html="page93.s4.t.r1.c3">Buscar el evento en <code>admin_actions_log</code> incluso si el log general ha sido manipulado. Detalles : <a href="81-rol-admin.html">página 81</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s4.t.r2.c1">Usuario reporta haber recibido email + SMS de reset 2FA que no solicitó.</td>
+                  <td data-i18n="page93.s4.t.r2.c2">Reset MFA realizado por un admin — la próxima conexión forzará la reconfiguración 2FA. Si el usuario no reconoce el reset, no es legítimo.</td>
+                  <td data-i18n-html="page93.s4.t.r2.c3">El usuario debe contactar inmediatamente el soporte. Detalles : <a href="82-admin-usuarios-roles.html">página 82</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s4.t.r3.c1">Cuenta de usuario inaccesible (« Cuenta suspendida »).</td>
+                  <td data-i18n="page93.s4.t.r3.c2">Suspensión por admin con motivo obligatorio (sospecha de fraude, decisión jerárquica, demanda judicial). Datos preservados.</td>
+                  <td data-i18n-html="page93.s4.t.r3.c3">El usuario es notificado por email del motivo. La reactivación requiere una acción admin explícita. Detalles : <a href="82-admin-usuarios-roles.html">página 82</a>.</td>
+                </tr>
+                <tr>
+                  <td data-i18n="page93.s4.t.r4.c1">Usuarios ven una página « Sistema en mantenimiento, vuelva en X minutos ».</td>
+                  <td data-i18n="page93.s4.t.r4.c2">Modo mantenimiento activado por el admin técnico antes de una migración o actualización backend.</td>
+                  <td data-i18n-html="page93.s4.t.r4.c3">Esperar la duración indicada. Las solicitudes en curso son preservadas; las nuevas son temporalmente bloqueadas. Detalles : <a href="86-admin-config-sistema.html">página 86</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page93.s5.title">5. Si nada de lo anterior funciona</h2>
+          <p data-i18n-html="page93.s5.body">Si su problema no figura en esta página o si los pasos sugeridos no lo resuelven, abra un ticket de soporte (página <a href="29-soporte-web.html">29 Web</a> o <a href="38-soporte-mobile.html">38 Móvil</a>) describiendo : (1) el síntoma exacto observado, (2) los pasos para reproducirlo, (3) el momento y la pantalla concernida, (4) capturas de pantalla si es posible. Para una alerta de seguridad sospechosa (sesión desconocida, email 2FA no solicitado), no espere — actúe inmediatamente como se indica en las secciones 1 y 4 de esta página.</p>
+        </section>
+
+      </div>
+
+      <nav class="pagination">
+        <a class="pagination-prev" href="92-faq.html" data-i18n="page93.prev">← Anterior: Preguntas frecuentes</a>
+        <a class="pagination-next" href="index.html" data-i18n="page93.next">Volver al inicio →</a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

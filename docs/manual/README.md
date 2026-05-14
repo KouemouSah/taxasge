@@ -11,7 +11,7 @@
 | **Páginas** | HTML estático | Sin compilación, versionable en Git, durable 10+ años |
 | **Estilos** | CSS único `styles.css` | Sistema de diseño compartido con la documentación técnica |
 | **i18n** | Sistema `data-i18n` con JS runtime | 3 idiomas (ES/FR/EN) sin compilación, fallback grácil |
-| **Búsqueda** | [Pagefind](https://pagefind.app/) | Índice estático multilingüe, sin servidor |
+| **Búsqueda** | [Pagefind](https://pagefind.app/) | Índice estático ES, sin servidor. Limitación : el índice cubre solo el contenido HTML inline (ES). La búsqueda funciona sobre términos ES + códigos técnicos comunes a las 3 lenguas (`fee_type`, `BANGE`, `MED`, etc.). Para regenerar : `npx pagefind --site docs/manual --output-path docs/manual/pagefind`. |
 | **Exportar PDF** | Print CSS (`@media print`) + `window.print()` | Cero dependencias, soporte universal navegador |
 
 **Sin** Node, sin npm build, sin React. Solo navegador.

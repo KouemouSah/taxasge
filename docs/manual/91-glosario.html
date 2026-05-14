@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" data-i18n-title="page68.html_title">
+<html lang="es" data-i18n-title="page91.html_title">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="3 variantes de la función Verify en Facil — Verify público (QR ciudadano), Verify Treasury (reconciliación BANGE), Verify CNEDOGE (control biométrico DIP).">
-  <title>Funciones Verify (3 variantes) — Manual Facil</title>
+  <meta name="description" content="Glosario trilingüe ES/FR/EN del manual Facil — 36 términos clave con definiciones y notas para traductores.">
+  <title>Glosario trilingüe — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -94,7 +94,7 @@
           <a href="65-agente-tesoro.html" class="sidebar-link"><span class="sidebar-link-icon">&#128176;</span> <span data-i18n="nav.link.agent_tesoro">Agente Tesoro</span></a>
           <a href="66-agente-min-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128203;</span> <span data-i18n="nav.link.agent_oms">Agente OMS (Obligaciones)</span></a>
           <a href="67-agente-extranjeria.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.agent_extranjeria">Agente Extranjería</span></a>
-          <a href="68-funciones-verify-agente.html" class="sidebar-link active"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
+          <a href="68-funciones-verify-agente.html" class="sidebar-link"><span class="sidebar-link-icon">&#9989;</span> <span data-i18n="nav.link.verify_functions">Verificación</span></a>
           <a href="69-trabajo-terreno-oms.html" class="sidebar-link"><span class="sidebar-link-icon">&#128205;</span> <span data-i18n="nav.link.field_work">Trabajo de campo</span></a>
         </div>
 
@@ -121,9 +121,9 @@
 
         <div class="sidebar-section">
           <div class="sidebar-section-title" data-i18n="nav.section.annexes">Anexos</div>
-          <a href="91-glosario.html" class="sidebar-link"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
-          <a href="92-faq.html" class="sidebar-link"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
-          <a href="93-troubleshooting.html" class="sidebar-link"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
+          <a href="91-glosario.html" class="sidebar-link active"><span class="sidebar-link-icon">&#128218;</span> <span data-i18n="nav.link.glossary">Glosario</span></a>
+          <a href="92-faq.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#10067;</span> <span data-i18n="nav.link.faq">FAQ</span></a>
+          <a href="93-troubleshooting.html" class="sidebar-link coming-soon"><span class="sidebar-link-icon">&#128736;</span> <span data-i18n="nav.link.troubleshooting">Resolución</span></a>
           <a href="search.html" class="sidebar-link"><span class="sidebar-link-icon">&#128269;</span> <span data-i18n="common.search.placeholder">Buscar</span></a>
         </div>
 
@@ -135,118 +135,269 @@
         <div class="breadcrumb">
           <a href="index.html" data-i18n="common.nav.home">Inicio</a>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="nav.section.agent">Agentes públicos</span>
+          <span data-i18n="nav.section.annexes">Anexos</span>
           <span class="breadcrumb-sep">/</span>
-          <span data-i18n="page68.title">Funciones Verify</span>
+          <span data-i18n="page91.title">Glosario trilingüe</span>
         </div>
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page68.title">Funciones Verify: 4 endpoints públicos HMAC + Verify agentes</h1>
-        <p class="page-description" data-i18n-html="page68.description">Facil expone 4 endpoints de verificación <strong>públicos</strong> (sin autenticación, protegidos por token HMAC-SHA256 incrustado en el código QR) más 2 funciones de verificación reservadas a agentes autenticados. Esta página describe la realidad del módulo <code>app/modules/payments/api/verify_routes.py</code> (públicos) y de los endpoints agente en <code>inspections/api/inspection_routes.py</code> y <code>verified_identifiers/api/verified_identifiers_routes.py</code>. Cada endpoint tiene su propio scope, su propio formato de input y su propia respuesta — todos están listados a continuación.</p>
+        <h1 class="page-title" data-i18n="page91.title">Glosario trilingüe ES / FR / EN</h1>
+        <p class="page-description" data-i18n="page91.description">Este glosario define los 36 términos clave utilizados en el manual de usuario Facil, en sus tres lenguas oficiales : español (lengua de referencia), francés y inglés. Es la fuente única de verdad : cualquier modificación de un término aquí debe propagarse a las 3 traducciones (<code>messages/es.js</code>, <code>fr.js</code>, <code>en.js</code>) y a la documentación técnica (<code>docs/documentation/</code>).</p>
 
         <section>
-          <h2 data-i18n="page68.s1.title">1. Los 4 endpoints públicos de verificación HMAC</h2>
-          <p data-i18n-html="page68.s1.intro">Los 4 endpoints comparten el mismo principio : una entrada (número de recibo, referencia de solicitud, ID de licencia, número de certificado) + un token HMAC <code>t</code> que viene del código QR impreso en el documento original. Sin token válido, la verificación falla. El HMAC se calcula con el secret <code>RECEIPT_VERIFICATION_SECRET</code> (o <code>JWT_SECRET_KEY</code> en fallback), nunca con <code>SECRET_KEY</code> (que se regenera en cada deploy).</p>
+          <h2 data-i18n="page91.s1.title">1. Términos clave del manual</h2>
+          <p data-i18n="page91.s1.intro">Tabla ordenada según el orden de aparición lógica en el manual : plataforma, trámites, organismos emisores, fiscalidad, autenticación, roles, tecnologías.</p>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th data-i18n="page68.s1.t.h1">Endpoint</th>
-                  <th data-i18n="page68.s1.t.h2">Para qué</th>
-                  <th data-i18n="page68.s1.t.h3">Input</th>
-                  <th data-i18n="page68.s1.t.h4">Output principal</th>
+                  <th data-i18n="page91.s1.t.h1">Término ES</th>
+                  <th data-i18n="page91.s1.t.h2">Término FR</th>
+                  <th data-i18n="page91.s1.t.h3">Término EN</th>
+                  <th data-i18n="page91.s1.t.h4">Definición ES</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><code>GET /api/v1/verify/request/{reference}?t=...</code></td>
-                  <td data-i18n="page68.s1.t.r1.c2">Verificar una solicitud (estado, cita, importe)</td>
-                  <td data-i18n-html="page68.s1.t.r1.c3"><code>reference</code> tipo <code>SRV-2026-XXXXX</code> + token HMAC (16 hex)</td>
-                  <td data-i18n-html="page68.s1.t.r1.c4">workflow_name, status, status_label, cita_date, cita_time, appointment_location, payment_amount, currency</td>
+                  <td><strong>Facil</strong></td>
+                  <td>Facil</td>
+                  <td>Facil</td>
+                  <td data-i18n="page91.s1.t.r1.def">Plataforma digital de la Función Pública en Guinea Ecuatorial. Marca, no traducir.</td>
                 </tr>
                 <tr>
-                  <td><code>GET /api/v1/verify/{receipt_number}?t=...</code></td>
-                  <td data-i18n="page68.s1.t.r2.c2">Verificar un recibo de pago (anti-fraude)</td>
-                  <td data-i18n-html="page68.s1.t.r2.c3"><code>receipt_number</code> tipo <code>REC-2025-XXXXX</code> + token HMAC</td>
-                  <td data-i18n-html="page68.s1.t.r2.c4">amount, currency, payment_method, paid_at, payer_name, workflow_code, entity_code, validated_by, validated_at</td>
+                  <td><strong>Trámite</strong></td>
+                  <td>Démarche</td>
+                  <td>Procedure</td>
+                  <td data-i18n="page91.s1.t.r2.def">Procedimiento administrativo (pasaporte, licencia, etc.). Sinónimos ES : solicitud, gestión.</td>
                 </tr>
                 <tr>
-                  <td><code>GET /api/v1/verify/license/{license_ref}?t=...&amp;lid=...</code></td>
-                  <td data-i18n="page68.s1.t.r3.c2">Verificar una licencia comercial bundle</td>
-                  <td data-i18n-html="page68.s1.t.r3.c3"><code>license_ref</code> tipo <code>LIC-2026-A1B2C3D4</code> + token + UUID de licencia</td>
-                  <td data-i18n-html="page68.s1.t.r3.c4">company_name, nif, regimen_fiscal, bundle_name, commerce_type, fiscal_year, status, obligations_total/paid, compliance_score</td>
+                  <td><strong>Solicitud</strong></td>
+                  <td>Demande</td>
+                  <td>Request</td>
+                  <td data-i18n="page91.s1.t.r3.def">Instancia concreta de un trámite iniciado por un usuario. Estado : borrador, enviada, en proceso, validada, rechazada.</td>
                 </tr>
                 <tr>
-                  <td><code>GET /api/v1/verify/certificate/{cert_number}?t=...&amp;lid=...</code></td>
-                  <td data-i18n="page68.s1.t.r4.c2">Verificar un certificado de licencia (HMAC reforzado, solo si <code>status='complete'</code>)</td>
-                  <td data-i18n-html="page68.s1.t.r4.c3"><code>certificate_number</code> + token (24 hex) + UUID de licencia</td>
-                  <td data-i18n-html="page68.s1.t.r4.c4">company_name, representante_legal, registration_number, commerce_type, zone_code, city_name, fiscal_year, total_amount, completed_at</td>
+                  <td><strong>Servicio fiscal</strong></td>
+                  <td>Service fiscal</td>
+                  <td>Fiscal service</td>
+                  <td data-i18n="page91.s1.t.r4.def">Procedimiento del catálogo (873 disponibles). Cada uno tiene tarifa, documentos requeridos, procedimientos.</td>
+                </tr>
+                <tr>
+                  <td><strong>Tasa</strong></td>
+                  <td>Taxe</td>
+                  <td>Fee</td>
+                  <td data-i18n="page91.s1.t.r5.def">Cantidad a pagar al Estado por un trámite. Calculada según tipo de comercio, zona, etc.</td>
+                </tr>
+                <tr>
+                  <td><strong>CNEDOGE</strong></td>
+                  <td>CNEDOGE</td>
+                  <td>CNEDOGE</td>
+                  <td data-i18n="page91.s1.t.r6.def">Centro Nacional de Documentos Generales. Organismo emisor de pasaportes.</td>
+                </tr>
+                <tr>
+                  <td><strong>DGT</strong></td>
+                  <td>DGT</td>
+                  <td>DGT</td>
+                  <td data-i18n="page91.s1.t.r7.def">Dirección General de Tráfico. Organismo emisor de permisos de conducir.</td>
+                </tr>
+                <tr>
+                  <td><strong>Tesoro Público</strong></td>
+                  <td>Trésor public</td>
+                  <td>Public Treasury</td>
+                  <td data-i18n="page91.s1.t.r8.def">Organismo central de cobro y validación de pagos. Acrónimo : TESORO.</td>
+                </tr>
+                <tr>
+                  <td><strong>Extranjería</strong></td>
+                  <td>Extranjería</td>
+                  <td>Extranjería</td>
+                  <td data-i18n="page91.s1.t.r9.def">Servicio de inmigración y permisos de residencia. No traducir oficialmente.</td>
+                </tr>
+                <tr>
+                  <td><strong>Ayuntamiento</strong></td>
+                  <td>Mairie</td>
+                  <td>Town Hall</td>
+                  <td data-i18n="page91.s1.t.r10.def">Municipalidad emisora de licencias comerciales. Niveles A/B/C/D según zona.</td>
+                </tr>
+                <tr>
+                  <td><strong>Cámara de Comercio</strong></td>
+                  <td>Chambre de Commerce</td>
+                  <td>Chamber of Commerce</td>
+                  <td data-i18n="page91.s1.t.r11.def">Organismo emisor de cuotas comerciales. Acrónimo : CAMARA_COMERCIO.</td>
+                </tr>
+                <tr>
+                  <td><strong>MIN OMS</strong></td>
+                  <td>MIN OMS</td>
+                  <td>MIN OMS</td>
+                  <td data-i18n="page91.s1.t.r12.def">Ministerio + Organización Mundial de la Salud (entidad mixta). Inspecciones sanitarias.</td>
+                </tr>
+                <tr>
+                  <td><strong>DGI</strong></td>
+                  <td>DGI</td>
+                  <td>DGI</td>
+                  <td data-i18n="page91.s1.t.r13.def">Dirección General de Impuestos. Tributos (IRPF, IVA, IS).</td>
+                </tr>
+                <tr>
+                  <td><strong>NIF</strong></td>
+                  <td>NIF</td>
+                  <td>Tax ID</td>
+                  <td data-i18n="page91.s1.t.r14.def">Número de Identificación Fiscal. Identificador único de empresa.</td>
+                </tr>
+                <tr>
+                  <td><strong>Bono BANGE Mobile Money</strong></td>
+                  <td>Bon BANGE Mobile Money</td>
+                  <td>BANGE Mobile Money voucher</td>
+                  <td data-i18n="page91.s1.t.r15.def">Método de pago móvil del banco BANGE. Para ciudadanos sin cuenta bancaria.</td>
+                </tr>
+                <tr>
+                  <td><strong>XAF</strong></td>
+                  <td>XAF</td>
+                  <td>XAF</td>
+                  <td data-i18n="page91.s1.t.r16.def">Franco CFA Central (moneda). Símbolo monetario oficial Guinea Ecuatorial.</td>
+                </tr>
+                <tr>
+                  <td><strong>2FA / TOTP</strong></td>
+                  <td>2FA / TOTP</td>
+                  <td>2FA / TOTP</td>
+                  <td data-i18n="page91.s1.t.r17.def">Autenticación de dos factores con contraseña temporal. Apps recomendadas : Google Authenticator, Authy.</td>
+                </tr>
+                <tr>
+                  <td><strong>JWT</strong></td>
+                  <td>JWT</td>
+                  <td>JWT</td>
+                  <td data-i18n="page91.s1.t.r18.def">JSON Web Token (sesión segura). Acceso 30 min, refresh 30 días.</td>
+                </tr>
+                <tr>
+                  <td><strong>RBAC</strong></td>
+                  <td>RBAC</td>
+                  <td>RBAC</td>
+                  <td data-i18n="page91.s1.t.r19.def">Control de acceso basado en roles. 47 roles, 337 permisos.</td>
+                </tr>
+                <tr>
+                  <td><strong>OCR</strong></td>
+                  <td>OCR</td>
+                  <td>OCR</td>
+                  <td data-i18n="page91.s1.t.r20.def">Reconocimiento óptico de caracteres. Extracción automática de datos de documentos.</td>
+                </tr>
+                <tr>
+                  <td><strong>Verify / Verificar</strong></td>
+                  <td>Vérifier</td>
+                  <td>Verify</td>
+                  <td data-i18n="page91.s1.t.r21.def">Función de validación pública de recibos vía QR. Sin necesidad de iniciar sesión.</td>
+                </tr>
+                <tr>
+                  <td><strong>IRPF</strong></td>
+                  <td>IRPP</td>
+                  <td>Income tax</td>
+                  <td data-i18n="page91.s1.t.r22.def">Impuesto sobre la renta de las personas físicas. 6 tramos (0% a 35%).</td>
+                </tr>
+                <tr>
+                  <td><strong>IVA</strong></td>
+                  <td>TVA</td>
+                  <td>VAT</td>
+                  <td data-i18n="page91.s1.t.r23.def">Impuesto sobre el valor añadido. 15% estándar Guinea Ecuatorial.</td>
+                </tr>
+                <tr>
+                  <td><strong>IS</strong></td>
+                  <td>IS</td>
+                  <td>Corporate tax</td>
+                  <td data-i18n="page91.s1.t.r24.def">Impuesto de sociedades. 35% tarifa única.</td>
+                </tr>
+                <tr>
+                  <td><strong>Bundle (pago agrupado)</strong></td>
+                  <td>Paiement groupé</td>
+                  <td>Bundle payment</td>
+                  <td data-i18n="page91.s1.t.r25.def">Pago de múltiples obligaciones en una sola transacción. Reduce comisiones bancarias.</td>
+                </tr>
+                <tr>
+                  <td><strong>Wizard</strong></td>
+                  <td>Assistant pas-à-pas</td>
+                  <td>Wizard</td>
+                  <td data-i18n="page91.s1.t.r26.def">Asistente de creación de solicitud paso a paso. 6 etapas típicas.</td>
+                </tr>
+                <tr>
+                  <td><strong>Cuenta de usuario</strong></td>
+                  <td>Compte utilisateur</td>
+                  <td>User account</td>
+                  <td data-i18n="page91.s1.t.r27.def">Identidad personal en Facil. Contiene perfil, sesiones, documentos.</td>
+                </tr>
+                <tr>
+                  <td><strong>Empresa</strong></td>
+                  <td>Entreprise</td>
+                  <td>Company</td>
+                  <td data-i18n="page91.s1.t.r28.def">Entidad jurídica registrada. Puede tener múltiples miembros con roles distintos.</td>
+                </tr>
+                <tr>
+                  <td><strong>Agente público</strong></td>
+                  <td>Agent public</td>
+                  <td>Public agent</td>
+                  <td data-i18n="page91.s1.t.r29.def">Funcionario que valida solicitudes en Facil. 47 roles distintos según entidad.</td>
+                </tr>
+                <tr>
+                  <td><strong>Supervisor</strong></td>
+                  <td>Superviseur</td>
+                  <td>Supervisor</td>
+                  <td data-i18n="page91.s1.t.r30.def">Agente con permisos extendidos sobre su equipo. Gestiona escaladas, reparto, KPI.</td>
+                </tr>
+                <tr>
+                  <td><strong>Administrador</strong></td>
+                  <td>Administrateur</td>
+                  <td>Administrator</td>
+                  <td data-i18n="page91.s1.t.r31.def">Gestor técnico de la plataforma Facil. Acceso a configuraciones, RBAC, logs.</td>
+                </tr>
+                <tr>
+                  <td><strong>Recibo / comprobante</strong></td>
+                  <td>Reçu / justificatif</td>
+                  <td>Receipt</td>
+                  <td data-i18n="page91.s1.t.r32.def">Documento PDF generado tras pago validado. Lleva QR de verificación pública.</td>
+                </tr>
+                <tr>
+                  <td><strong>Notificación push</strong></td>
+                  <td>Notification push</td>
+                  <td>Push notification</td>
+                  <td data-i18n="page91.s1.t.r33.def">Alerta enviada a la aplicación móvil del usuario. Requiere permiso del sistema.</td>
+                </tr>
+                <tr>
+                  <td><strong>Biometría</strong></td>
+                  <td>Biométrie</td>
+                  <td>Biometrics</td>
+                  <td data-i18n="page91.s1.t.r34.def">Autenticación por huella o reconocimiento facial. Solo móvil.</td>
+                </tr>
+                <tr>
+                  <td><strong>App Lock</strong></td>
+                  <td>Verrouillage de l'app</td>
+                  <td>App Lock</td>
+                  <td data-i18n="page91.s1.t.r35.def">Bloqueo local de la aplicación con PIN o biometría. Solo móvil.</td>
+                </tr>
+                <tr>
+                  <td><strong>Modo sin conexión</strong></td>
+                  <td>Mode hors-ligne</td>
+                  <td>Offline mode</td>
+                  <td data-i18n="page91.s1.t.r36.def">Funcionalidades disponibles sin red. Solo móvil — sincroniza al reconectar.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page68.s1.info.title">Sin autenticación: cómo se protege la confidencialidad</h3>
-            <p data-i18n-html="page68.s1.info.body">Como los 4 endpoints son públicos, su único contrôle es el token HMAC del QR. Sin QR (o sin un token correcto), la respuesta es siempre <code>valid: false</code>. Esto previene la enumeración: un atacante no puede iterar <code>REC-2026-00001</code>, <code>00002</code>... para descubrir recibos válidos, porque cada uno requiere su propio token específico calculado con el secret servidor.</p>
-          </div>
         </section>
 
         <section>
-          <h2 data-i18n="page68.s2.title">2. Página pública /verify para los ciudadanos</h2>
-          <p data-i18n-html="page68.s2.body">El frontend expone una página pública en <code>/verify/{receiptNumber}?t=...</code> que llama a estos endpoints. Cuando un ciudadano escanea el QR de su recibo (o de la licencia bundle de un comerciante), el navegador carga directamente esta página con el token preinscrito. Detalle completo en la <a href="57-verificar.html">página 57</a>. Esta variante es la única <strong>pensada para los ciudadanos</strong> y los terceros (comerciantes, bancos) que quieren verificar la autenticidad de un documento.</p>
-        </section>
-
-        <section>
-          <h2 data-i18n="page68.s3.title">3. Verify agente terreno OMS: scan QR + búsqueda NIF</h2>
-          <p data-i18n-html="page68.s3.intro">El agente OMS sobre el terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) dispone de un endpoint distinto, NO público : <code>GET /api/v1/inspections/verify</code>. Este endpoint requiere autenticación + permiso <code>inspection.create</code> + rate-limit (30 req/min/agente, OWASP A04, anti-enumeración NIF).</p>
-          <h3 data-i18n="page68.s3.input.title">Input</h3>
-          <p data-i18n-html="page68.s3.input.body">El agente fournit <strong>uno</strong> de los tres identificadores (mutuamente exclusivos): <code>license_id</code> (UUID, lectura QR licencia), <code>nif</code> (formato <code>GExxxxx</code>) o <code>registration_number</code> (formato <code>PE-xxxxxx</code>). Es así cuando el QR del establecimiento está deteriorado, el agente puede buscar manualmente por NIF.</p>
-          <h3 data-i18n="page68.s3.output.title">Output</h3>
-          <p data-i18n="page68.s3.output.body">Datos enriquecidos de la licencia bundle: la empresa, su tier de obligaciones (Tesoro/Municipal/Cámara/Sectorial), todas las obligaciones de la licencia (incluso las ya pagadas), los importes calculados, y para cada obligación: si el agente puede collectarla en el terreno o no (regla controlada por <code>verify_license_for_agent</code>).</p>
-        </section>
-
-        <section>
-          <h2 data-i18n="page68.s4.title">4. Verify identidad de un DIP (agentes verified_identifiers)</h2>
-          <p data-i18n-html="page68.s4.intro">El módulo <code>verified_identifiers</code> expone un conjunto de endpoints reservados a los agentes con permiso <code>service_request.verify_manually</code>. Estos endpoints sirven para <strong>marcar como verificado</strong> un identificador (DIP, registro mercantil, NIF, etc.) tras haber controlado el documento original presentado por el ciudadano.</p>
-          <p data-i18n-html="page68.s4.body">La verificación es <em>declarativa</em> : el agente afirma haber controlado el documento físico (o el scan certificado), y firma la decisión en el sistema. Esta firma incluye el identificador del agente, la fecha, una nota opcional y eventualmente una foto-prueba. <strong>No hay matching biométrico automatizado</strong> entre la foto del ciudadano presente y la foto biométrica de la base: el control de identidad es responsabilidad del agente, no del algoritmo.</p>
-          <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page68.s4.info.title">Captura biométrica vs reconocimiento facial</h3>
-            <p data-i18n-html="page68.s4.info.body">Los workflows de pasaporte o carnet de funcionario incluyen un step «cita biométrica» en una oficina CNEDOGE (ver <code>carnet_workflow.py</code>, step 4 «Appointment (biometric capture)»). Este step significa que el ciudadano debe presentarse físicamente para que su pasaporte/carnet sea producido con sus datos biométricos reales (huellas + foto). <strong>No es un control de identidad por reconocimiento facial automatizado</strong> en el momento de un trámite Facil. La validación de la identidad permanece manual y presencial.</p>
-          </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page68.s5.title">5. Por qué esta separación pública/agente</h2>
-          <p data-i18n-html="page68.s5.body">Los 4 endpoints públicos permiten a un ciudadano o tercero <strong>auto-verificar</strong> un documento (un recibo, una licencia, un certificado) sin pasar por un funcionario. Esto evita los falsos documentos y reduce el flujo en las oficinas. Los endpoints agente, por su parte, permiten <strong>aumentar el contexto operativo</strong> (un agente OMS sobre el terreno necesita ver el detalle bundle completo de una licencia, no solo «¿es válido?»). La separación previene también que un atacante con un endpoint público acceda a datos personales sensibles: el endpoint <code>request</code> público no expone el nombre del solicitante, mientras que la consulta agente de una solicitud expone los datos completos.</p>
-        </section>
-
-        <section>
-          <h2 data-i18n="page68.s6.title">6. Errores comunes y cómo evitarlos</h2>
-          <div class="callout callout-warning">
-            <h3 class="callout-title" data-i18n="page68.s6.warn.title">Tickets de soporte recurrentes</h3>
+          <h2 data-i18n="page91.s2.title">2. Notas para traductores</h2>
+          <div class="callout callout-tip">
+            <div class="callout-title" data-i18n="page91.s2.tip.title">Reglas a seguir</div>
             <ul>
-              <li data-i18n-html="page68.s6.warn.l1"><strong>«El comerciante me dice que mi recibo no es válido»</strong> — verifique que escanea el código QR completo (no solo el número de recibo). El token HMAC <code>t</code> está en el QR, sin él la verificación falla siempre.</li>
-              <li data-i18n-html="page68.s6.warn.l2"><strong>«El agente OMS no encuentra mi licencia con el NIF»</strong> — el NIF debe ser exactamente el formato <code>GExxxxx</code> o el registro <code>PE-xxxxxx</code>. Espacios o errores de tipeo causan «not found». Pedir al ciudadano que muestre su QR de licencia o que confirme el formato exacto.</li>
-              <li data-i18n-html="page68.s6.warn.l3"><strong>«El agente CNEDOGE quiere comparar mi foto presente con la foto del DIP»</strong> — esto es un <em>control visual humano</em>, no un algoritmo automatizado. El agente compara directamente las dos imágenes (la del DIP escaneado/presentado y la del ciudadano presente), y firma su decisión. Es responsabilidad del agente, no del sistema.</li>
-              <li data-i18n-html="page68.s6.warn.l4"><strong>«¿Por qué la verificación pública no me muestra el nombre del comprador?»</strong> — protección de la privacidad. Los endpoints públicos retornan el mínimo necesario para constatar la autenticidad (importe, fecha, servicio). Los datos personales solo aparecen vía agente autenticado.</li>
+              <li data-i18n-html="page91.s2.tip.l1"><strong>No traducir</strong> los acrónimos oficiales (CNEDOGE, DGT, DGI, NIF, JWT, OCR, RBAC).</li>
+              <li data-i18n-html="page91.s2.tip.l2"><strong>Adaptar culturalmente</strong> los términos genéricos (ej : « town hall » más que « ayuntamiento » en EN).</li>
+              <li data-i18n-html="page91.s2.tip.l3"><strong>Conservar</strong> en sus 3 idiomas los términos legales con valor jurídico (Tesoro Público, Extranjería).</li>
+              <li data-i18n-html="page91.s2.tip.l4">En caso de duda, <strong>preferir el término oficial gubernamental</strong> sobre la traducción literal.</li>
             </ul>
-          </div>
-        </section>
-
-        <section>
-          <h2 data-i18n="page68.s7.title">7. Aviso honestidad documental</h2>
-          <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page68.s7.info.title">Lo que NO existe en el código (mayo 2026)</h3>
-            <p data-i18n-html="page68.s7.info.body">A diferencia de descripciones genéricas previas, el módulo Verify de Facil <strong>no incluye actualmente</strong> : reconocimiento facial automatizado (no hay <code>facial_recognition</code> en el código), matching biométrico foto-DIP por algoritmo, scoring de similarity en % entre dos fotos, permission <code>validate_passport_biometric</code> (inventada, no registrada), permission <code>validate_payment</code> (inventada, las verdaderas son <code>service_request.verify_manually</code> y <code>inspection.create</code>), variante «Verify Treasury» con 2FA específica (la 2FA está al nivel del login del agente, no del endpoint), retention obligatoria 7 años distinta de la política general de audit_logs. Las verificaciones biométricas reales (toma de huellas + foto) ocurren en presencial sobre la cita CNEDOGE de los workflows pasaporte/carnet, no vía un endpoint Verify dedicado.</p>
           </div>
         </section>
 
       </div>
 
       <nav class="pagination">
-        <a class="pagination-prev" href="67-agente-extranjeria.html" data-i18n="page68.prev">← Anterior: Agente Extranjería</a>
-        <a class="pagination-next" href="69-trabajo-terreno-oms.html" data-i18n="page68.next">Siguiente: Trabajo terreno OMS →</a>
+        <a class="pagination-prev" href="89-admin-workflow-config.html" data-i18n="page91.prev">← Anterior: Workflow + Menu Config</a>
+        <a class="pagination-next" href="92-faq.html" data-i18n="page91.next">Siguiente: Preguntas frecuentes →</a>
       </nav>
     </main>
   </div>
