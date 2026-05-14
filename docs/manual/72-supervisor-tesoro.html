@@ -182,6 +182,10 @@
               <figcaption data-i18n="page72.fig4.caption">Historial de transacciones procesadas con filtros.</figcaption>
             </figure>
           </div>
+          <div class="callout callout-info">
+            <h3 class="callout-title" data-i18n="page72.s3.field.title">Validación de pagos field-collected (inspecciones OMS terreno)</h3>
+            <p data-i18n-html="page72.s3.field.body">Los pagos cobrados en terreno por los agentes OMS durante las inspecciones (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) llegan al Tesoro con <code>collection_type='field'</code> y <code>workflow_status='field_collected'</code>. Para validarlos definitivamente y declenar la emisión del recibo oficial, el supervisor Tesoro llama el endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permiso <code>inspection.reconcile_validate</code>). Este endpoint invoca <code>LicenseService.on_payment_completed()</code> para enrutar las obligaciones a su agente competente según el <code>fee_type</code> y el eventual <code>ministry_id</code>.</p>
+          </div>
         </section>
 
         <section>

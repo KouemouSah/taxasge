@@ -4639,7 +4639,7 @@ window.__I18N__.en = {
     "s3": {
       "title": "3. Validating a payment: the symmetric flow",
       "intro": "The agent opens a pending payment from their queue. The validation screen shows: merchant data (name, NIF, address), fee type, expected amount, paid amount, payment method (cash, BANGE transfer, Mobile Money), supporting document (photo of the bank receipt or the cash slip).",
-      "body": "When the agent confirms, the system generates the official PDF receipt with a unique number of the form <code>REC-2026-NNNNNN</code>, the entity's seal, the agent's signature and a verification QR. A notification is sent immediately to the merchant (email + push)."
+      "body": "When the agent confirms, the system generates the official PDF receipt with a unique number of the form <code>REC-{year}-{6 digits}</code> (e.g. <code>REC-2026-000011</code>), produced by <code>generate_receipt_number_from_db()</code> with yearly sequencing and <code>pg_advisory_xact_lock</code>. The PDF includes the entity's seal, the agent's signature and a verification QR (page 57). A notification is sent immediately to the merchant (email + push)."
     },
     "fig3": {
       "alt": "Cash payment validation Bars Municipal Fee",
@@ -4676,12 +4676,12 @@ window.__I18N__.en = {
     "s6": {
       "title": "6. Specifics of the commercial workflow",
       "info": {
-        "title": "Field inspection (OMS)",
-        "body": "When an OMS agent (Obligation Management System — no relation to health) carries out a commercial bundle inspection in the field (see <a href=\"69-trabajo-terreno-oms.html\">page 69</a>) and has collected an obligation in cash on the premises, that obligation enters the Town Hall or Chamber flow according to its <code>fee_type</code> (municipal or chamber). The OMS agent scans the licence QR, records the collection, and an event is automatically created in the Town Hall/Chamber agent's queue for end-of-day reconciliation."
+        "title": "Field inspection (OMS) and supervisor reconciliation",
+        "body": "When an OMS agent carries out a commercial bundle inspection in the field (see <a href=\"69-trabajo-terreno-oms.html\">page 69</a>) and collects an obligation on the premises, the payment is inserted in <code>service_payments</code> with <code>collection_type='field'</code> and workflow_status <code>field_collected</code>. The obligation remains attached to its <code>fee_type</code> (<code>municipal</code> = Ayuntamiento, <code>chamber</code> = Cámara, <code>tesoro</code> = Public Treasury). To definitively validate the field collection, the supervisor of the entity calls the endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permission <code>inspection.reconcile_validate</code>); this endpoint then routes the obligation to the competent Town Hall or Chamber agent (via <code>LicenseService.on_payment_completed()</code>) for the issuance of the official receipt."
       },
       "warn": {
-        "title": "Cash payments: mandatory declaration",
-        "body": "For cash payments above 1,000,000 XAF, the agent must request proof of source of funds (bank statement, sale receipt, etc.) and attach it to the file. This obligation comes from CEMAC anti-money-laundering regulations. If the client cannot justify, the decision requires an <code>escalate</code> to the supervisor."
+        "title": "Cash payments: CEMAC regulation watch (external rule)",
+        "body": "CEMAC anti-money-laundering regulations require that high-value cash payments be accompanied by proof of source of funds. This rule is <strong>external to the Facil code</strong> (no threshold is currently hard-coded inside the Ayuntamiento/Cámara workflow) but is part of the agent's professional protocol. If the client cannot justify the source, the agent can launch an <code>escalate</code> to the supervisor through the standard action (page 62 §2)."
       }
     },
     "prev": "← Previous: DGT agent",
@@ -4762,10 +4762,10 @@ window.__I18N__.en = {
   "page66": {
     "html_title": "OMS Agent — Facil Manual",
     "title": "OMS Agent: post-payment processing of bundle obligations",
-    "description": "OMS (<em>Obligation Management System</em>) is Facil's internal module that handles bundle commercial licence obligations <strong>after</strong> payment. It has nothing to do with health — the acronym matches but refers to the obligation-management system defined in <code>licenses.py</code>. When a merchant pays their bundle (page 26), the individual obligations (Treasury taxes, Town Hall fees, Chamber dues, sectoral ministerial taxes) are distributed across agents according to the configured processing mode: <strong>Mode A — per_line</strong> (each obligation goes to the competent ministry) or <strong>Mode B — consolidated</strong> (a polyvalent agent <code>agent_oms_polyvalent</code> handles everything aggregated).",
+    "description": "OMS (<em>Obligation Management System</em>) is Facil's internal module that handles bundle commercial licence obligations <strong>after</strong> payment. The acronym has no relation to health (Organisation Mondiale de la Santé) — it refers to the obligation-management system defined in <code>app/modules/fiscal_services/models/licenses.py</code>. When a merchant pays their bundle (page 26), the individual obligations are categorised by <strong>fee_type</strong> (enum <code>FeeType</code> in <code>bundles.py</code>, exactly 3 values: <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) and distributed across agents according to the obligation's processing mode (enum <code>ProcessingMode</code>, 2 values): <strong>Mode per_line</strong> (each obligation goes to the competent ministerial agent — filtered by <code>ministry_id</code> when <code>fee_type=tesoro</code>) or <strong>Mode consolidated</strong> (a polyvalent agent <code>agent_oms_polyvalent</code> handles everything aggregated, with no ministerial breakdown). Important: <strong>ministerial is not a fee_type</strong>; ministries are identified by the FK <code>ministry_id</code> applied to <code>fee_type=tesoro</code> obligations.",
     "s1": {
       "title": "1. OMS agent dashboard",
-      "body": "The dashboard shows the bundle-processing-specific KPIs: number of obligations in queue, compliance by <code>fee_type</code> (TESORO / MUNICIPAL / CHAMBER), active commercial licences, average processing time. Quick actions give direct access to the most frequent functions: new field inspection, company lookup by NIF, licence list, compliance by fee type."
+      "body": "The dashboard shows the bundle-processing-specific KPIs: number of obligations in queue, compliance by <code>fee_type</code> (the 3 real values: <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>), active commercial licences, average processing time. Quick actions give direct access to the most frequent functions: new field inspection, company lookup by NIF, licence list, compliance by fee type."
     },
     "fig1": {
       "alt": "OMS agent dashboard with bundle obligations KPIs",
@@ -4782,7 +4782,7 @@ window.__I18N__.en = {
     "s3": {
       "title": "3. Bundle commercial licences",
       "body": "The <em>\"Commercial licences\"</em> screen lists every licence managed by the OMS module, with its identifiers, owner company, obligation balance (number of unpaid bundle obligations) and status (valid, expired, under renewal, suspended).",
-      "body2": "Clicking a licence opens the detailed view with the breakdown by obligation (Treasury fee, Town Hall fee, Chamber dues, sectoral ministerial tax) and the option to regenerate the licence PDF certificate."
+      "body2": "Clicking a licence opens the detailed view with the breakdown by obligation (<code>fee_type=tesoro</code> with optional <code>ministry_id</code> filter for ministerial allocation, <code>fee_type=municipal</code> for Town Hall fees, <code>fee_type=chamber</code> for Chamber dues) and the option to regenerate the licence PDF certificate."
     },
     "fig3": {
       "alt": "Commercial licences list with identifiers and balances",
@@ -4790,7 +4790,7 @@ window.__I18N__.en = {
     },
     "fig4": {
       "alt": "Bundle licence detail with itemised obligations",
-      "caption": "Licence detail with breakdown of outstanding bundle obligations (treasury / municipal / chamber / ministerial)."
+      "caption": "Licence detail with breakdown of outstanding bundle obligations (the 3 fee_types: tesoro / municipal / chamber, with optional <code>ministry_id</code> for ministerial tesoro)."
     },
     "s4": {
       "title": "4. Daily inspection dashboard",
@@ -4818,15 +4818,15 @@ window.__I18N__.en = {
     },
     "s7": {
       "title": "7. Compliance by obligation type (fee_type)",
-      "body": "The <em>\"Compliance\"</em> screen shows the compliance rate of companies by <code>fee_type</code> (field of the bundle model in <code>bundles.py</code>): <strong>CHAMBER</strong> (Chamber of Commerce dues), <strong>MUNICIPAL</strong> (Town Hall fees), <strong>TESORO</strong> (Treasury taxes). Useful to spot the categories with the highest payment-delay rate and steer enforcement actions."
+      "body": "The <em>\"Compliance\"</em> screen shows the compliance rate of companies by <code>fee_type</code> (obligation field, values fixed by the <code>FeeType</code> enum in <code>bundles.py</code>): <strong><code>tesoro</code></strong> (Public Treasury taxes, with optional <code>ministry_id</code> filter for ministerial allocation), <strong><code>municipal</code></strong> (Town Hall fees), <strong><code>chamber</code></strong> (Chamber of Commerce dues). Useful to spot the categories with the highest payment-delay rate and steer enforcement actions."
     },
     "fig8": {
-      "alt": "Compliance by fee_type CHAMBER MUNICIPAL TESORO",
-      "caption": "Compliance rate by <code>fee_type</code> (CHAMBER, MUNICIPAL, TESORO)."
+      "alt": "Compliance by fee_type tesoro municipal chamber",
+      "caption": "Compliance rate by <code>fee_type</code> (the 3 real values: tesoro, municipal, chamber)."
     },
     "s8": {
       "title": "8. Obligations queue",
-      "body": "Bundle obligations enter the OMS queue after payment. The queue shows obligations \"in progress\" (awaiting processing by an agent) and \"finished\" (processed, validated, archived). Each obligation has a priority computed from fee_type, amount and waiting time. Important: assignment to an agent respects <strong>Mode A</strong> (per_line — each fee_type goes to its ministry) or <strong>Mode B</strong> (consolidated — everything goes to the <code>agent_oms_polyvalent</code>), configured at the bundle level."
+      "body": "Bundle obligations enter the OMS queue after payment. The queue shows obligations \"in progress\" (awaiting processing by an agent) and \"finished\" (processed, validated, archived). Each obligation has a priority computed from fee_type, amount and waiting time. Important: assignment to an agent respects <strong>ProcessingMode <code>per_line</code></strong> (each obligation goes to its competent ministerial agent, via <code>ministry_id</code> filter when applicable) or <strong>ProcessingMode <code>consolidated</code></strong> (everything goes to the <code>agent_oms_polyvalent</code>), configured at the bundle level."
     },
     "fig9": {
       "alt": "Bundle obligations queue in progress",
@@ -4839,13 +4839,29 @@ window.__I18N__.en = {
     "s9": {
       "title": "9. Roles attached to the OMS module",
       "info": {
-        "title": "OMS role differentiation",
-        "body": "Several roles take part in OMS processing depending on the configured mode (<code>OMS_PROCESSOR_ROLES</code> in <code>oms_agent_service.py</code>):",
-        "l1": "<strong><code>agent_tesoro</code></strong> + <strong><code>supervisor_tesoro</code></strong> — fee_type=tesoro obligations (page 65)",
-        "l2": "<strong><code>agent_ayuntamiento</code></strong> + <strong><code>supervisor_ayuntamiento</code></strong> — fee_type=municipal obligations (page 64)",
-        "l3": "<strong><code>agent_camara</code></strong> + <strong><code>supervisor_camara</code></strong> — fee_type=chamber obligations (page 64)",
-        "l4": "<strong>6 sectoral ministries</strong> (<code>agent_min_comercio</code>, <code>agent_min_hacienda</code>, <code>agent_min_informacion</code>, <code>agent_min_turismo</code>, <code>agent_min_agricultura</code>, <code>agent_min_electricidad</code>) — Mode A per_line ministerial",
-        "l5": "<strong><code>agent_oms_polyvalent</code></strong> — Mode B consolidated (this page primarily describes this role). <code>supervisor_tesoro</code> also sees this queue."
+        "title": "Roles defined in OMS_PROCESSOR_ROLES",
+        "body": "The roles that process OMS obligations are enumerated in the constant <code>OMS_PROCESSOR_ROLES</code> (<code>app/modules/fiscal_services/services/oms_agent_service.py</code>). Each role has its supervisor counterpart.",
+        "l1": "<strong><code>agent_oms_polyvalent</code></strong> — <strong><code>consolidated</code></strong> processing (a single agent handles every obligation in the bundle, with no ministerial breakdown). <code>supervisor_tesoro</code> also supervises this queue.",
+        "l2": "<strong><code>agent_tesoro</code> + <code>supervisor_tesoro</code></strong> — <code>fee_type=tesoro</code> obligations in <code>per_line</code> mode that are not attributed to a sectoral ministry (see page 65).",
+        "l3": "<strong><code>agent_ayuntamiento</code> + <code>supervisor_ayuntamiento</code></strong> — <code>fee_type=municipal</code> obligations (see page 64).",
+        "l4": "<strong><code>agent_camara</code> + <code>supervisor_camara</code></strong> — <code>fee_type=chamber</code> obligations (see page 64).",
+        "l5": "<strong>Ministerial agents</strong> — <code>fee_type=tesoro</code> obligations filtered by <code>ministry_id</code>, in <code>per_line</code> mode. 6 sectoral ministries are seeded, each with its agent and supervisor: <code>agent_min_comercio</code>/<code>supervisor_min_comercio</code>, <code>agent_min_hacienda</code>/<code>supervisor_min_hacienda</code>, <code>agent_min_informacion</code>/<code>supervisor_min_informacion</code>, <code>agent_min_turismo</code>/<code>supervisor_min_turismo</code>, <code>agent_min_agricultura</code>/<code>supervisor_min_agricultura</code>, <code>agent_min_electricidad</code>/<code>supervisor_min_electricidad</code>."
+      }
+    },
+    "s10": {
+      "title": "10. OMS endpoints (prefix <code>/api/v1/oms</code>)",
+      "body": "OMS endpoints are registered in <code>app/modules/fiscal_services/api/oms_agent_routes.py</code>. All require the <code>fiscal_service.process_obligations</code> permission (supervisor endpoints add specific permissions).",
+      "t": {
+        "h1": "Method + route",
+        "h2": "Usage",
+        "r1": { "c2": "Obligations queue of the connected agent (filtered by status: processing, paid)." },
+        "r2": { "c2": "Dashboard KPIs (queue, processed today, compliance)." },
+        "r3": { "c2": "Detail of an obligation." },
+        "r4": { "c2": "Mark the obligation as <code>completed</code> after validation." },
+        "r5": { "c2": "Reject and return to <code>paid</code> state (re-routing)." },
+        "r6": { "c2": "Batch processing (up to 100 obligations)." },
+        "r7": { "c2": "Audit trail of the obligation." },
+        "r8": { "c2": "Team statistics (supervisors only)." }
       }
     },
     "prev": "← Previous: Treasury agent",
@@ -5046,15 +5062,15 @@ window.__I18N__.en = {
   },
   "page69": {
     "html_title": "OMS field work — Facil Manual",
-    "title": "OMS field work: bundle commercial inspection + payment collection + offline mode",
-    "description": "OMS agents (Obligation Management System) carry out <strong>commercial</strong> inspections at establishments holding bundle licences. The goal is not health-related — it is to verify that the merchant is up to date with their bundle <strong>obligations</strong> (Treasury, Town Hall, Chamber and sectoral taxes) and, if applicable, to collect (payment) of outstanding amounts on the spot (Mobile Money via BANGE or cash). These inspections take place in the field, often in areas with poor connectivity, where the web back-office (page 66) cannot be used directly. Facil provides a dedicated field mode with its own functions: licence QR scan, obligations check, Mobile Money/cash collection, encrypted MMKV offline mode with synchronisation on return. The technical implementation lives in <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.",
+    "title": "OMS field work: bundle commercial inspection + payment collection + MED / sealing flow",
+    "description": "OMS agents carry out <strong>commercial</strong> inspections at establishments holding bundle licences. The goal is not health-related — it is to verify that the merchant is up to date with their bundle <strong>obligations</strong> (the 3 fee_types: <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) and, if applicable, to collect outstanding amounts directly in the field (Mobile Money via BANGE or cash). For this field work the inspector agents use the <strong>native <code>@facil/inspector</code> app</strong> (Expo/React Native, package <code>packages/inspector/</code>) which is distinct from the citizen app <code>@facil/mobile</code>. The inspector app offers licence QR scan (<code>expo-camera</code>), commercial checklist, geo-tagged photo capture (EXIF GPS), MED form + sealing proposal, time-stamped SignaturePad with SHA-256 hash. The backend implementation of the field collection lives in <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.",
     "s1": {
       "title": "1. Day preparation (office, before leaving)",
-      "body": "Before leaving, the agent prepares their day from the back-office (see <a href=\"66-agente-min-oms.html\">page 66</a>):",
+      "body": "Before leaving, the agent prepares their day from the Web back-office (see <a href=\"66-agente-min-oms.html\">page 66</a>):",
       "l1": "Selects the establishments to visit (advance scheduling, day's route, or companies with overdue obligations flagged by the system)",
-      "l2": "Pre-downloads bundle-licence data to their tablet/smartphone (offline mode on, MMKV encryption)",
+      "l2": "Logs into the inspector app with their credentials (the app's MMKV key is generated randomly at first use and stored in the OS keychain via <code>expo-secure-store</code>)",
       "l3": "Checks that the device's battery is at full charge (inspection days are long)",
-      "l4": "Prints the checklist sheets on paper as a fallback in case of total device failure",
+      "l4": "Checks connectivity before starting: field payment collection requires <strong>an active network</strong> (no offline queue for cash in the current version)",
       "fig": {
         "alt": "Mobile dashboard daily inspections",
         "caption": "Mobile dashboard of the agent with the day's inspections (scheduled + in progress)."
@@ -5072,8 +5088,8 @@ window.__I18N__.en = {
         "caption": "Mobile screen to start an inspection: scan licence QR or manual NIF search."
       },
       "security": {
-        "title": "Screenshot protection",
-        "body": "The mobile app enables <code>FLAG_SECURE</code> (Android) and its iOS equivalent on sensitive screens: taking a screenshot or video recording will display a black screen. Implemented via the <code>useScreenProtection</code> hook in <code>packages/mobile/src/core/security/use-screen-protection.ts</code>, based on <code>expo-screen-capture</code>. Reason: prevent leakage of merchants' personal data (DIP, obligation amounts, ID photos) if an agent's phone is compromised or photographed without the agent's knowledge."
+        "title": "Screenshot protection (FLAG_SECURE)",
+        "body": "The inspector app enables <code>FLAG_SECURE</code> (Android) and the iOS equivalent <strong>globally</strong> at launch: taking a screenshot or recording video shows a black screen. Implemented via the <code>useScreenProtection</code> hook in <code>packages/inspector/src/core/security/use-screen-protection.ts</code>, called from <code>_layout.tsx</code> at the root. The hook uses <code>expo-screen-capture</code> with <code>preventScreenCaptureAsync()</code>. Reason: prevent leakage of merchants' personal data (DIP, obligation amounts, photos) if an agent's phone is compromised or photographed without the agent's knowledge."
       }
     },
     "s3": {
@@ -5087,27 +5103,27 @@ window.__I18N__.en = {
         "r1": {
           "c1": "Commercial licence visible",
           "c2": "QR posted on a wall accessible to the public",
-          "c3": "50,000 XAF fine (recorded as an additional obligation)"
+          "c3": "Mandatory observation in the report + photo. If the licence is missing, escalation to the supervisor or MED issuance."
         },
         "r2": {
           "c1": "Treasury obligations up to date",
           "c2": "No overdue unpaid <code>fee_type=tesoro</code> obligations",
-          "c3": "Immediate Mobile Money or cash collection"
+          "c3": "Immediate Mobile Money or cash collection (requires network)"
         },
         "r3": {
           "c1": "Municipal obligations up to date",
           "c2": "No overdue <code>fee_type=municipal</code> obligations (Town Hall fees)",
-          "c3": "Immediate collection or official summons"
+          "c3": "Immediate collection or MED issuance"
         },
         "r4": {
           "c1": "Chamber obligations up to date",
           "c2": "Annual Chamber dues <code>fee_type=chamber</code> up to date",
-          "c3": "Collection or penalty as the case may be"
+          "c3": "Collection or MED issuance"
         },
         "r5": {
           "c1": "Declared activity = actual activity",
           "c2": "The type of business observed on site matches the category declared on the licence",
-          "c3": "Licence re-classification + tariff adjustment"
+          "c3": "Sealing proposal with reason <code>activite_non_autorisee</code> (subject to supervisor approval)"
         },
         "r6": {
           "c1": "Commercial registry valid",
@@ -5115,9 +5131,9 @@ window.__I18N__.en = {
           "c3": "Escalation to the supervisor for verification"
         },
         "r7": {
-          "c1": "Annual sectoral fees",
-          "c2": "Specific sectoral tax (competent ministry) up to date",
-          "c3": "Notification to the sectoral ministry"
+          "c1": "Ministerial obligation (fee_type=tesoro filtered by ministry_id)",
+          "c2": "Specific sectoral tax allocated to the competent ministry up to date",
+          "c3": "Notification to the ministerial agent (see page 66 §9)"
         }
       },
       "body": "The agent goes through the checklist marking each point: <em>compliant / non-compliant / not applicable</em>. For <em>non-compliant</em> items, they can take photos directly from the app (photos are geo-tagged automatically and encrypted).",
@@ -5132,12 +5148,16 @@ window.__I18N__.en = {
     },
     "s4": {
       "title": "4. Collecting obligations in the field",
-      "body": "If the inspection reveals unpaid bundle obligations, the agent can collect (payment) immediately on the spot. The app automatically computes the total to collect (sum of overdue obligations + any penalty) and offers 2 payment options:",
-      "l1": "<strong>Mobile Money via BANGE</strong> — the merchant enters their phone number, receives a BANGE PIN by SMS, confirms. The BANGE webhook notifies Facil immediately. Preferred option (full traceability, no cash handling).",
-      "l2": "<strong>Cash on the spot</strong> — the agent collects the cash, prints a provisional receipt via Bluetooth mini-printer (if available). This receipt will be replaced by the official receipt <code>REC-2026-NNNNNN</code> after reconciliation upon return to the office (see page 66 §6).",
+      "body": "If the inspection reveals unpaid bundle obligations, the agent can collect immediately on the spot. The app automatically computes the total to collect (sum of selected overdue obligations) and offers 2 payment methods — the backend endpoint is <code>POST /inspections/{id}/collect-payment</code> with a <code>method</code> field:",
+      "l1": "<strong>Mobile Money (<code>method=mobile_money</code>)</strong> — the agent captures the merchant's phone number (regex validation <code>+240[0-9]{9}</code>). The app sends only the method + number to the backend; PIN-by-SMS orchestration and BANGE confirmation are handled by the backend (no local PIN handling in the inspector app). The BANGE webhook confirms to the backend when the payment lands. Preferred option (full traceability, no cash handling).",
+      "l2": "<strong>Cash (<code>method=cash</code>)</strong> — the agent collects the cash and records the amount in the app. The payment is inserted in <code>service_payments</code> with <code>collection_type='field'</code> and <code>workflow_status='field_collected'</code>. <strong>Note:</strong> there is no on-site printing of a provisional receipt in the current version; the official receipt <code>REC-{year}-{6 digits}</code> is generated by the backend after supervisor validation (see §6 below and page 66 §6).",
       "warn": {
-        "title": "Strict lock ordering (CLAUDE.md)",
-        "body": "The field collection transaction follows the canonical lock ordering to prevent deadlocks under load (100+ concurrent agents): <code>commercial_licenses</code> (FOR UPDATE) → <code>service_requests</code> (optimistic INSERT via partial UNIQUE index) → <code>license_obligations</code> (batch UPDATE) → <code>service_payments</code> (INSERT). Timeouts: <code>lock_timeout=3s</code>, <code>statement_timeout=5s</code>. Implementation in <code>collection_service.py::CollectionService.collect_field_payment</code>."
+        "title": "Connection required for collection",
+        "body": "The inspector app <strong>explicitly blocks collection when the network is down</strong> (<code>useNetwork().isConnected</code> in <code>payment.tsx</code>). There is no offline queue for field payments in the current version: the agent must wait for connectivity to come back before validating the collection. Reading the inspection form and ticking the checklist do work from cache (React Query <code>refetchOnReconnect=true</code> resynchronises when the network is restored)."
+      },
+      "lock": {
+        "title": "Canonical lock ordering (CLAUDE.md)",
+        "body": "The backend field-collection transaction follows the canonical lock ordering to prevent deadlocks under load (100+ concurrent agents): <code>commercial_licenses</code> (<code>FOR UPDATE</code> — root lock) → <code>service_requests</code> (optimistic INSERT via partial UNIQUE index <code>idx_sr_commercial_license_unique</code>) → <code>service_payments</code> (INSERT with <code>collection_type='field'</code>) → <code>license_obligations</code> (batch UPDATE to <code>payment_pending</code>). Transaction-scoped timeouts: <code>SET LOCAL lock_timeout = '3s'</code>, <code>SET LOCAL statement_timeout = '5s'</code>. Implementation in <code>CollectionService.collect_field_payment</code> (<code>app/modules/inspections/services/collection_service.py</code>)."
       },
       "fig": {
         "alt": "Mobile payment collection",
@@ -5168,28 +5188,35 @@ window.__I18N__.en = {
       }
     },
     "s4d": {
-      "title": "4 quater. Close out the form and sign",
-      "body": "Once all actions (checklist, collection or MED, optional sealing) are completed, the agent <strong>electronically signs</strong> the form and closes it. Endpoint <code>POST /inspections/{id}/complete</code>. The signature is time-stamped and stored as legal evidence.",
+      "title": "4 quater. Finalise the form and sign (SignaturePad)",
+      "body": "Once all actions (checklist, collection or MED, optional sealing) are completed, the agent <strong>signs the form</strong> on screen with their finger and finalises it. Implementation: <code>signature-pad.tsx</code> component based on <code>react-native-signature-canvas</code> (<code>packages/inspector/src/modules/signature/</code>). The signature is captured as <strong>Base64 PNG</strong>, together with a <strong>SHA-256 hash</strong> (tamper-detection, OWASP A08) and an <strong>ISO-8601 timestamp</strong> generated at the moment of the stroke. It is not an X.509 cryptographic signature — it is a time-stamped visual capture with an integrity hash. Backend endpoint: <code>POST /inspections/{id}/complete</code>.",
       "fig": {
         "alt": "Finalise and sign mobile inspection form",
         "caption": "Finalise-and-sign screen: the agent draws their signature + validates."
       }
     },
     "s5": {
-      "title": "5. Offline mode: how synchronisation works",
-      "diagram": "┌───────────────────────────────────────────────────────────────────────┐\n│ OMS offline mode — synchronisation on return                          │\n├───────────────────────────────────────────────────────────────────────┤\n│                                                                       │\n│  At the office (with network)                                         │\n│        │                                                              │\n│        │ Pre-download data: bundle licences, obligations,             │\n│        │  checklists, photos. MMKV AES-256 encryption                 │\n│        ▼                                                              │\n│  In the field (no network)                                            │\n│        │                                                              │\n│        ├─ Scan licence QR            → read from cache                │\n│        ├─ Tick checklist             → write to cache (queue)         │\n│        ├─ Take photos                → encrypted + local queue        │\n│        ├─ Collect cash obligations   → events in queue                │\n│        ▼                                                              │\n│  Back at the office (network restored)                                │\n│        │                                                              │\n│        │ Automatic connection detection                               │\n│        │ Automatic queue synchronisation:                             │\n│        │  • Inspections done → service_requests                       │\n│        │  • Photos → encrypted Firebase Storage                       │\n│        │  • Cash collections → bank_transactions with \"field\" flag    │\n│        │  • Audit events → audit_logs                                 │\n│        ▼                                                              │\n│  Cash reconciliation                                                  │\n│        │                                                              │\n│        │ Comparison: total collection events = cash in till            │\n│        │  • If equal: auto-validation + official receipts generated   │\n│        │  • If discrepancy: supervisor alert + sync blocked           │\n│        ▼                                                              │\n│  Final state: day closed, official receipts issued                     │\n│                                                                       │\n└───────────────────────────────────────────────────────────────────────┘"
+      "title": "5. Connectivity and offline behaviour",
+      "body": "The inspector app does not implement an <strong>offline queue for field payment collection</strong> in the current version (the <code>payment.tsx</code> code contains a <em>hard block</em> when <code>!isConnected</code>). Operations that do work from cache or in degraded mode:",
+      "l1": "<strong>Reading a previously loaded inspection form</strong> — from the React Query cache (<code>staleTime</code> 60s)",
+      "l2": "<strong>Ticking the checklist + notes</strong> — written to local state, synchronised when the network returns",
+      "l3": "<strong>Taking photos</strong> — stored locally with EXIF GPS, uploaded to Firebase Storage when the network returns",
+      "l4": "<strong>Licence QR scan</strong> — works offline (the native camera decodes locally); database validation requires the network.",
+      "l5": "<strong>Automatic synchronisation</strong> — React Query with <code>refetchOnReconnect=true</code> resynchronises pending queries when the network returns",
+      "body2": "<strong>Sensitive local storage</strong>: the inspector app uses <code>MMKV</code> with native encryption (not explicit AES-256) and a 32-character hexadecimal key generated randomly per device, stored in the OS hardware-backed keychain via <code>expo-secure-store</code> (see <code>packages/inspector/src/core/storage/mmkv.ts</code>). Authentication tokens are managed via <code>SecureStore</code> directly, not via MMKV."
     },
     "s6": {
-      "title": "6. Reconciliation on return (administrative procedure)",
-      "body": "Once back at the office, the agent must complete the administrative reconciliation within 24h. The reconciliation screen (captured on <a href=\"66-agente-min-oms.html\">page 66 §6</a>) lists all collections made during the day, grouped by establishment, and proposes an expected total. The agent counts their cash and records the amount; if it matches, the system validates automatically and generates the official receipts for each collection. If it differs, a mandatory explanation is requested and the supervisor is notified."
+      "title": "6. Reconciliation on return: supervisor validation",
+      "body": "Once back at the office, the validation flow for the field collection <strong>mandatorily goes through the entity's supervisor</strong>. Every payment inserted with <code>collection_type='field'</code> and <code>workflow_status='field_collected'</code> shows up in the supervisor's reconciliation dashboard (page 73 for Ayuntamiento+Cámara, page 72 for Tesoro). The supervisor validates by calling <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permission <code>inspection.reconcile_validate</code>); this endpoint then invokes <code>LicenseService.on_payment_completed()</code> to route the obligations to the agent of the matching <code>fee_type</code>, and triggers generation of the official receipt <code>REC-{year}-{6 digits}</code>. <strong>There is no automatic validation</strong> in the current version: the supervisor reviews each payment individually."
     },
     "s7": {
       "title": "7. Field best practices",
       "l1": "<strong>Arrive unannounced</strong> — so the establishment has no time to prepare. Pre-announced inspections lose effectiveness.",
       "l2": "<strong>Work in pairs</strong> — one agent with another as a witness, especially when cash is collected, to avoid corruption accusations.",
       "l3": "<strong>Prefer Mobile Money</strong> — even if the merchant offers cash, ask for Mobile Money first (traceability, BANGE webhook, no physical cash handling).",
-      "l4": "<strong>Sync upon return to the office</strong> — before the end of the day. The MMKV cache memory is limited (~1 GB) and fills up quickly as inspections pile up.",
-      "l5": "<strong>Keep the device charged</strong> — a device switched off during a pending sync may lose events. Power bank mandatory."
+      "l4": "<strong>Check connectivity before starting the collection</strong> — the app explicitly blocks collection when there is no network. If coverage is poor in the area, note down the obligations to collect and come back with an active network to validate.",
+      "l5": "<strong>Keep the device charged</strong> — inspection days are long. An external power bank avoids losing hours of work.",
+      "l6": "<strong>Confirm with the supervisor</strong> — when returning to the office, make sure every payment collected in the field (<code>field_collected</code>) has been validated by the supervisor before the day closes. Without that validation, the official receipt is not issued and the obligation stays in limbo."
     },
     "prev": "← Previous: Verify functions",
     "next": "Next: Agent AI assistant →"
@@ -5280,7 +5307,11 @@ window.__I18N__.en = {
     },
     "s3": {
       "title": "3. BANGE bank reconciliation",
-      "body": "The Treasury's key section: reconciling actual payments with expected amounts. Transactions are filtered by date, status, amount, BANGE identifier."
+      "body": "The Treasury's key section: reconciling actual payments with expected amounts. Transactions are filtered by date, status, amount, BANGE identifier.",
+      "field": {
+        "title": "Validation of field-collected payments (OMS field inspections)",
+        "body": "Payments collected in the field by OMS agents during inspections (see <a href=\"69-trabajo-terreno-oms.html\">page 69</a>) reach the Treasury with <code>collection_type='field'</code> and <code>workflow_status='field_collected'</code>. To validate them definitively and trigger issuance of the official receipt, the Treasury supervisor calls the endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permission <code>inspection.reconcile_validate</code>). This endpoint invokes <code>LicenseService.on_payment_completed()</code> to route the obligations to their competent agent based on <code>fee_type</code> and the optional <code>ministry_id</code>."
+      }
     },
     "s4": {
       "title": "4. Reports and analytics",
@@ -5443,7 +5474,11 @@ window.__I18N__.en = {
     },
     "s5": {
       "title": "5. Local obligations (fees + quotas)",
-      "body": "Obligations group municipal fees (market, cemetery, works, public way occupancy) and Chamber quotas (annual registration, by-law updates). The supervisor monitors overdue items and plans follow-ups or inspections."
+      "body": "Obligations group municipal fees (market, cemetery, works, public way occupancy, <code>fee_type=municipal</code>) and Chamber quotas (annual registration, by-law updates, <code>fee_type=chamber</code>). The supervisor monitors overdue items and plans follow-ups or inspections.",
+      "field": {
+        "title": "Validation of field-collected payments (OMS field inspections)",
+        "body": "Payments collected in the field by OMS agents during inspections (see <a href=\"69-trabajo-terreno-oms.html\">page 69</a> and the mention on <a href=\"64-agente-ayuntamiento-camara.html#s6\">page 64 §6</a>) reach the Ayuntamiento or Cámara queue with <code>collection_type='field'</code> and <code>workflow_status='field_collected'</code>. To validate them definitively and enable generation of the official receipt <code>REC-{year}-{6 digits}</code>, the Ayu/Cám supervisor calls the endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permission <code>inspection.reconcile_validate</code>). This endpoint invokes <code>LicenseService.on_payment_completed()</code>, which then routes the obligation to the competent Ayuntamiento agent (<code>fee_type=municipal</code>) or Cámara agent (<code>fee_type=chamber</code>)."
+      }
     },
     "s6": {
       "title": "6. Comparison with the Treasury supervisor",
@@ -6401,53 +6436,77 @@ window.__I18N__.en = {
   "page89": {
     "html_title": "Admin Workflows + Appointments + Entities — Facil Manual",
     "title": "Workflows, Appointments, Entities and Menus configuration",
-    "description": "This section gathers the configuration around the operational flow of services. Important: workflows in Facil are <strong>predefined in code</strong> (no visual drag-and-drop designer) — 36 workflows cover all current cases (passports, residence, vehicles, etc.). The admin here configures the parameters: supplementary fees, appointments (schedules and rules), administrative entities, cities and locations, plus the dynamic menu per role.",
+    "description": "This section gathers the configuration around the operational flow of services. Important: workflows in Facil are <strong>predefined in code</strong> (no visual drag-and-drop designer) — <strong>37 workflow_codes</strong> cover all current cases (passports, residence, vehicles, contracts, bundle, field inspections, etc.), enumerated in the seed <code>034_valid_workflow_codes.sql</code>. The admin here configures the parameters: supplementary fees, appointments (schedules and rules), administrative entities, cities and locations, plus the dynamic menu per role.",
     "s1": {
-      "title": "1. Catalogue of the 36 predefined workflows",
-      "body": "Workflows are defined by the backend code (<code>workflow_engine</code>) and represent the full lifecycle of each type of fiscal service. The admin views them read-only; modifications require a backend release."
+      "title": "1. Catalogue of the 37 predefined workflow_codes",
+      "body": "Workflows are defined by the backend code (<code>workflows</code> module + <code>workflow_definitions</code> table, validated against the CHECK constraint generated by the seed <code>034_valid_workflow_codes.sql</code>) and represent the full lifecycle of each type of fiscal service. The admin views them read-only; modifications require a backend release.",
+      "t": {
+        "h1": "Family",
+        "h2": "Qty.",
+        "h3": "workflow_codes",
+        "r1": { "c1": "Passports (CNEDOGE)" },
+        "r2": { "c1": "Driving licences (DGT)" },
+        "r3": { "c1": "Contracts (ONRC)" },
+        "r4": { "c1": "Immigration (visas + stay + exit)" },
+        "r5": { "c1": "Residence (CNEDOGE)" },
+        "r6": { "c1": "Vehicles (DGT + ITV)" },
+        "r7": { "c1": "Public Service (MINFP)" },
+        "r8": { "c1": "Field inspections" },
+        "r9": { "c1": "Bundle payment (company bundle)" },
+        "total": "Total"
+      }
     },
     "s2": {
-      "title": "2. Configuration of supplementary fees",
-      "body": "On top of a service's base fee, the admin can define supplements (fiscal stamp, policy, complementary form). These supplements are assigned per workflow."
+      "title": "2. Tariffs: base (workflow_tariffs) + supplements (tariff_supplements)",
+      "body": "The system distinguishes two tariff layers: the <strong>base tariff per workflow</strong> (table <code>workflow_tariffs</code>, 31 entries seeded for the 37 workflows) and <strong>transversal supplements</strong> (table <code>tariff_supplements</code>) applicable on a case-by-case basis. There are currently <strong>3 seeded supplements</strong> that the admin can activate or edit:",
+      "t": {
+        "h1": "Code",
+        "h2": "Description",
+        "h3": "Amount (XAF)",
+        "r1": { "c2": "Complementary cédula (administrative use)" },
+        "r2": { "c2": "Annexed fiscal policy" },
+        "r3": { "c2": "Official fiscal stamp" }
+      },
+      "body2": "Each supplement is associated with one or several workflows; the tariff-calculation engine (<code>fiscal_services</code>) adds it to the base tariff when the request is created."
     },
     "s3": {
-      "title": "3. Appointment management (schedules + slots)",
-      "intro": "For services that require an in-person appointment (CNEDOGE biometric, DGT practical exam, Immigration office card pickup), the admin configures office hours per entity + city, defines slots, blocked dates (holidays), waiting rules (priority/workflow)."
+      "title": "3. Appointment management (slot configs + delay rules)",
+      "intro": "For services that require an in-person appointment (CNEDOGE biometric, DGT practical exam, Immigration card pickup), the admin configures office hours per entity + city (table <code>appointment_slot_configs</code>, <strong>15 configurations</strong> seeded: 5 days × 3 entities), blocked dates (national holidays), and waiting rules per priority (table <code>appointment_delay_rules</code>, <strong>15 rules</strong> with levels <code>URGENT</code> 1–2 days, <code>NORMAL</code> 2–5 days, <code>LOW</code> 4–7 days depending on the entity). Slots have a default duration of 30 minutes with 2 places/slot (1 place on Wednesdays)."
     },
     "s4": {
-      "title": "4. Administrative entities",
-      "body": "Entities are the 20+ public administrations operating in Facil: AYUNTAMIENTO, CNEDOGE, DGT, etc. Each entity has a code, a name, a parent type (ministry or municipality), and the workflows it handles."
+      "title": "4. Administrative entities (20 entities)",
+      "body": "The entities are the <strong>20 public administrations</strong> seeded in Facil (table <code>entities</code>, seed <code>014_entities.sql</code>): MINFP, POLICIA, TESORO, AYUNTAMIENTO, CAMARA_COMERCIO, MIN_HACIENDA, MIN_COMERCIO, MIN_INFORMACION, MIN_TURISMO, MIN_AGRICULTURA, MIN_ELECTRICIDAD, CNEDOGE_PASAPORTE, ONRC, OFIVE, DGT, COMISARIA, EXTRANJERIA, CNEDOGE, CNEDOGE_RESIDENCIA, ITV. Each entity has a code, a name, a parent type (ministry or municipality), and the <code>workflow_codes</code> it handles (JSONB column <code>workflow_codes</code>)."
     },
     "s5": {
-      "title": "5. Cities and locations",
-      "body": "17 cities of Equatorial Guinea registered (Bata, Ebebiyín, Malabo, Mongomo, …). Each physical location (office, headquarters) is linked to an entity and a city with its address and main-office flag."
+      "title": "5. Cities (17) and physical locations (34)",
+      "body": "<strong>17 cities</strong> of Equatorial Guinea registered (seed <code>013_cities.sql</code>): Bata, Ebebiyin, Evinayong, Mongomo, Oyala, Malabo, Baney, Luba, San Antonio de Pale, Mbini, Niefang, Micomeseng, Anisok, Riaba, Cogo, Akurenam, Nsork. Each with its region (Insular or Continental) and an optional capital flag. The <strong>34 physical locations</strong> (table <code>entity_locations</code>, seed <code>015_entity_locations.sql</code>) link an entity to a city with its address and a main-office flag (the entity's head office)."
     },
     "s6": {
       "title": "6. Dynamic menu configuration (Menu Config)",
-      "body": "Each role has its own menu adapted to its permissions. Two configuration modes are available: <strong>workflow-based</strong> (automatic, based on the entity's <code>workflow_codes</code>) or <strong>module-based</strong> (manual, explicit JSON in <code>roles.menu_config</code>). The admin manages the workflow → menu mapping from the dedicated screen."
+      "body": "Each role has its own menu adapted to its permissions. Two configuration modes are available: <strong>workflow-based</strong> (automatic, based on the entity's <code>workflow_codes</code> + table <code>workflow_menu_mapping</code> with <strong>12 mappings</strong> seeded in <code>036_workflow_menu_mapping.sql</code>) or <strong>module-based</strong> (manual, explicit JSON in <code>roles.menu_config</code>). The admin manages the workflow → menu mapping from the screen <code>/dashboard/admin/menu-config</code>, via the CRUD endpoints <code>GET/POST/PUT/DELETE /menu-config/workflow-mappings</code>."
     },
     "s7": {
       "title": "7. Why no drag-and-drop Workflow Designer?",
       "info": {
         "title": "Workflows predefined for safety",
-        "body": "Workflows in Facil cover the official fiscal services of Equatorial Guinea. An ad-hoc visual modification from the UI would introduce significant risks: a misconfigured workflow could let fraud through, lose requests, or generate inconsistencies with legislation. That is why workflows are defined in code (tested, audited, versioned) and only the parameters (fees, schedules, appointments, entities) are configurable by the admin. If a new law introduces a new type of service, the technical team develops the corresponding workflow and deploys it with a release."
+        "body": "The 37 workflows in Facil cover the official fiscal services of Equatorial Guinea. An ad-hoc visual modification from the UI would introduce significant risks: a misconfigured workflow could let fraud through, lose requests, or generate inconsistencies with legislation. That is why workflows are defined in code (tested, audited, versioned) and validated by the CHECK constraint generated from <code>034_valid_workflow_codes.sql</code>. Only the <em>parameters</em> (base tariffs + 3 supplements, appointment schedules and rules, entities, locations, menus) are configurable by the admin. If a new law introduces a new type of service, the technical team develops the corresponding workflow, updates the seed <code>034_valid_workflow_codes.sql</code>, and deploys it with a release."
       }
     },
     "fig0": {
-      "alt": "Catalogue 36 workflows grouped",
-      "caption": "36 workflows grouped by family (Passports, Residence, Vehicles, …)."
+      "alt": "Catalogue 37 workflows grouped by family",
+      "caption": "37 workflow_codes grouped by family (Passports, Driving, Contracts, Immigration, Residence, Vehicles, Public Service, Inspections, Bundle)."
     },
     "fig1": {
-      "alt": "Workflow detail Passport request info fees docs appointments",
-      "caption": "Detail of a workflow (\"Passport request\"): info + fees + required documents + appointments."
+      "alt": "Workflow detail Passport request info tariffs docs appointments",
+      "caption": "Detail of a workflow (\"Passport request\"): info + tariffs + required documents + appointments."
     },
     "fig2": {
-      "alt": "Fee supplements list",
-      "caption": "Fee supplements list with code, name, amount."
+      "alt": "Tariff supplements list",
+      "caption": "List of tariff supplements with code, name, amount."
     },
     "fig3": {
       "alt": "Create supplement code name amount",
-      "caption": "Create supplement: code, name, XAF amount, effective period."
+      "caption": "Create supplement: code, name, XAF amount, validity."
     },
     "fig4": {
       "alt": "Schedule configuration entity city",

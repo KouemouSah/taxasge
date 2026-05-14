@@ -203,7 +203,7 @@
 
         <section>
           <h2 data-i18n="page73.s5.title">5. Obligaciones locales (tasas + cuotas)</h2>
-          <p data-i18n="page73.s5.body">Las obligaciones agrupan las tasas municipales (mercado, cementerio, obras, ocupación vía pública) y las cuotas Cámara (inscripción anual, actualizaciones estatutos). El supervisor monitorea los vencidos y planifica relances ou inspecciones.</p>
+          <p data-i18n="page73.s5.body">Las obligaciones agrupan las tasas municipales (mercado, cementerio, obras, ocupación vía pública, <code>fee_type=municipal</code>) y las cuotas Cámara (inscripción anual, actualizaciones estatutos, <code>fee_type=chamber</code>). El supervisor monitorea los vencidos y planifica relances o inspecciones.</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/supervisor-ayu-camara/OB.png" alt="Obligaciones en curso" data-i18n-attr-alt="page73.fig8.alt" loading="lazy">
@@ -213,6 +213,10 @@
               <img src="_assets/screenshots/web/supervisor-ayu-camara/OB1.png" alt="Detalle obligaciones por entidad" data-i18n-attr-alt="page73.fig9.alt" loading="lazy">
               <figcaption data-i18n="page73.fig9.caption">Desglose detallado de obligaciones por entidad/categoría.</figcaption>
             </figure>
+          </div>
+          <div class="callout callout-info">
+            <h3 class="callout-title" data-i18n="page73.s5.field.title">Validación de cobros field-collected (inspecciones OMS terreno)</h3>
+            <p data-i18n-html="page73.s5.field.body">Los pagos cobrados en terreno por los agentes OMS durante las inspecciones (ver <a href="69-trabajo-terreno-oms.html">página 69</a> y la mención en <a href="64-agente-ayuntamiento-camara.html#s6">página 64 §6</a>) llegan a la cola Ayuntamiento o Cámara con <code>collection_type='field'</code> y <code>workflow_status='field_collected'</code>. Para validarlos definitivamente y permitir la generación del recibo oficial <code>REC-{año}-{6 dígitos}</code>, el supervisor Ayu/Cám llama el endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permiso <code>inspection.reconcile_validate</code>). Este endpoint invoca <code>LicenseService.on_payment_completed()</code> que enruta entonces la obligación al agente Ayuntamiento (<code>fee_type=municipal</code>) o Cámara (<code>fee_type=chamber</code>) competente.</p>
           </div>
         </section>
 
