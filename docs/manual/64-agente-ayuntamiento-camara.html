@@ -200,7 +200,7 @@
               <figcaption data-i18n="page64.fig4.caption">Validación de un pago de Cuota Cámara Comercio (50.000 XAF).</figcaption>
             </figure>
           </div>
-          <p data-i18n="page64.s3.body">Cuando el agente confirma, el sistema genera el recibo PDF oficial con un número único de la forma <code>REC-2026-NNNNNN</code>, sello de la entidad, firma del agente y QR de verificación. Una notificación es enviada inmediatamente al comerciante (email + push).</p>
+          <p data-i18n="page64.s3.body">Cuando el agente confirma, el sistema genera el recibo PDF oficial con un número único de la forma <code>REC-{año}-{6 dígitos}</code> (ej. <code>REC-2026-000011</code>), generado por <code>generate_receipt_number_from_db()</code> con secuenciación anual y <code>pg_advisory_xact_lock</code>. El PDF incluye sello de la entidad, firma del agente y QR de verificación (página 57). Una notificación es enviada inmediatamente al comerciante (email + push).</p>
         </section>
 
         <section>
@@ -236,12 +236,12 @@
         <section>
           <h2 data-i18n="page64.s6.title">6. Particularidades del workflow comercial</h2>
           <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page64.s6.info.title">Inspección terreno (OMS)</h3>
-            <p data-i18n="page64.s6.info.body">Cuando un agente OMS (Obligation Management System — sin relación con la salud) realiza una inspección comercial bundle en el terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) y collectó una obligación en efectivo en el local, esa obligación entra en el flujo Ayuntamiento o Cámara según su <code>fee_type</code> (municipal o chamber). El agente OMS escanea el QR de la licencia, registra el cobro, y un evento se crea automáticamente en la cola del agente Ayuntamiento/Cámara para reconciliación al final del día.</p>
+            <h3 class="callout-title" data-i18n="page64.s6.info.title">Inspección terreno (OMS) y reconciliación supervisor</h3>
+            <p data-i18n="page64.s6.info.body">Cuando un agente OMS realiza una inspección comercial bundle en el terreno (ver <a href="69-trabajo-terreno-oms.html">página 69</a>) y cobra una obligación en el local, el pago se inserta en <code>service_payments</code> con <code>collection_type='field'</code> y workflow_status <code>field_collected</code>. La obligación queda asociada a su <code>fee_type</code> (<code>municipal</code> = Ayuntamiento, <code>chamber</code> = Cámara, <code>tesoro</code> = Tesoro Público). Para validar definitivamente el cobro terrain, el supervisor de la entidad llama el endpoint <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permiso <code>inspection.reconcile_validate</code>) ; este endpoint enruta entonces la obligación al agente Ayuntamiento o Cámara compétente (vía <code>LicenseService.on_payment_completed()</code>) para la emisión del recibo oficial.</p>
           </div>
           <div class="callout callout-warning">
-            <h3 class="callout-title" data-i18n="page64.s6.warn.title">Pagos en efectivo: declaración obligatoria</h3>
-            <p data-i18n="page64.s6.warn.body">Para los pagos en efectivo superiores a 1.000.000 XAF, el agente debe pedir un justificante de origen de fondos (extracto bancario, justificante de venta, etc.) y adjuntarlo al expediente. Esta obligación viene de la regulación CEMAC contra el blanqueo de capitales. Si el cliente no puede justificar, la decisión obliga a <code>escalate</code> al supervisor.</p>
+            <h3 class="callout-title" data-i18n="page64.s6.warn.title">Pagos en efectivo: vigilancia regulación CEMAC (regla externa)</h3>
+            <p data-i18n="page64.s6.warn.body">La regulación CEMAC contra el blanqueo de capitales impone que los pagos en efectivo de importe elevado se acompañen de un justificante de origen de fondos. Esta regla es <strong>externa al código de Facil</strong> (no hay actualmente umbral codificado dentro del workflow Ayuntamiento/Cámara), pero está parte del protocolo profesional del agente. Si el cliente no puede justificar el origen, el agente puede iniciar un <code>escalate</code> al supervisor mediante la acción estándar (página 62 §2).</p>
           </div>
         </section>
 

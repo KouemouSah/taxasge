@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Trabajo terreno OMS — inspección comercial bundle in situ: scan QR licencia, verificación obligaciones, collecte paiement Mobile Money/Cash, mode offline MMKV.">
+  <meta name="description" content="Trabajo terreno OMS — inspección comercial bundle in situ con la app inspector: scan QR licencia, checklist comercial, collection paiement Mobile Money/Cash (conexión requerida), MED 72h, propuesta scellement (8 SealReason), firma SignaturePad horodatée, lock ordering canónico, FLAG_SECURE Android.">
   <title>Trabajo terreno OMS — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,17 +142,17 @@
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page69.title">Trabajo terreno OMS: inspección comercial bundle + collection de paiements + mode offline</h1>
-        <p class="page-description" data-i18n="page69.description">Los agentes OMS (Obligation Management System) realizan inspecciones <strong>comerciales</strong> en los establecimientos titulares de licencias bundle. El objetivo no es sanitario — es verificar que el comerciante está al día de sus <strong>obligaciones</strong> bundle (tasas Tesoro, Ayuntamiento, Cámara, impuestos sectoriales) y eventualmente collectar los pagos pendientes directamente en el terreno (Mobile Money via BANGE o cash). Estas inspecciones se hacen sobre el terreno, a menudo en zonas con mala conectividad, donde el back-office Web (página 66) no es utilizable directamente. Facil propone un mode terreno específico con sus propias funciones: scan QR de licencia, verificación obligations, collection Mobile Money/cash, mode offline MMKV cifrado con sincronización al regreso. La implementación técnica está en <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.</p>
+        <h1 class="page-title" data-i18n="page69.title">Trabajo terreno OMS: inspección comercial bundle + collection de paiements + flujo MED/scellement</h1>
+        <p class="page-description" data-i18n="page69.description">Los agentes OMS realizan inspecciones <strong>comerciales</strong> en los establecimientos titulares de licencias bundle. El objetivo no es sanitario — es verificar que el comerciante está al día de sus <strong>obligaciones</strong> bundle (los 3 fee_types : <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) y eventualmente cobrar los pagos pendientes directamente en el terreno (Mobile Money via BANGE o cash). Para este trabajo terreno los agentes inspectors utilizan la <strong>app nativa <code>@facil/inspector</code></strong> (Expo/React Native, paquete <code>packages/inspector/</code>) distinta de la app ciudadana <code>@facil/mobile</code>. La app inspector ofrece scan QR de licencia (<code>expo-camera</code>), checklist comercial, captura de fotos geo-etiquetadas (EXIF GPS), formulario MED + propuesta de scellement, firma SignaturePad horodatée con hash SHA-256. La implementación backend de la collection terrain está en <code>packages/backend/app/modules/inspections/services/collection_service.py</code>.</p>
 
         <section>
           <h2 data-i18n="page69.s1.title">1. Preparación de la jornada (oficina, antes de salir)</h2>
-          <p data-i18n="page69.s1.body">Antes de salir, el agente prepara su jornada desde el back-office (ver <a href="66-agente-min-oms.html">página 66</a>) :</p>
+          <p data-i18n="page69.s1.body">Antes de salir, el agente prepara su jornada desde el back-office Web (ver <a href="66-agente-min-oms.html">página 66</a>) :</p>
           <ul>
             <li data-i18n="page69.s1.l1">Selecciona los establecimientos a visitar (programación previa, ruta del día, o empresas con obligaciones vencidas detectadas por el sistema)</li>
-            <li data-i18n="page69.s1.l2">Pre-descarga los datos de las licencias bundle en su tablet/smartphone (modo offline activado, cifrado MMKV)</li>
+            <li data-i18n="page69.s1.l2">Conecta la app inspector con sus credenciales (la clave MMKV de la app se genera aleatoriamente al primer uso y se almacena en el keychain del SO vía <code>expo-secure-store</code>)</li>
             <li data-i18n="page69.s1.l3">Verifica que la batería del terminal está al máximo (los días de inspección son largos)</li>
-            <li data-i18n="page69.s1.l4">Imprime las hojas de checklist en papel como respaldo en caso de fallo total del terminal</li>
+            <li data-i18n="page69.s1.l4">Verifica la conectividad antes de iniciar : la collection de pagos en terreno requiere <strong>red activa</strong> (no hay queue offline para cash en la versión actual)</li>
           </ul>
           <figure>
             <img src="_assets/screenshots/mobile/inspection/inspection_dashbord.png" alt="Dashboard mobile inspecciones del día" data-i18n-attr-alt="page69.s1.fig.alt" loading="lazy">
@@ -174,8 +174,8 @@
           </figure>
 
           <div class="callout callout-warning">
-            <h3 class="callout-title" data-i18n="page69.s2.security.title">Protección capture d'écran</h3>
-            <p data-i18n-html="page69.s2.security.body">La aplicación mobile activa <code>FLAG_SECURE</code> (Android) et l'équivalent iOS en los écrans sensibles : tomar una capture d'écran o un enregistrement vidéo affichera un écran noir. Implémenté via le hook <code>useScreenProtection</code> dans <code>packages/mobile/src/core/security/use-screen-protection.ts</code>, basé sur <code>expo-screen-capture</code>. Raison : éviter la fuite de données personnelles des commerçants (DIP, montants obligaciones, photos d'identité) si le téléphone d'un agente est compromis o photographié à l'insu de l'agente.</p>
+            <h3 class="callout-title" data-i18n="page69.s2.security.title">Protección captura de pantalla (FLAG_SECURE)</h3>
+            <p data-i18n-html="page69.s2.security.body">La app inspector activa <code>FLAG_SECURE</code> (Android) y el equivalente iOS de forma <strong>global</strong> al lanzamiento : tomar una captura de pantalla o una grabación de vídeo mostrará una pantalla negra. Implementado vía el hook <code>useScreenProtection</code> en <code>packages/inspector/src/core/security/use-screen-protection.ts</code>, llamado en <code>_layout.tsx</code> del root. El hook utiliza <code>expo-screen-capture</code> con <code>preventScreenCaptureAsync()</code>. Razón : evitar la fuga de datos personales de los comerciantes (DIP, montantes obligaciones, fotos) si el teléfono del agente es comprometido o fotografiado a su insu.</p>
           </div>
         </section>
 
@@ -194,13 +194,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td>1</td><td data-i18n="page69.s3.t.r1.c1">Licencia comercial visible</td><td data-i18n="page69.s3.t.r1.c2">QR pegado en pared accesible al público</td><td data-i18n="page69.s3.t.r1.c3">Sanción 50.000 XAF (registrada como obligación adicional)</td></tr>
-                <tr><td>2</td><td data-i18n="page69.s3.t.r2.c1">Obligaciones Tesoro al día</td><td data-i18n="page69.s3.t.r2.c2">No obligaciones <code>fee_type=tesoro</code> vencidas sin pagar</td><td data-i18n="page69.s3.t.r2.c3">Collection inmediata Mobile Money o cash</td></tr>
-                <tr><td>3</td><td data-i18n="page69.s3.t.r3.c1">Obligaciones Municipal al día</td><td data-i18n="page69.s3.t.r3.c2">No obligaciones <code>fee_type=municipal</code> vencidas (tasas Ayuntamiento)</td><td data-i18n="page69.s3.t.r3.c3">Collection inmediata o convocatoria oficial</td></tr>
-                <tr><td>4</td><td data-i18n="page69.s3.t.r4.c1">Obligaciones Chamber al día</td><td data-i18n="page69.s3.t.r4.c2">Cuotas anuales Cámara <code>fee_type=chamber</code> al día</td><td data-i18n="page69.s3.t.r4.c3">Collection o pénalité según el caso</td></tr>
-                <tr><td>5</td><td data-i18n="page69.s3.t.r5.c1">Actividad declarada = actividad real</td><td data-i18n="page69.s3.t.r5.c2">El tipo de comercio observado in situ coincide con la categoría declarada en la licencia</td><td data-i18n="page69.s3.t.r5.c3">Re-clasificación de la licencia + ajuste tarifa</td></tr>
+                <tr><td>1</td><td data-i18n="page69.s3.t.r1.c1">Licencia comercial visible</td><td data-i18n="page69.s3.t.r1.c2">QR pegado en pared accesible al público</td><td data-i18n="page69.s3.t.r1.c3">Observación obligatoria en la ficha + foto. Si no aparece la licencia, escalación al supervisor o emisión MED.</td></tr>
+                <tr><td>2</td><td data-i18n="page69.s3.t.r2.c1">Obligaciones Tesoro al día</td><td data-i18n="page69.s3.t.r2.c2">No obligaciones <code>fee_type=tesoro</code> vencidas sin pagar</td><td data-i18n="page69.s3.t.r2.c3">Collection inmediata Mobile Money o cash (requiere red)</td></tr>
+                <tr><td>3</td><td data-i18n="page69.s3.t.r3.c1">Obligaciones Municipal al día</td><td data-i18n="page69.s3.t.r3.c2">No obligaciones <code>fee_type=municipal</code> vencidas (tasas Ayuntamiento)</td><td data-i18n="page69.s3.t.r3.c3">Collection inmediata o emisión MED</td></tr>
+                <tr><td>4</td><td data-i18n="page69.s3.t.r4.c1">Obligaciones Chamber al día</td><td data-i18n="page69.s3.t.r4.c2">Cuotas anuales Cámara <code>fee_type=chamber</code> al día</td><td data-i18n="page69.s3.t.r4.c3">Collection o emisión MED</td></tr>
+                <tr><td>5</td><td data-i18n="page69.s3.t.r5.c1">Actividad declarada = actividad real</td><td data-i18n="page69.s3.t.r5.c2">El tipo de comercio observado in situ coincide con la categoría declarada en la licencia</td><td data-i18n="page69.s3.t.r5.c3">Propuesta de scellement con razón <code>activite_non_autorisee</code> (sujeta a aprobación supervisor)</td></tr>
                 <tr><td>6</td><td data-i18n="page69.s3.t.r6.c1">Registro mercantil válido</td><td data-i18n="page69.s3.t.r6.c2">Empresa registrada en el registro Cámara, NIF activo</td><td data-i18n="page69.s3.t.r6.c3">Escalación al supervisor para verificación</td></tr>
-                <tr><td>7</td><td data-i18n="page69.s3.t.r7.c1">Tasas anuales sectoriales</td><td data-i18n="page69.s3.t.r7.c2">Impuesto sectorial específico (ministerio competente) al día</td><td data-i18n="page69.s3.t.r7.c3">Notificación al ministerio sectorial</td></tr>
+                <tr><td>7</td><td data-i18n="page69.s3.t.r7.c1">Obligación ministerial (fee_type=tesoro filtrada por ministry_id)</td><td data-i18n="page69.s3.t.r7.c2">Impuesto sectorial específico imputado al ministerio competente al día</td><td data-i18n="page69.s3.t.r7.c3">Notificación al agente ministerial (ver página 66 §9)</td></tr>
               </tbody>
             </table>
           </div>
@@ -221,15 +221,20 @@
 
         <section>
           <h2 data-i18n="page69.s4.title">4. Collection de obligaciones en el terreno</h2>
-          <p data-i18n="page69.s4.body">Si la inspección revela obligaciones bundle no pagadas, el agente puede collectar inmediatamente en el lugar. La app calcula automáticamente el total a cobrar (suma de las obligaciones vencidas + eventual penalité) y propide 2 opciones de paiement :</p>
+          <p data-i18n="page69.s4.body">Si la inspección revela obligaciones bundle no pagadas, el agente puede cobrar inmediatamente en el lugar. La app calcula automáticamente el total a cobrar (suma de las obligaciones vencidas seleccionadas) y propone 2 métodos de pago — el endpoint backend es <code>POST /inspections/{id}/collect-payment</code> con campo <code>method</code> :</p>
           <ul>
-            <li data-i18n-html="page69.s4.l1"><strong>Mobile Money via BANGE</strong> — el comerciante saisit su número de teléfono, recibe un PIN SMS BANGE, confirma. Webhook BANGE notifica Facil inmediatamente. Solución preferida (trazabilité totale, sin manipulación de cash).</li>
-            <li data-i18n-html="page69.s4.l2"><strong>Cash en el lugar</strong> — el agente collectó el efectivo, imprime un recibo provisional via mini-impresora Bluetooth (si dispone). Este recibo será sustituido por el recibo oficial <code>REC-2026-NNNNNN</code> tras la reconciliación al regreso al servicio (ver página 66 §6).</li>
+            <li data-i18n-html="page69.s4.l1"><strong>Mobile Money (<code>method=mobile_money</code>)</strong> — el agente captura el número de teléfono del comerciante (validación regex <code>+240[0-9]{9}</code>). La app envía solamente la método + número al backend ; la orquestación PIN SMS y la confirmación BANGE están gestionadas por el backend (no hay PIN local en la app inspector). Webhook BANGE confirma al backend cuando el pago llega. Solución preferida (trazabilidad total, sin manipulación de cash).</li>
+            <li data-i18n-html="page69.s4.l2"><strong>Cash (<code>method=cash</code>)</strong> — el agente cobra el efectivo y registra el importe en la app. El pago se inserta en <code>service_payments</code> con <code>collection_type='field'</code> y <code>workflow_status='field_collected'</code>. <strong>Atención :</strong> no hay impresión de recibo provisional en el sitio en la versión actual ; el recibo oficial <code>REC-{año}-{6 dígitos}</code> es generado por el backend tras la validación supervisor (ver §6 abajo y página 66 §6).</li>
           </ul>
 
           <div class="callout callout-warning">
-            <h3 class="callout-title" data-i18n="page69.s4.warn.title">Lock ordering strict (CLAUDE.md)</h3>
-            <p data-i18n="page69.s4.warn.body">La transaction de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agents simultáneos) : <code>commercial_licenses</code> (FOR UPDATE) → <code>service_requests</code> (INSERT optimista via partial UNIQUE index) → <code>license_obligations</code> (UPDATE batch) → <code>service_payments</code> (INSERT). Timeouts : <code>lock_timeout=3s</code>, <code>statement_timeout=5s</code>. Implementación en <code>collection_service.py::CollectionService.collect_field_payment</code>.</p>
+            <h3 class="callout-title" data-i18n="page69.s4.warn.title">Conexión requerida para la collection</h3>
+            <p data-i18n="page69.s4.warn.body">La app inspector <strong>bloquea explícitamente la collection cuando no hay red</strong> (<code>useNetwork().isConnected</code> en <code>payment.tsx</code>). No existe una queue offline para los pagos terrain en la versión actual : el agente debe esperar el restablecimiento de la conectividad antes de validar el cobro. La lectura de la ficha de inspección y la marca de la checklist sí funcionan en cache (React Query <code>refetchOnReconnect=true</code> resincroniza al volver la red).</p>
+          </div>
+
+          <div class="callout callout-warning">
+            <h3 class="callout-title" data-i18n="page69.s4.lock.title">Lock ordering canónico (CLAUDE.md)</h3>
+            <p data-i18n="page69.s4.lock.body">La transacción backend de collection terrain sigue el lock ordering canónico para evitar deadlocks bajo carga (100+ agentes simultáneos) : <code>commercial_licenses</code> (<code>FOR UPDATE</code> — root lock) → <code>service_requests</code> (INSERT optimista vía partial UNIQUE index <code>idx_sr_commercial_license_unique</code>) → <code>service_payments</code> (INSERT con <code>collection_type='field'</code>) → <code>license_obligations</code> (UPDATE batch a <code>payment_pending</code>). Timeouts transaction-scoped : <code>SET LOCAL lock_timeout = '3s'</code>, <code>SET LOCAL statement_timeout = '5s'</code>. Implementación en <code>CollectionService.collect_field_payment</code> (<code>app/modules/inspections/services/collection_service.py</code>).</p>
           </div>
 
           <figure>
@@ -266,57 +271,30 @@
         </section>
 
         <section>
-          <h2 data-i18n="page69.s4d.title">4 quater. Finalizar la ficha y firmar</h2>
-          <p data-i18n="page69.s4d.body">Una vez completadas todas las acciones (checklist, collection ou MED, scellement éventuel), el agente <strong>firma electrónicamente</strong> la ficha y la finaliza. Endpoint <code>POST /inspections/{id}/complete</code>. La firma est horodatée et stockée comme preuve juridique.</p>
+          <h2 data-i18n="page69.s4d.title">4 quater. Finalizar la ficha y firmar (SignaturePad)</h2>
+          <p data-i18n-html="page69.s4d.body">Una vez completadas todas las acciones (checklist, collection o MED, scellement eventual), el agente <strong>firma la ficha</strong> en la pantalla con el dedo y la finaliza. Implementación : composante <code>signature-pad.tsx</code> basado en <code>react-native-signature-canvas</code> (<code>packages/inspector/src/modules/signature/</code>). La firma se captura como <strong>PNG Base64</strong>, acompañada de un <strong>hash SHA-256</strong> (tamper-detection, OWASP A08) y un <strong>timestamp ISO-8601</strong> generado en el momento del trazo. No es una firma criptográfica X.509 — es una captura visual horodatada con hash de integridad. Endpoint backend : <code>POST /inspections/{id}/complete</code>.</p>
           <figure>
             <img src="_assets/screenshots/mobile/inspection/inspection_finaliser_la_fiche_signer_action.png" alt="Finalizar y firmar ficha de inspección mobile" data-i18n-attr-alt="page69.s4d.fig.alt" loading="lazy">
-            <figcaption data-i18n="page69.s4d.fig.caption">Pantalla finalizar y firmar: el agente trace su firma + valide.</figcaption>
+            <figcaption data-i18n="page69.s4d.fig.caption">Pantalla finalizar y firmar: el agente traza su firma + valida.</figcaption>
           </figure>
         </section>
 
         <section>
-          <h2 data-i18n="page69.s5.title">5. Mode offline: cómo trabaja la sincronización</h2>
-          <pre data-i18n-html="page69.s5.diagram">
-┌───────────────────────────────────────────────────────────────────────┐
-│ Mode offline OMS — sincronización al regreso                          │
-├───────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  En la oficina (con red)                                              │
-│        │                                                              │
-│        │ Pre-download datos: licencias bundle, obligations,           │
-│        │  checklists, fotos. Cifrado MMKV AES-256                     │
-│        ▼                                                              │
-│  En el terreno (sin red)                                              │
-│        │                                                              │
-│        ├─ Scan QR licencia            → leer desde cache              │
-│        ├─ Marcar checklist             → escribir en cache (queue)    │
-│        ├─ Tomar fotos                  → cifradas + queue local       │
-│        ├─ Collectar obligaciones cash  → eventos en queue             │
-│        ▼                                                              │
-│  Regreso a la oficina (red recuperada)                                │
-│        │                                                              │
-│        │ Detección automática de conexión                             │
-│        │ Sincronización automática de la queue:                       │
-│        │  • Inspecciones realizadas → service_requests                │
-│        │  • Fotos → Firebase Storage cifrado                          │
-│        │  • Collections cash → bank_transactions con flag «field»     │
-│        │  • Eventos audit → audit_logs                                │
-│        ▼                                                              │
-│  Reconciliación caja                                                  │
-│        │                                                              │
-│        │ Comparación: total eventos collection = efectivo en caja      │
-│        │  • Si igual: validación auto + recibos oficiales generados   │
-│        │  • Si diferencia: alerta supervisor + bloqueo de la sync     │
-│        ▼                                                              │
-│  Estado final: jornada cerrada, recibos oficiales emitidos             │
-│                                                                       │
-└───────────────────────────────────────────────────────────────────────┘
-</pre>
+          <h2 data-i18n="page69.s5.title">5. Conectividad y comportamiento offline</h2>
+          <p data-i18n-html="page69.s5.body">La app inspector no implementa una <strong>queue offline para la collection de pagos terrain</strong> en la versión actual (el código de <code>payment.tsx</code> contiene un <em>hard block</em> si <code>!isConnected</code>). Las operaciones que sí funcionan en cache o degraded :</p>
+          <ul>
+            <li data-i18n-html="page69.s5.l1"><strong>Lectura de la ficha de inspección</strong> previamente cargada — desde el cache de React Query (<code>staleTime</code> 60s)</li>
+            <li data-i18n-html="page69.s5.l2"><strong>Marca de la checklist + notas</strong> — escritas en estado local, sincronizadas al volver la red</li>
+            <li data-i18n-html="page69.s5.l3"><strong>Captura de fotos</strong> — almacenadas localmente con EXIF GPS, subidas a Firebase Storage al volver la red</li>
+            <li data-i18n-html="page69.s5.l4"><strong>Scan QR de licencia</strong> — funciona offline (la cámara nativa decodifica localmente) ; la validación contra BD requiere red.</li>
+            <li data-i18n-html="page69.s5.l5"><strong>Sincronización automática</strong> — React Query con <code>refetchOnReconnect=true</code> resincroniza las queries pendientes cuando la red vuelve</li>
+          </ul>
+          <p data-i18n-html="page69.s5.body2"><strong>Almacenamiento local sensible</strong> : la app inspector utiliza <code>MMKV</code> con encryption nativa (no AES-256 explícita) y una clave hexadecimal de 32 caracteres generada aleatoriamente por dispositivo, almacenada en el keychain hardware-backed del SO vía <code>expo-secure-store</code> (ver <code>packages/inspector/src/core/storage/mmkv.ts</code>). Los tokens de autenticación se gestionan vía <code>SecureStore</code> directamente, no vía MMKV.</p>
         </section>
 
         <section>
-          <h2 data-i18n="page69.s6.title">6. Reconciliación al regreso (procedimiento administrativo)</h2>
-          <p data-i18n="page69.s6.body">Una vez de vuelta al servicio, el agente debe completar la reconciliación administrativa en menos de 24 h. La pantalla de reconciliación (capturada en la <a href="66-agente-min-oms.html">página 66 § 6</a>) lista todos los collections realizados en el día, agrupados por establecimiento, y propide un total esperado. El agente cuenta su efectivo y registra el importe; si coincide, el sistema valida automáticamente y genera los recibos oficiales para cada collection. Si difiere, una explicación obligatoria es solicitada y el supervisor es notificado.</p>
+          <h2 data-i18n="page69.s6.title">6. Reconciliación al regreso : validación supervisor</h2>
+          <p data-i18n-html="page69.s6.body">Una vez de vuelta al servicio, el flujo de validación del cobro terrain pasa <strong>obligatoriamente por el supervisor de la entidad</strong>. Cada pago insertado con <code>collection_type='field'</code> y <code>workflow_status='field_collected'</code> aparece en el dashboard de reconciliación del supervisor (página 73 para Ayuntamiento+Cámara, página 72 para Tesoro). El supervisor valida llamando <code>POST /inspections/reconcile/supervisor/{payment_id}/validate</code> (permiso <code>inspection.reconcile_validate</code>) ; este endpoint invoca entonces <code>LicenseService.on_payment_completed()</code> para enrutar las obligaciones al agente del <code>fee_type</code> correspondiente, y declenar la generación del recibo oficial <code>REC-{año}-{6 dígitos}</code>. <strong>No hay validación automática</strong> en la versión actual : el supervisor revisa cada pago individual.</p>
         </section>
 
         <section>
@@ -324,9 +302,10 @@
           <ul>
             <li data-i18n-html="page69.s7.l1"><strong>Llegar de improviso</strong> — para que el establecimiento no tenga tiempo de prepararse. Las inspecciones programadas con aviso pierden eficacia.</li>
             <li data-i18n-html="page69.s7.l2"><strong>Trabajar en pareja</strong> — un agente con el otro como testigo, sobre todo cuando hay collection cash, para evitar acusaciones de corrupción.</li>
-            <li data-i18n-html="page69.s7.l3"><strong>Preferir Mobile Money</strong> — incluso si el comerciante propone cash, pedirle el Mobile Money primero (trazabilité, BANGE webhook, sin manipulación física de efectivo).</li>
-            <li data-i18n-html="page69.s7.l4"><strong>Sincronizar al regreso al servicio</strong> — antes del fin de la jornada. La memoria del cache MMKV es limitada (~1 GB) y se llena rápido si se acumulan inspecciones.</li>
-            <li data-i18n-html="page69.s7.l5"><strong>Mantener carga el terminal</strong> — un terminal apagado durante una sincronización pendiente puede perder eventos. Power bank obligatorio.</li>
+            <li data-i18n-html="page69.s7.l3"><strong>Preferir Mobile Money</strong> — incluso si el comerciante propone cash, pedirle el Mobile Money primero (trazabilidad, BANGE webhook, sin manipulación física de efectivo).</li>
+            <li data-i18n-html="page69.s7.l4"><strong>Verificar la conectividad antes de iniciar la collection</strong> — la app bloquea explícitamente el cobro si no hay red. Si la zona tiene mala cobertura, anotar las obligaciones a cobrar y volver con red activa para validar.</li>
+            <li data-i18n-html="page69.s7.l5"><strong>Mantener carga el terminal</strong> — los días de inspección son largos. Una batería externa portátil evita perder horas de trabajo.</li>
+            <li data-i18n-html="page69.s7.l6"><strong>Confirmar al supervisor</strong> — al regreso al servicio, asegurarse que cada pago cobrado en terreno (<code>field_collected</code>) haya sido validado por el supervisor antes del cierre de la jornada. Sin esa validación, el recibo oficial no se emite y la obligación queda en limbo.</li>
           </ul>
         </section>
 

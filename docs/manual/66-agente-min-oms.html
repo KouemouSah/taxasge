@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Agente OMS (Obligation Management System) — procesamiento post-pago de obligaciones bundle: distribución entre agentes tesoro/municipal/chamber, Mode A per-line o Mode B consolidado polyvalent.">
+  <meta name="description" content="Agente OMS (Obligation Management System) — procesamiento post-pago de obligaciones de licencia bundle: 3 fee_types (tesoro/municipal/chamber), 2 ProcessingMode (per_line/consolidated), distribución entre agentes ministeriales (filtro ministry_id) o agente polyvalent. Endpoints /api/v1/oms.">
   <title>Agente OMS — Manual Facil</title>
   <link rel="icon" type="image/png" href="_assets/icons/icon_facil.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,12 +142,12 @@
       </header>
 
       <div class="content-body">
-        <h1 class="page-title" data-i18n="page66.title">Agente OMS: procesamiento post-pago de obligaciones bundle</h1>
-        <p class="page-description" data-i18n="page66.description">OMS (<em>Obligation Management System</em>) es el módulo interno de Facil que trata las obligaciones de licencias comerciales bundle <strong>después</strong> del pago. No tiene relación con la salud — el acrónimo coincide pero refiere al sistema de gestión de obligaciones definido en <code>licenses.py</code>. Cuando un comerciante paga su bundle (página 26), las obligaciones individuales (impuestos Tesoro, tasas Ayuntamiento, cotizaciones Cámara, impuestos sectoriales por ministerio) se distribuyen entre agentes según el modo de procesamiento configurado: <strong>Mode A — per_line</strong> (cada obligación va al ministerio competente) o <strong>Mode B — consolidated</strong> (un agente polyvalent <code>agent_oms_polyvalent</code> trata todo agregado).</p>
+        <h1 class="page-title" data-i18n="page66.title">Agente OMS: procesamiento post-pago de obligaciones de licencia bundle</h1>
+        <p class="page-description" data-i18n="page66.description">OMS (<em>Obligation Management System</em>) es el módulo interno de Facil que trata las obligaciones de licencias comerciales bundle <strong>después</strong> del pago. El acrónimo no tiene relación con la salud (Organisation Mondiale de la Santé) — refiere al sistema de gestión de obligaciones definido en <code>app/modules/fiscal_services/models/licenses.py</code>. Cuando un comerciante paga su bundle (página 26), las obligaciones individuales se categorizan por <strong>fee_type</strong> (enum <code>FeeType</code> en <code>bundles.py</code>, exactamente 3 valores : <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>) y se distribuyen entre agentes según el modo de procesamiento de la obligación (enum <code>ProcessingMode</code>, 2 valores) : <strong>Mode per_line</strong> (cada obligación va al agente ministerial competente — filtrado por <code>ministry_id</code> cuando <code>fee_type=tesoro</code>) o <strong>Mode consolidated</strong> (un agente polyvalent <code>agent_oms_polyvalent</code> trata todo agregado, sin desglose ministerial). Importante : <strong>ministerial no es un fee_type</strong> ; los ministerios se identifican por el FK <code>ministry_id</code> aplicado sobre las obligaciones <code>fee_type=tesoro</code>.</p>
 
         <section>
           <h2 data-i18n="page66.s1.title">1. Dashboard del agente OMS</h2>
-          <p data-i18n="page66.s1.body">El dashboard muestra los KPIs específicos del procesamiento bundle: número de obligaciones en cola, conformidad por <code>fee_type</code> (TESORO / MUNICIPAL / CHAMBER), licencias comerciales activas, tiempo medio de procesamiento. Las acciones rápidas dan acceso directo a las funciones más frecuentes: nueva inspección terreno, consulta de empresa por NIF, lista de licencias, conformidad por tipo de tasa.</p>
+          <p data-i18n="page66.s1.body">El dashboard muestra los KPIs específicos del procesamiento bundle: número de obligaciones en cola, conformidad por <code>fee_type</code> (los 3 valores reales : <code>tesoro</code>, <code>municipal</code>, <code>chamber</code>), licencias comerciales activas, tiempo medio de procesamiento. Las acciones rápidas dan acceso directo a las funciones más frecuentes: nueva inspección terreno, consulta de empresa por NIF, lista de licencias, conformidad por tipo de tasa.</p>
           <figure>
             <img src="_assets/screenshots/web/agent-oms/dash.png" alt="Dashboard agente OMS con KPIs obligaciones bundle" data-i18n-attr-alt="page66.fig1.alt" loading="lazy">
             <figcaption data-i18n="page66.fig1.caption">Dashboard agente OMS con KPIs licencias, obligaciones, conformidad.</figcaption>
@@ -170,10 +170,10 @@
             <img src="_assets/screenshots/web/agent-oms/lic.png" alt="Lista licencias comerciales con identificadores y saldos" data-i18n-attr-alt="page66.fig3.alt" loading="lazy">
             <figcaption data-i18n="page66.fig3.caption">Vista global de las licencias bundle con identificadores y saldos pendientes.</figcaption>
           </figure>
-          <p data-i18n="page66.s3.body2">Hacer clic en una licencia abre la vista detallada con el desglose por obligación (tasa Tesoro, tasa Ayuntamiento, cotización Cámara, impuesto sectorial ministerial) y la opción de regenerar el certificado PDF de la licencia.</p>
+          <p data-i18n="page66.s3.body2">Hacer clic en una licencia abre la vista detallada con el desglose por obligación (<code>fee_type=tesoro</code> con eventual filtro <code>ministry_id</code> para imputación ministerial, <code>fee_type=municipal</code> para tasas Ayuntamiento, <code>fee_type=chamber</code> para cotizaciones Cámara) y la opción de regenerar el certificado PDF de la licencia.</p>
           <figure>
             <img src="_assets/screenshots/web/agent-oms/lic1.png" alt="Detalle licencia bundle con obligaciones desglosadas" data-i18n-attr-alt="page66.fig4.alt" loading="lazy">
-            <figcaption data-i18n="page66.fig4.caption">Detalle de una licencia con desglose de obligaciones bundle pendientes (tesoro / municipal / chamber / ministerial).</figcaption>
+            <figcaption data-i18n="page66.fig4.caption">Detalle de una licencia con desglose de obligaciones bundle pendientes (los 3 fee_types : tesoro / municipal / chamber, con eventual <code>ministry_id</code> para las tesoro ministeriales).</figcaption>
           </figure>
         </section>
 
@@ -206,16 +206,16 @@
 
         <section>
           <h2 data-i18n="page66.s7.title">7. Conformidad por tipo de obligación (fee_type)</h2>
-          <p data-i18n="page66.s7.body">La pantalla <em>«Conformidad»</em> muestra el porcentaje de conformidad de las empresas por <code>fee_type</code> (campo del modelo bundle en <code>bundles.py</code>): <strong>CHAMBER</strong> (cotizaciones Cámara de Comercio), <strong>MUNICIPAL</strong> (tasas Ayuntamiento), <strong>TESORO</strong> (impuestos Tesoro Público). Útil para detectar las categorías con mayor índice de retraso de pago y orientar las acciones de control.</p>
+          <p data-i18n="page66.s7.body">La pantalla <em>«Conformidad»</em> muestra el porcentaje de conformidad de las empresas por <code>fee_type</code> (campo de la obligación, valores fijados por el enum <code>FeeType</code> en <code>bundles.py</code>): <strong><code>tesoro</code></strong> (impuestos Tesoro Público, con eventual filtro <code>ministry_id</code> para imputación ministerial), <strong><code>municipal</code></strong> (tasas Ayuntamiento), <strong><code>chamber</code></strong> (cotizaciones Cámara de Comercio). Útil para detectar las categorías con mayor índice de retraso de pago y orientar las acciones de control.</p>
           <figure>
-            <img src="_assets/screenshots/web/agent-oms/conf.png" alt="Conformidad por fee_type CHAMBER MUNICIPAL TESORO" data-i18n-attr-alt="page66.fig8.alt" loading="lazy">
-            <figcaption data-i18n="page66.fig8.caption">Tasa de conformidad por <code>fee_type</code> (CHAMBER, MUNICIPAL, TESORO).</figcaption>
+            <img src="_assets/screenshots/web/agent-oms/conf.png" alt="Conformidad por fee_type tesoro municipal chamber" data-i18n-attr-alt="page66.fig8.alt" loading="lazy">
+            <figcaption data-i18n="page66.fig8.caption">Tasa de conformidad por <code>fee_type</code> (los 3 valores reales : tesoro, municipal, chamber).</figcaption>
           </figure>
         </section>
 
         <section>
           <h2 data-i18n="page66.s8.title">8. Cola de obligaciones</h2>
-          <p data-i18n="page66.s8.body">Las obligaciones bundle entran en la cola OMS tras el pago. La cola muestra las obligaciones « en curso » (en espera de procesamiento por un agente) y las « terminadas » (procesadas, validadas, archivadas). Cada obligación tiene una prioridad calculada según el fee_type, el importe y el tiempo de espera. Importante : la asignación a un agente respeta el <strong>Mode A</strong> (per_line — cada fee_type va a su ministerio) o el <strong>Mode B</strong> (consolidated — todo va al <code>agent_oms_polyvalent</code>), configurado al nivel del bundle.</p>
+          <p data-i18n="page66.s8.body">Las obligaciones bundle entran en la cola OMS tras el pago. La cola muestra las obligaciones « en curso » (en espera de procesamiento por un agente) y las « terminadas » (procesadas, validadas, archivadas). Cada obligación tiene una prioridad calculada según el fee_type, el importe y el tiempo de espera. Importante : la asignación a un agente respeta el <strong>ProcessingMode <code>per_line</code></strong> (cada obligación va a su agente ministerial competente, vía filtro <code>ministry_id</code> cuando aplicable) o el <strong>ProcessingMode <code>consolidated</code></strong> (todo va al <code>agent_oms_polyvalent</code>), configurado al nivel del bundle.</p>
           <div class="figure-pair">
             <figure>
               <img src="_assets/screenshots/web/agent-oms/ob.png" alt="Cola obligaciones bundle en curso" data-i18n-attr-alt="page66.fig9.alt" loading="lazy">
@@ -231,15 +231,40 @@
         <section>
           <h2 data-i18n="page66.s9.title">9. Roles asociados al módulo OMS</h2>
           <div class="callout callout-info">
-            <h3 class="callout-title" data-i18n="page66.s9.info.title">Diferenciación de los roles OMS</h3>
-            <p data-i18n="page66.s9.info.body">Varios roles intervienen en el procesamiento OMS según el modo configurado (<code>OMS_PROCESSOR_ROLES</code> en <code>oms_agent_service.py</code>):</p>
+            <h3 class="callout-title" data-i18n="page66.s9.info.title">Roles definidos en OMS_PROCESSOR_ROLES</h3>
+            <p data-i18n="page66.s9.info.body">Los roles que tratan obligaciones OMS están enumerados en la constante <code>OMS_PROCESSOR_ROLES</code> (<code>app/modules/fiscal_services/services/oms_agent_service.py</code>). Cada rol tiene su contraparte supervisor.</p>
             <ul>
-              <li data-i18n-html="page66.s9.info.l1"><strong><code>agent_tesoro</code></strong> + <strong><code>supervisor_tesoro</code></strong> — obligaciones fee_type=tesoro (página 65)</li>
-              <li data-i18n-html="page66.s9.info.l2"><strong><code>agent_ayuntamiento</code></strong> + <strong><code>supervisor_ayuntamiento</code></strong> — obligaciones fee_type=municipal (página 64)</li>
-              <li data-i18n-html="page66.s9.info.l3"><strong><code>agent_camara</code></strong> + <strong><code>supervisor_camara</code></strong> — obligaciones fee_type=chamber (página 64)</li>
-              <li data-i18n-html="page66.s9.info.l4"><strong>6 ministerios sectoriales</strong> (<code>agent_min_comercio</code>, <code>agent_min_hacienda</code>, <code>agent_min_informacion</code>, <code>agent_min_turismo</code>, <code>agent_min_agricultura</code>, <code>agent_min_electricidad</code>) — Mode A per_line ministerial</li>
-              <li data-i18n-html="page66.s9.info.l5"><strong><code>agent_oms_polyvalent</code></strong> — Mode B consolidated (esta página describe principalmente este rol). <code>supervisor_tesoro</code> también ve esta cola.</li>
+              <li data-i18n-html="page66.s9.info.l1"><strong><code>agent_oms_polyvalent</code></strong> — tratamiento <strong><code>consolidated</code></strong> (un solo agente trata todas las obligaciones del bundle, sin desglose ministerial). <code>supervisor_tesoro</code> también supervisa esta cola.</li>
+              <li data-i18n-html="page66.s9.info.l2"><strong><code>agent_tesoro</code> + <code>supervisor_tesoro</code></strong> — obligaciones <code>fee_type=tesoro</code> en modo <code>per_line</code> no atribuidas a un ministerio sectorial (ver página 65).</li>
+              <li data-i18n-html="page66.s9.info.l3"><strong><code>agent_ayuntamiento</code> + <code>supervisor_ayuntamiento</code></strong> — obligaciones <code>fee_type=municipal</code> (ver página 64).</li>
+              <li data-i18n-html="page66.s9.info.l4"><strong><code>agent_camara</code> + <code>supervisor_camara</code></strong> — obligaciones <code>fee_type=chamber</code> (ver página 64).</li>
+              <li data-i18n-html="page66.s9.info.l5"><strong>Agentes ministeriales</strong> — obligaciones <code>fee_type=tesoro</code> filtradas por <code>ministry_id</code>, en modo <code>per_line</code>. Hay 6 ministerios sectoriales seedeados, cada uno con agente y supervisor : <code>agent_min_comercio</code>/<code>supervisor_min_comercio</code>, <code>agent_min_hacienda</code>/<code>supervisor_min_hacienda</code>, <code>agent_min_informacion</code>/<code>supervisor_min_informacion</code>, <code>agent_min_turismo</code>/<code>supervisor_min_turismo</code>, <code>agent_min_agricultura</code>/<code>supervisor_min_agricultura</code>, <code>agent_min_electricidad</code>/<code>supervisor_min_electricidad</code>.</li>
             </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-i18n="page66.s10.title">10. Endpoints OMS (prefix <code>/api/v1/oms</code>)</h2>
+          <p data-i18n="page66.s10.body">Los endpoints OMS están registrados en <code>app/modules/fiscal_services/api/oms_agent_routes.py</code>. Todos requieren el permiso <code>fiscal_service.process_obligations</code> (los endpoints supervisor añaden permisos específicos).</p>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="page66.s10.t.h1">Método + ruta</th>
+                  <th data-i18n="page66.s10.t.h2">Uso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>GET /queue</code></td><td data-i18n="page66.s10.t.r1.c2">Cola de obligaciones del agente conectado (filtro por estado: processing, paid).</td></tr>
+                <tr><td><code>GET /queue/stats</code></td><td data-i18n="page66.s10.t.r2.c2">KPIs dashboard (cola, tratadas hoy, conformidad).</td></tr>
+                <tr><td><code>GET /obligations/{id}</code></td><td data-i18n="page66.s10.t.r3.c2">Detalle de una obligación.</td></tr>
+                <tr><td><code>POST /obligations/{id}/process</code></td><td data-i18n="page66.s10.t.r4.c2">Marcar la obligación como <code>completed</code> tras validación.</td></tr>
+                <tr><td><code>POST /obligations/{id}/reject</code></td><td data-i18n="page66.s10.t.r5.c2">Rechazar y devolver al estado <code>paid</code> (re-routing).</td></tr>
+                <tr><td><code>POST /obligations/batch-process</code></td><td data-i18n="page66.s10.t.r6.c2">Tratamiento por lotes (hasta 100 obligaciones).</td></tr>
+                <tr><td><code>GET /obligations/{id}/events</code></td><td data-i18n="page66.s10.t.r7.c2">Audit trail de la obligación.</td></tr>
+                <tr><td><code>GET /team/performance</code></td><td data-i18n="page66.s10.t.r8.c2">Estadísticas equipo (solo supervisores).</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
