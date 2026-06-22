@@ -144,20 +144,20 @@
     "title": "M7: Testing & Quality Assurance [ITIL: Service Transition]",
     "state": "open",
     "description": "ITIL: Service Transition | PMP: Monitoring and Controlling\nStatus: IN PROGRESS (30%)\n\nTEST STRATEGY:\n  Unit Tests (Pydantic validation, utilities)\n    -> Integration Tests (real DB, NO mocks - project rule)\n      -> E2E Tests (Playwright frontend)\n        -> Security Audit (OWASP Top 10)\n          -> Load Testing (1M citizens, 100+ agents)\n\nCompleted:\n  [done] Backend config tests (pytest)\n  [done] Frontend type-check + lint + build verification\n  [done] i18n key parity validation (ES/FR/EN)\n  [done] APK integrity checks (6-point verification)\n  [done] CI pipeline with quality gates\n\nRemaining:\n  [todo] E2E: Auth flow (sign-in, 2FA, password reset)\n  [todo] E2E: Service request wizard (complete flow)\n  [todo] E2E: Payment processing (BANGE + manual)\n  [todo] E2E: Agent workflow (lock, review, decide)\n  [todo] E2E: Bundle workflow (classification, validation)\n  [todo] Security: OWASP Top 10 assessment\n  [todo] Security: API endpoint review (31 routers)\n  [todo] Security: RBAC bypass testing (335 permissions)\n  [todo] Performance: Load test 1M users + 100 agents\n  [todo] RAG: chatbot bugfix (_consolidate_context, vector index)\n  [todo] RAG: production hardening (rate limiting, admin endpoints)\n\nCoverage Target: 80%+ on critical paths",
-    "open_issues": 3,
-    "closed_issues": 0,
+    "open_issues": 1,
+    "closed_issues": 2,
     "due_on": "2026-08-30T00:00:00Z",
-    "progress": 0
+    "progress": 66
   },
   {
     "number": 16,
     "title": "M8: Production Release v1.0 [ITIL: Service Operation]",
     "state": "open",
     "description": "ITIL: Service Operation | PMP: Closing\nStatus: PLANNED (10%)\n\nDEPLOYMENT ARCHITECTURE:\n  Staging (current):\n    Cloud Run us-central1, 0-10 instances, Supabase shared\n  Production (target):\n    Dedicated Cloud Run, Cloud SQL or Supabase Pro, CDN, monitoring\n\nInfrastructure:\n  [todo] Production Cloud Run services (min 2 instances)\n  [todo] Dedicated production database with backups\n  [todo] SSL/TLS + CDN configuration\n  [todo] Blue-green deployment with rollback\n\nMonitoring (SLA: 99.5% uptime):\n  [todo] Uptime monitoring with alerting\n  [todo] API latency alerting (threshold > 500ms)\n  [todo] Error rate monitoring (threshold > 1%)\n  [todo] Payment processing real-time monitoring\n\nDisaster Recovery:\n  [todo] Daily backups (30-day retention)\n  [todo] Point-in-time recovery testing\n  [todo] Incident response runbook\n  [todo] On-call rotation setup\n\nDocumentation:\n  [todo] API documentation with examples\n  [todo] Role-specific user guides (citizen, agent, supervisor, admin)\n  [todo] Agent training materials (100+ users)\n  [todo] System administration guide\n  [todo] Mobile app store submissions (Google Play)",
-    "open_issues": 2,
-    "closed_issues": 0,
+    "open_issues": 1,
+    "closed_issues": 1,
     "due_on": "2026-10-30T00:00:00Z",
-    "progress": 0
+    "progress": 50
   },
   {
     "number": 17,
