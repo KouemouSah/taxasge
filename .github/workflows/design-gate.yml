@@ -1,0 +1,109 @@
+name: design-gate
+
+# Design-system quality gate.
+#
+# Two jobs, deliberately different in nature:
+#
+#   strict  — rules that must NEVER regress and must always be zero.
+#             A failing colour pair is unreadable for somebody today; an
+#             unsanitised HTML sink is a live vulnerability. No ratchet.
+#
+#   ratchet — the accumulated backlog (token drift, hardcoded option lists,
+#             i18n leaks). Fails only if a count GOES UP. Lower the ceilings
+#             whenever a batch is cleaned; never raise them.
+#
+# Why a ratchet rather than a hard zero: the backlog is ~4100 findings. A gate
+# that fails from the first commit gets disabled within a week. This one makes
+# new code clean from day one and drains the backlog without a code freeze.
+#
+# Reference: skill `designing-web-and-mobile-ui`, section "Adopting this on an
+# existing codebase".
+
+on:
+  pull_request:
+    paths:
+      - 'packages/web/**'
+      - 'packages/mobile/**'
+      - 'packages/inspector/**'
+      - 'tools/design-audit.mjs'
+      - '.github/workflows/design-gate.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/web/**'
+      - 'packages/mobile/**'
+      - 'packages/inspector/**'
+      - 'tools/design-audit.mjs'
+
+jobs:
+  strict:
+    name: strict (contrast + XSS must be zero)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No ratchet here: these must be zero, in every package, always.
+      # `dark-mode-contract` is deliberately NOT in this list — see the ratchet
+      # job's note. It is tracked, not enforced, until dark mode is wired.
+      - name: web
+        run: node tools/design-audit.mjs packages/web --only contrast,unsafe-html,unsafe-link
+      - name: mobile
+        run: node tools/design-audit.mjs packages/mobile --only contrast,unsafe-html,unsafe-link
+      - name: inspector
+        run: node tools/design-audit.mjs packages/inspector --only contrast,unsafe-html,unsafe-link
+
+  ratchet:
+    name: ratchet (backlog must not grow)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Ceilings measured on develop, 2026-08-20, after the contrast and XSS
+      # remediation. ONLY EVER LOWER THESE.
+      #
+      # web       3799 errors / 447 warnings   (3798 no-raw-color + 1 dark-mode-contract)
+      # mobile     290 errors /   1 warning    (290 no-raw-color)
+      # inspector   47 errors /   3 warnings
+      - name: audit all packages
+        env:
+          WEB_MAX_ERRORS: '3799'
+          WEB_MAX_WARNINGS: '447'
+          MOBILE_MAX_ERRORS: '290'
+          MOBILE_MAX_WARNINGS: '1'
+          INSPECTOR_MAX_ERRORS: '47'
+          INSPECTOR_MAX_WARNINGS: '3'
+        run: |
+          set -e
+          fail=0
+          check() {
+            local pkg="$1" maxE="$2" maxW="$3"
+            node tools/design-audit.mjs "packages/$pkg" --json > "audit-$pkg.json"
+            local e w
+            e=$(node -p "require('./audit-$pkg.json').errors")
+            w=$(node -p "require('./audit-$pkg.json').warnings")
+            echo "$pkg: $e errors (ceiling $maxE) / $w warnings (ceiling $maxW)"
+            if [ "$e" -gt "$maxE" ] || [ "$w" -gt "$maxW" ]; then
+              echo "::error file=packages/$pkg::design audit regressed in $pkg — $e/$maxE errors, $w/$maxW warnings"
+              node -e "require('./audit-$pkg.json').findings.slice(0,30).forEach(f=>console.log(f.severity,f.file+':'+f.line,f.message))"
+              fail=1
+            fi
+            if [ "$e" -lt "$maxE" ] || [ "$w" -lt "$maxW" ]; then
+              echo "::notice file=packages/$pkg::$pkg improved — lower the ceiling to $e/$w in design-gate.yml"
+            fi
+          }
+          check web "$WEB_MAX_ERRORS" "$WEB_MAX_WARNINGS"
+          check mobile "$MOBILE_MAX_ERRORS" "$MOBILE_MAX_WARNINGS"
+          check inspector "$INSPECTOR_MAX_ERRORS" "$INSPECTOR_MAX_WARNINGS"
+          exit $fail
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-audit
+          path: audit-*.json

@@ -413,6 +413,44 @@ SELECT column_name, data_type FROM information_schema.columns WHERE table_name =
 SELECT name FROM permissions WHERE name = 'permission.name';
 ```
 
+## Design System & UI Quality Gate
+
+**Skill de référence** : `designing-web-and-mobile-ui` (dossier skills personnel, réutilisable hors projet).
+Contrats de composants, tokens, référentiels, wizards, contrat backend, OWASP/ISO, checklist de revue.
+
+### Validateur
+
+```bash
+node tools/design-audit.mjs packages/web            # rapport complet
+npm run design:audit:strict --workspace packages/web  # règles bloquantes seules
+node tools/design-audit.mjs packages/web --json     # pour la CI
+```
+
+11 règles : `contrast` · `dark-mode-contract` · `unsafe-html` · `unsafe-link` · `no-raw-color` ·
+`hardcoded-options` · `free-text-referential` · `form-primitive` · `touch-target` · `async-states` · `ui-string`.
+
+### Règles non négociables (CI `design-gate` / job `strict`, doit rester à 0)
+
+1. **Contraste** — toute paire `--x` / `--x-foreground` ≥ 4.5:1 (texte) ou 3:1 (contrôle/large), **dans les deux thèmes**.
+   Les tokens `--eq-guinea-*` sont décoratifs (drapeau, gradient) et ne servent jamais de paire texte/fond.
+2. **Un seul sanitizer** — tout HTML/markdown non fiable (utilisateur, **LLM**, tiers) passe par
+   `@/components/ui/safe-html` (`<SafeHtml>` / `<SafeMarkdown>`). `dangerouslySetInnerHTML` est interdit ailleurs
+   (ESLint `react/no-danger` = error) ; chaque exception porte un `eslint-disable` **justifié**.
+   Échapper les entités ne suffit pas : sans allowlist de schémas, `[x](javascript:...)` s'exécute.
+3. **`target="_blank"` ⇒ `rel="noopener noreferrer"`**, y compris sur les `<a>` créés en JS.
+
+### Backlog sous cliquet (job `ratchet`, ne doit jamais augmenter)
+
+`no-raw-color` (~4100), `ui-string`, `hardcoded-options`, `free-text-referential`, `form-primitive`.
+Plafonds dans `.github/workflows/design-gate.yml` — **on ne les baisse jamais vers le haut**.
+
+### Dette explicitement acceptée
+
+- **`dark-mode-contract`** : les tokens `.dark` sont désormais corrects (inversion tonale, contrastes vérifiés)
+  mais **aucun sélecteur de thème n'est câblé**. Le câbler aujourd'hui exposerait ~3 800 couleurs codées en dur
+  en clair → thème sombre cassé. Condition de levée : `no-raw-color` proche de 0 sur `packages/web`.
+  Règle suivie dans le job `ratchet`, volontairement hors du job `strict`.
+
 ## Git Commit Convention
 ```
 <type>(<scope>): <subject>

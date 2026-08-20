@@ -21,7 +21,9 @@
     "build:preview:all": "eas build --profile preview --platform all",
     "build:prod": "eas build --profile production --platform android",
     "build:prod:ios": "eas build --profile production --platform ios",
-    "build:prod:all": "eas build --profile production --platform all"
+    "build:prod:all": "eas build --profile production --platform all",
+    "design:audit": "node ../../tools/design-audit.mjs .",
+    "design:audit:strict": "node ../../tools/design-audit.mjs . --only contrast,unsafe-html,unsafe-link"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

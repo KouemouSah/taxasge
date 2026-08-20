@@ -1,0 +1,639 @@
+#!/usr/bin/env node
+/**
+ * design-audit — mechanical enforcement for the design system.
+ *
+ * Zero dependencies. Node >= 18. Works on Windows, macOS, Linux.
+ *
+ *   node design-audit.mjs <repo-root>
+ *   node design-audit.mjs <repo-root> --only contrast,no-raw-color
+ *   node design-audit.mjs <repo-root> --json
+ *   node design-audit.mjs <repo-root> --max-warnings 50
+ *
+ * Exit code: 0 clean · 1 errors found (or warnings above --max-warnings) · 2 bad usage.
+ *
+ * Rationale: anything checkable by regex or arithmetic must be checked by a
+ * machine. Documentation is for judgment calls only — a rule that lives solely
+ * in a markdown file is a rule that quietly stops being true.
+ *
+ * Optional config at <repo-root>/.designauditrc.json:
+ *   {
+ *     "ignore": ["packages/legacy/**"],
+ *     "tokenFiles": ["src/styles/tokens.css", "src/theme/colors.ts"],
+ *     "safeHtmlFiles": ["src/components/safe-html.tsx"],
+ *     "disable": ["ui-string"]
+ *   }
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+
+const argv = process.argv.slice(2);
+const root = path.resolve(argv.find((a) => !a.startsWith('--')) ?? '.');
+const flag = (name) => {
+  const i = argv.indexOf(`--${name}`);
+  return i === -1 ? null : argv[i + 1];
+};
+const has = (name) => argv.includes(`--${name}`);
+
+const onlyRules = flag('only')?.split(',').map((s) => s.trim()).filter(Boolean) ?? null;
+const asJson = has('json');
+const maxWarnings = Number(flag('max-warnings') ?? Infinity);
+
+if (!fs.existsSync(root)) {
+  console.error(`design-audit: no such directory: ${root}`);
+  process.exit(2);
+}
+
+let config = { ignore: [], tokenFiles: [], safeHtmlFiles: [], disable: [] };
+const rcPath = path.join(root, '.designauditrc.json');
+if (fs.existsSync(rcPath)) {
+  try {
+    config = { ...config, ...JSON.parse(fs.readFileSync(rcPath, 'utf8')) };
+  } catch (e) {
+    console.error(`design-audit: could not parse .designauditrc.json — ${e.message}`);
+    process.exit(2);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Colour maths (WCAG 2.x relative luminance)
+// ---------------------------------------------------------------------------
+
+const chan = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+const luminance = ([r, g, b]) => 0.2126 * chan(r / 255) + 0.7152 * chan(g / 255) + 0.0722 * chan(b / 255);
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+const hslToRgb = (h, s, l) => {
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let rgb;
+  if (h < 60) rgb = [c, x, 0];
+  else if (h < 120) rgb = [x, c, 0];
+  else if (h < 180) rgb = [0, c, x];
+  else if (h < 240) rgb = [0, x, c];
+  else if (h < 300) rgb = [x, 0, c];
+  else rgb = [c, 0, x];
+  return rgb.map((v) => Math.round((v + m) * 255));
+};
+const hexToRgb = (hex) => {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+};
+
+// ---------------------------------------------------------------------------
+// File walking
+// ---------------------------------------------------------------------------
+
+const SKIP_DIRS = new Set([
+  'node_modules', '.git', '.next', 'dist', 'build', 'out', 'coverage',
+  '.expo', '.turbo', '.cache', 'android', 'ios', 'vendor', '__snapshots__',
+  '.venv', 'venv', '.claude',
+]);
+const CODE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.scss']);
+
+const toPosix = (p) => p.split(path.sep).join('/');
+const ignoreRe = config.ignore.map(
+  (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '.*').replace(/(?<!\.)\*/g, '[^/]*') + '$'),
+);
+const isIgnored = (rel) => ignoreRe.some((re) => re.test(rel));
+
+function walk(dir, out = []) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (SKIP_DIRS.has(e.name)) continue;
+      walk(full, out);
+    } else if (CODE_EXT.has(path.extname(e.name))) {
+      const rel = toPosix(path.relative(root, full));
+      if (!isIgnored(rel)) out.push({ full, rel });
+    }
+  }
+  return out;
+}
+
+const files = walk(root);
+const read = (f) => {
+  try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
+};
+
+// A token/theme file is allowed to hold literal values — that is its job.
+const TOKEN_FILE_RE = /(^|\/)(tokens?|colors?|palette|theme|design-tokens)(\.[a-z]+)?\.(css|scss|ts|tsx|js|jsx)$/i;
+const isTokenFile = (rel) =>
+  TOKEN_FILE_RE.test(rel) ||
+  config.tokenFiles.some((t) => rel.endsWith(t.replace(/^\.\//, '')));
+
+const findings = [];
+const report = (rule, severity, file, line, message, detail) =>
+  findings.push({ rule, severity, file, line, message, detail });
+
+const ruleEnabled = (name) =>
+  !config.disable.includes(name) && (!onlyRules || onlyRules.includes(name));
+
+// Ignore matches inside a line comment — comments legitimately cite bad examples.
+const isCommentLine = (line) => /^\s*(\/\/|\*|#|<!--)/.test(line);
+
+// ---------------------------------------------------------------------------
+// Rule: no-raw-color
+// ---------------------------------------------------------------------------
+
+const TW_PALETTE = 'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
+const TW_CLASS_RE = new RegExp(`\\b(?:bg|text|border|ring|fill|stroke|from|via|to|divide|outline|shadow|decoration|accent|caret|placeholder)-(?:${TW_PALETTE})-(?:50|[1-9]00|950)\\b`, 'g');
+const TW_ARBITRARY_RE = /\b(?:bg|text|border|ring|fill|stroke|shadow|outline)-\[(?:#[0-9a-fA-F]{3,8}|rgb|rgba|hsl|hsla)[^\]]*\]/g;
+const HEX_RE = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
+
+if (ruleEnabled('no-raw-color')) {
+  for (const { full, rel } of files) {
+    if (isTokenFile(rel)) continue;
+    const src = read(full);
+    const isNative = /from\s+['"]react-native['"]|from\s+['"]react-native-paper['"]/.test(src);
+    const lines = src.split('\n');
+
+    lines.forEach((line, i) => {
+      if (isCommentLine(line)) return;
+
+      if (isNative) {
+        // React Native: any hex literal is a token bypass.
+        const m = line.match(HEX_RE);
+        if (m) {
+          report('no-raw-color', 'error', rel, i + 1,
+            `hardcoded color ${m.slice(0, 3).join(', ')} — use a theme token`,
+            line.trim().slice(0, 120));
+        }
+      } else {
+        const cls = line.match(TW_CLASS_RE);
+        if (cls) {
+          report('no-raw-color', 'error', rel, i + 1,
+            `palette-scale class ${[...new Set(cls)].slice(0, 3).join(', ')} — use a semantic token`,
+            line.trim().slice(0, 120));
+        }
+        const arb = line.match(TW_ARBITRARY_RE);
+        if (arb) {
+          report('no-raw-color', 'error', rel, i + 1,
+            `arbitrary color ${arb[0]} — use a semantic token`,
+            line.trim().slice(0, 120));
+        }
+        if (path.extname(rel) === '.css' || path.extname(rel) === '.scss') {
+          const hx = line.match(HEX_RE);
+          if (hx && !/--[\w-]+\s*:/.test(line)) {
+            report('no-raw-color', 'error', rel, i + 1,
+              `hardcoded color ${hx[0]} outside a token declaration`, line.trim().slice(0, 120));
+          }
+        }
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: contrast
+// ---------------------------------------------------------------------------
+
+function parseCssTokens(src) {
+  const themes = {};
+  // Match `:root { ... }` and `.dark { ... }` (also `[data-theme="dark"]`).
+  const blockRe = /(:root|\.dark|\[data-theme=["']dark["']\])\s*\{([^}]*)\}/g;
+  let m;
+  while ((m = blockRe.exec(src))) {
+    const name = m[1] === ':root' ? 'light' : 'dark';
+    const body = m[2];
+    themes[name] ??= {};
+    const varRe = /--([\w-]+)\s*:\s*([0-9.]+)\s+([0-9.]+)%\s+([0-9.]+)%/g;
+    let v;
+    while ((v = varRe.exec(body))) {
+      themes[name][v[1]] = hslToRgb(Number(v[2]), Number(v[3]), Number(v[4]));
+    }
+  }
+  return themes;
+}
+
+function parseTsTokens(src) {
+  const themes = {};
+  for (const scheme of ['light', 'dark']) {
+    // Locate `light: {` and capture until the matching depth-0 close brace.
+    const start = src.search(new RegExp(`\\b${scheme}\\s*:\\s*\\{`));
+    if (start === -1) continue;
+    let depth = 0, i = src.indexOf('{', start), body = '';
+    for (; i < src.length; i++) {
+      const ch = src[i];
+      if (ch === '{') depth++;
+      else if (ch === '}') { depth--; if (depth === 0) break; }
+      if (depth > 0) body += ch;
+    }
+    const entries = {};
+    const kvRe = /(\w+)\s*:\s*['"](#[0-9a-fA-F]{3,8})['"]/g;
+    let m;
+    while ((m = kvRe.exec(body))) entries[m[1]] = hexToRgb(m[2]);
+    if (Object.keys(entries).length) themes[scheme] = entries;
+  }
+  return themes;
+}
+
+function checkPairs(themes, kind, file) {
+  const TEXT_MIN = 4.5, UI_MIN = 3;
+  for (const [scheme, tokens] of Object.entries(themes)) {
+    const pairs = [];
+    for (const key of Object.keys(tokens)) {
+      if (kind === 'css') {
+        // `x` + `x-foreground`
+        if (key.endsWith('-foreground')) {
+          const base = key.slice(0, -'-foreground'.length);
+          if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
+        }
+      } else {
+        // `onX` + `x`
+        if (/^on[A-Z]/.test(key)) {
+          const base = key[2].toLowerCase() + key.slice(3);
+          if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
+        }
+      }
+    }
+    // Control boundaries and focus rings must clear 3:1 against the page.
+    const bg = tokens.background ?? tokens.surface;
+    if (bg) {
+      for (const k of ['input', 'ring', 'outline']) {
+        if (tokens[k]) pairs.push([k, tokens.background ? 'background' : 'surface', UI_MIN]);
+      }
+    }
+    if (!pairs.length) continue;
+
+    for (const [fg, bgKey, min] of pairs) {
+      const ratio = contrast(tokens[fg], tokens[bgKey]);
+      if (ratio < min) {
+        report('contrast', 'error', file, 0,
+          `${scheme}: ${fg} on ${bgKey} = ${ratio.toFixed(2)}:1 (needs ${min}:1)`,
+          min === TEXT_MIN
+            ? 'darken the background or flip the foreground; in dark themes accents go LIGHT with DARK foregrounds'
+            : 'control boundaries and focus rings need 3:1 (WCAG 1.4.11)');
+      }
+    }
+  }
+}
+
+let tokenSourcesFound = 0;
+if (ruleEnabled('contrast')) {
+  for (const { full, rel } of files) {
+    const ext = path.extname(rel);
+    const src = read(full);
+    if ((ext === '.css' || ext === '.scss') && /--background\s*:/.test(src)) {
+      const themes = parseCssTokens(src);
+      if (Object.keys(themes).length) { tokenSourcesFound++; checkPairs(themes, 'css', rel); }
+    } else if ((ext === '.ts' || ext === '.tsx') && isTokenFile(rel) && /on[A-Z]\w*\s*:\s*['"]#/.test(src)) {
+      const themes = parseTsTokens(src);
+      if (Object.keys(themes).length) { tokenSourcesFound++; checkPairs(themes, 'ts', rel); }
+    }
+  }
+  if (tokenSourcesFound === 0) {
+    report('contrast', 'warning', '(repo)', 0,
+      'no parseable token source found — contrast is unverified',
+      'expected CSS custom properties as `--name: H S% L%` or a colors.ts with light/dark hex maps');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: dark-mode-contract
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('dark-mode-contract')) {
+  let declaresDark = false, darkFile = null;
+  let setsClass = false, persists = false, setsColorScheme = false;
+
+  for (const { full, rel } of files) {
+    const src = read(full);
+    if (!declaresDark && /(^|\s)\.dark\s*\{/m.test(src) && /--background\s*:/.test(src)) {
+      declaresDark = true; darkFile = rel;
+    }
+    if (/classList\.(toggle|add|remove)\(\s*['"]dark['"]/.test(src) ||
+        /setAttribute\(\s*['"]data-theme['"]/.test(src) ||
+        /from\s+['"]next-themes['"]/.test(src)) setsClass = true;
+    if (/from\s+['"]next-themes['"]/.test(src)) { persists = true; setsColorScheme = true; }
+    if (/(localStorage|AsyncStorage)[^\n]{0,60}(theme|color-?scheme)/i.test(src)) persists = true;
+    if (/colorScheme\s*=|color-scheme\s*:/.test(src)) setsColorScheme = true;
+  }
+
+  if (declaresDark) {
+    const missing = [];
+    if (!setsClass) missing.push('nothing ever applies the `dark` class / data-theme');
+    if (!persists) missing.push('the preference is never persisted');
+    if (!setsColorScheme) missing.push('`color-scheme` is never set (native controls stay light)');
+    if (missing.length) {
+      report('dark-mode-contract', 'error', darkFile, 0,
+        `dark tokens are declared but the contract is incomplete: ${missing.join('; ')}`,
+        'ship the toggle + persistence + pre-paint class + color-scheme, or delete the dark tokens');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: unsafe-html
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('unsafe-html')) {
+  const SAFE_FILE_RE = /(safe-html|safe-markdown|sanitize)/i;
+  for (const { full, rel } of files) {
+    if (SAFE_FILE_RE.test(rel) || config.safeHtmlFiles.some((f) => rel.endsWith(f.replace(/^\.\//, '')))) continue;
+    const src = read(full);
+    if (!src.includes('dangerouslySetInnerHTML')) continue;
+    const lines = src.split('\n');
+    lines.forEach((line, i) => {
+      if (!line.includes('dangerouslySetInnerHTML') || isCommentLine(line)) return;
+      // Structured-data blobs are serialized by JSON.stringify: not an HTML sink.
+      const ctx = lines.slice(Math.max(0, i - 3), i + 2).join(' ');
+      if (/JSON\.stringify|application\/ld\+json/.test(ctx)) return;
+
+      // An inline <script> whose payload is a literal with no interpolation is a
+      // build-time constant (theme bootstrap, service-worker registration). It is
+      // not an XSS sink — but it is an obstacle to dropping 'unsafe-inline'.
+      const block = lines.slice(Math.max(0, i - 2), i + 12).join('\n');
+      const isStaticScript = /<script/.test(ctx) && /__html:\s*[`'"]/.test(block) && !/\$\{/.test(block);
+      if (isStaticScript) {
+        report('unsafe-html', 'warning', rel, i + 1,
+          'static inline <script> — safe content, but it forces `unsafe-inline` in script-src',
+          'serve it with a CSP nonce, or move it to a static file');
+        return;
+      }
+
+      const sanitized = /sanitiz|DOMPurify|purify/i.test(ctx);
+      report('unsafe-html', sanitized ? 'warning' : 'error', rel, i + 1,
+        sanitized
+          ? 'sanitized inline — move it behind the shared <SafeHtml> so the config cannot drift'
+          : 'dangerouslySetInnerHTML with no sanitizer in scope',
+        'route all untrusted HTML through one <SafeHtml>; escaping entities does NOT block javascript: URLs');
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: unsafe-link
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('unsafe-link')) {
+  for (const { full, rel } of files) {
+    const src = read(full);
+    if (!src.includes('_blank')) continue;
+    src.split('\n').forEach((line, i) => {
+      if (!/target\s*=\s*["'{]?_blank/.test(line) || isCommentLine(line)) return;
+      // rel may sit on an adjacent line of a multi-line JSX element.
+      const window = src.split('\n').slice(Math.max(0, i - 3), i + 4).join(' ');
+      if (/rel\s*=\s*["'{][^"'}]*noopener/.test(window)) return;
+      report('unsafe-link', 'error', rel, i + 1,
+        'target="_blank" without rel="noopener noreferrer"',
+        'the opened page can navigate yours through window.opener');
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: touch-target
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('touch-target')) {
+  for (const { full, rel } of files) {
+    if (!/components?\/(ui|primitives)\//.test(rel)) continue;
+    const src = read(full);
+    if (!/cva\(|buttonVariants|size\s*:/.test(src)) continue;
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      const m = line.match(/\bh-(\d+)\b/);
+      if (!m) return;
+      const px = Number(m[1]) * 4; // Tailwind spacing unit = 4px
+      if (px > 0 && px < 44 && /(default|sm|icon|size)/.test(line)) {
+        report('touch-target', 'warning', rel, i + 1,
+          `size variant is ${px}px tall — below the 44px touch minimum`,
+          'use h-11 (44px) for the default, or add min-h-touch on touch surfaces');
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: async-states
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('async-states')) {
+  for (const { full, rel } of files) {
+    // Only render surfaces. A `*-hooks.ts` data layer legitimately has no UI states.
+    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    const src = read(full);
+    if (!/use(Query|SWR|InfiniteQuery)\s*[(<]/.test(src)) continue;
+    const hasLoading = /isLoading|isPending|isFetching|Skeleton|loading/i.test(src);
+    const hasError = /isError|\berror\b|ErrorState|onRetry/i.test(src);
+    const hasEmpty = /length\s*===\s*0|!\w+\.length|EmptyState|isEmpty/.test(src);
+    const missing = [
+      !hasLoading && 'loading',
+      !hasError && 'error',
+      !hasEmpty && 'empty',
+    ].filter(Boolean);
+    if (missing.length) {
+      report('async-states', 'warning', rel, 0,
+        `fetches data but has no ${missing.join(' / ')} state`,
+        'every remote-data surface renders loading, empty, error, forbidden and success');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: ui-string  (hardcoded user-visible default prop values)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('ui-string')) {
+  // Matches both JSX attributes (placeholder="Select an option") and destructured
+  // defaults (placeholder = 'Select an option'). The backreference keeps a French
+  // apostrophe inside a double-quoted string from truncating the match.
+  const DEFAULT_RE = /\b(placeholder|label|title|message|description|emptyMessage|loadingMessage|errorMessage|confirmLabel|actionLabel|cancelLabel|tooltip|alt)\s*=\s*(['"])((?:(?!\2).){4,})\2/g;
+  for (const { full, rel } of files) {
+    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    const src = read(full);
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      let m;
+      DEFAULT_RE.lastIndex = 0;
+      while ((m = DEFAULT_RE.exec(line))) {
+        const value = m[3];
+        if (!/[A-Za-zÀ-ÿ]/.test(value)) continue;          // no letters: not prose
+        if (/^[\w.-]+$/.test(value) && !/\s/.test(value)) continue; // an i18n key / slug / variant
+        if (/^\{|\$\{|^t\(/.test(value)) continue;         // already an expression
+        // Format hints rather than prose: sample email, phone mask, URL, code pattern.
+        if (/^[\w.+-]+@[\w.-]+$/.test(value)) continue;
+        if (/^[+\d][\d\sXx().-]{4,}$/.test(value)) continue;
+        if (/^(https?:\/\/|www\.)/.test(value)) continue;
+        if (/^[A-Z0-9]{2,}[-_/][A-Z0-9X]{2,}/.test(value)) continue;
+        report('ui-string', 'warning', rel, i + 1,
+          `hardcoded UI string \`${m[1]}="${value.slice(0, 60)}"\``,
+          'user-visible text — including default prop values — must come from an i18n key');
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: hardcoded-options  (an option list duplicating a backend enum)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('hardcoded-options')) {
+  // <SelectItem value="draft">, <Option value="draft">, <Picker.Item value="draft">
+  const OPT_RE = /<(?:SelectItem|Option|Picker\.Item|MenuItem|RadioGroupItem)\b[^>]*\bvalue\s*=\s*["']([^"'{}]+)["']/g;
+  for (const { full, rel } of files) {
+    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    const src = read(full);
+    const values = new Set();
+    let m;
+    while ((m = OPT_RE.exec(src))) {
+      const v = m[1];
+      // UI-only sentinels and page-size / boolean options are not domain values.
+      if (['all', 'none', 'any', '__all__', '__global__', '-1', 'true', 'false', 'asc', 'desc'].includes(v)) continue;
+      if (/^\d+$/.test(v)) continue;
+      values.add(v);
+    }
+    // Three or more literal domain values in one file is an inlined enum.
+    if (values.size >= 3) {
+      const line = src.split('\n').findIndex((l) => OPT_RE.test(l) || /<(SelectItem|Option|Picker\.Item)\b/.test(l)) + 1;
+      report('hardcoded-options', 'warning', rel, line,
+        `${values.size} literal option values (${[...values].slice(0, 4).join(', ')}…) — likely a duplicated backend enum`,
+        'fetch the option list from a referential endpoint; a value added in the database is silently missing here');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: free-text-referential  (a text input where a closed list exists)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('free-text-referential')) {
+  const REFERENTIAL = new Set([
+    'city', 'ciudad', 'ville', 'province', 'provincia', 'region', 'country', 'pais', 'pays',
+    'nationality', 'nacionalidad', 'nationalite', 'ministry', 'ministerio', 'ministere',
+    'entity', 'entidad', 'entite', 'office', 'oficina', 'category', 'categoria', 'categorie',
+    'sector', 'secteur', 'type', 'tipo', 'currency', 'moneda', 'devise',
+    'status', 'estado', 'statut', 'role', 'rol', 'bank', 'banco', 'banque', 'regime',
+  ]);
+
+  // The SUBJECT of a field name is its last segment, except when that segment is
+  // a reference suffix (`ministryId`, `cityName`) — then it is the one before.
+  // `serviceCode` keeps `code` as its subject: an admin screen defining a code is
+  // legitimately free text, and treating it as a referential is a false positive.
+  const subjectOf = (name) => {
+    const segs = name
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!segs.length) return '';
+    const last = segs[segs.length - 1];
+    if ((last === 'id' || last === 'name') && segs.length > 1) return segs[segs.length - 2];
+    return last;
+  };
+
+  const NAME_ATTR_RE = /\b(?:name|id|htmlFor)\s*=\s*["'`]([^"'`]+)["'`]/;
+
+  for (const { full, rel } of files) {
+    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    const src = read(full);
+    const lines = src.split('\n');
+    lines.forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      if (!/<(Input|TextInput|Textarea)\b/.test(line)) return;
+      // The element and its attributes may span several lines.
+      const block = lines.slice(i, i + 6).join(' ');
+      // Numeric and date controls are not the free-text problem.
+      if (/type\s*=\s*["'](number|date|time|datetime-local|email|tel|url|password|search|file|checkbox|radio)["']/.test(block)) return;
+      if (/Buscar|Rechercher|[Ss]earch/.test(block)) return;
+      const m = block.match(NAME_ATTR_RE);
+      if (!m) return;
+      const subject = subjectOf(m[1]);
+      if (!REFERENTIAL.has(subject)) return;
+      report('free-text-referential', 'warning', rel, i + 1,
+        `free-text input on "${m[1]}" — "${subject}" has a referential`,
+        'bind a Select/Combobox to the referential; free text yields unmatchable values (Malabo / malabo / MALABO ). ' +
+        'On an admin screen that DEFINES this referential, free text is correct — disable the rule for that file.');
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: form-primitive  (hand-wired fields bypass the aria plumbing)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('form-primitive')) {
+  for (const { full, rel } of files) {
+    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (/components?\/(ui|primitives)\//.test(rel)) continue; // the primitives themselves
+    const src = read(full);
+    const controls = (src.match(/<(Input|Textarea|Select|Checkbox|RadioGroup|Switch|Combobox)\b/g) ?? []).length;
+    if (controls < 3) continue;
+    const usesForm = /<FormField\b|useFormContext|<FormItem\b|Controller\b/.test(src);
+    if (usesForm) continue;
+    // A read-only filter bar is not a form.
+    const looksLikeForm = /onSubmit|handleSubmit|<form\b/.test(src);
+    if (!looksLikeForm) continue;
+    const hasAria = /aria-describedby|aria-invalid/.test(src);
+    report('form-primitive', 'warning', rel, 0,
+      `${controls} controls in a form that bypasses the Form primitive${hasAria ? '' : ' (and has no aria-invalid / aria-describedby)'}`,
+      'route fields through the Form wrapper so label, description and error ids are wired for every field');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Output
+// ---------------------------------------------------------------------------
+
+const errors = findings.filter((f) => f.severity === 'error');
+const warnings = findings.filter((f) => f.severity === 'warning');
+
+if (asJson) {
+  console.log(JSON.stringify({
+    root, filesScanned: files.length,
+    errors: errors.length, warnings: warnings.length, findings,
+  }, null, 2));
+} else {
+  const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'touch-target', 'async-states', 'ui-string'];
+  const byRule = new Map();
+  for (const f of findings) {
+    if (!byRule.has(f.rule)) byRule.set(f.rule, []);
+    byRule.get(f.rule).push(f);
+  }
+
+  console.log(`\ndesign-audit — ${files.length} files scanned in ${root}\n`);
+  if (!findings.length) {
+    console.log('  No findings. All enabled rules pass.\n');
+  }
+
+  for (const rule of RULE_ORDER) {
+    const list = byRule.get(rule);
+    if (!list) continue;
+    const errCount = list.filter((f) => f.severity === 'error').length;
+    console.log(`── ${rule}  (${errCount} error${errCount === 1 ? '' : 's'}, ${list.length - errCount} warning${list.length - errCount === 1 ? '' : 's'})`);
+    // Cap the per-rule output; the full set is available via --json.
+    const shown = list.slice(0, 15);
+    for (const f of shown) {
+      const loc = f.line ? `${f.file}:${f.line}` : f.file;
+      console.log(`   ${f.severity === 'error' ? 'ERR ' : 'WARN'} ${loc}`);
+      console.log(`        ${f.message}`);
+      if (f.detail) console.log(`        → ${f.detail}`);
+    }
+    if (list.length > shown.length) {
+      console.log(`   … ${list.length - shown.length} more (use --json for the full list)`);
+    }
+    console.log('');
+  }
+
+  console.log(`Total: ${errors.length} error(s), ${warnings.length} warning(s)\n`);
+}
+
+if (errors.length > 0 || warnings.length > maxWarnings) process.exit(1);
+process.exit(0);

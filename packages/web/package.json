@@ -54,7 +54,10 @@
     "build-storybook": "storybook build",
     "clean": "rm -rf .next out node_modules/.cache",
     "sitemap": "next-sitemap",
-    "postbuild": "next-sitemap"
+    "postbuild": "next-sitemap",
+    "design:audit": "node ../../tools/design-audit.mjs .",
+    "design:audit:strict": "node ../../tools/design-audit.mjs . --only contrast,unsafe-html,unsafe-link",
+    "design:audit:json": "node ../../tools/design-audit.mjs . --json"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
