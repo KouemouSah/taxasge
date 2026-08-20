@@ -57,6 +57,7 @@ export default function ChatRoute() {
     <>
       <script
         type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- JSON-LD built by JSON.stringify from our own object — not an HTML sink
         dangerouslySetInnerHTML={{ __html: JSON.stringify(chatJsonLd) }}
       />
       <ChatPage />

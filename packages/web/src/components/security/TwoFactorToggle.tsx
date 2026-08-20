@@ -13,6 +13,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -46,6 +47,9 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
   const [loading, setLoading] = useState(false)
 
   // Enable 2FA modal states
+  const t = useTranslations('auth')
+
+
   const [showEnableModal, setShowEnableModal] = useState(false)
   const [qrCodeSVG, setQrCodeSVG] = useState<string>('')
   const [secret, setSecret] = useState<string>('')
@@ -268,7 +272,15 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
               </Alert>
 
               <div className="flex justify-center p-4 bg-white rounded-lg">
-                <div dangerouslySetInnerHTML={{ __html: qrCodeSVG }} />
+                {/* Rendered as an <img> data URI, never inline: an inline SVG
+                    can carry <script> and executes in the page's origin, while
+                    an SVG loaded through <img> cannot run script. */}
+                <img
+                  src={`data:image/svg+xml;utf8,${encodeURIComponent(qrCodeSVG)}`}
+                  alt={t('qrCodeAlt')}
+                  width={200}
+                  height={200}
+                />
               </div>
 
               <div className="text-center text-sm text-muted-foreground">

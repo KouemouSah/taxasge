@@ -5197,7 +5197,8 @@
     "userOnlyPortal": "This portal is for citizens and businesses. Agents must use the agent portal.",
     "useAgentPortal": "Go to Agent Portal",
     "notAnAgent": "Not an agent?",
-    "standardLogin": "Standard login"
+    "standardLogin": "Standard login",
+    "qrCodeAlt": "QR code for setting up two-factor authentication"
   },
   "calculatorPage": {
     "addVat": "Add VAT",

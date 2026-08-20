@@ -11,6 +11,31 @@
  */
 
 /**
+ * URL scheme allowlist for generated links.
+ *
+ * Accepts absolute http(s), mailto, tel, and site-relative URLs. Everything
+ * else — javascript:, data:, vbscript:, blob:, file: — is rejected.
+ *
+ * The check is deliberately done on the DECODED, whitespace-stripped value:
+ * `java\tscript:` and `JaVaScRiPt:` are the classic bypasses.
+ */
+export function isSafeUrl(rawUrl: string): boolean {
+  // Strip leading/trailing whitespace AND any control character: `java\tscript:`
+  // and `JaVaScRiPt:` are the classic scheme-check bypasses. Done without a
+  // regex so no control character ever appears in this source file.
+  const url = Array.from(rawUrl.trim())
+    .filter((ch) => (ch.codePointAt(0) ?? 0) > 0x20)
+    .join('');
+  if (!url) return false;
+  // Relative and anchor targets are safe by construction.
+  if (/^[#/]/.test(url) || /^\.{1,2}\//.test(url)) return true;
+  // Anything else must carry an explicitly allowed scheme.
+  const scheme = url.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+  if (!scheme) return true; // no scheme at all -> treated as relative
+  return ['http', 'https', 'mailto', 'tel'].includes(scheme[1].toLowerCase());
+}
+
+/**
  * Sanitize HTML entities to prevent XSS injection
  */
 function escapeHtml(text: string): string {
@@ -156,11 +181,21 @@ export function renderMarkdown(text: string): string {
   // Numbered lists 1. item
   html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>');
 
-  // Links [text](url) — only if not already escaped
-  html = html.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>'
-  );
+  // Links [text](url)
+  //
+  // SECURITY: the URL is NOT interpolated blindly. Escaping HTML entities (step 2)
+  // prevents attribute breakout but does NOT stop a dangerous scheme: the literal
+  //   [click](javascript:fetch('/api/me').then(...))
+  // would otherwise emit a working javascript: link. Only a scheme allowlist
+  // closes that. This is defence in depth — output must still go through
+  // <SafeHtml> / <SafeMarkdown>, which sanitises again.
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text: string, rawUrl: string) => {
+    if (!isSafeUrl(rawUrl)) {
+      // Drop the link, keep the text: never silently render an unsafe href.
+      return text;
+    }
+    return `<a href="${rawUrl}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${text}</a>`;
+  });
 
   // Line breaks: double newline = paragraph break (proper spacing)
   html = html.replace(/\n\n/g, '<div class="mb-3"></div>');

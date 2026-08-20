@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { chatbotApi } from "@/modules/chatbot/services/api"
 import { renderMarkdown } from "@/core/utils/markdown"
+import { SafeMarkdown } from '@/components/ui/safe-html'
 import { useDocumentAlerts } from "@/modules/user-documents/hooks"
 import type { LanguageCode } from "@/modules/chatbot/types"
 
@@ -254,9 +255,10 @@ export const FloatingChatbot = () => {
                     }`}
                   >
                     {message.role === "assistant" ? (
-                      <div
+                      <SafeMarkdown
                         className="text-sm prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                        markdown={message.content}
+                        render={renderMarkdown}
                       />
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>

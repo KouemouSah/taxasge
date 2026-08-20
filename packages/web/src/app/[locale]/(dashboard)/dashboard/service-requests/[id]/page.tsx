@@ -534,6 +534,8 @@ export default function ServiceRequestDetailPage() {
                                   link.href = doc.file_url!
                                   link.download = doc.file_name || 'document'
                                   link.target = '_blank'
+                                  // Without noopener the opened page can drive ours via window.opener
+                                  link.rel = 'noopener noreferrer'
                                   document.body.appendChild(link)
                                   link.click()
                                   document.body.removeChild(link)

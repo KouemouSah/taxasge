@@ -79,6 +79,7 @@ export default async function LocaleLayout({
           </Providers>
         </NextIntlClientProvider>
         <script
+          // eslint-disable-next-line react/no-danger -- build-time constant script (service-worker registration), no interpolation
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

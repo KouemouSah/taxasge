@@ -548,7 +548,15 @@ export default function EmailTemplatesPage() {
           </DialogHeader>
           <div className="border rounded-lg overflow-auto max-h-[60vh]">
             {previewData ? (
-              <div dangerouslySetInnerHTML={{ __html: previewData.htmlContent }} />
+              /* Sandboxed: no scripts, no forms, no top-level navigation, opaque
+                 origin. Email HTML relies on tables and inline styles, so filtering
+                 it would break the preview — isolation is the right control here. */
+              <iframe
+                srcDoc={previewData.htmlContent}
+                sandbox=""
+                title={t('previewTitle') || 'Email Preview'}
+                className="w-full h-[55vh] border-0 bg-white"
+              />
             ) : (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

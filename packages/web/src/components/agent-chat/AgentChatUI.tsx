@@ -50,6 +50,7 @@ import {
   User, Bot,
 } from 'lucide-react';
 import { renderMarkdown } from '@/core/utils/markdown';
+import { SafeMarkdown } from '@/components/ui/safe-html'
 import { ArtifactRenderer } from './ArtifactRenderer';
 import type { AgentChatConfig, QAEntry, AgentBriefing } from './types';
 
@@ -108,9 +109,10 @@ function BriefingStrip({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div
+          <SafeMarkdown
             className="text-sm prose prose-sm max-w-none mt-2 pt-2 border-t"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(briefing.briefing) }}
+            markdown={briefing.briefing}
+            render={renderMarkdown}
           />
           {recs.length > 0 && (
             <div className="mt-3 pt-3 border-t">
@@ -200,9 +202,10 @@ function AgentBubble({
 
           {/* Markdown analysis */}
           <div className="px-4 py-3">
-            <div
+            <SafeMarkdown
               className="text-sm prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.response.answer) }}
+              markdown={entry.response.answer}
+              render={renderMarkdown}
             />
           </div>
 

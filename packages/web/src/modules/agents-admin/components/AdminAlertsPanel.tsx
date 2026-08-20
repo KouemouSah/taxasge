@@ -20,6 +20,7 @@ import {
   ChevronDown, ChevronUp, CheckCircle2, Sparkles,
 } from 'lucide-react';
 import { renderMarkdown } from '@/core/utils/markdown';
+import { SafeMarkdown } from '@/components/ui/safe-html'
 import type { AdminAlertsDashboard } from '../types';
 
 interface AdminAlertsPanelProps {
@@ -45,9 +46,10 @@ export function AdminAlertsPanel({ dashboard, isLoading }: AdminAlertsPanelProps
             <CardContent className="py-3 px-4">
               <div className="flex items-start gap-2">
                 <Sparkles className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                <div
+                <SafeMarkdown
                   className="text-sm text-blue-900 prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(dashboard.llm_briefing) }}
+                  markdown={dashboard.llm_briefing}
+                  render={renderMarkdown}
                 />
               </div>
             </CardContent>
@@ -106,12 +108,13 @@ export function AdminAlertsPanel({ dashboard, isLoading }: AdminAlertsPanelProps
                 dashboard.llm_priority === 'urgent' ? 'text-red-500' :
                 dashboard.llm_priority === 'attention' ? 'text-orange-500' : 'text-blue-500'
               }`} />
-              <div
+              <SafeMarkdown
                 className={`text-sm prose prose-sm max-w-none ${
                   dashboard.llm_priority === 'urgent' ? 'text-red-900' :
                   dashboard.llm_priority === 'attention' ? 'text-orange-900' : 'text-blue-900'
                 }`}
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(dashboard.llm_briefing) }}
+                markdown={dashboard.llm_briefing}
+                render={renderMarkdown}
               />
             </div>
           </CardContent>

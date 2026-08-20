@@ -58,6 +58,7 @@ export default function HomePage() {
     <>
       <script
         type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- JSON-LD built by JSON.stringify from our own object — not an HTML sink
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
       <HeroSection />

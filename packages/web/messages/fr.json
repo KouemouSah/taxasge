@@ -5197,7 +5197,8 @@
     "userOnlyPortal": "Ce portail est réservé aux citoyens et entreprises. Les agents doivent utiliser le portail agents.",
     "useAgentPortal": "Aller au Portail Agents",
     "notAnAgent": "Vous n'êtes pas agent ?",
-    "standardLogin": "Connexion standard"
+    "standardLogin": "Connexion standard",
+    "qrCodeAlt": "Code QR pour configurer l’authentification à deux facteurs"
   },
   "calculatorPage": {
     "addVat": "Ajouter TVA",

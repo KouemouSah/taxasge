@@ -10,22 +10,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Building2, ArrowLeft, FileText, FolderOpen, Layers, MapPin, Clock } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
+import { SafeHtml } from '@/components/ui/safe-html';
 import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
 import { getMinistryImageUrl } from '@/lib/firebase-storage';
 
-// Sanitize HTML: strip script/iframe/object/embed tags and event handlers
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<object[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed[\s\S]*?\/?>/gi, '')
-    .replace(/<link[\s\S]*?\/?>/gi, '')
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
-    .replace(/javascript\s*:/gi, '')
-    .replace(/data\s*:/gi, 'data-blocked:');
-}
+// HTML sanitisation lives in <SafeHtml> (DOMPurify, allowlist-based).
+// The regex denylist previously here was bypassable: nested tags such as
+// `<scr<script>ipt>` survive a single-pass strip, and unquoted or backtick
+// event-handler forms escape the `on\w+="..."` pattern.
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -158,13 +150,13 @@ export default function MinistryDetailPage() {
             <div>
               <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
               {ministry.description ? (
-                <div
+                <SafeHtml
                   className="text-muted-foreground text-justify prose prose-sm max-w-none
                     prose-headings:text-foreground prose-headings:font-semibold
                     prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
                     prose-p:my-2 prose-ul:my-2 prose-ol:my-2
                     prose-strong:text-foreground"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(ministry.description) }}
+                  html={ministry.description}
                 />
               ) : (
                 <p className="text-muted-foreground">{t('noDescription')}</p>
