@@ -17,41 +17,72 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
 
-    /* Equatorial Guinea colors */
+    /* Equatorial Guinea colors — BRAND, decorative only (flag, hero gradient).
+       Never used as a text/background pair: these are not contrast-constrained. */
     --eq-guinea-blue: 207 100% 39%;
     --eq-guinea-red: 0 79% 46%;
     --eq-guinea-green: 143 100% 30%;
     --eq-guinea-yellow: 45 98% 54%;
 
-    /* Modern primary - Green (changed from blue) */
-    --primary: 143 100% 30%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 143 100% 25%;
+    /* Modern primary - Green.
+       L 26% (not the brand's 30%): white text on 143 100% 30% measures 3.74:1
+       and fails WCAG AA. At 26% the pair reaches 4.77:1. The 4-point shift is
+       imperceptible next to the brand green and decisive for legibility. */
+    --primary: 143 100% 26%;
+    --primary-foreground: 0 0% 100%;     /* 4.77:1 */
+    --primary-hover: 143 100% 21%;       /* 6.70:1 */
 
     /* Secondary - Blue */
     --secondary: 207 100% 39%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 100%;   /* 5.23:1 */
 
-    /* Muted */
+    /* Muted — 42%, not 46%: 46% is 4.40:1 on --muted, just under the 4.5 minimum */
     --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted-foreground: 240 4% 42%;      /* 5.61:1 on bg, 5.10:1 on muted */
 
     /* Accent - Yellow */
     --accent: 45 98% 54%;
-    --accent-foreground: 240 10% 10%;
+    --accent-foreground: 240 10% 10%;    /* 11.05:1 */
 
     /* Destructive - Red */
     --destructive: 0 79% 46%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 100%; /* 5.39:1 */
 
-    /* Success - Green */
-    --success: 143 100% 30%;
-    --success-foreground: 0 0% 100%;
+    /* Success - Green (same pair as primary) */
+    --success: 143 100% 26%;
+    --success-foreground: 0 0% 100%;     /* 4.77:1 */
 
-    /* Border and input */
+    /* Warning / Info — required semantic tokens.
+       Without them developers reach for text-orange-600 / text-blue-600, which
+       is the root cause of palette-class drift. Amber ALWAYS takes dark text:
+       white on #F59E0B is 2.15:1. */
+    --warning: 38 92% 50%;
+    --warning-foreground: 30 60% 10%;    /* 7.90:1 */
+    --info: 207 100% 36%;
+    --info-foreground: 0 0% 100%;        /* 5.91:1 */
+
+    /* Subtle (soft) status variants — the default for badges and rows.
+       Declared as opaque colours, not bg-x/10: an alpha composite has no
+       measurable contrast. */
+    --success-subtle: 143 55% 94%;
+    --success-subtle-foreground: 143 100% 18%;      /* 7.46:1 */
+    --warning-subtle: 45 95% 93%;
+    --warning-subtle-foreground: 30 80% 26%;        /* 7.56:1 */
+    --destructive-subtle: 0 80% 96%;
+    --destructive-subtle-foreground: 0 79% 32%;     /* 8.01:1 */
+    --info-subtle: 207 90% 95%;
+    --info-subtle-foreground: 207 100% 26%;         /* 8.14:1 */
+    --primary-subtle: 143 55% 94%;
+    --primary-subtle-foreground: 143 100% 18%;      /* 7.46:1 */
+
+    /* Border and input.
+       --border is a decorative separator: no WCAG minimum.
+       --input is a CONTROL boundary: WCAG 1.4.11 requires >= 3:1, and the
+       previous 240 6% 90% measured 1.27:1 — the field outline was effectively
+       invisible to low-vision users. */
     --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 143 100% 30%;
+    --input: 240 6% 58%;                 /* 3.28:1 */
+    --ring: 143 100% 26%;                /* 4.77:1 */
 
     --radius: 0.75rem;
 
@@ -70,38 +101,58 @@ All colors MUST be HSL.
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Dark theme = TONAL INVERSION, not "the same hue, slightly lighter".
+     Accents become LIGHT and their foregrounds become DARK. The previous
+     values kept mid-tone accents under white text: --primary reached only
+     2.79:1, below even the 3:1 non-text minimum. */
   .dark {
     --background: 240 10% 8%;
-    --foreground: 0 0% 95%;
+    --foreground: 0 0% 95%;              /* 16.69:1 */
 
     --card: 240 10% 10%;
-    --card-foreground: 0 0% 95%;
+    --card-foreground: 0 0% 95%;         /* 15.95:1 */
 
     --popover: 240 10% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 143 100% 35%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 143 100% 28%;
+    --primary: 143 55% 62%;
+    --primary-foreground: 143 90% 8%;    /* 8.72:1 */
+    --primary-hover: 143 55% 70%;        /* 9.97:1 — hover LIGHTENS in a dark theme */
 
-    --secondary: 207 100% 45%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 207 75% 66%;
+    --secondary-foreground: 207 90% 10%; /* 7.33:1 */
 
     --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
+    --muted-foreground: 240 5% 65%;      /* 7.29:1 on bg, 5.81:1 on muted */
 
     --accent: 45 98% 58%;
-    --accent-foreground: 240 10% 10%;
+    --accent-foreground: 240 10% 10%;    /* 11.46:1 */
 
-    --destructive: 0 79% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 79% 68%;
+    --destructive-foreground: 0 80% 10%; /* 6.18:1 */
 
-    --success: 143 100% 30%;
-    --success-foreground: 0 0% 100%;
+    --success: 143 55% 62%;
+    --success-foreground: 143 90% 8%;    /* 8.72:1 */
+
+    --warning: 42 95% 62%;
+    --warning-foreground: 30 80% 8%;     /* 10.97:1 */
+    --info: 207 75% 66%;
+    --info-foreground: 207 90% 10%;      /* 7.33:1 */
+
+    --success-subtle: 143 30% 18%;
+    --success-subtle-foreground: 143 55% 76%;       /* 8.14:1 */
+    --warning-subtle: 38 40% 20%;
+    --warning-subtle-foreground: 42 95% 76%;        /* 8.32:1 */
+    --destructive-subtle: 0 40% 20%;
+    --destructive-subtle-foreground: 0 85% 84%;     /* 8.23:1 */
+    --info-subtle: 207 40% 20%;
+    --info-subtle-foreground: 207 85% 80%;          /* 7.77:1 */
+    --primary-subtle: 143 30% 18%;
+    --primary-subtle-foreground: 143 55% 76%;       /* 8.14:1 */
 
     --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 143 100% 35%;
+    --input: 240 4% 50%;                 /* 4.40:1 — control boundary, was 1.25:1 */
+    --ring: 143 55% 62%;                 /* 10.08:1 */
 
     --gradient-hero: linear-gradient(135deg, hsl(var(--eq-guinea-blue)) 0%, hsl(var(--eq-guinea-green)) 50%, hsl(var(--eq-guinea-yellow)) 100%);
     --gradient-card: linear-gradient(180deg, hsl(143 80% 15%) 0%, hsl(143 70% 18%) 100%);

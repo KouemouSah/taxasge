@@ -30,6 +30,8 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           hover: "hsl(var(--primary-hover))",
+          subtle: "hsl(var(--primary-subtle))",
+          "subtle-foreground": "hsl(var(--primary-subtle-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -38,10 +40,28 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          subtle: "hsl(var(--destructive-subtle))",
+          "subtle-foreground": "hsl(var(--destructive-subtle-foreground))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          subtle: "hsl(var(--success-subtle))",
+          "subtle-foreground": "hsl(var(--success-subtle-foreground))",
+        },
+        // Required semantic tokens. Their absence is what pushed the codebase
+        // to text-orange-600 / text-blue-600 in ~3800 places.
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+          subtle: "hsl(var(--warning-subtle))",
+          "subtle-foreground": "hsl(var(--warning-subtle-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+          subtle: "hsl(var(--info-subtle))",
+          "subtle-foreground": "hsl(var(--info-subtle-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
