@@ -37,7 +37,7 @@ on:
 
 jobs:
   strict:
-    name: strict (contrast + XSS must be zero)
+    name: strict (contrast + XSS + secret-logging must be zero)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,11 +49,11 @@ jobs:
       # `dark-mode-contract` is deliberately NOT in this list — see the ratchet
       # job's note. It is tracked, not enforced, until dark mode is wired.
       - name: web
-        run: node tools/design-audit.mjs packages/web --only contrast,unsafe-html,unsafe-link
+        run: node tools/design-audit.mjs packages/web --only contrast,unsafe-html,unsafe-link,sensitive-log
       - name: mobile
-        run: node tools/design-audit.mjs packages/mobile --only contrast,unsafe-html,unsafe-link
+        run: node tools/design-audit.mjs packages/mobile --only contrast,unsafe-html,unsafe-link,sensitive-log
       - name: inspector
-        run: node tools/design-audit.mjs packages/inspector --only contrast,unsafe-html,unsafe-link
+        run: node tools/design-audit.mjs packages/inspector --only contrast,unsafe-html,unsafe-link,sensitive-log
 
   ratchet:
     name: ratchet (backlog must not grow)
@@ -72,12 +72,12 @@ jobs:
       # and hex literals in markup of any framework). The web count rose because
       # the tool sees MORE, not because the code got worse.
       #
-      # web       4051 errors / 447 warnings   (4050 no-raw-color + 1 dark-mode-contract)
+      # web       4058 errors / 447 warnings   (4050 no-raw-color + 7 token-storage + 1 dark-mode-contract)
       # mobile     290 errors /   1 warning    (290 no-raw-color)
       # inspector   47 errors /   2 warnings
       - name: audit all packages
         env:
-          WEB_MAX_ERRORS: '4051'
+          WEB_MAX_ERRORS: '4058'
           WEB_MAX_WARNINGS: '447'
           MOBILE_MAX_ERRORS: '290'
           MOBILE_MAX_WARNINGS: '1'

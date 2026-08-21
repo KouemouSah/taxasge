@@ -426,8 +426,12 @@ npm run design:audit:strict --workspace packages/web  # règles bloquantes seule
 node tools/design-audit.mjs packages/web --json     # pour la CI
 ```
 
-11 règles : `contrast` · `dark-mode-contract` · `unsafe-html` · `unsafe-link` · `no-raw-color` ·
-`hardcoded-options` · `free-text-referential` · `form-primitive` · `touch-target` · `async-states` · `ui-string`.
+13 règles : `contrast` · `dark-mode-contract` · `unsafe-html` · `unsafe-link` · `token-storage` ·
+`sensitive-log` · `no-raw-color` · `hardcoded-options` · `free-text-referential` · `form-primitive` ·
+`touch-target` · `async-states` · `ui-string`.
+
+**Lire le bloc de couverture avant les résultats.** Chaque rapport indique quelles règles ont pu tourner.
+Une règle `N/A` n'a **pas** réussi — elle n'a rien trouvé qu'elle sache lire.
 
 ### Règles non négociables (CI `design-gate` / job `strict`, doit rester à 0)
 
@@ -438,6 +442,21 @@ node tools/design-audit.mjs packages/web --json     # pour la CI
    (ESLint `react/no-danger` = error) ; chaque exception porte un `eslint-disable` **justifié**.
    Échapper les entités ne suffit pas : sans allowlist de schémas, `[x](javascript:...)` s'exécute.
 3. **`target="_blank"` ⇒ `rel="noopener noreferrer"`**, y compris sur les `<a>` créés en JS.
+4. **Aucun secret dans `console.*`** (`sensitive-log`). Les logs atteignent les devtools navigateur,
+   `logcat` via USB sur un appareil en mode développeur, et les agrégateurs de logs.
+
+### Risque actif à traiter (pas une dette esthétique)
+
+**`token-storage` = 7 sur `packages/web`** — le jeton d'accès est lu/écrit dans `localStorage`
+(`LoginForm.tsx:44` en écriture, 6 lectures). `localStorage` est lisible par **tout script de l'origine** :
+combiné à une XSS, c'est une prise de compte complète. Les 7 sinks XSS ont été fermés le 2026-08-20,
+ce qui réduit la probabilité — pas l'impact.
+
+Cible : jeton d'accès **en mémoire**, jeton de rafraîchissement en cookie `HttpOnly`+`Secure`+`SameSite`,
+rotation à chaque usage. Nécessite une coordination backend (cookie posé sur le domaine API), donc suivi
+sous cliquet **en décroissance uniquement**, jamais en hausse. Détails : `references/state-cache-and-session.md` §4.
+
+`packages/mobile` et `packages/inspector` sont conformes (`expo-secure-store` → Keychain/Keystore).
 
 ### Backlog sous cliquet (job `ratchet`, ne doit jamais augmenter)
 

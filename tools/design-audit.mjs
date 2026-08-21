@@ -826,6 +826,72 @@ if (ruleEnabled('form-primitive')) {
 }
 
 // ---------------------------------------------------------------------------
+// Rule: token-storage  (a credential written where a script can read it)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('token-storage')) {
+  // localStorage / sessionStorage are readable by ANY script on the origin.
+  // AsyncStorage / MMKV are plaintext on disk. A token in either turns any XSS
+  // (or a rooted device) into account takeover. Tokens belong in memory + an
+  // HttpOnly cookie (web) or the platform keychain (mobile).
+  const STORE = '(?:localStorage|sessionStorage|AsyncStorage|MMKV|storage)';
+  const SECRET = '(?:token|jwt|auth|secret|credential|password|passwd|apikey|api_key|refresh|session|bearer)';
+  const WRITE_RE = new RegExp(`\\b${STORE}\\s*\\.\\s*(?:setItem|set)\\s*\\(\\s*['"\`][^'"\`]*${SECRET}`, 'i');
+  const READ_RE = new RegExp(`\\b${STORE}\\s*\\.\\s*(?:getItem|get)\\s*\\(\\s*['"\`][^'"\`]*${SECRET}`, 'i');
+
+  for (const { full, rel } of files) {
+    if (!/\.(ts|tsx|js|jsx|mjs|vue|svelte|astro)$/.test(rel)) continue;
+    const src = read(full);
+    if (!/localStorage|sessionStorage|AsyncStorage|MMKV/.test(src)) continue;
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      const isWrite = WRITE_RE.test(line);
+      const isRead = !isWrite && READ_RE.test(line);
+      if (!isWrite && !isRead) return;
+      report('token-storage', 'error', rel, i + 1,
+        isWrite
+          ? 'a credential is WRITTEN to script-readable storage'
+          : 'a credential is READ from script-readable storage (so it is stored there)',
+        'any XSS on this origin can exfiltrate it. Web: access token in memory + refresh token in an ' +
+        'HttpOnly/Secure/SameSite cookie. Mobile: expo-secure-store / Keychain / Keystore. ' +
+        'See references/state-cache-and-session.md §4');
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: sensitive-log  (a secret handed to the console)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('sensitive-log')) {
+  const LOG_RE = /\bconsole\.(log|info|debug|warn|error|table|dir)\s*\(([^)]*)\)/gi;
+  const SECRET_ARG = /\b(token|jwt|password|passwd|secret|credential|apiKey|api_key|refreshToken|accessToken|authorization|bearer)\b/i;
+
+  for (const { full, rel } of files) {
+    if (!/\.(ts|tsx|js|jsx|mjs|vue|svelte|astro)$/.test(rel)) continue;
+    const src = read(full);
+    if (!src.includes('console.')) continue;
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      LOG_RE.lastIndex = 0;
+      let m;
+      while ((m = LOG_RE.exec(line))) {
+        const args = m[2];
+        if (!SECRET_ARG.test(args)) continue;
+        // A message that merely names the concept is fine; a VALUE is not.
+        // Heuristic: the secret word appears outside quotes, i.e. as an identifier.
+        const withoutStrings = args.replace(/(['"\`])(?:(?!\1)[^\\]|\\.)*\1/g, '');
+        if (!SECRET_ARG.test(withoutStrings)) continue;
+        report('sensitive-log', 'error', rel, i + 1,
+          `console.${m[1]} receives a credential-named value`,
+          'this line ships. Logs reach browser devtools, mobile logcat over USB, and log aggregators. ' +
+          'Log an identifier, never the secret');
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Output
 // ---------------------------------------------------------------------------
 
@@ -878,6 +944,8 @@ const APPLICABILITY = {
   'touch-target': { applicable: f.tailwind > 0, why: f.tailwind > 0 ? `${f.tailwind} file(s) using utility classes` : 'Tailwind-specific: no utility classes found' },
   'async-states': { applicable: f.reactLike > 0, why: f.reactLike > 0 ? `${f.reactLike} React-like file(s)` : 'React-query/SWR specific: no React files found' },
   'ui-string': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
+  'token-storage': { applicable: files.length > 0, why: `${files.length} file(s) scanned` },
+  'sensitive-log': { applicable: files.length > 0, why: `${files.length} file(s) scanned` },
 };
 
 const enabledRules = Object.keys(APPLICABILITY).filter((r) => ruleEnabled(r));
@@ -895,7 +963,7 @@ if (asJson) {
     findings,
   }, null, 2));
 } else {
-  const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'touch-target', 'async-states', 'ui-string'];
+  const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'token-storage', 'sensitive-log', 'touch-target', 'async-states', 'ui-string'];
   const byRule = new Map();
   for (const f of findings) {
     if (!byRule.has(f.rule)) byRule.set(f.rule, []);
