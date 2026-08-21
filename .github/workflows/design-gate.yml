@@ -67,27 +67,47 @@ jobs:
       # Ceilings measured on develop, 2026-08-20, after the contrast and XSS
       # remediation. ONLY EVER LOWER THESE.
       #
-      # web       3799 errors / 447 warnings   (3798 no-raw-color + 1 dark-mode-contract)
+      # Re-measured 2026-08-21 after the validator was generalised (it now also
+      # reads .vue/.svelte/.astro/.html, oklch()/rgb() tokens, grouped palettes,
+      # and hex literals in markup of any framework). The web count rose because
+      # the tool sees MORE, not because the code got worse.
+      #
+      # web       4051 errors / 447 warnings   (4050 no-raw-color + 1 dark-mode-contract)
       # mobile     290 errors /   1 warning    (290 no-raw-color)
-      # inspector   47 errors /   3 warnings
+      # inspector   47 errors /   2 warnings
       - name: audit all packages
         env:
-          WEB_MAX_ERRORS: '3799'
+          WEB_MAX_ERRORS: '4051'
           WEB_MAX_WARNINGS: '447'
           MOBILE_MAX_ERRORS: '290'
           MOBILE_MAX_WARNINGS: '1'
           INSPECTOR_MAX_ERRORS: '47'
-          INSPECTOR_MAX_WARNINGS: '3'
+          INSPECTOR_MAX_WARNINGS: '2'
         run: |
-          set -e
+          set -uo pipefail
           fail=0
           check() {
             local pkg="$1" maxE="$2" maxW="$3"
-            node tools/design-audit.mjs "packages/$pkg" --json > "audit-$pkg.json"
-            local e w
-            e=$(node -p "require('./audit-$pkg.json').errors")
-            w=$(node -p "require('./audit-$pkg.json').warnings")
-            echo "$pkg: $e errors (ceiling $maxE) / $w warnings (ceiling $maxW)"
+            if ! node tools/design-audit.mjs "packages/$pkg" --json > "audit-$pkg.json"; then
+              # The validator exits 1 when it finds errors — that is expected here,
+              # the ratchet decides. Only an unreadable/empty report is fatal.
+              :
+            fi
+            local e w na
+            e=$(node -p "require('./audit-$pkg.json').errors" 2>/dev/null || echo "")
+            w=$(node -p "require('./audit-$pkg.json').warnings" 2>/dev/null || echo "")
+            na=$(node -p "require('./audit-$pkg.json').coverage.inapplicableRules.join(',') || 'none'" 2>/dev/null || echo "?")
+
+            # A missing or non-numeric count means the audit did not run. Never let
+            # that read as a pass: an empty variable compares as "not greater than"
+            # and would silently green-light the build.
+            if ! [[ "$e" =~ ^[0-9]+$ ]] || ! [[ "$w" =~ ^[0-9]+$ ]]; then
+              echo "::error::design audit produced no usable report for $pkg (errors='$e' warnings='$w')"
+              fail=1
+              return
+            fi
+
+            echo "$pkg: $e errors (ceiling $maxE) / $w warnings (ceiling $maxW) | rules not applicable: $na"
             if [ "$e" -gt "$maxE" ] || [ "$w" -gt "$maxW" ]; then
               echo "::error file=packages/$pkg::design audit regressed in $pkg — $e/$maxE errors, $w/$maxW warnings"
               node -e "require('./audit-$pkg.json').findings.slice(0,30).forEach(f=>console.log(f.severity,f.file+':'+f.line,f.message))"

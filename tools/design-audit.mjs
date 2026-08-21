@@ -48,7 +48,7 @@ if (!fs.existsSync(root)) {
   process.exit(2);
 }
 
-let config = { ignore: [], tokenFiles: [], safeHtmlFiles: [], disable: [] };
+let config = { ignore: [], tokenFiles: [], safeHtmlFiles: [], disable: [], contrastPairs: [] };
 const rcPath = path.join(root, '.designauditrc.json');
 if (fs.existsSync(rcPath)) {
   try {
@@ -89,6 +89,70 @@ const hexToRgb = (hex) => {
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 };
 
+/** OKLCH -> sRGB. Tailwind v4 and most 2024+ token systems emit oklch(). */
+const oklchToRgb = (L, C, hDeg) => {
+  const h = (hDeg * Math.PI) / 180;
+  const a = C * Math.cos(h);
+  const b = C * Math.sin(h);
+  // OKLab -> LMS
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+  const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3;
+  // LMS -> linear sRGB
+  const lin = [
+    +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  // linear -> gamma-encoded 0..255
+  return lin.map((v) => {
+    const c = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(Math.max(v, 0), 1 / 2.4) - 0.055;
+    return Math.round(Math.min(1, Math.max(0, c)) * 255);
+  });
+};
+
+/**
+ * Parse any colour notation a token file realistically uses.
+ *
+ * Deliberately format-agnostic: a validator that only understands one notation
+ * silently reports "clean" on every project that uses another one.
+ * Returns null when the value is not a resolvable colour (e.g. a var() alias).
+ */
+const parseColor = (raw) => {
+  if (!raw) return null;
+  const v = String(raw).trim().replace(/;$/, '');
+
+  // #rgb / #rrggbb
+  let m = v.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/);
+  if (m) return hexToRgb(m[0]);
+
+  // Tailwind/shadcn bare-channel form: `H S% L%` (no wrapper, composable with /alpha)
+  m = v.match(/^(-?[\d.]+)\s+([\d.]+)%\s+([\d.]+)%/);
+  if (m) return hslToRgb(((Number(m[1]) % 360) + 360) % 360, Number(m[2]), Number(m[3]));
+
+  // hsl(H S% L%) / hsl(H, S%, L%) / hsla(...)
+  m = v.match(/^hsla?\(\s*(-?[\d.]+)(?:deg)?\s*[, ]\s*([\d.]+)%\s*[, ]\s*([\d.]+)%/i);
+  if (m) return hslToRgb(((Number(m[1]) % 360) + 360) % 360, Number(m[2]), Number(m[3]));
+
+  // rgb(r g b) / rgb(r, g, b) / rgba(...)
+  m = v.match(/^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)/i);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])].map((n) => Math.round(n));
+
+  // oklch(L C H) — L may be a percentage
+  m = v.match(/^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+(-?[\d.]+)/i);
+  if (m) {
+    const L = m[2] === '%' ? Number(m[1]) / 100 : Number(m[1]);
+    return oklchToRgb(L, Number(m[3]), Number(m[4]));
+  }
+
+  // Bare channel triplet without units: `255 255 255` (Tailwind rgb-channel style)
+  m = v.match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s*$/);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+
+  return null; // var() alias, colour keyword, gradient, transparent…
+};
+
 // ---------------------------------------------------------------------------
 // File walking
 // ---------------------------------------------------------------------------
@@ -98,7 +162,15 @@ const SKIP_DIRS = new Set([
   '.expo', '.turbo', '.cache', 'android', 'ios', 'vendor', '__snapshots__',
   '.venv', 'venv', '.claude',
 ]);
-const CODE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.scss']);
+// Stack-agnostic on purpose. A validator that only reads .tsx reports "clean"
+// on a Vue/Svelte/Astro codebase, which is worse than reporting nothing.
+const CODE_EXT = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.vue', '.svelte', '.astro', '.html',
+  '.css', '.scss', '.sass', '.less',
+]);
+/** Files that can contain component markup, whatever the framework. */
+const isMarkupFile = (rel) => /\.(tsx|jsx|vue|svelte|astro|html)$/.test(rel);
 
 const toPosix = (p) => p.split(path.sep).join('/');
 const ignoreRe = config.ignore.map(
@@ -131,6 +203,25 @@ const read = (f) => {
   try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
 };
 
+/**
+ * What kind of codebase is this? Measured, not assumed — the answer decides
+ * which rules are meaningful and which ones must report "not applicable"
+ * instead of a misleading zero.
+ */
+function detectStack() {
+  const TW = /\b(?:class|className)\s*=\s*["'`{][^"'`]*\b(?:flex|grid|p-\d|px-\d|text-\w+|bg-\w+)/;
+  for (const { full, rel } of files) {
+    const ext = path.extname(rel);
+    if (/\.(css|scss|sass|less)$/.test(ext)) { coverage.files.style++; continue; }
+    if (!isMarkupFile(rel) && !/\.(ts|js|mjs|cjs)$/.test(ext)) continue;
+    const src = read(full);
+    if (isMarkupFile(rel)) coverage.files.markup++;
+    if (/from\s+['"]react-native['"]|from\s+['"]react-native-paper['"]/.test(src)) coverage.files.native++;
+    if (/from\s+['"]react['"]|dangerouslySetInnerHTML|useState|useEffect/.test(src)) coverage.files.reactLike++;
+    if (TW.test(src)) coverage.files.tailwind++;
+  }
+}
+
 // A token/theme file is allowed to hold literal values — that is its job.
 const TOKEN_FILE_RE = /(^|\/)(tokens?|colors?|palette|theme|design-tokens)(\.[a-z]+)?\.(css|scss|ts|tsx|js|jsx)$/i;
 const isTokenFile = (rel) =>
@@ -146,6 +237,43 @@ const ruleEnabled = (name) =>
 
 // Ignore matches inside a line comment — comments legitimately cite bad examples.
 const isCommentLine = (line) => /^\s*(\/\/|\*|#|<!--)/.test(line);
+
+/**
+ * Raw-HTML sinks across frameworks. Every one of these takes a string and
+ * inserts it into the document as markup — the XSS boundary is identical
+ * regardless of which framework spells it which way.
+ */
+const HTML_SINK_RE = new RegExp(
+  [
+    'dangerouslySetInnerHTML',   // React
+    'v-html',                    // Vue
+    '\\{@html\\s',               // Svelte
+    'set:html',                  // Astro
+    '\\[innerHTML\\]',           // Angular property binding
+    '\\.innerHTML\\s*=',         // plain DOM
+    '\\.outerHTML\\s*=',         // plain DOM
+    'insertAdjacentHTML',        // plain DOM
+    'bypassSecurityTrustHtml',   // Angular DomSanitizer escape hatch
+  ].join('|'),
+  'g',
+);
+
+/**
+ * Coverage ledger.
+ *
+ * A rule that finds nothing can mean two very different things: "the codebase
+ * is clean" or "this rule could not read this codebase". Reporting both as
+ * `0 findings` is the single most dangerous thing a quality tool can do — it
+ * manufactures false confidence. Every rule therefore records whether it saw
+ * any input it could actually analyse, and the report says so explicitly.
+ */
+const coverage = {
+  contrast: { sources: 0, pairsChecked: 0 },
+  files: { markup: 0, style: 0, native: 0, tailwind: 0, reactLike: 0 },
+};
+
+// Measure the stack now that the ledger exists.
+detectStack();
 
 // ---------------------------------------------------------------------------
 // Rule: no-raw-color
@@ -187,6 +315,18 @@ if (ruleEnabled('no-raw-color')) {
             `arbitrary color ${arb[0]} — use a semantic token`,
             line.trim().slice(0, 120));
         }
+        // Markup files of ANY framework: a hex literal in a template, a
+        // :style binding or a scoped <style> block is the same token bypass
+        // as one in a React Native StyleSheet.
+        if (isMarkupFile(rel)) {
+          const hx = line.match(HEX_RE);
+          if (hx && !/--[\w-]+\s*:/.test(line)) {
+            const list = [...new Set(hx)].slice(0, 3).join(', ');
+            report('no-raw-color', 'error', rel, i + 1,
+              `hardcoded color ${list} — use a semantic token`,
+              line.trim().slice(0, 120));
+          }
+        }
         if (path.extname(rel) === '.css' || path.extname(rel) === '.scss') {
           const hx = line.match(HEX_RE);
           if (hx && !/--[\w-]+\s*:/.test(line)) {
@@ -203,31 +343,45 @@ if (ruleEnabled('no-raw-color')) {
 // Rule: contrast
 // ---------------------------------------------------------------------------
 
+/**
+ * Extract design tokens from a stylesheet, whatever the notation.
+ *
+ * Handles :root / .dark / [data-theme] / html.dark / @media (prefers-color-scheme)
+ * and hex, rgb(), hsl(), oklch(), and bare "H S% L%" channels.
+ */
 function parseCssTokens(src) {
   const themes = {};
-  // Match `:root { ... }` and `.dark { ... }` (also `[data-theme="dark"]`).
-  const blockRe = /(:root|\.dark|\[data-theme=["']dark["']\])\s*\{([^}]*)\}/g;
-  let m;
-  while ((m = blockRe.exec(src))) {
-    const name = m[1] === ':root' ? 'light' : 'dark';
-    const body = m[2];
-    themes[name] ??= {};
-    const varRe = /--([\w-]+)\s*:\s*([0-9.]+)\s+([0-9.]+)%\s+([0-9.]+)%/g;
+  const addBlock = (scheme, body) => {
+    themes[scheme] ??= {};
+    const varRe = /--([\w-]+)\s*:\s*([^;{}]+)/g;
     let v;
     while ((v = varRe.exec(body))) {
-      themes[name][v[1]] = hslToRgb(Number(v[2]), Number(v[3]), Number(v[4]));
+      const rgb = parseColor(v[2]);
+      if (rgb) themes[scheme][v[1]] = rgb;
     }
+  };
+
+  // Any selector block that declares custom properties.
+  const blockRe = /([^{}]+)\{([^{}]*--[^{}]*)\}/g;
+  let m;
+  while ((m = blockRe.exec(src))) {
+    const selector = m[1].trim();
+    if (!/--[\w-]+\s*:/.test(m[2])) continue;
+    const isDark = /\.dark\b|\[data-theme=["']?dark|:root\s*\.dark|prefers-color-scheme:\s*dark/i.test(selector)
+      || /prefers-color-scheme:\s*dark/i.test(src.slice(Math.max(0, m.index - 120), m.index));
+    addBlock(isDark ? 'dark' : 'light', m[2]);
   }
   return themes;
 }
 
+/**
+ * Extract tokens from a JS/TS token module: { light: { primary: '#..' }, dark: {...} }
+ * or a flat exported object. Values may be any supported colour notation.
+ */
 function parseTsTokens(src) {
   const themes = {};
-  for (const scheme of ['light', 'dark']) {
-    // Locate `light: {` and capture until the matching depth-0 close brace.
-    const start = src.search(new RegExp(`\\b${scheme}\\s*:\\s*\\{`));
-    if (start === -1) continue;
-    let depth = 0, i = src.indexOf('{', start), body = '';
+  const grab = (startIdx) => {
+    let depth = 0, i = src.indexOf('{', startIdx), body = '';
     for (; i < src.length; i++) {
       const ch = src[i];
       if (ch === '{') depth++;
@@ -235,48 +389,119 @@ function parseTsTokens(src) {
       if (depth > 0) body += ch;
     }
     const entries = {};
-    const kvRe = /(\w+)\s*:\s*['"](#[0-9a-fA-F]{3,8})['"]/g;
+    const kvRe = /([\w$]+)\s*:\s*['"`]([^'"`]+)['"`]/g;
     let m;
-    while ((m = kvRe.exec(body))) entries[m[1]] = hexToRgb(m[2]);
+    while ((m = kvRe.exec(body))) {
+      const rgb = parseColor(m[2]);
+      if (rgb) entries[m[1]] = rgb;
+    }
+    return entries;
+  };
+  for (const scheme of ['light', 'dark']) {
+    const start = src.search(new RegExp(`\\b${scheme}\\s*:\\s*\\{`));
+    if (start === -1) continue;
+    const entries = grab(start);
     if (Object.keys(entries).length) themes[scheme] = entries;
+  }
+
+  // No light/dark split? Flatten the whole module into dotted keys so grouped
+  // palettes still get checked:  primary: { main, contrast } -> primary.main,
+  // primary.contrast. This is the MUI / "role group" convention; without it the
+  // rule silently reports nothing on a large family of real design systems.
+  if (!Object.keys(themes).length) {
+    const flat = {};
+    const groupRe = /(\w+)\s*:\s*\{([^{}]*)\}/g;
+    let g;
+    while ((g = groupRe.exec(src))) {
+      const group = g[1];
+      const kvRe = /([\w$]+)\s*:\s*['"`]([^'"`]+)['"`]/g;
+      let kv;
+      while ((kv = kvRe.exec(g[2]))) {
+        const rgb = parseColor(kv[2]);
+        if (rgb) flat[`${group}.${kv[1]}`] = rgb;
+      }
+    }
+    if (Object.keys(flat).length) themes.default = flat;
   }
   return themes;
 }
 
-function checkPairs(themes, kind, file) {
+/**
+ * Pair a foreground token with its background.
+ *
+ * Conventions understood out of the box:
+ *   `x` + `x-foreground`   (shadcn / Tailwind)
+ *   `x` + `onX`            (Material Design 3)
+ *   `x` + `x-fg` / `x-text` / `x-contrast`
+ * Anything else: declare it in .designauditrc.json
+ *   { "contrastPairs": [["--color-text", "--color-bg", 4.5]] }
+ */
+function derivePairs(tokens) {
   const TEXT_MIN = 4.5, UI_MIN = 3;
+  const pairs = [];
+  const SUFFIXES = ['-foreground', '-fg', '-text', '-contrast', 'Foreground'];
+
+  for (const key of Object.keys(tokens)) {
+    for (const suffix of SUFFIXES) {
+      if (key.endsWith(suffix) && key.length > suffix.length) {
+        const base = key.slice(0, -suffix.length);
+        if (tokens[base]) { pairs.push([key, base, TEXT_MIN]); break; }
+      }
+    }
+    if (/^on[A-Z]/.test(key)) {
+      const base = key[2].toLowerCase() + key.slice(3);
+      if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
+    }
+  }
+
+  // Grouped / MUI-style palettes: primary.main + primary.contrast(Text),
+  // primary.container + primary.onContainer.
+  for (const key of Object.keys(tokens)) {
+    const dot = key.indexOf('.');
+    if (dot < 0) continue;
+    const group = key.slice(0, dot);
+    const leaf = key.slice(dot + 1);
+    if (leaf === 'contrast' || leaf === 'contrastText' || leaf === 'onMain') {
+      const base = `${group}.main`;
+      if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
+    }
+    if (/^on[A-Z]/.test(leaf)) {
+      const baseLeaf = leaf[2].toLowerCase() + leaf.slice(3);
+      const base = `${group}.${baseLeaf}`;
+      if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
+    }
+  }
+
+  // Control boundaries and focus rings: 3:1 against the page (WCAG 1.4.11).
+  const pageKey = tokens.background ? 'background' : tokens.surface ? 'surface' : tokens.bg ? 'bg' : null;
+  if (pageKey) {
+    for (const k of ['input', 'ring', 'outline', 'border-strong']) {
+      if (tokens[k]) pairs.push([k, pageKey, UI_MIN]);
+    }
+  }
+  return pairs;
+}
+
+function checkPairs(themes, file) {
   for (const [scheme, tokens] of Object.entries(themes)) {
-    const pairs = [];
-    for (const key of Object.keys(tokens)) {
-      if (kind === 'css') {
-        // `x` + `x-foreground`
-        if (key.endsWith('-foreground')) {
-          const base = key.slice(0, -'-foreground'.length);
-          if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
-        }
-      } else {
-        // `onX` + `x`
-        if (/^on[A-Z]/.test(key)) {
-          const base = key[2].toLowerCase() + key.slice(3);
-          if (tokens[base]) pairs.push([key, base, TEXT_MIN]);
-        }
-      }
+    const pairs = derivePairs(tokens);
+
+    // Explicit pairs from config, for naming schemes this cannot infer.
+    for (const [fgRaw, bgRaw, min] of config.contrastPairs ?? []) {
+      const fg = String(fgRaw).replace(/^--/, '');
+      const bg = String(bgRaw).replace(/^--/, '');
+      if (tokens[fg] && tokens[bg]) pairs.push([fg, bg, min ?? 4.5]);
     }
-    // Control boundaries and focus rings must clear 3:1 against the page.
-    const bg = tokens.background ?? tokens.surface;
-    if (bg) {
-      for (const k of ['input', 'ring', 'outline']) {
-        if (tokens[k]) pairs.push([k, tokens.background ? 'background' : 'surface', UI_MIN]);
-      }
-    }
+
     if (!pairs.length) continue;
+    coverage.contrast.pairsChecked += pairs.length;
 
     for (const [fg, bgKey, min] of pairs) {
       const ratio = contrast(tokens[fg], tokens[bgKey]);
       if (ratio < min) {
         report('contrast', 'error', file, 0,
           `${scheme}: ${fg} on ${bgKey} = ${ratio.toFixed(2)}:1 (needs ${min}:1)`,
-          min === TEXT_MIN
+          min >= 4.5
             ? 'darken the background or flip the foreground; in dark themes accents go LIGHT with DARK foregrounds'
             : 'control boundaries and focus rings need 3:1 (WCAG 1.4.11)');
       }
@@ -284,23 +509,31 @@ function checkPairs(themes, kind, file) {
   }
 }
 
-let tokenSourcesFound = 0;
 if (ruleEnabled('contrast')) {
   for (const { full, rel } of files) {
     const ext = path.extname(rel);
     const src = read(full);
-    if ((ext === '.css' || ext === '.scss') && /--background\s*:/.test(src)) {
+    if (/\.(css|scss|sass|less)$/.test(ext) && /--[\w-]+\s*:/.test(src)) {
       const themes = parseCssTokens(src);
-      if (Object.keys(themes).length) { tokenSourcesFound++; checkPairs(themes, 'css', rel); }
-    } else if ((ext === '.ts' || ext === '.tsx') && isTokenFile(rel) && /on[A-Z]\w*\s*:\s*['"]#/.test(src)) {
+      const count = Object.values(themes).reduce((n, t) => n + Object.keys(t).length, 0);
+      if (count >= 4) { coverage.contrast.sources++; checkPairs(themes, rel); }
+    } else if (/\.(ts|tsx|js|jsx|mjs)$/.test(ext) && isTokenFile(rel)) {
       const themes = parseTsTokens(src);
-      if (Object.keys(themes).length) { tokenSourcesFound++; checkPairs(themes, 'ts', rel); }
+      const count = Object.values(themes).reduce((n, t) => n + Object.keys(t).length, 0);
+      if (count >= 4) { coverage.contrast.sources++; checkPairs(themes, rel); }
     }
   }
-  if (tokenSourcesFound === 0) {
+  if (coverage.contrast.sources === 0) {
     report('contrast', 'warning', '(repo)', 0,
-      'no parseable token source found — contrast is unverified',
-      'expected CSS custom properties as `--name: H S% L%` or a colors.ts with light/dark hex maps');
+      'NO TOKEN SOURCE FOUND — contrast was NOT verified (this is not a pass)',
+      'point the validator at your tokens: a stylesheet with custom properties, or a token module ' +
+      'named tokens/colors/theme/palette. Custom naming? declare pairs in .designauditrc.json ' +
+      '{ "contrastPairs": [["--color-text","--color-bg",4.5]] }');
+  } else if (coverage.contrast.pairsChecked === 0) {
+    report('contrast', 'warning', '(repo)', 0,
+      `${coverage.contrast.sources} token source(s) found but NO PAIR could be derived — contrast was NOT verified`,
+      'the validator pairs x/x-foreground, x/onX, x/x-fg, x/x-text. For another convention, declare ' +
+      'pairs explicitly in .designauditrc.json { "contrastPairs": [["--fg","--bg",4.5]] }');
   }
 }
 
@@ -347,10 +580,12 @@ if (ruleEnabled('unsafe-html')) {
   for (const { full, rel } of files) {
     if (SAFE_FILE_RE.test(rel) || config.safeHtmlFiles.some((f) => rel.endsWith(f.replace(/^\.\//, '')))) continue;
     const src = read(full);
-    if (!src.includes('dangerouslySetInnerHTML')) continue;
+    if (!HTML_SINK_RE.test(src)) continue;
+    HTML_SINK_RE.lastIndex = 0;
     const lines = src.split('\n');
     lines.forEach((line, i) => {
-      if (!line.includes('dangerouslySetInnerHTML') || isCommentLine(line)) return;
+      HTML_SINK_RE.lastIndex = 0;
+      if (!HTML_SINK_RE.test(line) || isCommentLine(line)) return;
       // Structured-data blobs are serialized by JSON.stringify: not an HTML sink.
       const ctx = lines.slice(Math.max(0, i - 3), i + 2).join(' ');
       if (/JSON\.stringify|application\/ld\+json/.test(ctx)) return;
@@ -371,8 +606,10 @@ if (ruleEnabled('unsafe-html')) {
       report('unsafe-html', sanitized ? 'warning' : 'error', rel, i + 1,
         sanitized
           ? 'sanitized inline — move it behind the shared <SafeHtml> so the config cannot drift'
-          : 'dangerouslySetInnerHTML with no sanitizer in scope',
-        'route all untrusted HTML through one <SafeHtml>; escaping entities does NOT block javascript: URLs');
+          : 'raw-HTML sink with no sanitizer in scope',
+        'route all untrusted HTML through ONE sanitising component (React dangerouslySetInnerHTML, ' +
+        'Vue v-html, Svelte {@html}, Astro set:html, Angular [innerHTML], plain .innerHTML are the same ' +
+        'boundary). Escaping entities does NOT block javascript: URLs');
     });
   }
 }
@@ -427,7 +664,7 @@ if (ruleEnabled('touch-target')) {
 if (ruleEnabled('async-states')) {
   for (const { full, rel } of files) {
     // Only render surfaces. A `*-hooks.ts` data layer legitimately has no UI states.
-    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (!isMarkupFile(rel)) continue;
     const src = read(full);
     if (!/use(Query|SWR|InfiniteQuery)\s*[(<]/.test(src)) continue;
     const hasLoading = /isLoading|isPending|isFetching|Skeleton|loading/i.test(src);
@@ -456,7 +693,7 @@ if (ruleEnabled('ui-string')) {
   // apostrophe inside a double-quoted string from truncating the match.
   const DEFAULT_RE = /\b(placeholder|label|title|message|description|emptyMessage|loadingMessage|errorMessage|confirmLabel|actionLabel|cancelLabel|tooltip|alt)\s*=\s*(['"])((?:(?!\2).){4,})\2/g;
   for (const { full, rel } of files) {
-    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (!isMarkupFile(rel)) continue;
     const src = read(full);
     src.split('\n').forEach((line, i) => {
       if (isCommentLine(line)) return;
@@ -488,7 +725,7 @@ if (ruleEnabled('hardcoded-options')) {
   // <SelectItem value="draft">, <Option value="draft">, <Picker.Item value="draft">
   const OPT_RE = /<(?:SelectItem|Option|Picker\.Item|MenuItem|RadioGroupItem)\b[^>]*\bvalue\s*=\s*["']([^"'{}]+)["']/g;
   for (const { full, rel } of files) {
-    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (!isMarkupFile(rel)) continue;
     const src = read(full);
     const values = new Set();
     let m;
@@ -542,7 +779,7 @@ if (ruleEnabled('free-text-referential')) {
   const NAME_ATTR_RE = /\b(?:name|id|htmlFor)\s*=\s*["'`]([^"'`]+)["'`]/;
 
   for (const { full, rel } of files) {
-    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (!isMarkupFile(rel)) continue;
     const src = read(full);
     const lines = src.split('\n');
     lines.forEach((line, i) => {
@@ -559,7 +796,7 @@ if (ruleEnabled('free-text-referential')) {
       if (!REFERENTIAL.has(subject)) return;
       report('free-text-referential', 'warning', rel, i + 1,
         `free-text input on "${m[1]}" — "${subject}" has a referential`,
-        'bind a Select/Combobox to the referential; free text yields unmatchable values (Malabo / malabo / MALABO ). ' +
+        'bind a Select/Combobox to the referential; free text yields unmatchable values (Springfield / springfield / SPRINGFIELD ). ' +
         'On an admin screen that DEFINES this referential, free text is correct — disable the rule for that file.');
     });
   }
@@ -571,7 +808,7 @@ if (ruleEnabled('free-text-referential')) {
 
 if (ruleEnabled('form-primitive')) {
   for (const { full, rel } of files) {
-    if (!/\.(tsx|jsx)$/.test(rel)) continue;
+    if (!isMarkupFile(rel)) continue;
     if (/components?\/(ui|primitives)\//.test(rel)) continue; // the primitives themselves
     const src = read(full);
     const controls = (src.match(/<(Input|Textarea|Select|Checkbox|RadioGroup|Switch|Combobox)\b/g) ?? []).length;
@@ -595,10 +832,67 @@ if (ruleEnabled('form-primitive')) {
 const errors = findings.filter((f) => f.severity === 'error');
 const warnings = findings.filter((f) => f.severity === 'warning');
 
+/**
+ * Which rules were actually able to run on this codebase?
+ *
+ * `applicable: false` means the rule found no input it understands — NOT that
+ * the codebase passed. Reporting that distinction is the whole point: on a
+ * stack this validator does not recognise, silence would otherwise read as
+ * a clean bill of health.
+ */
+const f = coverage.files;
+const APPLICABILITY = {
+  contrast: {
+    applicable: coverage.contrast.pairsChecked > 0,
+    why: coverage.contrast.sources === 0
+      ? 'no token source found'
+      : coverage.contrast.pairsChecked === 0
+        ? 'tokens found but no foreground/background pair could be derived'
+        : `${coverage.contrast.pairsChecked} pair(s) checked in ${coverage.contrast.sources} source(s)`,
+  },
+  'dark-mode-contract': {
+    applicable: f.style > 0,
+    why: f.style > 0 ? `${f.style} stylesheet(s)` : 'no stylesheet found',
+  },
+  'unsafe-html': {
+    applicable: f.markup > 0,
+    why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found',
+  },
+  'unsafe-link': {
+    applicable: f.markup > 0,
+    why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found',
+  },
+  'no-raw-color': {
+    applicable: f.tailwind > 0 || f.native > 0 || f.style > 0,
+    why: [
+      f.tailwind > 0 && `${f.tailwind} file(s) using utility classes`,
+      f.native > 0 && `${f.native} React Native file(s)`,
+      f.style > 0 && `${f.style} stylesheet(s)`,
+    ].filter(Boolean).join(', ')
+      || 'no Tailwind-style classes, no React Native styles, no stylesheet — '
+       + 'this rule cannot see CSS-in-JS or scoped <style> blocks',
+  },
+  'hardcoded-options': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
+  'free-text-referential': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
+  'form-primitive': { applicable: f.reactLike > 0, why: f.reactLike > 0 ? `${f.reactLike} React-like file(s)` : 'React-specific: no React files found' },
+  'touch-target': { applicable: f.tailwind > 0, why: f.tailwind > 0 ? `${f.tailwind} file(s) using utility classes` : 'Tailwind-specific: no utility classes found' },
+  'async-states': { applicable: f.reactLike > 0, why: f.reactLike > 0 ? `${f.reactLike} React-like file(s)` : 'React-query/SWR specific: no React files found' },
+  'ui-string': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
+};
+
+const enabledRules = Object.keys(APPLICABILITY).filter((r) => ruleEnabled(r));
+const inapplicable = enabledRules.filter((r) => !APPLICABILITY[r].applicable);
+
 if (asJson) {
   console.log(JSON.stringify({
     root, filesScanned: files.length,
-    errors: errors.length, warnings: warnings.length, findings,
+    errors: errors.length, warnings: warnings.length,
+    coverage: {
+      stack: coverage.files,
+      rules: Object.fromEntries(enabledRules.map((r) => [r, APPLICABILITY[r]])),
+      inapplicableRules: inapplicable,
+    },
+    findings,
   }, null, 2));
 } else {
   const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'touch-target', 'async-states', 'ui-string'];
@@ -609,8 +903,26 @@ if (asJson) {
   }
 
   console.log(`\ndesign-audit — ${files.length} files scanned in ${root}\n`);
+
+  // Coverage FIRST, before any result. A reader must know what was actually
+  // inspected before they read how many problems were found.
+  console.log(`── coverage  (${enabledRules.length - inapplicable.length}/${enabledRules.length} rules could run)`);
+  for (const rule of enabledRules) {
+    const a = APPLICABILITY[rule];
+    console.log(`   ${a.applicable ? 'ran ' : 'N/A '} ${rule.padEnd(22)} ${a.why}`);
+  }
+  if (inapplicable.length) {
+    console.log('');
+    console.log(`   ⚠ ${inapplicable.length} rule(s) found NO INPUT THEY UNDERSTAND: ${inapplicable.join(', ')}`);
+    console.log('     Zero findings from these rules means "not checked", NOT "clean".');
+    console.log('     See references/portability.md to map them onto this stack.');
+  }
+  console.log('');
+
   if (!findings.length) {
-    console.log('  No findings. All enabled rules pass.\n');
+    console.log(inapplicable.length
+      ? `  No findings — but only ${enabledRules.length - inapplicable.length} of ${enabledRules.length} rules could run. This is NOT a clean bill of health.\n`
+      : '  No findings. All enabled rules ran and passed.\n');
   }
 
   for (const rule of RULE_ORDER) {
