@@ -892,6 +892,136 @@ if (ruleEnabled('sensitive-log')) {
 }
 
 // ---------------------------------------------------------------------------
+// Rule: zoom-blocked  (WCAG 1.4.4 — text must resize to 200%)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('zoom-blocked')) {
+  for (const { full, rel } of files) {
+    const src = read(full);
+    if (!/viewport/i.test(src)) continue;
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      if (!/viewport/i.test(line)) return;
+      if (/user-scalable\s*[=:]\s*['"]?(no|0)/i.test(line)) {
+        report('zoom-blocked', 'error', rel, i + 1,
+          'viewport declares user-scalable=no — pinch-zoom is disabled',
+          'direct WCAG 1.4.4 failure. Low-vision users cannot enlarge the text. Remove it; ' +
+          'if the layout breaks when zoomed, fix the layout (see references/layout-and-responsive.md §4)');
+      }
+      const maxScale = line.match(/maximum-scale\s*[=:]\s*['"]?([\d.]+)/i);
+      if (maxScale && Number(maxScale[1]) < 5) {
+        report('zoom-blocked', 'error', rel, i + 1,
+          `viewport caps maximum-scale at ${maxScale[1]} — zoom is limited below the required 200%`,
+          'WCAG 1.4.4 requires text to reach 200%; a cap under 5 blocks it on most devices');
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: viewport-font  (a font-size that ignores user zoom)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('viewport-font')) {
+  // vw/vh do NOT change when the user zooms. A font-size driven by them is
+  // frozen — the classic "fluid typography" mistake. The fix keeps a rem term
+  // inside the clamp: clamp(1rem, 0.75rem + 1.2vw, 1.5rem).
+  const CSS_RE = /font-size\s*:\s*([^;{}]+)/gi;
+  const TW_RE = /\btext-\[([^\]]+)\]/g;
+
+  /** Split a function's arguments on TOP-LEVEL commas only. */
+  const splitArgs = (inner) => {
+    const out = [];
+    let depth = 0, cur = '';
+    for (const ch of inner) {
+      if (ch === '(') depth++;
+      if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out.map((a) => a.trim());
+  };
+
+  const offends = (value) => {
+    if (!/\d\s*(vw|vh|vmin|vmax)\b/i.test(value)) return false;
+
+    // clamp(min, PREFERRED, max): only the PREFERRED term is applied across the
+    // range that matters. clamp(1rem, 2vw, 1.5rem) is frozen under zoom even
+    // though a rem appears elsewhere in the expression — that is exactly the
+    // classic "fluid typography" mistake, so inspect the middle argument.
+    const clamp = value.match(/clamp\s*\(([\s\S]*)\)/i);
+    if (clamp) {
+      const args = splitArgs(clamp[1]);
+      const preferred = args.length >= 2 ? args[1] : '';
+      if (!/\d\s*(vw|vh|vmin|vmax)\b/i.test(preferred)) return false; // no viewport unit where it counts
+      return !/\d\s*(rem|em)\b/i.test(preferred);                     // rem anchor present -> zoom still works
+    }
+
+    // Bare calc()/expression: a rem term anywhere keeps zoom working.
+    if (/calc\s*\(/i.test(value) && /\d\s*(rem|em)\b/i.test(value)) return false;
+    return true;
+  };
+
+  for (const { full, rel } of files) {
+    const src = read(full);
+    if (!/\d(vw|vh|vmin|vmax)\b/i.test(src)) continue;
+    src.split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      let m;
+      CSS_RE.lastIndex = 0;
+      while ((m = CSS_RE.exec(line))) {
+        if (!offends(m[1])) continue;
+        report('viewport-font', 'error', rel, i + 1,
+          `font-size driven by viewport units: ${m[1].trim().slice(0, 60)}`,
+          'vw/vh ignore user zoom, so the text cannot reach 200% (WCAG 1.4.4). ' +
+          'Keep a rem term inside the clamp: clamp(1rem, 0.75rem + 1.2vw, 1.5rem)');
+      }
+      TW_RE.lastIndex = 0;
+      while ((m = TW_RE.exec(line))) {
+        if (!offends(m[1])) continue;
+        report('viewport-font', 'error', rel, i + 1,
+          `arbitrary font size in viewport units: text-[${m[1]}]`,
+          'vw/vh ignore user zoom (WCAG 1.4.4). Keep a rem term inside the clamp');
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: body-scroll-lock  (the shell must not own the scrollbar)
+// ---------------------------------------------------------------------------
+
+if (ruleEnabled('body-scroll-lock')) {
+  const JS_RE = /document\.(body|documentElement)\.style\.overflow\s*=/;
+  // `html { overflow: hidden }` / `body { overflow: hidden }` in a stylesheet.
+  const CSS_RE = /^\s*(html|body)[^{}]*\{[^{}]*overflow(-y)?\s*:\s*hidden/;
+
+  for (const { full, rel } of files) {
+    const src = read(full);
+    if (!/overflow/.test(src)) continue;
+    const lines = src.split('\n');
+    lines.forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      let hit = null;
+      if (JS_RE.test(line)) hit = 'scroll locked on the document from JS';
+      else if (CSS_RE.test(line)) hit = 'overflow:hidden on html/body';
+      else if (/^\s*(html|body)\b/.test(line)) {
+        // Selector and declaration on separate lines.
+        const block = lines.slice(i, i + 6).join(' ');
+        if (/\{[^{}]*overflow(-y)?\s*:\s*hidden/.test(block)) hit = 'overflow:hidden on html/body';
+      }
+      if (!hit) return;
+      report('body-scroll-lock', 'warning', rel, i + 1,
+        hit,
+        'the content region owns the scroll, not the shell. Locking the document breaks iOS momentum ' +
+        'scrolling, position:fixed children and scroll restoration. Lock the overlay instead ' +
+        '(overscroll-behavior + inert background) and restore the position on close');
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Output
 // ---------------------------------------------------------------------------
 
@@ -946,6 +1076,9 @@ const APPLICABILITY = {
   'ui-string': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
   'token-storage': { applicable: files.length > 0, why: `${files.length} file(s) scanned` },
   'sensitive-log': { applicable: files.length > 0, why: `${files.length} file(s) scanned` },
+  'zoom-blocked': { applicable: f.markup > 0, why: f.markup > 0 ? `${f.markup} markup file(s)` : 'no markup file found' },
+  'viewport-font': { applicable: f.style > 0 || f.markup > 0, why: `${f.style} stylesheet(s), ${f.markup} markup file(s)` },
+  'body-scroll-lock': { applicable: f.style > 0 || f.reactLike > 0, why: `${f.style} stylesheet(s), ${f.reactLike} script file(s)` },
 };
 
 const enabledRules = Object.keys(APPLICABILITY).filter((r) => ruleEnabled(r));
@@ -963,7 +1096,7 @@ if (asJson) {
     findings,
   }, null, 2));
 } else {
-  const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'token-storage', 'sensitive-log', 'touch-target', 'async-states', 'ui-string'];
+  const RULE_ORDER = ['contrast', 'dark-mode-contract', 'unsafe-html', 'unsafe-link', 'no-raw-color', 'hardcoded-options', 'free-text-referential', 'form-primitive', 'token-storage', 'sensitive-log', 'zoom-blocked', 'viewport-font', 'body-scroll-lock', 'touch-target', 'async-states', 'ui-string'];
   const byRule = new Map();
   for (const f of findings) {
     if (!byRule.has(f.rule)) byRule.set(f.rule, []);

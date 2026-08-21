@@ -426,9 +426,9 @@ npm run design:audit:strict --workspace packages/web  # règles bloquantes seule
 node tools/design-audit.mjs packages/web --json     # pour la CI
 ```
 
-13 règles : `contrast` · `dark-mode-contract` · `unsafe-html` · `unsafe-link` · `token-storage` ·
-`sensitive-log` · `no-raw-color` · `hardcoded-options` · `free-text-referential` · `form-primitive` ·
-`touch-target` · `async-states` · `ui-string`.
+16 règles : `contrast` · `dark-mode-contract` · `unsafe-html` · `unsafe-link` · `token-storage` ·
+`sensitive-log` · `zoom-blocked` · `viewport-font` · `body-scroll-lock` · `no-raw-color` ·
+`hardcoded-options` · `free-text-referential` · `form-primitive` · `touch-target` · `async-states` · `ui-string`.
 
 **Lire le bloc de couverture avant les résultats.** Chaque rapport indique quelles règles ont pu tourner.
 Une règle `N/A` n'a **pas** réussi — elle n'a rien trouvé qu'elle sache lire.
@@ -444,6 +444,9 @@ Une règle `N/A` n'a **pas** réussi — elle n'a rien trouvé qu'elle sache lir
 3. **`target="_blank"` ⇒ `rel="noopener noreferrer"`**, y compris sur les `<a>` créés en JS.
 4. **Aucun secret dans `console.*`** (`sensitive-log`). Les logs atteignent les devtools navigateur,
    `logcat` via USB sur un appareil en mode développeur, et les agrégateurs de logs.
+5. **Le zoom utilisateur n'est jamais bloqué** (`zoom-blocked`, `viewport-font`). Ni `user-scalable=no`,
+   ni `vw` nu dans une `font-size` — les unités viewport ignorent le zoom, le texte gèle. Échec WCAG 1.4.4.
+   Forme correcte : `clamp(1rem, 0.75rem + 1.2vw, 1.5rem)` — un terme `rem` dans la valeur médiane.
 
 ### Risque actif à traiter (pas une dette esthétique)
 

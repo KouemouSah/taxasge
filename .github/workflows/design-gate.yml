@@ -37,7 +37,7 @@ on:
 
 jobs:
   strict:
-    name: strict (contrast + XSS + secret-logging must be zero)
+    name: strict (contrast + XSS + secrets + zoom must be zero)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,11 +49,11 @@ jobs:
       # `dark-mode-contract` is deliberately NOT in this list — see the ratchet
       # job's note. It is tracked, not enforced, until dark mode is wired.
       - name: web
-        run: node tools/design-audit.mjs packages/web --only contrast,unsafe-html,unsafe-link,sensitive-log
+        run: node tools/design-audit.mjs packages/web --only contrast,unsafe-html,unsafe-link,sensitive-log,zoom-blocked,viewport-font
       - name: mobile
-        run: node tools/design-audit.mjs packages/mobile --only contrast,unsafe-html,unsafe-link,sensitive-log
+        run: node tools/design-audit.mjs packages/mobile --only contrast,unsafe-html,unsafe-link,sensitive-log,zoom-blocked,viewport-font
       - name: inspector
-        run: node tools/design-audit.mjs packages/inspector --only contrast,unsafe-html,unsafe-link,sensitive-log
+        run: node tools/design-audit.mjs packages/inspector --only contrast,unsafe-html,unsafe-link,sensitive-log,zoom-blocked,viewport-font
 
   ratchet:
     name: ratchet (backlog must not grow)
