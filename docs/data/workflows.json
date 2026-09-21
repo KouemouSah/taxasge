@@ -82,5 +82,11 @@
     "name": "DB Migrate (Auto Mode)",
     "state": "active",
     "path": ".github/workflows/db-migrate-auto.yml"
+  },
+  {
+    "id": 361634982,
+    "name": "design-gate",
+    "state": "active",
+    "path": ".github/workflows/design-gate.yml"
   }
 ]
