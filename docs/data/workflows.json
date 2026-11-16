@@ -1,15 +1,27 @@
 [
   {
-    "id": 189540984,
-    "name": "pages-build-deployment",
+    "id": 268859428,
+    "name": "Auto-tag Mobile/Inspector",
     "state": "active",
-    "path": "dynamic/pages/pages-build-deployment"
+    "path": ".github/workflows/auto-tag-mobile-inspector.yml"
   },
   {
     "id": 200612638,
     "name": "CI - Tests Backend & Frontend",
     "state": "active",
     "path": ".github/workflows/ci.yml"
+  },
+  {
+    "id": 262443698,
+    "name": "CodeQL Security Analysis",
+    "state": "active",
+    "path": ".github/workflows/codeql.yml"
+  },
+  {
+    "id": 273886429,
+    "name": "DB Migrate (Auto Mode)",
+    "state": "active",
+    "path": ".github/workflows/db-migrate-auto.yml"
   },
   {
     "id": 210698113,
@@ -24,10 +36,10 @@
     "path": ".github/workflows/deploy-frontend-staging.yml"
   },
   {
-    "id": 254942781,
-    "name": "Mobile CI/CD",
+    "id": 361634982,
+    "name": "design-gate",
     "state": "active",
-    "path": ".github/workflows/mobile-build.yml"
+    "path": ".github/workflows/design-gate.yml"
   },
   {
     "id": 255916928,
@@ -42,10 +54,22 @@
     "path": ".github/workflows/inspector-ci.yml"
   },
   {
-    "id": 262443698,
-    "name": "CodeQL Security Analysis",
+    "id": 254942781,
+    "name": "Mobile CI/CD",
     "state": "active",
-    "path": ".github/workflows/codeql.yml"
+    "path": ".github/workflows/mobile-build.yml"
+  },
+  {
+    "id": 267129858,
+    "name": "Mobile EAS Build (Cloud)",
+    "state": "active",
+    "path": ".github/workflows/mobile-eas-build.yml"
+  },
+  {
+    "id": 271937120,
+    "name": "Mobile EAS Submit (Play Console)",
+    "state": "active",
+    "path": ".github/workflows/mobile-eas-submit.yml"
   },
   {
     "id": 262443701,
@@ -60,33 +84,9 @@
     "path": "dynamic/dependabot/dependabot-updates"
   },
   {
-    "id": 267129858,
-    "name": "Mobile EAS Build (Cloud)",
+    "id": 189540984,
+    "name": "pages-build-deployment",
     "state": "active",
-    "path": ".github/workflows/mobile-eas-build.yml"
-  },
-  {
-    "id": 268859428,
-    "name": "Auto-tag Mobile/Inspector",
-    "state": "active",
-    "path": ".github/workflows/auto-tag-mobile-inspector.yml"
-  },
-  {
-    "id": 271937120,
-    "name": "Mobile EAS Submit (Play Console)",
-    "state": "active",
-    "path": ".github/workflows/mobile-eas-submit.yml"
-  },
-  {
-    "id": 273886429,
-    "name": "DB Migrate (Auto Mode)",
-    "state": "active",
-    "path": ".github/workflows/db-migrate-auto.yml"
-  },
-  {
-    "id": 361634982,
-    "name": "design-gate",
-    "state": "active",
-    "path": ".github/workflows/design-gate.yml"
+    "path": "dynamic/pages/pages-build-deployment"
   }
 ]
